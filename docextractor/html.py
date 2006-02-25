@@ -259,6 +259,8 @@ class SystemWriter(object):
         """Generates an HTML representation of all modules (including
         packages) in a nested list."""
         x = ""
+        # orderedcontents isn't ordered for modules, for some reason.
+        pkg.orderedcontents.sort(key=lambda o: o.fullName())
         for mod in pkg.orderedcontents:
             if mod.name == '__init__':
                 # XXX Rehh??
