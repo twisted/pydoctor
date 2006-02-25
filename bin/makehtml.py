@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from docextractor import html
 import sys
 

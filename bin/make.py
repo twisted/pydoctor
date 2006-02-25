@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from docextractor.model import main
 import sys
 
