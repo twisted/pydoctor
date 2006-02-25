@@ -80,7 +80,6 @@ class Documentable(object):
             start, rest = dottedname.split('.', 1)
             rest = '.' + rest
         obj = self
-        system = self.system
         while start not in obj._name2fullname:
             obj = obj.parent
             if obj is None:
@@ -128,7 +127,7 @@ class System(object):
         self.orderedallobjects = []
         self.rootobjects = []
         self.warnings = {}
-        # importstargraph contains edges {importedby:[imports]} but only
+        # importstargraph contains edges {importer:[imported]} but only
         # for import * statements
         self.importstargraph = {}
 
