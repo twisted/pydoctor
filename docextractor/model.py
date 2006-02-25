@@ -110,10 +110,6 @@ class Class(Documentable):
         self.rawbases = []
         self.baseobjects = []
         self.subclasses = []
-    def __repr__(self):
-        return "%s(%r, %r) # %r"%(self.__class__.__name__,
-                                  self.name, self.shortdocstring(),
-                                  self.bases)
 
 class Function(Documentable):
     pass
