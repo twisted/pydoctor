@@ -278,17 +278,29 @@ def sibpath(path, sibling):
     return os.path.join(os.path.dirname(os.path.abspath(path)), sibling)
 
 def main(args):
+    from optparse import OptionParser
     import cPickle
-    fn = 'da.out'
-    import sys
-    if len(sys.argv) > 1:
-        fn = sys.argv[1]
-    docsys = cPickle.load(open(fn, 'rb'))
+    parser = OptionParser()
+    parser.add_option('-f', '--file', dest='filename',
+                      help="Open this file")
+    parser.add_option('-m', '--module', dest='module',
+                      help="Python object to generate API docs for.")
+    parser.add_option('-o', '--output', dest='output',
+                      help="Directory to save HTML files to")
+    options, args = parser.parse_args()
 
-    syswriter = SystemWriter('apidocs')
+    fn = 'da.out'
+    if options.filename:
+        fn = options.filename
+    out = 'apidocs'
+    if options.output:
+        out = options.output
+
+    docsys = cPickle.load(open(fn, 'rb'))
+    syswriter = SystemWriter(out)
     syswriter.prepOutputDirectory()
-    if args:
-        obj = docsys.allobjects[args[0]]
+    if options.module:
+        obj = docsys.allobjects[options.module]
         print "WRITING DOCS FOR", obj.fullName()
         syswriter.writeIndividualFiles([obj])
     else:
