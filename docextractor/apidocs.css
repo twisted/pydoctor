@@ -1,0 +1,15 @@
+.function { 
+  margin: 1em;
+}
+
+.functionHeader {
+  font-weight: bold;
+}
+
+.children { 
+  margin: 1em;
+}
+
+.functionbody { 
+  padding-left: 2em;
+}
