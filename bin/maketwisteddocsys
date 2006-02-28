@@ -1,0 +1,6 @@
+#!/usr/bin/python
+from docextractor.model import main
+from docextractor.twistedmodel import TwistedSystem
+import sys
+
+main(TwistedSystem, sys.argv[1:])

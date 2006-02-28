@@ -13,3 +13,9 @@
 .functionbody { 
   padding-left: 2em;
 }
+
+.interfaceinfo { 
+  padding-left: 2em;
+  color: blue;
+  font-size: 75%;
+}

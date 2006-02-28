@@ -151,10 +151,12 @@ class SystemWriter(object):
             self.writeIndividualFiles(sub.orderedcontents)
 
     def getHTMLFor(self, o):
-        documentableType = o.__class__.__name__
-        fun = getattr(self, 'html_%s' % (documentableType,), None)
-        if not fun:
-            raise TypeError("Don't know how to document a "+documentableType)
+        for cls in o.__class__.__mro__:
+            fun = getattr(self, 'html_%s' % (cls.__name__,), None)
+            if fun is not None:
+                break
+        else:
+            raise TypeError("Don't know how to document a "+o.__class__.__name__)
         d = fun(o)
         d = '''<html><head>
         <link rel="stylesheet" type="text/css" href="apidocs.css"/>
@@ -225,6 +227,41 @@ class SystemWriter(object):
                 self._funsig(meth), doc2html(meth, meth.docstring))
         return x
 
+    def html_TwistedClass(self, cls):
+        if cls.isinterface:
+            name = 'Interface'
+        else:
+            name = 'Class'
+        x = "<h1>%s %s%s:</h1>" % (name, cls.fullName(), self.bases_html(cls))
+        if cls.subclasses:
+            x += '<p>known subclasses: %s</p>'%(', '.join(
+                map(linkto, cls.subclasses)))
+        x += self._parentLink(cls)
+        z = doc2html(cls, cls.docstring)
+        x += z
+        link = lambda x: '#' + x.fullName()
+        x += self._genChildren(cls.orderedcontents, link=link)
+        for meth in cls.orderedcontents:
+            if not isinstance(meth, model.Function):
+                continue
+            x += '''
+            <div class="function">def <a name="%s" class="functionHeader">%s:</a>
+            %s
+            <div class="functionBody">%s</div></div>''' % (
+                meth.fullName(),
+                self._funsig(meth),
+                self.interfaceInfo(cls, meth),
+                doc2html(meth, meth.docstring))
+        return x
+
+    def interfaceInfo(self, cls, meth):
+        for interface in cls.implements:
+            if interface in cls.system.allobjects:
+                io = cls.system.allobjects[interface]
+                if meth.name in io.contents:
+                    return '<div class="interfaceinfo">from %s</div>'%(linkto(io),)
+        return ''
+                    
     def html_Function(self, fun):
         x = "<h1>Function %s:</h1>" % (self._funsig(fun))
         x += self._parentLink(fun)
