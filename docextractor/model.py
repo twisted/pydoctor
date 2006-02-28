@@ -114,11 +114,119 @@ class Function(Documentable):
     pass
 
 
+class ModuleVistor(object):
+    def __init__(self, system, modname):
+        self.system = system
+        self.modname = modname
+        self.morenodes = []
+
+    def default(self, node):
+        for child in node.getChildNodes():
+            self.visit(child)
+
+    def postpone(self, docable, node):
+        self.morenodes.append((docable, node))
+
+    def visitModule(self, node):
+        if self.system.current and self.modname in self.system.current.contents:
+            m = self.system.current.contents[self.modname]
+            assert m.docstring is None
+            m.docstring = node.doc
+            self.system.push(m)
+            self.default(node)
+            self.system.pop(m)
+        else:
+            self.system.pushModule(self.modname, node.doc)
+            self.default(node)
+            self.system.popModule()
+
+    def visitClass(self, node):
+        cls = self.system.pushClass(node.name, node.doc)
+        for n in node.bases:
+            str_base = ast_pp.pp(n)
+            cls.rawbases.append(str_base)
+            base = cls.dottedNameToFullName(str_base)
+            cls.bases.append(base)
+        self.default(node)
+        self.system.popClass()
+
+    def visitFrom(self, node):
+        modname = expandModname(self.system, node.modname)
+        name2fullname = self.system.current._name2fullname
+        for fromname, asname in node.names:
+            if fromname == '*':
+                self.system.warning("import *", modname)
+                if modname not in self.system.allobjects:
+                    return
+                mod = self.system.allobjects[modname]
+                # this might fail if you have an import-* cycle (which
+                # won't be importable anyway, so i don't much care).
+                assert mod.processed
+                for n in mod.contents:
+                    name2fullname[n] = modname + '.' + n
+                return
+            if asname is None:
+                asname = fromname
+            name2fullname[asname] = modname + '.' + fromname
+
+    def visitImport(self, node):
+        name2fullname = self.system.current._name2fullname
+        for fromname, asname in node.names:
+            fullname = expandModname(self.system, fromname)
+            if asname is None:
+                asname = fromname.split('.', 1)[0]
+                # aaaaargh! python sucks.
+                parts = fullname.split('.')
+                for i, part in enumerate(fullname.split('.')[::-1]):
+                    if part == asname:
+                        fullname = '.'.join(parts[:len(parts)-i])
+                        name2fullname[asname] = fullname
+                        break
+                else:
+                    name2fullname[asname] = '.'.join(parts)
+            else:
+                name2fullname[asname] = fullname
+
+    def visitFunction(self, node):
+        func = self.system.pushFunction(node.name, node.doc)
+        # ast.Function has a pretty lame representation of
+        # arguments. Let's convert it to a nice concise format
+        # somewhat like what inspect.getargspec returns
+        argnames = node.argnames[:]
+        kwname = starargname = None
+        if node.kwargs:
+            kwname = argnames.pop(-1)
+        if node.varargs:
+            starargname = argnames.pop(-1)
+        defaults = []
+        for default in node.defaults:
+            try:
+                defaults.append(ast_pp.pp(default))
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception, e:
+                self.system.warning("unparseable default", "%s: %s %r"%(e.__class__.__name__,
+                                                                       e, default))
+                defaults.append('???')
+        # argh, convert unpacked-arguments from tuples to lists,
+        # because that's what getargspec uses and the unit test
+        # compares it
+        argnames2 = []
+        for argname in argnames:
+            if isinstance(argname, tuple):
+                argname = list(argname)
+            argnames2.append(argname)
+        func.argspec = (argnames2, starargname, kwname, tuple(defaults))
+        self.postpone(func, node.code)
+        self.system.popFunction()
+
+
 class System(object):
     Class = Class
     Module = Module
     Package = Package
     Function = Function
+    ModuleVistor = ModuleVistor
 
     def __init__(self):
         self.current = None
@@ -296,115 +404,8 @@ class ImportStarFinder(object):
             self.system.importstargraph.setdefault(
                 self.modfullname, []).append(modname)
 
-class ModuleVistor(object):
-    def __init__(self, system, modname):
-        self.system = system
-        self.modname = modname
-        self.morenodes = []
-
-    def default(self, node):
-        for child in node.getChildNodes():
-            self.visit(child)
-
-    def postpone(self, docable, node):
-        self.morenodes.append((docable, node))
-
-    def visitModule(self, node):
-        if self.system.current and self.modname in self.system.current.contents:
-            m = self.system.current.contents[self.modname]
-            assert m.docstring is None
-            m.docstring = node.doc
-            self.system.push(m)
-            self.default(node)
-            self.system.pop(m)
-        else:
-            self.system.pushModule(self.modname, node.doc)
-            self.default(node)
-            self.system.popModule()
-
-    def visitClass(self, node):
-        cls = self.system.pushClass(node.name, node.doc)
-        for n in node.bases:
-            str_base = ast_pp.pp(n)
-            cls.rawbases.append(str_base)
-            base = cls.dottedNameToFullName(str_base)
-            cls.bases.append(base)
-        self.default(node)
-        self.system.popClass()
-
-    def visitFrom(self, node):
-        modname = expandModname(self.system, node.modname)
-        name2fullname = self.system.current._name2fullname
-        for fromname, asname in node.names:
-            if fromname == '*':
-                self.system.warning("import *", modname)
-                if modname not in self.system.allobjects:
-                    return
-                mod = self.system.allobjects[modname]
-                # this might fail if you have an import-* cycle (which
-                # won't be importable anyway, so i don't much care).
-                assert mod.processed
-                for n in mod.contents:
-                    name2fullname[n] = modname + '.' + n
-                return
-            if asname is None:
-                asname = fromname
-            name2fullname[asname] = modname + '.' + fromname
-
-    def visitImport(self, node):
-        name2fullname = self.system.current._name2fullname
-        for fromname, asname in node.names:
-            fullname = expandModname(self.system, fromname)
-            if asname is None:
-                asname = fromname.split('.', 1)[0]
-                # aaaaargh! python sucks.
-                parts = fullname.split('.')
-                for i, part in enumerate(fullname.split('.')[::-1]):
-                    if part == asname:
-                        fullname = '.'.join(parts[:len(parts)-i])
-                        name2fullname[asname] = fullname
-                        break
-                else:
-                    name2fullname[asname] = '.'.join(parts)
-            else:
-                name2fullname[asname] = fullname
-
-
-    def visitFunction(self, node):
-        func = self.system.pushFunction(node.name, node.doc)
-        # ast.Function has a pretty lame representation of
-        # arguments. Let's convert it to a nice concise format
-        # somewhat like what inspect.getargspec returns
-        argnames = node.argnames[:]
-        kwname = starargname = None
-        if node.kwargs:
-            kwname = argnames.pop(-1)
-        if node.varargs:
-            starargname = argnames.pop(-1)
-        defaults = []
-        for default in node.defaults:
-            try:
-                defaults.append(ast_pp.pp(default))
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except Exception, e:
-                self.system.warning("unparseable default", "%s: %s %r"%(e.__class__.__name__,
-                                                                       e, default))
-                defaults.append('???')
-        # argh, convert unpacked-arguments from tuples to lists,
-        # because that's what getargspec uses and the unit test
-        # compares it
-        argnames2 = []
-        for argname in argnames:
-            if isinstance(argname, tuple):
-                argname = list(argname)
-            argnames2.append(argname)
-        func.argspec = (argnames2, starargname, kwname, tuple(defaults))
-        self.postpone(func, node.code)
-        self.system.popFunction()
-
 def processModuleAst(ast, name, system):
-    mv = ModuleVistor(system, name)
+    mv = system.ModuleVistor(system, name)
     walk(ast, mv)
     while mv.morenodes:
         obj, node = mv.morenodes.pop(0)
@@ -473,11 +474,11 @@ def toposort(input, edges):
     return output
             
 
-def main(argv):
+def main(systemcls, argv):
     if '-r' in argv:
         argv.remove('-r')
         assert len(argv) == 1
-        system = System()
+        system = systemcls()
         processDirectory(system, argv[0])
         pickle.dump(system, open('da.out', 'wb'), pickle.HIGHEST_PROTOCOL)
         print
@@ -485,7 +486,7 @@ def main(argv):
         for k, v in system.warnings.iteritems():
             print k, len(v)
     else:
-        system = System()
+        system = systemcls()
         for fname in argv:
             modname = os.path.splitext(os.path.basename(fname))[0] # XXX!
             processModuleAst(parseFile(fname), modname, system)
@@ -494,4 +495,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(System, sys.argv[1:])
