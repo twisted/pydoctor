@@ -254,7 +254,7 @@ class SourceWriter(object):
         if len(node.nodes) == 0:
             pass
         elif len(node.nodes) == 1:
-            walk(expr, self)
+            walk(node.nodes[0], self)
             self.w(',')
         else:
             for expr in node.nodes[:-1]:

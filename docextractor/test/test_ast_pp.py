@@ -24,6 +24,8 @@ def test_getattr():
 
 def test_tuple():
     pp_test('()\n')
+    pp_test('(1,)\n')
+    pp_test('(1, 2)\n')
 
 def test_dict():
     pp_test('{}\n')
