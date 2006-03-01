@@ -30,9 +30,9 @@ class TwistedSystem(model.System):
         self.pushClass('Interface', None)
         self.popClass()
         super(TwistedSystem, self).finalStateComputations()
+        self.markInterface(self.allobjects['twisted.python.components.Interface'])
         for cls in self.objectsOfType(model.Class):
-            if 'zope.interface.Interface' in cls.bases or \
-                   'twisted.python.components.Interface' in cls.bases:
+            if 'zope.interface.Interface' in cls.bases:
                 self.markInterface(cls)
         for cls in self.objectsOfType(model.Class):
             for interface in cls.implements:
