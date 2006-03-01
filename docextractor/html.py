@@ -34,7 +34,7 @@ def boringDocstring(doc):
     # inspect.getdoc requires an object with a __doc__ attribute, not
     # just a string :-(
     if doc is None or not doc.strip():
-        return '<pre>Undocumented</pre>'
+        return '<pre class="undocumented">Undocumented</pre>'
     def crappit(): pass
     crappit.__doc__ = doc
     return '<pre>%s</pre>' % inspect.getdoc(crappit)
@@ -44,8 +44,9 @@ errcount = 0
 def doc2html(obj, doc):
     """Generate an HTML representation of a docstring"""
     if doc is None or not doc.strip():
-        return "<div>Undocumented</div>"
+        return '<div class="undocumented">Undocumented</div>'
     if not EPYTEXT:
+        print 'not epytext'
         return boringDocstring(doc)
     errs = []
     pdoc = epytext.parse_docstring(doc, errs)
@@ -61,10 +62,13 @@ def doc2html(obj, doc):
             return boringDocstring(doc)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
-    s = "<div>%s</div>" % (crap,)
+    s = '<div>%s</div>' % (crap,)
     for field in fields:
-        s += "<div>%s: %s: %s</div>" % (field.tag(), field.arg(), 
-                                        field.body().to_html(_EpydocLinker(obj)))
+        s += (('<div class="metadata"><span class="tag">%s</span>'
+              '<span class="arg">%s</span>'
+              '<span class="body">%s</span></div>')
+              % (field.tag(), field.arg(),
+                 field.body().to_html(_EpydocLinker(obj))))
     return s
 
 
@@ -158,7 +162,8 @@ class SystemWriter(object):
         else:
             raise TypeError("Don't know how to document a "+o.__class__.__name__)
         d = fun(o)
-        d = '''<html><head>
+        d = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">        
+        <html><head>
         <link rel="stylesheet" type="text/css" href="apidocs.css"/>
         </head>
         <body>%s</body>
@@ -183,7 +188,8 @@ class SystemWriter(object):
     def html_Package(self, pkg):
         x = "<h1>Package %s</h1>" % (pkg.fullName(),)
         x += self._parentLink(pkg)
-        x += doc2html(pkg, pkg.contents['__init__'].docstring)
+        z = doc2html(pkg, pkg.contents['__init__'].docstring)
+        x += '<div class="toplevel">%s</div>' % (z,)
         x += self._genChildren([x for x in pkg.orderedcontents 
                                  if x.name != '__init__'])
         return x
@@ -191,7 +197,8 @@ class SystemWriter(object):
     def html_Module(self, mod):
         x = "<h1>Module %s</h1>" % (mod.fullName(),)
         x += self._parentLink(mod)
-        x += doc2html(mod, mod.docstring)
+        z = doc2html(mod, mod.docstring)
+        x += '<div class="toplevel">%s</div>' % (z,)
         x += self._genChildren(mod.orderedcontents)
         return x
 
@@ -214,15 +221,17 @@ class SystemWriter(object):
                 map(linkto, cls.subclasses)))
         x += self._parentLink(cls)
         z = doc2html(cls, cls.docstring)
-        x += z
+        x += '<div class="toplevel">%s</div>' % (z,)
         link = lambda x: '#' + x.fullName()
         x += self._genChildren(cls.orderedcontents, link=link)
         for meth in cls.orderedcontents:
             if not isinstance(meth, model.Function):
                 continue
             x += '''
-            <div class="function">def <a name="%s" class="functionHeader">%s:</a>
-            <div class="functionBody">%s</div></div>''' % (
+            <div class="function">
+            <div class="functionHeader">def <a name="%s">%s:</a></div>
+            <div class="functionBody">%s</div>
+            </div>''' % (
                 meth.fullName(),
                 self._funsig(meth), doc2html(meth, meth.docstring))
         return x
@@ -238,14 +247,15 @@ class SystemWriter(object):
                 map(linkto, cls.subclasses)))
         x += self._parentLink(cls)
         z = doc2html(cls, cls.docstring)
-        x += z
+        x += '<div class="toplevel">%s</div>' % (z,)
         link = lambda x: '#' + x.fullName()
         x += self._genChildren(cls.orderedcontents, link=link)
         for meth in cls.orderedcontents:
             if not isinstance(meth, model.Function):
                 continue
             x += '''
-            <div class="function">def <a name="%s" class="functionHeader">%s:</a>
+            <div class="function">
+            <div class="functionHeader">def <a name="%s">%s:</a></div>
             %s
             <div class="functionBody">%s</div></div>''' % (
                 meth.fullName(),
@@ -276,8 +286,10 @@ class SystemWriter(object):
         """Render a table mapping children names to summary docstrings."""
         x = '<table class="children">'
         for obj in children:
-            x += ('<tr><td>%(kind)s</td><td><a href="%(link)s">%(name)s</a>'
+            x += ('<tr class="%(kindLower)s"><td>%(kind)s</td>'
+                  '<td><a href="%(link)s">%(name)s</a>'
                   '</td><td>%(doc)s</td></tr>') % {
+                'kindLower': obj.__class__.__name__.lower(),
                 'kind': obj.__class__.__name__,
                 'link': link(obj),
                 'name': obj.name,
@@ -289,7 +301,7 @@ class SystemWriter(object):
         """A link to the Documentable's parent."""
         if not o.parent: 
             return ''
-        return '<div>Part of <a href="%s">%s</a></div>' % (
+        return '<div id="part">Part of <a href="%s">%s</a></div>' % (
             link(o.parent), o.parent.fullName())
 
     def _allModules(self, pkg):

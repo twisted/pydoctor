@@ -1,23 +1,20 @@
-import cPickle
+import cPickle, pprint
 from docextractor import model
 
-def isInterface(syst, cls):
-    if 'zope.interface.Interface' in cls.bases or 'twisted.python.components.Interface' in cls.bases:
-        return True
-    for b in cls.bases:
-        if b in syst.allobjects and isInterface(syst, syst.allobjects[b]):
-            return True
-    return False
+def listInterfaces(system):
+    interfaces = {}
+    for cls in system.objectsOfType(model.Class):
+        if cls.isinterface:
+            interfaces[cls.fullName()] = []
 
-def checkForUndoccedClasses(system):
-    seen = {}
-    for o in system.objectsOfType(model.Class):
-        if '.test.' not in o.fullName():
-            for b in o.bases:
-                if b.startswith('twisted') and b not in system.allobjects and b not in seen:
-                    print b
-                    seen[b] = 1
+    for cls in system.objectsOfType(model.Class):
+        for i in cls.implements:
+            if i in interfaces:
+                interfaces[i].append(cls)
+
+    pprint.pprint(interfaces)
+    
 
 def main(argv):
     system = cPickle.load(open('da.out', 'rb'))
-    checkForUndoccedClasses(system)
+    listInterfaces(system)

@@ -1,17 +1,84 @@
-.function { 
-  margin: 1em;
+body {
+    background: white url("http://twistedmatrix.com/images/TwistedMatrixLabs.png");
+    background-repeat: no-repeat;
+    background-position: 100% 10%;
 }
 
-.functionHeader {
+table.children {
+    border-top: thin black solid;
+    border-bottom: thin black solid;
+}
+
+.undocumented {
+    color: grey;
+}
+
+h1 {
+    background: rgb(112, 176, 240);
+    border: thin black solid;
+}
+
+div#part {
+    font-style: italic;
+}
+
+.toplevel {
+    margin-top: 2em;
+}
+
+div.toplevel p {
+    margin-top: 0em;
+}
+
+tr.function {
+    background: lightgreen;
+}
+
+tr.class, tr.twistedclass {
+    background: lightblue;
+}
+
+tr.module {
+    background: lightyellow;
+}
+
+tr.package {
+    background: #ffeeaa;
+}
+
+div.function { 
+  margin: 1em;
+  font-family: monospace;
+  background: rgb(232, 240, 248);
+}
+
+div.functionHeader {
   font-weight: bold;
+  color: #000080;
+}
+
+div.functionHeader a {
+    color: black;
+}
+
+span.tag {
+    display: none;
+}
+
+span.arg {
+    padding-right: 4ex;
+    font-family: monospace;
 }
 
 .children { 
   margin: 1em;
 }
 
-.functionbody { 
-  padding-left: 2em;
+.functionBody { 
+  margin-left: 2em;
+  padding-top: 0.25em;
+  padding-bottom: 1em;
+  font-family: sans-serif;
 }
 
 .interfaceinfo { 

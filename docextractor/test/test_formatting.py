@@ -29,8 +29,9 @@ def test_boringDocstring():
     assert html.boringDocstring('Woot\nYeah') == '<pre>Woot\nYeah</pre>'
 
 def test_reallyBoringDocstring():
-    assert html.boringDocstring('') == '<pre>Undocumented</pre>'
-    assert html.boringDocstring(None) == '<pre>Undocumented</pre>'
+    undocced = '<pre class="undocumented">Undocumented</pre>'
+    assert html.boringDocstring('') == undocced
+    assert html.boringDocstring(None) == undocced
 
 def test_doc2htmlEpy():
     if not html.EPYTEXT:
