@@ -26,6 +26,9 @@ class TwistedSystem(model.System):
     ModuleVistor = TwistedModuleVisitor
 
     def finalStateComputations(self):
+        self.push(self.allobjects['twisted.python.components'])
+        self.pushClass('Interface', None)
+        self.popClass()
         super(TwistedSystem, self).finalStateComputations()
         for cls in self.objectsOfType(model.Class):
             if 'zope.interface.Interface' in cls.bases or \
