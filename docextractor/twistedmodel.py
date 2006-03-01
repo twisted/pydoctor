@@ -6,6 +6,7 @@ class TwistedClass(model.Class):
         super(TwistedClass, self).setup()
         self.isinterface = False
         self.implements = []
+        self.implementedby = []
 
 class TwistedModuleVisitor(model.ModuleVistor):
     def visitCallFunc(self, node):
@@ -30,6 +31,10 @@ class TwistedSystem(model.System):
             if 'zope.interface.Interface' in cls.bases or \
                    'twisted.python.components.Interface' in cls.bases:
                 self.markInterface(cls)
+        for cls in self.objectsOfType(model.Class):
+            for interface in cls.implements:
+                if interface in self.allobjects:
+                    self.allobjects[interface].implementedby.append(cls)
 
     def markInterface(self, cls):
         cls.isinterface = True

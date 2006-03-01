@@ -245,6 +245,17 @@ class SystemWriter(object):
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
+        if cls.isinterface and cls.implementedby:
+            x += '<p>known implementations: %s</p>'%(', '.join(
+                map(linkto, cls.implementedby)))
+        elif cls.implements:
+            links = []
+            for interface in cls.implements:
+                if interface in cls.system.allobjects:
+                    links.append(linkto(cls.system.allobjects[interface]))
+                else:
+                    links.append(interface)
+            x += '<p>implements interfaces: %s</p>'%(', '.join(links))
         x += self._parentLink(cls)
         z = doc2html(cls, cls.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
