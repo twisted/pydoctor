@@ -1,8 +1,9 @@
 HTML Formatter:
-  X render method docs on class pages
+
+  - X render method docs on class pages
   - Do something useful with superclass info (inheritance hierarchy!)
   - show function signatures for functions in "children" tables
-  - Do something useful with Interface information (needs to be added to model)
+  - Do something more useful with Interface information
     - blue boxes for interface docstrings in implementation methods?
   - Make L{Deferred} magically work when Deferred isn't in the namespace
   - Better support for epydoc 'flags' (parameter, return, variable
@@ -12,4 +13,12 @@ HTML Formatter:
   - Make Pretty
 
 Model:
-  - Add Interface information to model
+
+  - sanitize the model of tracking interface implementations wrt
+    inheritance
+
+Other:
+
+  - beat up the command line interface (options for output pickle file
+    name and the system class to use at the very least seem like a
+    good thing(tm))
