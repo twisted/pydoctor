@@ -2,24 +2,42 @@ from docextractor import model
 from docextractor import ast_pp
 
 class TwistedClass(model.Class):
+    isinterface = False
+    implementsOnly = False
     def setup(self):
         super(TwistedClass, self).setup()
-        self.isinterface = False
-        self.implements = []
-        self.implementedby = []
+        self.implements = [] # [name of interface]
+        self.allimplements = [] # [(interface name, directly implemented)]
+        self.implementedby = [] # [objects]
+
+def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
+    cls.implementsOnly = implementsOnly
+    for arg in interfaceargs:
+        cls.implements.append(
+            cls.dottedNameToFullName(ast_pp.pp(arg)))
+    
 
 class TwistedModuleVisitor(model.ModuleVistor):
     def visitCallFunc(self, node):
         current = self.system.current
-        if not isinstance(current, model.Class):
-            self.default(node)
-            return
         str_base = ast_pp.pp(node.node)
         base = self.system.current.dottedNameToFullName(str_base)
-        if base == 'zope.interface.implements':
-            for arg in node.args:
-                current.implements.append(
-                    self.system.current.dottedNameToFullName(ast_pp.pp(arg)))
+        if base in ['zope.interface.implements', 'zope.interface.implementsOnly']:
+            if not isinstance(current, model.Class):
+                self.default(node)
+                return
+            addInterfaceInfoToClass(current, node.args,
+                                    base == 'zope.interface.implementsOnly')
+        elif base in ['zope.interface.classImplements',
+                      'zope.interface.classImplementsOnly']:
+            clsname = current.dottedNameToFullName(ast_pp.pp(node.args[0]))
+            if clsname not in self.system.allobjects:
+                self.system.warning("classImplements on unknown class", clsname)
+                return
+            cls = self.system.allobjects[clsname]
+            addInterfaceInfoToClass(cls, node.args[1:],
+                                    base == 'zope.interface.classImplementsOnly')
+        
     
 class TwistedSystem(model.System):
     Class = TwistedClass
