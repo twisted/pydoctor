@@ -186,7 +186,7 @@ class SystemWriter(object):
     ## HTML Generators for Documentable types
 
     def html_Package(self, pkg):
-        x = "<h1>Package %s</h1>" % (pkg.fullName(),)
+        x = '<h1 class="package">Package %s</h1>' % (pkg.fullName(),)
         x += self._parentLink(pkg)
         z = doc2html(pkg, pkg.contents['__init__'].docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
@@ -195,7 +195,7 @@ class SystemWriter(object):
         return x
 
     def html_Module(self, mod):
-        x = "<h1>Module %s</h1>" % (mod.fullName(),)
+        x = '<h1 class="module">Module %s</h1>' % (mod.fullName(),)
         x += self._parentLink(mod)
         z = doc2html(mod, mod.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
@@ -215,7 +215,7 @@ class SystemWriter(object):
             return ''
 
     def html_Class(self, cls):
-        x = "<h1>Class %s%s:</h1>" % (cls.fullName(), self.bases_html(cls))
+        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, cls.fullName(), self.bases_html(cls))
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
@@ -237,11 +237,7 @@ class SystemWriter(object):
         return x
 
     def html_TwistedClass(self, cls):
-        if cls.isinterface:
-            name = 'Interface'
-        else:
-            name = 'Class'
-        x = "<h1>%s %s%s:</h1>" % (name, cls.fullName(), self.bases_html(cls))
+        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, cls.fullName(), self.bases_html(cls))
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
@@ -284,7 +280,7 @@ class SystemWriter(object):
         return ''
                     
     def html_Function(self, fun):
-        x = "<h1>Function %s:</h1>" % (self._funsig(fun))
+        x = '<h1 class="function">Function %s:</h1>' % (self._funsig(fun))
         x += self._parentLink(fun)
         x += doc2html(fun, fun.docstring)
         return x
@@ -300,8 +296,8 @@ class SystemWriter(object):
             x += ('<tr class="%(kindLower)s"><td>%(kind)s</td>'
                   '<td><a href="%(link)s">%(name)s</a>'
                   '</td><td>%(doc)s</td></tr>') % {
-                'kindLower': obj.__class__.__name__.lower(),
-                'kind': obj.__class__.__name__,
+                'kindLower': obj.kind.lower(),
+                'kind': obj.kind,
                 'link': link(obj),
                 'name': obj.name,
                 'doc': summaryDoc(obj)}

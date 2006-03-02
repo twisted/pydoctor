@@ -1,8 +1,8 @@
-body {
-    background: white url("http://twistedmatrix.com/images/TwistedMatrixLabs.png");
-    background-repeat: no-repeat;
-    background-position: 100% 10%;
-}
+/* body { */
+/*     background: white url("http://twistedmatrix.com/images/TwistedMatrixLabs.png"); */
+/*     background-repeat: no-repeat; */
+/*     background-position: 100% 10%; */
+/* } */
 
 table.children {
     border-top: thin black solid;
@@ -30,19 +30,23 @@ div.toplevel p {
     margin-top: 0em;
 }
 
-tr.function {
+.function {
     background: lightgreen;
 }
 
-tr.class, tr.twistedclass {
+.class {
     background: lightblue;
 }
 
-tr.module {
+.interface {
+    background: #ffddff;
+}
+
+.module {
     background: lightyellow;
 }
 
-tr.package {
+.package {
     background: #ffeeaa;
 }
 

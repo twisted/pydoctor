@@ -85,14 +85,16 @@ class Documentable(object):
             if obj is None:
                 return dottedname
         return obj._name2fullname[start] + rest
-        
 
 
 class Package(Documentable):
+    kind = "Package"
     def name2fullname(self, name):
         raise NameError
 
+
 class Module(Documentable):
+    kind = "Module"
     def name2fullname(self, name):
         if name in self._name2fullname:
             return self._name2fullname[name]
@@ -102,7 +104,9 @@ class Module(Documentable):
             self.system.warning("optimistic name resolution", name)
             return name
 
+
 class Class(Documentable):
+    kind = "Class"
     def setup(self):
         super(Class, self).setup()
         self.bases = []
@@ -110,8 +114,9 @@ class Class(Documentable):
         self.baseobjects = []
         self.subclasses = []
 
+
 class Function(Documentable):
-    pass
+    kind = "Function"
 
 
 class ModuleVistor(object):

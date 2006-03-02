@@ -36,11 +36,13 @@ class TwistedSystem(model.System):
                 self.markInterface(cls)
         for cls in self.objectsOfType(model.Class):
             for interface in cls.implements:
-                if interface in self.allobjects:
+                if interface in self.allobjects and '.test.' in interface:
                     self.allobjects[interface].implementedby.append(cls)
 
     def markInterface(self, cls):
         cls.isinterface = True
+        cls.kind = "Interface"
         for sc in cls.subclasses:
-            self.markInterface(sc)
+            if '.test.' not in sc.fullName():
+                self.markInterface(sc)
 
