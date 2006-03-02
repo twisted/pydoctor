@@ -282,7 +282,9 @@ class SystemWriter(object):
             if interface in cls.system.allobjects:
                 io = cls.system.allobjects[interface]
                 if meth.name in io.contents:
-                    return '<div class="interfaceinfo">from %s</div>'%(linkto(io),)
+                    imeth = io.contents[meth.name]
+                    return '<div class="interfaceinfo">from <a href="%s#%s">%s</a></div>'%(
+                        link(io), imeth.fullName(), io.fullName())
         return ''
                     
     def html_Function(self, fun):
