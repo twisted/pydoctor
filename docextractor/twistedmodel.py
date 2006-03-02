@@ -26,17 +26,20 @@ class TwistedSystem(model.System):
     ModuleVistor = TwistedModuleVisitor
 
     def finalStateComputations(self):
-        self.push(self.allobjects['twisted.python.components'])
-        self.pushClass('Interface', None)
-        self.popClass()
+        tpc = 'twisted.python.components'
+        if tpc in self.allobjects:
+            self.push(self.allobjects[tpc])
+            self.pushClass('Interface', None)
+            self.popClass()
         super(TwistedSystem, self).finalStateComputations()
-        self.markInterface(self.allobjects['twisted.python.components.Interface'])
+        if tpc in self.allobjects:
+            self.markInterface(self.allobjects[tpc])
         for cls in self.objectsOfType(model.Class):
             if 'zope.interface.Interface' in cls.bases:
                 self.markInterface(cls)
         for cls in self.objectsOfType(model.Class):
             for interface in cls.implements:
-                if interface in self.allobjects and '.test.' in interface:
+                if interface in self.allobjects and '.test.' not in interface:
                     self.allobjects[interface].implementedby.append(cls)
 
     def markInterface(self, cls):
