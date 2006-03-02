@@ -129,6 +129,12 @@ def signature(argspec):
         things.append('**%s' % varkwname)
     return ', '.join(things)
 
+def mediumName(obj):
+    fn = obj.fullName()
+    if '.' not in fn:
+        return fn
+    path, name = fn.rsplit('.', 1)
+    return '.'.join([p[0] for p in path.split('.')]) + '.' + name
 
 class SystemWriter(object):
     """Construct me with a directory to write files to and call
@@ -186,7 +192,7 @@ class SystemWriter(object):
     ## HTML Generators for Documentable types
 
     def html_Package(self, pkg):
-        x = '<h1 class="package">Package %s</h1>' % (pkg.fullName(),)
+        x = '<h1 class="package">Package %s</h1>' % (mediumName(pkg),)
         x += self._parentLink(pkg)
         z = doc2html(pkg, pkg.contents['__init__'].docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
@@ -195,7 +201,7 @@ class SystemWriter(object):
         return x
 
     def html_Module(self, mod):
-        x = '<h1 class="module">Module %s</h1>' % (mod.fullName(),)
+        x = '<h1 class="module">Module %s</h1>' % (mediumName(mod),)
         x += self._parentLink(mod)
         z = doc2html(mod, mod.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
@@ -215,11 +221,11 @@ class SystemWriter(object):
             return ''
 
     def html_Class(self, cls):
-        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, cls.fullName(), self.bases_html(cls))
+        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, mediumName(cls), self.bases_html(cls))
+        x += self._parentLink(cls)
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
-        x += self._parentLink(cls)
         z = doc2html(cls, cls.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
         link = lambda x: '#' + x.fullName()
@@ -237,7 +243,8 @@ class SystemWriter(object):
         return x
 
     def html_TwistedClass(self, cls):
-        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, cls.fullName(), self.bases_html(cls))
+        x = '<h1 class="%s">%s %s%s:</h1>' % (cls.kind.lower(), cls.kind, mediumName(cls), self.bases_html(cls))
+        x += self._parentLink(cls)
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
@@ -252,7 +259,6 @@ class SystemWriter(object):
                 else:
                     links.append(interface)
             x += '<p>implements interfaces: %s</p>'%(', '.join(links))
-        x += self._parentLink(cls)
         z = doc2html(cls, cls.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
         link = lambda x: '#' + x.fullName()
