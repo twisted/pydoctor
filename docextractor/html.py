@@ -248,17 +248,28 @@ class SystemWriter(object):
         if cls.subclasses:
             x += '<p>known subclasses: %s</p>'%(', '.join(
                 map(linkto, cls.subclasses)))
-        if cls.isinterface and cls.implementedby:
-            x += '<p>known implementations: %s</p>'%(', '.join(
-                map(linkto, cls.implementedby)))
-        elif cls.implements:
+        if cls.isinterface and (cls.implementedby_directly or cls.implementedby_indirectly):
             links = []
-            for interface in cls.implements:
-                if interface in cls.system.allobjects:
-                    links.append(linkto(cls.system.allobjects[interface]))
-                else:
-                    links.append(interface)
-            x += '<p>implements interfaces: %s</p>'%(', '.join(links))
+            for template, implementedby in [('<i>%s</i>', cls.implementedby_indirectly),
+                                         ('%s', cls.implementedby_directly)]:
+                for implementation in implementedby:
+                    if implementation in cls.system.allobjects:
+                        l = linkto(cls.system.allobjects[implementation])
+                    else:
+                        l = implementation
+                    links.append(template%(l,))
+            x += '<p>known implementations: %s</p>'%(', '.join(links),)
+        elif cls.implements_directly or cls.implements_indirectly:
+            links = []
+            for template, implements in [('%s', cls.implements_directly),
+                                         ('<i>%s</i>', cls.implements_indirectly)]:
+                for interface in implements:
+                    if interface in cls.system.allobjects:
+                        l = linkto(cls.system.allobjects[interface])
+                    else:
+                        l = interface
+                    links.append(template%(l,))
+            x += '<p>implements interfaces: %s</p>'%(', '.join(links),)
         z = doc2html(cls, cls.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
         link = lambda x: '#' + x.fullName()
@@ -278,7 +289,7 @@ class SystemWriter(object):
         return x
 
     def interfaceInfo(self, cls, meth):
-        for interface in cls.implements:
+        for interface in cls.implements_directly + cls.implements_indirectly:
             if interface in cls.system.allobjects:
                 io = cls.system.allobjects[interface]
                 if meth.name in io.contents:
