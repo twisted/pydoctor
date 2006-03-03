@@ -361,7 +361,10 @@ class System(object):
                     ob.bases[i] = self.resolveAlias(b)
 
     def warning(self, type, detail):
-        fn = self.current.fullName()
+        if self.current is not None:
+            fn = self.current.fullName()
+        else:
+            fn = '<None>'
         print fn, type, detail
         self.warnings.setdefault(type, []).append((fn, detail))
 
