@@ -164,11 +164,15 @@ class ModuleVistor(object):
                 if modname not in self.system.allobjects:
                     return
                 mod = self.system.allobjects[modname]
-                # this might fail if you have an import-* cycle (which
-                # won't be importable anyway, so i don't much care).
-                assert mod.processed
-                for n in mod.contents:
-                    name2fullname[n] = modname + '.' + n
+                # this might fail if you have an import-* cycle, or if
+                # you're just not running the import star finder to
+                # save time (not that this is possibly without
+                # commenting stuff out yet, but...)
+                if mod.processed:
+                    for n in mod.contents:
+                        name2fullname[n] = modname + '.' + n
+                else:
+                    self.system.warning("unresolvable import *", modname)
                 return
             if asname is None:
                 asname = fromname
@@ -444,8 +448,7 @@ def preprocessDirectory(system, dirpath):
             system.popModule()
     system.popPackage()
 
-def processDirectory(system, dirpath):
-    preprocessDirectory(system, dirpath)
+def findImportStars(system):
     modlist = list(system.objectsOfType(Module))
     for mod in modlist:
         system.push(mod.parent)
@@ -453,6 +456,9 @@ def processDirectory(system, dirpath):
         walk(parseFile(mod.filepath), isf)
         system.pop(mod.parent)
 
+def extractDocstrings(system):
+    # and so much more...
+    modlist = list(system.objectsOfType(Module))
     newlist = toposort([m.fullName() for m in modlist], system.importstargraph)
 
     for mod in newlist:
@@ -462,7 +468,14 @@ def processDirectory(system, dirpath):
         mod.processed = True
         system.pop(mod.parent)
 
+def finalStateComputations(system):
     system.finalStateComputations()
+
+def processDirectory(system, dirpath):
+    preprocessDirectory(system, dirpath)
+    findImportStars(system)
+    extractDocstrings(system)
+    finalStateComputations(system)
 
 def toposort(input, edges):
     # this doesn't detect cycles in any clever way.
