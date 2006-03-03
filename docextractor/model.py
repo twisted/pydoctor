@@ -86,6 +86,37 @@ class Documentable(object):
                 return dottedname
         return obj._name2fullname[start] + rest
 
+    def __getstate__(self):
+        r = {}
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, Documentable):
+                r['$'+k] = v.fullName()
+            elif isinstance(v, list) and v:
+                for vv in v:
+                    if vv is not None and not isinstance(vv, Documentable):
+                        r[k] = v
+                        break
+                else:
+                    rr = []
+                    for vv in v:
+                        if vv is None:
+                            rr.append(vv)
+                        else:
+                            rr.append(vv.fullName())
+                    r['@'+k] = rr
+            elif isinstance(v, dict) and v:
+                for vv in v.itervalues():
+                    if not isinstance(vv, Documentable):
+                        r[k] = v
+                        break
+                else:
+                    rr = {}
+                    for kk, vv in v.iteritems():
+                        rr[kk] = vv.fullName()
+                    r['!'+k] = rr
+            else:
+                r[k] = v
+        return r
 
 class Package(Documentable):
     kind = "Package"
@@ -286,6 +317,13 @@ class System(object):
 
         The default is that the second definition "wins".
         '''
+        i = 0
+        fn = obj.fullName()
+        while (fn + ' ' + str(i)) in self.allobjects:
+            i += 1
+        prev = self.allobjects[obj.fullName()]
+        prev.name = obj.name + ' ' + str(i)
+        self.allobjects[prev.fullName()] = prev
         self.warning("duplicate", self.allobjects[obj.fullName()])
         self.allobjects[obj.fullName()] = obj
         return obj
@@ -383,6 +421,29 @@ class System(object):
                 cls.baseobjects.append(o)
                 if o:
                     o.subclasses.append(cls)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        for obj in self.orderedallobjects:
+            for k, v in obj.__dict__.copy().iteritems():
+                if k.startswith('$'):
+                    del obj.__dict__[k]
+                    obj.__dict__[k[1:]] = self.allobjects[v]
+                elif k.startswith('@'):
+                    n = []
+                    for vv in v:
+                        if vv is None:
+                            n.append(None)
+                        else:
+                            n.append(self.allobjects[vv])
+                    del obj.__dict__[k]
+                    obj.__dict__[k[1:]] = n
+                elif k.startswith('!'):
+                    n = {}
+                    for kk, vv in v.iteritems():
+                        n[kk] = self.allobjects[vv]
+                    del obj.__dict__[k]
+                    obj.__dict__[k[1:]] = n                        
                 
 
 def expandModname(system, modname, givewarning=True):
