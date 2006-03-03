@@ -55,11 +55,9 @@ class TestEpyHackers:
         html.EPYTEXT = False
         sysw = html.SystemWriter(None)
         mod = model.Module(None, 'twisted.', 'threadz', 'Woot\nYeah')
-        fun = model.Function(None, 'twisted.threadz.', 'blat', 
+        fun = model.Function(None, 'twisted.threadz.', 'blat',
                              'HICKY HECK\nYEAH')
         fun.argspec = [(), None, None, ()]
         out = sysw.getHTMLFor(fun)
         assert 'blat()' in out
         assert 'HICKY HECK\nYEAH' in out
-
-

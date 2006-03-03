@@ -72,7 +72,7 @@ class Documentable(object):
         if verbose:
             print dottedname, '->', obj.fullName(), 'in', self.fullName()
         return obj
-    
+
     def dottedNameToFullName(self, dottedname):
         if '.' not in dottedname:
             start, rest = dottedname, ''
@@ -443,8 +443,8 @@ class System(object):
                     for kk, vv in v.iteritems():
                         n[kk] = self.allobjects[vv]
                     del obj.__dict__[k]
-                    obj.__dict__[k[1:]] = n                        
-                
+                    obj.__dict__[k[1:]] = n
+
 
 def expandModname(system, modname, givewarning=True):
     c = system.current
@@ -554,7 +554,7 @@ def toposort(input, edges):
     while input:
         p(input.popitem()[0])
     return output
-            
+
 
 def main(systemcls, argv):
     if '-r' in argv:

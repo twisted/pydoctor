@@ -41,7 +41,7 @@ def test_classImplements():
     zope.interface.classImplementsOnly(OnlyBar, IBar)
     '''
     implements_test(src)
-    
+
 
 def implements_test(src):
     mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
@@ -64,7 +64,7 @@ def implements_test(src):
     assert foobar.implements_indirectly == ['zi.IFoo']
     assert onlybar.implements_directly == ['zi.IBar']
     assert onlybar.implements_indirectly == []
-    
+
     assert ifoo.implementedby_directly == ['zi.Foo']
     assert ifoo.implementedby_indirectly == ['zi.FooBar']
     assert ibar.implementedby_directly == ['zi.FooBar', 'zi.OnlyBar']

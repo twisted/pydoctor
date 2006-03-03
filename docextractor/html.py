@@ -25,7 +25,7 @@ def summaryDoc(obj):
         return 'Undocumented'
     # Return the first line of the docstring (that actually has stuff)
     for doc in doc.splitlines():
-        if doc.strip(): 
+        if doc.strip():
             return doc
 
 def boringDocstring(doc):
@@ -93,7 +93,7 @@ def getBetterThanArgspec(argspec):
     argspec and returns (regularArguments, [(kwarg, kwval), (kwarg, kwval)])."""
     args = argspec[0]
     defaults = argspec[-1]
-    if not defaults: 
+    if not defaults:
         return (args, [])
     backargs = args[:]
     backargs.reverse()
@@ -145,7 +145,7 @@ class SystemWriter(object):
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(sibpath(__file__, 'apidocs.css'), 
+        shutil.copyfile(sibpath(__file__, 'apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
 
     def writeIndividualFiles(self, stuff):
@@ -168,7 +168,7 @@ class SystemWriter(object):
         else:
             raise TypeError("Don't know how to document a "+o.__class__.__name__)
         d = fun(o)
-        d = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">        
+        d = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
         <html><head>
         <link rel="stylesheet" type="text/css" href="apidocs.css"/>
         </head>
@@ -196,7 +196,7 @@ class SystemWriter(object):
         x += self._parentLink(pkg)
         z = doc2html(pkg, pkg.contents['__init__'].docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
-        x += self._genChildren([x for x in pkg.orderedcontents 
+        x += self._genChildren([x for x in pkg.orderedcontents
                                  if x.name != '__init__'])
         return x
 
@@ -297,7 +297,7 @@ class SystemWriter(object):
                     return '<div class="interfaceinfo">from <a href="%s#%s">%s</a></div>'%(
                         link(io), imeth.fullName(), io.fullName())
         return ''
-                    
+
     def html_Function(self, fun):
         x = '<h1 class="function">Function %s:</h1>' % (self._funsig(fun))
         x += self._parentLink(fun)
@@ -325,7 +325,7 @@ class SystemWriter(object):
 
     def _parentLink(self, o):
         """A link to the Documentable's parent."""
-        if not o.parent: 
+        if not o.parent:
             return ''
         return '<div id="part">Part of <a href="%s">%s</a></div>' % (
             link(o.parent), o.parent.fullName())
@@ -386,5 +386,5 @@ def main(args):
 
     print errcount, 'epytext errors'
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     main()

@@ -18,7 +18,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     for arg in interfaceargs:
         cls.implements_directly.append(
             cls.dottedNameToFullName(ast_pp.pp(arg)))
-    
+
 
 class TwistedModuleVisitor(model.ModuleVistor):
     def visitCallFunc(self, node):
@@ -40,8 +40,8 @@ class TwistedModuleVisitor(model.ModuleVistor):
             cls = self.system.allobjects[clsname]
             addInterfaceInfoToClass(cls, node.args[1:],
                                     base == 'zope.interface.classImplementsOnly')
-        
-    
+
+
 class TwistedSystem(model.System):
     Class = TwistedClass
     ModuleVistor = TwistedModuleVisitor
@@ -76,7 +76,7 @@ class TwistedSystem(model.System):
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_directly.append(cls.fullName())
-            for interface in cls.implements_indirectly:            
+            for interface in cls.implements_indirectly:
                 if interface in self.allobjects and '.test.' not in interface:
                     interface_ob = self.allobjects[interface]
                     if interface_ob.implementedby_indirectly is None:
@@ -85,7 +85,7 @@ class TwistedSystem(model.System):
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_indirectly.append(cls.fullName())
-        
+
 
     def markInterface(self, cls):
         cls.isinterface = True

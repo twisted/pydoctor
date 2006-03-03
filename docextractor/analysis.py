@@ -13,7 +13,7 @@ def listInterfaces(system):
                 interfaces[i].append(cls)
 
     pprint.pprint(interfaces)
-    
+
 
 def main(argv):
     system = cPickle.load(open('da.out', 'rb'))
