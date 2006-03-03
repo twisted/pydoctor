@@ -58,13 +58,24 @@ def implements_test(src):
     assert not foo.implementsOnly and not foobar.implementsOnly
     assert onlybar.implementsOnly
 
-    # these tests illustrate the silliness of the current situation.
-    # work needed.
+    assert foo.implements_directly == ['zi.IFoo']
+    assert foo.implements_indirectly == []
+    assert foobar.implements_directly == ['zi.IBar']
+    assert foobar.implements_indirectly == ['zi.IFoo']
+    assert onlybar.implements_directly == ['zi.IBar']
+    assert onlybar.implements_indirectly == []
     
-    assert foo.implements == ['zi.IFoo']
-    assert foobar.implements == ['zi.IBar']
-    assert onlybar.implements == ['zi.IBar']
-    
-    assert ifoo.implementedby == [foo]
-    assert ibar.implementedby == [foobar, onlybar]
+    assert ifoo.implementedby_directly == ['zi.Foo']
+    assert ifoo.implementedby_indirectly == ['zi.FooBar']
+    assert ibar.implementedby_directly == ['zi.FooBar', 'zi.OnlyBar']
+    assert ibar.implementedby_indirectly == []
 
+def test_subclass_with_same_name():
+    src = '''
+    class A:
+        pass
+    class A(A):
+        pass
+    '''
+    mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
+    mod.system.finalStateComputations()
