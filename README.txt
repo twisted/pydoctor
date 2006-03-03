@@ -1,0 +1,15 @@
+This is 'docextractor' a tentatively named API doc generator system
+that works by static analysis.
+
+It was written primarily to replace epydoc for the purposes of the
+Twisted project, as epydoc has difficulties with zope.interface.  If
+it happens to work for your code too, that's a nice bonus :) (at this
+stage).
+
+docextractor puts a fair bit of effort into resolving imports and
+computing inheritance hierarchies, and as it aims at documented
+Twisted, knows about zope.interface's declaration API and can present
+information about which classes implement which interface, and vice
+versa.
+
+There are some more notes in the doc/ subdirectory.
