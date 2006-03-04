@@ -22,7 +22,7 @@ def summaryDoc(obj):
         obj = obj.contents['__init__']
     doc = obj.docstring
     if not doc or not doc.strip():
-        return 'Undocumented'
+        return '<span class="undocumented">Undocumented</span>'
     # Return the first line of the docstring (that actually has stuff)
     for doc in doc.splitlines():
         if doc.strip():
