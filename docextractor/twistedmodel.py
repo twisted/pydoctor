@@ -98,7 +98,7 @@ class TwistedSystem(model.System):
 
     def push_implements_info(self, cls, interfaces):
         for ob in cls.subclasses:
-            ob.implements_indirectly = interfaces[:]
+            ob.implements_indirectly.extend(interfaces)
             if ob.implementsOnly:
                 ob.implements_indirectly = []
                 newinterfaces = ob.implements_directly
