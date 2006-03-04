@@ -6,6 +6,7 @@ try:
     from epydoc.markup import epytext
     EPYTEXT = True
 except:
+    print "no epytext found"
     EPYTEXT = False
 
 def link(o):
@@ -46,7 +47,6 @@ def doc2html(obj, doc):
     if doc is None or not doc.strip():
         return '<div class="undocumented">Undocumented</div>'
     if not EPYTEXT:
-        print 'not epytext'
         return boringDocstring(doc)
     errs = []
     pdoc = epytext.parse_docstring(doc, errs)
