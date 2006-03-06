@@ -2,10 +2,8 @@ These are the epydoc fields used in twisted with types::
 
     {'@arg': 4,
      '@author': 40,
-     '@check': 2,
      '@cvar': 27,
-     '@itype': 2,
-     '@ivar': 241,
+     '@ivar': 242,
      '@note': 5,
      '@param': 912,
      '@raise': 56,
@@ -16,8 +14,12 @@ These are the epydoc fields used in twisted with types::
      '@rtype': 187,
      '@see': 5,
      '@seealso': 3,
-     '@type': 704,
+     '@type': 705,
      '@var': 1}
 
 Though some are that have been invented by twisted hackers, but we
 should support the common ones in some sensible way.
+
+Quite a few of the above are synonyms (@returntype and @rtype, for
+example), so it's probably only about 8 or 9 that require actual
+support.
