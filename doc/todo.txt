@@ -5,6 +5,7 @@ HTML Formatter:
   - show function signatures for functions in "children" tables
   - Do something more useful with Interface information
     - blue boxes for interface docstrings in implementation methods?
+    - work out a sensible way to display deeper interface information.
   - Make L{Deferred} magically work when Deferred isn't in the namespace
   - Better support for epydoc 'fields' (parameter, return, variable
     specifications)
@@ -16,6 +17,9 @@ Model:
 
   - sanitize the model of tracking interface implementations wrt
     inheritance
+  - make it possible to pickle the system after each step
+  - think fairly hard about how robust the code is -- we should
+    *never* crash out.
 
 Other:
 
