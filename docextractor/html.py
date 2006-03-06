@@ -42,6 +42,19 @@ def boringDocstring(doc):
 
 errcount = 0
 
+doc2html_cache = {}
+
+def memoize(f):
+    _cache = {}
+    def g(*args):
+        if args in _cache:
+            return _cache[args]
+        else:
+            r = _cache[args] = f(*args)
+            return r
+    return g
+
+@memoize
 def doc2html(obj, doc):
     """Generate an HTML representation of a docstring"""
     if doc is None or not doc.strip():
