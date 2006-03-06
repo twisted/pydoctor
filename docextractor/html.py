@@ -70,6 +70,13 @@ def doc2html(obj, doc):
         doc = inspect.getdoc(crappit)
         pdoc = epytext.parse_docstring(doc, errs)
         if errs:
+            if obj.system.verbosity > 0:
+                print obj
+            if obj.system.verbosity > 1:
+                for i, l in enumerate(doc.splitlines()):
+                    print "%4s"%(i+1), l
+                for err in errs:
+                    print err
             global errcount
             errcount += len(errs)
             return boringDocstring(doc)
@@ -377,6 +384,8 @@ def main(args):
                       help="Python object to generate API docs for.")
     parser.add_option('-o', '--output', dest='output',
                       help="Directory to save HTML files to")
+    parser.add_option('-v', '--verbose', action='count', dest='verbosity',
+                      help="Be noiser about epytext errors")
     options, args = parser.parse_args()
 
     fn = 'da.out'
@@ -387,6 +396,7 @@ def main(args):
         out = options.output
 
     docsys = cPickle.load(open(fn, 'rb'))
+    docsys.verbosity = options.verbosity
     syswriter = SystemWriter(out)
     syswriter.prepOutputDirectory()
     if options.module:
