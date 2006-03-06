@@ -1,0 +1,20 @@
+#!/usr/bin/python
+
+import cPickle, pprint, re
+
+system = cPickle.load(open('da.out', 'rb'))
+
+l = [re.findall('[^a-zA-Z0-9]@[a-z]+', o.docstring)
+     for o in system.orderedallobjects
+     if o.docstring and '@' in o.docstring]
+
+m = []
+for ll in l:
+    m.extend(ll)
+
+d = {}
+for mm in m:
+    mm = mm[1:]
+    d[mm] = d.get(mm, 0) + 1
+
+pprint.pprint(d)
