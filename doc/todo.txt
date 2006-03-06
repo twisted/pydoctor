@@ -6,7 +6,7 @@ HTML Formatter:
   - Do something more useful with Interface information
     - blue boxes for interface docstrings in implementation methods?
   - Make L{Deferred} magically work when Deferred isn't in the namespace
-  - Better support for epydoc 'flags' (parameter, return, variable
+  - Better support for epydoc 'fields' (parameter, return, variable
     specifications)
   - Parameterise epydoc usage instead of just basing on presence of epydoc
   - templates
@@ -22,3 +22,5 @@ Other:
   - beat up the command line interface (options for output pickle file
     name and the system class to use at the very least seem like a
     good thing(tm))
+  - make it so the trailing slash doesn't count when you say
+    "makedocsys -r /some/code" (probably part of above)
