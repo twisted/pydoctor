@@ -65,8 +65,9 @@ div.functionHeader a {
     color: black;
 }
 
-span.tag {
-    display: none;
+span.tag { 
+    font-weight: bold;
+    font-family: monospace;
 }
 
 span.arg {

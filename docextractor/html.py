@@ -84,7 +84,7 @@ def doc2html(obj, doc):
     crap = pdoc.to_html(_EpydocLinker(obj))
     s = '<div>%s</div>' % (crap,)
     for field in fields:
-        s += (('<div class="metadata"><span class="tag">%s</span>'
+        s += (('<div class="metadata"><span class="tag">%s</span> '
               '<span class="arg">%s</span>'
               '<span class="body">%s</span></div>')
               % (field.tag(), field.arg(),
