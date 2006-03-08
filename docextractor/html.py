@@ -345,11 +345,32 @@ class SystemWriter(object):
         return x
 
     def _parentLink(self, o):
-        """A link to the Documentable's parent."""
+        """A link to the Documentable's parent and source."""
         if not o.parent:
-            return ''
-        return '<div id="part">Part of <a href="%s">%s</a></div>' % (
-            link(o.parent), o.parent.fullName())
+            parentlink = ''
+        else:
+            parentlink = '<span id="part">Part of %s</span>'%(linkto(o.parent),)
+        m = o
+        while not isinstance(m, (model.Module, model.Package)):
+            m = m.parent
+        sourceHref = 'http://twistedmatrix.com/trac/browser/trunk/%s'%(m.fullName().replace('.', '/'),)
+        if isinstance(m, model.Module):
+            sourceHref += '.py'
+        if isinstance(o, model.Module):
+            sourceHref += '#L1'
+        elif hasattr(o, 'linenumber'):
+            sourceHref += '#L'+str(o.linenumber)
+        sourceLink = '<a style="text-align: right" href="%s">View Source</a>'%(sourceHref,)
+        if parentlink:
+            return '<p>%s<span style="padding-left: 2ex; padding-right: 2ex;">&mdash</span>%s</p>' % (
+                parentlink,
+                sourceLink
+                )
+        else:
+            return '<p>%s</p>' % (
+                sourceLink
+                )
+        
 
     def _allModules(self, pkg):
         """Generates an HTML representation of all modules (including
