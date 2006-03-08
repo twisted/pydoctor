@@ -191,9 +191,10 @@ class SystemWriter(object):
         d = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
         <html><head>
         <link rel="stylesheet" type="text/css" href="apidocs.css"/>
+        <title>API docs for &ldquo;%s&rdquo;</title>
         </head>
         <body>%s</body>
-        ''' % (d,)
+        ''' % (o.fullName(), d)
         return d
 
     def generateModuleIndex(self, pkg):
