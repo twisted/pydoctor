@@ -502,7 +502,7 @@ def preprocessDirectory(system, dirpath):
     package = system.pushPackage(os.path.basename(dirpath), None)
     for fname in os.listdir(dirpath):
         fullname = os.path.join(dirpath, fname)
-        if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')):
+        if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
             preprocessDirectory(system, fullname)
         elif fname.endswith('.py'):
             modname = os.path.splitext(fname)[0]
