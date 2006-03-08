@@ -178,6 +178,8 @@ class ModuleVistor(object):
 
     def visitClass(self, node):
         cls = self.system.pushClass(node.name, node.doc)
+        if node.lineno is not None:
+            cls.linenumber = node.lineno
         for n in node.bases:
             str_base = ast_pp.pp(n)
             cls.rawbases.append(str_base)
@@ -229,6 +231,8 @@ class ModuleVistor(object):
 
     def visitFunction(self, node):
         func = self.system.pushFunction(node.name, node.doc)
+        if node.lineno is not None:
+            func.linenumber = node.lineno
         # ast.Function has a pretty lame representation of
         # arguments. Let's convert it to a nice concise format
         # somewhat like what inspect.getargspec returns
