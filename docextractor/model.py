@@ -87,6 +87,8 @@ class Documentable(object):
         return obj._name2fullname[start] + rest
 
     def __getstate__(self):
+        # this is so very, very evil.
+        # see doc/extreme-pickling-pain.txt for more.
         r = {}
         for k, v in self.__dict__.iteritems():
             if isinstance(v, Documentable):
@@ -427,6 +429,8 @@ class System(object):
                     o.subclasses.append(cls)
 
     def __setstate__(self, state):
+        # this is so very, very evil.
+        # see doc/extreme-pickling-pain.txt for more.
         self.__dict__.update(state)
         for obj in self.orderedallobjects:
             for k, v in obj.__dict__.copy().iteritems():
