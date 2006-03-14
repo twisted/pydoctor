@@ -16,6 +16,6 @@ So I sort all this out in System.__setstate__ (this probably means
 that if you try to pickle a Documentable directly it won't unpickle
 correctly; don't care very much).
 
-Trying to debug/fix this whilst on a and recovering from a long haul
-flight is probably not the best idea.
+Trying to debug/fix this whilst on/recovering from a long haul flight
+was probably not the best idea.
 
