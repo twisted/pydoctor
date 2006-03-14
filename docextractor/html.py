@@ -293,11 +293,21 @@ class SystemWriter(object):
             x += '<p>implements interfaces: %s</p>'%(', '.join(links),)
         z = doc2html(cls, cls.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
-        link = lambda x: '#' + x.fullName()
-        x += self._genChildren(cls.orderedcontents, link=link)
+        link_ = lambda x: '#' + x.fullName()
+        x += self._genChildren(cls.orderedcontents, link=link_)
         for meth in cls.orderedcontents:
             if not isinstance(meth, model.Function):
                 continue
+            doc = meth.docstring
+            imeth = self.interfaceMeth(cls, meth)
+            
+            if imeth:
+                if doc is None:
+                    doc = imeth.docstring
+                interfaceInfo = '<div class="interfaceinfo">from <a href="%s#%s">%s</a></div>'%(
+                        link(imeth.parent), imeth.fullName(), imeth.parent.fullName())
+            else:
+                interfaceInfo = ''
             x += '''
             <div class="function">
             <div class="functionHeader">def <a name="%s">%s:</a></div>
@@ -305,19 +315,17 @@ class SystemWriter(object):
             <div class="functionBody">%s</div></div>''' % (
                 meth.fullName(),
                 self._funsig(meth),
-                self.interfaceInfo(cls, meth),
-                doc2html(meth, meth.docstring))
+                interfaceInfo,
+                doc2html(meth, doc))
         return x
 
-    def interfaceInfo(self, cls, meth):
+    def interfaceMeth(self, cls, meth):
         for interface in cls.implements_directly + cls.implements_indirectly:
             if interface in cls.system.allobjects:
                 io = cls.system.allobjects[interface]
                 if meth.name in io.contents:
-                    imeth = io.contents[meth.name]
-                    return '<div class="interfaceinfo">from <a href="%s#%s">%s</a></div>'%(
-                        link(io), imeth.fullName(), io.fullName())
-        return ''
+                    return io.contents[meth.name]
+        return None
 
     def html_Function(self, fun):
         x = '<h1 class="function">Function %s:</h1>' % (self._funsig(fun))
