@@ -344,12 +344,7 @@ class SystemWriter(object):
         x += '</table>'
         return x
 
-    def _parentLink(self, o):
-        """A link to the Documentable's parent and source."""
-        if not o.parent:
-            parentlink = ''
-        else:
-            parentlink = '<span id="part">Part of %s</span>'%(linkto(o.parent),)
+    def _sourceLink(self, o):
         m = o
         while not isinstance(m, (model.Module, model.Package)):
             m = m.parent
@@ -360,18 +355,20 @@ class SystemWriter(object):
             sourceHref += '#L1'
         elif hasattr(o, 'linenumber'):
             sourceHref += '#L'+str(o.linenumber)
-        sourceLink = '<a style="text-align: right" href="%s">View Source</a>'%(sourceHref,)
-        if parentlink:
+        return '<a style="text-align: right" href="%s">View Source</a>'%(sourceHref,)
+        
+    def _parentLink(self, o):
+        """A link to the Documentable's parent and source."""
+        sourceLink = self._sourceLink(o)
+        if not o.parent:
+            return '<p>' + sourceLink + '</p>'
+        else:
+            parentlink = '<span id="part">Part of %s</span>'%(linkto(o.parent),)
             return '<p>%s<span style="padding-left: 2ex; padding-right: 2ex;">&mdash</span>%s</p>' % (
                 parentlink,
                 sourceLink
                 )
-        else:
-            return '<p>%s</p>' % (
-                sourceLink
-                )
         
-
     def _allModules(self, pkg):
         """Generates an HTML representation of all modules (including
         packages) in a nested list."""
