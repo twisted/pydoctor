@@ -27,7 +27,7 @@ def summaryDoc(obj):
     # Return the first line of the docstring (that actually has stuff)
     for doc in doc.splitlines():
         if doc.strip():
-            return doc
+            return doc2html(obj, doc)
 
 def boringDocstring(doc):
     """Generate an HTML representation of a docstring in a really boring
