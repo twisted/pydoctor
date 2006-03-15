@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from docextractor.model import System, main
+from pydoctor.model import System, main
 import sys
 
 main(System, sys.argv[1:])

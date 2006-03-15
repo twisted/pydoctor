@@ -1,5 +1,5 @@
 import py
-from docextractor import model
+from pydoctor import model
 
 def processPackage(packname):
     testpackage = py.magic.autopath().dirpath().join(packname)

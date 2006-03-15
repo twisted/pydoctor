@@ -1,5 +1,5 @@
-from docextractor import model
-from docextractor import ast_pp
+from pydoctor import model
+from pydoctor import ast_pp
 
 class TwistedClass(model.Class):
     isinterface = False

@@ -1,10 +1,10 @@
-It is something of a design feature of docextractor's data model that
-you can crawl from anywhere to anywhere.  This is mostly very handy,
-but it means that there are veeeeeeery long chains of references
-around, and if pickle or cPickle happen to choose one of these when
-pickling the system you can easily get recursion limit exceeded
-errors.  So, we need to give pickle a hand, which is what
-Documentable.__getstate__ and System.__setstate__ are all about.
+It is something of a design feature of pydoctor's data model that you
+can crawl from anywhere to anywhere.  This is mostly very handy, but
+it means that there are veeeeeeery long chains of references around,
+and if pickle or cPickle happen to choose one of these when pickling
+the system you can easily get recursion limit exceeded errors.  So, we
+need to give pickle a hand, which is what Documentable.__getstate__
+and System.__setstate__ are all about.
 
 Documentable.__getstate__ essentially replaces references to other
 Documentable objects with references to their fullNames().  These

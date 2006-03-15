@@ -1,5 +1,5 @@
 import sys, textwrap, inspect
-from docextractor import model
+from pydoctor import model
 
 def test_simple():
     src = '''

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from docextractor import html
+from pydoctor import html
 import sys
 
 html.main(sys.argv[1:])

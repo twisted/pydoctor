@@ -1,4 +1,4 @@
-from docextractor import model
+from pydoctor import model
 import pickle
 
 def test_pickling_system():

@@ -8,7 +8,7 @@ import sets
 from compiler.transformer import parse, parseFile
 from compiler.visitor import walk
 
-from docextractor import ast_pp
+from pydoctor import ast_pp
 
 class Documentable(object):
     def __init__(self, system, prefix, name, docstring, parent=None):

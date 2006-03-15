@@ -1,4 +1,4 @@
-from docextractor import model
+from pydoctor import model
 from os.path import join as opj
 import os, inspect, shutil
 

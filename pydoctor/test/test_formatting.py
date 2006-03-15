@@ -1,4 +1,4 @@
-from docextractor import html, model
+from pydoctor import html, model
 from py import test
 
 def test_signatures():

@@ -1,6 +1,6 @@
 import textwrap
-from docextractor.twistedmodel import TwistedSystem
-from docextractor import model
+from pydoctor.twistedmodel import TwistedSystem
+from pydoctor import model
 
 # we set up the same situation using both implements and
 # classImplements and run the same tests.

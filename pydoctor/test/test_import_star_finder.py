@@ -1,7 +1,7 @@
 from compiler.visitor import walk
 from compiler.transformer import parse
-from docextractor import model
-from docextractor.test.test_packages import processPackage
+from pydoctor import model
+from pydoctor.test.test_packages import processPackage
 import py
 
 def test_simple():

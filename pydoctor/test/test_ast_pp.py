@@ -1,7 +1,7 @@
 # this is not stolen from exarkun's sandbox; he didn't seem to write
 # any tests :)
 
-from docextractor import ast_pp
+from pydoctor import ast_pp
 from compiler.transformer import parse
 
 # the tests are a little bit fragile -- the result of pp() always ends
