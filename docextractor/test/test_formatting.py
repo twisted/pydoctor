@@ -23,7 +23,7 @@ def test_link():
 
 def test_summaryDoc():
     docco = model.Documentable(None, 'twisted.', 'threadz', 'Woot\nYeah')
-    assert html.summaryDoc(docco) == 'Woot' # Make this better
+    assert html.summaryDoc(docco) == html.doc2html(docco, 'Woot')
 
 def test_boringDocstring():
     assert html.boringDocstring('Woot\nYeah') == '<pre>Woot\nYeah</pre>'
@@ -47,7 +47,7 @@ class TestEpyHackers:
     def test_doc2htmlBoring(self):
         if html.EPYTEXT:
             html.EPYTEXT = False
-        assert html.doc2html(None, 'Woot\nYeah') == '<pre>Woot\nYeah</pre>'
+        assert html.doc2html(object(), 'Woot\nYeah') == '<pre>Woot\nYeah</pre>'
 
     def test_generateModuleIndex(self):
         #This test is a bit un-unity
