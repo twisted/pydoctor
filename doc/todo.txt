@@ -17,15 +17,6 @@ Model:
 
   - sanitize the model of tracking interface implementations wrt
     inheritance
-  - make it possible to pickle the system after each step
   - think fairly hard about how robust the code is -- we should
     *never* crash out.
   - understand import * from a package
-
-Other:
-
-  - beat up the command line interface (options for output pickle file
-    name and the system class to use at the very least seem like a
-    good thing(tm))
-  - make it so the trailing slash doesn't count when you say
-    "makedocsys -r /some/code" (probably part of above)
