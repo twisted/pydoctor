@@ -356,6 +356,8 @@ class SystemWriter(object):
         m = o
         while not isinstance(m, (model.Module, model.Package)):
             m = m.parent
+            if m is None:
+                return ''
         sourceHref = 'http://twistedmatrix.com/trac/browser/trunk/%s'%(m.fullName().replace('.', '/'),)
         if isinstance(m, model.Module):
             sourceHref += '.py'
