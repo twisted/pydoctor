@@ -20,6 +20,7 @@ Model:
   - make it possible to pickle the system after each step
   - think fairly hard about how robust the code is -- we should
     *never* crash out.
+  - understand import * from a package
 
 Other:
 
