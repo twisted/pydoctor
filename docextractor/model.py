@@ -477,7 +477,7 @@ def expandModname(system, modname, givewarning=True):
         if prefix in c.contents:
             break
         c = c.parent
-    if c is not None and c.parent is not None:
+    if c is not None:
         if givewarning:
             system.warning("local import", modname)
         return c.contents[prefix].fullName() + suffix
