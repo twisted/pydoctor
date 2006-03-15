@@ -277,6 +277,15 @@ class ModuleVistor(object):
         self.postpone(func, node.code)
         self.system.popFunction()
 
+states = [
+    'blank',
+    'preparse',
+    'importstarred',
+    'parsed',
+    'finalized',
+    ]
+    
+
 class System(object):
     Class = Class
     Module = Module
@@ -294,6 +303,7 @@ class System(object):
         # importstargraph contains edges {importer:[imported]} but only
         # for import * statements
         self.importstargraph = {}
+        self.state = 'blank'
 
     def _push(self, cls, name, docstring):
         if self.current:
@@ -517,6 +527,7 @@ def fromText(src, modname='<test>', system=None):
 
 
 def preprocessDirectory(system, dirpath):
+    assert system.state in ['blank', 'preparse']
     if os.path.basename(dirpath):
         package = system.pushPackage(os.path.basename(dirpath), None)
     else:
@@ -533,8 +544,10 @@ def preprocessDirectory(system, dirpath):
             system.popModule()
     if package:
         system.popPackage()
+    system.state = 'preparse'
 
 def findImportStars(system):
+    assert system.state in ['preparse']
     modlist = list(system.objectsOfType(Module))
     for mod in modlist:
         system.push(mod.parent)
@@ -545,8 +558,10 @@ def findImportStars(system):
             system.warning("cannot parse", mod.filepath)
         walk(ast, isf)
         system.pop(mod.parent)
+    system.state = 'importstarred'
 
 def extractDocstrings(system):
+    assert system.state in ['preparse', 'importstarred']
     # and so much more...
     modlist = list(system.objectsOfType(Module))
     newlist = toposort([m.fullName() for m in modlist], system.importstargraph)
@@ -561,9 +576,12 @@ def extractDocstrings(system):
         processModuleAst(ast, mod.name, system)
         mod.processed = True
         system.pop(mod.parent)
+    system.state = 'parsed'
 
 def finalStateComputations(system):
+    assert system.state in ['parsed']
     system.finalStateComputations()
+    system.state = 'finalized'
 
 def processDirectory(system, dirpath):
     preprocessDirectory(system, dirpath)
