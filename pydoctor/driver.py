@@ -54,8 +54,6 @@ def main(args):
                       help="Be noisier.  Can be repeated for more noise.")
     options, args = parser.parse_args(args)
 
-    print options.__dict__.keys()
-
     # step 1: make/find the system
     if options.systemclass:
         if '.' not in options.systemclass:
