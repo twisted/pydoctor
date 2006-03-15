@@ -1,0 +1,5 @@
+#!/usr/bin/python
+from pydoctor.driver import main
+import sys
+
+main(sys.argv[1:])
