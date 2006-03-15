@@ -1,4 +1,4 @@
-from pydoctor import model
+from pydoctor import model, html
 import sys, os
 
 def error(msg, *args):
@@ -11,9 +11,9 @@ def main(args):
     from optparse import OptionParser
     import cPickle
     parser = OptionParser()
-##     parser.add_option('-c', '--config', dest='configfile',
-##                       help="Use config from this file (any command line"
-##                            "options override settings from the file).")
+    parser.add_option('-c', '--config', dest='configfile',
+                      help="Use config from this file (any command line"
+                           "options override settings from the file).")
     parser.add_option('-p', '--input-pickle', dest='inputpickle',
                       help="Load the system from this pickle file (default: "
                       "none, a blank system is created).")
@@ -35,13 +35,17 @@ def main(args):
                       help="fullName of object to generate API docs for"
                       " (default: everything).")
     parser.add_option('--html-output', dest='htmloutput',
+                      default='apidocs',
                       help="Directory to save HTML files to "
                            "(default 'apidocs')")
     parser.add_option('--html-writer', dest='htmlwriter',
                       help="dotted name of html writer class to use"
                            "(default 'XXX')")
+    parser.add_option('--html-viewsource-base', dest='htmlsourcebase',
+                      help="")
     parser.add_option('--add-package',
                       action='append', dest='packages', metavar='PACKAGEDIR',
+                      default=[],
                       help='Add a package to the system.  Can be repeated '
                            'to add more than one package.')
     parser.add_option('--no-find-import-star',
@@ -53,6 +57,28 @@ def main(args):
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
     options, args = parser.parse_args(args)
+
+    if options.configfile:
+        for i, line in enumerate(open(options.configfile, 'rU')):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if ':' not in line:
+                error("don't understand line %d of %s",
+                      i+1, options.configfile)
+            k, v = line.split(':', 1)
+            k = k.strip()
+            v = os.path.expanduser(v.strip())
+            
+            if not hasattr(options, k):
+                error("invalid option %r on line %d of %s",
+                      k, i+1, options.configfile)
+            pre_v = getattr(options, k)
+            if not pre_v:
+                if isinstance(pre_v, list):
+                    setattr(options, k, v.split(','))
+                else:
+                    setattr(options, k, v)
 
     # step 1: make/find the system
     if options.systemclass:
@@ -96,13 +122,16 @@ def main(args):
     # step 2: add any packages
 
     if options.packages:
-        if system.state not in ['blank', 'preparse']:
-            msg = 'system is in state %r, which is too late to add new code'
-            error(msg, system.state)
         for path in options.packages:
             path = os.path.normpath(path)
+            if path in system.packages:
+                continue
+            if system.state not in ['blank', 'preparse']:
+                msg = 'system is in state %r, which is too late to add new code'
+                error(msg, system.state)
             print 'adding directory', path
             model.preprocessDirectory(system, path)
+            system.packages.append(path)
 
     # step 3: move the system to the desired state
 
@@ -142,7 +171,11 @@ def main(args):
     # step 5: make html, if desired
 
     if options.makehtml:
-        print 'we should be making HTML now'
+        print 'writing html to', options.htmloutput
+        writer = html.SystemWriter(options.htmloutput)
+        writer.sourcebase = options.htmlsourcebase
+        writer.writeModuleIndex(system.rootobjects[0])
+        writer.writeIndividualFiles(system.rootobjects)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

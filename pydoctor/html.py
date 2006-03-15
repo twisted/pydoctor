@@ -159,6 +159,8 @@ def mediumName(obj):
 class SystemWriter(object):
     """Construct me with a directory to write files to and call
     writeIndividualFiles and/or writeModuleIndex."""
+    sourcebase = None
+    
     def __init__(self, base):
         self.base = base
 
@@ -353,12 +355,14 @@ class SystemWriter(object):
         return x
 
     def _sourceLink(self, o):
+        if not self.sourcebase:
+            return ''
         m = o
         while not isinstance(m, (model.Module, model.Package)):
             m = m.parent
             if m is None:
                 return ''
-        sourceHref = 'http://twistedmatrix.com/trac/browser/trunk/%s'%(m.fullName().replace('.', '/'),)
+        sourceHref = '%s/%s'%(self.sourcebase, m.fullName().replace('.', '/'),)
         if isinstance(m, model.Module):
             sourceHref += '.py'
         if isinstance(o, model.Module):
@@ -371,13 +375,18 @@ class SystemWriter(object):
         """A link to the Documentable's parent and source."""
         sourceLink = self._sourceLink(o)
         if not o.parent:
-            return '<p>' + sourceLink + '</p>'
+            parentLink = ''
         else:
-            parentlink = '<span id="part">Part of %s</span>'%(linkto(o.parent),)
-            return '<p>%s<span style="padding-left: 2ex; padding-right: 2ex;">&mdash</span>%s</p>' % (
-                parentlink,
-                sourceLink
-                )
+            parentLink = '<span id="part">Part of %s</span>'%(linkto(o.parent),)
+        if sourceLink:
+            if parentLink:
+                t = ('<p>%s<span style="padding-left:2ex; padding-right:2ex;">'
+                     '&mdash</span>%s</p>')
+                return t%(parentLink, sourceLink)
+            else:
+                return '<p>' + sourceLink + '</p>'
+        else:
+            return parentLink
         
     def _allModules(self, pkg):
         """Generates an HTML representation of all modules (including

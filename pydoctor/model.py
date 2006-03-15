@@ -304,6 +304,7 @@ class System(object):
         # for import * statements
         self.importstargraph = {}
         self.state = 'blank'
+        self.packages = []
 
     def _push(self, cls, name, docstring):
         if self.current:
