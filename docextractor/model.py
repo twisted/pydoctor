@@ -174,6 +174,14 @@ class ModuleVistor(object):
             self.default(node)
             self.system.pop(m)
         else:
+            if not self.system.current:
+                roots = [x for x in self.system.rootobjects if x.name == self.modname]
+                if roots:
+                    mod, = roots
+                    self.system.push(mod)
+                    self.default(node)
+                    self.system.pop(mod)
+                    return
             self.system.pushModule(self.modname, node.doc)
             self.default(node)
             self.system.popModule()
@@ -203,6 +211,9 @@ class ModuleVistor(object):
                 # you're just not running the import star finder to
                 # save time (not that this is possibly without
                 # commenting stuff out yet, but...)
+                if isinstance(mod, Package):
+                    self.system.warning("import * from a package", modname)
+                    return
                 if mod.processed:
                     for n in mod.contents:
                         name2fullname[n] = modname + '.' + n
@@ -265,7 +276,6 @@ class ModuleVistor(object):
         func.argspec = (argnames2, starargname, kwname, tuple(defaults))
         self.postpone(func, node.code)
         self.system.popFunction()
-
 
 class System(object):
     Class = Class
@@ -467,7 +477,7 @@ def expandModname(system, modname, givewarning=True):
         if prefix in c.contents:
             break
         c = c.parent
-    if c is not None:
+    if c is not None and c.parent is not None:
         if givewarning:
             system.warning("local import", modname)
         return c.contents[prefix].fullName() + suffix
@@ -507,7 +517,10 @@ def fromText(src, modname='<test>', system=None):
 
 
 def preprocessDirectory(system, dirpath):
-    package = system.pushPackage(os.path.basename(dirpath), None)
+    if os.path.basename(dirpath):
+        package = system.pushPackage(os.path.basename(dirpath), None)
+    else:
+        package = None
     for fname in os.listdir(dirpath):
         fullname = os.path.join(dirpath, fname)
         if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
@@ -518,14 +531,19 @@ def preprocessDirectory(system, dirpath):
             mod.filepath = fullname
             mod.processed = False
             system.popModule()
-    system.popPackage()
+    if package:
+        system.popPackage()
 
 def findImportStars(system):
     modlist = list(system.objectsOfType(Module))
     for mod in modlist:
         system.push(mod.parent)
         isf = ImportStarFinder(system, mod.fullName())
-        walk(parseFile(mod.filepath), isf)
+        try:
+            ast = parseFile(mod.filepath)
+        except (SyntaxError, ValueError):
+            system.warning("cannot parse", mod.filepath)
+        walk(ast, isf)
         system.pop(mod.parent)
 
 def extractDocstrings(system):
@@ -536,7 +554,11 @@ def extractDocstrings(system):
     for mod in newlist:
         mod = system.allobjects[mod]
         system.push(mod.parent)
-        processModuleAst(parseFile(mod.filepath), mod.name, system)
+        try:
+            ast = parseFile(mod.filepath)
+        except (SyntaxError, ValueError):
+            system.warning("cannot parse", mod.filepath)
+        processModuleAst(ast, mod.name, system)
         mod.processed = True
         system.pop(mod.parent)
 
