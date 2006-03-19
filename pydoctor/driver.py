@@ -173,6 +173,7 @@ def main(args):
     if options.makehtml:
         print 'writing html to', options.htmloutput
         writer = html.SystemWriter(options.htmloutput)
+        writer.prepOutputDirectory()
         writer.sourcebase = options.htmlsourcebase
         writer.writeModuleIndex(system.rootobjects[0])
         writer.writeIndividualFiles(system.rootobjects)
