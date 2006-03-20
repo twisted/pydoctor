@@ -10,7 +10,10 @@ HTML Formatter:
   - Better support for epydoc 'fields' (parameter, return, variable
     specifications)
   - Parameterise epydoc usage instead of just basing on presence of epydoc
-  - templates
+  - templates/stan/nevow and other forms of software sex
+  - if a method doesn't have a docstring in a class, but does in a
+    superclass, we should use the docstring from the superclass.
+  - should probably list inherited methods in a class's documentation.
   - Make Pretty
 
 Model:
