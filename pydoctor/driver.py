@@ -7,6 +7,20 @@ def error(msg, *args):
     print >> sys.stderr, msg
     sys.exit(1)
 
+def findClassFromDottedName(dottedname, optionname):
+    # watch out, print a message and SystemExits on error!
+    if '.' not in dottedname:
+        error("%stakes a dotted name", optionname)
+    parts = dottedname.rsplit('.', 1)
+    try:
+        mod = __import__(parts[0], globals(), locals(), parts[1])
+    except ImportError:
+        error("could not import module %s", parts[0])
+    try:
+        return getattr(mod, parts[1])
+    except AttributeError:
+        error("did not find %s in module %s", parts[1], parts[0])
+
 def main(args):
     from optparse import OptionParser
     import cPickle
@@ -31,7 +45,8 @@ def main(args):
     parser.add_option('--make-html',
                       action='store_true', dest='makehtml',
                       help="")
-    parser.add_option('--html-subject', dest='htmlsubject',
+    parser.add_option('--html-subject', dest='htmlsubjects',
+                      action='append',
                       help="fullName of object to generate API docs for"
                       " (default: everything).")
     parser.add_option('--html-output', dest='htmloutput',
@@ -82,17 +97,7 @@ def main(args):
 
     # step 1: make/find the system
     if options.systemclass:
-        if '.' not in options.systemclass:
-            error("--system-class takes a dotted name")
-        parts = options.systemclass.rsplit('.', 1)
-        try:
-            mod = __import__(parts[0], globals(), locals(), parts[1])
-        except ImportError:
-            error("could not import module %s", parts[0])
-        try:
-            systemclass = getattr(mod, parts[1])
-        except AttributeError:
-            error("did not find %s in module %s", parts[1], parts[0])
+        systemclass = findClassFromDottedName(options.systemclass, '--system-class')
         if not issubclass(systemclass, model.System):
             msg = "%s is not a subclass of model.System"
             error(msg, systemclass)
@@ -171,12 +176,26 @@ def main(args):
     # step 5: make html, if desired
 
     if options.makehtml:
-        print 'writing html to', options.htmloutput
-        writer = html.SystemWriter(options.htmloutput)
+        if options.htmlwriter:
+            writerclass = findClassFromDottedName(options.htmlwriter, '--html-writer')
+        else:
+            writerclass = html.SystemWriter
+
+        print 'writing html to', options.htmloutput,
+        print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
+        
+        writer = writerclass(options.htmloutput)
         writer.prepOutputDirectory()
         writer.sourcebase = options.htmlsourcebase
-        writer.writeModuleIndex(system.rootobjects[0])
-        writer.writeIndividualFiles(system.rootobjects)
+        
+        if options.htmlsubjects:
+            subjects = []
+            for fn in options.htmlsubjects:
+                subjects.append(system.allobjects[fn])
+        else:
+            writer.writeModuleIndex(system)
+            subjects = system.rootobjects
+        writer.writeIndividualFiles(subjects)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
