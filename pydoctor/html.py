@@ -205,11 +205,11 @@ class SystemWriter(object):
         x += '</body></html>'
         return x
 
-    def writeModuleIndex(self, pkg):
+    def writeModuleIndex(self, system):
         """Writes a module index to the file 'moduleindex.html' in the doc
         directory."""
         f = open(opj(self.base, 'moduleindex.html'), 'w')
-        f.write(self.generateModuleIndex(pkg))
+        f.write(self.generateModuleIndex(system.rootobjects[0]))
         f.close()
 
     ## HTML Generators for Documentable types
@@ -442,7 +442,7 @@ def main(args):
         print "WRITING DOCS FOR", obj.fullName()
         syswriter.writeIndividualFiles([obj])
     else:
-        syswriter.writeModuleIndex(docsys.rootobjects[0])
+        syswriter.writeModuleIndex(docsys)
         syswriter.writeIndividualFiles(docsys.rootobjects)
 
     print errcount, 'epytext errors'
