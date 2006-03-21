@@ -227,6 +227,30 @@ class TwistedClassPage(ClassPage):
                 tag[', ', tl(impl)]
             r[tag]
         return r
+
+    def interfaceMeth(self, methname):
+        system = self.ob.system
+        for interface in self.ob.implements_directly + self.ob.implements_indirectly:
+            if interface in system.allobjects:
+                io = system.allobjects[interface]
+                if methname in io.contents:
+                    return io.contents[methname]
+        return None
+        
+    def render_functionBody(self, context, data):
+        imeth = self.interfaceMeth(data.name)
+        if not imeth:
+            return super(TwistedClassPage, self).render_functionBody(context, data)
+        tag = context.tag()
+        tag.clear()
+        tag[tags.div(class_="interfaceinfo")
+            ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
+             [imeth.parent.fullName()]]]
+        if data.docstring:
+            tag[tags.raw(html.doc2html(data, data.docstring))]
+        else:
+            tag[tags.raw(html.doc2html(imeth, imeth.docstring))]
+        return tag
             
 
 class FunctionPage(CommonPage):
