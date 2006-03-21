@@ -167,7 +167,7 @@ class SystemWriter(object):
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(sibpath(__file__, 'apidocs.css'),
+        shutil.copyfile(sibpath(__file__, 'templates/apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
 
     def writeIndividualFiles(self, stuff):

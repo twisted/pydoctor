@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "DTD/xhtml1-strict.dtd">
+<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+  <head>
+    <title nevow:render="title">Title</title>
+    <link rel="stylesheet" type="text/css" href="apidocs.css"/>
+  </head>
+  <body>
+    <h1 nevow:render="heading">Heading</h1>
+    <p>
+      <span id="part" nevow:render="part">Part of something</span>
+      <a nevow:render="source">View Source</a>
+    </p>
+    <div nevow:render="docstring">
+      A docstring.
+    </div>
+    <table class="children" nevow:render="sequence" nevow:data="children">
+      <tr nevow:pattern="item"><nevow:attr name="class" nevow:render="childclass" />
+        <td nevow:render="childkind">Kind</td>
+        <td nevow:render="childname">Name</td>
+        <td nevow:render="childsummaryDoc">Summary</td>
+      </tr>
+    </table>
+  </body>
+</html>
