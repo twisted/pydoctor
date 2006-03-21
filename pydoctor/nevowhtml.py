@@ -33,13 +33,12 @@ class NevowWriter:
             self.writeDocsFor(o)
     
     def writeDocsForOne(self, ob):
-        pclass = None
-        if isinstance(ob, model.Package):
-            pclass = PackagePage
-        elif isinstance(ob, model.Class):
-            pclass = ClassPage
-        elif isinstance(ob, model.Function):
-            pclass = FunctionPage
+        # brrrrrrrr!
+        for c in ob.__class__.__mro__:
+            n = c.__name__ + 'Page'
+            if n in globals():
+                pclass = globals()[n]
+                break
         else:
             pclass = CommonPage
         page = pclass(self, ob)
@@ -103,7 +102,7 @@ class CommonPage(rend.Page):
         return tag(href=sourceHref)
 
     def render_extras(self, context, data):
-        return []
+        return context.tag().clear()
 
     def render_docstring(self, context, data):
         return tags.raw(html.doc2html(self.ob, self.ob.docstring))
@@ -149,15 +148,15 @@ def taglink(o):
 
 class ClassPage(CommonPage):
     def render_extras(self, context, data):
+        r = super(ClassPage, self).render_extras(context, data)
         if self.ob.subclasses:
-            tag = context.tag()
             sc = self.ob.subclasses[0]
-            tag["Known subclasses: ", taglink(sc)]
+            p = tags.p()
+            p["Known subclasses: ", taglink(sc)]
             for sc in self.ob.subclasses[1:]:
-                tag[', ', taglink(sc)]
-            return tag
-        else:
-            return context.tag().clear()
+                p[', ', taglink(sc)]
+            r[p]
+        return r
     
     def render_childkind(self, context, data):
         tag = context.tag()
@@ -206,6 +205,29 @@ class ClassPage(CommonPage):
         tag = context.tag()
         tag.clear()
         return tag[tags.raw(html.doc2html(data, data.docstring))]
+
+class TwistedClassPage(ClassPage):
+    def render_extras(self, context, data):
+        r = super(TwistedClassPage, self).render_extras(context, data)
+        system = self.ob.system
+        def tl(s):
+            if s in system.allobjects:
+                return taglink(system.allobjects[s])
+            else:
+                return s
+        if self.ob.isinterface:
+            namelist = self.ob.implementedby_directly
+            label = 'Known implementations: '
+        else:
+            namelist = self.ob.implements_directly
+            label = 'Implements interfaces: '
+        if namelist:
+            tag = tags.p()[label, tl(namelist[0])]
+            for impl in namelist[1:]:
+                tag[', ', tl(impl)]
+            r[tag]
+        return r
+            
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
