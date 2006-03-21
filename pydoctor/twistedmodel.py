@@ -40,6 +40,27 @@ class TwistedModuleVisitor(model.ModuleVistor):
             cls = self.system.allobjects[clsname]
             addInterfaceInfoToClass(cls, node.args[1:],
                                     base == 'zope.interface.classImplementsOnly')
+        elif base in ['twisted.python.util.moduleMovedForSplit']:
+            # XXX this is rather fragile...
+            origModuleName, newModuleName, moduleDesc, \
+                            projectName, projectURL, globDict = node.args
+            moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
+            projectName = ast_pp.pp(projectName)[1:-1]
+            projectURL = ast_pp.pp(projectURL)[1:-1]
+            modoc = """
+%(moduleDesc)s
+
+This module is DEPRECATED. It has been split off into a third party
+package, Twisted %(projectName)s. Please see %(projectURL)s.
+
+This is just a place-holder that imports from the third-party %(projectName)s
+package for backwards compatibility. To use it, you need to install
+that package.
+""" % {'moduleDesc': moduleDesc,
+       'projectName': projectName,
+       'projectURL': projectURL}
+            self.system.current.docstring = modoc
+            
 
 
 class TwistedSystem(model.System):
