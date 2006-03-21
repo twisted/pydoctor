@@ -232,11 +232,11 @@ class TwistedClassPage(ClassPage):
         tag = context.tag()
         tag.clear()
         docsource = data
-        if not docsource:
+        if not docsource.docstring:
             imeth = self.interfaceMeth(data.name)
             if imeth:
                 docsource = imeth
-        if not docsource:
+        if not docsource.docstring:
             for b in allbases(self.ob):
                 if data.name not in b.contents:
                     continue
