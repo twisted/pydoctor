@@ -83,7 +83,7 @@ def test_subclass_with_same_name():
 def test_multiply_inheriting_interfaces():
     src = '''
     from zope.interface import Interface, implements
-    
+
     class IOne(Interface): pass
     class ITwo(Interface): pass
     class One: implements(IOne)
@@ -93,4 +93,3 @@ def test_multiply_inheriting_interfaces():
     mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
     mod.system.finalStateComputations()
     assert len(mod.contents['Both'].implements_indirectly) == 2
-    

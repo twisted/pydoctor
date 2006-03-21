@@ -60,7 +60,7 @@ that package.
        'projectName': projectName,
        'projectURL': projectURL}
             self.system.current.docstring = modoc
-            
+
 
 
 class TwistedSystem(model.System):

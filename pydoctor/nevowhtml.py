@@ -31,7 +31,7 @@ class NevowWriter:
         self.writeDocsForOne(ob)
         for o in ob.orderedcontents:
             self.writeDocsFor(o)
-    
+
     def writeDocsForOne(self, ob):
         # brrrrrrrr!
         for c in ob.__class__.__mro__:
@@ -111,7 +111,7 @@ class CommonPage(rend.Page):
 
     def data_children(self, context, data):
         return self.ob.orderedcontents
-    
+
     def render_childclass(self, context, data):
         return data.kind.lower()
 
@@ -119,7 +119,7 @@ class CommonPage(rend.Page):
         tag = context.tag()
         tag.clear()
         return tag[data.kind]
-    
+
     def render_childname(self, context, data):
         tag = context.tag()
         tag.clear()
@@ -132,7 +132,7 @@ class CommonPage(rend.Page):
 
     def data_methods(self, context, data):
         return []
-        
+
 
 class PackagePage(CommonPage):
     def render_docstring(self, context, data):
@@ -157,7 +157,7 @@ class ClassPage(CommonPage):
                 p[', ', taglink(sc)]
             r[p]
         return r
-    
+
     def render_childkind(self, context, data):
         tag = context.tag()
         tag.clear()
@@ -166,7 +166,7 @@ class ClassPage(CommonPage):
         else:
             kind = data.kind
         return tag[kind]
-    
+
     def render_heading(self, context, data):
         tag = super(ClassPage, self).render_heading(context, data)
         zipped = zip(self.ob.rawbases, self.ob.baseobjects)
@@ -236,7 +236,7 @@ class TwistedClassPage(ClassPage):
                 if methname in io.contents:
                     return io.contents[methname]
         return None
-        
+
     def render_functionBody(self, context, data):
         imeth = self.interfaceMeth(data.name)
         if not imeth:
@@ -251,10 +251,9 @@ class TwistedClassPage(ClassPage):
         else:
             tag[tags.raw(html.doc2html(imeth, imeth.docstring))]
         return tag
-            
+
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
         tag = super(FunctionPage, self).render_heading(context, data)
         return tag['(', html.signature(self.ob.argspec), '):']
-    

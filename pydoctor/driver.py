@@ -84,7 +84,7 @@ def main(args):
             k, v = line.split(':', 1)
             k = k.strip()
             v = os.path.expanduser(v.strip())
-            
+
             if not hasattr(options, k):
                 error("invalid option %r on line %d of %s",
                       k, i+1, options.configfile)
@@ -183,11 +183,11 @@ def main(args):
 
         print 'writing html to', options.htmloutput,
         print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
-        
+
         writer = writerclass(options.htmloutput)
         writer.prepOutputDirectory()
         writer.sourcebase = options.htmlsourcebase
-        
+
         if options.htmlsubjects:
             subjects = []
             for fn in options.htmlsubjects:

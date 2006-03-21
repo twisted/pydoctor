@@ -160,7 +160,7 @@ class SystemWriter(object):
     """Construct me with a directory to write files to and call
     writeIndividualFiles and/or writeModuleIndex."""
     sourcebase = None
-    
+
     def __init__(self, base):
         self.base = base
 
@@ -302,7 +302,7 @@ class SystemWriter(object):
                 continue
             doc = meth.docstring
             imeth = self.interfaceMeth(cls, meth)
-            
+
             if imeth:
                 if doc is None:
                     doc = imeth.docstring
@@ -370,7 +370,7 @@ class SystemWriter(object):
         elif hasattr(o, 'linenumber'):
             sourceHref += '#L'+str(o.linenumber)
         return '<a style="text-align: right" href="%s">View Source</a>'%(sourceHref,)
-        
+
     def _parentLink(self, o):
         """A link to the Documentable's parent and source."""
         sourceLink = self._sourceLink(o)
@@ -387,7 +387,7 @@ class SystemWriter(object):
                 return '<p>' + sourceLink + '</p>'
         else:
             return parentLink
-        
+
     def _allModules(self, pkg):
         """Generates an HTML representation of all modules (including
         packages) in a nested list."""

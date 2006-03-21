@@ -284,7 +284,7 @@ states = [
     'parsed',
     'finalized',
     ]
-    
+
 
 class System(object):
     Class = Class
