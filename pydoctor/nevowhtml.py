@@ -63,11 +63,7 @@ class CommonPage(rend.Page):
         self.writer = writer
         self.ob = ob
     def render_title(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        s = (u"API docs for \N{LEFT DOUBLE QUOTATION MARK}%s"
-             u"\N{RIGHT DOUBLE QUOTATION MARK}")
-        return tag[s%(self.ob.fullName(),)]
+        return self.ob.fullName()
     def render_heading(self, context, data):
         tag = context.tag()
         tag.clear()
