@@ -228,6 +228,22 @@ class TwistedClassPage(ClassPage):
             r[tag]
         return r
 
+    def render_childsummaryDoc(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        docsource = data
+        if not docsource:
+            imeth = self.interfaceMeth(data.name)
+            if imeth:
+                docsource = imeth
+        if not docsource:
+            for b in allbases(self.ob):
+                if data.name not in b.contents:
+                    continue
+                docsource = b.contents[data.name]
+                break
+        return tag[tags.raw(html.summaryDoc(docsource))]
+
     def interfaceMeth(self, methname):
         system = self.ob.system
         for interface in self.ob.implements_directly + self.ob.implements_indirectly:
@@ -239,19 +255,36 @@ class TwistedClassPage(ClassPage):
 
     def render_functionBody(self, context, data):
         imeth = self.interfaceMeth(data.name)
-        if not imeth:
-            return super(TwistedClassPage, self).render_functionBody(context, data)
         tag = context.tag()
         tag.clear()
-        tag[tags.div(class_="interfaceinfo")
-            ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
-             [imeth.parent.fullName()]]]
-        if data.docstring:
-            tag[tags.raw(html.doc2html(data, data.docstring))]
-        else:
-            tag[tags.raw(html.doc2html(imeth, imeth.docstring))]
+        doc2html_args = data, data.docstring
+        if imeth:
+            tag[tags.div(class_="interfaceinfo")
+                ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
+                 [imeth.parent.fullName()]]]
+            if not doc2html_args[1]:
+                doc2html_args = imeth, imeth.docstring
+        for b in allbases(self.ob):
+            if data.name not in b.contents:
+                continue
+            overridden = b.contents[data.name]
+            tag[tags.div(class_="interfaceinfo")
+                ['overrides ',
+                 tags.a(href=link(overridden.parent) + '#' + overridden.fullName())
+                 [overridden.fullName()]]]
+            if not doc2html_args[1]:
+                doc2html_args = overridden, overridden.docstring
+            break
+        tag[tags.raw(html.doc2html(*doc2html_args))]
         return tag
 
+def allbases(c):
+    for b in c.baseobjects:
+        if b is None:
+            continue
+        yield b
+        for b2 in allbases(b):
+            yield b2
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
