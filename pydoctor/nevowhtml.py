@@ -143,6 +143,10 @@ class PackagePage(CommonPage):
         return tags.raw(html.doc2html(self.ob,
                                       self.ob.contents['__init__'].docstring))
 
+    def data_children(self, context, data):
+        return [o for o in self.ob.orderedcontents
+                if o.name != '__init__']
+
 def taglink(o):
     return tags.a(href=link(o))[o.fullName()]
 
