@@ -1,4 +1,4 @@
-from pydoctor import model
+from pydoctor import model, html
 
 from nevow import rend, loaders, tags
 
@@ -54,29 +54,6 @@ def mediumName(obj):
     path, name = fn.rsplit('.', 1)
     return '.'.join([p[0] for p in path.split('.')]) + '.' + name
 
-def boringDocstring(doc):
-    """Generate an HTML representation of a docstring in a really boring
-    way."""
-    if doc is None or not doc.strip():
-        return tags.pre(class_="undocumented")["Undocumented"]
-    # inspect.getdoc requires an object with a __doc__ attribute, not
-    # just a string :-(
-    def crappit(): pass
-    crappit.__doc__ = doc
-    return tags.pre[inspect.getdoc(crappit)]
-
-def summaryDoc(obj):
-    """Generate a one-line summary of a docstring."""
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    doc = obj.docstring
-    if not doc or not doc.strip():
-        return tags.span(class_="undocumented")["Undocumented"]
-    # Return the first line of the docstring (that actually has stuff)
-    for doc in doc.splitlines():
-        if doc.strip():
-            return tags.tt[doc]
-
 class CommonPage(rend.Page):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
     def __init__(self, writer, ob):
@@ -122,7 +99,13 @@ class CommonPage(rend.Page):
         return tag(href=sourceHref)
 
     def render_docstring(self, context, data):
-        return boringDocstring(self.ob.docstring)
+        return tags.raw(html.doc2html(self.ob, self.ob.docstring))
+
+    def render_maybechildren(self, context, data):
+        tag = context.tag()
+        if not self.ob.orderedcontents:
+            tag.clear()
+        return tag
 
     def data_children(self, context, data):
         return self.ob.orderedcontents
@@ -143,12 +126,13 @@ class CommonPage(rend.Page):
     def render_childsummaryDoc(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[summaryDoc(data)]
+        return tag[tags.raw(html.summaryDoc(data))]
     
         
 
 class PackagePage(CommonPage):
     def render_docstring(self, context, data):
-        return boringDocstring(self.ob.contents['__init__'].docstring)
+        return tags.raw(html.doc2html(self.ob,
+                                      self.ob.contents['__init__'].docstring))
         
         

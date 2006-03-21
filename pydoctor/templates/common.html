@@ -15,12 +15,14 @@
     <div nevow:render="docstring">
       A docstring.
     </div>
-    <table class="children" nevow:render="sequence" nevow:data="children">
-      <tr nevow:pattern="item"><nevow:attr name="class" nevow:render="childclass" />
-        <td nevow:render="childkind">Kind</td>
-        <td nevow:render="childname">Name</td>
-        <td nevow:render="childsummaryDoc">Summary</td>
-      </tr>
-    </table>
+    <nevow:invisible nevow:render="maybechildren">
+      <table class="children" nevow:render="sequence" nevow:data="children">
+        <tr nevow:pattern="item"><nevow:attr name="class" nevow:render="childclass" />
+          <td nevow:render="childkind">Kind</td>
+          <td nevow:render="childname">Name</td>
+          <td nevow:render="childsummaryDoc">Summary</td>
+        </tr>
+      </table>
+    </nevow:invisible>
   </body>
 </html>
