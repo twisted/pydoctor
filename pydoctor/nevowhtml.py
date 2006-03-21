@@ -168,9 +168,5 @@ class ClassPage(CommonPage):
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
         tag = super(FunctionPage, self).render_heading(context, data)
-        tag['(']
-        tag[html.signature(self.ob.argspec)]
-        tag[')']
-        tag[':']
-        return tag
+        return tag['(', html.signature(self.ob.argspec), '):']
     
