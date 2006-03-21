@@ -38,6 +38,8 @@ class NevowWriter:
             pclass = PackagePage
         elif isinstance(ob, model.Class):
             pclass = ClassPage
+        elif isinstance(ob, model.Function):
+            pclass = FunctionPage
         else:
             pclass = CommonPage
         page = pclass(self, ob)
@@ -162,4 +164,13 @@ class ClassPage(CommonPage):
             tag[')']
         tag[':']
         return tag
-                
+
+class FunctionPage(CommonPage):
+    def render_heading(self, context, data):
+        tag = super(FunctionPage, self).render_heading(context, data)
+        tag['(']
+        tag[html.signature(self.ob.argspec)]
+        tag[')']
+        tag[':']
+        return tag
+    
