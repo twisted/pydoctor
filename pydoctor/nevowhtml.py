@@ -36,11 +36,13 @@ class NevowWriter:
         pclass = None
         if isinstance(ob, model.Package):
             pclass = PackagePage
+        elif isinstance(ob, model.Class):
+            pclass = ClassPage
         else:
             pclass = CommonPage
         page = pclass(self, ob)
         f = open(os.path.join(self.base, link(ob)), 'w')
-        print f, ob
+        print ob
         def _cb(text):
             f.write(text)
             f.close()
@@ -135,4 +137,29 @@ class PackagePage(CommonPage):
         return tags.raw(html.doc2html(self.ob,
                                       self.ob.contents['__init__'].docstring))
         
-        
+class ClassPage(CommonPage):
+    def render_childkind(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        if isinstance(data, model.Function):
+            kind = "Method"
+        else:
+            kind = data.kind
+        return tag[kind]
+    
+    def render_heading(self, context, data):
+        tag = super(ClassPage, self).render_heading(context, data)
+        zipped = zip(self.ob.rawbases, self.ob.baseobjects)
+        if zipped:
+            tag['(']
+            for i, (n, o) in enumerate(zipped):
+                if o is None:
+                    tag[n]
+                else:
+                    tag[tags.a(href=link(o))[n]]
+                if i != len(zipped)-1:
+                    tag[', ']
+            tag[')']
+        tag[':']
+        return tag
+                
