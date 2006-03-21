@@ -24,5 +24,17 @@
         </tr>
       </table>
     </nevow:invisible>
+    <nevow:invisible nevow:render="sequence" nevow:data="methods">
+      <div class="function" nevow:pattern="item">
+        <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
+        <div class="functionHeader">
+          def <span nevow:render="functionName">functionName():</span>
+        </div>
+        <div class="functionBody" nevow:render="functionBody">
+          Docstring.
+        </div>
+      </div>
+    </nevow:invisible>
+    
   </body>
 </html>

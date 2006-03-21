@@ -131,7 +131,9 @@ class CommonPage(rend.Page):
         tag = context.tag()
         tag.clear()
         return tag[tags.raw(html.summaryDoc(data))]
-    
+
+    def data_methods(self, context, data):
+        return []
         
 
 class PackagePage(CommonPage):
@@ -164,6 +166,31 @@ class ClassPage(CommonPage):
             tag[')']
         tag[':']
         return tag
+
+    def data_children(self, context, data):
+        return [o for o in self.ob.orderedcontents
+                if isinstance(o, model.Function)]
+    data_methods = data_children
+
+    def render_childname(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[tags.a(href='#' + data.fullName())[data.name]]
+
+    def render_functionName(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[data.name, '(', html.signature(data.argspec), '):']
+
+    def render_functionAnchor(self, context, data):
+        return data.fullName()
+
+    def render_functionBody(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[tags.raw(html.doc2html(data, data.docstring))]
+        
+
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
