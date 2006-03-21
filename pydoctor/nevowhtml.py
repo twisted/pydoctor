@@ -102,6 +102,9 @@ class CommonPage(rend.Page):
             sourceHref += '#L'+str(self.ob.linenumber)
         return tag(href=sourceHref)
 
+    def render_extras(self, context, data):
+        return []
+
     def render_docstring(self, context, data):
         return tags.raw(html.doc2html(self.ob, self.ob.docstring))
 
@@ -140,8 +143,22 @@ class PackagePage(CommonPage):
     def render_docstring(self, context, data):
         return tags.raw(html.doc2html(self.ob,
                                       self.ob.contents['__init__'].docstring))
-        
+
+def taglink(o):
+    return tags.a(href=link(o))[o.fullName()]
+
 class ClassPage(CommonPage):
+    def render_extras(self, context, data):
+        if self.ob.subclasses:
+            tag = context.tag()
+            sc = self.ob.subclasses[0]
+            tag["Known subclasses: ", taglink(sc)]
+            for sc in self.ob.subclasses[1:]:
+                tag[', ', taglink(sc)]
+            return tag
+        else:
+            return context.tag().clear()
+    
     def render_childkind(self, context, data):
         tag = context.tag()
         tag.clear()
@@ -189,8 +206,6 @@ class ClassPage(CommonPage):
         tag = context.tag()
         tag.clear()
         return tag[tags.raw(html.doc2html(data, data.docstring))]
-        
-
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
