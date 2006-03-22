@@ -1,4 +1,4 @@
-from pydoctor import model, html
+from pydoctor import model
 
 from nevow import rend, loaders, tags
 
@@ -81,6 +81,59 @@ def doc2html(obj, doc=None):
            tags.span(class_="body")[tags.raw(
             field.body().to_html(_EpydocLinker(obj)))]]]
     return s
+
+def summaryDoc(obj):
+    """Generate a one-line summary of a docstring."""
+    if isinstance(obj, model.Package):
+        obj = obj.contents['__init__']
+    doc = obj.docstring
+    if not doc or not doc.strip():
+        return tags.span(class_="undocumented")["Undocumented"]
+    # Return the first line of the docstring (that actually has stuff)
+    for doc in doc.splitlines():
+        if doc.strip():
+            return doc2html(obj, doc)
+
+def getBetterThanArgspec(argspec):
+    """Ok, maybe argspec's format isn't the best after all: This takes an
+    argspec and returns (regularArguments, [(kwarg, kwval), (kwarg, kwval)])."""
+    args = argspec[0]
+    defaults = argspec[-1]
+    if not defaults:
+        return (args, [])
+    backargs = args[:]
+    backargs.reverse()
+    defaults = list(defaults)
+    defaults.reverse()
+    kws = zip(backargs, defaults)
+    kws.reverse()
+    allargs = args[:-len(kws)] + kws
+    return (args[:-len(kws)], kws)
+
+def _strtup(tup):
+    # Ugh
+    if not isinstance(tup, (tuple, list)):
+        return str(tup)
+    return '(' + ', '.join(map(_strtup, tup)) + ')'
+
+def signature(argspec):
+    """Return a nicely-formatted source-like signature, formatted from an
+    argspec.
+    """
+    regargs, kwargs = getBetterThanArgspec(argspec)
+    varargname, varkwname = argspec[1:3]
+    things = []
+    for regarg in regargs:
+        if isinstance(regarg, list):
+            things.append(_strtup(regarg))
+        else:
+            things.append(regarg)
+    if varargname:
+        things.append('*%s' % varargname)
+    things += ['%s=%s' % (t[0], t[1]) for t in kwargs]
+    if varkwname:
+        things.append('**%s' % varkwname)
+    return ', '.join(things)
 
 class NevowWriter:
     def __init__(self, filebase):
@@ -200,7 +253,7 @@ class CommonPage(rend.Page):
     def render_childsummaryDoc(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[tags.raw(html.summaryDoc(data))]
+        return tag[summaryDoc(data)]
 
     def data_methods(self, context, data):
         return []
@@ -268,7 +321,7 @@ class ClassPage(CommonPage):
     def render_functionName(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[data.name, '(', html.signature(data.argspec), '):']
+        return tag[data.name, '(', signature(data.argspec), '):']
 
     def render_functionAnchor(self, context, data):
         return data.fullName()
@@ -314,7 +367,7 @@ class TwistedClassPage(ClassPage):
                     continue
                 docsource = b.contents[data.name]
                 break
-        return tag[tags.raw(html.summaryDoc(docsource))]
+        return tag[summaryDoc(docsource)]
 
     def interfaceMeth(self, methname):
         system = self.ob.system
@@ -380,4 +433,4 @@ def overriding_subclasses(c, name, firstcall=True):
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
         tag = super(FunctionPage, self).render_heading(context, data)
-        return tag['(', html.signature(self.ob.argspec), '):']
+        return tag['(', signature(self.ob.argspec), '):']
