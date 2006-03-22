@@ -347,6 +347,17 @@ class TwistedClassPage(ClassPage):
             if docsource.docstring is None:
                 docsource = overridden
             break
+        ocs = list(overriding_subclasses(self.ob, data.name))
+        if ocs:
+            def one(sc):
+                return tags.a(
+                    href=link(sc) + '#' + sc.contents[data.name].fullName()
+                    )[sc.fullName()]
+            t = tags.div(class_="interfaceinfo")['overridden in ']
+            t[one(ocs[0])]
+            for sc in ocs[1:]:
+                t[', ', one(sc)]
+            tag[t]
         tag[doc2html(docsource)]
         return tag
 
@@ -357,6 +368,14 @@ def allbases(c):
         yield b
         for b2 in allbases(b):
             yield b2
+
+def overriding_subclasses(c, name, firstcall=True):
+    if not firstcall and name in c.contents:
+        yield c
+    else:
+        for sc in c.subclasses:
+            for sc2 in overriding_subclasses(sc, name, False):
+                yield sc2
 
 class FunctionPage(CommonPage):
     def render_heading(self, context, data):
