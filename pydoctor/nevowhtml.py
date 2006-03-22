@@ -4,11 +4,83 @@ from nevow import rend, loaders, tags
 
 import os, shutil, inspect
 
+try:
+    from epydoc.markup import epytext
+    EPYTEXT = True
+except:
+    print "no epytext found"
+    EPYTEXT = False
+
 def link(o):
     return o.fullName()+'.html'
 
 def sibpath(path, sibling):
     return os.path.join(os.path.dirname(os.path.abspath(path)), sibling)
+
+def boringDocstring(doc):
+    """Generate an HTML representation of a docstring in a really boring
+    way."""
+    # inspect.getdoc requires an object with a __doc__ attribute, not
+    # just a string :-(
+    if doc is None or not doc.strip():
+        return '<pre class="undocumented">Undocumented</pre>'
+    def crappit(): pass
+    crappit.__doc__ = doc
+    return tags.pre[inspect.getdoc(crappit)]
+
+class _EpydocLinker(object):
+    def __init__(self, obj):
+        self.obj = obj
+    def translate_indexterm(self, something):
+        # X{foobar} is meant to put foobar in an index page (like, a
+        # proper end-of-the-book index). Should we support that? There
+        # are like 2 uses in Twisted.
+        return something.to_html(self)
+    def translate_identifier_xref(self, fullID, prettyID):
+        obj = self.obj.resolveDottedName(fullID)
+        if obj is None:
+            return prettyID
+        else:
+            return '<a href="%s">%s</a>'%(link(obj), prettyID)
+
+def doc2html(obj, doc=None):
+    """Generate an HTML representation of a docstring"""
+    if doc is None:
+        doc = obj.docstring
+    if doc is None or not doc.strip():
+        return tags.div(class_="undocumented")["Undocumented"]
+    if not EPYTEXT:
+        return boringDocstring(doc)
+    errs = []
+    pdoc = epytext.parse_docstring(doc, errs)
+    if errs:
+        errs = []
+        def crappit(): pass
+        crappit.__doc__ = doc
+        doc = inspect.getdoc(crappit)
+        pdoc = epytext.parse_docstring(doc, errs)
+        if errs:
+##             if obj.system.verbosity > 0:
+##                 print obj
+##             if obj.system.verbosity > 1:
+##                 for i, l in enumerate(doc.splitlines()):
+##                     print "%4s"%(i+1), l
+##                 for err in errs:
+##                     print err
+##             global errcount
+##             errcount += len(errs)
+            return boringDocstring(doc)
+    pdoc, fields = pdoc.split_fields()
+    crap = pdoc.to_html(_EpydocLinker(obj))
+    s = tags.div()[tags.raw(crap)]
+    for field in fields:
+        s[tags.div(class_="metadata")
+          [tags.span(class_="tag")[field.tag()],
+           ' ',
+           tags.span(class_="arg")[str(field.arg())],
+           tags.span(class_="body")[tags.raw(
+            field.body().to_html(_EpydocLinker(obj)))]]]
+    return s
 
 class NevowWriter:
     def __init__(self, filebase):
@@ -101,7 +173,7 @@ class CommonPage(rend.Page):
         return context.tag().clear()
 
     def render_docstring(self, context, data):
-        return tags.raw(html.doc2html(self.ob, self.ob.docstring))
+        return doc2html(self.ob)
 
     def render_maybechildren(self, context, data):
         tag = context.tag()
@@ -136,8 +208,8 @@ class CommonPage(rend.Page):
 
 class PackagePage(CommonPage):
     def render_docstring(self, context, data):
-        return tags.raw(html.doc2html(self.ob,
-                                      self.ob.contents['__init__'].docstring))
+        return doc2html(self.ob,
+                        self.ob.contents['__init__'].docstring)
 
     def data_children(self, context, data):
         return [o for o in self.ob.orderedcontents
@@ -204,7 +276,7 @@ class ClassPage(CommonPage):
     def render_functionBody(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[tags.raw(html.doc2html(data, data.docstring))]
+        return tag[doc2html(data)]
 
 class TwistedClassPage(ClassPage):
     def render_extras(self, context, data):
@@ -257,13 +329,13 @@ class TwistedClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         tag = context.tag()
         tag.clear()
-        doc2html_args = data, data.docstring
+        docsource = data
         if imeth:
             tag[tags.div(class_="interfaceinfo")
                 ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
                  [imeth.parent.fullName()]]]
-            if not doc2html_args[1]:
-                doc2html_args = imeth, imeth.docstring
+            if docsource.docstring is None:
+                docsource = imeth
         for b in allbases(self.ob):
             if data.name not in b.contents:
                 continue
@@ -272,10 +344,10 @@ class TwistedClassPage(ClassPage):
                 ['overrides ',
                  tags.a(href=link(overridden.parent) + '#' + overridden.fullName())
                  [overridden.fullName()]]]
-            if not doc2html_args[1]:
-                doc2html_args = overridden, overridden.docstring
+            if docsource.docstring is None:
+                docsource = overridden
             break
-        tag[tags.raw(html.doc2html(*doc2html_args))]
+        tag[doc2html(docsource)]
         return tag
 
 def allbases(c):
