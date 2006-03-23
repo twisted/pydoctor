@@ -17,21 +17,18 @@ These are the epydoc fields used in twisted::
      '@type': 705,
      '@var': 1}
 
-Though some are that have been invented by twisted hackers, but we
-should support the common ones in some sensible way.
-
 Quite a few of the above are synonyms, so it's these that require
 actual support::
 
-     @author
-     @cvar
-     @ivar
-     @note
-     @param (synonym: @arg)
-     @raise (synonym: @raises)
-     @return (synonym: @returns)
-     @rtype (synonym: @returntype)
-     @see (synonym: @seealso)
-     @type
-     @var
+    @author
+    @cvar
+    @ivar
+    @note
+    @param (synonym: @arg)
+    @raise (synonym: @raises)
+    @return (synonym: @returns)
+    @rtype (synonym: @returntype)
+    @see (synonym: @seealso)
+    @type
+    @var
      

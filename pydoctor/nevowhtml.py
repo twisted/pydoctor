@@ -73,13 +73,113 @@ def doc2html(obj, doc=None):
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
     s = tags.div()[tags.raw(crap)]
+    parameter_descs = []
+    returns = None
+    rtype = None
+    authors = []
+    raises = []
+    ivars = []
+    cvars = []
+    vars = []
+    unattached_types = {}
+    see = []
+    note = []
     for field in fields:
-        s[tags.div(class_="metadata")
-          [tags.span(class_="tag")[field.tag()],
-           ' ',
-           tags.span(class_="arg")[str(field.arg())],
-           tags.span(class_="body")[tags.raw(
-            field.body().to_html(_EpydocLinker(obj)))]]]
+        body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
+        if field.tag() in ('param', 'arg'):
+            parameter_descs.append([field.arg(), body, None])
+        elif field.tag() in ('ivar',):
+            ivars.append([field.arg(), body, None])
+            if field.arg() in unattached_types:
+                ivars[-1][2] = unattached_types[field.arg()]
+                del unattached_types[field.arg()]
+        elif field.tag() in ('cvar',):
+            cvars.append([field.arg(), body, None])
+            if field.arg() in unattached_types:
+                cvars[-1][2] = unattached_types[field.arg()]
+                del unattached_types[field.arg()]
+        elif field.tag() in ('var',):
+            vars.append([field.arg(), body, None])
+        elif field.tag() in ('type',):
+            if isinstance(obj, model.Function):
+                if parameter_descs and parameter_descs[-1][0] == field.arg():
+                    assert parameter_descs[-1][2] is None
+                    parameter_descs[-1][2] = body
+                else:
+                    parameter_descs.append([field.arg(), None, body])
+            elif isinstance(obj, model.Class):
+                if ivars and ivars[-1][0] == field.arg():
+                    assert ivars[-1][2] is None
+                    ivars[-1][2] = body
+                elif cvars and cvars[-1][0] == field.arg():
+                    assert cvars[-1][2] is None
+                    cvars[-1][2] = body
+                else:
+                    unattached_types[field.arg()] = body
+            else:
+                if vars and vars[-1][0] == field.arg():
+                    assert vars[-1][2] is None
+                    vars[-1][2] = body
+                else:
+                    vars.append([field.arg(), None, body])
+        elif field.tag() in ('return', 'returns'):
+            returns = body
+        elif field.tag() in ('returntype', 'rtype'):
+            rtype = body
+        elif field.tag() in ('raises', 'raise'):
+            raises.append((field.arg(), body))
+        elif field.tag() in ('see', 'seealso'):
+            see.append(body)
+        elif field.tag() in ('note',):
+            note.append(body)
+        elif field.tag() in ('author'):
+            authors.append(body)
+        else:
+            s[tags.div(class_="metadata")
+              [tags.span(class_="tag")[field.tag()],
+               ' ',
+               tags.span(class_="arg")[str(field.arg())],
+               tags.span(class_="body")[body]]]
+    for label, descs in [('Parameters:', parameter_descs),
+                         ('Instance Variables', ivars),
+                         ('Class Variables', cvars),
+                         ('Variables', vars)]:
+        if descs:
+            b = tags.dl()
+            for param, desc, t in descs:
+                if desc is None:
+                    desc = ''
+                if t is not None:
+                    b[tags.dt[param], tags.dd[desc, '(type: ',  t, ')']]
+                else:
+                    b[tags.dt[param], tags.dd[desc]]
+            s[tags.p[label], tags.blockquote[b]]
+    if returns or rtype:
+        if not returns:
+            returns = ''
+        if rtype:
+            rtype = '(type: ',  rtype, ')'
+        else:
+            rtype = ''
+        s[tags.p['Returns:'], tags.blockquote[returns, rtype]]
+    if raises:
+        dl = tags.dl()
+        for e, b in raises:
+            dl[tags.dt[e], tags.dd[b]]
+        s[tags.p['Raises:'], tags.blockquote[dl]]
+    if note:
+        s[tags.p['Note'], tags.blockquote[note]]        
+    for fname, fname_plural, descs in [('Author', 'Authors', authors),
+                                       ('See also:', 'See also:', see)]:
+        if descs:
+            if len(descs) > 1:
+                t = tags.ul()
+                for thing in descs:
+                    t[tags.li[thing]]
+                fname = fname_plural
+            else:
+                t = descs[0]
+            s[tags.p[fname], tags.blockquote[t]]        
     return s
 
 def summaryDoc(obj):
