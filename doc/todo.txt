@@ -7,8 +7,7 @@ HTML Formatter:
     - blue boxes for interface docstrings in implementation methods?
     - work out a sensible way to display deeper interface information.
   - Make L{Deferred} magically work when Deferred isn't in the namespace
-  - Better support for epydoc 'fields' (parameter, return, variable
-    specifications)
+  - Format the information in epydoc's 'fields' better.
   - Parameterise epydoc usage instead of just basing on presence of epydoc
   - should probably list inherited methods in a class's documentation.
   - Make Pretty

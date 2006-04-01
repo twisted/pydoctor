@@ -43,6 +43,143 @@ class _EpydocLinker(object):
         else:
             return '<a href="%s">%s</a>'%(link(obj), prettyID)
 
+class FieldDesc(object):
+    def __init__(self):
+        self.kind = None
+        self.name = None
+        self.type = None
+        self.body = None
+    def format(self):
+        if self.body is None:
+            body = ''
+        else:
+            body = self.body
+        if self.type is not None:
+            body = body, '(type: ', self.type, ')'
+        return body
+    @classmethod
+    def fromField(cls, obj, field):
+        r = cls()
+        r.kind = field.tag()
+        r.name = field.arg()
+        r.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
+        return r
+
+def format_desc_list(singular, descs, plural=None):
+    if plural is None:
+        plural = singular + 's'
+    if not descs:
+        return ''
+    if len(descs) > 1:
+        label = plural + ':'
+    else:
+        label = singular + ':'
+    r = tags.dl()
+    for d in descs:
+        r[tags.dt[d.name], tags.dd[d.format()]]
+    return tags.p[label], tags.blockquote[r]
+
+def format_field_list(obj, singular, fields, plural=None):
+    if plural is None:
+        plural = singular + 's'
+    if not fields:
+        return ''
+    if len(fields) > 1:
+        label = plural + ':'
+        r = tags.ul()
+        for f in fields:
+            r[tags.li()[tags.raw(f.body().to_html(_EpydocLinker(obj)))]]
+    else:
+        label = singular + ':'
+        r = tags.raw(fields[0].body().to_html(_EpydocLinker(obj)))
+    return tags.p[label], tags.blockquote[r]    
+    
+
+class FieldHandler(object):
+    def __init__(self, obj):
+        self.obj = obj
+        
+        self.parameter_descs = []
+        self.ivar_descs = []
+        self.cvar_descs = []
+        self.var_descs = []
+        self.return_desc = None
+        self.raises = []
+        self.seealsos = []
+        self.notes = []
+        self.authors = []
+        self.unknowns = []
+
+    def handle_return(self, field):
+        if not self.return_desc:
+            self.return_desc = FieldDesc()
+        if self.return_desc.body:
+            print 'XXX'
+        self.return_desc.body = tags.raw(field.body().to_html(_EpydocLinker(self.obj)))
+    handle_returns = handle_return
+    
+    def handle_returntype(self, field):
+        if not self.return_desc:
+            self.return_desc = FieldDesc()
+        if self.return_desc.type:
+            print 'XXX'
+        self.return_desc.type = tags.raw(field.body().to_html(_EpydocLinker(self.obj)))
+    handle_rtype = handle_returntype
+            
+    def handle_type(self, field):
+        pass # not yet
+
+    def handle_param(self, field):
+        self.parameter_descs.append(FieldDesc.fromField(self.obj, field))
+    handle_arg = handle_param
+
+    def handle_ivar(self, field):
+        self.ivar_descs.append(FieldDesc.fromField(self.obj, field))
+
+    def handle_cvar(self, field):
+        self.cvar_descs.append(FieldDesc.fromField(self.obj, field))
+
+    def handle_var(self, field):
+        self.var_descs.append(FieldDesc.fromField(self.obj, field))
+
+    def handle_raises(self, field):
+        self.raises.append(field)
+    handle_raise = handle_raises
+    
+    def handle_seealso(self, field):
+        self.seealsos.append(field)
+    handle_see = handle_seealso
+
+    def handle_note(self, field):
+        self.notes.append(field)
+
+    def handle_author(self, field):
+        self.authors.append(field)
+
+    def handleUnknownField(self, field):
+        print 'XXX', 'unknown field', field
+        self.unknowns.append(field)
+
+    def handle(self, field):
+        m = getattr(self, 'handle_' + field.tag(), self.handleUnknownField)
+        m(field)
+
+    def format(self):
+        r = []
+        for d, l in (('Parameters', self.parameter_descs),
+                     ('Instance Variables', self.ivar_descs),
+                     ('Class Variables', self.cvar_descs),
+                     ('Variables', self.var_descs)):
+            r.append(format_desc_list(d, l, d))
+        if self.return_desc:
+            r.append((tags.p['Returns:'], tags.blockquote[self.return_desc.format()]))
+        for s, p, l in (('Author', 'Authors', self.authors),
+                        ('See Also', 'See Also', self.seealsos),
+                        ('Note', 'Notes', self.notes),
+                        ('Unknown Field', 'Unknown Fields', self.unknowns)):
+            r.append(format_field_list(self.obj, s, l, p))
+        return r
+
 def doc2html(obj, doc=None):
     """Generate an HTML representation of a docstring"""
     if doc is None:
@@ -73,113 +210,32 @@ def doc2html(obj, doc=None):
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
     s = tags.div()[tags.raw(crap)]
-    parameter_descs = []
-    returns = None
-    rtype = None
-    authors = []
-    raises = []
-    ivars = []
-    cvars = []
-    vars = []
-    unattached_types = {}
-    see = []
-    note = []
+    fh = FieldHandler(obj)
     for field in fields:
-        body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
-        if field.tag() in ('param', 'arg'):
-            parameter_descs.append([field.arg(), body, None])
-        elif field.tag() in ('ivar',):
-            ivars.append([field.arg(), body, None])
-            if field.arg() in unattached_types:
-                ivars[-1][2] = unattached_types[field.arg()]
-                del unattached_types[field.arg()]
-        elif field.tag() in ('cvar',):
-            cvars.append([field.arg(), body, None])
-            if field.arg() in unattached_types:
-                cvars[-1][2] = unattached_types[field.arg()]
-                del unattached_types[field.arg()]
-        elif field.tag() in ('var',):
-            vars.append([field.arg(), body, None])
-        elif field.tag() in ('type',):
-            if isinstance(obj, model.Function):
-                if parameter_descs and parameter_descs[-1][0] == field.arg():
-                    assert parameter_descs[-1][2] is None
-                    parameter_descs[-1][2] = body
-                else:
-                    parameter_descs.append([field.arg(), None, body])
-            elif isinstance(obj, model.Class):
-                if ivars and ivars[-1][0] == field.arg():
-                    assert ivars[-1][2] is None
-                    ivars[-1][2] = body
-                elif cvars and cvars[-1][0] == field.arg():
-                    assert cvars[-1][2] is None
-                    cvars[-1][2] = body
-                else:
-                    unattached_types[field.arg()] = body
-            else:
-                if vars and vars[-1][0] == field.arg():
-                    assert vars[-1][2] is None
-                    vars[-1][2] = body
-                else:
-                    vars.append([field.arg(), None, body])
-        elif field.tag() in ('return', 'returns'):
-            returns = body
-        elif field.tag() in ('returntype', 'rtype'):
-            rtype = body
-        elif field.tag() in ('raises', 'raise'):
-            raises.append((field.arg(), body))
-        elif field.tag() in ('see', 'seealso'):
-            see.append(body)
-        elif field.tag() in ('note',):
-            note.append(body)
-        elif field.tag() in ('author'):
-            authors.append(body)
-        else:
-            s[tags.div(class_="metadata")
-              [tags.span(class_="tag")[field.tag()],
-               ' ',
-               tags.span(class_="arg")[str(field.arg())],
-               tags.span(class_="body")[body]]]
-    for label, descs in [('Parameters:', parameter_descs),
-                         ('Instance Variables', ivars),
-                         ('Class Variables', cvars),
-                         ('Variables', vars)]:
-        if descs:
-            b = tags.dl()
-            for param, desc, t in descs:
-                if desc is None:
-                    desc = ''
-                if t is not None:
-                    b[tags.dt[param], tags.dd[desc, '(type: ',  t, ')']]
-                else:
-                    b[tags.dt[param], tags.dd[desc]]
-            s[tags.p[label], tags.blockquote[b]]
-    if returns or rtype:
-        if not returns:
-            returns = ''
-        if rtype:
-            rtype = '(type: ',  rtype, ')'
-        else:
-            rtype = ''
-        s[tags.p['Returns:'], tags.blockquote[returns, rtype]]
-    if raises:
-        dl = tags.dl()
-        for e, b in raises:
-            dl[tags.dt[e], tags.dd[b]]
-        s[tags.p['Raises:'], tags.blockquote[dl]]
-    if note:
-        s[tags.p['Note'], tags.blockquote[note]]        
-    for fname, fname_plural, descs in [('Author', 'Authors', authors),
-                                       ('See also:', 'See also:', see)]:
-        if descs:
-            if len(descs) > 1:
-                t = tags.ul()
-                for thing in descs:
-                    t[tags.li[thing]]
-                fname = fname_plural
-            else:
-                t = descs[0]
-            s[tags.p[fname], tags.blockquote[t]]        
+        fh.handle(field)
+##         elif field.tag() in ('type',):
+##             if isinstance(obj, model.Function):
+##                 if parameter_descs and parameter_descs[-1][0] == field.arg():
+##                     assert parameter_descs[-1][2] is None
+##                     parameter_descs[-1][2] = body
+##                 else:
+##                     parameter_descs.append([field.arg(), None, body])
+##             elif isinstance(obj, model.Class):
+##                 if ivars and ivars[-1][0] == field.arg():
+##                     assert ivars[-1][2] is None
+##                     ivars[-1][2] = body
+##                 elif cvars and cvars[-1][0] == field.arg():
+##                     assert cvars[-1][2] is None
+##                     cvars[-1][2] = body
+##                 else:
+##                     unattached_types[field.arg()] = body
+##             else:
+##                 if vars and vars[-1][0] == field.arg():
+##                     assert vars[-1][2] is None
+##                     vars[-1][2] = body
+##                 else:
+##                     vars.append([field.arg(), None, body])
+    s[fh.format()]
     return s
 
 def summaryDoc(obj):
