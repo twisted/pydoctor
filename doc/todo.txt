@@ -19,3 +19,7 @@ Model:
   - think fairly hard about how robust the code is -- we should
     *never* crash out.
   - understand import * from a package
+
+General:
+
+  - sort out a consistent verbosity story
