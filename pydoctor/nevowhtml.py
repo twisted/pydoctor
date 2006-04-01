@@ -57,13 +57,6 @@ class FieldDesc(object):
         if self.type is not None:
             body = body, '(type: ', self.type, ')'
         return body
-    @classmethod
-    def fromField(cls, obj, field):
-        r = cls()
-        r.kind = field.tag()
-        r.name = field.arg()
-        r.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
-        return r
 
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
@@ -88,12 +81,19 @@ def format_field_list(obj, singular, fields, plural=None):
         label = plural + ':'
         r = tags.ul()
         for f in fields:
-            r[tags.li()[tags.raw(f.body().to_html(_EpydocLinker(obj)))]]
+            r[tags.li[f.body]]
     else:
         label = singular + ':'
-        r = tags.raw(fields[0].body().to_html(_EpydocLinker(obj)))
+        r = fields[0].body
     return tags.p[label], tags.blockquote[r]    
-    
+
+class Field(object):
+    """Like epydoc.markup.Field, but without the gross accessor
+    methods and with a formatted body."""
+    def __init__(self, field, obj):
+        self.tag = field.tag()
+        self.arg = field.arg()
+        self.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
 
 class FieldHandler(object):
     def __init__(self, obj):
@@ -104,18 +104,19 @@ class FieldHandler(object):
         self.cvar_descs = []
         self.var_descs = []
         self.return_desc = None
-        self.raises = []
+        self.raise_descs = []
         self.seealsos = []
         self.notes = []
         self.authors = []
         self.unknowns = []
+        self.unattached_types = {}
 
     def handle_return(self, field):
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.body:
             print 'XXX'
-        self.return_desc.body = tags.raw(field.body().to_html(_EpydocLinker(self.obj)))
+        self.return_desc.body = field.body
     handle_returns = handle_return
     
     def handle_returntype(self, field):
@@ -123,27 +124,70 @@ class FieldHandler(object):
             self.return_desc = FieldDesc()
         if self.return_desc.type:
             print 'XXX'
-        self.return_desc.type = tags.raw(field.body().to_html(_EpydocLinker(self.obj)))
+        self.return_desc.type = field.body
     handle_rtype = handle_returntype
-            
+
+    def add_type_info(self, desc_list, field):
+        if desc_list and desc_list[-1].name == field.arg:
+            assert desc_list[-1].type is None
+            desc_list[-1].type = field.body
+        else:
+            d = FieldDesc()
+            d.kind = field.tag
+            d.name = field.arg
+            d.type = field.body
+            desc_list.append(d)
+
+    def add_info(self, desc_list, field):
+        if desc_list and desc_list[-1].name == field.arg:
+            assert desc_list[-1].body is None
+            desc_list[-1].body = field.body
+        else:
+            d = FieldDesc()
+            d.kind = field.tag
+            d.name = field.arg
+            d.body = field.body
+            desc_list.append(d)
+    
     def handle_type(self, field):
-        pass # not yet
+        obj = self.obj
+        if isinstance(obj, model.Function):
+            self.add_type_info(self.parameter_descs, field)
+        elif isinstance(obj, model.Class):
+            ivars = self.ivar_descs
+            cvars = self.cvar_descs
+            if ivars and ivars[-1].name == field.arg:
+                assert ivars[-1].type is None
+                ivars[-1].type = field.body
+            elif cvars and cvars[-1].name == field.arg:
+                assert cvars[-1].type is None
+                cvars[-1].type = field.body
+            else:
+                self.unattached_types[field.arg] = field.body
+        else:
+            self.add_type_info(self.var_descs, field)
 
     def handle_param(self, field):
-        self.parameter_descs.append(FieldDesc.fromField(self.obj, field))
+        self.add_info(self.parameter_descs, field)
     handle_arg = handle_param
 
     def handle_ivar(self, field):
-        self.ivar_descs.append(FieldDesc.fromField(self.obj, field))
+        self.add_info(self.ivar_descs, field)
+        if field.arg in self.unattached_types:
+            self.ivar_descs[-1].type = self.unattached_types[field.arg]
+            del self.unattached_types[field.arg]
 
     def handle_cvar(self, field):
-        self.cvar_descs.append(FieldDesc.fromField(self.obj, field))
+        self.add_info(self.cvar_descs, field)
+        if field.arg in self.unattached_types:
+            self.cvar_descs[-1].type = self.unattached_types[field.arg]
+            del self.unattached_types[field.arg]
 
     def handle_var(self, field):
-        self.var_descs.append(FieldDesc.fromField(self.obj, field))
+        self.add_info(self.var_descs, field)
 
     def handle_raises(self, field):
-        self.raises.append(field)
+        self.add_info(self.raise_descs, field)
     handle_raise = handle_raises
     
     def handle_seealso(self, field):
@@ -161,7 +205,7 @@ class FieldHandler(object):
         self.unknowns.append(field)
 
     def handle(self, field):
-        m = getattr(self, 'handle_' + field.tag(), self.handleUnknownField)
+        m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
         m(field)
 
     def format(self):
@@ -173,6 +217,7 @@ class FieldHandler(object):
             r.append(format_desc_list(d, l, d))
         if self.return_desc:
             r.append((tags.p['Returns:'], tags.blockquote[self.return_desc.format()]))
+        r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
                         ('Note', 'Notes', self.notes),
@@ -212,29 +257,7 @@ def doc2html(obj, doc=None):
     s = tags.div()[tags.raw(crap)]
     fh = FieldHandler(obj)
     for field in fields:
-        fh.handle(field)
-##         elif field.tag() in ('type',):
-##             if isinstance(obj, model.Function):
-##                 if parameter_descs and parameter_descs[-1][0] == field.arg():
-##                     assert parameter_descs[-1][2] is None
-##                     parameter_descs[-1][2] = body
-##                 else:
-##                     parameter_descs.append([field.arg(), None, body])
-##             elif isinstance(obj, model.Class):
-##                 if ivars and ivars[-1][0] == field.arg():
-##                     assert ivars[-1][2] is None
-##                     ivars[-1][2] = body
-##                 elif cvars and cvars[-1][0] == field.arg():
-##                     assert cvars[-1][2] is None
-##                     cvars[-1][2] = body
-##                 else:
-##                     unattached_types[field.arg()] = body
-##             else:
-##                 if vars and vars[-1][0] == field.arg():
-##                     assert vars[-1][2] is None
-##                     vars[-1][2] = body
-##                 else:
-##                     vars.append([field.arg(), None, body])
+        fh.handle(Field(field, obj))
     s[fh.format()]
     return s
 
