@@ -324,17 +324,19 @@ class NevowWriter:
         shutil.copyfile(sibpath(__file__, 'templates/apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
 
-    def writeIndividualFiles(self, obs):
+    def writeIndividualFiles(self, obs, functionpages=False):
         for ob in obs:
-            self.writeDocsFor(ob)
+            self.writeDocsFor(ob, functionpages=functionpages)
 
     def writeModuleIndex(self, system):
         pass
 
-    def writeDocsFor(self, ob):
-        self.writeDocsForOne(ob)
+    def writeDocsFor(self, ob, functionpages):
+        isfunc = isinstance(ob, model.Function)
+        if (isfunc and functionpages) or not isfunc:
+            self.writeDocsForOne(ob)
         for o in ob.orderedcontents:
-            self.writeDocsFor(o)
+            self.writeDocsFor(o, functionpages)
 
     def writeDocsForOne(self, ob):
         # brrrrrrrr!
@@ -447,10 +449,38 @@ class PackagePage(CommonPage):
         return [o for o in self.ob.orderedcontents
                 if o.name != '__init__']
 
+class FunctionParentMixin(object):
+    def render_functionName(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[data.name, '(', signature(data.argspec), '):']
+
+    def render_childname(self, context, data):
+        if not isinstance(data, model.Function):
+            sup = super(FunctionParentMixin, self)
+            return sup.render_childname(context, data)
+        tag = context.tag()
+        tag.clear()
+        return tag[tags.a(href='#' + data.fullName())[data.name]]
+
+    def render_functionAnchor(self, context, data):
+        return data.fullName()
+
+    def render_functionBody(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[doc2html(data)]
+
+class ModulePage(FunctionParentMixin, CommonPage):
+    def data_methods(self, context, data):
+        return [o for o in self.ob.orderedcontents
+                if isinstance(o, model.Function)]
+
+
 def taglink(o):
     return tags.a(href=link(o))[o.fullName()]
 
-class ClassPage(CommonPage):
+class ClassPage(FunctionParentMixin, CommonPage):
     def render_extras(self, context, data):
         r = super(ClassPage, self).render_extras(context, data)
         if self.ob.subclasses:
@@ -492,23 +522,8 @@ class ClassPage(CommonPage):
                 if isinstance(o, model.Function)]
     data_methods = data_children
 
-    def render_childname(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[tags.a(href='#' + data.fullName())[data.name]]
 
-    def render_functionName(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[data.name, '(', signature(data.argspec), '):']
 
-    def render_functionAnchor(self, context, data):
-        return data.fullName()
-
-    def render_functionBody(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[doc2html(data)]
 
 class TwistedClassPage(ClassPage):
     def render_extras(self, context, data):

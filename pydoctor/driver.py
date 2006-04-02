@@ -49,6 +49,13 @@ def main(args):
                       action='append',
                       help="fullName of object to generate API docs for"
                       " (default: everything).")
+    parser.add_option('--write-function-pages', dest='functionpages', 
+                      default=False,
+                      action='store_true', 
+                      help="Make individual HTML files for every function and "
+                      "method. They're not linked to in any pydoctor-"
+                      "generated HTML, but they can be useful for third-party "
+                      "linking.")
     parser.add_option('--html-output', dest='htmloutput',
                       default='apidocs',
                       help="Directory to save HTML files to "
@@ -195,7 +202,7 @@ def main(args):
         else:
             writer.writeModuleIndex(system)
             subjects = system.rootobjects
-        writer.writeIndividualFiles(subjects)
+        writer.writeIndividualFiles(subjects, options.functionpages)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

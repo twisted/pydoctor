@@ -1,6 +1,5 @@
 HTML Formatter:
 
-  - X render method docs on class pages
   - Do something useful with superclass info (inheritance hierarchy!)
   - show function signatures for functions in "children" tables
   - Do something more useful with Interface information

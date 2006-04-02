@@ -170,17 +170,19 @@ class SystemWriter(object):
         shutil.copyfile(sibpath(__file__, 'templates/apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
 
-    def writeIndividualFiles(self, stuff):
+    def writeIndividualFiles(self, stuff, functionpages=False):
         """Writes HTML files for every documentable passed, recursively. This
         looks up methods like 'genPage_DOCUMENTABLETYPE' on self to
         get the HTML for particular kinds of documentables.
         """
         for sub in stuff:
+            if isinstance(sub, model.Function) and not functionpages:
+                continue
             html = self.getHTMLFor(sub)
             f = open(opj(self.base, link(sub)), 'w')
             f.write(html)
             f.close()
-            self.writeIndividualFiles(sub.orderedcontents)
+            self.writeIndividualFiles(sub.orderedcontents, functionpages)
 
     def getHTMLFor(self, o):
         for cls in o.__class__.__mro__:
@@ -228,7 +230,22 @@ class SystemWriter(object):
         x += self._parentLink(mod)
         z = doc2html(mod, mod.docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
-        x += self._genChildren(mod.orderedcontents)
+        def link_(obj):
+            if isinstance(obj, model.Function):
+                return '#' + obj.fullName()
+            else:
+                return link(obj)
+        x += self._genChildren(mod.orderedcontents, link=link_)
+        for func in mod.orderedcontents:
+            if not isinstance(func, model.Function):
+                continue
+            x += '''
+            <div class="function">
+            <div class="functionHeader">def <a name="%s">%s:</a></div>
+            <div class="functionBody">%s</div>
+            </div>''' % (
+                func.fullName(),
+                self._funsig(func), doc2html(func, func.docstring))
         return x
 
     def bases_html(self, cls):
