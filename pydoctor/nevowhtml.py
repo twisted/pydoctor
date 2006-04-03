@@ -315,6 +315,8 @@ def signature(argspec):
     return ', '.join(things)
 
 class NevowWriter:
+    sourcebase = None
+    
     def __init__(self, filebase):
         self.base = filebase
 
@@ -334,11 +336,13 @@ class NevowWriter:
     def writeDocsFor(self, ob, functionpages):
         isfunc = isinstance(ob, model.Function)
         if (isfunc and functionpages) or not isfunc:
-            self.writeDocsForOne(ob)
+            f = open(os.path.join(self.base, link(ob)), 'w')
+            self.writeDocsForOne(ob, f)
+            f.close()
         for o in ob.orderedcontents:
             self.writeDocsFor(o, functionpages)
 
-    def writeDocsForOne(self, ob):
+    def writeDocsForOne(self, ob, fobj):
         # brrrrrrrr!
         for c in ob.__class__.__mro__:
             n = c.__name__ + 'Page'
@@ -348,13 +352,8 @@ class NevowWriter:
         else:
             pclass = CommonPage
         page = pclass(self, ob)
-        f = open(os.path.join(self.base, link(ob)), 'w')
         print ob
-        def _cb(text):
-            f.write(text)
-            f.close()
-        page.renderString().addCallback(_cb)
-        assert f.closed
+        fobj.write(page.renderSynchronously())
 
 def mediumName(obj):
     fn = obj.fullName()
