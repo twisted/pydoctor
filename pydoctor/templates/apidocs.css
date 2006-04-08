@@ -91,3 +91,16 @@ span.arg {
   color: blue;
   font-size: 75%;
 }
+
+.fieldName { 
+  font-weight: bold;
+}
+
+tr.fieldStart td { 
+  padding-top: 0.5em;
+}
+
+table.fieldTable td { 
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}

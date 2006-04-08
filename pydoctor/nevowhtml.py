@@ -64,17 +64,18 @@ def format_desc_list(singular, descs, plural=None):
     if not descs:
         return ''
     if len(descs) > 1:
-        label = plural + ':'
+        label = plural
     else:
-        label = singular + ':'
+        label = singular
     r = []
     first = True
     for d in descs:
-        row = tags.tr()
         if first:
-            row[tags.td(style="font-weight=bold")[label]]
+            row = tags.tr(class_="fieldStart")
+            row[tags.td(class_="fieldName")[label]]
             first = False
         else:
+            row = tags.tr()
             row[tags.td()]
         row[tags.td[d.name], tags.td[d.format()]]
         r.append(row)
@@ -86,17 +87,18 @@ def format_field_list(obj, singular, fields, plural=None):
     if not fields:
         return ''
     if len(fields) > 1:
-        label = plural + ':'
+        label = plural
     else:
-        label = singular + ':'
+        label = singular
     rows = []
     first = True
     for field in fields:
-        row = tags.tr()
         if first:
-            row[tags.td[label]]
+            row = tags.tr(class_="fieldStart")
+            row[tags.td(class_="fieldName")[label]]
             first=False
         else:
+            row = tags.tr()
             row[tags.td()]
         row[tags.td(colspan=2)[field.body]]
         rows.append(row)
@@ -231,14 +233,15 @@ class FieldHandler(object):
                      ('Variables', self.var_descs)):
             r.append(format_desc_list(d, l, d))
         if self.return_desc:
-            r.append(tags.tr()[tags.td['Returns:'], tags.td(colspan="2")[self.return_desc.format()]])
+            r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
+                               tags.td(colspan="2")[self.return_desc.format()]])
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
                         ('Note', 'Notes', self.notes),
                         ('Unknown Field', 'Unknown Fields', self.unknowns)):
             r.append(format_field_list(self.obj, s, l, p))
-        return tags.table[r]
+        return tags.table(class_='fieldTable')[r]
 
 def doc2html(obj, summary=False):
     """Generate an HTML representation of a docstring"""
