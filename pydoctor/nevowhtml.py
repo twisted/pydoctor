@@ -67,10 +67,18 @@ def format_desc_list(singular, descs, plural=None):
         label = plural + ':'
     else:
         label = singular + ':'
-    r = tags.dl()
+    r = []
+    first = True
     for d in descs:
-        r[tags.dt[d.name], tags.dd[d.format()]]
-    return tags.p[label], tags.blockquote[r]
+        row = tags.tr()
+        if first:
+            row[tags.td(style="font-weight=bold")[label]]
+            first = False
+        else:
+            row[tags.td()]
+        row[tags.td[d.name], tags.td[d.format()]]
+        r.append(row)
+    return r
 
 def format_field_list(obj, singular, fields, plural=None):
     if plural is None:
@@ -79,13 +87,20 @@ def format_field_list(obj, singular, fields, plural=None):
         return ''
     if len(fields) > 1:
         label = plural + ':'
-        r = tags.ul()
-        for f in fields:
-            r[tags.li[f.body]]
     else:
         label = singular + ':'
-        r = fields[0].body
-    return tags.p[label], tags.blockquote[r]    
+    rows = []
+    first = True
+    for field in fields:
+        row = tags.tr()
+        if first:
+            row[tags.td[label]]
+            first=False
+        else:
+            row[tags.td()]
+        row[tags.td(colspan=2)[field.body]]
+        rows.append(row)
+    return rows
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
@@ -216,14 +231,14 @@ class FieldHandler(object):
                      ('Variables', self.var_descs)):
             r.append(format_desc_list(d, l, d))
         if self.return_desc:
-            r.append((tags.p['Returns:'], tags.blockquote[self.return_desc.format()]))
+            r.append(tags.tr()[tags.td['Returns:'], tags.td(colspan="2")[self.return_desc.format()]])
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
                         ('Note', 'Notes', self.notes),
                         ('Unknown Field', 'Unknown Fields', self.unknowns)):
             r.append(format_field_list(self.obj, s, l, p))
-        return r
+        return tags.table[r]
 
 def doc2html(obj, summary=False):
     """Generate an HTML representation of a docstring"""
