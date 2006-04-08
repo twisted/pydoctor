@@ -225,12 +225,18 @@ class FieldHandler(object):
             r.append(format_field_list(self.obj, s, l, p))
         return r
 
-def doc2html(obj, doc=None):
+def doc2html(obj, summary=False):
     """Generate an HTML representation of a docstring"""
-    if doc is None:
-        doc = obj.docstring
+    if isinstance(obj, model.Package):
+        obj = obj.contents['__init__']
+    doc = obj.docstring
     if doc is None or not doc.strip():
         return tags.div(class_="undocumented")["Undocumented"]
+    if summary:
+        for line in doc.split('\n'):
+            if line.strip():
+                doc = line
+                break
     if not EPYTEXT:
         return boringDocstring(doc)
     errs = []
@@ -255,23 +261,12 @@ def doc2html(obj, doc=None):
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
     s = tags.div()[tags.raw(crap)]
-    fh = FieldHandler(obj)
-    for field in fields:
-        fh.handle(Field(field, obj))
-    s[fh.format()]
+    if not summary:
+        fh = FieldHandler(obj)
+        for field in fields:
+            fh.handle(Field(field, obj))
+        s[fh.format()]
     return s
-
-def summaryDoc(obj):
-    """Generate a one-line summary of a docstring."""
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    doc = obj.docstring
-    if not doc or not doc.strip():
-        return tags.span(class_="undocumented")["Undocumented"]
-    # Return the first line of the docstring (that actually has stuff)
-    for doc in doc.splitlines():
-        if doc.strip():
-            return doc2html(obj, doc)
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -433,17 +428,13 @@ class CommonPage(rend.Page):
     def render_childsummaryDoc(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[summaryDoc(data)]
+        return tag[doc2html(data, summary=True)]
 
     def data_methods(self, context, data):
         return []
 
 
 class PackagePage(CommonPage):
-    def render_docstring(self, context, data):
-        return doc2html(self.ob,
-                        self.ob.contents['__init__'].docstring)
-
     def data_children(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if o.name != '__init__']
@@ -560,7 +551,7 @@ class TwistedClassPage(ClassPage):
                     continue
                 docsource = b.contents[data.name]
                 break
-        return tag[summaryDoc(docsource)]
+        return tag[doc2html(docsource, summary=True)]
 
     def interfaceMeth(self, methname):
         system = self.ob.system
