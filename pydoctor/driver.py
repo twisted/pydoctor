@@ -177,7 +177,7 @@ def main(args):
 
     if options.outputpickle:
         f = open(options.outputpickle, 'wb')
-        cPickle.dump(system, f)
+        cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
         f.close()
 
     # step 5: make html, if desired
