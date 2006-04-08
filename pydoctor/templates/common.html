@@ -26,6 +26,20 @@
         </tr>
       </table>
     </nevow:invisible>
+    <nevow:invisible nevow:render="sequence" nevow:data="bases">
+      <nevow:invisible nevow:render="maybe_base" nevow:pattern="item">
+        <p>
+          Inherited from <span nevow:render="base_name">base class</span>:
+        </p>
+        <table class="children" nevow:render="base_sequence">
+          <tr nevow:pattern="item2"><nevow:attr name="class" nevow:render="basechildclass" />
+            <td nevow:render="childkind">Kind</td>
+            <td nevow:render="basechildname">Name</td>
+            <td nevow:render="childsummaryDoc">Summary</td>
+          </tr>
+        </table>
+      </nevow:invisible>
+    </nevow:invisible>
     <nevow:invisible nevow:render="sequence" nevow:data="methods">
       <div class="function" nevow:pattern="item">
         <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>

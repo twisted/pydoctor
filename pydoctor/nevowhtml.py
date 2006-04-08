@@ -427,6 +427,9 @@ class CommonPage(rend.Page):
             tag.clear()
         return tag
 
+    def data_bases(self, context, data):
+        return []
+
     def data_children(self, context, data):
         return self.ob.orderedcontents
 
@@ -531,7 +534,63 @@ class ClassPage(FunctionParentMixin, CommonPage):
     data_methods = data_children
 
 
+    def nested_bases(self, b):
+        r = [(b,)]
+        for b2 in b.baseobjects:
+            if b2 is None:
+                continue
+            for n in self.nested_bases(b2):
+                r.append(n + (b,))
+        return r
 
+    def data_bases(self, context, data):
+        r = []
+        for b in self.ob.baseobjects:
+            if b is None:
+                continue
+            r.extend(self.nested_bases(b))
+        return r
+
+    def render_base_sequence(self, context, data):
+        p = context.tag.patternGenerator('item2')
+        tag = context.tag.clear()
+        for d in data[0].orderedcontents:
+            for b in (self.ob,) + data[1:]:
+                if d.name in b.contents:
+                    break
+            else:
+                tag[p(data=d)]
+        return tag
+
+    def render_base_name(self, context, data):
+        tag = context.tag.clear()
+        tag[tags.a(href=link(data[0]))[data[0].name]]
+        if data[1:]:
+            tail = []
+            for b in data[1:][::-1]:
+                tail.append(tags.a(href=link(b))[b.name])
+                tail.append(', ')
+            del tail[-1]
+            tag[' (via ', tail, ')']
+        return tag
+
+    def render_maybe_base(self, context, data):
+        for d in data[0].orderedcontents:
+            for b in (self.ob,) + data[1:]:
+                if d.name in b.contents:
+                    break
+            else:
+                return context.tag()
+        else:
+            return context.tag.clear()
+
+    def render_basechildclass(self, context, data):
+        return 'base' + data.kind.lower()
+
+    def render_basechildname(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[tags.a(href=link(data.parent)+'#'+data.fullName())[data.name]]
 
 class TwistedClassPage(ClassPage):
     def render_extras(self, context, data):
