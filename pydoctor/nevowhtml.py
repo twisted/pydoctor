@@ -77,7 +77,7 @@ def format_desc_list(singular, descs, plural=None):
         else:
             row = tags.tr()
             row[tags.td()]
-        row[tags.td[d.name], tags.td[d.format()]]
+        row[tags.td(class_="fieldArg")[d.name], tags.td[d.format()]]
         r.append(row)
     return r
 
