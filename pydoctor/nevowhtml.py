@@ -41,7 +41,11 @@ class _EpydocLinker(object):
         if obj is None:
             return prettyID
         else:
-            return '<a href="%s">%s</a>'%(link(obj), prettyID)
+            if isinstance(obj, model.Function):
+                linktext = link(obj.parent) + '#' + obj.fullName()
+            else:
+                linktext = link(obj)
+            return '<a href="%s">%s</a>'%(linktext, prettyID)
 
 class FieldDesc(object):
     def __init__(self):
