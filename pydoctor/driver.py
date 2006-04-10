@@ -49,6 +49,10 @@ def main(args):
                       action='append',
                       help="fullName of object to generate API docs for"
                       " (default: everything).")
+    parser.add_option('--html-summary-pages', dest='htmlsummarypages',
+                      action='store_true',
+                      default=False,
+                      help="Only generate the summary pages.")
     parser.add_option('--write-function-pages', dest='functionpages', 
                       default=False,
                       action='store_true', 
@@ -199,6 +203,9 @@ def main(args):
             subjects = []
             for fn in options.htmlsubjects:
                 subjects.append(system.allobjects[fn])
+        elif options.htmlsummarypages:
+            writer.writeModuleIndex(system)
+            subjects = []            
         else:
             writer.writeModuleIndex(system)
             subjects = system.rootobjects

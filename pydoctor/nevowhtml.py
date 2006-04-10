@@ -253,7 +253,10 @@ def doc2html(obj, summary=False):
         obj = obj.contents['__init__']
     doc = obj.docstring
     if doc is None or not doc.strip():
-        return tags.div(class_="undocumented")["Undocumented"]
+        if summary:
+            return tags.span(class_="undocumented")["Undocumented"]
+        else:
+            return tags.div(class_="undocumented")["Undocumented"]            
     if summary:
         for line in doc.split('\n'):
             if line.strip():
@@ -282,8 +285,10 @@ def doc2html(obj, summary=False):
             return boringDocstring(doc)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
-    s = tags.div()[tags.raw(crap)]
-    if not summary:
+    if summary:
+        s = tags.span()[tags.raw(crap)]
+    else:
+        s = tags.div()[tags.raw(crap)]        
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
@@ -348,7 +353,10 @@ class NevowWriter:
             self.writeDocsFor(ob, functionpages=functionpages)
 
     def writeModuleIndex(self, system):
-        pass
+        page = SummaryPage(self, system)
+        f = open(os.path.join(self.base, 'moduleIndex.html'), 'w')
+        f.write(page.renderSynchronously())
+        f.close()
 
     def writeDocsFor(self, ob, functionpages):
         isfunc = isinstance(ob, model.Function)
@@ -378,6 +386,33 @@ def mediumName(obj):
         return fn
     path, name = fn.rsplit('.', 1)
     return '.'.join([p[0] for p in path.split('.')]) + '.' + name
+
+def moduleSummary(modorpack):
+    r = [tags.li[taglink(modorpack), ' - ', doc2html(modorpack, summary=True)]]
+    if isinstance(modorpack, model.Package) and len(modorpack.orderedcontents) > 1:
+        ul = tags.ul()
+        for m in modorpack.orderedcontents:
+            if m.name != '__init__':
+                ul[moduleSummary(m)]
+        r.append(ul)
+    return r
+         
+
+class SummaryPage(rend.Page):
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
+    def __init__(self, writer, system):
+        self.writer = writer
+        self.system = system
+    def render_title(self, context, data):
+        return context.tag
+    def render_stuff(self, context, data):
+        r = []
+        for o in self.system.rootobjects:
+            r.extend(moduleSummary(o))
+        return context.tag.clear()[r]
+    def render_heading(self, context, data):
+        return context.tag().clear()["Module Index"]
+
 
 class CommonPage(rend.Page):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
