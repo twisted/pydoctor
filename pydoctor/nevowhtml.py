@@ -353,10 +353,11 @@ class NevowWriter:
             self.writeDocsFor(ob, functionpages=functionpages)
 
     def writeModuleIndex(self, system):
-        page = SummaryPage(self, system)
-        f = open(os.path.join(self.base, 'moduleIndex.html'), 'w')
-        f.write(page.renderSynchronously())
-        f.close()
+        for pclass in summarypages:
+            page = pclass(self, system)
+            f = open(os.path.join(self.base, pclass.filename), 'w')
+            f.write(page.renderSynchronously())
+            f.close()
 
     def writeDocsFor(self, ob, functionpages):
         isfunc = isinstance(ob, model.Function)
@@ -396,15 +397,15 @@ def moduleSummary(modorpack):
                 ul[moduleSummary(m)]
         r.append(ul)
     return r
-         
 
-class SummaryPage(rend.Page):
+class ModuleIndexPage(rend.Page):
+    filename = 'moduleIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
     def __init__(self, writer, system):
         self.writer = writer
         self.system = system
     def render_title(self, context, data):
-        return context.tag
+        return context.tag.clear()["Module Index"]
     def render_stuff(self, context, data):
         r = []
         for o in self.system.rootobjects:
@@ -412,6 +413,52 @@ class SummaryPage(rend.Page):
         return context.tag.clear()[r]
     def render_heading(self, context, data):
         return context.tag().clear()["Module Index"]
+
+def findRootClasses(system):
+    roots = {}
+    for cls in system.objectsOfType(model.Class):
+        if cls.bases:
+            for n, b in zip(cls.bases, cls.baseobjects):
+                if b is None:
+                    roots.setdefault(n, []).append(cls)
+        else:
+            roots[cls.fullName()] = cls
+    return sorted(roots.items())
+
+def subclassesFrom(cls):
+    r = [tags.li[taglink(cls), ' - ', doc2html(cls, summary=True)]]
+    if len(cls.subclasses) > 0:
+        ul = tags.ul()
+        for sc in cls.subclasses:
+            ul[subclassesFrom(sc)]
+        r.append(ul)
+    return r
+
+class ClassIndexPage(rend.Page):
+    filename = 'classIndex.html'
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
+    def __init__(self, writer, system):
+        self.writer = writer
+        self.system = system
+    def render_title(self, context, data):
+        return context.tag.clear()["Class Hierarchy"]
+    def render_stuff(self, context, data):
+        t = context.tag
+        for b, o in findRootClasses(self.system):
+            if isinstance(o, model.Class):
+                t[subclassesFrom(o)]
+            else:
+                t[tags.li[b]]
+                if o:
+                    ul = tags.ul()
+                    for sc in o:
+                        ul[subclassesFrom(sc)]
+                    t[ul]
+        return t
+    def render_heading(self, context, data):
+        return context.tag.clear()["Class Hierarchy"]
+
+summarypages = [ModuleIndexPage, ClassIndexPage]
 
 
 class CommonPage(rend.Page):
