@@ -426,7 +426,7 @@ def findRootClasses(system):
     return sorted(roots.items())
 
 def subclassesFrom(cls):
-    r = [tags.li[taglink(cls), ' - ', doc2html(cls, summary=True)]]
+    r = [tags.li[tags.a(name=cls.fullName()), taglink(cls), ' - ', doc2html(cls, summary=True)]]
     if len(cls.subclasses) > 0:
         ul = tags.ul()
         for sc in cls.subclasses:
@@ -500,6 +500,9 @@ class CommonPage(rend.Page):
         elif hasattr(self.ob, 'linenumber'):
             sourceHref += '#L'+str(self.ob.linenumber)
         return tag(href=sourceHref)
+
+    def render_inhierarchy(self, context, data):
+        return context.tag().clear()
 
     def render_extras(self, context, data):
         return context.tag().clear()
@@ -614,11 +617,13 @@ class ClassPage(FunctionParentMixin, CommonPage):
         tag[':']
         return tag
 
+    def render_inhierarchy(self, context, data):
+        return context.tag(href="classIndex.html#"+self.ob.fullName())
+
     def data_children(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if isinstance(o, model.Function)]
     data_methods = data_children
-
 
     def nested_bases(self, b):
         r = [(b,)]
