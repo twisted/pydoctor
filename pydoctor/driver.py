@@ -36,6 +36,8 @@ def main(args):
                       "none, the system is not saved by default).")
     parser.add_option('--system-class', dest='systemclass',
                       help="a dotted name of the class to use to make a system")
+    parser.add_option('--project-name', dest='projectname',
+                      help="a dotted name of the class to use to make a system")
     parser.add_option('--testing', dest='testing', action='store_true',
                       help="don't complain if the run doesn't have any effects")
     parser.add_option('--target-state', dest='targetstate',
@@ -125,7 +127,7 @@ def main(args):
     else:
         system = systemclass()
 
-    system.verbosity = options.verbosity
+    system.options = options
 
     # step 1.5: check that we're actually going to accomplish something here
 
@@ -180,9 +182,11 @@ def main(args):
     # step 4: save the system, if desired
 
     if options.outputpickle:
+        del system.options # don't persist the options
         f = open(options.outputpickle, 'wb')
         cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
         f.close()
+        system.options = options
 
     # step 5: make html, if desired
 

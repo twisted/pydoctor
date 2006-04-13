@@ -70,9 +70,9 @@ def doc2html(obj, doc):
         doc = inspect.getdoc(crappit)
         pdoc = epytext.parse_docstring(doc, errs)
         if errs:
-            if obj.system.verbosity > 0:
+            if obj.system.options.verbosity > 0:
                 print obj
-            if obj.system.verbosity > 1:
+            if obj.system.options.verbosity > 1:
                 for i, l in enumerate(doc.splitlines()):
                     print "%4s"%(i+1), l
                 for err in errs:
@@ -451,7 +451,7 @@ def main(args):
         out = options.output
 
     docsys = cPickle.load(open(fn, 'rb'))
-    docsys.verbosity = options.verbosity
+    docsys.options = options
     syswriter = SystemWriter(out)
     syswriter.prepOutputDirectory()
     if options.module:

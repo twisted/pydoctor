@@ -458,6 +458,9 @@ class ClassIndexPage(rend.Page):
     def render_heading(self, context, data):
         return context.tag.clear()["Class Hierarchy"]
 
+class IndexPage(rend.Page):
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
+
 summarypages = [ModuleIndexPage, ClassIndexPage]
 
 
