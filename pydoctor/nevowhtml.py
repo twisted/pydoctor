@@ -429,7 +429,7 @@ def subclassesFrom(cls):
     r = [tags.li[tags.a(name=cls.fullName()), taglink(cls), ' - ', doc2html(cls, summary=True)]]
     if len(cls.subclasses) > 0:
         ul = tags.ul()
-        for sc in cls.subclasses:
+        for sc in sorted(cls.subclasses, key=lambda sc2:sc2.fullName()):
             ul[subclassesFrom(sc)]
         r.append(ul)
     return r
@@ -451,7 +451,7 @@ class ClassIndexPage(rend.Page):
                 t[tags.li[b]]
                 if o:
                     ul = tags.ul()
-                    for sc in o:
+                    for sc in sorted(o, key=lambda sc2:sc2.fullName()):
                         ul[subclassesFrom(sc)]
                     t[ul]
         return t
