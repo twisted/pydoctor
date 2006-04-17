@@ -459,9 +459,31 @@ class ClassIndexPage(rend.Page):
         return context.tag.clear()["Class Hierarchy"]
 
 class IndexPage(rend.Page):
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
+    filename = 'index.html'
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
+    def __init__(self, writer, system):
+        self.system = system
+    def render_project(self, context, data):
+        return context.tag.clear()[self.system.options.projectname]
+    def render_project(self, context, data):
+        return context.tag.clear()[self.system.options.projectname]
+    def render_onlyIfOneRoot(self, context, data):
+        if len(self.system.rootobjects) != 1:
+            return []
+        else:
+            root, = self.system.rootobjects
+            return context.tag.clear()[
+                "Start at ", taglink(root),
+                ", the root ", root.kind.lower(), "."]
+    def render_onlyIfMultipleRoots(self, context, data):
+        if len(self.system.rootobjects) == 1:
+            return []
+        else:
+            return context.tag.clear()
+        
+    
 
-summarypages = [ModuleIndexPage, ClassIndexPage]
+summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage]
 
 
 class CommonPage(rend.Page):

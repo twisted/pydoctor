@@ -16,6 +16,13 @@ table.children {
 h1 {
     background: rgb(112, 176, 240);
     border: thin black solid;
+    padding-left: 1ex;
+}
+
+h2 {
+    background: rgb(200, 230, 255);
+    border: thin black solid;
+    padding-left: 1ex;
 }
 
 #part {
