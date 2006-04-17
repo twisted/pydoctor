@@ -392,7 +392,8 @@ def moduleSummary(modorpack):
     r = [tags.li[taglink(modorpack), ' - ', doc2html(modorpack, summary=True)]]
     if isinstance(modorpack, model.Package) and len(modorpack.orderedcontents) > 1:
         ul = tags.ul()
-        for m in modorpack.orderedcontents:
+        for m in sorted(modorpack.orderedcontents,
+                        key=lambda m.fullName()):
             if m.name != '__init__':
                 ul[moduleSummary(m)]
         r.append(ul)
@@ -480,8 +481,6 @@ class IndexPage(rend.Page):
             return []
         else:
             return context.tag.clear()
-        
-    
 
 summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage]
 
@@ -571,8 +570,9 @@ class CommonPage(rend.Page):
 
 class PackagePage(CommonPage):
     def data_children(self, context, data):
-        return [o for o in self.ob.orderedcontents
-                if o.name != '__init__']
+        return sorted([o for o in self.ob.orderedcontents
+                       if o.name != '__init__'],
+                      key=lambda o2:o2.fullName())
 
 class FunctionParentMixin(object):
     def render_functionName(self, context, data):
