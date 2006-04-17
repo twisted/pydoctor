@@ -393,7 +393,7 @@ def moduleSummary(modorpack):
     if isinstance(modorpack, model.Package) and len(modorpack.orderedcontents) > 1:
         ul = tags.ul()
         for m in sorted(modorpack.orderedcontents,
-                        key=lambda m.fullName()):
+                        key=lambda m:m.fullName()):
             if m.name != '__init__':
                 ul[moduleSummary(m)]
         r.append(ul)
