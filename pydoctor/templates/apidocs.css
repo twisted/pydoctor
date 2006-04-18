@@ -121,3 +121,8 @@ table.fieldTable td {
   color: #000080;
   font-family: monospace;
 }
+
+.letterlinks { 
+  font-size: 75%;
+  padding-left: 8ex;
+}

@@ -459,6 +459,61 @@ class ClassIndexPage(rend.Page):
     def render_heading(self, context, data):
         return context.tag.clear()["Class Hierarchy"]
 
+
+class NameIndexPage(rend.Page):
+    filename = 'nameIndex.html'
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/nameIndex.html'))
+    def __init__(self, writer, system):
+        self.writer = writer
+        self.system = system
+        used_initials = {}
+        for ob in self.system.orderedallobjects:
+            used_initials[ob.name[0].upper()] = True
+        self.used_initials = sorted(used_initials)
+        
+    def render_title(self, context, data):
+        return context.tag.clear()["Index Of Names"]
+    def render_heading(self, context, data):
+        return context.tag.clear()["Index Of Names"]
+    def data_letters(self, context, data):
+        # this is confusing
+        # we return a list of lists of lists
+        # if r is the return value, r[i][j] is a list of things with the same .name
+        # all the things in the lists contained in r[i] share the same initial.
+        initials = {}
+        for ob in self.system.orderedallobjects:
+            initials.setdefault(ob.name[0].upper(), {}).setdefault(ob.name, []).append(ob)
+        r = []
+        for k in sorted(initials):
+            r.append(sorted(
+                sorted(initials[k].values(), key=lambda v:v[0].name),
+                key=lambda v:v[0].name.upper()))
+        return r
+    def render_letter(self, context, data):
+        return context.tag.clear()[data[0][0].name[0].upper()]
+    def render_letters(self, context, data):
+        cur = data[0][0].name[0].upper()
+        r = []
+        for i in self.used_initials:
+            if i != cur:
+                r.append(tags.a(href='#' + i)[i])
+            else:
+                r.append(i)
+            r.append(' - ')
+        if r:
+            del r[-1]
+        return context.tag.clear()[r]
+    def render_linkToThing(self, context, data):
+        tag = context.tag.clear()
+        if len(data) == 1:
+            ob, = data
+            return tag[ob.name, ' - ', taglink(ob)]
+        else:
+            ul = tags.ul()
+            for d in data:
+                ul[tags.li[taglink(d)]]
+            return tag[data[0].name, ul]
+
 class IndexPage(rend.Page):
     filename = 'index.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
@@ -482,7 +537,7 @@ class IndexPage(rend.Page):
         else:
             return context.tag.clear()
 
-summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage]
+summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 
 
 class CommonPage(rend.Page):
@@ -602,8 +657,14 @@ class ModulePage(FunctionParentMixin, CommonPage):
                 if isinstance(o, model.Function)]
 
 
-def taglink(o):
-    return tags.a(href=link(o))[o.fullName()]
+def taglink(o, label=None):
+    if label is None:
+        label = o.fullName()
+    if isinstance(o, model.Function):
+        linktext = link(o.parent) + '#' + o.fullName()
+    else:
+        linktext = link(o)
+    return tags.a(href=linktext)[label]
 
 class ClassPage(FunctionParentMixin, CommonPage):
     def render_extras(self, context, data):
