@@ -510,7 +510,7 @@ class NameIndexPage(rend.Page):
             return tag[ob.name, ' - ', taglink(ob)]
         else:
             ul = tags.ul()
-            for d in data:
+            for d in sorted(data, key=lambda o:o.fullName()):
                 ul[tags.li[taglink(d)]]
             return tag[data[0].name, ul]
 
