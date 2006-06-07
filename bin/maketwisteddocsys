@@ -1,6 +1,0 @@
-#!/usr/bin/python
-from pydoctor.model import main
-from pydoctor.twistedmodel import TwistedSystem
-import sys
-
-main(TwistedSystem, sys.argv[1:])
