@@ -160,8 +160,7 @@ class FieldHandler(object):
             desc_list.append(d)
 
     def add_info(self, desc_list, field):
-        if desc_list and desc_list[-1].name == field.arg:
-            assert desc_list[-1].body is None
+        if desc_list and desc_list[-1].name == field.arg and desc_list[-1].body is None:
             desc_list[-1].body = field.body
         else:
             d = FieldDesc()
