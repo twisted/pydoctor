@@ -130,6 +130,10 @@ table.fieldTable td {
   font-family: monospace;
 }
 
+td.fieldArg { 
+  vertical-align: baseline;
+}
+
 .letterlinks { 
   font-size: 75%;
   padding-left: 8ex;
