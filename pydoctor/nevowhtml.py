@@ -223,7 +223,7 @@ class FieldHandler(object):
 
     def handleUnknownField(self, field):
         print 'XXX', 'unknown field', field
-        self.unknowns.append(field)
+        self.add_info(self.unknowns, field)
 
     def handle(self, field):
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
@@ -242,10 +242,24 @@ class FieldHandler(object):
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
-                        ('Note', 'Notes', self.notes),
-                        ('Unknown Field', 'Unknown Fields', self.unknowns)):
+                        ('Note', 'Notes', self.notes)):
             r.append(format_field_list(self.obj, s, l, p))
+        unknowns = {}
+        unknownsinorder = []
+        for fieldinfo in self.unknowns:
+            tag = fieldinfo.kind
+            if tag in unknowns:
+                unknowns[tag].append(fieldinfo)
+            else:
+                unknowns[tag] = [fieldinfo]
+                unknownsinorder.append(unknowns[tag])
+        for fieldlist in unknownsinorder:
+            label = "Unknown Field: " + fieldlist[0].kind
+            r.append(format_desc_list(label, fieldlist, label))
+            
         return tags.table(class_='fieldTable')[r]
+
+errcount = 0
 
 def doc2html(obj, summary=False):
     """Generate an HTML representation of a docstring"""
@@ -273,15 +287,15 @@ def doc2html(obj, summary=False):
         doc = inspect.getdoc(crappit)
         pdoc = epytext.parse_docstring(doc, errs)
         if errs:
-##             if obj.system.verbosity > 0:
-##                 print obj
-##             if obj.system.verbosity > 1:
-##                 for i, l in enumerate(doc.splitlines()):
-##                     print "%4s"%(i+1), l
-##                 for err in errs:
-##                     print err
-##             global errcount
-##             errcount += len(errs)
+            if obj.system.options.verbosity > 0:
+                print 'epytext error in', obj
+            if obj.system.options.verbosity > 1:
+                for i, l in enumerate(doc.splitlines()):
+                    print "%4s"%(i+1), l
+                for err in errs:
+                    print err
+            global errcount
+            errcount += len(errs)
             return boringDocstring(doc)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(obj))
