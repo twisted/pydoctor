@@ -107,6 +107,14 @@ span.arg {
   font-weight: bold;
 }
 
+td p { 
+  margin-top: 0.0em; 
+}
+
+td.fieldName { 
+  vertical-align: baseline;
+}
+
 tr.fieldStart td { 
   padding-top: 0.5em;
 }
