@@ -107,6 +107,8 @@ def main(args):
                     setattr(options, k, v.split(','))
                 else:
                     setattr(options, k, v)
+            else:
+                setattr(options, k, v)
 
     # step 1: make/find the system
     if options.systemclass:
