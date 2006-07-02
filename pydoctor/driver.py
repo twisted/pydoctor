@@ -34,10 +34,14 @@ def main(args):
     parser.add_option('-o', '--output-pickle', dest='outputpickle',
                       help="Save the system to this pickle file (default: "
                       "none, the system is not saved by default).")
+    parser.add_option('--extra-system',
+                      action='append', dest='moresystems', metavar='SYS:PREFIX',
+                      default=[],
+                      help='Experimental.')
     parser.add_option('--system-class', dest='systemclass',
                       help="a dotted name of the class to use to make a system")
     parser.add_option('--project-name', dest='projectname',
-                      help="a dotted name of the class to use to make a system")
+                      help="the project name (appears on index.html)")
     parser.add_option('--testing', dest='testing', action='store_true',
                       help="don't complain if the run doesn't have any effects")
     parser.add_option('--target-state', dest='targetstate',
@@ -47,6 +51,17 @@ def main(args):
     parser.add_option('--make-html',
                       action='store_true', dest='makehtml',
                       help="")
+    parser.add_option('--add-package',
+                      action='append', dest='packages', metavar='PACKAGEDIR',
+                      default=[],
+                      help='Add a package to the system.  Can be repeated '
+                           'to add more than one package.')
+    parser.add_option('--no-find-import-star',
+                      action='store_false', dest='findimportstar',
+                      default=True,
+                      help="Don't preprocess the modules to resolve import *s."
+                           " It's a significant speed saving if you don't need"
+                           " it.")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
                       help="fullName of object to generate API docs for"
@@ -55,7 +70,7 @@ def main(args):
                       action='store_true',
                       default=False,
                       help="Only generate the summary pages.")
-    parser.add_option('--write-function-pages', dest='functionpages', 
+    parser.add_option('--html-write-function-pages', dest='htmlfunctionpages', 
                       default=False,
                       action='store_true', 
                       help="Make individual HTML files for every function and "
@@ -71,17 +86,6 @@ def main(args):
                            "(default 'XXX')")
     parser.add_option('--html-viewsource-base', dest='htmlsourcebase',
                       help="")
-    parser.add_option('--add-package',
-                      action='append', dest='packages', metavar='PACKAGEDIR',
-                      default=[],
-                      help='Add a package to the system.  Can be repeated '
-                           'to add more than one package.')
-    parser.add_option('--no-find-import-star',
-                      action='store_false', dest='findimportstar',
-                      default=True,
-                      help="Don't preprocess the modules to resolve import *s."
-                           " It's a significant speed saving if you don't need"
-                           " it.")
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
     options, args = parser.parse_args(args)
@@ -130,6 +134,16 @@ def main(args):
         system = systemclass()
 
     system.options = options
+
+    
+    system.urlprefix = ''
+    if options.moresystems:
+        moresystems = []
+        for fnamepref in options.moresystems:
+            fname, prefix = fnamepref.split(':', 1)
+            moresystems.append(cPickle.load(open(fname, 'rb')))
+            moresystems[-1].urlprefix = prefix
+        system.moresystems = moresystems
 
     # step 1.5: check that we're actually going to accomplish something here
 
@@ -215,7 +229,7 @@ def main(args):
         else:
             writer.writeModuleIndex(system)
             subjects = system.rootobjects
-        writer.writeIndividualFiles(subjects, options.functionpages)
+        writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

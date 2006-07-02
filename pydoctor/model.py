@@ -49,10 +49,16 @@ class Documentable(object):
                 if parts[0] in system.allobjects:
                     obj = system.allobjects[parts[0]]
                     break
-                if verbose:
-                    print "1 didn't find %r from %r"%(dottedname,
+                for othersys in system.moresystems:
+                    if parts[0] in othersys.allobjects:
+                        obj = othersys.allobjects[parts[0]]
+                        break
+                else:
+                    if verbose:
+                        print "1 didn't find %r from %r"%(dottedname,
                                                       self.fullName())
-                return None
+                    return None
+                break
         else:
             fn = obj._name2fullname[parts[0]]
             if fn in system.allobjects:
@@ -305,6 +311,8 @@ class System(object):
         self.importstargraph = {}
         self.state = 'blank'
         self.packages = []
+        self.moresystems = []
+        self.urlprefix = ''
 
     def _push(self, cls, name, docstring):
         if self.current:
@@ -443,11 +451,16 @@ class System(object):
 
     def recordBasesAndSubclasses(self):
         for cls in self.objectsOfType(Class):
-            for n in cls.rawbases:
+            for n in cls.bases:
                 o = cls.parent.resolveDottedName(n)
                 cls.baseobjects.append(o)
                 if o:
                     o.subclasses.append(cls)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['moresystems']
+        return state
 
     def __setstate__(self, state):
         # this is so very, very evil.

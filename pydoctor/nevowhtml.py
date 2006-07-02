@@ -12,7 +12,7 @@ except:
     EPYTEXT = False
 
 def link(o):
-    return o.fullName()+'.html'
+    return o.system.urlprefix+o.fullName()+'.html'
 
 def sibpath(path, sibling):
     return os.path.join(os.path.dirname(os.path.abspath(path)), sibling)
@@ -532,8 +532,6 @@ class IndexPage(rend.Page):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
     def __init__(self, writer, system):
         self.system = system
-    def render_project(self, context, data):
-        return context.tag.clear()[self.system.options.projectname]
     def render_project(self, context, data):
         return context.tag.clear()[self.system.options.projectname]
     def render_onlyIfOneRoot(self, context, data):
