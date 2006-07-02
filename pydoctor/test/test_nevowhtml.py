@@ -6,8 +6,13 @@ import py
 if not nevowhtml.EPYTEXT:
     py.test.skip("tests assume epydoc is present")
 
+class System:
+    class options:
+        htmlusesorttable = False
+
 def getHTMLOf(ob):
     writer = nevowhtml.NevowWriter('')
+    writer.system = System
     f = cStringIO.StringIO()
     writer.writeDocsForOne(ob, f)
     return f.getvalue()
