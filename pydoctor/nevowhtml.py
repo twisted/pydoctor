@@ -441,16 +441,19 @@ def findRootClasses(system):
             for n, b in zip(cls.bases, cls.baseobjects):
                 if b is None:
                     roots.setdefault(n, []).append(cls)
+                elif b.system is not system:
+                    roots[b.fullName()] = b
         else:
             roots[cls.fullName()] = cls
     return sorted(roots.items())
 
-def subclassesFrom(cls):
+def subclassesFrom(hostsystem, cls):
     r = [tags.li[tags.a(name=cls.fullName()), taglink(cls), ' - ', doc2html(cls, summary=True)]]
-    if len(cls.subclasses) > 0:
+    scs = [sc for sc in cls.subclasses if sc.system is hostsystem]
+    if len(scs) > 0:
         ul = tags.ul()
-        for sc in sorted(cls.subclasses, key=lambda sc2:sc2.fullName()):
-            ul[subclassesFrom(sc)]
+        for sc in sorted(scs, key=lambda sc2:sc2.fullName()):
+            ul[subclassesFrom(hostsystem, sc)]
         r.append(ul)
     return r
 
@@ -466,13 +469,13 @@ class ClassIndexPage(rend.Page):
         t = context.tag
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
-                t[subclassesFrom(o)]
+                t[subclassesFrom(self.system, o)]
             else:
                 t[tags.li[b]]
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=lambda sc2:sc2.fullName()):
-                        ul[subclassesFrom(sc)]
+                        ul[subclassesFrom(self.system, sc)]
                     t[ul]
         return t
     def render_heading(self, context, data):
