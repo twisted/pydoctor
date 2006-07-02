@@ -573,9 +573,15 @@ class CommonPage(rend.Page):
         tag = context.tag()
         tag.clear()
         if self.ob.parent:
-            return tag['Part of ',
-                       tags.a(href=link(self.ob.parent))
-                       [self.ob.parent.fullName()]]
+            parent = self.ob.parent
+            parts = []
+            while parent.parent:
+                parts.append(tags.a(href=link(parent))[parent.name])
+                parts.append('.')
+                parent = parent.parent
+            parts.append(tags.a(href=link(parent))[parent.name])
+            parts.reverse()
+            return tag['Part of ', parts]
         else:
             return tag
 
