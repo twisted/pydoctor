@@ -463,6 +463,7 @@ class System(object):
         return state
 
     def __setstate__(self, state):
+        self.moresystems = []
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
         self.__dict__.update(state)
