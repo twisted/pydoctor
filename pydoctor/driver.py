@@ -86,6 +86,10 @@ def main(args):
                            "(default 'XXX')")
     parser.add_option('--html-viewsource-base', dest='htmlsourcebase',
                       help="")
+    parser.add_option('--html-use-sorttable', dest='htmlusesorttable',
+                      default=False,
+                      action="store_true",
+                      help="")
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
     options, args = parser.parse_args(args)
@@ -216,6 +220,7 @@ def main(args):
         print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
 
         writer = writerclass(options.htmloutput)
+        writer.system = system
         writer.prepOutputDirectory()
         writer.sourcebase = options.htmlsourcebase
 

@@ -360,6 +360,9 @@ class NevowWriter:
             os.mkdir(self.base)
         shutil.copyfile(sibpath(__file__, 'templates/apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
+        if self.system.options.htmlusesorttable:
+            shutil.copyfile(sibpath(__file__, 'templates/sorttable.js'),
+                            os.path.join(self.base, 'sorttable.js'))
 
     def writeIndividualFiles(self, obs, functionpages=False):
         for ob in obs:
@@ -606,6 +609,23 @@ class CommonPage(rend.Page):
             tag.clear()
         return tag
 
+    def has_lineno_col(self):
+        if not self.writer.system.options.htmlusesorttable:
+            return False
+        return isinstance(self.ob, (model.Class, model.Module))
+
+    def render_maybeheadings(self, context, data):
+        if not self.writer.system.options.htmlusesorttable:
+            return ()
+        return context.tag()
+        
+
+    def render_maybelinenohead(self, context, data):
+        if self.has_lineno_col():
+            return context.tag()
+        else:
+            return ()
+
     def data_bases(self, context, data):
         return []
 
@@ -615,6 +635,16 @@ class CommonPage(rend.Page):
     def render_childclass(self, context, data):
         return data.kind.lower()
 
+    def render_childline(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        if not self.has_lineno_col():
+            return ()
+        if hasattr(data, 'linenumber'):
+            return tag[data.linenumber]
+        else:
+            return tag
+    
     def render_childkind(self, context, data):
         tag = context.tag()
         tag.clear()
@@ -740,8 +770,10 @@ class ClassPage(FunctionParentMixin, CommonPage):
         return r
 
     def render_base_sequence(self, context, data):
+        header = context.tag.onePattern('header2')
         p = context.tag.patternGenerator('item2')
         tag = context.tag.clear()
+        tag[header]
         for d in data[0].orderedcontents:
             for b in (self.ob,) + data[1:]:
                 if d.name in b.contents:
@@ -774,6 +806,11 @@ class ClassPage(FunctionParentMixin, CommonPage):
 
     def render_basechildclass(self, context, data):
         return 'base' + data.kind.lower()
+
+    baseindex = 0
+    def render_basechildtableid(self, context, data):
+        self.baseindex += 1
+        return 'basetable' + str(self.baseindex)
 
     def render_basechildname(self, context, data):
         tag = context.tag()

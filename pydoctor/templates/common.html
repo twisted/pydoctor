@@ -5,6 +5,7 @@
   <head>
     <title>API docs for &ldquo;<nevow:invisible nevow:render="title">Something</nevow:invisible>&rdquo;</title>
     <link rel="stylesheet" type="text/css" href="apidocs.css"/>
+    <script nevow:render="maybeheadings" src="sorttable.js"></script>
   </head>
   <body>
     <h1 nevow:render="heading">Heading</h1>
@@ -19,8 +20,15 @@
       A docstring.
     </div>
     <nevow:invisible nevow:render="maybechildren">
-      <table class="children" nevow:render="sequence" nevow:data="children">
+      <table class="children sortable" nevow:render="sequence" id="table1" nevow:data="children">
+        <tr nevow:pattern="header" nevow:render="maybeheadings">
+          <th nevow:render="maybelinenohead">Line #</th>
+          <th>Kind</th>
+          <th>Name</th>
+          <th>Docs</th>
+        </tr>
         <tr nevow:pattern="item"><nevow:attr name="class" nevow:render="childclass" />
+          <td nevow:render="childline" class="lineno">Line #</td>
           <td nevow:render="childkind">Kind</td>
           <td nevow:render="childname">Name</td>
           <td nevow:render="childsummaryDoc">Summary</td>
@@ -32,8 +40,16 @@
         <p>
           Inherited from <span nevow:render="base_name">base class</span>:
         </p>
-        <table class="children" nevow:render="base_sequence">
+        <table class="children sortable" nevow:render="base_sequence">
+          <nevow:attr name="id" nevow:render="basechildtableid" />
+          <tr nevow:pattern="header2" nevow:render="maybeheadings">
+            <th nevow:render="maybelinenohead">Line #</th>
+            <th>Kind</th>
+            <th>Name</th>
+            <th>Docs</th>
+          </tr>
           <tr nevow:pattern="item2"><nevow:attr name="class" nevow:render="basechildclass" />
+            <td class="lineno" nevow:render="childline">Line #</td>
             <td nevow:render="childkind">Kind</td>
             <td nevow:render="basechildname">Name</td>
             <td nevow:render="childsummaryDoc">Summary</td>

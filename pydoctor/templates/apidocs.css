@@ -90,6 +90,14 @@ span.arg {
   margin: 1em;
 }
 
+th a { 
+  text-decoration: none; 
+}
+
+.lineno { 
+  text-align: center;
+}
+
 .functionBody { 
   margin-left: 2em;
   padding-top: 0.25em;
