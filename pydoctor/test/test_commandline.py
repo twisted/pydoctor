@@ -11,8 +11,8 @@ def geterrtext(*options):
     try:
         try:
             driver.main(options)
-        except Exception, e:
-            assert isinstance(e, SystemExit)
+        except SystemExit:
+            pass
         else:
             assert False, "did not fail"
     finally:
