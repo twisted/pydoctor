@@ -1,5 +1,6 @@
 import textwrap
-from pydoctor.twistedmodel import TwistedSystem
+from pydoctor.twisted import TwistedASTBuilder
+from pydoctor.test.test_astbuilder import fromText
 from pydoctor import model
 
 # we set up the same situation using both implements and
@@ -44,8 +45,7 @@ def test_classImplements():
 
 
 def implements_test(src):
-    mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
-    mod.system.finalStateComputations()
+    mod = fromText(src, 'zi', buildercls=TwistedASTBuilder)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
     foo = mod.contents['Foo']
@@ -77,8 +77,7 @@ def test_subclass_with_same_name():
     class A(A):
         pass
     '''
-    mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
-    mod.system.finalStateComputations()
+    mod = fromText(src, 'zi', buildercls=TwistedASTBuilder)
 
 def test_multiply_inheriting_interfaces():
     src = '''
@@ -90,6 +89,5 @@ def test_multiply_inheriting_interfaces():
     class Two: implements(ITwo)
     class Both(One, Two): pass
     '''
-    mod = model.fromText(textwrap.dedent(src), 'zi', TwistedSystem())
-    mod.system.finalStateComputations()
+    mod = fromText(src, 'zi', buildercls=TwistedASTBuilder)
     assert len(mod.contents['Both'].implements_indirectly) == 2

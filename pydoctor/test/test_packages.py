@@ -1,10 +1,11 @@
 import py
-from pydoctor import model
+from pydoctor import model, astbuilder
 
 def processPackage(packname):
     testpackage = py.magic.autopath().dirpath().join(packname)
     system = model.System()
-    model.processDirectory(system, testpackage.strpath)
+    builder = astbuilder.ASTBuilder(system)
+    builder.processDirectory(testpackage.strpath)
     return system
 
 def test_local_import():

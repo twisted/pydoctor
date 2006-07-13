@@ -40,6 +40,8 @@ def main(args):
                       help='Experimental.')
     parser.add_option('--system-class', dest='systemclass',
                       help="a dotted name of the class to use to make a system")
+    parser.add_option('--builder-class', dest='builderclass',
+                      help="a dotted name of the class to use")
     parser.add_option('--project-name', dest='projectname',
                       help="the project name (appears on index.html)")
     parser.add_option('--testing', dest='testing', action='store_true',
@@ -139,7 +141,6 @@ def main(args):
 
     system.options = options
 
-    
     system.urlprefix = ''
     if options.moresystems:
         moresystems = []
