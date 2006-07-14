@@ -1,12 +1,13 @@
 from compiler.visitor import walk
 from compiler.transformer import parse
-from pydoctor import model
+from pydoctor import model, astbuilder
 from pydoctor.test.test_packages import processPackage
 import py
 
 def test_simple():
     system = model.System()
-    isf = model.ImportStarFinder(system, 'bar')
+    builder = astbuilder.ASTBuilder(system)
+    isf = astbuilder.ImportStarFinder(builder, 'bar')
     walk(parse("from foo import *"), isf)
     assert len(system.importstargraph) == 1
     edge, = system.importstargraph.iteritems()

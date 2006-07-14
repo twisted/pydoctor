@@ -183,7 +183,7 @@ def main(args):
                 msg = 'system is in state %r, which is too late to add new code'
                 error(msg, system.state)
             print 'adding directory', path
-            model.preprocessDirectory(system, path)
+            builder.preprocessDirectory(path)
             system.packages.append(path)
 
     # step 3: move the system to the desired state

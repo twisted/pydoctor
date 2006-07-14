@@ -1,5 +1,6 @@
 from pydoctor import nevowhtml, model
-import cStringIO, textwrap
+from pydoctor.test.test_astbuilder import fromText
+import cStringIO
 
 import py
 
@@ -22,6 +23,6 @@ def test_simple():
     def f():
         """This is a docstring."""
     '''
-    mod = model.fromText(textwrap.dedent(src))
+    mod = fromText(src)
     v = getHTMLOf(mod.contents['f'])
     assert 'This is a docstring' in v

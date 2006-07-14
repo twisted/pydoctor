@@ -18,49 +18,6 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly.append(
             cls.dottedNameToFullName(ast_pp.pp(arg)))
 
-
-class TwistedModuleVisitor(model.ModuleVistor):
-    def visitCallFunc(self, node):
-        current = self.system.current
-        str_base = ast_pp.pp(node.node)
-        base = self.system.current.dottedNameToFullName(str_base)
-        if base in ['zope.interface.implements', 'zope.interface.implementsOnly']:
-            if not isinstance(current, model.Class):
-                self.default(node)
-                return
-            addInterfaceInfoToClass(current, node.args,
-                                    base == 'zope.interface.implementsOnly')
-        elif base in ['zope.interface.classImplements',
-                      'zope.interface.classImplementsOnly']:
-            clsname = current.dottedNameToFullName(ast_pp.pp(node.args[0]))
-            if clsname not in self.system.allobjects:
-                self.system.warning("classImplements on unknown class", clsname)
-                return
-            cls = self.system.allobjects[clsname]
-            addInterfaceInfoToClass(cls, node.args[1:],
-                                    base == 'zope.interface.classImplementsOnly')
-        elif base in ['twisted.python.util.moduleMovedForSplit']:
-            # XXX this is rather fragile...
-            origModuleName, newModuleName, moduleDesc, \
-                            projectName, projectURL, globDict = node.args
-            moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
-            projectName = ast_pp.pp(projectName)[1:-1]
-            projectURL = ast_pp.pp(projectURL)[1:-1]
-            modoc = """
-%(moduleDesc)s
-
-This module is DEPRECATED. It has been split off into a third party
-package, Twisted %(projectName)s. Please see %(projectURL)s.
-
-This is just a place-holder that imports from the third-party %(projectName)s
-package for backwards compatibility. To use it, you need to install
-that package.
-""" % {'moduleDesc': moduleDesc,
-       'projectName': projectName,
-       'projectURL': projectURL}
-            self.system.current.docstring = modoc
-
-
 class TwistedModuleVisitor(astbuilder.ModuleVistor):
     def visitCallFunc(self, node):
         current = self.builder.current
@@ -76,7 +33,7 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
                       'zope.interface.classImplementsOnly']:
             clsname = current.dottedNameToFullName(ast_pp.pp(node.args[0]))
             if clsname not in self.system.allobjects:
-                self.system.warning("classImplements on unknown class", clsname)
+                self.builder.warning("classImplements on unknown class", clsname)
                 return
             cls = self.system.allobjects[clsname]
             addInterfaceInfoToClass(cls, node.args[1:],
@@ -133,7 +90,7 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                 if interface in self.system.allobjects and '.test.' not in interface:
                     interface_ob = self.system.allobjects[interface]
                     if interface_ob.implementedby_directly is None:
-                        self.system.warning("probable interface not marked as such",
+                        self.warning("probable interface not marked as such",
                                      interface_ob.fullName())
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
@@ -142,7 +99,7 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                 if interface in self.system.allobjects and '.test.' not in interface:
                     interface_ob = self.system.allobjects[interface]
                     if interface_ob.implementedby_indirectly is None:
-                        self.system.warning("probable interface not marked as such",
+                        self.warning("probable interface not marked as such",
                                      interface_ob.fullName())
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
