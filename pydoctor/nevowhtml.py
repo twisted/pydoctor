@@ -122,7 +122,7 @@ class Field(object):
 class FieldHandler(object):
     def __init__(self, obj):
         self.obj = obj
-        
+
         self.parameter_descs = []
         self.ivar_descs = []
         self.cvar_descs = []
@@ -142,7 +142,7 @@ class FieldHandler(object):
             print 'XXX'
         self.return_desc.body = field.body
     handle_returns = handle_return
-    
+
     def handle_returntype(self, field):
         if not self.return_desc:
             self.return_desc = FieldDesc()
@@ -171,7 +171,7 @@ class FieldHandler(object):
             d.name = field.arg
             d.body = field.body
             desc_list.append(d)
-    
+
     def handle_type(self, field):
         obj = self.obj
         if isinstance(obj, model.Function):
@@ -212,7 +212,7 @@ class FieldHandler(object):
     def handle_raises(self, field):
         self.add_info(self.raise_descs, field)
     handle_raise = handle_raises
-    
+
     def handle_seealso(self, field):
         self.seealsos.append(field)
     handle_see = handle_seealso
@@ -258,7 +258,7 @@ class FieldHandler(object):
         for fieldlist in unknownsinorder:
             label = "Unknown Field: " + fieldlist[0].kind
             r.append(format_desc_list(label, fieldlist, label))
-            
+
         return tags.table(class_='fieldTable')[r]
 
 errcount = 0
@@ -272,7 +272,7 @@ def doc2html(obj, summary=False):
         if summary:
             return tags.span(class_="undocumented")["Undocumented"]
         else:
-            return tags.div(class_="undocumented")["Undocumented"]            
+            return tags.div(class_="undocumented")["Undocumented"]
     if summary:
         for line in doc.split('\n'):
             if line.strip():
@@ -304,7 +304,7 @@ def doc2html(obj, summary=False):
     if summary:
         s = tags.span()[tags.raw(crap)]
     else:
-        s = tags.div()[tags.raw(crap)]        
+        s = tags.div()[tags.raw(crap)]
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
@@ -354,7 +354,7 @@ def signature(argspec):
 
 class NevowWriter:
     sourcebase = None
-    
+
     def __init__(self, filebase):
         self.base = filebase
 
@@ -492,7 +492,7 @@ class NameIndexPage(rend.Page):
         for ob in self.system.orderedallobjects:
             used_initials[ob.name[0].upper()] = True
         self.used_initials = sorted(used_initials)
-        
+
     def render_title(self, context, data):
         return context.tag.clear()["Index Of Names"]
     def render_heading(self, context, data):
@@ -630,7 +630,7 @@ class CommonPage(rend.Page):
         if not self.writer.system.options.htmlusesorttable:
             return ()
         return context.tag()
-        
+
 
     def render_maybelinenohead(self, context, data):
         if self.has_lineno_col():
@@ -656,7 +656,7 @@ class CommonPage(rend.Page):
             return tag[data.linenumber]
         else:
             return tag
-    
+
     def render_childkind(self, context, data):
         tag = context.tag()
         tag.clear()

@@ -331,9 +331,9 @@ class ASTBuilder(object):
         self.findImportStars()
         self.extractDocstrings()
         self.finalStateComputations()
-        
+
 model.System.defaultBuilder = ASTBuilder
-    
+
 
 class ImportStarFinder(object):
     def __init__(self, builder, modfullname):

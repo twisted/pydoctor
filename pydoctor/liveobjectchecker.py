@@ -43,4 +43,3 @@ def liveCheck(system, builder=None):
         sys.path[:] = savepath
         warnings.filters[:] = savefilters
     system.state = 'livechecked'
-                                   

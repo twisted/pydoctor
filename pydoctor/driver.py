@@ -72,9 +72,9 @@ def main(args):
                       action='store_true',
                       default=False,
                       help="Only generate the summary pages.")
-    parser.add_option('--html-write-function-pages', dest='htmlfunctionpages', 
+    parser.add_option('--html-write-function-pages', dest='htmlfunctionpages',
                       default=False,
-                      action='store_true', 
+                      action='store_true',
                       help="Make individual HTML files for every function and "
                       "method. They're not linked to in any pydoctor-"
                       "generated HTML, but they can be useful for third-party "
