@@ -164,10 +164,12 @@ states = [
     'importstarred',
     'parsed',
     'finalized',
+    'livechecked',
     ]
 
-
 class System(object):
+    # not done here for circularity reasons:
+    #defaultBuilder = astbuilder.ASTBuilder
 
     def __init__(self):
         self.allobjects = {}

@@ -332,6 +332,7 @@ class ASTBuilder(object):
         self.extractDocstrings()
         self.finalStateComputations()
         
+model.System.defaultBuilder = ASTBuilder
     
 
 class ImportStarFinder(object):

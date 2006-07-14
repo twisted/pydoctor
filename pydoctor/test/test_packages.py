@@ -5,6 +5,7 @@ def processPackage(packname):
     testpackage = py.magic.autopath().dirpath().join(packname)
     system = model.System()
     builder = astbuilder.ASTBuilder(system)
+    system.packages.append(testpackage.strpath)
     builder.processDirectory(testpackage.strpath)
     return system
 

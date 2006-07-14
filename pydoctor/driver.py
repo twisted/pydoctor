@@ -1,4 +1,4 @@
-from pydoctor import model, html, astbuilder
+from pydoctor import model, html, astbuilder, liveobjectchecker
 import sys, os
 
 def error(msg, *args):
@@ -202,7 +202,8 @@ def main(args):
     funcs = [None,
              builder.findImportStars,
              builder.extractDocstrings,
-             builder.finalStateComputations]
+             builder.finalStateComputations,
+             lambda : liveobjectchecker.liveCheck(system, builder)]
 
     for i in range(curstateindex, finalstateindex):
         f = funcs[i]
@@ -246,7 +247,7 @@ def main(args):
                 subjects.append(system.allobjects[fn])
         elif options.htmlsummarypages:
             writer.writeModuleIndex(system)
-            subjects = []            
+            subjects = []
         else:
             writer.writeModuleIndex(system)
             subjects = system.rootobjects
