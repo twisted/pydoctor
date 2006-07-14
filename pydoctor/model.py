@@ -441,6 +441,14 @@ class System(object):
         print fn, type, detail
         self.warnings.setdefault(type, []).append((fn, detail))
 
+    def _warning(self, current, type, detail):
+        if current is not None:
+            fn = current.fullName()
+        else:
+            fn = '<None>'
+        print fn, type, detail
+        self.warnings.setdefault(type, []).append((fn, detail))
+
     def objectsOfType(self, cls):
         for o in self.orderedallobjects:
             if isinstance(o, cls):

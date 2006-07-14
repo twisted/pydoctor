@@ -55,7 +55,7 @@ class ModuleVistor(object):
         name2fullname = self.builder.current._name2fullname
         for fromname, asname in node.names:
             if fromname == '*':
-                self.system.warning("import *", modname)
+                self.builder.warning("import *", modname)
                 if modname not in self.system.allobjects:
                     return
                 mod = self.system.allobjects[modname]
@@ -113,7 +113,7 @@ class ModuleVistor(object):
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception, e:
-                self.system.warning("unparseable default", "%s: %s %r"%(e.__class__.__name__,
+                self.builder.warning("unparseable default", "%s: %s %r"%(e.__class__.__name__,
                                                                        e, default))
                 defaults.append('???')
         # argh, convert unpacked-arguments from tuples to lists,
@@ -185,7 +185,7 @@ class ASTBuilder(object):
         prev = self.system.allobjects[obj.fullName()]
         prev.name = obj.name + ' ' + str(i)
         self.system.allobjects[prev.fullName()] = prev
-        self.system.warning("duplicate", self.system.allobjects[obj.fullName()])
+        self.warning("duplicate", self.system.allobjects[obj.fullName()])
         self.system.allobjects[obj.fullName()] = obj
         return obj
 
@@ -226,36 +226,8 @@ class ASTBuilder(object):
     def popPackage(self):
         self._pop(self.Package)
 
-    def report(self):
-        for o in self.rootobjects:
-            self._report(o, '')
-
-    def _report(self, o, indent):
-        print indent, o
-        for o2 in o.orderedcontents:
-            self._report(o2, indent+'  ')
-
-    def resolveAlias(self, n):
-        if '.' not in n:
-            return n
-        mod, clsname = n.split('.')
-        if not mod or mod not in self.system.allobjects:
-            return n
-        m = self.system.allobjects[mod]
-        if not isinstance(m, model.Module):
-            return n
-        if clsname in m._name2fullname:
-            newname = m.name2fullname(clsname)
-            if newname not in self.system.allobjects:
-                return self.resolveAlias(newname)
-            else:
-                return newname
-
-    def resolveAliases(self):
-        for ob in self.system.objectsOfType(model.Class):
-            for i, b in enumerate(ob.bases):
-                if b not in self.system.allobjects:
-                    ob.bases[i] = self.resolveAlias(b)
+    def warning(self, type, detail):
+        self.system._warning(self.current, type, detail)
 
     def _finalStateComputations(self):
         self.recordBasesAndSubclasses()
@@ -292,7 +264,7 @@ class ASTBuilder(object):
             c = c.parent
         if c is not None:
             if givewarning:
-                self.system.warning("local import", modname)
+                self.warning("local import", modname)
             return c.contents[prefix].fullName() + suffix
         else:
             return prefix + suffix
@@ -326,7 +298,7 @@ class ASTBuilder(object):
             try:
                 ast = transformer.parseFile(mod.filepath)
             except (SyntaxError, ValueError):
-                self.system.warning("cannot parse", mod.filepath)
+                self.warning("cannot parse", mod.filepath)
             visitor.walk(ast, isf)
             self.pop(mod.parent)
         self.system.state = 'importstarred'
@@ -343,7 +315,7 @@ class ASTBuilder(object):
             try:
                 ast = transformer.parseFile(mod.filepath)
             except (SyntaxError, ValueError):
-                self.system.warning("cannot parse", mod.filepath)
+                self.warning("cannot parse", mod.filepath)
             self.processModuleAST(ast, mod.name)
             mod.processed = True
             self.pop(mod.parent)

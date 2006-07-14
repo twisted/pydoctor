@@ -1,4 +1,4 @@
-from pydoctor import model, html
+from pydoctor import model, html, astbuilder
 import sys, os
 
 def error(msg, *args):
@@ -150,6 +150,20 @@ def main(args):
             moresystems[-1].urlprefix = prefix
         system.moresystems = moresystems
 
+    # step 1.25: make a builder
+
+    if options.builderclass:
+        builderclass = findClassFromDottedName(options.builderclass, '--builder-class')
+        if not issubclass(builderclass, astbuilder.ASTBuilder):
+            msg = "%s is not a subclass of astbuilder.ASTBuilder"
+            error(msg, builderclass)
+    elif hasattr(system, 'defaultBuilder'):
+        builderclass = system.defaultBuilder
+    else:
+        builderclass = astbuilder.ASTBuilder
+
+    builder = builderclass(system)
+
     # step 1.5: check that we're actually going to accomplish something here
 
     if not options.outputpickle and not options.makehtml \
@@ -186,15 +200,16 @@ def main(args):
         error(msg, options.targetstate)
 
     funcs = [None,
-             model.findImportStars,
-             model.extractDocstrings,
-             model.finalStateComputations]
+             builder.findImportStars,
+             builder.extractDocstrings,
+             builder.finalStateComputations]
 
     for i in range(curstateindex, finalstateindex):
         f = funcs[i]
-        if not (f == model.findImportStars and not options.findimportstar):
-            print f.__name__
-            f(system)
+        if f == builder.findImportStars and not options.findimportstar:
+            continue
+        print f.__name__
+        f()
 
     if system.state != options.targetstate:
         msg = "failed to advance state to %r (this is a bug)"
