@@ -631,7 +631,6 @@ class CommonPage(rend.Page):
             return ()
         return context.tag()
 
-
     def render_maybelinenohead(self, context, data):
         if self.has_lineno_col():
             return context.tag()
@@ -653,7 +652,14 @@ class CommonPage(rend.Page):
         if not self.has_lineno_col():
             return ()
         if hasattr(data, 'linenumber'):
-            return tag[data.linenumber]
+            if not self.writer.sourcebase:
+                return tag[data.linenumber]
+            mod = self.ob
+            while not isinstance(mod, model.Module):
+                mod = mod.parent
+            sourceHref = '%s/%s.py'%(self.writer.sourcebase, mod.fullName().replace('.', '/'),)
+            sourceHref += '#L'+str(data.linenumber)
+            return tag[tags.a(href=sourceHref)[data.linenumber]]
         else:
             return tag
 
