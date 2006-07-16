@@ -41,6 +41,10 @@ div.toplevel p {
     background: lightgreen;
 }
 
+.attribute {
+    background: #ddbbff;
+}
+
 .basefunction {
     background: #cceecc;
 }

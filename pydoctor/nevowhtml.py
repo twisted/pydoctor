@@ -1,4 +1,4 @@
-from pydoctor import model
+from pydoctor import model, twisted
 
 from nevow import rend, loaders, tags
 
@@ -830,6 +830,11 @@ class ClassPage(FunctionParentMixin, CommonPage):
         return tag[tags.a(href=link(data.parent)+'#'+data.fullName())[data.name]]
 
 class TwistedClassPage(ClassPage):
+    def data_children(self, context, data):
+        return [o for o in self.ob.orderedcontents
+                if isinstance(o, model.Function) or isinstance(o, twisted.Attribute)]
+    #data_methods = data_children
+
     def render_extras(self, context, data):
         r = super(TwistedClassPage, self).render_extras(context, data)
         system = self.ob.system

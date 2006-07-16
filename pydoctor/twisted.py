@@ -1,4 +1,5 @@
 from pydoctor import model, ast_pp, astbuilder
+from compiler import ast
 
 class TwistedClass(model.Class):
     isinterface = False
@@ -10,6 +11,10 @@ class TwistedClass(model.Class):
         self.implements_directly = [] # [name of interface]
         self.implements_indirectly = [] # [(interface name, directly implemented)]
 
+class Attribute(model.Documentable):
+    kind = "Attribute"
+    pass
+
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly
     if implementsOnly:
@@ -18,34 +23,66 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly.append(
             cls.dottedNameToFullName(ast_pp.pp(arg)))
 
+    
+
 class TwistedModuleVisitor(astbuilder.ModuleVistor):
-    def visitCallFunc(self, node):
-        current = self.builder.current
+    def funcNameFromCall(self, node):
         str_base = ast_pp.pp(node.node)
-        base = current.dottedNameToFullName(str_base)
-        if base in ['zope.interface.implements', 'zope.interface.implementsOnly']:
-            if not isinstance(current, model.Class):
-                self.default(node)
-                return
-            addInterfaceInfoToClass(current, node.args,
-                                    base == 'zope.interface.implementsOnly')
-        elif base in ['zope.interface.classImplements',
-                      'zope.interface.classImplementsOnly']:
-            clsname = current.dottedNameToFullName(ast_pp.pp(node.args[0]))
-            if clsname not in self.system.allobjects:
-                self.builder.warning("classImplements on unknown class", clsname)
-                return
-            cls = self.system.allobjects[clsname]
-            addInterfaceInfoToClass(cls, node.args[1:],
-                                    base == 'zope.interface.classImplementsOnly')
-        elif base in ['twisted.python.util.moduleMovedForSplit']:
-            # XXX this is rather fragile...
-            origModuleName, newModuleName, moduleDesc, \
-                            projectName, projectURL, globDict = node.args
-            moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
-            projectName = ast_pp.pp(projectName)[1:-1]
-            projectURL = ast_pp.pp(projectURL)[1:-1]
-            modoc = """
+        return self.builder.current.dottedNameToFullName(str_base)
+
+    def visitAssign(self, node):
+        # i would like pattern matching in python please
+        # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
+        #     ...
+        if len(node.nodes) != 1 or \
+               not isinstance(node.nodes[0], ast.AssName) or \
+               not isinstance(self.builder.current, model.Class) or \
+               not isinstance(node.expr, ast.CallFunc) or \
+               self.funcNameFromCall(node.expr) != 'zope.interface.Attribute':
+            self.default(node)
+            return
+        args = node.expr.args
+        if len(args) != 1 or \
+               not isinstance(args[0], ast.Const) or \
+               not isinstance(args[0].value, str):
+            self.default(node)
+            return
+        attr = self.builder._push(Attribute, node.nodes[0].name, args[0].value)
+        attr.linenumber = node.lineno
+        self.builder._pop(Attribute)
+        
+    def visitCallFunc(self, node):
+        base = self.funcNameFromCall(node)
+        meth = getattr(self, "visitCallFunc_" + base.replace('.', '_'), None)
+        if meth is not None:
+            meth(base, node)
+
+    def visitCallFunc_zope_interface_implements(self, funcName, node):
+        if not isinstance(self.builder.current, model.Class):
+            self.default(node)
+            return
+        addInterfaceInfoToClass(self.builder.current, node.args,
+                                funcName == 'zope.interface.implementsOnly')
+    visitCallFunc_zope_interface_implementsOnly = visitCallFunc_zope_interface_implements
+        
+    def visitCallFunc_zope_interface_classImplements(self, funcName, node):
+        clsname = self.builder.current.dottedNameToFullName(ast_pp.pp(node.args[0]))
+        if clsname not in self.system.allobjects:
+            self.builder.warning("classImplements on unknown class", clsname)
+            return
+        cls = self.system.allobjects[clsname]
+        addInterfaceInfoToClass(cls, node.args[1:],
+                                funcName == 'zope.interface.classImplementsOnly')
+    visitCallFunc_zope_interface_classImplementsOnly = visitCallFunc_zope_interface_classImplements
+    
+    def visitCallFunc_twisted_python_util_moduleMovedForSplit(self, funcName, node):
+        # XXX this is rather fragile...
+        origModuleName, newModuleName, moduleDesc, \
+                        projectName, projectURL, globDict = node.args
+        moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
+        projectName = ast_pp.pp(projectName)[1:-1]
+        projectURL = ast_pp.pp(projectURL)[1:-1]
+        modoc = """
 %(moduleDesc)s
 
 This module is DEPRECATED. It has been split off into a third party
@@ -57,8 +94,9 @@ that package.
 """ % {'moduleDesc': moduleDesc,
        'projectName': projectName,
        'projectURL': projectURL}
-            current.docstring = modoc
-
+        self.builder.current.docstring = modoc
+        
+        
 
 
 class TwistedASTBuilder(astbuilder.ASTBuilder):

@@ -91,3 +91,12 @@ def test_multiply_inheriting_interfaces():
     '''
     mod = fromText(src, 'zi', buildercls=TwistedASTBuilder)
     assert len(mod.contents['Both'].implements_indirectly) == 2
+
+def test_attribute():
+    src = '''
+    import zope.interface as zi
+    class C:
+        attr = zi.Attribute("docstring")
+    '''
+    mod = fromText(src, buildercls=TwistedASTBuilder)
+    assert len(mod.contents['C'].contents) == 1
