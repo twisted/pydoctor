@@ -379,7 +379,7 @@ class NevowWriter:
             f.close()
 
     def writeDocsFor(self, ob, functionpages):
-        isfunc = isinstance(ob, model.Function)
+        isfunc = isinstance(ob, (model.Function, twisted.Attribute)) # cough
         if (isfunc and functionpages) or not isfunc:
             f = open(os.path.join(self.base, link(ob)), 'w')
             self.writeDocsForOne(ob, f)
@@ -692,7 +692,7 @@ class PackagePage(CommonPage):
                       key=lambda o2:o2.fullName())
 
 class FunctionParentMixin(object):
-    def render_sequence3(self, context, data):
+    def render_childlist(self, context, data):
         function = context.tag.patternGenerator('function')
         attribute = context.tag.patternGenerator('attribute')
         tag = context.tag().clear()

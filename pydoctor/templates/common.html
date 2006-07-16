@@ -57,7 +57,7 @@
         </table>
       </nevow:invisible>
     </nevow:invisible>
-    <nevow:invisible nevow:render="sequence3" nevow:data="methods">
+    <nevow:invisible nevow:render="childlist" nevow:data="methods">
       <div class="function" nevow:pattern="function">
         <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
         <div class="functionHeader">
@@ -70,7 +70,7 @@
       <div class="function" nevow:pattern="attribute">
         <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
         <div class="functionHeader">
-          <span nevow:render="attribute">attribute</span> = ...
+          <span nevow:render="attribute">attribute</span> =
         </div>
         <div class="functionBody" nevow:render="functionBody">
           Docstring.
