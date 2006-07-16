@@ -637,6 +637,9 @@ class CommonPage(rend.Page):
         else:
             return ()
 
+    def render_sequence3(self, context, data):
+        return context.tag().clear()
+
     def data_bases(self, context, data):
         return []
 
@@ -689,10 +692,26 @@ class PackagePage(CommonPage):
                       key=lambda o2:o2.fullName())
 
 class FunctionParentMixin(object):
+    def render_sequence3(self, context, data):
+        function = context.tag.patternGenerator('function')
+        attribute = context.tag.patternGenerator('attribute')
+        tag = context.tag().clear()
+        for d in data:
+            if isinstance(d, model.Function):
+                tag[function(data=d)]
+            else:
+                tag[attribute(data=d)]
+        return tag
+        
     def render_functionName(self, context, data):
         tag = context.tag()
         tag.clear()
         return tag[data.name, '(', signature(data.argspec), '):']
+
+    def render_attribute(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[data.name]
 
     def render_childname(self, context, data):
         if not isinstance(data, model.Function):
@@ -839,7 +858,7 @@ class TwistedClassPage(ClassPage):
     def data_children(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if isinstance(o, model.Function) or isinstance(o, twisted.Attribute)]
-    #data_methods = data_children
+    data_methods = data_children
 
     def render_extras(self, context, data):
         r = super(TwistedClassPage, self).render_extras(context, data)
