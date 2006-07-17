@@ -1,8 +1,10 @@
 from pydoctor import model, ast_pp, astbuilder
-from compiler import ast
+from compiler import ast, visitor, transformer
+
 
 class TwistedClass(model.Class):
     isinterface = False
+    isinterfaceclass = False
     implementsOnly = False
     implementedby_directly = None # [objects], when isinterface == True
     implementedby_indirectly = None # [objects], when isinterface == True
@@ -97,6 +99,55 @@ that package.
         self.builder.current.docstring = modoc
         
         
+def markInterfaceClass(cls):
+    cls.isinterfaceclass = True
+    for sc in cls.subclasses:
+        markInterfaceClass(sc)
+
+class InterfaceClassFinder(object):
+    funcNameFromCall = TwistedModuleVisitor.funcNameFromCall.im_func
+    def __init__(self, builder, modfullname):
+        self.builder = builder
+        self.system = builder.system
+        self.modfullname = modfullname
+        self.newinterfaces = []
+
+    def visitAssign(self, node):
+        if len(node.nodes) != 1 or \
+               not isinstance(node.nodes[0], ast.AssName) or \
+               not isinstance(self.builder.current, model.Module) or \
+               not isinstance(node.expr, ast.CallFunc):
+            return
+        funcName = self.funcNameFromCall(node.expr)
+        name = node.nodes[0].name
+        args = node.expr.args
+        if funcName in self.system.allobjects:
+            ob = self.system.allobjects[funcName]
+            if isinstance(ob, model.Class) and ob.isinterfaceclass:
+                interface = self.builder.pushClass(name, "...")
+                print 'new interface', interface
+                interface.isinterface = True
+                interface.linenumber = node.lineno
+                interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
+                self.newinterfaces.append(interface)
+                self.builder.popClass()
+
+    def visitFunction(self, node):
+        return
+
+    def visitClass(self, node):
+        if not isinstance(self.builder.current, model.Module):
+            return
+        mod = self.builder.current
+        cls = mod.contents[node.name]
+        for i, (bn, bo) in enumerate(zip(cls.bases, cls.baseobjects)):
+            if bo is not None:
+                continue
+            if bn in mod.contents:
+                cls.baseobjects[i] = mod.contents[bn]
+                cls.bases[i] = mod.fullName() + '.' + bn
+                
+        
 
 
 class TwistedASTBuilder(astbuilder.ASTBuilder):
@@ -104,16 +155,37 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
     ModuleVistor = TwistedModuleVisitor
 
     def _finalStateComputations(self):
-        tpc = 'twisted.python.components'
-        if tpc in self.system.allobjects:
-            self.push(self.system.allobjects[tpc])
-            self.pushClass('Interface', None)
-            self.popClass()
-            self.pop(self.system.allobjects[tpc])
         super(TwistedASTBuilder, self)._finalStateComputations()
+        for cls in self.system.objectsOfType(model.Class):
+            if 'zope.interface.interface.InterfaceClass' in cls.bases:
+                markInterfaceClass(cls)
 
-        if tpc in self.system.allobjects:
-            self.markInterface(self.system.allobjects[tpc+'.Interface'])
+        newinterfaces = []
+        for mod in self.system.objectsOfType(model.Module):
+            if not hasattr(mod, 'filepath'):
+                continue
+            self.push(mod)
+            icf = InterfaceClassFinder(self, mod.fullName())
+            try:
+                ast = transformer.parseFile(mod.filepath)
+            except (SyntaxError, ValueError):
+                self.warning("cannot parse", mod.filepath)
+            visitor.walk(ast, icf)
+            self.pop(mod)
+            newinterfaces.extend(icf.newinterfaces)
+
+        newinterfacemap = dict([(i.fullName(), i) for i in newinterfaces])
+        for cls in self.system.objectsOfType(model.Class):
+            for i, b in enumerate(cls.bases):
+                print cls, b
+                if b in newinterfacemap:
+                    assert (cls.baseobjects[i] is None or
+                            cls.baseobjects[i] is newinterfacemap[b])
+                    cls.baseobjects[i] = newinterfacemap[b]
+                    newinterfacemap[b].subclasses.append(cls)
+
+        for newi in newinterfaces:
+            self.markInterface(newi)
         for cls in self.system.objectsOfType(model.Class):
             if 'zope.interface.Interface' in cls.bases:
                 self.markInterface(cls)

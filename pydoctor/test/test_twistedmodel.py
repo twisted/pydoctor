@@ -1,6 +1,7 @@
 import textwrap
 from pydoctor.twisted import TwistedASTBuilder
 from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_packages import processPackage
 from pydoctor import model
 
 # we set up the same situation using both implements and
@@ -100,3 +101,17 @@ def test_attribute():
     '''
     mod = fromText(src, buildercls=TwistedASTBuilder)
     assert len(mod.contents['C'].contents) == 1
+
+def test_interfaceclass():
+    src = '''
+    import zope.interface as zi
+    class MyInterfaceClass(zi.interface.InterfaceClass):
+        pass
+    MyInterface = MyInterfaceClass("MyInterface")
+    class AnInterface(MyInterface):
+        pass
+    '''
+    system = processPackage('interfaceclass', buildercls=TwistedASTBuilder)
+    mod = system.allobjects['interfaceclass.mod']
+    assert mod.contents['AnInterface'].isinterface
+    
