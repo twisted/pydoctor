@@ -36,6 +36,13 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         # i would like pattern matching in python please
         # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
         #     ...
+        if isinstance(self.builder.current, model.Module) and \
+               ast_pp.pp(node) == 'Interface = interface.Interface\n':
+            # warner!!!
+            
+            n2fn = self.builder.current._name2fullname
+            n2fn['Interface'] = 'zope.interface.Interface'
+            return
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
                not isinstance(self.builder.current, model.Class) or \
@@ -177,7 +184,6 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
         newinterfacemap = dict([(i.fullName(), i) for i in newinterfaces])
         for cls in self.system.objectsOfType(model.Class):
             for i, b in enumerate(cls.bases):
-                print cls, b
                 if b in newinterfacemap:
                     assert (cls.baseobjects[i] is None or
                             cls.baseobjects[i] is newinterfacemap[b])

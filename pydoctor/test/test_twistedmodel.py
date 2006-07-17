@@ -114,4 +114,13 @@ def test_interfaceclass():
     system = processPackage('interfaceclass', buildercls=TwistedASTBuilder)
     mod = system.allobjects['interfaceclass.mod']
     assert mod.contents['AnInterface'].isinterface
-    
+
+def test_warnerproofing():
+    src = '''
+    from zope import interface
+    Interface = interface.Interface
+    class IMyInterface(Interface):
+        pass
+    '''
+    mod = fromText(src, buildercls=TwistedASTBuilder)
+    assert mod.contents['IMyInterface'].isinterface
