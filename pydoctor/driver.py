@@ -58,6 +58,9 @@ def main(args):
                       default=[],
                       help='Add a package to the system.  Can be repeated '
                            'to add more than one package.')
+    parser.add_option('--prepend-package',
+                      action='store', dest='prependedpackage',
+                      help='')
     parser.add_option('--no-find-import-star',
                       action='store_false', dest='findimportstar',
                       default=True,
@@ -175,6 +178,9 @@ def main(args):
     # step 2: add any packages
 
     if options.packages:
+        if options.prependedpackage:
+            for m in options.prependedpackage.split('.'):
+                builder.pushPackage(m, None)
         for path in options.packages:
             path = os.path.normpath(path)
             if path in system.packages:
@@ -185,6 +191,9 @@ def main(args):
             print 'adding directory', path
             builder.preprocessDirectory(path)
             system.packages.append(path)
+        if options.prependedpackage:
+            for m in options.prependedpackage.split('.'):
+                builder.popPackage()
 
     # step 3: move the system to the desired state
 
