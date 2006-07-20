@@ -39,43 +39,53 @@ class Documentable(object):
         else:
             return self.parent.name2fullname(name)
 
-    def resolveDottedName(self, dottedname, verbose=False):
-        parts = dottedname.split('.')
-        obj = self
+    def _resolveName(self, name, verbose):
         system = self.system
-        while parts[0] not in obj._name2fullname:
+        obj = self
+        while obj:
+            if name in obj.contents:
+                return obj.contents[name]
+            elif name in obj._name2fullname:
+                fn = obj._name2fullname[name]
+                o = system.allobjects.get(fn)
+                if o is None and verbose > 0:
+                    print "from %r, %r resolves to %r which isn't present in the system"%(
+                        self.fullName(), name, fn)
+                return o
             obj = obj.parent
-            if obj is None:
-                if parts[0] in system.allobjects:
-                    obj = system.allobjects[parts[0]]
-                    break
-                for othersys in system.moresystems:
-                    if parts[0] in othersys.allobjects:
-                        obj = othersys.allobjects[parts[0]]
-                        break
-                else:
-                    if verbose:
-                        print "1 didn't find %r from %r"%(dottedname,
-                                                      self.fullName())
-                    return None
-                break
-        else:
-            fn = obj._name2fullname[parts[0]]
-            if fn in system.allobjects:
-                obj = system.allobjects[fn]
-            else:
-                if verbose:
-                    print "1.5 didn't find %r from %r"%(dottedname,
-                                                        self.fullName())
-                return None
+        # if that didn't find anything, look inside modules
+        obj = self
+        while obj:
+            for n, fn in obj._name2fullname.iteritems():
+                o2 = system.allobjects.get(fn)
+                if o2 and name in o2.contents:
+                    return o2.contents[name]
+            obj = obj.parent
+        if name in system.allobjects:
+            return system.allobjects[name]
+        for othersys in system.moresystems:
+            if name in othersys.allobjects:
+                return othersys.allobjects[name]
+        if verbose > 0:
+            print "failed to find %r from %r"%(name, self.fullName())
+        return None
+
+    def resolveDottedName(self, dottedname, verbose=None):
+        if verbose is None:
+            verbose = self.system.options.verbosity
+        parts = dottedname.split('.')
+        obj = self._resolveName(parts[0], verbose)
+        if obj is None:
+            return obj
+        system = self.system
         for p in parts[1:]:
             if p not in obj.contents:
-                if verbose:
+                if verbose > 0:
                     print "2 didn't find %r from %r"%(dottedname,
                                                       self.fullName())
                 return None
             obj = obj.contents[p]
-        if verbose:
+        if verbose > 1:
             print dottedname, '->', obj.fullName(), 'in', self.fullName()
         return obj
 
@@ -183,6 +193,8 @@ class System(object):
         self.packages = []
         self.moresystems = []
         self.urlprefix = ''
+        from pydoctor.driver import getparser
+        self.options, _ = getparser().parse_args([])
 
     def report(self):
         for o in self.rootobjects:

@@ -21,9 +21,8 @@ def findClassFromDottedName(dottedname, optionname):
     except AttributeError:
         error("did not find %s in module %s", parts[1], parts[0])
 
-def main(args):
+def getparser():
     from optparse import OptionParser
-    import cPickle
     parser = OptionParser()
     parser.add_option('-c', '--config', dest='configfile',
                       help="Use config from this file (any command line"
@@ -97,6 +96,11 @@ def main(args):
                       help="")
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
+    return parser
+
+def main(args):
+    import cPickle
+    parser = getparser()
     options, args = parser.parse_args(args)
 
     if options.configfile:

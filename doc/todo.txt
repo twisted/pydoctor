@@ -5,7 +5,6 @@ HTML Formatter:
   - Do something more useful with Interface information
     - blue boxes for interface docstrings in implementation methods?
     - work out a sensible way to display deeper interface information.
-  - Make L{Deferred} magically work when Deferred isn't in the namespace
   - Parameterise epydoc usage instead of just basing on presence of epydoc
   - Make Pretty
 
