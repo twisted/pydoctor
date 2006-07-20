@@ -45,7 +45,7 @@ class _EpydocLinker(object):
                 linktext = link(obj.parent) + '#' + obj.fullName()
             else:
                 linktext = link(obj)
-            return '<a href="%s">%s</a>'%(linktext, prettyID)
+            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
 
 class FieldDesc(object):
     def __init__(self):
