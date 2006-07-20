@@ -39,7 +39,7 @@ class Documentable(object):
         else:
             return self.parent.name2fullname(name)
 
-    def _resolveName(self, name, verbose):
+    def _resolveName(self, name, verbose, tryHarder):
         system = self.system
         obj = self
         while obj:
@@ -53,14 +53,15 @@ class Documentable(object):
                         self.fullName(), name, fn)
                 return o
             obj = obj.parent
-        # if that didn't find anything, look inside modules
-        obj = self
-        while obj:
-            for n, fn in obj._name2fullname.iteritems():
-                o2 = system.allobjects.get(fn)
-                if o2 and name in o2.contents:
-                    return o2.contents[name]
-            obj = obj.parent
+        # if that didn't find anything, look inside modules -- sometimes
+        if tryHarder:
+            obj = self
+            while obj:
+                for n, fn in obj._name2fullname.iteritems():
+                    o2 = system.allobjects.get(fn)
+                    if o2 and name in o2.contents:
+                        return o2.contents[name]
+                obj = obj.parent
         if name in system.allobjects:
             return system.allobjects[name]
         for othersys in system.moresystems:
@@ -70,11 +71,11 @@ class Documentable(object):
             print "failed to find %r from %r"%(name, self.fullName())
         return None
 
-    def resolveDottedName(self, dottedname, verbose=None):
+    def resolveDottedName(self, dottedname, verbose=None, tryHarder=False):
         if verbose is None:
             verbose = self.system.options.verbosity
         parts = dottedname.split('.')
-        obj = self._resolveName(parts[0], verbose)
+        obj = self._resolveName(parts[0], verbose, tryHarder)
         if obj is None:
             return obj
         system = self.system
