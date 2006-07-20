@@ -787,10 +787,9 @@ class ClassPage(FunctionParentMixin, CommonPage):
     def render_inhierarchy(self, context, data):
         return context.tag(href="classIndex.html#"+self.ob.fullName())
 
-    def data_children(self, context, data):
+    def data_methods(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if isinstance(o, model.Function)]
-    data_methods = data_children
 
     def nested_bases(self, b):
         r = [(b,)]
@@ -858,10 +857,9 @@ class ClassPage(FunctionParentMixin, CommonPage):
         return tag[tags.a(href=link(data.parent)+'#'+data.fullName())[data.name]]
 
 class TwistedClassPage(ClassPage):
-    def data_children(self, context, data):
+    def data_methods(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if isinstance(o, model.Function) or isinstance(o, twisted.Attribute)]
-    data_methods = data_children
 
     def render_extras(self, context, data):
         r = super(TwistedClassPage, self).render_extras(context, data)
