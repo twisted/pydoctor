@@ -646,6 +646,9 @@ class CommonPage(rend.Page):
     def data_children(self, context, data):
         return self.ob.orderedcontents
 
+    def render_childlist(self, context, data):
+        return ()
+
     def render_childclass(self, context, data):
         return data.kind.lower()
 
