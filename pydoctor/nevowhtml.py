@@ -919,7 +919,7 @@ class TwistedClassPage(ClassPage):
             tag[tags.div(class_="interfaceinfo")
                 ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
                  [imeth.parent.fullName()]]]
-        for b in allbases(self.ob):
+        for b in self.ob.allbases():
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
@@ -941,14 +941,6 @@ class TwistedClassPage(ClassPage):
             tag[t]
         tag[doc2html(data)]
         return tag
-
-def allbases(c):
-    for b in c.baseobjects:
-        if b is None:
-            continue
-        yield b
-        for b2 in allbases(b):
-            yield b2
 
 def overriding_subclasses(c, name, firstcall=True):
     if not firstcall and name in c.contents:
