@@ -163,6 +163,13 @@ class Class(Documentable):
         self.rawbases = []
         self.baseobjects = []
         self.subclasses = []
+    def allbases(self):
+        for b in self.baseobjects:
+            if b is None:
+                continue
+            yield b
+            for b2 in b.allbases():
+                yield b2                    
 
 
 class Function(Documentable):

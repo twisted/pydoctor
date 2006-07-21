@@ -39,7 +39,7 @@ class _EpydocLinker(object):
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveDottedName(fullID, tryHarder=True)
         if obj is None:
-            return prettyID
+            return '<code>%s</code>'%(prettyID,)
         else:
             if isinstance(obj, model.Function):
                 linktext = link(obj.parent) + '#' + obj.fullName()
@@ -265,14 +265,34 @@ errcount = 0
 
 def doc2html(obj, summary=False):
     """Generate an HTML representation of a docstring"""
+    origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
     doc = obj.docstring
     if doc is None or not doc.strip():
+        text = "Undocumented"
+        subdocstrings = {}
+        subcounts = {}
+        for subob in origobj.contents.itervalues():
+            k = subob.kind.lower()
+            if isinstance(subob, model.Function) and isinstance(origobj, model.Class):
+                k = "method"
+            subcounts[k] = subcounts.get(k, 0) + 1
+            if subob.docstring is not None:
+                subdocstrings[k] = subdocstrings.get(k, 0) + 1
+        if subdocstrings:
+            plurals = {'class':'classes'}
+            text = "No %s docstring"%origobj.kind.lower()
+            if summary:
+                u = []
+                for k in sorted(subcounts):
+                    u.append("%s/%s %s"%(subdocstrings.get(k, 0), subcounts[k],
+                                         plurals.get(k, k+'s')))
+                text += '; ' + ', '.join(u) + " documented"
         if summary:
-            return tags.span(class_="undocumented")["Undocumented"]
+            return tags.span(class_="undocumented")[text]
         else:
-            return tags.div(class_="undocumented")["Undocumented"]
+            return tags.div(class_="undocumented")[text]
     if summary:
         for line in doc.split('\n'):
             if line.strip():
@@ -300,7 +320,7 @@ def doc2html(obj, summary=False):
             errcount += len(errs)
             return boringDocstring(doc)
     pdoc, fields = pdoc.split_fields()
-    crap = pdoc.to_html(_EpydocLinker(obj))
+    crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
     if summary:
         s = tags.span()[tags.raw(crap)]
     else:
@@ -882,22 +902,6 @@ class TwistedClassPage(ClassPage):
             r[tag]
         return r
 
-    def render_childsummaryDoc(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        docsource = data
-        if not docsource.docstring:
-            imeth = self.interfaceMeth(data.name)
-            if imeth:
-                docsource = imeth
-        if not docsource.docstring:
-            for b in allbases(self.ob):
-                if data.name not in b.contents:
-                    continue
-                docsource = b.contents[data.name]
-                break
-        return tag[doc2html(docsource, summary=True)]
-
     def interfaceMeth(self, methname):
         system = self.ob.system
         for interface in self.ob.implements_directly + self.ob.implements_indirectly:
@@ -911,13 +915,10 @@ class TwistedClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         tag = context.tag()
         tag.clear()
-        docsource = data
         if imeth:
             tag[tags.div(class_="interfaceinfo")
                 ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
                  [imeth.parent.fullName()]]]
-            if docsource.docstring is None:
-                docsource = imeth
         for b in allbases(self.ob):
             if data.name not in b.contents:
                 continue
@@ -926,8 +927,6 @@ class TwistedClassPage(ClassPage):
                 ['overrides ',
                  tags.a(href=link(overridden.parent) + '#' + overridden.fullName())
                  [overridden.fullName()]]]
-            if docsource.docstring is None:
-                docsource = overridden
             break
         ocs = list(overriding_subclasses(self.ob, data.name))
         if ocs:
@@ -940,7 +939,7 @@ class TwistedClassPage(ClassPage):
             for sc in ocs[1:]:
                 t[', ', one(sc)]
             tag[t]
-        tag[doc2html(docsource)]
+        tag[doc2html(data)]
         return tag
 
 def allbases(c):

@@ -239,6 +239,18 @@ class ASTBuilder(object):
                 cls.baseobjects.append(o)
                 if o:
                     o.subclasses.append(cls)
+        for cls in self.system.objectsOfType(model.Class):
+            for name, meth in cls.contents.iteritems():
+                if meth.docstring is None:
+                    for b in cls.allbases():
+                        if name in b.contents:
+                            overriddenmeth = b.contents[name]
+                            if overriddenmeth.docstring is not None:
+                                meth.docstring = overriddenmeth.docstring
+                                meth.docsource = overriddenmeth
+                                break
+                            
+                    
 
     def processModuleAST(self, ast, moduleName):
         mv = self.ModuleVistor(self, moduleName)

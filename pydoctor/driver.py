@@ -155,6 +155,7 @@ def main(args):
             fname, prefix = fnamepref.split(':', 1)
             moresystems.append(cPickle.load(open(fname, 'rb')))
             moresystems[-1].urlprefix = prefix
+            moresystems[-1].options = system.options
         system.moresystems = moresystems
 
     # step 1.25: make a builder
