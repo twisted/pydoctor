@@ -52,6 +52,8 @@ class Documentable(object):
                     print "from %r, %r resolves to %r which isn't present in the system"%(
                         self.fullName(), name, fn)
                 return o
+            if not tryHarder and isinstance(obj, Module):
+                break
             obj = obj.parent
         # if that didn't find anything, look inside modules -- sometimes
         if tryHarder:
@@ -99,7 +101,7 @@ class Documentable(object):
         obj = self
         while start not in obj._name2fullname:
             obj = obj.parent
-            if obj is None:
+            if obj is None or isinstance(obj, Package):
                 return dottedname
         return obj._name2fullname[start] + rest
 
@@ -203,6 +205,7 @@ class System(object):
         self.urlprefix = ''
         from pydoctor.driver import getparser
         self.options, _ = getparser().parse_args([])
+        self.options.verbosity = 3
 
     def report(self):
         for o in self.rootobjects:

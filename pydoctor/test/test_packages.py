@@ -28,3 +28,9 @@ def test_package_docstring():
     system = processPackage("localimporttest")
     assert (system.allobjects['localimporttest.__init__'].docstring ==
             "DOCSTRING")
+
+def test_modnamedafterbuiltin():
+    # well, basically the test is that this doesn't explode:
+    system = processPackage("modnamedafterbuiltin")
+    # but let's test _something_
+    assert system.allobjects['modnamedafterbuiltin.mod.Dict'].baseobjects == [None]
