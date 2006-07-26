@@ -6,3 +6,7 @@ def test_simple():
     liveCheck(system)
     mod = system.allobjects['liveobject.mod']
     assert mod.contents['m'].docstring == 'this is a docstring'
+    assert 'C' in mod.contents
+    cls = mod.contents['C']
+    assert cls.name == 'C'
+    

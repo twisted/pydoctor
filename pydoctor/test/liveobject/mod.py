@@ -3,3 +3,5 @@ class C:
         "this is a docstring"
 
 m = C().m
+
+exec '''class C: pass'''

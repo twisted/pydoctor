@@ -205,7 +205,7 @@ def main(args):
     curstateindex = model.states.index(system.state)
     finalstateindex = model.states.index(options.targetstate)
 
-    if finalstateindex < curstateindex:
+    if finalstateindex < curstateindex and (options.targetstate, system.state) != ('finalized', 'livechecked'):
         msg = 'cannot reverse system from %r to %r'
         error(msg, system.state, options.targetstate)
 
