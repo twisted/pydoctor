@@ -6,7 +6,10 @@ def test_simple():
     liveCheck(system)
     mod = system.allobjects['liveobject.mod']
     assert mod.contents['m'].docstring == 'this is a docstring'
-    assert 'C' in mod.contents
-    cls = mod.contents['C']
-    assert cls.name == 'C'
+    assert 'D' in mod.contents
+    D = mod.contents['D']
+    B = mod.contents['B']
+    assert D.name == 'D'
+    assert D.baseobjects == [B]
+    assert B.subclasses == [D]
     

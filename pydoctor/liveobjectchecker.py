@@ -11,7 +11,7 @@ def loadModulesForSystem(system):
     mods = sys.modules.copy()
     try:
         sys.path[0:0] = [os.path.dirname(p) for p in system.packages]
-        print sys.path
+        #print sys.path
         warnings.filterwarnings('ignore')
         # this list found by the lovely hack of python -E -c "import sys; print sys.modules.keys()"
         keeps = ['copy_reg', '__main__', 'site', '__builtin__',
@@ -72,9 +72,27 @@ def typeChecker(builder, name, OBJ):
         mod = mod.parent
     if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
         return
-    f = builder.pushClass(OBJ.__name__, OBJ.__doc__)
+    cls = builder.pushClass(OBJ.__name__, OBJ.__doc__)
     print '**type**', builder.current, '*************'
     try:
+        for BASE in OBJ.__bases__:
+            baseName = getattr(BASE, '__name__', '?')
+            fullName = getattr(BASE, '__module__', '?') + '.' + baseName
+            if baseName in mod._name2fullname:
+                cls.rawbases.append(baseName)
+            else:
+                cls.rawbases.append(fullName)
+            cls.bases.append(fullName)
+            baseObject = builder.system.allobjects.get(fullName)
+            cls.baseobjects.append(baseObject)
+            if baseObject is not None:
+                baseObject.subclasses.append(cls)
+        for cls2 in builder.system.objectsOfType(model.Class):
+            if cls.fullName() in cls2.bases:
+                index = cls2.bases.index(cls.fullName())
+                assert cls2.baseobjects[index] is None
+                cls2.baseobjects[index] = cls
+                cls.subclasses.append(cls2)
         checkDict(builder, OBJ.__dict__)
     finally:
         builder.popClass()

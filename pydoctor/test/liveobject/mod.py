@@ -4,4 +4,7 @@ class C:
 
 m = C().m
 
-exec '''class C: pass'''
+class B:
+    pass
+
+exec '''class D(B): pass'''
