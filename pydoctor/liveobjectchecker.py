@@ -59,7 +59,8 @@ def methChecker(builder, name, OBJ):
     print '**meth**', builder.current, '*************'
     try:
         argspec = inspect.getargspec(OBJ)
-        del argspec[0][0]
+        if argspec[0]:
+            del argspec[0][0]
         f.argspec = argspec
     finally:
         builder.popFunction()
