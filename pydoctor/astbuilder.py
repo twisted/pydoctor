@@ -283,6 +283,7 @@ class ASTBuilder(object):
 
     def preprocessDirectory(self, dirpath):
         assert self.system.state in ['blank', 'preparse']
+        found_init_dot_py = False
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
         else:
@@ -292,6 +293,8 @@ class ASTBuilder(object):
             if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
                 self.preprocessDirectory(fullname)
             elif fname.endswith('.py'):
+                if fname == '__init__.py':
+                    found_init_dot_py = True
                 modname = os.path.splitext(fname)[0]
                 mod = self.pushModule(modname, None)
                 mod.filepath = fullname
@@ -299,6 +302,8 @@ class ASTBuilder(object):
                 self.popModule()
         if package:
             self.popPackage()
+        if not found_init_dot_py:
+            raise Exception, "you must pass a package directory to preprocessDirectory"
         self.system.state = 'preparse'
 
     def findImportStars(self):
