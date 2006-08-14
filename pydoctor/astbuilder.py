@@ -235,7 +235,7 @@ class ASTBuilder(object):
     def recordBasesAndSubclasses(self):
         for cls in self.system.objectsOfType(model.Class):
             for n in cls.bases:
-                o = cls.parent.resolveDottedName(n)
+                o = cls.parent.resolveDottedName(n, verbose=False)
                 cls.baseobjects.append(o)
                 if o:
                     o.subclasses.append(cls)
