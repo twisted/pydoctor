@@ -627,10 +627,10 @@ class CommonPage(rend.Page):
         return tag(href=sourceHref)
 
     def render_inhierarchy(self, context, data):
-        return context.tag().clear()
+        return ()
 
     def render_extras(self, context, data):
-        return context.tag().clear()
+        return ()
 
     def render_docstring(self, context, data):
         return doc2html(self.ob)
@@ -782,6 +782,8 @@ class ClassPage(FunctionParentMixin, CommonPage):
     def render_extras(self, context, data):
         r = super(ClassPage, self).render_extras(context, data)
         if self.ob.subclasses:
+            if r == ():
+                r = context.tag.clear()
             sc = self.ob.subclasses[0]
             p = tags.p()
             p["Known subclasses: ", taglink(sc)]
@@ -907,6 +909,8 @@ class TwistedClassPage(ClassPage):
             namelist = self.ob.implements_directly
             label = 'Implements interfaces: '
         if namelist:
+            if r == ():
+                r = context.tag.clear()
             tag = tags.p()[label, tl(namelist[0])]
             for impl in namelist[1:]:
                 tag[', ', tl(impl)]
