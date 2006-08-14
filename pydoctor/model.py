@@ -48,6 +48,11 @@ class Documentable(object):
             elif name in obj._name2fullname:
                 fn = obj._name2fullname[name]
                 o = system.allobjects.get(fn)
+                if o is None:
+                    for othersys in system.moresystems:
+                        o = othersys.allobjects.get(fn)
+                        if o is not None:
+                            break
                 if o is None and verbose > 0:
                     print "from %r, %r resolves to %r which isn't present in the system"%(
                         self.fullName(), name, fn)
