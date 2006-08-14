@@ -752,6 +752,17 @@ class FunctionParentMixin(object):
         tag.clear()
         return tag[doc2html(data)]
 
+    def render_functionSourceLink(self, context, data):
+        if not hasattr(data, 'linenumber') or not self.writer.sourcebase:
+            return ()
+        tag = context.tag().clear()
+        mod = self.ob
+        while not isinstance(mod, model.Module):
+            mod = mod.parent
+        sourceHref = '%s/%s.py'%(self.writer.sourcebase, mod.fullName().replace('.', '/'),)
+        sourceHref += '#L'+str(data.linenumber)
+        return tag[tags.a(href=sourceHref)["(source)"]]
+
 class ModulePage(FunctionParentMixin, CommonPage):
     def data_methods(self, context, data):
         return [o for o in self.ob.orderedcontents
