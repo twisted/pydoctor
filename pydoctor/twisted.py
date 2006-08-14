@@ -195,6 +195,9 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
         for cls in self.system.objectsOfType(model.Class):
             if 'zope.interface.Interface' in cls.bases:
                 self.markInterface(cls)
+            for baseOb in cls.baseobjects:
+                if baseOb and baseOb.system is not self.system and baseOb.isinterface:
+                    self.markInterface(cls)
 
         for cls in self.system.objectsOfType(model.Class):
             if cls.isinterface or len(cls.baseobjects) != cls.baseobjects.count(None):
