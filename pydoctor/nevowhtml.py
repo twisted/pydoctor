@@ -14,6 +14,24 @@ except:
 def link(o):
     return o.system.urlprefix+o.fullName()+'.html'
 
+def srclink(o):
+    system = o.system
+    if not system.sourcebase:
+        return None
+    m = o
+    while not isinstance(m, (model.Module, model.Package)):
+        m = m.parent
+        if m is None:
+            return None
+    sourceHref = '%s/%s'%(system.sourcebase, m.fullName().replace('.', '/'),)
+    if isinstance(m, model.Module):
+        sourceHref += '.py'
+    if isinstance(o, model.Module):
+        sourceHref += '#L1'
+    elif hasattr(o, 'linenumber'):
+        sourceHref += '#L'+str(o.linenumber)
+    return sourceHref
+
 def sibpath(path, sibling):
     return os.path.join(os.path.dirname(os.path.abspath(path)), sibling)
 
@@ -373,8 +391,6 @@ def signature(argspec):
     return ', '.join(things)
 
 class NevowWriter:
-    sourcebase = None
-
     def __init__(self, filebase):
         self.base = filebase
 
@@ -609,22 +625,10 @@ class CommonPage(rend.Page):
             return tag
 
     def render_source(self, context, data):
-        tag = context.tag()
-        if not self.writer.sourcebase:
-            return tag.clear()
-        m = self.ob
-        while not isinstance(m, (model.Module, model.Package)):
-            m = m.parent
-            if m is None:
-                return tag.clear()
-        sourceHref = '%s/%s'%(self.writer.sourcebase, m.fullName().replace('.', '/'),)
-        if isinstance(m, model.Module):
-            sourceHref += '.py'
-        if isinstance(self.ob, model.Module):
-            sourceHref += '#L1'
-        elif hasattr(self.ob, 'linenumber'):
-            sourceHref += '#L'+str(self.ob.linenumber)
-        return tag(href=sourceHref)
+        sourceHref = srclink(self.ob)
+        if not sourceHref:
+            return ()
+        return context.tag(href=sourceHref)
 
     def render_inhierarchy(self, context, data):
         return ()
@@ -678,13 +682,9 @@ class CommonPage(rend.Page):
         if not self.has_lineno_col():
             return ()
         if hasattr(data, 'linenumber'):
-            if not self.writer.sourcebase:
+            sourceHref = srclink(data)
+            if not sourceHref:
                 return tag[data.linenumber]
-            mod = self.ob
-            while not isinstance(mod, model.Module):
-                mod = mod.parent
-            sourceHref = '%s/%s.py'%(self.writer.sourcebase, mod.fullName().replace('.', '/'),)
-            sourceHref += '#L'+str(data.linenumber)
             return tag[tags.a(href=sourceHref)[data.linenumber]]
         else:
             return tag
@@ -753,15 +753,10 @@ class FunctionParentMixin(object):
         return tag[doc2html(data)]
 
     def render_functionSourceLink(self, context, data):
-        if not hasattr(data, 'linenumber') or not self.writer.sourcebase:
+        sourceHref = srclink(data)
+        if not sourceHref:
             return ()
-        tag = context.tag().clear()
-        mod = self.ob
-        while not isinstance(mod, model.Module):
-            mod = mod.parent
-        sourceHref = '%s/%s.py'%(self.writer.sourcebase, mod.fullName().replace('.', '/'),)
-        sourceHref += '#L'+str(data.linenumber)
-        return tag[tags.a(href=sourceHref)["(source)"]]
+        return context.tag(href=sourceHref)
 
 class ModulePage(FunctionParentMixin, CommonPage):
     def data_methods(self, context, data):

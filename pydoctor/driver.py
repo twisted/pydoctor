@@ -34,7 +34,7 @@ def getparser():
                       help="Save the system to this pickle file (default: "
                       "none, the system is not saved by default).")
     parser.add_option('--extra-system',
-                      action='append', dest='moresystems', metavar='SYS:PREFIX',
+                      action='append', dest='moresystems', metavar='SYS:URLPREFIX',
                       default=[],
                       help='Experimental.')
     parser.add_option('--system-class', dest='systemclass',
@@ -157,6 +157,7 @@ def main(args):
             moresystems[-1].urlprefix = prefix
             moresystems[-1].options = system.options
         system.moresystems = moresystems
+    system.sourcebase = options.htmlsourcebase
 
     # step 1.25: make a builder
 
@@ -253,7 +254,6 @@ def main(args):
         writer = writerclass(options.htmloutput)
         writer.system = system
         writer.prepOutputDirectory()
-        writer.sourcebase = options.htmlsourcebase
 
         if options.htmlsubjects:
             subjects = []

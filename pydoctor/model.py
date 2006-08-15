@@ -195,6 +195,7 @@ states = [
 class System(object):
     # not done here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
+    sourcebase = None
 
     def __init__(self):
         self.allobjects = {}

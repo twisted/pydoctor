@@ -76,14 +76,14 @@ div.functionHeader {
   color: #000080;
 }
 
-.functionSourceLink a
+a.functionSourceLink
 { 
   text-decoration: none;
   font-style: italic;
   font-weight: normal;
 }
 
-.functionSourceLink a:hover
+a:hover.functionSourceLink 
 { 
   text-decoration: underline;
 }
