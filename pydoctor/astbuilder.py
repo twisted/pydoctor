@@ -292,7 +292,7 @@ class ASTBuilder(object):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
                 self.preprocessDirectory(fullname)
-            elif fname.endswith('.py'):
+            elif fname.endswith('.py') and not fname.startswith('.'):
                 if fname == '__init__.py':
                     found_init_dot_py = True
                 modname = os.path.splitext(fname)[0]
