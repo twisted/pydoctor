@@ -4,161 +4,193 @@
 /*     background-position: 100% 10%; */
 /* } */
 
-table.children {
-    border-top: thin black solid;
-    border-bottom: thin black solid;
+table.children
+{
+  border-top: thin black solid;
+  border-bottom: thin black solid;
 }
 
-.undocumented {
-    color: grey;
+.undocumented
+{
+  color: grey;
 }
 
-h1 {
-    background: rgb(112, 176, 240);
-    border: thin black solid;
-    padding-left: 1ex;
+h1
+{
+  background: rgb(112, 176, 240);
+  border: thin black solid;
+  padding-left: 1ex;
 }
 
-h2 {
-    background: rgb(200, 230, 255);
-    border: thin black solid;
-    padding-left: 1ex;
+h2
+{
+  background: rgb(200, 230, 255);
+  border: thin black solid;
+  padding-left: 1ex;
 }
 
-#part {
-    font-style: italic;
+#part
+{
+  font-style: italic;
 }
 
-.toplevel {
-    margin-top: 2em;
+.toplevel
+{
+  margin-top: 2em;
 }
 
-div.toplevel p {
-    margin-top: 0em;
+div.toplevel p
+{
+  margin-top: 0em;
 }
 
-.function {
-    background: lightgreen;
+.function
+{
+  background: lightgreen;
 }
 
-.attribute {
-    background: #ddbbff;
+.attribute
+{
+  background: #ddbbff;
 }
 
-.basefunction {
-    background: #cceecc;
+.basefunction
+{
+  background: #cceecc;
 }
 
-.class {
-    background: lightblue;
+.class
+{
+  background: lightblue;
 }
 
-.interface {
-    background: #ffddff;
+.interface
+{
+  background: #ffddff;
 }
 
-.module {
-    background: lightyellow;
+.module
+{
+  background: lightyellow;
 }
 
-.package {
-    background: #ffeeaa;
+.package
+{
+  background: #ffeeaa;
 }
 
-div.function { 
+div.function
+{
   margin: 1em;
   font-family: monospace;
   background: rgb(232, 240, 248);
 }
 
-div.functionHeader {
+div.functionHeader
+{
   font-weight: bold;
   color: #000080;
 }
 
 a.functionSourceLink
-{ 
+{
   text-decoration: none;
   font-style: italic;
   font-weight: normal;
 }
 
-a:hover.functionSourceLink 
-{ 
+a:hover.functionSourceLink
+{
   text-decoration: underline;
 }
 
-div.functionHeader a {
-    color: black;
+div.functionHeader a
+{
+  color: black;
 }
 
-span.tag { 
-    font-weight: bold;
-    font-family: monospace;
+span.tag
+{
+  font-weight: bold;
+  font-family: monospace;
 }
 
-span.arg {
-    padding-right: 4ex;
-    font-family: monospace;
+span.arg
+{
+  padding-right: 4ex;
+  font-family: monospace;
 }
 
-.children { 
+.children
+{
   margin: 1em;
 }
 
-th a { 
-  text-decoration: none; 
+th a
+{
+  text-decoration: none;
 }
 
-.lineno { 
+.lineno
+{
   text-align: center;
 }
 
-.functionBody { 
+.functionBody
+{
   margin-left: 2em;
   padding-top: 0.25em;
   padding-bottom: 1em;
   font-family: sans-serif;
 }
 
-.interfaceinfo { 
+.interfaceinfo
+{
   padding-left: 2em;
   color: blue;
   font-size: 75%;
 }
 
-.fieldName { 
+.fieldName
+{
   font-weight: bold;
 }
 
-td p { 
-  margin-top: 0.0em; 
+td p
+{
+  margin-top: 0.0em;
 }
 
-td.fieldName { 
+td.fieldName
+{
   vertical-align: baseline;
 }
 
-tr.fieldStart td { 
+tr.fieldStart td
+{
   padding-top: 0.5em;
 }
 
-table.fieldTable td { 
+table.fieldTable td
+{
   padding-left: 0.5em;
   padding-right: 0.5em;
 }
 
-.fieldArg {
+.fieldArg
+{
   font-weight: bold;
   color: #000080;
   font-family: monospace;
 }
 
-td.fieldArg { 
+td.fieldArg
+{
   vertical-align: baseline;
 }
 
-.letterlinks { 
+.letterlinks
+{
   font-size: 75%;
   padding-left: 8ex;
 }
