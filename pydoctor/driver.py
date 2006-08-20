@@ -66,6 +66,10 @@ def getparser():
                       help="Don't preprocess the modules to resolve import *s."
                            " It's a significant speed saving if you don't need"
                            " it.")
+    parser.add_option('--resolve-aliases',
+                      action='store_true', dest='resolvealiases',
+                      default=True,
+                      help="experimental")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
                       help="fullName of object to generate API docs for"

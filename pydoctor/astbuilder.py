@@ -230,6 +230,8 @@ class ASTBuilder(object):
         self.system._warning(self.current, type, detail)
 
     def _finalStateComputations(self):
+        if self.system.options.resolvealiases:
+            self.system.resolveAliases()
         self.recordBasesAndSubclasses()
 
     def recordBasesAndSubclasses(self):

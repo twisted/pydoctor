@@ -225,7 +225,7 @@ class System(object):
     def resolveAlias(self, n):
         if '.' not in n:
             return n
-        mod, clsname = n.split('.')
+        mod, clsname = n.rsplit('.', 1)
         if not mod or mod not in self.allobjects:
             return n
         m = self.allobjects[mod]
@@ -237,6 +237,8 @@ class System(object):
                 return self.resolveAlias(newname)
             else:
                 return newname
+        else:
+            return n
 
     def resolveAliases(self):
         for ob in self.orderedallobjects:
