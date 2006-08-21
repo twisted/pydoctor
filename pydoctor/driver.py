@@ -70,6 +70,10 @@ def getparser():
                       action='store_true', dest='resolvealiases',
                       default=True,
                       help="experimental")
+    parser.add_option('--abbreviate-specialcase',
+                      action='append', dest='abbrevmapping',
+                      default=[],
+                      help="ask dreid")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
                       help="fullName of object to generate API docs for"
@@ -162,6 +166,10 @@ def main(args):
             moresystems[-1].options = system.options
         system.moresystems = moresystems
     system.sourcebase = options.htmlsourcebase
+
+    for thing in options.abbrevmapping:
+        k, v = thing.split('=')
+        system.abbrevmapping[k] = v
 
     # step 1.25: make a builder
 

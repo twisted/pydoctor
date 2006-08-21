@@ -212,6 +212,7 @@ class System(object):
         from pydoctor.driver import getparser
         self.options, _ = getparser().parse_args([])
         self.options.verbosity = 3
+        self.abbrevmapping = {}
 
     def report(self):
         for o in self.rootobjects:
@@ -268,6 +269,8 @@ class System(object):
         return state
 
     def __setstate__(self, state):
+        if 'abbrevmapping' not in state:
+            state['abbrevmapping'] = {}
         self.moresystems = []
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
