@@ -253,7 +253,8 @@ class System(object):
             fn = current.fullName()
         else:
             fn = '<None>'
-        print fn, type, detail
+        if self.options.verbosity > 0:
+            print fn, type, detail
         self.warnings.setdefault(type, []).append((fn, detail))
 
     def objectsOfType(self, cls):

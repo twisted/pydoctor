@@ -2,7 +2,7 @@ from pydoctor import model, twisted
 
 from nevow import rend, loaders, tags
 
-import os, shutil, inspect
+import os, shutil, inspect, sys
 
 try:
     from epydoc.markup import epytext
@@ -393,6 +393,7 @@ def signature(argspec):
 class NevowWriter:
     def __init__(self, filebase):
         self.base = filebase
+        self.written_pages = 0
 
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
@@ -433,7 +434,9 @@ class NevowWriter:
         else:
             pclass = CommonPage
         page = pclass(self, ob)
-        print ob
+        self.written_pages += 1
+        print '\rwritten', self.written_pages, 'pages',
+        sys.stdout.flush()
         fobj.write(page.renderSynchronously())
 
 def mediumName(obj):

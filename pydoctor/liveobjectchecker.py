@@ -24,16 +24,29 @@ def loadModulesForSystem(system):
         sys.modules.clear()
         sys.modules.update(keeps)
 
-        for m in system.objectsOfType(model.Module):
+        verbosity = system.options.verbosity
+
+        modlist = list(system.objectsOfType(model.Module))
+        errcount = 0
+
+        for i, m in enumerate(modlist):
             try:
                 realMod = __import__(m.fullName(), {}, {}, ['*'])
             except ImportError, e:
-                print "could not import", m.fullName(), e
-                continue
+                errcount += 1
+                if verbosity > 0:
+                    print "could not import", m.fullName(), e
             except Exception, e:
-                print "error importing", m.fullName(), e
-                continue
-            result[m] = realMod
+                errcount += 1
+                if verbosity > 0:
+                    print "error importing", m.fullName(), e
+            else:
+                result[m] = realMod
+                
+            print '\r', i+1-errcount, '/', len(modlist), 'modules imported',
+            print errcount, 'failed',
+            sys.stdout.flush()
+        print
     finally:
         sys.path[:] = savepath
         warnings.filters[:] = savefilters
@@ -56,7 +69,8 @@ def methChecker(builder, name, OBJ):
     if OBJ.im_self is None:
         return
     f = builder.pushFunction(OBJ.__name__, OBJ.__doc__)
-    print '**meth**', builder.current, '*************'
+    if builder.system.options.verbosity > 0:
+        print '**meth**', builder.current, '*************'
     try:
         argspec = inspect.getargspec(OBJ)
         if argspec[0]:
@@ -74,7 +88,8 @@ def typeChecker(builder, name, OBJ):
     if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
         return
     cls = builder.pushClass(OBJ.__name__, OBJ.__doc__)
-    print '**type**', builder.current, '*************'
+    if builder.system.options.verbosity > 0:
+        print '**type**', builder.current, '*************'
     try:
         for BASE in OBJ.__bases__:
             baseName = getattr(BASE, '__name__', '?')
@@ -107,7 +122,8 @@ def funcChecker(builder, name, OBJ):
     if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
         return
     f = builder.pushFunction(OBJ.__name__, OBJ.__doc__)
-    print '**func**', builder.current, '*************'
+    if builder.system.options.verbosity > 0:
+        print '**func**', builder.current, '*************'
     try:
         argspec = inspect.getargspec(OBJ)
         f.argspec = argspec
@@ -135,8 +151,6 @@ def liveCheck(system, builder=None):
     realMods = loadModulesForSystem(system)
     for m in realMods:
         builder.push(m)
-        try:
-            checkDict(builder, realMods[m].__dict__)
-        finally:
-            builder.pop(m)
+        checkDict(builder, realMods[m].__dict__)
+        builder.pop(m)
     system.state = 'livechecked'

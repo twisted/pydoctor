@@ -1,7 +1,7 @@
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer
-import os
+import os, sys
 
 class ModuleVistor(object):
     def __init__(self, builder, modname):
@@ -311,15 +311,18 @@ class ASTBuilder(object):
     def findImportStars(self):
         assert self.system.state in ['preparse']
         modlist = list(self.system.objectsOfType(model.Module))
-        for mod in modlist:
+        for i, mod in enumerate(modlist):
             self.push(mod.parent)
             isf = ImportStarFinder(self, mod.fullName())
             try:
                 ast = transformer.parseFile(mod.filepath)
             except (SyntaxError, ValueError):
                 self.warning("cannot parse", mod.filepath)
+            print '\r', i+1, '/', len(modlist), 'modules parsed',
+            sys.stdout.flush()
             visitor.walk(ast, isf)
             self.pop(mod.parent)
+        print
         self.system.state = 'importstarred'
 
     def extractDocstrings(self):
@@ -328,7 +331,7 @@ class ASTBuilder(object):
         modlist = list(self.system.objectsOfType(model.Module))
         newlist = toposort([m.fullName() for m in modlist], self.system.importstargraph)
 
-        for mod in newlist:
+        for i, mod in enumerate(newlist):
             mod = self.system.allobjects[mod]
             self.push(mod.parent)
             try:
@@ -336,8 +339,12 @@ class ASTBuilder(object):
             except (SyntaxError, ValueError):
                 self.warning("cannot parse", mod.filepath)
             self.processModuleAST(ast, mod.name)
+            print '\r', i+1, '/', len(newlist), 'modules parsed',
+            print sum(len(v) for v in self.system.warnings.itervalues()), 'warnings', 
+            sys.stdout.flush()
             mod.processed = True
             self.pop(mod.parent)
+        print
         self.system.state = 'parsed'
 
     def finalStateComputations(self):
