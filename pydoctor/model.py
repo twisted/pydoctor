@@ -227,17 +227,24 @@ class System(object):
         if '.' not in n:
             return n
         mod, clsname = n.rsplit('.', 1)
-        if not mod or mod not in self.allobjects:
+        if not mod:
+            return mod
+        systems = [self] + self.moresystems
+        for system in systems:
+            if mod in system.allobjects:
+                break
+        else:            
             return n
-        m = self.allobjects[mod]
+        m = system.allobjects[mod]
         if not isinstance(m, Module):
             return n
         if clsname in m._name2fullname:
             newname = m.name2fullname(clsname)
-            if newname not in self.allobjects:
-                return self.resolveAlias(newname)
+            for system in systems:
+                if newname not in system.allobjects:
+                    return newname
             else:
-                return newname
+                return self.resolveAlias(newname)
         else:
             return n
 
