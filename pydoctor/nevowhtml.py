@@ -444,7 +444,9 @@ def mediumName(obj):
     if '.' not in fn:
         return fn
     path, name = fn.rsplit('.', 1)
-    return '.'.join([p[0] for p in path.split('.')]) + '.' + name
+    def process(part):
+        return obj.system.abbrevmapping.get(part, part[0])
+    return '.'.join([process(p) for p in path.split('.')]) + '.' + name
 
 def moduleSummary(modorpack):
     r = [tags.li[taglink(modorpack), ' - ', doc2html(modorpack, summary=True)]]
