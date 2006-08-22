@@ -68,7 +68,7 @@ def getparser():
                            " it.")
     parser.add_option('--resolve-aliases',
                       action='store_true', dest='resolvealiases',
-                      default=True,
+                      default=False,
                       help="experimental")
     parser.add_option('--abbreviate-specialcase',
                       action='append', dest='abbrevmapping',
