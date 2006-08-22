@@ -241,7 +241,7 @@ class System(object):
         if clsname in m._name2fullname:
             newname = m.name2fullname(clsname)
             for system in systems:
-                if newname not in system.allobjects:
+                if newname in system.allobjects:
                     return newname
             else:
                 return self.resolveAlias(newname)
