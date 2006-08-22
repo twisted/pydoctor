@@ -2,7 +2,7 @@ from pydoctor import model, twisted
 
 from nevow import rend, loaders, tags
 
-import os, shutil, inspect, sys
+import os, shutil, inspect, sys, urllib
 
 try:
     from epydoc.markup import epytext
@@ -12,7 +12,7 @@ except:
     EPYTEXT = False
 
 def link(o):
-    return o.system.urlprefix+o.fullName()+'.html'
+    return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
 
 def srclink(o):
     system = o.system
@@ -60,7 +60,7 @@ class _EpydocLinker(object):
             return '<code>%s</code>'%(prettyID,)
         else:
             if isinstance(obj, model.Function):
-                linktext = link(obj.parent) + '#' + obj.fullName()
+                linktext = link(obj.parent) + '#' + urllib.quote(obj.fullName())
             else:
                 linktext = link(obj)
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
@@ -449,14 +449,14 @@ def mediumName(obj):
     return '.'.join([process(p) for p in path.split('.')]) + '.' + name
 
 def moduleSummary(modorpack):
-    r = [tags.li[taglink(modorpack), ' - ', doc2html(modorpack, summary=True)]]
+    r = tags.li[taglink(modorpack), ' - ', doc2html(modorpack, summary=True)]
     if isinstance(modorpack, model.Package) and len(modorpack.orderedcontents) > 1:
         ul = tags.ul()
         for m in sorted(modorpack.orderedcontents,
                         key=lambda m:m.fullName()):
             if m.name != '__init__':
                 ul[moduleSummary(m)]
-        r.append(ul)
+        r[ul]
     return r
 
 class ModuleIndexPage(rend.Page):
@@ -470,7 +470,7 @@ class ModuleIndexPage(rend.Page):
     def render_stuff(self, context, data):
         r = []
         for o in self.system.rootobjects:
-            r.extend(moduleSummary(o))
+            r.append(moduleSummary(o))
         return context.tag.clear()[r]
     def render_heading(self, context, data):
         return context.tag().clear()["Module Index"]
@@ -478,6 +478,8 @@ class ModuleIndexPage(rend.Page):
 def findRootClasses(system):
     roots = {}
     for cls in system.objectsOfType(model.Class):
+        if ' ' in cls.name:
+            continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
                 if b is None:
@@ -488,14 +490,19 @@ def findRootClasses(system):
             roots[cls.fullName()] = cls
     return sorted(roots.items())
 
-def subclassesFrom(hostsystem, cls):
-    r = [tags.li[tags.a(name=cls.fullName()), taglink(cls), ' - ', doc2html(cls, summary=True)]]
-    scs = [sc for sc in cls.subclasses if sc.system is hostsystem]
+def subclassesFrom(hostsystem, cls, anchors):
+    r = tags.li()
+    name = cls.fullName()
+    if name not in anchors:
+        r[tags.a(name=name)]
+        anchors.add(name)
+    r[taglink(cls), ' - ', doc2html(cls, summary=True)]
+    scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=lambda sc2:sc2.fullName()):
-            ul[subclassesFrom(hostsystem, sc)]
-        r.append(ul)
+            ul[subclassesFrom(hostsystem, sc, anchors)]
+        r[ul]
     return r
 
 class ClassIndexPage(rend.Page):
@@ -508,16 +515,18 @@ class ClassIndexPage(rend.Page):
         return context.tag.clear()["Class Hierarchy"]
     def render_stuff(self, context, data):
         t = context.tag
+        anchors = set()
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
-                t[subclassesFrom(self.system, o)]
+                t[subclassesFrom(self.system, o, anchors)]
             else:
-                t[tags.li[b]]
+                item = tags.li[b]
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=lambda sc2:sc2.fullName()):
-                        ul[subclassesFrom(self.system, sc)]
-                    t[ul]
+                        ul[subclassesFrom(self.system, sc, anchors)]
+                    item[ul]
+                t[item]
         return t
     def render_heading(self, context, data):
         return context.tag.clear()["Class Hierarchy"]
@@ -747,7 +756,7 @@ class FunctionParentMixin(object):
             return sup.render_childname(context, data)
         tag = context.tag()
         tag.clear()
-        return tag[tags.a(href='#' + data.fullName())[data.name]]
+        return tag[tags.a(href='#' + urllib.quote(data.fullName()))[data.name]]
 
     def render_functionAnchor(self, context, data):
         return data.fullName()
@@ -773,7 +782,7 @@ def taglink(o, label=None):
     if label is None:
         label = o.fullName()
     if isinstance(o, model.Function):
-        linktext = link(o.parent) + '#' + o.fullName()
+        linktext = link(o.parent) + '#' + urllib.quote(o.fullName())
     else:
         linktext = link(o)
     return tags.a(href=linktext)[label]
