@@ -13,3 +13,19 @@ dd
 {
   margin-left: 10pt;
 }
+
+a
+{ 
+  text-decoration: none;
+}
+
+a:hover
+{ 
+  text-decoration: underline;
+}
+
+div.header
+{
+  font-size: 75%;
+  padding-bottom: 0px;
+}
