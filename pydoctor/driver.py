@@ -71,9 +71,13 @@ def getparser():
                       default=False,
                       help="experimental")
     parser.add_option('--abbreviate-specialcase',
-                      action='append', dest='abbrevmapping',
-                      default=[],
-                      help="ask dreid")
+                      action='store', dest='abbrevmapping',
+                      default='',
+                      help="This is a comma seperated list of key=value pairs.  "
+                          "Where any key corresponds to a module name and value "
+                          "is the desired abbreviation.  This can be used to "
+                          "resolve conflicts with abbreviation where you have two or more "
+                          "modules that start with the same letter.  Ex: twistedcaldav=tcd")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
                       help="fullName of object to generate API docs for"
@@ -167,7 +171,7 @@ def main(args):
         system.moresystems = moresystems
     system.sourcebase = options.htmlsourcebase
 
-    for thing in options.abbrevmapping:
+    for thing in options.abbrevmapping.split(','):
         k, v = thing.split('=')
         system.abbrevmapping[k] = v
 
