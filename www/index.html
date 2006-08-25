@@ -53,6 +53,27 @@
         </p>
       </dd>
       <dt>
+        Why would I use it?  How is it different from Epydoc, pudge, etc?
+      </dt>
+      <dd>
+        <p>
+          pydoctor is probably best suited to documenting a library with a some degree of
+          internal subclassing.  It also has support for
+          <a href="http://www.zope.org/Products/ZopeInterface">zope.interface</a>, and can
+          recognise interfaces and classes which implement such interfaces.
+        </p>
+        <p>
+          pydoctor works by parsing the source code and processing the syntax trees.  This
+          has advantages and disadvantages relative to inspecting objects, as Epydoc 2
+          does.
+        </p>
+        <p>
+          I'm not especially interested in promoting pydoctor as the be all and end all of
+          API documentation generation.  It works for me and it works for Twisted.  Maybe
+          it works for you too.
+        </p>
+      </dd>
+      <dt>
         Who wrote it?
       </dt>
       <dd>
@@ -82,6 +103,30 @@
       <dd>
         <p>
           This is a big enough topic to deserve its <a href="usage.html">own page</a>.
+        </p>
+      </dd>
+      <dt>
+        What does the output look like?
+      </dt>
+      <dd>
+        <p>
+          It looks <a href="http://starship.python.net/crew/mwh/apidocs/">like this</a>,
+          which is usually the output of SVN HEAD of pydoctor run on SVN HEAD of Twisted,
+          updated every few days.
+        </p>
+        <p>
+          I also run periodically pydoctor
+          on <a href="http://www.divmod.org/trac/wiki/DivmodNevow">Nevow</a> and put the
+          output <a href="http://starship.python.net/crew/nevowapi/">here</a>, which shows
+          off pydoctor's abilities to do cross-package links.
+        </p>
+        <p>
+          The output is reasonably simple, clean HTML (it validates!) created from Nevow
+          templates and styled with CSS, so while there's no flexibility in the code yet,
+          it would probably not be that hard to add (this is how pydoctor has been
+          developed in general: rather than try and predict what will be useful, I've
+          tried to keep things reasonably clean and separate to allow rapid
+          implementations of requested features.  It seems to be working, so far).
         </p>
       </dd>
       <dt>
