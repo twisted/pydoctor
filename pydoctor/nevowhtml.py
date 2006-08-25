@@ -339,6 +339,8 @@ def doc2html(obj, summary=False):
             return boringDocstring(doc)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
+    if not crap:
+        return ()
     if summary:
         s = tags.span()[tags.raw(crap)]
     else:
