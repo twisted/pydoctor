@@ -171,9 +171,10 @@ def main(args):
         system.moresystems = moresystems
     system.sourcebase = options.htmlsourcebase
 
-    for thing in options.abbrevmapping.split(','):
-        k, v = thing.split('=')
-        system.abbrevmapping[k] = v
+    if options.abbrevmapping:
+        for thing in options.abbrevmapping.split(','):
+            k, v = thing.split('=')
+            system.abbrevmapping[k] = v
 
     # step 1.25: make a builder
 
