@@ -42,7 +42,9 @@ def getparser():
     parser.add_option('--builder-class', dest='builderclass',
                       help="a dotted name of the class to use")
     parser.add_option('--project-name', dest='projectname',
-                      help="the project name (appears on index.html)")
+                      help="the project name, appears in the html")
+    parser.add_option('--project-url', dest='projecturl',
+                      help="the project url, appears in the html if given")
     parser.add_option('--testing', dest='testing', action='store_true',
                       help="don't complain if the run doesn't have any effects")
     parser.add_option('--target-state', dest='targetstate',

@@ -594,7 +594,10 @@ class IndexPage(rend.Page):
     def __init__(self, writer, system):
         self.system = system
     def render_project(self, context, data):
-        return context.tag.clear()[self.system.options.projectname]
+        if self.system.options.projecturl:
+            return tags.a(href=self.system.options.projecturl)[self.system.options.projectname]
+        else:
+            return self.system.options.projectname
     def render_onlyIfOneRoot(self, context, data):
         if len(self.system.rootobjects) != 1:
             return []
@@ -639,6 +642,12 @@ class CommonPage(rend.Page):
             return tag['Part of ', parts]
         else:
             return tag
+
+    def render_project(self, context, data):
+        if self.ob.system.options.projecturl:
+            return tags.a(href=self.ob.system.options.projecturl)[self.ob.system.options.projectname]
+        else:
+            return self.ob.system.options.projectname
 
     def render_source(self, context, data):
         sourceHref = srclink(self.ob)
