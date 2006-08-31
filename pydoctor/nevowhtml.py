@@ -593,11 +593,13 @@ class IndexPage(rend.Page):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
     def __init__(self, writer, system):
         self.system = system
-    def render_project(self, context, data):
+    def render_project_link(self, context, data):
         if self.system.options.projecturl:
             return tags.a(href=self.system.options.projecturl)[self.system.options.projectname]
         else:
             return self.system.options.projectname
+    def render_project(self, context, data):
+        return self.system.options.projectname
     def render_onlyIfOneRoot(self, context, data):
         if len(self.system.rootobjects) != 1:
             return []
