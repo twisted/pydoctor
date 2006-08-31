@@ -60,7 +60,8 @@
     </nevow:invisible>
     <nevow:invisible nevow:render="childlist" nevow:data="methods">
       <div class="function" nevow:pattern="function">
-        <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
+        <a><nevow:attr name="name" nevow:render="functionAnchor"/></a> 
+        <a><nevow:attr name="name" nevow:render="shortFunctionAnchor"/></a>
         <div class="functionHeader">
           def <span nevow:render="functionName">functionName():</span>
           <a class="functionSourceLink" 
@@ -72,6 +73,7 @@
       </div>
       <div class="function" nevow:pattern="attribute">
         <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
+        <a><nevow:attr name="name" nevow:render="shortFunctionAnchor"/></a>
         <div class="functionHeader">
           <span nevow:render="attribute">attribute</span> =
         </div>

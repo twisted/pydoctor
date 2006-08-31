@@ -60,7 +60,7 @@ class _EpydocLinker(object):
             return '<code>%s</code>'%(prettyID,)
         else:
             if isinstance(obj, model.Function):
-                linktext = link(obj.parent) + '#' + urllib.quote(obj.fullName())
+                linktext = link(obj.parent) + '#' + urllib.quote(obj.name)
             else:
                 linktext = link(obj)
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
@@ -767,10 +767,13 @@ class FunctionParentMixin(object):
             return sup.render_childname(context, data)
         tag = context.tag()
         tag.clear()
-        return tag[tags.a(href='#' + urllib.quote(data.fullName()))[data.name]]
+        return tag[tags.a(href='#' + urllib.quote(data.name))[data.name]]
 
     def render_functionAnchor(self, context, data):
         return data.fullName()
+
+    def render_shortFunctionAnchor(self, context, data):
+        return data.name
 
     def render_functionBody(self, context, data):
         tag = context.tag()
@@ -793,7 +796,7 @@ def taglink(o, label=None):
     if label is None:
         label = o.fullName()
     if isinstance(o, model.Function):
-        linktext = link(o.parent) + '#' + urllib.quote(o.fullName())
+        linktext = link(o.parent) + '#' + urllib.quote(o.name)
     else:
         linktext = link(o)
     return tags.a(href=linktext)[label]
@@ -907,7 +910,7 @@ class ClassPage(FunctionParentMixin, CommonPage):
     def render_basechildname(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[tags.a(href=link(data.parent)+'#'+data.fullName())[data.name]]
+        return tag[tags.a(href=link(data.parent)+'#'+data.name)[data.name]]
 
 class TwistedClassPage(ClassPage):
     def data_methods(self, context, data):
@@ -952,7 +955,7 @@ class TwistedClassPage(ClassPage):
         tag.clear()
         if imeth:
             tag[tags.div(class_="interfaceinfo")
-                ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.fullName())
+                ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.name)
                  [imeth.parent.fullName()]]]
         for b in self.ob.allbases():
             if data.name not in b.contents:
@@ -960,14 +963,14 @@ class TwistedClassPage(ClassPage):
             overridden = b.contents[data.name]
             tag[tags.div(class_="interfaceinfo")
                 ['overrides ',
-                 tags.a(href=link(overridden.parent) + '#' + overridden.fullName())
+                 tags.a(href=link(overridden.parent) + '#' + overridden.name)
                  [overridden.fullName()]]]
             break
         ocs = list(overriding_subclasses(self.ob, data.name))
         if ocs:
             def one(sc):
                 return tags.a(
-                    href=link(sc) + '#' + sc.contents[data.name].fullName()
+                    href=link(sc) + '#' + sc.contents[data.name].name
                     )[sc.fullName()]
             t = tags.div(class_="interfaceinfo")['overridden in ']
             t[one(ocs[0])]
