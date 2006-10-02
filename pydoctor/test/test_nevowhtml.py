@@ -1,11 +1,7 @@
 from pydoctor import nevowhtml, model
 from pydoctor.test.test_astbuilder import fromText
+from nevow import flat
 import cStringIO
-
-import py
-
-if not nevowhtml.EPYTEXT:
-    py.test.skip("tests assume epydoc is present")
 
 class System:
     class options:
@@ -26,3 +22,28 @@ def test_simple():
     mod = fromText(src)
     v = getHTMLOf(mod.contents['f'])
     assert 'This is a docstring' in v
+
+def test_empty_table():
+    class system:
+        urlprefix = ''
+        class options:
+            htmlusesorttable = True
+    t = nevowhtml.TableFragment(system, True, [])
+    flattened = flat.flatten(t)
+    assert 'The renderer named' not in flattened
+
+def test_nonempty_table():
+    class Child:
+        kind = "kooky"
+        docstring = None
+        class system:
+            urlprefix = ''
+            class options:
+                htmlusesorttable = True
+        def fullName(self):
+            return 'fullName'
+        name = 'name'
+        contents = {}
+    t = nevowhtml.TableFragment(Child().system, True, [Child()])
+    flattened = flat.flatten(t)
+    assert 'The renderer named' not in flattened

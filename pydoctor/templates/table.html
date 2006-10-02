@@ -1,0 +1,15 @@
+<table  xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="children sortable" nevow:render="sequence" nevow:data="children">
+  <nevow:attr name="id" nevow:render="tableid" />
+  <tr nevow:pattern="header" nevow:render="maybeheadings">
+    <th nevow:render="maybelinenohead">Line #</th>
+    <th>Kind</th>
+    <th>Name</th>
+    <th>Docs</th>
+  </tr>
+  <tr nevow:pattern="item"><nevow:attr name="class" nevow:render="childclass" />
+    <td nevow:render="childline" class="lineno">Line #</td>
+    <td nevow:render="childkind">Kind</td>
+    <td nevow:render="childname">Name</td>
+    <td nevow:render="childsummaryDoc">Summary</td>
+  </tr>
+</table>

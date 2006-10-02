@@ -666,39 +666,68 @@ class CommonPage(rend.Page):
     def render_docstring(self, context, data):
         return doc2html(self.ob)
 
-    def render_maybechildren(self, context, data):
-        tag = context.tag()
-        if not self.ob.orderedcontents:
-            tag.clear()
-        return tag
+    def children(self):
+        return self.ob.orderedcontents
+
+    def render_mainTable(self, context, data):
+        return TableFragment(self.ob.system, self.has_lineno_col(), self.children())
 
     def has_lineno_col(self):
         if not self.writer.system.options.htmlusesorttable:
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
-    def render_maybeheadings(self, context, data):
-        if not self.writer.system.options.htmlusesorttable:
-            return ()
-        return context.tag()
-
-    def render_maybelinenohead(self, context, data):
-        if self.has_lineno_col():
-            return context.tag()
+    def render_ifusesorttable(self, context, data):
+        if self.writer.system.options.htmlusesorttable:
+            return context.tag
         else:
             return ()
-
-    def render_sequence3(self, context, data):
-        return context.tag().clear()
 
     def data_bases(self, context, data):
         return []
 
-    def data_children(self, context, data):
-        return self.ob.orderedcontents
-
     def render_childlist(self, context, data):
         return ()
+
+    def data_methods(self, context, data):
+        return []
+
+class PackagePage(CommonPage):
+    def children(self):
+        return sorted([o for o in self.ob.orderedcontents
+                       if o.name != '__init__'],
+                      key=lambda o2:o2.fullName())
+
+class TableFragment(rend.Fragment):
+    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/table.html'))
+    last_id = 0
+    def __init__(self, system, has_lineno_col, children):
+        self.system = system
+        self.has_lineno_col = has_lineno_col
+        self.children = children
+        TableFragment.last_id += 1
+        self.id = TableFragment.last_id
+
+    def has_lineno_col(self):
+        return True
+
+    def data_children(self, context, data):
+        return self.children
+
+    def render_maybelinenohead(self, context, data):
+        if self.has_lineno_col:
+            return context.tag
+        else:
+            return ()
+
+    def render_maybeheadings(self, context, data):
+        if self.system.options.htmlusesorttable:
+            return context.tag()
+        else:
+            return ()
+
+    def render_tableid(self, context, data):
+        return "tableid" + str(self.id)
 
     def render_childclass(self, context, data):
         return data.kind.lower()
@@ -706,7 +735,7 @@ class CommonPage(rend.Page):
     def render_childline(self, context, data):
         tag = context.tag()
         tag.clear()
-        if not self.has_lineno_col():
+        if not self.has_lineno_col:
             return ()
         if hasattr(data, 'linenumber'):
             sourceHref = srclink(data)
@@ -719,40 +748,54 @@ class CommonPage(rend.Page):
     def render_childkind(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[data.kind]
+        if isinstance(data, model.Function):
+            kind = "Method"
+        else:
+            kind = data.kind
+        return tag[kind]
 
     def render_childname(self, context, data):
         tag = context.tag()
         tag.clear()
-        return tag[tags.a(href=link(data))[data.name]]
+        if isinstance(data, model.Function):
+            return tag[tags.a(href='#' + urllib.quote(data.name))[data.name]]
+        else:
+            return tag[tags.a(href=link(data))[data.name]]
 
     def render_childsummaryDoc(self, context, data):
         tag = context.tag()
         tag.clear()
         return tag[doc2html(data, summary=True)]
 
-    def data_methods(self, context, data):
-        return []
+class BaseTableFragment(TableFragment):
+    def render_childclass(self, context, data):
+        return 'base' + data.kind.lower()
 
-
-class PackagePage(CommonPage):
-    def data_children(self, context, data):
-        return sorted([o for o in self.ob.orderedcontents
-                       if o.name != '__init__'],
-                      key=lambda o2:o2.fullName())
+    def render_childname(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[tags.a(href=link(data))[data.name]]
 
 class FunctionParentMixin(object):
     def render_childlist(self, context, data):
-        function = context.tag.patternGenerator('function')
-        attribute = context.tag.patternGenerator('attribute')
-        tag = context.tag().clear()
+        child = context.tag.patternGenerator('child')
+        tag = context.tag
         for d in data:
-            if isinstance(d, model.Function):
-                tag[function(data=d)]
-            else:
-                tag[attribute(data=d)]
+            tag[child(data=d)]
         return tag
-        
+
+    def render_attributeHeader(self, context, data):
+        if not isinstance(data, twisted.Attribute):
+            return ()
+        else:
+            return context.tag
+
+    def render_functionHeader(self, context, data):
+        if not isinstance(data, model.Function):
+            return ()
+        else:
+            return context.tag
+
     def render_functionName(self, context, data):
         tag = context.tag()
         tag.clear()
@@ -762,14 +805,6 @@ class FunctionParentMixin(object):
         tag = context.tag()
         tag.clear()
         return tag[data.name]
-
-    def render_childname(self, context, data):
-        if not isinstance(data, model.Function):
-            sup = super(FunctionParentMixin, self)
-            return sup.render_childname(context, data)
-        tag = context.tag()
-        tag.clear()
-        return tag[tags.a(href='#' + urllib.quote(data.name))[data.name]]
 
     def render_functionAnchor(self, context, data):
         return data.fullName()
@@ -787,6 +822,7 @@ class FunctionParentMixin(object):
         if not sourceHref:
             return ()
         return context.tag(href=sourceHref)
+
 
 class ModulePage(FunctionParentMixin, CommonPage):
     def data_methods(self, context, data):
@@ -816,15 +852,6 @@ class ClassPage(FunctionParentMixin, CommonPage):
                 p[', ', taglink(sc)]
             r[p]
         return r
-
-    def render_childkind(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        if isinstance(data, model.Function):
-            kind = "Method"
-        else:
-            kind = data.kind
-        return tag[kind]
 
     def render_heading(self, context, data):
         tag = super(ClassPage, self).render_heading(context, data)
@@ -858,61 +885,37 @@ class ClassPage(FunctionParentMixin, CommonPage):
                 r.append(n + (b,))
         return r
 
+    def unmasked_attrs(self, baselist):
+        maybe_masking = set()
+        for b in baselist[1:]:
+            maybe_masking.update(set([o.name for o in b.orderedcontents]))
+        return set([o.name for o in baselist[0].orderedcontents]) - maybe_masking
+
     def data_bases(self, context, data):
         r = []
-        for b in self.ob.baseobjects:
-            if b is None:
-                continue
-            r.extend(self.nested_bases(b))
+        for baselist in self.nested_bases(self.ob)[1:]:
+            if self.unmasked_attrs(baselist):
+                r.append(baselist)
         return r
-
-    def render_base_sequence(self, context, data):
-        header = context.tag.onePattern('header2')
-        p = context.tag.patternGenerator('item2')
-        tag = context.tag.clear()
-        tag[header]
-        for d in data[0].orderedcontents:
-            for b in (self.ob,) + data[1:]:
-                if d.name in b.contents:
-                    break
-            else:
-                tag[p(data=d)]
-        return tag
 
     def render_base_name(self, context, data):
         tag = context.tag.clear()
-        tag[tags.a(href=link(data[0]))[data[0].name]]
-        if data[1:]:
+        source_base = data[0]
+        tag[tags.a(href=link(source_base))[source_base.name]]
+        bases_to_mention = data[1:-1]
+        if bases_to_mention:
             tail = []
-            for b in data[1:][::-1]:
+            for b in reversed(bases_to_mention):
                 tail.append(tags.a(href=link(b))[b.name])
                 tail.append(', ')
             del tail[-1]
             tag[' (via ', tail, ')']
         return tag
 
-    def render_maybe_base(self, context, data):
-        for d in data[0].orderedcontents:
-            for b in (self.ob,) + data[1:]:
-                if d.name in b.contents:
-                    break
-            else:
-                return context.tag()
-        else:
-            return context.tag.clear()
-
-    def render_basechildclass(self, context, data):
-        return 'base' + data.kind.lower()
-
-    baseindex = 0
-    def render_basechildtableid(self, context, data):
-        self.baseindex += 1
-        return 'basetable' + str(self.baseindex)
-
-    def render_basechildname(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[tags.a(href=link(data.parent)+'#'+data.name)[data.name]]
+    def render_baseTable(self, context, data):
+        return BaseTableFragment(self.ob.system, self.has_lineno_col(),
+                                 [o for o in data[0].orderedcontents
+                                  if o.name in self.unmasked_attrs(data)])
 
 class TwistedClassPage(ClassPage):
     def data_methods(self, context, data):
