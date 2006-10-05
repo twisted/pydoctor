@@ -113,11 +113,11 @@ class SourceWriter(object):
 
     def visitImport(self, node):
         self.w('import ')
-        for (mod, as) in node.names:
+        for (mod, as_) in node.names:
             self.w(mod)
-            if as is not None:
+            if as_ is not None:
                 self.w(' as ')
-                self.w(as)
+                self.w(as_)
             self.w(', ')
         self.nl()
 
@@ -125,11 +125,11 @@ class SourceWriter(object):
         self.w('from ')
         self.w(node.modname)
         self.w(' import ')
-        for (mod, as) in node.names:
+        for (mod, as_) in node.names:
             self.w(mod)
-            if as is not None:
+            if as_ is not None:
                 self.w(' as ')
-                self.w(as)
+                self.w(as_)
             self.w(', ')
         self.nl()
 
