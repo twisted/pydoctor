@@ -2,7 +2,10 @@ from pydoctor import model
 
 from nevow import tags
 
-import inspect
+import inspect, urllib
+
+def link(o):
+    return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
 
 try:
     from epydoc.markup import epytext
