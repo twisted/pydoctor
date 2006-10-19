@@ -112,35 +112,38 @@ def getparser():
                       help="Be noisier.  Can be repeated for more noise.")
     return parser
 
+def readConfigFile(options):
+    for i, line in enumerate(open(options.configfile, 'rU')):
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if ':' not in line:
+            error("don't understand line %d of %s",
+                  i+1, options.configfile)
+        k, v = line.split(':', 1)
+        k = k.strip()
+        v = os.path.expanduser(v.strip())
+
+        if not hasattr(options, k):
+            error("invalid option %r on line %d of %s",
+                  k, i+1, options.configfile)
+        pre_v = getattr(options, k)
+        if not pre_v:
+            if isinstance(pre_v, list):
+                setattr(options, k, v.split(','))
+            else:
+                setattr(options, k, v)
+        else:
+            setattr(options, k, v)
+
 def main(args):
     import cPickle
     parser = getparser()
     options, args = parser.parse_args(args)
 
     if options.configfile:
-        for i, line in enumerate(open(options.configfile, 'rU')):
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if ':' not in line:
-                error("don't understand line %d of %s",
-                      i+1, options.configfile)
-            k, v = line.split(':', 1)
-            k = k.strip()
-            v = os.path.expanduser(v.strip())
-
-            if not hasattr(options, k):
-                error("invalid option %r on line %d of %s",
-                      k, i+1, options.configfile)
-            pre_v = getattr(options, k)
-            if not pre_v:
-                if isinstance(pre_v, list):
-                    setattr(options, k, v.split(','))
-                else:
-                    setattr(options, k, v)
-            else:
-                setattr(options, k, v)
-
+        readConfigFile(options)
+    
     # step 1: make/find the system
     if options.systemclass:
         systemclass = findClassFromDottedName(options.systemclass, '--system-class')
