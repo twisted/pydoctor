@@ -6,6 +6,7 @@ import cStringIO
 class System:
     class options:
         htmlusesorttable = False
+        addeditlinks = False
 
 def getHTMLOf(ob):
     writer = nevowhtml.NevowWriter('')
