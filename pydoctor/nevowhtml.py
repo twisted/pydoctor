@@ -350,12 +350,12 @@ class CommonPage(rend.Page):
         return TableFragment(self.ob.system, self.has_lineno_col(), self.children())
 
     def has_lineno_col(self):
-        if not self.writer.system.options.htmlusesorttable:
+        if not self.ob.system.options.htmlusesorttable:
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
     def render_ifusesorttable(self, context, data):
-        if self.writer.system.options.htmlusesorttable:
+        if self.ob.system.options.htmlusesorttable:
             return context.tag
         else:
             return ()
