@@ -14,7 +14,7 @@ except:
     print "no epytext found"
     EPYTEXT = False
 
-def boringDocstring(doc):
+def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring
     way."""
     # inspect.getdoc requires an object with a __doc__ attribute, not
@@ -23,7 +23,7 @@ def boringDocstring(doc):
         return '<pre class="undocumented">Undocumented</pre>'
     def crappit(): pass
     crappit.__doc__ = doc
-    return tags.pre[inspect.getdoc(crappit)]
+    return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
 
 class _EpydocLinker(object):
     def __init__(self, obj):
@@ -296,7 +296,7 @@ def doc2html(obj, summary=False):
                 doc = line
                 break
     if not EPYTEXT:
-        return boringDocstring(doc)
+        return boringDocstring(doc, summary)
     errs = []
     pdoc = epytext.parse_docstring(doc, errs)
     if errs:
@@ -315,7 +315,7 @@ def doc2html(obj, summary=False):
                     print err
             global errcount
             errcount += len(errs)
-            return boringDocstring(doc)
+            return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
     if not crap:
