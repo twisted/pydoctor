@@ -260,12 +260,15 @@ class FieldHandler(object):
 
 errcount = 0
 
-def doc2html(obj, summary=False):
+def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
-    doc = obj.docstring
+    if docstring is None:
+        doc = obj.docstring
+    else:
+        doc = docstring
     if doc is None or not doc.strip():
         text = "Undocumented"
         subdocstrings = {}
