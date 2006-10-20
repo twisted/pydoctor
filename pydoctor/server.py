@@ -68,7 +68,7 @@ class EditPage(rend.Page):
         tags.head[tags.title(render=render_title),
                   tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
         tags.body[tags.h1(render=render_title),
-                  tags.div(render=preview)[tags.h2["Preview"]]
+                  tags.div(render=render_preview)[tags.h2["Preview"]],
                   tags.form(action="write", method="post")
                   [tags.input(name="fullName", type="hidden", value=render_value),
                    tags.textarea(rows=40, cols=90, name="docstring", render=render_textarea),
