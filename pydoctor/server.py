@@ -8,14 +8,16 @@ class PyDoctorResource(rend.ChildLookupMixin):
 
     def __init__(self, system):
         self.system = system
-        self.putChild('apidocs.css', File(nevowhtml.sibpath(__file__, 'templates/apidocs.css')))
-        self.putChild('sorttable.js', File(nevowhtml.sibpath(__file__, 'templates/sorttable.js')))
-        index = nevowhtml.IndexPage(None, self.system)
+        self.putChild('apidocs.css',
+                      File(nevowhtml.sibpath(__file__, 'templates/apidocs.css')))
+        self.putChild('sorttable.js',
+                      File(nevowhtml.sibpath(__file__, 'templates/sorttable.js')))
+        index = nevowhtml.IndexPage(self.system)
         self.putChild('', index)
         self.putChild('index.html', index)
-        self.putChild('moduleIndex.html', nevowhtml.ModuleIndexPage(None, self.system))
-        self.putChild('classIndex.html', nevowhtml.ClassIndexPage(None, self.system))
-        self.putChild('nameIndex.html', nevowhtml.NameIndexPage(None, self.system))
+        self.putChild('moduleIndex.html', nevowhtml.ModuleIndexPage(self.system))
+        self.putChild('classIndex.html', nevowhtml.ClassIndexPage(self.system))
+        self.putChild('nameIndex.html', nevowhtml.NameIndexPage(self.system))
         self.putChild('edit', EditPage(system))
         self.putChild('write', WritePage(system))
 
@@ -34,32 +36,39 @@ class PyDoctorResource(rend.ChildLookupMixin):
                 break
         else:
             pclass = nevowhtml.CommonPage
-        return pclass(None, obj)
+        return pclass(obj)
 
     def renderHTTP(self, ctx):
-        return nevowhtml.IndexPage(None, self.system).renderHTTP(ctx)
+        return nevowhtml.IndexPage(self.system).renderHTTP(ctx)
 
 class EditPage(rend.Page):
     def __init__(self, system):
         self.system = system
     def render_title(self, context, data):
         obname = context.arg('ob', '')
-        return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" + obname + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+        return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" +
+                           obname + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_textarea(self, context, data):
         obname = context.arg('ob', '')
         if obname not in self.system.allobjects:
             return context.tag
         else:
-            docstring = self.system.allobjects[obname].docstring
+            ob = self.system.allobjects[obname]
+            if isinstance(ob, model.Package):
+                ob = ob.contents['__init__']
+            docstring = ob.docstring
             if docstring is None:
                 docstring = ''
             return context.tag[docstring]
     def render_value(self, context, data):
         return context.arg('ob', '')
+    def render_preview(self, context, data):
+        return ()
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=render_title),
                   tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
         tags.body[tags.h1(render=render_title),
+                  tags.div(render=preview)[tags.h2["Preview"]]
                   tags.form(action="write", method="post")
                   [tags.input(name="fullName", type="hidden", value=render_value),
                    tags.textarea(rows=40, cols=90, name="docstring", render=render_textarea),

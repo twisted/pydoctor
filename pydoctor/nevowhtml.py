@@ -89,7 +89,7 @@ class NevowWriter:
 
     def writeModuleIndex(self, system):
         for pclass in summarypages:
-            page = pclass(self, system)
+            page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
             f.write(page.renderSynchronously())
             f.close()
@@ -112,7 +112,7 @@ class NevowWriter:
                 break
         else:
             pclass = CommonPage
-        page = pclass(self, ob)
+        page = pclass(ob)
         self.written_pages += 1
         print '\rwritten', self.written_pages, 'pages',
         sys.stdout.flush()
@@ -141,8 +141,7 @@ def moduleSummary(modorpack):
 class ModuleIndexPage(rend.Page):
     filename = 'moduleIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
-    def __init__(self, writer, system):
-        self.writer = writer
+    def __init__(self, system):
         self.system = system
     def render_title(self, context, data):
         return context.tag.clear()["Module Index"]
@@ -187,8 +186,7 @@ def subclassesFrom(hostsystem, cls, anchors):
 class ClassIndexPage(rend.Page):
     filename = 'classIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
-    def __init__(self, writer, system):
-        self.writer = writer
+    def __init__(self, system):
         self.system = system
     def render_title(self, context, data):
         return context.tag.clear()["Class Hierarchy"]
@@ -214,8 +212,7 @@ class ClassIndexPage(rend.Page):
 class NameIndexPage(rend.Page):
     filename = 'nameIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/nameIndex.html'))
-    def __init__(self, writer, system):
-        self.writer = writer
+    def __init__(self, system):
         self.system = system
         used_initials = {}
         for ob in self.system.orderedallobjects:
@@ -268,7 +265,7 @@ class NameIndexPage(rend.Page):
 class IndexPage(rend.Page):
     filename = 'index.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
-    def __init__(self, writer, system):
+    def __init__(self, system):
         self.system = system
     def render_project_link(self, context, data):
         if self.system.options.projecturl:
@@ -296,8 +293,7 @@ summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 
 class CommonPage(rend.Page):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
-    def __init__(self, writer, ob):
-        self.writer = writer
+    def __init__(self, ob):
         self.ob = ob
     def render_title(self, context, data):
         return self.ob.fullName()
