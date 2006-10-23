@@ -349,7 +349,11 @@ class CommonPage(rend.Page):
         return self.ob.orderedcontents
 
     def render_mainTable(self, context, data):
-        return TableFragment(self.ob.system, self.has_lineno_col(), self.children())
+        children = self.children()
+        if children:
+            return TableFragment(self.ob.system, self.has_lineno_col(), children)
+        else:
+            return ()
 
     def has_lineno_col(self):
         if not self.ob.system.options.htmlusesorttable:
