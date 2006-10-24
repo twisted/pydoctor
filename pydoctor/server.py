@@ -42,10 +42,12 @@ class PyDoctorResource(rend.ChildLookupMixin):
         return nevowhtml.IndexPage(self.system).renderHTTP(ctx)
 
 class EditableDocstringsMixin(object):
-    def render_edit_docstring(self, context, data):
-        return tags.a(href="edit?ob="+self.ob.fullName())["Edit"]
-    def render_edit_functionDocstring(self, context, data):
-        return tags.a(href="edit?ob="+data.fullName())["Edit"]
+    def render_docstring(self, context, data):
+        return (super(EditableDocstringsMixin, self).render_docstring(context, data),
+                tags.a(href="edit?ob="+self.ob.fullName())["Edit"])
+    def render_functionBody(self, context, data):
+        return (super(EditableDocstringsMixin, self).render_functionBody(context, data),
+                tags.a(href="edit?ob="+data.fullName())["Edit"])
 
 def recursiveSubclasses(cls):
     yield cls

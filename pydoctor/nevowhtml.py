@@ -339,9 +339,6 @@ class CommonPage(rend.Page):
     def render_docstring(self, context, data):
         return epydoc2stan.doc2html(self.ob)
 
-    def render_edit_docstring(self, context, data):
-        return ()
-
     def children(self):
         return self.ob.orderedcontents
 
@@ -496,9 +493,6 @@ class FunctionParentMixin(object):
         tag = context.tag()
         tag.clear()
         return tag[epydoc2stan.doc2html(data)]
-
-    def render_edit_functionDocstring(self, context, data):
-        return ()
 
     def render_functionSourceLink(self, context, data):
         sourceHref = srclink(data)
