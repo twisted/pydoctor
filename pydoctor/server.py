@@ -1,7 +1,9 @@
-from nevow import rend, loaders, tags, inevow
+from nevow import rend, loaders, tags, inevow, url
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import nevowhtml, model, epydoc2stan
+
+import time
 
 def findPageClassInDict(obj, d, default="CommonPage"):
     for c in obj.__class__.__mro__:
@@ -41,13 +43,26 @@ class PyDoctorResource(rend.ChildLookupMixin):
     def renderHTTP(self, ctx):
         return nevowhtml.IndexPage(self.system).renderHTTP(ctx)
 
+def stanForOb(ob):
+    origob = ob
+    if isinstance(ob, model.Package):
+        ob = ob.contents['__init__']
+    r = [epydoc2stan.doc2html(ob),
+         tags.a(href="edit?ob="+origob.fullName())["Edit"],
+         " "]
+    if hasattr(ob, 'olddocstrings'):
+        r.append(tags.a(href="history?ob="+origob.fullName())["View docstring history (",
+                                                              len(docstrings(ob)),
+                                                              " versions)"])
+    else:
+        r.append(tags.span(class_='undocumented')["No edits yet."])
+    return r
+
 class EditableDocstringsMixin(object):
     def render_docstring(self, context, data):
-        return (super(EditableDocstringsMixin, self).render_docstring(context, data),
-                tags.a(href="edit?ob="+self.ob.fullName())["Edit"])
+        return stanForOb(self.ob)
     def render_functionBody(self, context, data):
-        return (super(EditableDocstringsMixin, self).render_functionBody(context, data),
-                tags.a(href="edit?ob="+data.fullName())["Edit"])
+        return stanForOb(data)
 
 def recursiveSubclasses(cls):
     yield cls
@@ -92,16 +107,20 @@ class EditPage(rend.Page):
         req = context.locate(inevow.IRequest)
         fullName = context.arg('ob',)
         if fullName not in self.system.allobjects:
-            return tags.html[tags.head[tags.title["Error"]],
-                             tags.body[tags.p["An error  occurred."]]]
+            return [tags.head[tags.title["Error"]],
+                    tags.body[tags.p["An error  occurred."]]]
         ob = self.system.allobjects[fullName]
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']
         action = context.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
             if action == 'Submit':
-                # something more should be done here, of course!
+                if not hasattr(ob, 'olddocstrings'):
+                    ob.olddocstrings = []
+                ob.olddocstrings.append((ob.docstring,
+                                         getattr(ob, 'edittime', 'Dawn of time')))
                 ob.docstring = context.arg('docstring', None)
+                ob.edittime = time.strftime("%Y-%m-%d %H:%M:%S")
             if not isinstance(ob, (model.Package, model.Module, model.Class)):
                 url = ob.parent.fullName()+'.html#' + ob.name
             else:
@@ -127,10 +146,88 @@ class EditPage(rend.Page):
                    tags.input(name='action', type="submit", value="Preview"),
                    tags.input(name='action', type="submit", value="Cancel")]]]])
 
+def docstrings(ob):
+    return getattr(ob, 'olddocstrings', []) + \
+           [(ob.docstring, getattr(ob, 'edittime', 'Dawn of Time'))]
+
+class HistoryPage(rend.Page):
+    def __init__(self, system):
+        self.system = system
+    def render_title(self, context, data):
+        return context.tag[u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
+                           context.arg('ob') +
+                           u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
+    def render_links(self, context, data):
+        rev = int(context.arg('rev', '-1'))
+        ob = self.system.allobjects[context.arg('ob')]
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        ds = docstrings(ob)
+        therange = range(len(ds))
+        rev = therange[rev]
+        r = []
+        for i in therange:
+            if i == len(ds) - 1:
+                label = "Latest"
+            else:
+                label = str(i)
+            if i == rev:
+                r.append(label)
+            else:
+                r.append(tags.a(href=url.gethere.replace('rev', str(i)))[label])
+            r.append(' - ' + ds[i][1])
+            r.append(' / ')
+        del r[-1]
+        return context.tag[r]
+    def render_docstring(self, context, data):
+        rev = int(context.arg('rev', '-1'))
+        ob = self.system.allobjects[context.arg('ob')]
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        docstring = docstrings(ob)[rev][0]
+        if docstring is None:
+            docstring = ''
+        return epydoc2stan.doc2html(ob, docstring=docstring)
+    def render_check(self, context, data):
+        try:
+            rev = int(context.arg('rev', '-1'))
+        except ValueError:
+            return self.errorDocument
+        try:
+            ob = self.system.allobjects[context.arg('ob')]
+        except KeyError:
+            return self.errorDocument
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        try:
+            docstrings(ob)[rev]
+        except IndexError:
+            return self.errorDocument
+        return context.tag
+    def render_linkback(self, context, data):
+        ob = self.system.allobjects[context.arg('ob')]
+        if not isinstance(ob, (model.Package, model.Module, model.Class)):
+            url = ob.parent.fullName()+'.html#' + ob.name
+        else:
+            url = ob.fullName()+'.html'
+        return context.tag[tags.a(href=url)["Back"]]
+    docFactory = loaders.stan(tags.html[
+        tags.invisible(render=render_check)[
+        tags.head[tags.title(render=render_title),
+                  tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
+        tags.body[tags.h1(render=render_title),
+                  tags.p(render=render_links),
+                  tags.div(render=render_docstring),
+                  tags.p(render=render_linkback)]]])
+    errorDocument = [tags.head[tags.title["Error"]],
+                     tags.body[tags.p["An error  occurred."]]]
+
+
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
         PyDoctorResource.__init__(self, system)
         self.putChild('edit', EditPage(system))
+        self.putChild('history', HistoryPage(system))
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, editPageClasses)
 

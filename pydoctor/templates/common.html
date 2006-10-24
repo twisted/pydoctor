@@ -41,8 +41,10 @@
         <div class="functionHeader" nevow:render="attributeHeader">
           <span nevow:render="attribute">attribute</span> =
         </div>
-        <div class="functionBody" nevow:render="functionBody">
-          Docstring.
+        <div class="functionBody">
+          <nevow:invisible nevow:render="functionBody">
+            Docstring.
+          </nevow:invisible>
         </div>
       </div>
     </nevow:invisible>

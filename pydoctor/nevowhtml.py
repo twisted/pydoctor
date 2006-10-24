@@ -490,9 +490,7 @@ class FunctionParentMixin(object):
         return data.name
 
     def render_functionBody(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[epydoc2stan.doc2html(data)]
+        return epydoc2stan.doc2html(data)
 
     def render_functionSourceLink(self, context, data):
         sourceHref = srclink(data)
