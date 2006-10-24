@@ -340,10 +340,7 @@ class CommonPage(rend.Page):
         return epydoc2stan.doc2html(self.ob)
 
     def render_edit_docstring(self, context, data):
-        if self.ob.system.options.addeditlinks:
-            return tags.a(href="edit?ob="+self.ob.fullName())["Edit"]
-        else:
-            return ()
+        return ()
 
     def children(self):
         return self.ob.orderedcontents
@@ -501,10 +498,7 @@ class FunctionParentMixin(object):
         return tag[epydoc2stan.doc2html(data)]
 
     def render_edit_functionDocstring(self, context, data):
-        if self.ob.system.options.addeditlinks:
-            return tags.a(href="edit?ob="+data.fullName())["Edit"]
-        else:
-            return ()
+        return ()
 
     def render_functionSourceLink(self, context, data):
         sourceHref = srclink(data)

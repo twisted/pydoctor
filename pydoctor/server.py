@@ -3,6 +3,13 @@ from nevow.static import File
 from zope.interface import implements
 from pydoctor import nevowhtml, model, epydoc2stan
 
+def findPageClassInDict(obj, d, default="CommonPage"):
+    for c in obj.__class__.__mro__:
+        n = c.__name__ + 'Page'
+        if n in d:
+            return d[n]
+    return d[default]
+
 class PyDoctorResource(rend.ChildLookupMixin):
     implements(inevow.IResource)
 
@@ -18,7 +25,9 @@ class PyDoctorResource(rend.ChildLookupMixin):
         self.putChild('moduleIndex.html', nevowhtml.ModuleIndexPage(self.system))
         self.putChild('classIndex.html', nevowhtml.ClassIndexPage(self.system))
         self.putChild('nameIndex.html', nevowhtml.NameIndexPage(self.system))
-        self.putChild('edit', EditPage(system))
+
+    def pageClassForObject(self, ob):
+        return findPageClassInDict(ob, nevowhtml.__dict__)
 
     def childFactory(self, ctx, name):
         if not name.endswith('.html'):
@@ -27,18 +36,28 @@ class PyDoctorResource(rend.ChildLookupMixin):
         if name not in self.system.allobjects:
             return None
         obj = self.system.allobjects[name]
-        d = nevowhtml.__dict__
-        for c in obj.__class__.__mro__:
-            n = c.__name__ + 'Page'
-            if n in d:
-                pclass = d[n]
-                break
-        else:
-            pclass = nevowhtml.CommonPage
-        return pclass(obj)
+        return self.pageClassForObject(obj)(obj)
 
     def renderHTTP(self, ctx):
         return nevowhtml.IndexPage(self.system).renderHTTP(ctx)
+
+class EditableDocstringsMixin(object):
+    def render_edit_docstring(self, context, data):
+        return tags.a(href="edit?ob="+self.ob.fullName())["Edit"]
+    def render_edit_functionDocstring(self, context, data):
+        return tags.a(href="edit?ob="+data.fullName())["Edit"]
+
+def recursiveSubclasses(cls):
+    yield cls
+    for sc in cls.__subclasses__():
+        for ssc in recursiveSubclasses(sc):
+            yield ssc
+
+editPageClasses = {}
+
+for cls in list(recursiveSubclasses(nevowhtml.CommonPage)):
+    _n = cls.__name__
+    editPageClasses[_n] = type(_n, (EditableDocstringsMixin, cls), {})
 
 class EditPage(rend.Page):
     def __init__(self, system):
@@ -106,6 +125,13 @@ class EditPage(rend.Page):
                    tags.input(name='action', type="submit", value="Preview"),
                    tags.input(name='action', type="submit", value="Cancel")]]]])
 
+class EditingPyDoctorResource(PyDoctorResource):
+    def __init__(self, system):
+        PyDoctorResource.__init__(self, system)
+        self.putChild('edit', EditPage(system))
+    def pageClassForObject(self, ob):
+        return findPageClassInDict(ob, editPageClasses)
+
 def resourceForPickleFile(pickleFilePath, configFilePath=None):
     import cPickle
     system = cPickle.load(open(pickleFilePath, 'rb'))
@@ -115,5 +141,4 @@ def resourceForPickleFile(pickleFilePath, configFilePath=None):
         readConfigFile(system.options)
     else:
         system.options, _ = getparser().parse_args([])
-    system.options.addeditlinks = True
-    return PyDoctorResource(system)
+    return EditingPyDoctorResource(system)

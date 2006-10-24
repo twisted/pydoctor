@@ -110,9 +110,6 @@ def getparser():
                       help="")
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
-    parser.add_option('--add-edit-links', action='store_true',
-                      dest='addeditlinks',
-                      help="Don't use this.")
     return parser
 
 def readConfigFile(options):
