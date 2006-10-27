@@ -12,13 +12,13 @@ def findPageClassInDict(obj, d, default="CommonPage"):
             return d[n]
     return d[default]
 
-class HateTheWorld(rend.Page):
-    def render_foo(self, context, data):
-        import pprint
-        req = inevow.IRequest(context)
-        #print repr(pprint.pformat(req.received_headers)), req.received_headers
-        return context.tag[pprint.pformat(req.received_headers)]
-    docFactory = loaders.stan(tags.html[tags.body[tags.pre(render=render_foo)]])
+## class HateTheWorld(rend.Page):
+##     def render_foo(self, context, data):
+##         import pprint
+##         req = inevow.IRequest(context)
+##         #print repr(pprint.pformat(req.received_headers)), req.received_headers
+##         return context.tag[pprint.pformat(req.received_headers)]
+##     docFactory = loaders.stan(tags.html[tags.body[tags.pre(render=render_foo)]])
 
 class PyDoctorResource(rend.ChildLookupMixin):
     implements(inevow.IResource)
@@ -35,7 +35,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
         self.putChild('moduleIndex.html', nevowhtml.ModuleIndexPage(self.system))
         self.putChild('classIndex.html', nevowhtml.ClassIndexPage(self.system))
         self.putChild('nameIndex.html', nevowhtml.NameIndexPage(self.system))
-        self.putChild('debug', HateTheWorld())
+#        self.putChild('debug', HateTheWorld())
 
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, nevowhtml.__dict__)
@@ -84,6 +84,14 @@ editPageClasses = {}
 for cls in list(recursiveSubclasses(nevowhtml.CommonPage)):
     _n = cls.__name__
     editPageClasses[_n] = type(_n, (EditableDocstringsMixin, cls), {})
+
+def userIP(req):
+    # obviously this is at least slightly a guess.
+    xff = req.received_headers.get('x-forwarded-for')
+    if xff:
+        return xff
+    else:
+        return req.getClientIP()
 
 class EditPage(rend.Page):
     def __init__(self, system):
