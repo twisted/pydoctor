@@ -2,11 +2,11 @@ from pydoctor import nevowhtml, model
 from pydoctor.test.test_astbuilder import fromText
 from nevow import flat
 import cStringIO
+import py
 
 class System:
     class options:
         htmlusesorttable = False
-        addeditlinks = False
 
 def getHTMLOf(ob):
     writer = nevowhtml.NevowWriter('')
@@ -48,3 +48,19 @@ def test_nonempty_table():
     t = nevowhtml.TableFragment(Child().system, True, [Child()])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
+
+def test_rest_support():
+    try:
+        import docutils, epydoc
+    except ImportError:
+        py.test.skip("Requires both docutils and epydoc to be importable")
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    system.options.verbosity = 4
+    src = '''
+    def f():
+        """This is a docstring for f."""
+    '''
+    mod = fromText(src, system=system)
+    html = getHTMLOf(mod.contents['f'])
+    assert "<pre>" not in html

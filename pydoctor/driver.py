@@ -80,6 +80,9 @@ def getparser():
                           "is the desired abbreviation.  This can be used to "
                           "resolve conflicts with abbreviation where you have two or more "
                           "modules that start with the same letter.  Ex: twistedcaldav=tcd")
+    parser.add_option('--docformat', dest='docformat',
+                      action='store', default='epytext',
+                      help="Which epydoc-supported format docstrings are assumed to be in.")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
                       help="fullName of object to generate API docs for"

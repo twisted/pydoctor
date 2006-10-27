@@ -7,6 +7,14 @@ import inspect, urllib
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
 
+def get_parser(formatname):
+    try:
+        mod = __import__('epydoc.markup.' + formatname, globals(), locals(), ['parse_docstring'])
+    except ImportError:
+        return None
+    else:
+        return mod.parse_docstring
+
 try:
     from epydoc.markup import epytext
     EPYTEXT = True
@@ -300,8 +308,11 @@ def doc2html(obj, summary=False, docstring=None):
                 break
     if not EPYTEXT:
         return boringDocstring(doc, summary)
+    parse_docstring = get_parser(obj.system.options.docformat)
+    if not parse_docstring:
+        return boringDocstring(doc, summary)
     errs = []
-    pdoc = epytext.parse_docstring(doc, errs)
+    pdoc = parse_docstring(doc, errs)
     if errs:
         errs = []
         def crappit(): pass
