@@ -271,7 +271,8 @@ def main(args):
         if options.htmlwriter:
             writerclass = findClassFromDottedName(options.htmlwriter, '--html-writer')
         else:
-            writerclass = html.SystemWriter
+            from pydoctor import nevowhtml
+            writerclass = nevowhtml.NevowWriter
 
         print 'writing html to', options.htmloutput,
         print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
