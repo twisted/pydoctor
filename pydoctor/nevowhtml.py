@@ -5,7 +5,7 @@ from nevow import rend, loaders, tags
 import os, shutil, inspect, sys, urllib
 
 def link(o):
-    return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
+    return o.system.urlprefix+urllib.quote(o.fullName()+'.html')
 
 def srclink(o):
     system = o.system
