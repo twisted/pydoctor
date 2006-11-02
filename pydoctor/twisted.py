@@ -25,7 +25,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly.append(
             cls.dottedNameToFullName(ast_pp.pp(arg)))
 
-    
+
 
 class TwistedModuleVisitor(astbuilder.ModuleVistor):
     def funcNameFromCall(self, node):
@@ -39,7 +39,7 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         if isinstance(self.builder.current, model.Module) and \
                ast_pp.pp(node) == 'Interface = interface.Interface\n':
             # warner!!!
-            
+
             n2fn = self.builder.current._name2fullname
             n2fn['Interface'] = 'zope.interface.Interface'
             return
@@ -59,7 +59,7 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         attr = self.builder._push(Attribute, node.nodes[0].name, args[0].value)
         attr.linenumber = node.lineno
         self.builder._pop(Attribute)
-        
+
     def visitCallFunc(self, node):
         base = self.funcNameFromCall(node)
         meth = getattr(self, "visitCallFunc_" + base.replace('.', '_'), None)
@@ -73,7 +73,7 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         addInterfaceInfoToClass(self.builder.current, node.args,
                                 funcName == 'zope.interface.implementsOnly')
     visitCallFunc_zope_interface_implementsOnly = visitCallFunc_zope_interface_implements
-        
+
     def visitCallFunc_zope_interface_classImplements(self, funcName, node):
         clsname = self.builder.current.dottedNameToFullName(ast_pp.pp(node.args[0]))
         if clsname not in self.system.allobjects:
@@ -83,7 +83,7 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         addInterfaceInfoToClass(cls, node.args[1:],
                                 funcName == 'zope.interface.classImplementsOnly')
     visitCallFunc_zope_interface_classImplementsOnly = visitCallFunc_zope_interface_classImplements
-    
+
     def visitCallFunc_twisted_python_util_moduleMovedForSplit(self, funcName, node):
         # XXX this is rather fragile...
         origModuleName, newModuleName, moduleDesc, \
@@ -104,8 +104,8 @@ that package.
        'projectName': projectName,
        'projectURL': projectURL}
         self.builder.current.docstring = modoc
-        
-        
+
+
 def markInterfaceClass(cls):
     cls.isinterfaceclass = True
     for sc in cls.subclasses:
@@ -153,8 +153,8 @@ class InterfaceClassFinder(object):
             if bn in mod.contents:
                 cls.baseobjects[i] = mod.contents[bn]
                 cls.bases[i] = mod.fullName() + '.' + bn
-                
-        
+
+
 
 
 class TwistedASTBuilder(astbuilder.ASTBuilder):

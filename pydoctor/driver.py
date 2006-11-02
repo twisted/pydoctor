@@ -146,7 +146,7 @@ def main(args):
 
     if options.configfile:
         readConfigFile(options)
-    
+
     # step 1: make/find the system
     if options.systemclass:
         systemclass = findClassFromDottedName(options.systemclass, '--system-class')

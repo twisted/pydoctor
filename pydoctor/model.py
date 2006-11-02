@@ -176,7 +176,7 @@ class Class(Documentable):
                 continue
             yield b
             for b2 in b.allbases():
-                yield b2                    
+                yield b2
 
 
 class Function(Documentable):
@@ -233,7 +233,7 @@ class System(object):
         for system in systems:
             if mod in system.allobjects:
                 break
-        else:            
+        else:
             return n
         m = system.allobjects[mod]
         if not isinstance(m, Module):

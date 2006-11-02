@@ -42,7 +42,7 @@ def loadModulesForSystem(system):
                     print "error importing", m.fullName(), e
             else:
                 result[m] = realMod
-                
+
             print '\r', i+1-errcount, '/', len(modlist), 'modules imported',
             print errcount, 'failed',
             sys.stdout.flush()
@@ -53,7 +53,7 @@ def loadModulesForSystem(system):
         sys.modules.clear()
         sys.modules.update(mods)
     return result
-    
+
 
 _types = {}
 
@@ -112,7 +112,7 @@ def typeChecker(builder, name, OBJ):
         checkDict(builder, OBJ.__dict__)
     finally:
         builder.popClass()
-    
+
 @checker(types.FunctionType)
 def funcChecker(builder, name, OBJ):
     c = builder.current
@@ -129,7 +129,7 @@ def funcChecker(builder, name, OBJ):
         f.argspec = argspec
     finally:
         builder.popFunction()
-    
+
 
 def checkDict(builder, aDict):
     c = builder.current

@@ -12,4 +12,3 @@ def test_simple():
     assert D.name == 'D'
     assert D.baseobjects == [B]
     assert B.subclasses == [D]
-    

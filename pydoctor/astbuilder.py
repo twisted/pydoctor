@@ -255,8 +255,8 @@ class ASTBuilder(object):
                                 meth.docstring = overriddenmeth.docstring
                                 meth.docsource = overriddenmeth
                                 break
-                            
-                    
+
+
 
     def processModuleAST(self, ast, moduleName):
         mv = self.ModuleVistor(self, moduleName)
@@ -344,7 +344,7 @@ class ASTBuilder(object):
                 self.warning("cannot parse", mod.filepath)
             self.processModuleAST(ast, mod.name)
             print '\r', i+1, '/', len(newlist), 'modules parsed',
-            print sum(len(v) for v in self.system.warnings.itervalues()), 'warnings', 
+            print sum(len(v) for v in self.system.warnings.itervalues()), 'warnings',
             sys.stdout.flush()
             mod.processed = True
             self.pop(mod.parent)
