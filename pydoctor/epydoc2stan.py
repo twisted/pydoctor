@@ -312,24 +312,21 @@ def doc2html(obj, summary=False, docstring=None):
     if not parse_docstring:
         return boringDocstring(doc, summary)
     errs = []
+    def crappit(): pass
+    crappit.__doc__ = doc
+    doc = inspect.getdoc(crappit)
     pdoc = parse_docstring(doc, errs)
     if errs:
-        errs = []
-        def crappit(): pass
-        crappit.__doc__ = doc
-        doc = inspect.getdoc(crappit)
-        pdoc = epytext.parse_docstring(doc, errs)
-        if errs:
-            if obj.system.options.verbosity > 0:
-                print 'epytext error in', obj
-            if obj.system.options.verbosity > 1:
-                for i, l in enumerate(doc.splitlines()):
-                    print "%4s"%(i+1), l
-                for err in errs:
-                    print err
-            global errcount
-            errcount += len(errs)
-            return boringDocstring(doc, summary)
+        if obj.system.options.verbosity > 0:
+            print 'epytext error in', obj
+        if obj.system.options.verbosity > 1:
+            for i, l in enumerate(doc.splitlines()):
+                print "%4s"%(i+1), l
+            for err in errs:
+                print err
+        global errcount
+        errcount += len(errs)
+        return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
     if crap.startswith('<p>') and crap.endswith('</p>\n'):
