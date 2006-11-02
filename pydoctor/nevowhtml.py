@@ -274,6 +274,8 @@ class IndexPage(rend.Page):
             return self.system.options.projectname
     def render_project(self, context, data):
         return self.system.options.projectname
+    def render_recentChanges(self, context, data):
+        return ()
     def render_onlyIfOneRoot(self, context, data):
         if len(self.system.rootobjects) != 1:
             return []
