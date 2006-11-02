@@ -307,6 +307,8 @@ class CommonPage(rend.Page):
         tag.clear()
         if self.ob.parent:
             parent = self.ob.parent
+            if isinstance(parent, model.Module) and parent.name == '__init__':
+                parent = parent.parent
             parts = []
             while parent.parent:
                 parts.append(tags.a(href=link(parent))[parent.name])
@@ -342,6 +344,9 @@ class CommonPage(rend.Page):
     def children(self):
         return self.ob.orderedcontents
 
+    def render_packageInitTable(self, context, data):
+        return ()
+
     def render_mainTable(self, context, data):
         children = self.children()
         if children:
@@ -369,11 +374,68 @@ class CommonPage(rend.Page):
     def data_methods(self, context, data):
         return []
 
+    def render_childlist(self, context, data):
+        child = context.tag.patternGenerator('child')
+        tag = context.tag
+        for d in data:
+            tag[child(data=d)]
+        return tag
+
+    def render_attributeHeader(self, context, data):
+        if not isinstance(data, twisted.Attribute):
+            return ()
+        else:
+            return context.tag
+
+    def render_functionHeader(self, context, data):
+        if not isinstance(data, model.Function):
+            return ()
+        else:
+            return context.tag
+
+    def render_functionName(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[data.name, '(', signature(data.argspec), '):']
+
+    def render_attribute(self, context, data):
+        tag = context.tag()
+        tag.clear()
+        return tag[data.name]
+
+    def render_functionAnchor(self, context, data):
+        return data.fullName()
+
+    def render_shortFunctionAnchor(self, context, data):
+        return data.name
+
+    def render_functionBody(self, context, data):
+        return epydoc2stan.doc2html(data)
+
+    def render_functionSourceLink(self, context, data):
+        sourceHref = srclink(data)
+        if not sourceHref:
+            return ()
+        return context.tag(href=sourceHref)
+
 class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
                        if o.name != '__init__'],
                       key=lambda o2:o2.fullName())
+
+    def render_packageInitTable(self, context, data):
+        children = self.ob.contents['__init__'].orderedcontents
+        if children:
+            return [tags.p["From the __init__.py module:"],
+                    TableFragment(self.ob.system, self.ob.system.options.htmlusesorttable,
+                                  children)]
+        else:
+            return ()
+
+    def data_methods(self, context, data):
+        return [o for o in self.ob.contents['__init__'].orderedcontents
+                if isinstance(o, model.Function)]
 
 class TableFragment(rend.Fragment):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/table.html'))
@@ -453,57 +515,10 @@ class BaseTableFragment(TableFragment):
         tag.clear()
         return tag[tags.a(href=link(data))[data.name]]
 
-class FunctionParentMixin(object):
-    def render_childlist(self, context, data):
-        child = context.tag.patternGenerator('child')
-        tag = context.tag
-        for d in data:
-            tag[child(data=d)]
-        return tag
-
-    def render_attributeHeader(self, context, data):
-        if not isinstance(data, twisted.Attribute):
-            return ()
-        else:
-            return context.tag
-
-    def render_functionHeader(self, context, data):
-        if not isinstance(data, model.Function):
-            return ()
-        else:
-            return context.tag
-
-    def render_functionName(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[data.name, '(', signature(data.argspec), '):']
-
-    def render_attribute(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[data.name]
-
-    def render_functionAnchor(self, context, data):
-        return data.fullName()
-
-    def render_shortFunctionAnchor(self, context, data):
-        return data.name
-
-    def render_functionBody(self, context, data):
-        return epydoc2stan.doc2html(data)
-
-    def render_functionSourceLink(self, context, data):
-        sourceHref = srclink(data)
-        if not sourceHref:
-            return ()
-        return context.tag(href=sourceHref)
-
-
-class ModulePage(FunctionParentMixin, CommonPage):
+class ModulePage(CommonPage):
     def data_methods(self, context, data):
         return [o for o in self.ob.orderedcontents
                 if isinstance(o, model.Function)]
-
 
 def taglink(o, label=None):
     if label is None:
@@ -514,7 +529,7 @@ def taglink(o, label=None):
         linktext = link(o)
     return tags.a(href=linktext)[label]
 
-class ClassPage(FunctionParentMixin, CommonPage):
+class ClassPage(CommonPage):
     def render_extras(self, context, data):
         r = super(ClassPage, self).render_extras(context, data)
         if self.ob.subclasses:

@@ -142,7 +142,11 @@ class ASTBuilder(object):
 
     def _push(self, cls, name, docstring):
         if self.current:
-            prefix = self.current.fullName() + '.'
+            if isinstance(self.current, model.Module) and \
+                   self.current.name == '__init__':
+                prefix = self.current.parent.fullName() + '.'
+            else:
+                prefix = self.current.fullName() + '.'
             parent = self.current
         else:
             prefix = ''
