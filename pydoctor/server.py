@@ -51,10 +51,49 @@ class IndexPage(nevowhtml.IndexPage):
         return context.tag
 
 class RecentChangesPage(nevowhtml.CommonPage):
+    def __init__(self, root):
+        self.root = root
+
+    def render_changes(self, context, data):
+        item = context.tag.patternGenerator('item')
+        tag = context.tag
+        for d in reversed(self.root.edits):
+            tag[item(data=d)]
+        return tag
+    def render_diff(self, context, data):
+        return tags.a(href=url.URL.fromContext(context).sibling(
+            'diff').add(
+            'ob', data.obj.fullName()).add(
+            'revA', data.rev-1).add(
+            'revB', data.rev))["(diff)"]
+    def render_hist(self, context, data): 
+        return tags.a(href=url.URL.fromContext(context).sibling(
+            'history').add(
+            'ob', data.obj.fullName()).add(
+            'rev', data.rev))["(hist)"]
+    def render_object(self, context, data): 
+        return nevowhtml.taglink(data.obj)
+    def render_time(self, context, data):
+        return data.time
+    def render_user(self, context, data):
+        return data.user
+
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title["Recent Changes"],
                   tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
-        tags.body[tags.h1["Recent Changes"]]])
+        tags.body[tags.h1["Recent Changes"],
+                  tags.ul(render=tags.directive("changes"))
+                  [tags.li(pattern="item")
+                   [tags.invisible(render=tags.directive("diff")),
+                    " - ",
+                    tags.invisible(render=tags.directive("hist")),
+                    " - ",
+                    tags.invisible(render=tags.directive("object")),
+                    " - ",
+                    tags.invisible(render=tags.directive("time")),
+                    " - ",
+                    tags.invisible(render=tags.directive("user")),
+                    ]]]])
 
 def stanForOb(ob):
     origob = ob
@@ -100,7 +139,7 @@ def userIP(req):
 class ErrorPage(rend.Page):
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title["Error"]],
-        tags.body[tags.p["An error  occurred."]]])
+        tags.body[tags.p["An error occurred."]]])
 
 
 class EditPage(rend.Page):
@@ -158,19 +197,23 @@ class EditPage(rend.Page):
             ob = self.ob
             if action == 'Submit':
                 if not hasattr(ob, 'edits'):
-                    ob.edits = [Edit(ob, ob.docstring, 'no-one', 'Dawn of time')]
+                    ob.edits = [Edit(self.origob, 0, ob.docstring, 'no-one', 'Dawn of time')]
                 newDocstring = ctx.arg('docstring', None)
-                edit = Edit(ob, newDocstring, userIP(req), time.strftime("%Y-%m-%d %H:%M:%S"))
+                edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
+                            time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
                 ob.edits.append(edit)
-                self.root.changes.append(edit)
+                self.root.edits.append(edit)
             if not isinstance(ob, (model.Package, model.Module, model.Class)):
-                child = self.origob.parent.fullName() + '.html'
+                p = self.origob.parent
+                if isinstance(p, model.Module) and p.name == '__init__':
+                    p = p.parent
+                child = p.fullName() + '.html'
                 frag = ob.name
             else:
                 child = self.fullName + '.html'
                 frag = None
-            req.redirect(str(url.URL.fromContext(ctx).sibling(child).anchor(frag)))
+            req.redirect(str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag)))
             return ''
         return super(EditPage, self).renderHTTP(ctx)
 
@@ -192,6 +235,15 @@ class HistoryPage(rend.Page):
         ul = tags.ul()
         for i in therange:
             li = tags.li()
+            if i:
+                li[tags.a(href=url.URL.fromContext(context).sibling(
+                    'diff').add(
+                    'ob', self.origob.fullName()).add(
+                    'revA', i-1).add(
+                    'revB', i))["(diff)"]]
+            else:
+                li["(diff)"]
+            li[" - "]
             if i == len(ds) - 1:
                 label = "Latest"
             else:
@@ -232,7 +284,7 @@ class HistoryPage(rend.Page):
             return ErrorPage()
         self.fullName = context.arg('ob')
         try:
-            self.ob = self.system.allobjects[self.fullName]
+            self.origob = self.ob = self.system.allobjects[self.fullName]
         except KeyError:
             return ErrorPage()
         if isinstance(self.ob, model.Package):
@@ -245,17 +297,56 @@ class HistoryPage(rend.Page):
 
 
 class Edit(object):
-    def __init__(self, obj, newDocstring, user, time):
+    def __init__(self, obj, rev, newDocstring, user, time):
         self.obj = obj
+        self.rev = rev
         self.newDocstring = newDocstring
         self.user = user
         self.time = time
 
 class DiffPage(rend.Page):
+    def __init__(self, system):
+        self.system = system
+
+    def render_title(self, context, data):
+        return context.tag["Viewing differences between revisions ",
+                           self.editA.rev, " and ", self.editB.rev, " of ",
+                           u"\N{LEFT DOUBLE QUOTATION MARK}" +
+                           self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+    def render_diff(self, context, data):
+        docA = self.editA.newDocstring
+        docB = self.editB.newDocstring
+        if docA is None: docA = ''
+        if docB is None: docB = ''
+        docA = docA.splitlines()
+        docB = docB.splitlines()
+        import difflib
+        return tags.raw(difflib.HtmlDiff().make_table(docA, docB))
+
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive("title")),
-                  tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
-        tags.body[tags.h1(render=tags.directive("title"))]])
+                  tags.link(rel="stylesheet", type="text/css", href="apidocs.css")],
+        tags.body[tags.h1(render=tags.directive("title")),
+                  tags.table(render=tags.directive("diff"))]])
+
+    def renderHTTP(self, context):
+        try:
+            self.origob = self.ob = self.system.allobjects[context.arg('ob')]
+        except KeyError:
+            return ErrorPage()
+        if isinstance(self.ob, model.Package):
+            self.ob = self.ob.contents['__init__']
+        try:
+            revA = int(context.arg('revA', ''))
+            revB = int(context.arg('revB', ''))
+        except ValueError:
+            return ErrorPage()
+        try:
+            self.editA = edits(self.ob)[revA]
+            self.editB = edits(self.ob)[revB]
+        except IndexError:
+            return ErrorPage()
+        return super(DiffPage, self).renderHTTP(context)
 
 
 class EditingPyDoctorResource(PyDoctorResource):
@@ -264,8 +355,8 @@ class EditingPyDoctorResource(PyDoctorResource):
         self.putChild('edit', EditPage(system, self))
         self.putChild('history', HistoryPage(system))
         self.putChild('recentChanges', RecentChangesPage(self))
-        self.putChild('diff', DiffPage())
-        self.changes = []
+        self.putChild('diff', DiffPage(system))
+        self.edits = []
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, editPageClasses)
     def indexPage(self):
