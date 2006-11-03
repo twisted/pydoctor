@@ -288,6 +288,8 @@ def doc2html(obj, summary=False, docstring=None):
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
                 subdocstrings[k] = subdocstrings.get(k, 0) + 1
+        if isinstance(origobj, model.Package):
+            subcounts["module"] -= 1
         if subdocstrings:
             plurals = {'class':'classes'}
             text = "No %s docstring"%origobj.kind.lower()
