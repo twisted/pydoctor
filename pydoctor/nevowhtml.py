@@ -526,7 +526,10 @@ def taglink(o, label=None):
     if label is None:
         label = o.fullName()
     if isinstance(o, model.Function):
-        linktext = link(o.parent) + '#' + urllib.quote(o.name)
+        p = o.parent
+        if isinstance(p, model.Module) and p.name == '__init__':
+            p = p.parent
+        linktext = link(p) + '#' + urllib.quote(o.name)
     else:
         linktext = link(o)
     return tags.a(href=linktext)[label]
