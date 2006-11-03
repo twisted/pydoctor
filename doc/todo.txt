@@ -1,12 +1,12 @@
 HTML Formatter:
 
-  - Do something useful with superclass info (inheritance hierarchy!)
   - show function signatures for functions in "children" tables
   - Do something more useful with Interface information
     - blue boxes for interface docstrings in implementation methods?
     - work out a sensible way to display deeper interface information.
   - Parameterise epydoc usage instead of just basing on presence of epydoc
   - Make Pretty
+  - use slots a lot more, will hopefully speed things up
 
 Model:
 
@@ -15,6 +15,11 @@ Model:
   - think fairly hard about how robust the code is -- we should
     *never* crash out.
   - understand import * from a package
+  - the package.contents vs package.contents['__init__'].contents
+    thing is getting out of hand.
+  - should probably aim for slightly smarter data model --
+    .parentModule attributes, having the .kind of Function contained in
+    a Class be "Method", that sort of thing.
 
 General:
 
