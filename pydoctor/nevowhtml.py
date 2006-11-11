@@ -482,7 +482,7 @@ class TableFragment(rend.Fragment):
             d = dict(class_=child.kind.lower(),
                      kind=child.kind,
                      name=link_,
-                     line=child.linenumber,
+                     line=getattr(child, 'linenumber', None),
                      summaryDoc=epydoc2stan.doc2html(child, summary=True))
             tag[pattern(data=d)]
         return tag
