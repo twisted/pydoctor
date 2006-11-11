@@ -37,6 +37,8 @@ def test_nonempty_table():
     class Child:
         kind = "kooky"
         docstring = None
+        document_in_parent_page = False
+        linenumber = 10
         class system:
             urlprefix = ''
             class options:
