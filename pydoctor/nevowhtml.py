@@ -452,9 +452,6 @@ class TableFragment(rend.Fragment):
     def has_lineno_col(self):
         return True
 
-    def data_children(self, context, data):
-        return self.children
-
     def render_maybelineno(self, context, data):
         if self.has_lineno_col:
             return context.tag
@@ -479,10 +476,18 @@ class TableFragment(rend.Fragment):
                 link_ = tags.a(href=link(child.parent) + '#' + child.name)[child.name]
             else:
                 link_ = tags.a(href=link(child))[child.name]
+            if hasattr(child, 'linenumber'):
+                sourceHref = srclink(child)
+                if not sourceHref:
+                    line = data.linenumber
+                else:
+                    line = tags.a(href=sourceHref)[child.linenumber]
+            else:
+                line = None
             d = dict(class_=child.kind.lower(),
                      kind=child.kind,
                      name=link_,
-                     line=getattr(child, 'linenumber', None),
+                     line=line,
                      summaryDoc=epydoc2stan.doc2html(child, summary=True))
             tag[pattern(data=d)]
         return tag
