@@ -64,3 +64,10 @@ def test_rest_support():
     mod = fromText(src, system=system)
     html = getHTMLOf(mod.contents['f'])
     assert "<pre>" not in html
+
+def test_document_code_in_init_module():
+    from pydoctor.test.test_packages import processPackage
+    system = processPackage("codeininit")
+    html = getHTMLOf(system.allobjects['codeininit'])
+    assert 'functionInInit' in html
+
