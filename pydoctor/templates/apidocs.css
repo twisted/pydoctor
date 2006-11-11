@@ -49,6 +49,11 @@ div.toplevel p
   background: lightgreen;
 }
 
+.method
+{
+  background: lightgreen;
+}
+
 .attribute
 {
   background: #ddbbff;

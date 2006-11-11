@@ -95,7 +95,7 @@ class NevowWriter:
             f.close()
 
     def writeDocsFor(self, ob, functionpages):
-        isfunc = isinstance(ob, (model.Function, twisted.Attribute)) # cough
+        isfunc = ob.document_in_parent_page
         if (isfunc and functionpages) or not isfunc:
             f = open(os.path.join(self.base, link(ob)), 'w')
             self.writeDocsForOne(ob, f)
@@ -487,13 +487,7 @@ class TableFragment(rend.Fragment):
             return tag
 
     def render_childkind(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        if isinstance(data, model.Function):
-            kind = "Method"
-        else:
-            kind = data.kind
-        return tag[kind]
+        return context.tag.clear()[data.kind]
 
     def render_childname(self, context, data):
         tag = context.tag()
@@ -525,7 +519,7 @@ class ModulePage(CommonPage):
 def taglink(o, label=None):
     if label is None:
         label = o.fullName()
-    if isinstance(o, model.Function):
+    if o.document_in_parent_page:
         p = o.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
@@ -614,8 +608,7 @@ class ClassPage(CommonPage):
 
 class TwistedClassPage(ClassPage):
     def data_methods(self, context, data):
-        return [o for o in self.ob.orderedcontents
-                if isinstance(o, model.Function) or isinstance(o, twisted.Attribute)]
+        return [o for o in self.ob.orderedcontents if o.document_in_parent_page]
 
     def render_extras(self, context, data):
         r = super(TwistedClassPage, self).render_extras(context, data)

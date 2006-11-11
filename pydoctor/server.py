@@ -263,7 +263,7 @@ class HistoryPage(rend.Page):
             self.system.allobjects[self.fullName], docstring=docstring)
     def render_linkback(self, context, data):
         ob = self.system.allobjects[self.fullName]
-        if not isinstance(ob, (model.Package, model.Module, model.Class)):
+        if ob.document_in_parent_page:
             url = ob.parent.fullName()+'.html#' + ob.name
         else:
             url = ob.fullName()+'.html'

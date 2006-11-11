@@ -15,7 +15,7 @@ class TwistedClass(model.Class):
 
 class Attribute(model.Documentable):
     kind = "Attribute"
-    pass
+    document_in_parent_page = True
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly

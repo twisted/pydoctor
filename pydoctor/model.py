@@ -11,6 +11,7 @@ from compiler.visitor import walk
 from pydoctor import ast_pp
 
 class Documentable(object):
+    document_in_parent_page = False
     def __init__(self, system, prefix, name, docstring, parent=None):
         self.system = system
         self.prefix = prefix
@@ -180,7 +181,12 @@ class Class(Documentable):
 
 
 class Function(Documentable):
+    document_in_parent_page = True
     kind = "Function"
+    def setup(self):
+        super(Function, self).setup()
+        if isinstance(self.parent, Class):
+            self.kind = "Method"
 
 
 states = [
