@@ -455,7 +455,7 @@ class TableFragment(rend.Fragment):
     def data_children(self, context, data):
         return self.children
 
-    def render_maybelinenohead(self, context, data):
+    def render_maybelineno(self, context, data):
         if self.has_lineno_col:
             return context.tag
         else:
@@ -470,37 +470,22 @@ class TableFragment(rend.Fragment):
     def render_tableid(self, context, data):
         return "tableid" + str(self.id)
 
-    def render_childclass(self, context, data):
-        return data.kind.lower()
-
-    def render_childline(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        if not self.has_lineno_col:
-            return ()
-        if hasattr(data, 'linenumber'):
-            sourceHref = srclink(data)
-            if not sourceHref:
-                return tag[data.linenumber]
-            return tag[tags.a(href=sourceHref)[data.linenumber]]
-        else:
-            return tag
-
-    def render_childkind(self, context, data):
-        return context.tag.clear()[data.kind]
-
-    def render_childname(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        if isinstance(data, model.Function):
-            return tag[tags.a(href='#' + urllib.quote(data.name))[data.name]]
-        else:
-            return tag[tags.a(href=link(data))[data.name]]
-
-    def render_childsummaryDoc(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[epydoc2stan.doc2html(data, summary=True)]
+    def render_table(self, context, data):
+        tag = context.tag
+        tag[tag.onePattern('header')]
+        pattern = tag.patternGenerator('item')
+        for child in self.children:
+            if child.document_in_parent_page:
+                link_ = tags.a(href=link(child.parent) + '#' + child.name)[child.name]
+            else:
+                link_ = tags.a(href=link(child))[child.name]
+            d = dict(class_=child.kind.lower(),
+                     kind=child.kind,
+                     name=link_,
+                     line=child.linenumber,
+                     summaryDoc=epydoc2stan.doc2html(child, summary=True))
+            tag[pattern(data=d)]
+        return tag
 
 class BaseTableFragment(TableFragment):
     def render_childclass(self, context, data):
