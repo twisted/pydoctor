@@ -41,6 +41,7 @@ def test_nonempty_table():
         linenumber = 10
         class system:
             urlprefix = ''
+            sourcebase = None
             class options:
                 htmlusesorttable = True
         def fullName(self):

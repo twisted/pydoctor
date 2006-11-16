@@ -370,15 +370,13 @@ class CommonPage(rend.Page):
     def data_bases(self, context, data):
         return []
 
-    def render_childlist(self, context, data):
-        return ()
-
     def data_methods(self, context, data):
-        return []
+        return [o for o in self.ob.orderedcontents
+                if o.document_in_parent_page]
 
     def render_childlist(self, context, data):
-        child = context.tag.patternGenerator('child')
         tag = context.tag
+        child = tag.patternGenerator('child')
         for d in data:
             tag[child(data=d)]
         return tag
@@ -437,7 +435,7 @@ class PackagePage(CommonPage):
 
     def data_methods(self, context, data):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if isinstance(o, model.Function)]
+                if o.document_in_parent_page]
 
 class TableFragment(rend.Fragment):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/table.html'))
@@ -479,7 +477,7 @@ class TableFragment(rend.Fragment):
             if hasattr(child, 'linenumber'):
                 sourceHref = srclink(child)
                 if not sourceHref:
-                    line = data.linenumber
+                    line = child.linenumber
                 else:
                     line = tags.a(href=sourceHref)[child.linenumber]
             else:
@@ -502,9 +500,7 @@ class BaseTableFragment(TableFragment):
         return tag[tags.a(href=link(data))[data.name]]
 
 class ModulePage(CommonPage):
-    def data_methods(self, context, data):
-        return [o for o in self.ob.orderedcontents
-                if isinstance(o, model.Function)]
+    pass
 
 def taglink(o, label=None):
     if label is None:
@@ -551,10 +547,6 @@ class ClassPage(CommonPage):
     def render_inhierarchy(self, context, data):
         return context.tag(href="classIndex.html#"+self.ob.fullName())
 
-    def data_methods(self, context, data):
-        return [o for o in self.ob.orderedcontents
-                if isinstance(o, model.Function)]
-
     def nested_bases(self, b):
         r = [(b,)]
         for b2 in b.baseobjects:
@@ -597,9 +589,6 @@ class ClassPage(CommonPage):
                                   if o.name in self.unmasked_attrs(data)])
 
 class TwistedClassPage(ClassPage):
-    def data_methods(self, context, data):
-        return [o for o in self.ob.orderedcontents if o.document_in_parent_page]
-
     def render_extras(self, context, data):
         r = super(TwistedClassPage, self).render_extras(context, data)
         system = self.ob.system
