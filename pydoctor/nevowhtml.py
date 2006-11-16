@@ -370,53 +370,44 @@ class CommonPage(rend.Page):
     def data_bases(self, context, data):
         return []
 
-    def data_methods(self, context, data):
+    def methods(self):
         return [o for o in self.ob.orderedcontents
                 if o.document_in_parent_page]
 
     def render_childlist(self, context, data):
         tag = context.tag
-        child = tag.patternGenerator('child')
-        for d in data:
-            tag[child(data=d)]
+        functionHeader = tag.onePattern('functionHeader')
+        attributeHeader = tag.onePattern('attributeHeader')
+        sourceLink = tag.onePattern('sourceLink')
+        child = tag.onePattern('child')
+        def fillSlots(tag, **kw):
+            for k, v in kw.iteritems():
+                tag.fillSlots(k, v)
+            return tag
+        for data in self.methods():
+            if isinstance(data, model.Function):
+                sourceHref = srclink(data)
+                if not sourceHref:
+                    functionSourceLink = ()
+                else:
+                    functionSourceLink = fillSlots(sourceLink.clone(),
+                                                   sourceHref=sourceHref)
+                header = fillSlots(functionHeader.clone(),
+                                   functionName=[data.name, '(', signature(data.argspec), '):'],
+                                   functionSourceLink=functionSourceLink)
+            else:
+                header = fillSlots(attributeHeader.clone(),
+                                   attribute=data.name)
+            child = fillSlots(child.clone(),
+                              header=header,
+                              functionAnchor=data.fullName(),
+                              shortFunctionAnchor=data.name,
+                              functionBody=self.functionBody(data))
+            tag[child]
         return tag
 
-    def render_attributeHeader(self, context, data):
-        if not isinstance(data, twisted.Attribute):
-            return ()
-        else:
-            return context.tag
-
-    def render_functionHeader(self, context, data):
-        if not isinstance(data, model.Function):
-            return ()
-        else:
-            return context.tag
-
-    def render_functionName(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[data.name, '(', signature(data.argspec), '):']
-
-    def render_attribute(self, context, data):
-        tag = context.tag()
-        tag.clear()
-        return tag[data.name]
-
-    def render_functionAnchor(self, context, data):
-        return data.fullName()
-
-    def render_shortFunctionAnchor(self, context, data):
-        return data.name
-
-    def render_functionBody(self, context, data):
+    def functionBody(self, data):
         return epydoc2stan.doc2html(data)
-
-    def render_functionSourceLink(self, context, data):
-        sourceHref = srclink(data)
-        if not sourceHref:
-            return ()
-        return context.tag(href=sourceHref)
 
 class PackagePage(CommonPage):
     def children(self):
@@ -433,7 +424,7 @@ class PackagePage(CommonPage):
         else:
             return ()
 
-    def data_methods(self, context, data):
+    def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
                 if o.document_in_parent_page]
 
@@ -621,10 +612,9 @@ class TwistedClassPage(ClassPage):
                     return io.contents[methname]
         return None
 
-    def render_functionBody(self, context, data):
+    def functionBody(self, data):
         imeth = self.interfaceMeth(data.name)
-        tag = context.tag()
-        tag.clear()
+        tag = tags.invisible()
         if imeth:
             tag[tags.div(class_="interfaceinfo")
                 ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.name)

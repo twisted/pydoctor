@@ -31,22 +31,26 @@
         <nevow:invisible nevow:render="baseTable" />
       </nevow:invisible>
     </nevow:invisible>
-    <nevow:invisible nevow:render="childlist" nevow:data="methods">
+    <nevow:invisible nevow:render="childlist">
+      <a class="functionSourceLink" nevow:pattern="sourceLink">
+        <nevow:attr name="href"><nevow:slot name="sourceHref" /></nevow:attr>
+        (source)
+      </a>
+      <div class="functionHeader" nevow:pattern="functionHeader">
+        def <nevow:slot name="functionName">functionName():</nevow:slot>
+        <nevow:slot name="functionSourceLink" />
+      </div>
+      <div class="functionHeader" nevow:pattern="attributeHeader">
+        <nevow:slot name="attribute">attribute</nevow:slot> =
+      </div>
       <div class="function" nevow:pattern="child">
-        <a><nevow:attr name="name" nevow:render="functionAnchor"/></a>
-        <a><nevow:attr name="name" nevow:render="shortFunctionAnchor"/></a>
-        <div class="functionHeader"  nevow:render="functionHeader">
-          def <span nevow:render="functionName">functionName():</span>
-          <a class="functionSourceLink"
-             nevow:render="functionSourceLink">(source)</a>
-        </div>
-        <div class="functionHeader" nevow:render="attributeHeader">
-          <span nevow:render="attribute">attribute</span> =
-        </div>
+        <a><nevow:attr name="name"><nevow:slot name="functionAnchor" /></nevow:attr></a>
+        <a><nevow:attr name="name"><nevow:slot name="shortFunctionAnchor" /></nevow:attr></a>
+        <nevow:slot name="header" />
         <div class="functionBody">
-          <nevow:invisible nevow:render="functionBody">
+          <nevow:slot name="functionBody">
             Docstring.
-          </nevow:invisible>
+          </nevow:slot>
         </div>
       </div>
     </nevow:invisible>
