@@ -1,4 +1,4 @@
-from nevow import rend, loaders, tags, inevow, url
+from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import nevowhtml, model, epydoc2stan
@@ -12,6 +12,13 @@ def findPageClassInDict(obj, d, default="CommonPage"):
             return d[n]
     return d[default]
 
+class WrapperPage(rend.Page):
+    def __init__(self, element):
+        self.element = element
+    def render_content(self, context, data):
+        return self.element
+    docFactory = loaders.stan(tags.directive('content'))
+
 class PyDoctorResource(rend.ChildLookupMixin):
     implements(inevow.IResource)
 
@@ -21,12 +28,15 @@ class PyDoctorResource(rend.ChildLookupMixin):
                       File(nevowhtml.sibpath(__file__, 'templates/apidocs.css')))
         self.putChild('sorttable.js',
                       File(nevowhtml.sibpath(__file__, 'templates/sorttable.js')))
-        index = self.indexPage()
-        self.putChild('', index)
-        self.putChild('index.html', index)
-        self.putChild('moduleIndex.html', nevowhtml.ModuleIndexPage(self.system))
-        self.putChild('classIndex.html', nevowhtml.ClassIndexPage(self.system))
-        self.putChild('nameIndex.html', nevowhtml.NameIndexPage(self.system))
+        self.index = WrapperPage(self.indexPage())
+        self.putChild('', self.index)
+        self.putChild('index.html', self.index)
+        self.putChild('moduleIndex.html',
+                      WrapperPage(nevowhtml.ModuleIndexPage(self.system)))
+        self.putChild('classIndex.html',
+                      WrapperPage(nevowhtml.ClassIndexPage(self.system)))
+        self.putChild('nameIndex.html',
+                      WrapperPage(nevowhtml.NameIndexPage(self.system)))
 
     def indexPage(self):
         return nevowhtml.IndexPage(self.system)
@@ -41,41 +51,53 @@ class PyDoctorResource(rend.ChildLookupMixin):
         if name not in self.system.allobjects:
             return None
         obj = self.system.allobjects[name]
-        return self.pageClassForObject(obj)(obj)
+        return WrapperPage(self.pageClassForObject(obj)(obj))
 
     def renderHTTP(self, ctx):
-        return nevowhtml.IndexPage(self.system).renderHTTP(ctx)
+        return self.index.renderHTTP(ctx)
 
 class IndexPage(nevowhtml.IndexPage):
-    def render_recentChanges(self, context, data):
-        return context.tag
+    @page.renderer
+    def recentChanges(self, request, tag):
+        return tag
 
 class RecentChangesPage(nevowhtml.CommonPage):
-    def __init__(self, root):
+    def __init__(self, root, url):
         self.root = root
+        self.url = url
 
-    def render_changes(self, context, data):
-        item = context.tag.patternGenerator('item')
-        tag = context.tag
+    @page.renderer
+    def changes(self, request, tag):
+        item = tag.patternGenerator('item')
         for d in reversed(self.root.edits):
-            tag[item(data=d)]
+            tag[nevowhtml.fillSlots(item,
+                                    diff=self.diff(d),
+                                    hist=self.hist(d),
+                                    object=self.object(d),
+                                    time=self.time(d),
+                                    user=self.user(d))]
         return tag
-    def render_diff(self, context, data):
-        return tags.a(href=url.URL.fromContext(context).sibling(
+
+    def diff(self, data):
+        return tags.a(href=self.url.sibling(
             'diff').add(
             'ob', data.obj.fullName()).add(
             'revA', data.rev-1).add(
             'revB', data.rev))["(diff)"]
-    def render_hist(self, context, data): 
-        return tags.a(href=url.URL.fromContext(context).sibling(
+
+    def hist(self, data):
+        return tags.a(href=self.url.sibling(
             'history').add(
             'ob', data.obj.fullName()).add(
             'rev', data.rev))["(hist)"]
-    def render_object(self, context, data): 
+
+    def object(self, data):
         return nevowhtml.taglink(data.obj)
-    def render_time(self, context, data):
+
+    def time(self, data):
         return data.time
-    def render_user(self, context, data):
+
+    def user(self, data):
         return data.user
 
     docFactory = loaders.stan(tags.html[
@@ -84,15 +106,15 @@ class RecentChangesPage(nevowhtml.CommonPage):
         tags.body[tags.h1["Recent Changes"],
                   tags.ul(render=tags.directive("changes"))
                   [tags.li(pattern="item")
-                   [tags.invisible(render=tags.directive("diff")),
+                   [tags.slot("diff"),
                     " - ",
-                    tags.invisible(render=tags.directive("hist")),
+                    tags.slot("hist"),
                     " - ",
-                    tags.invisible(render=tags.directive("object")),
+                    tags.slot("object"),
                     " - ",
-                    tags.invisible(render=tags.directive("time")),
+                    tags.slot("time"),
                     " - ",
-                    tags.invisible(render=tags.directive("user")),
+                    tags.slot("user"),
                     ]]]])
 
 def stanForOb(ob):
@@ -111,9 +133,11 @@ def stanForOb(ob):
     return r
 
 class EditableDocstringsMixin(object):
-    def render_docstring(self, context, data):
+    @page.renderer
+    def docstring(self, request, tag):
         return stanForOb(self.ob)
-    def render_functionBody(self, context, data):
+
+    def functionBody(self, data):
         return stanForOb(data)
 
 def recursiveSubclasses(cls):
@@ -354,13 +378,14 @@ class EditingPyDoctorResource(PyDoctorResource):
         PyDoctorResource.__init__(self, system)
         self.putChild('edit', EditPage(system, self))
         self.putChild('history', HistoryPage(system))
-        self.putChild('recentChanges', RecentChangesPage(self))
         self.putChild('diff', DiffPage(system))
         self.edits = []
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, editPageClasses)
     def indexPage(self):
         return IndexPage(self.system)
+    def child_recentChanges(self, ctx):
+        return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
 
 def resourceForPickleFile(pickleFilePath, configFilePath=None):
     import cPickle
