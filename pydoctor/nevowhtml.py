@@ -481,7 +481,7 @@ class TableFragment(page.Element):
     @page.renderer
     def table(self, request, tag):
         tag = tag
-        tag.fillSlots('id', str(self.id))
+        tag.fillSlots('id', 'id'+str(self.id))
         if self.system.options.htmlusesorttable:
             tag[tag.onePattern('header')]
         pattern = tag.patternGenerator('item')

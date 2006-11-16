@@ -64,6 +64,11 @@ div.toplevel p
   background: #cceecc;
 }
 
+.basemethod
+{
+  background: #cceecc;
+}
+
 .class
 {
   background: lightblue;
