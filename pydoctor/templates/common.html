@@ -23,12 +23,12 @@
     </div>
     <nevow:invisible nevow:render="mainTable" />
     <nevow:invisible nevow:render="packageInitTable" />
-    <nevow:invisible nevow:render="sequence" nevow:data="bases">
+    <nevow:invisible nevow:render="baseTables">
       <nevow:invisible nevow:pattern="item">
         <p>
-          Inherited from <span nevow:render="base_name">base class</span>:
+          Inherited from <nevow:slot name="baseName" />:
         </p>
-        <nevow:invisible nevow:render="baseTable" />
+        <nevow:slot name="baseTable" />
       </nevow:invisible>
     </nevow:invisible>
     <nevow:invisible nevow:render="childlist">
