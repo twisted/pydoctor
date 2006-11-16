@@ -73,9 +73,9 @@ class RecentChangesPage(nevowhtml.CommonPage):
             tag[nevowhtml.fillSlots(item,
                                     diff=self.diff(d),
                                     hist=self.hist(d),
-                                    object=self.object(d),
-                                    time=self.time(d),
-                                    user=self.user(d))]
+                                    object=nevowhtml.taglink(d.obj),
+                                    time=d.time,
+                                    user=d.user)]
         return tag
 
     def diff(self, data):
@@ -90,15 +90,6 @@ class RecentChangesPage(nevowhtml.CommonPage):
             'history').add(
             'ob', data.obj.fullName()).add(
             'rev', data.rev))["(hist)"]
-
-    def object(self, data):
-        return nevowhtml.taglink(data.obj)
-
-    def time(self, data):
-        return data.time
-
-    def user(self, data):
-        return data.user
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title["Recent Changes"],
