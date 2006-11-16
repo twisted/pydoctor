@@ -376,13 +376,13 @@ class CommonPage(rend.Page):
 
     def render_childlist(self, context, data):
         tag = context.tag
-        functionHeader = tag.onePattern('functionHeader')
-        attributeHeader = tag.onePattern('attributeHeader')
-        sourceLink = tag.onePattern('sourceLink')
-        child = tag.onePattern('child')
+        functionHeader = tag.patternGenerator('functionHeader')
+        attributeHeader = tag.patternGenerator('attributeHeader')
+        sourceLink = tag.patternGenerator('sourceLink')
+        child = tag.patternGenerator('child')
         def fillSlots(tag, **kw):
             for k, v in kw.iteritems():
-                tag.fillSlots(k, v)
+                tag = tag.fillSlots(k, v)
             return tag
         for data in self.methods():
             if isinstance(data, model.Function):
@@ -390,20 +390,19 @@ class CommonPage(rend.Page):
                 if not sourceHref:
                     functionSourceLink = ()
                 else:
-                    functionSourceLink = fillSlots(sourceLink.clone(),
+                    functionSourceLink = fillSlots(sourceLink,
                                                    sourceHref=sourceHref)
-                header = fillSlots(functionHeader.clone(),
+                header = fillSlots(functionHeader,
                                    functionName=[data.name, '(', signature(data.argspec), '):'],
                                    functionSourceLink=functionSourceLink)
             else:
-                header = fillSlots(attributeHeader.clone(),
+                header = fillSlots(attributeHeader,
                                    attribute=data.name)
-            child = fillSlots(child.clone(),
-                              header=header,
-                              functionAnchor=data.fullName(),
-                              shortFunctionAnchor=data.name,
-                              functionBody=self.functionBody(data))
-            tag[child]
+            tag[fillSlots(child,
+                          header=header,
+                          functionAnchor=data.fullName(),
+                          shortFunctionAnchor=data.name,
+                          functionBody=self.functionBody(data))]
         return tag
 
     def functionBody(self, data):
