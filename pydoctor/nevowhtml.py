@@ -1,6 +1,6 @@
 from pydoctor import model, twisted, epydoc2stan
 
-from nevow import rend, loaders, tags, page, flat
+from nevow import loaders, tags, page, flat
 
 import os, shutil, inspect, sys, urllib
 
@@ -96,7 +96,7 @@ class NevowWriter:
         for pclass in summarypages:
             page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
-            f.write(page.renderSynchronously())
+            f.write(flat.flatten(page))
             f.close()
 
     def writeDocsFor(self, ob, functionpages):
@@ -143,20 +143,23 @@ def moduleSummary(modorpack):
         r[ul]
     return r
 
-class ModuleIndexPage(rend.Page):
+class ModuleIndexPage(page.Element):
     filename = 'moduleIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
     def __init__(self, system):
         self.system = system
-    def render_title(self, context, data):
-        return context.tag.clear()["Module Index"]
-    def render_stuff(self, context, data):
+    @page.renderer
+    def title(self, request, tag):
+        return tag.clear()["Module Index"]
+    @page.renderer
+    def stuff(self, request, tag):
         r = []
         for o in self.system.rootobjects:
             r.append(moduleSummary(o))
-        return context.tag.clear()[r]
-    def render_heading(self, context, data):
-        return context.tag().clear()["Module Index"]
+        return tag.clear()[r]
+    @page.renderer
+    def heading(self, request, tag):
+        return tag().clear()["Module Index"]
 
 def findRootClasses(system):
     roots = {}
@@ -188,15 +191,17 @@ def subclassesFrom(hostsystem, cls, anchors):
         r[ul]
     return r
 
-class ClassIndexPage(rend.Page):
+class ClassIndexPage(page.Element):
     filename = 'classIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
     def __init__(self, system):
         self.system = system
-    def render_title(self, context, data):
-        return context.tag.clear()["Class Hierarchy"]
-    def render_stuff(self, context, data):
-        t = context.tag
+    @page.renderer
+    def title(self, request, tag):
+        return tag.clear()["Class Hierarchy"]
+    @page.renderer
+    def stuff(self, request, tag):
+        t = tag
         anchors = set()
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
@@ -210,90 +215,97 @@ class ClassIndexPage(rend.Page):
                     item[ul]
                 t[item]
         return t
-    def render_heading(self, context, data):
-        return context.tag.clear()["Class Hierarchy"]
+    @page.renderer
+    def heading(self, request, tag):
+        return tag.clear()["Class Hierarchy"]
 
 
-class NameIndexPage(rend.Page):
+class NameIndexPage(page.Element):
     filename = 'nameIndex.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/nameIndex.html'))
     def __init__(self, system):
         self.system = system
-        used_initials = {}
-        for ob in self.system.orderedallobjects:
-            used_initials[ob.name[0].upper()] = True
-        self.used_initials = sorted(used_initials)
 
-    def render_title(self, context, data):
-        return context.tag.clear()["Index Of Names"]
-    def render_heading(self, context, data):
-        return context.tag.clear()["Index Of Names"]
-    def data_letters(self, context, data):
-        # this is confusing
-        # we return a list of lists of lists
-        # if r is the return value, r[i][j] is a list of things with the same .name
-        # all the things in the lists contained in r[i] share the same initial.
+    @page.renderer
+    def title(self, request, tag):
+        return tag.clear()["Index Of Names"]
+
+    @page.renderer
+    def heading(self, request, tag):
+        return tag.clear()["Index Of Names"]
+
+    @page.renderer
+    def index(self, request, tag):
+        letter = tag.patternGenerator('letter')
+        singleName = tag.patternGenerator('singleName')
+        manyNames = tag.patternGenerator('manyNames')
         initials = {}
         for ob in self.system.orderedallobjects:
-            initials.setdefault(ob.name[0].upper(), {}).setdefault(ob.name, []).append(ob)
-        r = []
-        for k in sorted(initials):
-            r.append(sorted(
-                sorted(initials[k].values(), key=lambda v:v[0].name),
-                key=lambda v:v[0].name.upper()))
-        return r
-    def render_letter(self, context, data):
-        return context.tag.clear()[data[0][0].name[0].upper()]
-    def render_letters(self, context, data):
-        cur = data[0][0].name[0].upper()
-        r = []
-        for i in self.used_initials:
-            if i != cur:
-                r.append(tags.a(href='#' + i)[i])
-            else:
-                r.append(i)
-            r.append(' - ')
-        if r:
-            del r[-1]
-        return context.tag.clear()[r]
-    def render_linkToThing(self, context, data):
-        tag = context.tag.clear()
-        if len(data) == 1:
-            ob, = data
-            return tag[ob.name, ' - ', taglink(ob)]
-        else:
-            ul = tags.ul()
-            for d in sorted(data, key=lambda o:o.fullName()):
-                ul[tags.li[taglink(d)]]
-            return tag[data[0].name, ul]
+            initials.setdefault(ob.name[0].upper(), []).append(ob)
+        for initial in sorted(initials):
+            letterlinks = []
+            for initial2 in sorted(initials):
+                if initial == initial2:
+                    letterlinks.append(initial2)
+                else:
+                    letterlinks.append(tags.a(href='#'+initial2)[initial2])
+                letterlinks.append(' - ')
+            if letterlinks:
+                del letterlinks[-1]
+            name2obs = {}
+            for obj in initials[initial]:
+                name2obs.setdefault(obj.name, []).append(obj)
+            lettercontents = []
+            for name in sorted(name2obs, key=lambda x:x.lower()):
+                obs = sorted(name2obs[name], key=lambda x:x.fullName().lower())
+                if len(obs) == 1:
+                    ob, = obs
+                    lettercontents.append(fillSlots(singleName,
+                                                    name=ob.name,
+                                                    link=taglink(ob)))
+                else:
+                    lettercontents.append(fillSlots(manyNames,
+                                                    name=obs[0].name,
+                                                    manyNames=[tags.li[taglink(ob)] for ob in obs]))
 
-class IndexPage(rend.Page):
+            tag[fillSlots(letter,
+                          letter=initial,
+                          letterlinks=letterlinks,
+                          lettercontents=lettercontents)]
+        return tag
+
+class IndexPage(page.Element):
     filename = 'index.html'
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
     def __init__(self, system):
         self.system = system
-    def render_project_link(self, context, data):
+    @page.renderer
+    def project_link(self, request, tag):
         if self.system.options.projecturl:
             return tags.a(href=self.system.options.projecturl)[self.system.options.projectname]
         else:
             return self.system.options.projectname
-    def render_project(self, context, data):
+    @page.renderer
+    def project(self, request, tag):
         return self.system.options.projectname
-    def render_recentChanges(self, context, data):
+    @page.renderer
+    def recentChanges(self, request, tag):
         return ()
-    def render_onlyIfOneRoot(self, context, data):
+    @page.renderer
+    def onlyIfOneRoot(self, request, tag):
         if len(self.system.rootobjects) != 1:
             return []
         else:
             root, = self.system.rootobjects
-            return context.tag.clear()[
+            return tag.clear()[
                 "Start at ", taglink(root),
                 ", the root ", root.kind.lower(), "."]
-    def render_onlyIfMultipleRoots(self, context, data):
+    @page.renderer
+    def onlyIfMultipleRoots(self, request, tag):
         if len(self.system.rootobjects) == 1:
             return []
         else:
-            return context.tag.clear()
+            return tag.clear()
 
 summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 

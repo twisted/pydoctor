@@ -8,16 +8,28 @@
   </head>
   <body>
     <h1 nevow:render="heading">Heading</h1>
-    <nevow:invisible nevow:render="sequence" nevow:data="letters">
-      <nevow:invisible nevow:pattern="item">
-        <a><nevow:attr name="name" nevow:render="letter"/></a>
-        <h2 nevow:render="letter">A</h2>
-        <p class="letterlinks" nevow:render="letters">A - B - C - ...</p>
-        <ul nevow:render="sequence">
-          <li nevow:pattern="item" nevow:render="linkToThing">
-          </li>
+    <nevow:invisible nevow:render="index">
+      <nevow:invisible nevow:pattern="letter">
+        <a>
+          <nevow:attr name="name"><nevow:slot name="letter"/></nevow:attr>
+        </a>
+        <h2><nevow:slot name="letter"/></h2>
+        <p class="letterlinks">
+          <nevow:slot name="letterlinks">A - B - C - ...</nevow:slot>
+        </p>
+        <ul>
+          <nevow:slot name="lettercontents"/>
         </ul>
       </nevow:invisible>
+    <li nevow:pattern="singleName">
+      <nevow:slot name="name" /> - <nevow:slot name="link" />
+    </li>
+    <li nevow:pattern="manyNames">
+      <nevow:slot name="name" />
+      <ul>
+        <nevow:slot name="manyNames" />
+      </ul>
+    </li>
     </nevow:invisible>
   </body>
 </html>
