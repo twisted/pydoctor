@@ -1,13 +1,13 @@
 <table  xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="children sortable"
         nevow:render="table">
-  <nevow:attr name="id" nevow:render="tableid" />
-  <tr nevow:pattern="header" nevow:render="maybeheadings">
+  <nevow:attr name="id"><nevow:slot name="id" /></nevow:attr>
+  <tr nevow:pattern="header">
     <th nevow:render="maybelineno">Line #</th>
     <th>Kind</th>
     <th>Name</th>
     <th>Docs</th>
   </tr>
-  <tr nevow:pattern="item" nevow:render="mapping">
+  <tr nevow:pattern="item">
     <nevow:attr name="class"><nevow:slot name="class_" /></nevow:attr>
     <td class="lineno" nevow:render="maybelineno">
       <nevow:slot name="line">Line #</nevow:slot>

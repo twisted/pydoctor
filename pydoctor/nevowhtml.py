@@ -4,6 +4,11 @@ from nevow import rend, loaders, tags
 
 import os, shutil, inspect, sys, urllib
 
+def fillSlots(tag, **kw):
+    for k, v in kw.iteritems():
+        tag = tag.fillSlots(k, v)
+    return tag
+
 def link(o):
     return o.system.urlprefix+urllib.quote(o.fullName()+'.html')
 
@@ -380,10 +385,6 @@ class CommonPage(rend.Page):
         attributeHeader = tag.patternGenerator('attributeHeader')
         sourceLink = tag.patternGenerator('sourceLink')
         child = tag.patternGenerator('child')
-        def fillSlots(tag, **kw):
-            for k, v in kw.iteritems():
-                tag = tag.fillSlots(k, v)
-            return tag
         for data in self.methods():
             if isinstance(data, model.Function):
                 sourceHref = srclink(data)
@@ -446,18 +447,11 @@ class TableFragment(rend.Fragment):
         else:
             return ()
 
-    def render_maybeheadings(self, context, data):
-        if self.system.options.htmlusesorttable:
-            return context.tag()
-        else:
-            return ()
-
-    def render_tableid(self, context, data):
-        return "tableid" + str(self.id)
-
     def render_table(self, context, data):
         tag = context.tag
-        tag[tag.onePattern('header')]
+        tag.fillSlots('id', str(self.id))
+        if self.system.options.htmlusesorttable:
+            tag[tag.onePattern('header')]
         pattern = tag.patternGenerator('item')
         for child in self.children:
             if child.document_in_parent_page:
@@ -477,7 +471,7 @@ class TableFragment(rend.Fragment):
                      name=link_,
                      line=line,
                      summaryDoc=epydoc2stan.doc2html(child, summary=True))
-            tag[pattern(data=d)]
+            tag[fillSlots(pattern, **d)]
         return tag
 
 class BaseTableFragment(TableFragment):
