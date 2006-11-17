@@ -500,7 +500,7 @@ class TableFragment(page.Element):
                 else:
                     line = ()
                 linenorow_ = fillSlots(linenorow,
-                                      lineno=line)
+                                       lineno=line)
             else:
                 linenorow_ = ()
             tag[fillSlots(item,
