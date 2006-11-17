@@ -381,8 +381,7 @@ class CommonPage(page.Element):
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
-    @page.renderer
-    def ifusesorttable(self, request, tag):
+    def ifusesorttable(self, tag):
         if self.ob.system.options.htmlusesorttable:
             return tag
         else:
@@ -424,18 +423,20 @@ class CommonPage(page.Element):
 
     def rend(self, ctx, data):
         ctx = super(CommonPage, self).rend(ctx, data)
-        ctx.tag = fillSlots(ctx.tag,
+        tag = ctx.tag
+        ctx.tag = fillSlots(tag,
                             title=self.title(),
+                            ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
                             heading=self.heading(),
                             part=self.part(),
-                            source=self.source(ctx.tag.onePattern('source')),
-                            inhierarchy=self.inhierarchy(ctx.tag.onePattern('inhierarchy')),
+                            source=self.source(tag.onePattern('source')),
+                            inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
                             extras=self.extras(),
                             docstring=self.docstring(),
                             mainTable=self.mainTable(),
                             packageInitTable=self.packageInitTable(),
-                            baseTables=self.baseTables(ctx.tag.patternGenerator('baseTable')),
-                            childlist=self.childlist(ctx.tag.onePattern('childlist')),
+                            baseTables=self.baseTables(tag.patternGenerator('baseTable')),
+                            childlist=self.childlist(tag.onePattern('childlist')),
                             project=self.project(),
                             )
         return ctx
