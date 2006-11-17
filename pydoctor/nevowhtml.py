@@ -314,19 +314,16 @@ class CommonPage(page.Element):
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
     def __init__(self, ob):
         self.ob = ob
-    @page.renderer
-    def title(self, request, tag):
+
+    def title(self):
         return self.ob.fullName()
-    @page.renderer
-    def heading(self, request, tag):
-        tag = tag()
-        tag.clear()
+
+    def heading(self):
         kind = self.ob.kind
-        return tag(class_=kind.lower())[kind + " " + mediumName(self.ob)]
-    @page.renderer
-    def part(self, request, tag):
-        tag = tag()
-        tag.clear()
+        return tags.h1(class_=kind.lower())[kind + " " + mediumName(self.ob)]
+
+    def part(self):
+        tag = tags.invisible()
         if self.ob.parent:
             parent = self.ob.parent
             if isinstance(parent, model.Module) and parent.name == '__init__':
@@ -342,45 +339,37 @@ class CommonPage(page.Element):
         else:
             return tag
 
-    @page.renderer
-    def project(self, request, tag):
+    def project(self):
         if self.ob.system.options.projecturl:
             return tags.a(href=self.ob.system.options.projecturl)[self.ob.system.options.projectname]
         else:
             return self.ob.system.options.projectname
 
-    @page.renderer
-    def source(self, request, tag):
+    def source(self, tag):
         sourceHref = srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
 
-    @page.renderer
-    def inhierarchy(self, request, tag):
+    def inhierarchy(self, tag):
         return ()
 
-    @page.renderer
-    def extras(self, request, tag):
-        return ()
+    def extras(self):
+        return tags.invisible()
 
-    @page.renderer
-    def docstring(self, request, tag):
+    def docstring(self):
         return epydoc2stan.doc2html(self.ob)
 
     def children(self):
         return self.ob.orderedcontents
 
-    @page.renderer
-    def packageInitTable(self, request, tag):
+    def packageInitTable(self):
         return ()
 
-    @page.renderer
-    def baseTables(self, request, tag):
+    def baseTables(self, tag):
         return ()
 
-    @page.renderer
-    def mainTable(self, request, tag):
+    def mainTable(self):
         children = self.children()
         if children:
             return TableFragment(self.ob.system, self.has_lineno_col(), children)
@@ -399,20 +388,16 @@ class CommonPage(page.Element):
         else:
             return ()
 
-    def data_bases(self, request, tag):
-        return []
-
     def methods(self):
         return [o for o in self.ob.orderedcontents
                 if o.document_in_parent_page]
 
-    @page.renderer
-    def childlist(self, request, tag):
-        tag = tag
-        functionHeader = tag.patternGenerator('functionHeader')
-        attributeHeader = tag.patternGenerator('attributeHeader')
-        sourceLink = tag.patternGenerator('sourceLink')
-        child = tag.patternGenerator('child')
+    def childlist(self, childlist):
+        tag = tags.invisible()
+        functionHeader = childlist.patternGenerator('functionHeader')
+        attributeHeader = childlist.patternGenerator('attributeHeader')
+        sourceLink = childlist.patternGenerator('sourceLink')
+        child = childlist.patternGenerator('child')
         for data in self.methods():
             if isinstance(data, model.Function):
                 sourceHref = srclink(data)
@@ -437,14 +422,32 @@ class CommonPage(page.Element):
     def functionBody(self, data):
         return epydoc2stan.doc2html(data)
 
+    def rend(self, ctx, data):
+        ctx = super(CommonPage, self).rend(ctx, data)
+        ctx.tag = fillSlots(ctx.tag,
+                            title=self.title(),
+                            heading=self.heading(),
+                            part=self.part(),
+                            source=self.source(ctx.tag.onePattern('source')),
+                            inhierarchy=self.inhierarchy(ctx.tag.onePattern('inhierarchy')),
+                            extras=self.extras(),
+                            docstring=self.docstring(),
+                            mainTable=self.mainTable(),
+                            packageInitTable=self.packageInitTable(),
+                            baseTables=self.baseTables(ctx.tag.patternGenerator('baseTable')),
+                            childlist=self.childlist(ctx.tag.onePattern('childlist')),
+                            project=self.project(),
+                            )
+        return ctx
+
+
 class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
                        if o.name != '__init__'],
                       key=lambda o2:o2.fullName())
 
-    @page.renderer
-    def packageInitTable(self, request, tag):
+    def packageInitTable(self):
         children = self.ob.contents['__init__'].orderedcontents
         if children:
             return [tags.p["From the __init__.py module:"],
@@ -467,16 +470,6 @@ class TableFragment(page.Element):
         self.children = children
         TableFragment.last_id += 1
         self.id = TableFragment.last_id
-
-    def has_lineno_col(self):
-        return True
-
-    @page.renderer
-    def maybelineno(self, request, tag):
-        if self.has_lineno_col:
-            return tag
-        else:
-            return ()
 
     def table(self, request, tag):
         tag.fillSlots('id', 'id'+str(self.id))
@@ -541,12 +534,9 @@ def taglink(o, label=None):
     return tags.a(href=linktext)[label]
 
 class ClassPage(CommonPage):
-    @page.renderer
-    def extras(self, request, tag):
-        r = super(ClassPage, self).extras(request, tag)
+    def extras(self):
+        r = super(ClassPage, self).extras()
         if self.ob.subclasses:
-            if r == ():
-                r = tag.clear()
             sc = self.ob.subclasses[0]
             p = tags.p()
             p["Known subclasses: ", taglink(sc)]
@@ -555,9 +545,8 @@ class ClassPage(CommonPage):
             r[p]
         return r
 
-    @page.renderer
-    def heading(self, request, tag):
-        tag = super(ClassPage, self).heading(request, tag)
+    def heading(self):
+        tag = super(ClassPage, self).heading()
         zipped = zip(self.ob.rawbases, self.ob.baseobjects)
         if zipped:
             tag['(']
@@ -572,8 +561,7 @@ class ClassPage(CommonPage):
         tag[':']
         return tag
 
-    @page.renderer
-    def inhierarchy(self, request, tag):
+    def inhierarchy(self, tag):
         return tag(href="classIndex.html#"+self.ob.fullName())
 
     def nested_bases(self, b):
@@ -598,9 +586,8 @@ class ClassPage(CommonPage):
                 r.append(baselist)
         return r
 
-    @page.renderer
-    def baseTables(self, request, tag):
-        item = tag.patternGenerator("item")
+    def baseTables(self, item):
+        tag = tags.invisible()
         for b in self.bases():
             tag[fillSlots(item,
                           baseName=self.baseName(b),
@@ -627,9 +614,8 @@ class ClassPage(CommonPage):
                                   if o.name in self.unmasked_attrs(data)])
 
 class TwistedClassPage(ClassPage):
-    @page.renderer
-    def extras(self, request, tag):
-        r = super(TwistedClassPage, self).extras(request, tag)
+    def extras(self):
+        r = super(TwistedClassPage, self).extras()
         system = self.ob.system
         def tl(s):
             if s in system.allobjects:
@@ -643,8 +629,6 @@ class TwistedClassPage(ClassPage):
             namelist = self.ob.implements_directly
             label = 'Implements interfaces: '
         if namelist:
-            if r == ():
-                r = tag.clear()
             tag = tags.p()[label, tl(namelist[0])]
             for impl in namelist[1:]:
                 tag[', ', tl(impl)]
@@ -699,7 +683,6 @@ def overriding_subclasses(c, name, firstcall=True):
                 yield sc2
 
 class FunctionPage(CommonPage):
-    @page.renderer
-    def heading(self, request, tag):
-        tag = super(FunctionPage, self).heading(request, tag)
+    def heading(self):
+        tag = super(FunctionPage, self).heading()
         return tag['(', signature(self.ob.argspec), '):']
