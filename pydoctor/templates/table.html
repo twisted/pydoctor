@@ -1,17 +1,20 @@
-<table  xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="children sortable"
-        nevow:render="table">
+<table xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="children sortable"
+       nevow:pattern="table">
   <nevow:attr name="id"><nevow:slot name="id" /></nevow:attr>
   <tr nevow:pattern="header">
-    <th nevow:render="maybelineno">Line #</th>
+    <nevow:slot name="linenohead">
+      <th nevow:pattern="linenohead">Line #</th>
+    </nevow:slot>
     <th>Kind</th>
     <th>Name</th>
     <th>Docs</th>
   </tr>
+  <td class="lineno" nevow:pattern="linenorow">
+    <nevow:slot name="lineno">Line #</nevow:slot>
+  </td>
   <tr nevow:pattern="item">
     <nevow:attr name="class"><nevow:slot name="class_" /></nevow:attr>
-    <td class="lineno" nevow:render="maybelineno">
-      <nevow:slot name="line">Line #</nevow:slot>
-    </td>
+    <nevow:slot name="linenorow"/>
     <td><nevow:slot name="kind">Kind</nevow:slot></td>
     <td><nevow:slot name="name">Name</nevow:slot></td>
     <td><nevow:slot name="summaryDoc">Summary</nevow:slot></td>

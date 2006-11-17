@@ -478,33 +478,49 @@ class TableFragment(page.Element):
         else:
             return ()
 
-    @page.renderer
     def table(self, request, tag):
-        tag = tag
         tag.fillSlots('id', 'id'+str(self.id))
         if self.system.options.htmlusesorttable:
-            tag[tag.onePattern('header')]
-        pattern = tag.patternGenerator('item')
+            header = tag.onePattern('header')
+            if self.has_lineno_col:
+                header = fillSlots(header,
+                                   linenohead=header.onePattern('linenohead'))
+            else:
+                header = fillSlots(header,
+                                   linenohead=None)
+            tag[header]
+        item = tag.patternGenerator('item')
+        linenorow = tag.patternGenerator('linenorow')
         for child in self.children:
             if child.document_in_parent_page:
                 link_ = tags.a(href=link(child.parent) + '#' + child.name)[child.name]
             else:
                 link_ = tags.a(href=link(child))[child.name]
-            if hasattr(child, 'linenumber'):
-                sourceHref = srclink(child)
-                if not sourceHref:
-                    line = child.linenumber
+            if self.has_lineno_col:
+                if hasattr(child, 'linenumber'):
+                    sourceHref = srclink(child)
+                    if not sourceHref:
+                        line = child.linenumber
+                    else:
+                        line = tags.a(href=sourceHref)[child.linenumber]
                 else:
-                    line = tags.a(href=sourceHref)[child.linenumber]
+                    line = ()
+                linenorow_ = fillSlots(linenorow,
+                                      lineno=line)
             else:
-                line = None
-            d = dict(class_=self.classprefix + child.kind.lower(),
-                     kind=child.kind,
-                     name=link_,
-                     line=line,
-                     summaryDoc=epydoc2stan.doc2html(child, summary=True))
-            tag[fillSlots(pattern, **d)]
+                linenorow_ = ()
+            tag[fillSlots(item,
+                          class_=self.classprefix + child.kind.lower(),
+                          kind=child.kind,
+                          name=link_,
+                          linenorow=linenorow_,
+                          summaryDoc=epydoc2stan.doc2html(child, summary=True))]
         return tag
+
+    def rend(self, ctx, data):
+        ctx = super(TableFragment, self).rend(ctx, data)
+        ctx.tag = self.table(None, ctx.tag.onePattern('table'))
+        return ctx.tag
 
 class BaseTableFragment(TableFragment):
     classprefix = 'base'
