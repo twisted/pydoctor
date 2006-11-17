@@ -481,7 +481,7 @@ class TableFragment(page.Element):
                                    linenohead=header.onePattern('linenohead'))
             else:
                 header = fillSlots(header,
-                                   linenohead=None)
+                                   linenohead=())
             tag[header]
         item = tag.patternGenerator('item')
         linenorow = tag.patternGenerator('linenorow')

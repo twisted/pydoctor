@@ -61,7 +61,7 @@ class IndexPage(nevowhtml.IndexPage):
     def recentChanges(self, request, tag):
         return tag
 
-class RecentChangesPage(nevowhtml.CommonPage):
+class RecentChangesPage(page.Element):
     def __init__(self, root, url):
         self.root = root
         self.url = url
@@ -124,8 +124,7 @@ def stanForOb(ob):
     return r
 
 class EditableDocstringsMixin(object):
-    @page.renderer
-    def docstring(self, request, tag):
+    def docstring(self):
         return stanForOb(self.ob)
 
     def functionBody(self, data):
@@ -367,9 +366,6 @@ class DiffPage(rend.Page):
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
         PyDoctorResource.__init__(self, system)
-        self.putChild('edit', EditPage(system, self))
-        self.putChild('history', HistoryPage(system))
-        self.putChild('diff', DiffPage(system))
         self.edits = []
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, editPageClasses)
@@ -377,6 +373,12 @@ class EditingPyDoctorResource(PyDoctorResource):
         return IndexPage(self.system)
     def child_recentChanges(self, ctx):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
+    def child_edit(self, ctx):
+        return EditPage(self.system, self)
+    def child_history(self, ctx):
+        return HistoryPage(self.system)
+    def child_diff(self, ctx):
+        return DiffPage(self.system)
 
 def resourceForPickleFile(pickleFilePath, configFilePath=None):
     import cPickle
