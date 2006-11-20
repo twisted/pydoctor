@@ -38,6 +38,7 @@ class NevowWriter:
             f.close()
         for o in ob.orderedcontents:
             self.writeDocsFor(o, functionpages)
+        print
 
     def writeDocsForOne(self, ob, fobj):
         # brrrrrrrr!
