@@ -1,4 +1,5 @@
 from pydoctor import nevowhtml, model
+from pydoctor.nevowhtml import util, pages
 from pydoctor.test.test_astbuilder import fromText
 from nevow import flat
 import cStringIO
@@ -29,7 +30,7 @@ def test_empty_table():
         urlprefix = ''
         class options:
             htmlusesorttable = True
-    t = nevowhtml.TableFragment(system, True, [])
+    t = pages.TableFragment(system, True, [])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -48,7 +49,7 @@ def test_nonempty_table():
             return 'fullName'
         name = 'name'
         contents = {}
-    t = nevowhtml.TableFragment(Child().system, True, [Child()])
+    t = pages.TableFragment(Child().system, True, [Child()])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
