@@ -1,4 +1,4 @@
-from pydoctor.nevowhtml.util import sibpath
+from pydoctor.nevowhtml.util import sibpath, link
 from pydoctor.nevowhtml import pages, summary
 
 from nevow import flat
