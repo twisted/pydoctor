@@ -217,7 +217,7 @@ class TableFragment(object):
         TableFragment.last_id += 1
         self.id = TableFragment.last_id
 
-    def table(self, request, tag):
+    def table(self, tag):
         tag.fillSlots('id', 'id'+str(self.id))
         if self.system.options.htmlusesorttable:
             header = tag.onePattern('header')
@@ -257,8 +257,7 @@ class TableFragment(object):
         return tag
 
     def rend(self, ctx, data):
-        tag = tags.invisible[self.docFactory.load()]
-        return tag
+        return self.table(tags.invisible[self.docFactory.load()].onePattern('table'))
 
 class BaseTableFragment(TableFragment):
     classprefix = 'base'
