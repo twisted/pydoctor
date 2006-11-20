@@ -83,10 +83,10 @@ class NevowWriter:
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(sibpath(__file__, 'templates/apidocs.css'),
+        shutil.copyfile(sibpath(__file__, '../templates/apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
         if self.system.options.htmlusesorttable:
-            shutil.copyfile(sibpath(__file__, 'templates/sorttable.js'),
+            shutil.copyfile(sibpath(__file__, '../templates/sorttable.js'),
                             os.path.join(self.base, 'sorttable.js'))
 
     def writeIndividualFiles(self, obs, functionpages=False):
@@ -146,7 +146,7 @@ def moduleSummary(modorpack):
 
 class ModuleIndexPage(page.Element):
     filename = 'moduleIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/summary.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
@@ -194,7 +194,7 @@ def subclassesFrom(hostsystem, cls, anchors):
 
 class ClassIndexPage(page.Element):
     filename = 'classIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/summary.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/summary.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
@@ -223,7 +223,7 @@ class ClassIndexPage(page.Element):
 
 class NameIndexPage(page.Element):
     filename = 'nameIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/nameIndex.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/nameIndex.html'))
     def __init__(self, system):
         self.system = system
 
@@ -277,7 +277,7 @@ class NameIndexPage(page.Element):
 
 class IndexPage(page.Element):
     filename = 'index.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/index.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/index.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
@@ -313,7 +313,7 @@ summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 
 class CommonPage(object):
     implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/common.html'))
     def __init__(self, ob):
         self.ob = ob
 
@@ -463,7 +463,7 @@ class PackagePage(CommonPage):
 
 class TableFragment(object):
     implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(sibpath(__file__, 'templates/table.html'))
+    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/table.html'))
     last_id = 0
     classprefix = ''
     def __init__(self, system, has_lineno_col, children):
