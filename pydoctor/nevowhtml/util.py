@@ -25,8 +25,10 @@ def srclink(o):
         sourceHref += '#L'+str(o.linenumber)
     return sourceHref
 
-def sibpath(path, sibling):
-    return os.path.join(os.path.dirname(os.path.abspath(path)), sibling)
+def templatefile(filename):
+    abspath = os.path.abspath(__file__)
+    pydoctordir = os.path.dirname(os.path.dirname(abspath))
+    return os.path.join(pydoctordir, 'templates', filename)
 
 def fillSlots(tag, **kw):
     for k, v in kw.iteritems():

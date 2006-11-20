@@ -2,7 +2,7 @@ from nevow import inevow, loaders, tags
 from zope.interface import implements
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.util import sibpath, link, fillSlots, srclink, taglink
+from pydoctor.nevowhtml.util import templatefile, link, fillSlots, srclink, taglink
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -56,7 +56,7 @@ def mediumName(obj):
 
 class CommonPage(object):
     implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/common.html'))
+    docFactory = loaders.xmlfile(templatefile('common.html'))
 
     def __init__(self, ob):
         self.ob = ob
@@ -207,7 +207,7 @@ class PackagePage(CommonPage):
 
 class TableFragment(object):
     implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/table.html'))
+    docFactory = loaders.xmlfile(templatefile('table.html'))
     last_id = 0
     classprefix = ''
     def __init__(self, system, has_lineno_col, children):

@@ -1,4 +1,4 @@
-from pydoctor.nevowhtml.util import sibpath, link
+from pydoctor.nevowhtml.util import link, templatefile
 from pydoctor.nevowhtml import pages, summary
 
 from nevow import flat
@@ -13,10 +13,10 @@ class NevowWriter:
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(sibpath(__file__, '../templates/apidocs.css'),
+        shutil.copyfile(templatefile('apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
         if self.system.options.htmlusesorttable:
-            shutil.copyfile(sibpath(__file__, '../templates/sorttable.js'),
+            shutil.copyfile(templatefile('sorttable.js'),
                             os.path.join(self.base, 'sorttable.js'))
 
     def writeIndividualFiles(self, obs, functionpages=False):

@@ -1,7 +1,7 @@
 from nevow import page, loaders, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.util import fillSlots, taglink, sibpath
+from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
     r = tags.li[taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True)]
@@ -16,7 +16,7 @@ def moduleSummary(modorpack):
 
 class ModuleIndexPage(page.Element):
     filename = 'moduleIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/summary.html'))
+    docFactory = loaders.xmlfile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
@@ -64,7 +64,7 @@ def subclassesFrom(hostsystem, cls, anchors):
 
 class ClassIndexPage(page.Element):
     filename = 'classIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/summary.html'))
+    docFactory = loaders.xmlfile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
@@ -93,7 +93,7 @@ class ClassIndexPage(page.Element):
 
 class NameIndexPage(page.Element):
     filename = 'nameIndex.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/nameIndex.html'))
+    docFactory = loaders.xmlfile(templatefile('nameIndex.html'))
     def __init__(self, system):
         self.system = system
 
@@ -147,7 +147,7 @@ class NameIndexPage(page.Element):
 
 class IndexPage(page.Element):
     filename = 'index.html'
-    docFactory = loaders.xmlfile(sibpath(__file__, '../templates/index.html'))
+    docFactory = loaders.xmlfile(templatefile('index.html'))
     def __init__(self, system):
         self.system = system
     @page.renderer
