@@ -1,6 +1,7 @@
 from pydoctor import model, twisted, epydoc2stan
 
-from nevow import loaders, tags, page, flat
+from nevow import loaders, tags, page, flat, inevow
+from zope.interface import implements
 
 import os, shutil, inspect, sys, urllib
 
@@ -310,7 +311,8 @@ class IndexPage(page.Element):
 summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 
 
-class CommonPage(page.Element):
+class CommonPage(object):
+    implements(inevow.IRenderer)
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/common.html'))
     def __init__(self, ob):
         self.ob = ob
@@ -422,24 +424,22 @@ class CommonPage(page.Element):
         return epydoc2stan.doc2html(data)
 
     def rend(self, ctx, data):
-        ctx = super(CommonPage, self).rend(ctx, data)
-        tag = ctx.tag
-        ctx.tag = fillSlots(tag,
-                            title=self.title(),
-                            ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
-                            heading=self.heading(),
-                            part=self.part(),
-                            source=self.source(tag.onePattern('source')),
-                            inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
-                            extras=self.extras(),
-                            docstring=self.docstring(),
-                            mainTable=self.mainTable(),
-                            packageInitTable=self.packageInitTable(),
-                            baseTables=self.baseTables(tag.patternGenerator('baseTable')),
-                            childlist=self.childlist(tag.onePattern('childlist')),
-                            project=self.project(),
-                            )
-        return ctx
+        tag = tags.invisible[self.docFactory.load()]
+        return fillSlots(tag,
+                         title=self.title(),
+                         ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
+                         heading=self.heading(),
+                         part=self.part(),
+                         source=self.source(tag.onePattern('source')),
+                         inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
+                         extras=self.extras(),
+                         docstring=self.docstring(),
+                         mainTable=self.mainTable(),
+                         packageInitTable=self.packageInitTable(),
+                         baseTables=self.baseTables(tag.patternGenerator('baseTable')),
+                         childlist=self.childlist(tag.onePattern('childlist')),
+                         project=self.project(),
+                         )
 
 
 class PackagePage(CommonPage):
@@ -461,7 +461,8 @@ class PackagePage(CommonPage):
         return [o for o in self.ob.contents['__init__'].orderedcontents
                 if o.document_in_parent_page]
 
-class TableFragment(page.Element):
+class TableFragment(object):
+    implements(inevow.IRenderer)
     docFactory = loaders.xmlfile(sibpath(__file__, 'templates/table.html'))
     last_id = 0
     classprefix = ''
@@ -512,9 +513,8 @@ class TableFragment(page.Element):
         return tag
 
     def rend(self, ctx, data):
-        ctx = super(TableFragment, self).rend(ctx, data)
-        ctx.tag = self.table(None, ctx.tag.onePattern('table'))
-        return ctx.tag
+        tag = tags.invisible[self.docFactory.load()]
+        return tag
 
 class BaseTableFragment(TableFragment):
     classprefix = 'base'
