@@ -161,8 +161,12 @@ class CommonPage(object):
                           header=header,
                           functionAnchor=data.fullName(),
                           shortFunctionAnchor=data.name,
+                          functionExtras=self.functionExtras(data),
                           functionBody=self.functionBody(data))]
         return tag
+
+    def functionExtras(self, data):
+        return []
 
     def functionBody(self, data):
         return epydoc2stan.doc2html(data)
@@ -349,6 +353,26 @@ class ClassPage(CommonPage):
                                  [o for o in data[0].orderedcontents
                                   if o.name in self.unmasked_attrs(data)])
 
+
+    def functionExtras(self, data):
+        r = []
+        for b in self.ob.allbases():
+            if data.name not in b.contents:
+                continue
+            overridden = b.contents[data.name]
+            r.append(tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)])
+            break
+        ocs = list(overriding_subclasses(self.ob, data.name))
+        if ocs:
+            s = []
+            for sc in ocs:
+                s.append(taglink(sc.contents[data.name], sc.fullName()))
+                s.append(',')
+            del s[-1]
+            r.append(tags.div(class_="interfaceinfo")['overridden in ', s])
+        return r
+
+
 class TwistedClassPage(ClassPage):
     def extras(self):
         r = super(TwistedClassPage, self).extras()
@@ -380,28 +404,13 @@ class TwistedClassPage(ClassPage):
                     return io.contents[methname]
         return None
 
-    def functionBody(self, data):
+    def functionExtras(self, data):
         imeth = self.interfaceMeth(data.name)
-        tag = tags.invisible()
+        r = []
         if imeth:
-            tag[tags.div(class_="interfaceinfo")['from ', taglink(imeth)]]
-        for b in self.ob.allbases():
-            if data.name not in b.contents:
-                continue
-            overridden = b.contents[data.name]
-            tag[tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)]]
-            break
-        ocs = list(overriding_subclasses(self.ob, data.name))
-        if ocs:
-            def one(sc):
-                return taglink(sc.contents[data.name], sc.fullName())
-            t = tags.div(class_="interfaceinfo")['overridden in ']
-            t[one(ocs[0])]
-            for sc in ocs[1:]:
-                t[', ', one(sc)]
-            tag[t]
-        tag[epydoc2stan.doc2html(data)]
-        return tag
+            r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth)])
+        r.extend(super(TwistedClassPage, self).functionExtras(data))
+        return r
 
 def overriding_subclasses(c, name, firstcall=True):
     if not firstcall and name in c.contents:
