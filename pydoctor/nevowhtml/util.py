@@ -35,12 +35,6 @@ def fillSlots(tag, **kw):
         tag = tag.fillSlots(k, v)
     return tag
 
-from nevow import flat
-
-_taglink = tags.invisible[
-    flat.precompile(tags.a(href=tags.slot('href'))[tags.slot('label')])
-    ].freeze()
-
 def taglink(o, label=None):
     if label is None:
         label = o.fullName()
@@ -52,4 +46,3 @@ def taglink(o, label=None):
     else:
         linktext = link(o)
     return tags.a(href=linktext)[label]
-    return fillSlots(_taglink, href=linktext, label=label)
