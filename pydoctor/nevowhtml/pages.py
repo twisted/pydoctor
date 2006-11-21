@@ -408,7 +408,7 @@ class TwistedClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         r = []
         if imeth:
-            r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth)])
+            r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth, imeth.parent.fullName())])
         r.extend(super(TwistedClassPage, self).functionExtras(data))
         return r
 
