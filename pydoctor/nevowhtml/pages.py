@@ -215,21 +215,24 @@ class TableFragment(object):
         self.has_lineno_col = has_lineno_col
         self.children = children
         TableFragment.last_id += 1
-        self.id = TableFragment.last_id
+        self._id = TableFragment.last_id
 
-    def table(self, tag):
-        tag.fillSlots('id', 'id'+str(self.id))
+    def id(self):
+        return 'id'+str(self._id)
+
+    def header(self, header):
         if self.system.options.htmlusesorttable:
-            header = tag.onePattern('header')
             if self.has_lineno_col:
-                header = fillSlots(header,
-                                   linenohead=header.onePattern('linenohead'))
+                return fillSlots(header,
+                                 linenohead=header.onePattern('linenohead'))
             else:
-                header = fillSlots(header,
-                                   linenohead=())
-            tag[header]
-        item = tag.patternGenerator('item')
-        linenorow = tag.patternGenerator('linenorow')
+                return fillSlots(header,
+                                 linenohead=())
+        else:
+            return ()
+
+    def rows(self, row, linenocell):
+        rows = []
         for child in self.children:
             if child.document_in_parent_page:
                 link_ = tags.a(href=link(child.parent) + '#' + child.name)[child.name]
@@ -244,20 +247,25 @@ class TableFragment(object):
                         line = tags.a(href=sourceHref)[child.linenumber]
                 else:
                     line = ()
-                linenorow_ = fillSlots(linenorow,
-                                       lineno=line)
+                linenocell_ = fillSlots(linenocell,
+                                        lineno=line)
             else:
-                linenorow_ = ()
-            tag[fillSlots(item,
-                          class_=self.classprefix + child.kind.lower(),
-                          kind=child.kind,
-                          name=link_,
-                          linenorow=linenorow_,
-                          summaryDoc=epydoc2stan.doc2html(child, summary=True))]
-        return tag
+                linenocell_ = ()
+            rows.append(fillSlots(row,
+                                  class_=self.classprefix + child.kind.lower(),
+                                  kind=child.kind,
+                                  name=link_,
+                                  linenocell=linenocell_,
+                                  summaryDoc=epydoc2stan.doc2html(child, summary=True)))
+        return rows
 
     def rend(self, ctx, data):
-        return self.table(tags.invisible[self.docFactory.load()].onePattern('table'))
+        tag = tags.invisible[self.docFactory.load()]
+        return fillSlots(tag,
+                         id=self.id(),
+                         header=self.header(tag.onePattern('header')),
+                         rows=self.rows(tag.patternGenerator('row'),
+                                        tag.patternGenerator('linenocell')))
 
 class BaseTableFragment(TableFragment):
     classprefix = 'base'
