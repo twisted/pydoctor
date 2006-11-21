@@ -2,6 +2,7 @@ from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import nevowhtml, model, epydoc2stan
+from pydoctor.nevowhtml import pages, summary, util
 
 import time
 
@@ -24,25 +25,23 @@ class PyDoctorResource(rend.ChildLookupMixin):
 
     def __init__(self, system):
         self.system = system
-        self.putChild('apidocs.css',
-                      File(nevowhtml.sibpath(__file__, 'templates/apidocs.css')))
-        self.putChild('sorttable.js',
-                      File(nevowhtml.sibpath(__file__, 'templates/sorttable.js')))
+        self.putChild('apidocs.css', File(util.templatefile('apidocs.css')))
+        self.putChild('sorttable.js', File(util.templatefile('sorttable.js')))
         self.index = WrapperPage(self.indexPage())
         self.putChild('', self.index)
         self.putChild('index.html', self.index)
         self.putChild('moduleIndex.html',
-                      WrapperPage(nevowhtml.ModuleIndexPage(self.system)))
+                      WrapperPage(summary.ModuleIndexPage(self.system)))
         self.putChild('classIndex.html',
-                      WrapperPage(nevowhtml.ClassIndexPage(self.system)))
+                      WrapperPage(summary.ClassIndexPage(self.system)))
         self.putChild('nameIndex.html',
-                      WrapperPage(nevowhtml.NameIndexPage(self.system)))
+                      WrapperPage(summary.NameIndexPage(self.system)))
 
     def indexPage(self):
-        return nevowhtml.IndexPage(self.system)
+        return summary.IndexPage(self.system)
 
     def pageClassForObject(self, ob):
-        return findPageClassInDict(ob, nevowhtml.__dict__)
+        return findPageClassInDict(ob, pages.__dict__)
 
     def childFactory(self, ctx, name):
         if not name.endswith('.html'):
@@ -56,7 +55,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
     def renderHTTP(self, ctx):
         return self.index.renderHTTP(ctx)
 
-class IndexPage(nevowhtml.IndexPage):
+class IndexPage(summary.IndexPage):
     @page.renderer
     def recentChanges(self, request, tag):
         return tag
@@ -70,12 +69,12 @@ class RecentChangesPage(page.Element):
     def changes(self, request, tag):
         item = tag.patternGenerator('item')
         for d in reversed(self.root.edits):
-            tag[nevowhtml.fillSlots(item,
-                                    diff=self.diff(d),
-                                    hist=self.hist(d),
-                                    object=nevowhtml.taglink(d.obj),
-                                    time=d.time,
-                                    user=d.user)]
+            tag[util.fillSlots(item,
+                               diff=self.diff(d),
+                               hist=self.hist(d),
+                               object=util.taglink(d.obj),
+                               time=d.time,
+                               user=d.user)]
         return tag
 
     def diff(self, data):
@@ -138,7 +137,7 @@ def recursiveSubclasses(cls):
 
 editPageClasses = {}
 
-for cls in list(recursiveSubclasses(nevowhtml.CommonPage)):
+for cls in list(recursiveSubclasses(pages.CommonPage)):
     _n = cls.__name__
     editPageClasses[_n] = type(_n, (EditableDocstringsMixin, cls), {})
 
