@@ -51,4 +51,5 @@ def taglink(o, label=None):
         linktext = link(p) + '#' + urllib.quote(o.name)
     else:
         linktext = link(o)
+    return tags.a(href=linktext)[label]
     return fillSlots(_taglink, href=linktext, label=label)
