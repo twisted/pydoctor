@@ -76,10 +76,10 @@ class CommonPage(object):
                 parent = parent.parent
             parts = []
             while parent.parent:
-                parts.append(tags.a(href=link(parent))[parent.name])
+                parts.append(taglink(parent, parent.name))
                 parts.append('.')
                 parent = parent.parent
-            parts.append(tags.a(href=link(parent))[parent.name])
+            parts.append(taglink(parent, parent.name))
             parts.reverse()
             return tag['Part of ', parts]
         else:
@@ -234,10 +234,6 @@ class TableFragment(object):
     def rows(self, row, linenocell):
         rows = []
         for child in self.children:
-            if child.document_in_parent_page:
-                link_ = tags.a(href=link(child.parent) + '#' + child.name)[child.name]
-            else:
-                link_ = tags.a(href=link(child))[child.name]
             if self.has_lineno_col:
                 if hasattr(child, 'linenumber'):
                     sourceHref = srclink(child)
@@ -254,7 +250,7 @@ class TableFragment(object):
             rows.append(fillSlots(row,
                                   class_=self.classprefix + child.kind.lower(),
                                   kind=child.kind,
-                                  name=link_,
+                                  name=taglink(child, child.name),
                                   linenocell=linenocell_,
                                   summaryDoc=epydoc2stan.doc2html(child, summary=True)))
         return rows
@@ -294,7 +290,7 @@ class ClassPage(CommonPage):
                 if o is None:
                     tag[n]
                 else:
-                    tag[tags.a(href=link(o))[n]]
+                    tag[taglink(o, n)]
                 if i != len(zipped)-1:
                     tag[', ']
             tag[')']
@@ -337,12 +333,12 @@ class ClassPage(CommonPage):
     def baseName(self, data):
         tag = tags.invisible()
         source_base = data[0]
-        tag[tags.a(href=link(source_base))[source_base.name]]
+        tag[taglink(source_base, source_base.name)]
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
             for b in reversed(bases_to_mention):
-                tail.append(tags.a(href=link(b))[b.name])
+                tail.append(taglink(b, b.name))
                 tail.append(', ')
             del tail[-1]
             tag[' (via ', tail, ')']
@@ -388,24 +384,17 @@ class TwistedClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         tag = tags.invisible()
         if imeth:
-            tag[tags.div(class_="interfaceinfo")
-                ['from ', tags.a(href=link(imeth.parent) + '#' + imeth.name)
-                 [imeth.parent.fullName()]]]
+            tag[tags.div(class_="interfaceinfo")['from ', taglink(imeth)]]
         for b in self.ob.allbases():
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
-            tag[tags.div(class_="interfaceinfo")
-                ['overrides ',
-                 tags.a(href=link(overridden.parent) + '#' + overridden.name)
-                 [overridden.fullName()]]]
+            tag[tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)]]
             break
         ocs = list(overriding_subclasses(self.ob, data.name))
         if ocs:
             def one(sc):
-                return tags.a(
-                    href=link(sc) + '#' + sc.contents[data.name].name
-                    )[sc.fullName()]
+                return taglink(sc.contents[data.name], sc.fullName())
             t = tags.div(class_="interfaceinfo")['overridden in ']
             t[one(ocs[0])]
             for sc in ocs[1:]:
