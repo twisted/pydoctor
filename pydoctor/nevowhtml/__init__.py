@@ -8,6 +8,7 @@ from pydoctor.nevowhtml.writer import NevowWriter
 def _hack_nevow():
     from nevow.flat.flatstan import serialize
     from nevow.flat import registerFlattener
+    from nevow.context import WovenContext
     def PrecompiledSlotSerializer(original, context):
         if context.precompile:
             return original
@@ -17,7 +18,12 @@ def _hack_nevow():
             if original.default is None:
                 raise
             data = original.default
-        return serialize(data, context)
+        originalContext = context.clone(deep=False, cloneTags=False)
+        originalContext.isAttrib = original.isAttrib
+        originalContext.inURL = original.inURL
+        originalContext.inJS = original.inJS
+        originalContext.inJSSingleQuoteString = original.inJSSingleQuoteString
+        return serialize(data, originalContext)
     from nevow.stan import _PrecompiledSlot
     registerFlattener(PrecompiledSlotSerializer, _PrecompiledSlot)
 
