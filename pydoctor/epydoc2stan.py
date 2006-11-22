@@ -283,8 +283,6 @@ def doc2html(obj, summary=False, docstring=None):
         subcounts = {}
         for subob in origobj.contents.itervalues():
             k = subob.kind.lower()
-            if isinstance(subob, model.Function) and isinstance(origobj, model.Class):
-                k = "method"
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
                 subdocstrings[k] = subdocstrings.get(k, 0) + 1
