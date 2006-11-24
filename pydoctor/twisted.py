@@ -173,10 +173,9 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                 continue
             self.push(mod)
             icf = InterfaceClassFinder(self, mod.fullName())
-            try:
-                ast = transformer.parseFile(mod.filepath)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", mod.filepath)
+            ast = self.parseFile(mod.filepath)
+            if not ast:
+                continue
             visitor.walk(ast, icf)
             self.pop(mod)
             newinterfaces.extend(icf.newinterfaces)

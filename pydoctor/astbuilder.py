@@ -139,6 +139,7 @@ class ASTBuilder(object):
         self.system = system
         self.current = None
         self._stack = []
+        self.ast_cache = {}
 
     def _push(self, cls, name, docstring):
         if self.current:
@@ -287,6 +288,17 @@ class ASTBuilder(object):
         else:
             return prefix + suffix
 
+    def parseFile(self, filePath):
+        if filePath in self.ast_cache:
+            return self.ast_cache[filePath]
+        try:
+            ast = transformer.parseFile(filePath)
+        except (SyntaxError, ValueError):
+            self.warning("cannot parse", filePath)
+            ast = None
+        self.ast_cache[filePath] = ast
+        return ast
+
     def preprocessDirectory(self, dirpath):
         assert self.system.state in ['blank', 'preparse']
         found_init_dot_py = False
@@ -318,10 +330,9 @@ class ASTBuilder(object):
         for i, mod in enumerate(modlist):
             self.push(mod.parent)
             isf = ImportStarFinder(self, mod.fullName())
-            try:
-                ast = transformer.parseFile(mod.filepath)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", mod.filepath)
+            ast = self.parseFile(mod.filepath)
+            if not ast:
+                continue
             print '\r', i+1, '/', len(modlist), 'modules parsed',
             sys.stdout.flush()
             visitor.walk(ast, isf)
@@ -338,10 +349,9 @@ class ASTBuilder(object):
         for i, mod in enumerate(newlist):
             mod = self.system.allobjects[mod]
             self.push(mod.parent)
-            try:
-                ast = transformer.parseFile(mod.filepath)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", mod.filepath)
+            ast = self.parseFile(mod.filepath)
+            if not ast:
+                continue
             self.processModuleAST(ast, mod.name)
             print '\r', i+1, '/', len(newlist), 'modules parsed',
             print sum(len(v) for v in self.system.warnings.itervalues()), 'warnings',
