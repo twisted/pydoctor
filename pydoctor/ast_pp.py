@@ -1,7 +1,7 @@
 # this is stolen from exarkun's sandbox
 import sys
 
-from StringIO import StringIO
+from cStringIO import StringIO
 from pprint import pprint
 from compiler import parse, walk
 
