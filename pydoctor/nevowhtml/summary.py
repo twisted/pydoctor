@@ -176,7 +176,14 @@ class IndexPage(page.Element):
         if len(self.system.rootobjects) == 1:
             return []
         else:
-            return tag.clear()
+            return tag
+    @page.renderer
+    def roots(self, request, tag):
+        item = tag.patternGenerator("item")
+        r = []
+        for o in self.system.rootobjects:
+            r.append(fillSlots(item, root=taglink(o)))
+        return r
 
 summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 

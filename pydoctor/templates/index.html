@@ -38,12 +38,11 @@
         Start at <a href="root.html">root</a>, the root package.
       </li>
       <nevow:invisible nevow:render="onlyIfMultipleRoots">
-        <!-- this stuff isn't implemented yet! -->
         <li>
           Or start at one of the roots:
-          <ul nevow:render="sequence">
+          <ul nevow:render="roots">
             <li nevow:pattern="item">
-              <a nevow:render="root" href="root.html">root</a>
+              <nevow:slot name="root"/>
             </li>
           </ul>
         </li>
