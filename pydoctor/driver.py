@@ -47,6 +47,8 @@ def getparser():
                       help="the project url, appears in the html if given")
     parser.add_option('--testing', dest='testing', action='store_true',
                       help="don't complain if the run doesn't have any effects")
+    parser.add_option('--pdb', dest='pdb', action='store_true',
+                      help="like py.test's --pdb")
     parser.add_option('--target-state', dest='targetstate',
                       default='finalized',
                       choices=model.states,
@@ -147,151 +149,156 @@ def main(args):
     if options.configfile:
         readConfigFile(options)
 
-    # step 1: make/find the system
-    if options.systemclass:
-        systemclass = findClassFromDottedName(options.systemclass, '--system-class')
-        if not issubclass(systemclass, model.System):
-            msg = "%s is not a subclass of model.System"
-            error(msg, systemclass)
-    else:
-        systemclass = model.System
-
-    if options.inputpickle:
-        system = cPickle.load(open(options.inputpickle, 'rb'))
+    try:
+        # step 1: make/find the system
         if options.systemclass:
-            if type(system) is not systemclass:
-                msg = ("loaded pickle has class %s.%s, differing "
-                       "from explicitly requested %s")
-                error(msg, cls.__module__, cls.__name__, options.systemclass)
-    else:
-        system = systemclass()
+            systemclass = findClassFromDottedName(options.systemclass, '--system-class')
+            if not issubclass(systemclass, model.System):
+                msg = "%s is not a subclass of model.System"
+                error(msg, systemclass)
+        else:
+            systemclass = model.System
 
-    system.options = options
+        if options.inputpickle:
+            system = cPickle.load(open(options.inputpickle, 'rb'))
+            if options.systemclass:
+                if type(system) is not systemclass:
+                    msg = ("loaded pickle has class %s.%s, differing "
+                           "from explicitly requested %s")
+                    error(msg, cls.__module__, cls.__name__, options.systemclass)
+        else:
+            system = systemclass()
 
-    system.urlprefix = ''
-    if options.moresystems:
-        moresystems = []
-        for fnamepref in options.moresystems:
-            fname, prefix = fnamepref.split(':', 1)
-            moresystems.append(cPickle.load(open(fname, 'rb')))
-            moresystems[-1].urlprefix = prefix
-            moresystems[-1].options = system.options
-        system.moresystems = moresystems
-    system.sourcebase = options.htmlsourcebase
-
-    if options.abbrevmapping:
-        for thing in options.abbrevmapping.split(','):
-            k, v = thing.split('=')
-            system.abbrevmapping[k] = v
-
-    # step 1.25: make a builder
-
-    if options.builderclass:
-        builderclass = findClassFromDottedName(options.builderclass, '--builder-class')
-        if not issubclass(builderclass, astbuilder.ASTBuilder):
-            msg = "%s is not a subclass of astbuilder.ASTBuilder"
-            error(msg, builderclass)
-    elif hasattr(system, 'defaultBuilder'):
-        builderclass = system.defaultBuilder
-    else:
-        builderclass = astbuilder.ASTBuilder
-
-    builder = builderclass(system)
-
-    # step 1.5: check that we're actually going to accomplish something here
-
-    if not options.outputpickle and not options.makehtml \
-           and not options.testing:
-        msg = ("this invocation isn't going to do anything\n"
-               "maybe supply --make-html and/or --output-pickle?")
-        error(msg)
-
-    # step 2: add any packages
-
-    if options.packages:
-        if options.prependedpackage:
-            for m in options.prependedpackage.split('.'):
-                builder.pushPackage(m, None)
-        for path in options.packages:
-            path = os.path.normpath(path)
-            if path in system.packages:
-                continue
-            if system.state not in ['blank', 'preparse']:
-                msg = 'system is in state %r, which is too late to add new code'
-                error(msg, system.state)
-            print 'adding directory', path
-            builder.preprocessDirectory(path)
-            system.packages.append(path)
-        if options.prependedpackage:
-            for m in options.prependedpackage.split('.'):
-                builder.popPackage()
-
-    # step 3: move the system to the desired state
-
-    curstateindex = model.states.index(system.state)
-    finalstateindex = model.states.index(options.targetstate)
-
-    if finalstateindex < curstateindex and (options.targetstate, system.state) != ('finalized', 'livechecked'):
-        msg = 'cannot reverse system from %r to %r'
-        error(msg, system.state, options.targetstate)
-
-    if finalstateindex > 0 and curstateindex == 0:
-        msg = 'cannot advance totally blank system to %r'
-        error(msg, options.targetstate)
-
-    funcs = [None,
-             builder.findImportStars,
-             builder.extractDocstrings,
-             builder.finalStateComputations,
-             lambda : liveobjectchecker.liveCheck(system, builder)]
-
-    for i in range(curstateindex, finalstateindex):
-        f = funcs[i]
-        if f == builder.findImportStars and not options.findimportstar:
-            continue
-        print f.__name__
-        f()
-
-    if system.state != options.targetstate:
-        msg = "failed to advance state to %r (this is a bug)"
-        error(msg, options.targetstate)
-
-    # step 4: save the system, if desired
-
-    if options.outputpickle:
-        del system.options # don't persist the options
-        f = open(options.outputpickle, 'wb')
-        cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
-        f.close()
         system.options = options
 
-    # step 5: make html, if desired
+        system.urlprefix = ''
+        if options.moresystems:
+            moresystems = []
+            for fnamepref in options.moresystems:
+                fname, prefix = fnamepref.split(':', 1)
+                moresystems.append(cPickle.load(open(fname, 'rb')))
+                moresystems[-1].urlprefix = prefix
+                moresystems[-1].options = system.options
+            system.moresystems = moresystems
+        system.sourcebase = options.htmlsourcebase
 
-    if options.makehtml:
-        if options.htmlwriter:
-            writerclass = findClassFromDottedName(options.htmlwriter, '--html-writer')
+        if options.abbrevmapping:
+            for thing in options.abbrevmapping.split(','):
+                k, v = thing.split('=')
+                system.abbrevmapping[k] = v
+
+        # step 1.25: make a builder
+
+        if options.builderclass:
+            builderclass = findClassFromDottedName(options.builderclass, '--builder-class')
+            if not issubclass(builderclass, astbuilder.ASTBuilder):
+                msg = "%s is not a subclass of astbuilder.ASTBuilder"
+                error(msg, builderclass)
+        elif hasattr(system, 'defaultBuilder'):
+            builderclass = system.defaultBuilder
         else:
-            from pydoctor import nevowhtml
-            writerclass = nevowhtml.NevowWriter
+            builderclass = astbuilder.ASTBuilder
 
-        print 'writing html to', options.htmloutput,
-        print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
+        builder = builderclass(system)
 
-        writer = writerclass(options.htmloutput)
-        writer.system = system
-        writer.prepOutputDirectory()
+        # step 1.5: check that we're actually going to accomplish something here
 
-        if options.htmlsubjects:
-            subjects = []
-            for fn in options.htmlsubjects:
-                subjects.append(system.allobjects[fn])
-        elif options.htmlsummarypages:
-            writer.writeModuleIndex(system)
-            subjects = []
-        else:
-            writer.writeModuleIndex(system)
-            subjects = system.rootobjects
-        writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+        if not options.outputpickle and not options.makehtml \
+               and not options.testing:
+            msg = ("this invocation isn't going to do anything\n"
+                   "maybe supply --make-html and/or --output-pickle?")
+            error(msg)
+
+        # step 2: add any packages
+
+        if options.packages:
+            if options.prependedpackage:
+                for m in options.prependedpackage.split('.'):
+                    builder.pushPackage(m, None)
+            for path in options.packages:
+                path = os.path.normpath(path)
+                if path in system.packages:
+                    continue
+                if system.state not in ['blank', 'preparse']:
+                    msg = 'system is in state %r, which is too late to add new code'
+                    error(msg, system.state)
+                print 'adding directory', path
+                builder.preprocessDirectory(path)
+                system.packages.append(path)
+            if options.prependedpackage:
+                for m in options.prependedpackage.split('.'):
+                    builder.popPackage()
+
+        # step 3: move the system to the desired state
+
+        curstateindex = model.states.index(system.state)
+        finalstateindex = model.states.index(options.targetstate)
+
+        if finalstateindex < curstateindex and (options.targetstate, system.state) != ('finalized', 'livechecked'):
+            msg = 'cannot reverse system from %r to %r'
+            error(msg, system.state, options.targetstate)
+
+        if finalstateindex > 0 and curstateindex == 0:
+            msg = 'cannot advance totally blank system to %r'
+            error(msg, options.targetstate)
+
+        funcs = [None,
+                 builder.findImportStars,
+                 builder.extractDocstrings,
+                 builder.finalStateComputations,
+                 lambda : liveobjectchecker.liveCheck(system, builder)]
+
+        for i in range(curstateindex, finalstateindex):
+            f = funcs[i]
+            if f == builder.findImportStars and not options.findimportstar:
+                continue
+            print f.__name__
+            f()
+
+        if system.state != options.targetstate:
+            msg = "failed to advance state to %r (this is a bug)"
+            error(msg, options.targetstate)
+
+        # step 4: save the system, if desired
+
+        if options.outputpickle:
+            del system.options # don't persist the options
+            f = open(options.outputpickle, 'wb')
+            cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
+            f.close()
+            system.options = options
+
+        # step 5: make html, if desired
+
+        if options.makehtml:
+            if options.htmlwriter:
+                writerclass = findClassFromDottedName(options.htmlwriter, '--html-writer')
+            else:
+                from pydoctor import nevowhtml
+                writerclass = nevowhtml.NevowWriter
+
+            print 'writing html to', options.htmloutput,
+            print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
+
+            writer = writerclass(options.htmloutput)
+            writer.system = system
+            writer.prepOutputDirectory()
+
+            if options.htmlsubjects:
+                subjects = []
+                for fn in options.htmlsubjects:
+                    subjects.append(system.allobjects[fn])
+            elif options.htmlsummarypages:
+                writer.writeModuleIndex(system)
+                subjects = []
+            else:
+                writer.writeModuleIndex(system)
+                subjects = system.rootobjects
+            writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+    except:
+        if options.pdb:
+            import pdb
+            pdb.post_mortem(sys.exc_traceback)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
