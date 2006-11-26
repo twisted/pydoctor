@@ -1,8 +1,7 @@
-
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer
-import os, sys, posixpath
+import os, sys
 
 class ModuleVistor(object):
     def __init__(self, builder, modname):
@@ -322,17 +321,8 @@ class ASTBuilder(object):
                 modname = os.path.splitext(fname)[0]
                 mod = self.pushModule(modname, None)
                 if self.system.sourcebase is not None:
-                    sb = self.system.sourcebase
-                    suffix = []
-                    dn = os.path.dirname(dirpath)
-                    while os.path.exists(os.path.join(dn, '.svn')):
-                        suffix.append(os.path.basename(dn))
-                        dn = os.path.dirname(dn)
-                    if suffix:
-                        del suffix[-1]
-                        suffix.reverse()
-                        sb = posixpath.join(sb, '/'.join(suffix))
-                    mod.sourceHref = '%s/%s.py'%(sb, mod.fullName().replace('.', '/'),)
+                    mod.sourceHref = '%s/%s.py'%\
+                                     (self.system.sourcebase, mod.fullName().replace('.', '/'),)
                 else:
                     mod.sourceHref = None
                 mod.filepath = fullname
