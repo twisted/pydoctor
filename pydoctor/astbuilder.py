@@ -305,7 +305,7 @@ class ASTBuilder(object):
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
             if self.system.sourcebase is not None:
-                package.sourceHref = '%s/%s'%(system.sourcebase, m.fullName().replace('.', '/'),)
+                package.sourceHref = '%s/%s'%(self.system.sourcebase, m.fullName().replace('.', '/'),)
             else:
                 package.sourceHref = None
         else:
@@ -321,7 +321,7 @@ class ASTBuilder(object):
                 mod = self.pushModule(modname, None)
                 if self.system.sourcebase is not None:
                     mod.sourceHref = '%s/%s.py'%\
-                                     (system.sourcebase, m.fullName().replace('.', '/'),)
+                                     (self.system.sourcebase, m.fullName().replace('.', '/'),)
                 else:
                     mod.sourceHref = None
                 mod.filepath = fullname
