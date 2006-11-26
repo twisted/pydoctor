@@ -183,7 +183,7 @@ class IndexPage(page.Element):
         r = []
         for o in self.system.rootobjects:
             r.append(fillSlots(item, root=taglink(o)))
-        return r
+        return tag[r]
 
 summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
 
