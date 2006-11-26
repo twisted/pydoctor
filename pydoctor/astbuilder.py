@@ -304,6 +304,10 @@ class ASTBuilder(object):
         found_init_dot_py = False
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
+            if self.system.sourcebase is not None:
+                package.sourceHref = '%s/%s'%(system.sourcebase, m.fullName().replace('.', '/'),)
+            else:
+                package.sourceHref = None
         else:
             package = None
         for fname in os.listdir(dirpath):
@@ -315,6 +319,11 @@ class ASTBuilder(object):
                     found_init_dot_py = True
                 modname = os.path.splitext(fname)[0]
                 mod = self.pushModule(modname, None)
+                if self.system.sourcebase is not None:
+                    mod.sourceHref = '%s/%s.py'%\
+                                     (system.sourcebase, m.fullName().replace('.', '/'),)
+                else:
+                    mod.sourceHref = None
                 mod.filepath = fullname
                 mod.processed = False
                 self.popModule()

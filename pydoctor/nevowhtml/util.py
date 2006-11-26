@@ -16,9 +16,7 @@ def srclink(o):
         m = m.parent
         if m is None:
             return None
-    sourceHref = '%s/%s'%(system.sourcebase, m.fullName().replace('.', '/'),)
-    if isinstance(m, model.Module):
-        sourceHref += '.py'
+    sourceHref = m.sourceHref
     if isinstance(o, model.Module):
         sourceHref += '#L1'
     elif hasattr(o, 'linenumber'):
