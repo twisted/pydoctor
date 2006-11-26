@@ -14,6 +14,9 @@ def moduleSummary(modorpack):
         r[ul]
     return r
 
+def _lckey(x):
+    return x.fullName().lower()
+
 class ModuleIndexPage(page.Element):
     filename = 'moduleIndex.html'
     docFactory = loaders.xmlfile(templatefile('summary.html'))
@@ -45,7 +48,7 @@ def findRootClasses(system):
                     roots[b.fullName()] = b
         else:
             roots[cls.fullName()] = cls
-    return sorted(roots.items())
+    return sorted(roots.items(), key=lambda x:x[0].lower())
 
 def subclassesFrom(hostsystem, cls, anchors):
     r = tags.li()
@@ -57,7 +60,7 @@ def subclassesFrom(hostsystem, cls, anchors):
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()]
     if len(scs) > 0:
         ul = tags.ul()
-        for sc in sorted(scs, key=lambda sc2:sc2.fullName()):
+        for sc in sorted(scs, key=_lckey):
             ul[subclassesFrom(hostsystem, sc, anchors)]
         r[ul]
     return r
@@ -81,7 +84,7 @@ class ClassIndexPage(page.Element):
                 item = tags.li[b]
                 if o:
                     ul = tags.ul()
-                    for sc in sorted(o, key=lambda sc2:sc2.fullName()):
+                    for sc in sorted(o, key=_lckey):
                         ul[subclassesFrom(self.system, sc, anchors)]
                     item[ul]
                 t[item]
