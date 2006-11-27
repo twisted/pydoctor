@@ -1,7 +1,7 @@
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer
-import os, sys
+import os, sys, posixpath
 
 class ModuleVistor(object):
     def __init__(self, builder, modname):
