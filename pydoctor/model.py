@@ -288,23 +288,27 @@ class System(object):
                     return sys.allobjects[name]
             raise KeyError, name
         self.__dict__.update(state)
-        for obj in self.orderedallobjects:
-            for k, v in obj.__dict__.copy().iteritems():
-                if k.startswith('$'):
-                    del obj.__dict__[k]
-                    obj.__dict__[k[1:]] = lookup(v)
-                elif k.startswith('@'):
-                    n = []
-                    for vv in v:
-                        if vv is None:
-                            n.append(None)
-                        else:
-                            n.append(lookup(vv))
-                    del obj.__dict__[k]
-                    obj.__dict__[k[1:]] = n
-                elif k.startswith('!'):
-                    n = {}
-                    for kk, vv in v.iteritems():
-                        n[kk] = lookup(vv)
-                    del obj.__dict__[k]
-                    obj.__dict__[k[1:]] = n
+        for sys in [self] + self.moresystems + self.subsystems:
+            if 'allobjects' not in sys.__dict__:
+                return
+        for sys in [self] + self.moresystems + self.subsystems:
+            for obj in sys.orderedallobjects:
+                for k, v in obj.__dict__.copy().iteritems():
+                    if k.startswith('$'):
+                        del obj.__dict__[k]
+                        obj.__dict__[k[1:]] = lookup(v)
+                    elif k.startswith('@'):
+                        n = []
+                        for vv in v:
+                            if vv is None:
+                                n.append(None)
+                            else:
+                                n.append(lookup(vv))
+                        del obj.__dict__[k]
+                        obj.__dict__[k[1:]] = n
+                    elif k.startswith('!'):
+                        n = {}
+                        for kk, vv in v.iteritems():
+                            n[kk] = lookup(vv)
+                        del obj.__dict__[k]
+                        obj.__dict__[k[1:]] = n
