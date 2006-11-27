@@ -331,6 +331,8 @@ def doc2html(obj, summary=False, docstring=None):
     crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
     if crap.startswith('<p>') and crap.endswith('</p>\n'):
         crap = crap[3:-5] # argh reST
+    if isinstance(crap, unicode):
+        crap = crap.encode('utf-8')
     if summary:
         if not crap:
             return ()
