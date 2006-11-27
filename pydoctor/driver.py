@@ -139,7 +139,8 @@ def readConfigFile(options):
             else:
                 setattr(options, k, v)
         else:
-            setattr(options, k, v)
+            if not isinstance(pre_v, list):
+                setattr(options, k, v)
 
 def main(args):
     import cPickle
