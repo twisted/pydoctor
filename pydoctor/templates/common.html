@@ -14,12 +14,6 @@
             src="pydoctor.js"></script>
   </head>
   <body>
-    <nevow:attr name="onload">
-      <nevow:slot name="onload"/>
-    </nevow:attr>
-    <nevow:invisible nevow:pattern="onload">
-        document.getElementById('showBigLink').style.display='inline';
-    </nevow:invisible>
     <nevow:slot name="heading"><h1>Heading</h1></nevow:slot>
     <p>
       <span id="part"><nevow:slot name="part">Part of something</nevow:slot></span>

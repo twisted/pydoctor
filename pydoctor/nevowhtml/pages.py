@@ -246,7 +246,6 @@ class CommonPage(object):
                          title=self.title(),
                          ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
                          heading=self.heading(),
-                         onload=self.ifhasplitlinks(tag.onePattern('onload')),
                          part=self.part(),
                          source=self.source(tag.onePattern('source')),
                          inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
@@ -321,12 +320,30 @@ class ClassPage(CommonPage):
     def extras(self):
         r = super(ClassPage, self).extras()
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
-        if scs:
-            p = tags.p()
-            p["Known subclasses: ", taglink(scs[0])]
-            for sc in scs[1:]:
-                p[', ', taglink(sc)]
-            r[p]
+        if not scs:
+            return r
+        p = ["Known subclasses: "]
+        if len(scs) <= 5:
+            for sc in scs[:3]:
+                p.append(taglink(sc))
+                p.append(', ')
+            del p[-1]
+        else:
+            for sc in scs[:3]:
+                p.append(taglink(sc))
+                p.append(', ')
+            del p[-1]
+            q = [', ']
+            for sc in scs[3:]:
+                q.append(taglink(sc))
+                q.append(', ')
+            del q[-1]
+            p.append(tags.span(id='moreSubclasses')[q])
+            p.append(tags.span(id='moreSubclassesLink')[
+                ' ',
+                tags.a(href="javascript:showId('moreSubclasses'); hideId('moreSubclassesLink');")
+                ['... and %d more'%(len(scs) - 3)]])
+        r[tags.p[p]]
         return r
 
     def ifhasplitlinks(self, tag):

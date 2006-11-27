@@ -34,7 +34,7 @@ h2
   font-style: italic;
 }
 
-#bigTable, #showSplitLink, #showBigLink
+#bigTable, #showSplitLink, #showBigLink, #moreSubclassesLink
 {
   display: none;
 }
