@@ -437,8 +437,18 @@ class ImportFinder(object):
 
     def visitFrom(self, node):
         modname = self.builder.expandModname(node.modname, False)
-        self.system.importgraph.setdefault(
-            self.modfullname, []).append(modname)
+        mod = self.system.allobjects.get(modname)
+        if mod is None:
+            return
+        if isinstance(mod, model.Module):
+            self.system.importgraph.setdefault(
+                self.modfullname, []).append(modname)
+        else:
+            for fromname, asname in node.names:
+                m = modname + '.' + fromname
+                if isinstance(self.system.allobjects.get(m), model.Module):
+                    self.system.importgraph.setdefault(
+                        self.modfullname, []).append(m)
 
     def visitImport(self, node):
         for fromname, asname in node.names:

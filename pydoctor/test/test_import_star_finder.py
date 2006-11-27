@@ -7,6 +7,8 @@ import py
 def test_simple():
     system = model.System()
     builder = astbuilder.ASTBuilder(system)
+    builder.pushModule('foo', None)
+    builder.popModule()
     isf = astbuilder.ImportFinder(builder, 'bar')
     walk(parse("from foo import bar"), isf)
     assert len(system.importgraph) == 1
