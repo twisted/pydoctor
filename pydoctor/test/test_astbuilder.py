@@ -128,36 +128,6 @@ def test_class_with_base_from_module():
     assert base2 == 'X.B.C'
     assert base3 == 'Y.Z.C'
 
-def test_ordering():
-    src = '''
-    def f():
-        class A(B):
-            pass
-    from X import Y as B
-    '''
-    mod = fromText(src)
-    A = mod.system.allobjects['<test>.f.A']
-    assert A.bases == ['X.Y']
-
-def test_local_import():
-    src = '''
-    class B:
-        pass
-    def f():
-        from X import Y as B
-        class A(B):
-            pass
-    class D(B):
-        pass
-    '''
-    mod = fromText(src)
-
-    A = mod.system.allobjects['<test>.f.A']
-    assert A.bases == ['X.Y']
-
-    D = mod.system.allobjects['<test>.D']
-    assert D.bases == ['<test>.B']
-
 def test_aliasing():
     src_a = '''
     class A:

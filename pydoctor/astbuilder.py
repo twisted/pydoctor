@@ -14,9 +14,6 @@ class ModuleVistor(object):
         for child in node.getChildNodes():
             self.visit(child)
 
-    def postpone(self, docable, node):
-        self.morenodes.append((docable, node))
-
     def visitModule(self, node):
         if self.builder.current and self.modname in self.builder.current.contents:
             m = self.builder.current.contents[self.modname]
@@ -48,7 +45,10 @@ class ModuleVistor(object):
             rawbases.append(str_base)
             base = current.dottedNameToFullName(str_base)
             bases.append(base)
-            baseobjects.append(current.resolveDottedName(base))
+            bob = current.resolveDottedName(base)
+            if bob:
+                assert bob.parent is current or bob.parent.processed
+            baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
         if node.lineno is not None:
@@ -134,7 +134,7 @@ class ModuleVistor(object):
                 argname = list(argname)
             argnames2.append(argname)
         func.argspec = (argnames2, starargname, kwname, tuple(defaults))
-        self.postpone(func, node.code)
+        #self.postpone(func, node.code)
         self.builder.popFunction()
 
 # if we assume:
@@ -308,13 +308,7 @@ class ASTBuilder(object):
 
 
     def processModuleAST(self, ast, moduleName):
-        mv = self.ModuleVistor(self, moduleName)
-        visitor.walk(ast, mv)
-        while mv.morenodes:
-            obj, node = mv.morenodes.pop(0)
-            self.push(obj)
-            mv.visit(node)
-            self.pop(obj)
+        visitor.walk(ast, self.ModuleVistor(self, moduleName))
 
     def expandModname(self, modname, givewarning=True):
         c = self.current

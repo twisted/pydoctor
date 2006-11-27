@@ -262,6 +262,8 @@ class System(object):
             for i, b in enumerate(ob.bases):
                 if b not in self.allobjects:
                     ob.bases[i] = self.resolveAlias(b)
+                    if ob.baseobjects[i] is None and ob.bases[i] in self.allobjects:
+                        ob.baseobjects[i] = self.allobjects[ob.bases[i]]
 
     def _warning(self, current, type, detail):
         if current is not None:
