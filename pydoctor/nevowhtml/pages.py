@@ -320,11 +320,11 @@ class ClassPage(CommonPage):
 
     def extras(self):
         r = super(ClassPage, self).extras()
-        if self.ob.subclasses:
-            sc = self.ob.subclasses[0]
+        scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
+        if scs:
             p = tags.p()
-            p["Known subclasses: ", taglink(sc)]
-            for sc in self.ob.subclasses[1:]:
+            p["Known subclasses: ", taglink(scs[0])]
+            for sc in scs[1:]:
                 p[', ', taglink(sc)]
             r[p]
         return r
@@ -412,10 +412,10 @@ class TwistedClassPage(ClassPage):
             else:
                 return s
         if self.ob.isinterface:
-            namelist = self.ob.implementedby_directly
+            namelist = sorted(self.ob.implementedby_directly, key=lambda x:x.fullName().lower())
             label = 'Known implementations: '
         else:
-            namelist = self.ob.implements_directly
+            namelist = sorted(self.ob.implements_directly, key=lambda x:x.fullName().lower())
             label = 'Implements interfaces: '
         if namelist:
             tag = tags.p()[label, tl(namelist[0])]
