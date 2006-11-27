@@ -412,10 +412,10 @@ class TwistedClassPage(ClassPage):
             else:
                 return s
         if self.ob.isinterface:
-            namelist = sorted(self.ob.implementedby_directly, key=lambda x:x.fullName().lower())
+            namelist = sorted(self.ob.implementedby_directly, key=lambda x:x.lower())
             label = 'Known implementations: '
         else:
-            namelist = sorted(self.ob.implements_directly, key=lambda x:x.fullName().lower())
+            namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
             tag = tags.p()[label, tl(namelist[0])]
