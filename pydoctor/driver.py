@@ -299,6 +299,7 @@ def main(args):
         if options.pdb:
             import pdb
             pdb.post_mortem(sys.exc_traceback)
+        raise
 
 if __name__ == '__main__':
     main(sys.argv[1:])
