@@ -236,7 +236,7 @@ class System(object):
         mod, clsname = n.rsplit('.', 1)
         if not mod:
             return mod
-        systems = [self] + self.moresystems + self.subsystems:
+        systems = [self] + self.moresystems
         for system in systems:
             if mod in system.allobjects:
                 break
@@ -283,7 +283,7 @@ class System(object):
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
         def lookup(name):
-            for sys in [self] + self.moresystems:
+            for sys in [self] + self.moresystems + self.subsystems:
                 if name in sys.allobjects:
                     return sys.allobjects[name]
             raise KeyError, name
