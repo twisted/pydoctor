@@ -214,6 +214,7 @@ class System(object):
         self.state = 'blank'
         self.packages = []
         self.moresystems = []
+        self.subsystems = []
         self.urlprefix = ''
         from pydoctor.driver import getparser
         self.options, _ = getparser().parse_args([])
@@ -235,7 +236,7 @@ class System(object):
         mod, clsname = n.rsplit('.', 1)
         if not mod:
             return mod
-        systems = [self] + self.moresystems
+        systems = [self] + self.moresystems + self.subsystems:
         for system in systems:
             if mod in system.allobjects:
                 break

@@ -184,6 +184,7 @@ def main(args):
                 moresystems.append(cPickle.load(open(fname, 'rb')))
                 moresystems[-1].urlprefix = prefix
                 moresystems[-1].options = system.options
+                moresystems[-1].subsystems.append(system)
             system.moresystems = moresystems
         system.sourcebase = options.htmlsourcebase
 
