@@ -442,19 +442,20 @@ class ImportFinder(object):
             return
         if isinstance(mod, model.Module):
             self.system.importgraph.setdefault(
-                self.modfullname, []).append(modname)
+                self.modfullname, set()).add(modname)
         else:
             for fromname, asname in node.names:
                 m = modname + '.' + fromname
                 if isinstance(self.system.allobjects.get(m), model.Module):
                     self.system.importgraph.setdefault(
-                        self.modfullname, []).append(m)
+                        self.modfullname, set()).add(m)
 
     def visitImport(self, node):
         for fromname, asname in node.names:
             modname = self.builder.expandModname(fromname)
-            self.system.importgraph.setdefault(
-                self.modfullname, []).append(modname)
+            if modname in self.system.allobjects:
+                self.system.importgraph.setdefault(
+                    self.modfullname, set()).add(modname)
 
 def fromText(src, modname='<test>', system=None):
     if system is None:
@@ -471,7 +472,7 @@ def toposort(input, edges):
     output = []
     input = dict.fromkeys(input)
     def p(i):
-        for j in edges.get(i, []):
+        for j in edges.get(i, set()):
             if j in input:
                 del input[j]
                 p(j)

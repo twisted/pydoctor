@@ -13,7 +13,7 @@ def test_simple():
     walk(parse("from foo import bar"), isf)
     assert len(system.importgraph) == 1
     edge, = system.importgraph.iteritems()
-    assert edge == ('bar', ['foo'])
+    assert edge == ('bar', set(['foo']))
 
 def test_actual():
     system = processPackage("importstartest")
