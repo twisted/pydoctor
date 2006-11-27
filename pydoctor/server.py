@@ -27,6 +27,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
         self.system = system
         self.putChild('apidocs.css', File(util.templatefile('apidocs.css')))
         self.putChild('sorttable.js', File(util.templatefile('sorttable.js')))
+        self.putChild('pydoctor.js', File(util.templatefile('pydoctor.js')))
         self.index = WrapperPage(self.indexPage())
         self.putChild('', self.index)
         self.putChild('index.html', self.index)

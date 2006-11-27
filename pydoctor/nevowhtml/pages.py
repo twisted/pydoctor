@@ -54,12 +54,75 @@ def mediumName(obj):
         return obj.system.abbrevmapping.get(part, part[0])
     return '.'.join([process(p) for p in path.split('.')]) + '.' + name
 
+class TableFragment(object):
+    implements(inevow.IRenderer)
+    docFactory = loaders.xmlfile(templatefile('table.html'))
+    last_id = 0
+    classprefix = ''
+    def __init__(self, ob, has_lineno_col, children):
+        self.system = ob.system
+        self.has_lineno_col = has_lineno_col
+        self.children = children
+        TableFragment.last_id += 1
+        self._id = TableFragment.last_id
+        self.ob = ob
+
+    def id(self):
+        return 'id'+str(self._id)
+
+    def header(self, header):
+        if self.system.options.htmlusesorttable:
+            if self.has_lineno_col:
+                return fillSlots(header,
+                                 linenohead=header.onePattern('linenohead'))
+            else:
+                return fillSlots(header,
+                                 linenohead=())
+        else:
+            return ()
+
+    def rows(self, row, linenocell):
+        rows = []
+        for child in self.children:
+            if self.has_lineno_col:
+                if hasattr(child, 'linenumber'):
+                    sourceHref = srclink(child)
+                    if not sourceHref:
+                        line = child.linenumber
+                    else:
+                        line = tags.a(href=sourceHref)[child.linenumber]
+                else:
+                    line = ()
+                linenocell_ = fillSlots(linenocell,
+                                        lineno=line)
+            else:
+                linenocell_ = ()
+            class_ = child.kind.lower()
+            if child.parent is not self.ob:
+                class_ = 'base' + class_
+            rows.append(fillSlots(row,
+                                  class_=class_,
+                                  kind=child.kind,
+                                  name=taglink(child, child.name),
+                                  linenocell=linenocell_,
+                                  summaryDoc=epydoc2stan.doc2html(child, summary=True)))
+        return rows
+
+    def rend(self, ctx, data):
+        tag = tags.invisible[self.docFactory.load()]
+        return fillSlots(tag,
+                         id=self.id(),
+                         header=self.header(tag.onePattern('header')),
+                         rows=self.rows(tag.patternGenerator('row'),
+                                        tag.patternGenerator('linenocell')))
+
 class CommonPage(object):
     implements(inevow.IRenderer)
     docFactory = loaders.xmlfile(templatefile('common.html'))
 
     def __init__(self, ob):
         self.ob = ob
+        self.usesorttable = ob.system.options.htmlusesorttable
 
     def title(self):
         return self.ob.fullName()
@@ -115,20 +178,23 @@ class CommonPage(object):
     def baseTables(self, tag):
         return ()
 
+    def bigTable(self, tag):
+        return ()
+
     def mainTable(self):
         children = self.children()
         if children:
-            return TableFragment(self.ob.system, self.has_lineno_col(), children)
+            return TableFragment(self.ob, self.has_lineno_col(), children)
         else:
             return ()
 
     def has_lineno_col(self):
-        if not self.ob.system.options.htmlusesorttable:
+        if not self.usesorttable:
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
     def ifusesorttable(self, tag):
-        if self.ob.system.options.htmlusesorttable:
+        if self.usesorttable:
             return tag
         else:
             return ()
@@ -171,20 +237,26 @@ class CommonPage(object):
     def functionBody(self, data):
         return epydoc2stan.doc2html(data)
 
+    def ifhasplitlinks(self, tag):
+        return ()
+
     def rend(self, ctx, data):
         tag = tags.invisible[self.docFactory.load()]
         return fillSlots(tag,
                          title=self.title(),
                          ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
                          heading=self.heading(),
+                         onload=self.ifhasplitlinks(tag.onePattern('onload')),
                          part=self.part(),
                          source=self.source(tag.onePattern('source')),
                          inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
                          extras=self.extras(),
                          docstring=self.docstring(),
+                         splittingLinks=self.ifhasplitlinks(tag.onePattern('splittingLinks')),
                          mainTable=self.mainTable(),
-                         packageInitTable=self.packageInitTable(),
                          baseTables=self.baseTables(tag.patternGenerator('baseTable')),
+                         bigTable=self.bigTable(tag.patternGenerator('bigTable')),
+                         packageInitTable=self.packageInitTable(),
                          childlist=self.childlist(tag.onePattern('childlist')),
                          project=self.project(),
                          )
@@ -197,11 +269,11 @@ class PackagePage(CommonPage):
                       key=lambda o2:o2.fullName())
 
     def packageInitTable(self):
-        children = self.ob.contents['__init__'].orderedcontents
+        init = self.ob.contents['__init__']
+        children = init.orderedcontents
         if children:
             return [tags.p["From the __init__.py module:"],
-                    TableFragment(self.ob.system, self.ob.system.options.htmlusesorttable,
-                                  children)]
+                    TableFragment(init, self.usesorttable, children)]
         else:
             return ()
 
@@ -209,71 +281,43 @@ class PackagePage(CommonPage):
         return [o for o in self.ob.contents['__init__'].orderedcontents
                 if o.document_in_parent_page]
 
-class TableFragment(object):
-    implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(templatefile('table.html'))
-    last_id = 0
-    classprefix = ''
-    def __init__(self, system, has_lineno_col, children):
-        self.system = system
-        self.has_lineno_col = has_lineno_col
-        self.children = children
-        TableFragment.last_id += 1
-        self._id = TableFragment.last_id
-
-    def id(self):
-        return 'id'+str(self._id)
-
-    def header(self, header):
-        if self.system.options.htmlusesorttable:
-            if self.has_lineno_col:
-                return fillSlots(header,
-                                 linenohead=header.onePattern('linenohead'))
-            else:
-                return fillSlots(header,
-                                 linenohead=())
-        else:
-            return ()
-
-    def rows(self, row, linenocell):
-        rows = []
-        for child in self.children:
-            if self.has_lineno_col:
-                if hasattr(child, 'linenumber'):
-                    sourceHref = srclink(child)
-                    if not sourceHref:
-                        line = child.linenumber
-                    else:
-                        line = tags.a(href=sourceHref)[child.linenumber]
-                else:
-                    line = ()
-                linenocell_ = fillSlots(linenocell,
-                                        lineno=line)
-            else:
-                linenocell_ = ()
-            rows.append(fillSlots(row,
-                                  class_=self.classprefix + child.kind.lower(),
-                                  kind=child.kind,
-                                  name=taglink(child, child.name),
-                                  linenocell=linenocell_,
-                                  summaryDoc=epydoc2stan.doc2html(child, summary=True)))
-        return rows
-
-    def rend(self, ctx, data):
-        tag = tags.invisible[self.docFactory.load()]
-        return fillSlots(tag,
-                         id=self.id(),
-                         header=self.header(tag.onePattern('header')),
-                         rows=self.rows(tag.patternGenerator('row'),
-                                        tag.patternGenerator('linenocell')))
-
-class BaseTableFragment(TableFragment):
-    classprefix = 'base'
-
 class ModulePage(CommonPage):
     pass
 
+def overriding_subclasses(c, name, firstcall=True):
+    if not firstcall and name in c.contents:
+        yield c
+    else:
+        for sc in c.subclasses:
+            for sc2 in overriding_subclasses(sc, name, False):
+                yield sc2
+
+def nested_bases(b):
+    r = [(b,)]
+    for b2 in b.baseobjects:
+        if b2 is None:
+            continue
+        for n in nested_bases(b2):
+            r.append(n + (b,))
+    return r
+
+def unmasked_attrs(baselist):
+    maybe_masking = set()
+    for b in baselist[1:]:
+        maybe_masking.update(set([o.name for o in b.orderedcontents]))
+    return [o for o in baselist[0].orderedcontents if o.name not in maybe_masking]
+
+
 class ClassPage(CommonPage):
+    def __init__(self, ob):
+        CommonPage.__init__(self, ob)
+        self.baselists = []
+        self.usesplitlinks = ob.system.options.htmlusesplitlinks
+        for baselist in nested_bases(self.ob):
+            attrs = unmasked_attrs(baselist)
+            if attrs:
+                self.baselists.append((baselist, attrs))
+
     def extras(self):
         r = super(ClassPage, self).extras()
         if self.ob.subclasses:
@@ -284,6 +328,12 @@ class ClassPage(CommonPage):
                 p[', ', taglink(sc)]
             r[p]
         return r
+
+    def ifhasplitlinks(self, tag):
+        if self.usesplitlinks and len(self.baselists) > 1:
+            return tag
+        else:
+            return ()
 
     def heading(self):
         tag = super(ClassPage, self).heading()
@@ -304,35 +354,11 @@ class ClassPage(CommonPage):
     def inhierarchy(self, tag):
         return tag(href="classIndex.html#"+self.ob.fullName())
 
-    def nested_bases(self, b):
-        r = [(b,)]
-        for b2 in b.baseobjects:
-            if b2 is None:
-                continue
-            for n in self.nested_bases(b2):
-                r.append(n + (b,))
-        return r
-
-    def unmasked_attrs(self, baselist):
-        maybe_masking = set()
-        for b in baselist[1:]:
-            maybe_masking.update(set([o.name for o in b.orderedcontents]))
-        return set([o.name for o in baselist[0].orderedcontents]) - maybe_masking
-
-    def bases(self):
-        r = []
-        for baselist in self.nested_bases(self.ob)[1:]:
-            if self.unmasked_attrs(baselist):
-                r.append(baselist)
-        return r
-
     def baseTables(self, item):
-        tag = tags.invisible()
-        for b in self.bases():
-            tag[fillSlots(item,
+        return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=self.baseTable(b))]
-        return tag
+                          baseTable=TableFragment(self.ob, self.has_lineno_col(), attrs))
+                for b, attrs in self.baselists[1:]]
 
     def baseName(self, data):
         tag = tags.invisible()
@@ -348,11 +374,14 @@ class ClassPage(CommonPage):
             tag[' (via ', tail, ')']
         return tag
 
-    def baseTable(self, data):
-        return BaseTableFragment(self.ob.system, self.has_lineno_col(),
-                                 [o for o in data[0].orderedcontents
-                                  if o.name in self.unmasked_attrs(data)])
-
+    def bigTable(self, tag):
+        if not self.usesplitlinks or len(self.baselists) == 1:
+            return ()
+        all_attrs = []
+        for b, attrs in self.baselists:
+            all_attrs.extend(attrs)
+        all_attrs.sort(key=lambda o:o.name.lower())
+        return tag[TableFragment(self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):
         r = []
@@ -411,14 +440,6 @@ class TwistedClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth, imeth.parent.fullName())])
         r.extend(super(TwistedClassPage, self).functionExtras(data))
         return r
-
-def overriding_subclasses(c, name, firstcall=True):
-    if not firstcall and name in c.contents:
-        yield c
-    else:
-        for sc in c.subclasses:
-            for sc2 in overriding_subclasses(sc, name, False):
-                yield sc2
 
 class FunctionPage(CommonPage):
     def heading(self):

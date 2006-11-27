@@ -10,8 +10,16 @@
       <script nevow:pattern="ifusesorttable" type="text/javascript"
               src="sorttable.js"></script>
     </nevow:slot>
+    <script type="text/javascript"
+            src="pydoctor.js"></script>
   </head>
   <body>
+    <nevow:attr name="onload">
+      <nevow:slot name="onload"/>
+    </nevow:attr>
+    <nevow:invisible nevow:pattern="onload">
+        document.getElementById('showBigLink').style.display='inline';
+    </nevow:invisible>
     <nevow:slot name="heading"><h1>Heading</h1></nevow:slot>
     <p>
       <span id="part"><nevow:slot name="part">Part of something</nevow:slot></span>
@@ -30,15 +38,25 @@
     <nevow:slot name="docstring">
       A docstring.
     </nevow:slot>
-    <nevow:slot name="mainTable" />
+    <nevow:slot name="splittingLinks" />
+    <p nevow:pattern="splittingLinks">
+      <a id="showSplitLink" href="javascript:showSplit()">Split Tables</a>
+      <a id="showBigLink" href="javascript:showBig()">Show Methods in One Table</a>
+    </p>
+    <div id="splitTables">
+      <nevow:slot name="mainTable" />
+      <nevow:slot name="baseTables" />
+      <nevow:invisible nevow:pattern="baseTable">
+        <p>
+          Inherited from <nevow:slot name="baseName" />:
+        </p>
+        <nevow:slot name="baseTable" />
+      </nevow:invisible>
+    </div>
+    <nevow:slot name="bigTable" />
+    <div id="bigTable" nevow:pattern="bigTable">
+    </div>
     <nevow:slot name="packageInitTable" />
-    <nevow:slot name="baseTables" />
-    <nevow:invisible nevow:pattern="baseTable">
-      <p>
-        Inherited from <nevow:slot name="baseName" />:
-      </p>
-      <nevow:slot name="baseTable" />
-    </nevow:invisible>
     <nevow:slot name="childlist" />
     <nevow:invisible nevow:pattern="childlist">
       <a class="functionSourceLink" nevow:pattern="sourceLink">

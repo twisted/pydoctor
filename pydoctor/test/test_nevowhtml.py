@@ -26,11 +26,12 @@ def test_simple():
     assert 'This is a docstring' in v
 
 def test_empty_table():
-    class system:
-        urlprefix = ''
-        class options:
-            htmlusesorttable = True
-    t = pages.TableFragment(system, True, [])
+    class O:
+        class system:
+            urlprefix = ''
+            class options:
+                htmlusesorttable = True
+    t = pages.TableFragment(O, True, [])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -40,6 +41,7 @@ def test_nonempty_table():
         docstring = None
         document_in_parent_page = False
         linenumber = 10
+        parent = None
         class system:
             urlprefix = ''
             sourcebase = None
@@ -49,7 +51,7 @@ def test_nonempty_table():
             return 'fullName'
         name = 'name'
         contents = {}
-    t = pages.TableFragment(Child().system, True, [Child()])
+    t = pages.TableFragment(Child(), True, [Child()])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 

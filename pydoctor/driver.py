@@ -113,6 +113,10 @@ def getparser():
                       default=False,
                       action="store_true",
                       help="")
+    parser.add_option('--html-use-splitlinks', dest='htmlusesplitlinks',
+                      default=False,
+                      action="store_true",
+                      help="")
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
     return parser

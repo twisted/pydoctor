@@ -34,6 +34,11 @@ h2
   font-style: italic;
 }
 
+#bigTable, #showSplitLink, #showBigLink
+{
+  display: none;
+}
+
 .toplevel
 {
   margin-top: 2em;
