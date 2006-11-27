@@ -341,7 +341,8 @@ class ClassPage(CommonPage):
             p.append(tags.span(id='moreSubclasses')[q])
             p.append(tags.span(id='moreSubclassesLink')[
                 ' ',
-                tags.a(href="javascript:showId('moreSubclasses'); hideId('moreSubclassesLink');")
+                tags.a(href="javascript:showId('moreSubclasses'); hideId('moreSubclassesLink');"
+                       class_="jslink")
                 ['... and %d more'%(len(scs) - 3)]])
         r[tags.p[p]]
         return r

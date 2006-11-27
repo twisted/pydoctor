@@ -124,6 +124,11 @@ div.functionHeader a
   color: black;
 }
 
+a.jslink
+{
+  color: #007FFF;
+}
+
 span.tag
 {
   font-weight: bold;
