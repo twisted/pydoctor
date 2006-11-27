@@ -307,6 +307,34 @@ def unmasked_attrs(baselist):
     return [o for o in baselist[0].orderedcontents if o.name not in maybe_masking]
 
 
+def maybeShortenList(system, label, lst, idbase):
+    def one(item):
+        if item in system.allobjects:
+            return taglink(system.allobjects[item])
+        else:
+            return item
+    def commasep(items):
+        r = []
+        for item in items:
+            r.append(one(item))
+            r.append(', ')
+        del r[-1]
+        return r
+    p = [label]
+    if len(lst) <= 5:
+        p.extend(commasep(lst))
+    else:
+        p.extend(commasep(lst[:3]))
+        q = [', ']
+        q.extend(commasep(lst[3:]))
+        p.append(tags.span(id=idbase, class_='hideIfJS')[q])
+        p.append(tags.span(id=idbase+'Link', class_='showIfJS')[
+            ' ',
+            tags.a(href="javascript:hideAndShow('%s');"%idbase,
+                   class_="jslink")
+            ['... and %d more'%len(lst[3:])]])
+    return p
+
 class ClassPage(CommonPage):
     def __init__(self, ob):
         CommonPage.__init__(self, ob)
@@ -316,34 +344,15 @@ class ClassPage(CommonPage):
             attrs = unmasked_attrs(baselist)
             if attrs:
                 self.baselists.append((baselist, attrs))
+        self.overridenInCount = 0
 
     def extras(self):
         r = super(ClassPage, self).extras()
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
-        p = ["Known subclasses: "]
-        if len(scs) <= 5:
-            for sc in scs[:3]:
-                p.append(taglink(sc))
-                p.append(', ')
-            del p[-1]
-        else:
-            for sc in scs[:3]:
-                p.append(taglink(sc))
-                p.append(', ')
-            del p[-1]
-            q = [', ']
-            for sc in scs[3:]:
-                q.append(taglink(sc))
-                q.append(', ')
-            del q[-1]
-            p.append(tags.span(id='moreSubclasses')[q])
-            p.append(tags.span(id='moreSubclassesLink')[
-                ' ',
-                tags.a(href="javascript:showId('moreSubclasses'); hideId('moreSubclassesLink');",
-                       class_="jslink")
-                ['... and %d more'%(len(scs) - 3)]])
+        p = maybeShortenList(self.ob.system, "Known subclasses: ",
+                             [o.fullName() for o in scs], "moreSubclasses")
         r[tags.p[p]]
         return r
 
@@ -411,12 +420,11 @@ class ClassPage(CommonPage):
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
-            s = []
-            for sc in ocs:
-                s.append(taglink(sc.contents[data.name], sc.fullName()))
-                s.append(', ')
-            del s[-1]
-            r.append(tags.div(class_="interfaceinfo")['overridden in ', s])
+            self.overridenInCount += 1
+            idbase = 'overridenIn' + str(self.overridenInCount)
+            l = maybeShortenList(self.ob.system, 'overridden in ',
+                                 [o.fullName() for o in ocs], idbase)
+            r.append(tags.div(class_="interfaceinfo")[l])
         return r
 
 
@@ -436,10 +444,8 @@ class TwistedClassPage(ClassPage):
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
-            tag = tags.p()[label, tl(namelist[0])]
-            for impl in namelist[1:]:
-                tag[', ', tl(impl)]
-            r[tag]
+            l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
+            r[l]
         return r
 
     def interfaceMeth(self, methname):

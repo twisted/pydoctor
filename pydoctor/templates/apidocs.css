@@ -39,6 +39,16 @@ h2
   display: none;
 }
 
+.showIfJS
+{
+  display: none;
+}
+
+.hideIfJS
+{
+  display: inline;
+}
+
 .toplevel
 {
   margin-top: 2em;
