@@ -276,35 +276,34 @@ class System(object):
             if isinstance(o, cls):
                 yield o
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state['moresystems']
-        return state
-
     def __setstate__(self, state):
         if 'abbrevmapping' not in state:
             state['abbrevmapping'] = {}
-        self.moresystems = []
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
+        def lookup(name):
+            for sys in [self] + self.moresystems:
+                if name in sys.allobjects:
+                    return sys.allobjects[name]
+            raise KeyError, name
         self.__dict__.update(state)
         for obj in self.orderedallobjects:
             for k, v in obj.__dict__.copy().iteritems():
                 if k.startswith('$'):
                     del obj.__dict__[k]
-                    obj.__dict__[k[1:]] = self.allobjects[v]
+                    obj.__dict__[k[1:]] = lookup(v)
                 elif k.startswith('@'):
                     n = []
                     for vv in v:
                         if vv is None:
                             n.append(None)
                         else:
-                            n.append(self.allobjects[vv])
+                            n.append(lookup(vv))
                     del obj.__dict__[k]
                     obj.__dict__[k[1:]] = n
                 elif k.startswith('!'):
                     n = {}
                     for kk, vv in v.iteritems():
-                        n[kk] = self.allobjects[vv]
+                        n[kk] = lookup(vv)
                     del obj.__dict__[k]
                     obj.__dict__[k[1:]] = n
