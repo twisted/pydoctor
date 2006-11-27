@@ -39,14 +39,23 @@ class ModuleVistor(object):
             self.builder.popModule()
 
     def visitClass(self, node):
+        rawbases = []
+        bases = []
+        baseobjects = []
+        current = self.builder.current
+        for n in node.bases:
+            str_base = ast_pp.pp(n)
+            rawbases.append(str_base)
+            base = current.dottedNameToFullName(str_base)
+            bases.append(base)
+            baseobjects.append(current.resolveDottedName(base))
+
         cls = self.builder.pushClass(node.name, node.doc)
         if node.lineno is not None:
             cls.linenumber = node.lineno
-        for n in node.bases:
-            str_base = ast_pp.pp(n)
-            cls.rawbases.append(str_base)
-            base = cls.dottedNameToFullName(str_base)
-            cls.bases.append(base)
+        cls.rawbases = rawbases
+        cls.bases = bases
+        cls.baseobjects = baseobjects
         self.default(node)
         self.builder.popClass()
 
@@ -280,9 +289,9 @@ class ASTBuilder(object):
 
     def recordBasesAndSubclasses(self):
         for cls in self.system.objectsOfType(model.Class):
-            for n in cls.bases:
-                o = cls.parent.resolveDottedName(n, verbose=False)
-                cls.baseobjects.append(o)
+            for o in cls.baseobjects:
+                #o = cls.parent.resolveDottedName(n, verbose=False)
+                #cls.baseobjects.append(o)
                 if o:
                     o.subclasses.append(cls)
         for cls in self.system.objectsOfType(model.Class):
@@ -423,9 +432,18 @@ class ImportStarFinder(object):
         self.system = builder.system
         self.modfullname = modfullname
 
+    def visitFunction(self, node):
+        pass
+
     def visitFrom(self, node):
-        if node.names[0][0] == '*':
-            modname = self.builder.expandModname(node.modname, False)
+        #if node.names[0][0] == '*':
+        modname = self.builder.expandModname(node.modname, False)
+        self.system.importstargraph.setdefault(
+            self.modfullname, []).append(modname)
+
+    def visitImport(self, node):
+        for fromname, asname in node.names:
+            modname = self.builder.expandModname(fromname)
             self.system.importstargraph.setdefault(
                 self.modfullname, []).append(modname)
 

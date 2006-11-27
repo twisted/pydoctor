@@ -214,3 +214,13 @@ def test_subclasses():
     system = fromText(src).system
     assert (system.allobjects['<test>.A'].subclasses ==
             [system.allobjects['<test>.B']])
+
+def test_inherit_names():
+    src = '''
+    class A:
+        pass
+    class A(A):
+        pass
+    '''
+    mod = fromText(src)
+    assert [b.name for b in mod.contents['A'].allbases()] == ['A 0']
