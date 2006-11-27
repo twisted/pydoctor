@@ -7,10 +7,10 @@ import py
 def test_simple():
     system = model.System()
     builder = astbuilder.ASTBuilder(system)
-    isf = astbuilder.ImportStarFinder(builder, 'bar')
-    walk(parse("from foo import *"), isf)
-    assert len(system.importstargraph) == 1
-    edge, = system.importstargraph.iteritems()
+    isf = astbuilder.ImportFinder(builder, 'bar')
+    walk(parse("from foo import bar"), isf)
+    assert len(system.importgraph) == 1
+    edge, = system.importgraph.iteritems()
     assert edge == ('bar', ['foo'])
 
 def test_actual():

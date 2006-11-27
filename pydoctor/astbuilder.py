@@ -375,12 +375,12 @@ class ASTBuilder(object):
             raise Exception, "you must pass a package directory to preprocessDirectory"
         self.system.state = 'preparse'
 
-    def findImportStars(self):
+    def analyseImports(self):
         assert self.system.state in ['preparse']
         modlist = list(self.system.objectsOfType(model.Module))
         for i, mod in enumerate(modlist):
             self.push(mod.parent)
-            isf = ImportStarFinder(self, mod.fullName())
+            isf = ImportFinder(self, mod.fullName())
             ast = self.parseFile(mod.filepath)
             if not ast:
                 continue
@@ -389,13 +389,13 @@ class ASTBuilder(object):
             visitor.walk(ast, isf)
             self.pop(mod.parent)
         print
-        self.system.state = 'importstarred'
+        self.system.state = 'imported'
 
     def extractDocstrings(self):
-        assert self.system.state in ['preparse', 'importstarred']
+        assert self.system.state in ['imported']
         # and so much more...
         modlist = list(self.system.objectsOfType(model.Module))
-        newlist = toposort([m.fullName() for m in modlist], self.system.importstargraph)
+        newlist = toposort([m.fullName() for m in modlist], self.system.importgraph)
 
         for i, mod in enumerate(newlist):
             mod = self.system.allobjects[mod]
@@ -419,14 +419,14 @@ class ASTBuilder(object):
 
     def processDirectory(self, dirpath):
         self.preprocessDirectory(dirpath)
-        self.findImportStars()
+        self.analyseImports()
         self.extractDocstrings()
         self.finalStateComputations()
 
 model.System.defaultBuilder = ASTBuilder
 
 
-class ImportStarFinder(object):
+class ImportFinder(object):
     def __init__(self, builder, modfullname):
         self.builder = builder
         self.system = builder.system
@@ -436,15 +436,14 @@ class ImportStarFinder(object):
         pass
 
     def visitFrom(self, node):
-        #if node.names[0][0] == '*':
         modname = self.builder.expandModname(node.modname, False)
-        self.system.importstargraph.setdefault(
+        self.system.importgraph.setdefault(
             self.modfullname, []).append(modname)
 
     def visitImport(self, node):
         for fromname, asname in node.names:
             modname = self.builder.expandModname(fromname)
-            self.system.importstargraph.setdefault(
+            self.system.importgraph.setdefault(
                 self.modfullname, []).append(modname)
 
 def fromText(src, modname='<test>', system=None):

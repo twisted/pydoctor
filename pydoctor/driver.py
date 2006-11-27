@@ -64,12 +64,6 @@ def getparser():
     parser.add_option('--prepend-package',
                       action='store', dest='prependedpackage',
                       help='')
-    parser.add_option('--no-find-import-star',
-                      action='store_false', dest='findimportstar',
-                      default=True,
-                      help="Don't preprocess the modules to resolve import *s."
-                           " It's a significant speed saving if you don't need"
-                           " it.")
     parser.add_option('--resolve-aliases',
                       action='store_true', dest='resolvealiases',
                       default=False,
@@ -248,16 +242,17 @@ def main(args):
             msg = 'cannot advance totally blank system to %r'
             error(msg, options.targetstate)
 
+        def liveCheck():
+            liveobjectchecker.liveCheck(system, builder)
+
         funcs = [None,
-                 builder.findImportStars,
+                 builder.analyseImports,
                  builder.extractDocstrings,
                  builder.finalStateComputations,
-                 lambda : liveobjectchecker.liveCheck(system, builder)]
+                 liveCheck]
 
         for i in range(curstateindex, finalstateindex):
             f = funcs[i]
-            if f == builder.findImportStars and not options.findimportstar:
-                continue
             print f.__name__
             f()
 

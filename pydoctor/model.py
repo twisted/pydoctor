@@ -192,7 +192,7 @@ class Function(Documentable):
 states = [
     'blank',
     'preparse',
-    'importstarred',
+    'imported',
     'parsed',
     'finalized',
     'livechecked',
@@ -208,9 +208,9 @@ class System(object):
         self.orderedallobjects = []
         self.rootobjects = []
         self.warnings = {}
-        # importstargraph contains edges {importer:[imported]} but only
-        # for import * statements
-        self.importstargraph = {}
+        # importgraph contains edges {importer:[imported]} but only
+        # for module-level import statements
+        self.importgraph = {}
         self.state = 'blank'
         self.packages = []
         self.moresystems = []
