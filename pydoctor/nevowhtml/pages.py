@@ -327,6 +327,11 @@ def maybeShortenList(system, label, lst, idbase):
         p.extend(commasep(lst[:3]))
         q = [', ']
         q.extend(commasep(lst[3:]))
+        q.append(tags.span(class_='showIfJS')[
+            ' ',
+            tags.a(href="javascript:showAndHide('%s');"%idbase,
+                   class_="jslink")
+            ['(hide last %d again)'%len(lst[3:])]])
         p.append(tags.span(id=idbase, class_='hideIfJS')[q])
         p.append(tags.span(id=idbase+'Link', class_='showIfJS')[
             ' ',

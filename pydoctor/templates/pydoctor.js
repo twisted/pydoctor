@@ -35,6 +35,11 @@ function hideAndShow(id)
 	hideId(id + 'Link'); showId(id);
 }
 
+function showAndHide(id)
+{
+	showId(id + 'Link'); hideId(id);
+}
+
 window.onload = function ()
 {
 	var spans,i;
