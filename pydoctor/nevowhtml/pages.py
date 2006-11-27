@@ -408,12 +408,12 @@ class ClassPage(CommonPage):
             overridden = b.contents[data.name]
             r.append(tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)])
             break
-        ocs = list(overriding_subclasses(self.ob, data.name))
+        ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
             s = []
             for sc in ocs:
                 s.append(taglink(sc.contents[data.name], sc.fullName()))
-                s.append(',')
+                s.append(', ')
             del s[-1]
             r.append(tags.div(class_="interfaceinfo")['overridden in ', s])
         return r
