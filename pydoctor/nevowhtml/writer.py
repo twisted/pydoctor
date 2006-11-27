@@ -18,6 +18,9 @@ class NevowWriter:
         if self.system.options.htmlusesorttable:
             shutil.copyfile(templatefile('sorttable.js'),
                             os.path.join(self.base, 'sorttable.js'))
+        if self.system.options.htmlusesplitlinks:
+            shutil.copyfile(templatefile('pydoctor.js'),
+                            os.path.join(self.base, 'pydoctor.js'))
 
     def writeIndividualFiles(self, obs, functionpages=False):
         for ob in obs:
