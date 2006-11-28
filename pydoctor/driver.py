@@ -24,105 +24,120 @@ def findClassFromDottedName(dottedname, optionname):
 def getparser():
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option('-c', '--config', dest='configfile',
-                      help="Use config from this file (any command line"
-                           "options override settings from the file).")
-    parser.add_option('-p', '--input-pickle', dest='inputpickle',
-                      help="Load the system from this pickle file (default: "
-                      "none, a blank system is created).")
-    parser.add_option('-o', '--output-pickle', dest='outputpickle',
-                      help="Save the system to this pickle file (default: "
-                      "none, the system is not saved by default).")
-    parser.add_option('--extra-system',
-                      action='append', dest='moresystems', metavar='SYS:URLPREFIX',
-                      default=[],
-                      help='Experimental.')
-    parser.add_option('--system-class', dest='systemclass',
-                      help="a dotted name of the class to use to make a system")
-    parser.add_option('--builder-class', dest='builderclass',
-                      help="a dotted name of the class to use")
-    parser.add_option('--project-name', dest='projectname',
-                      help="the project name, appears in the html")
-    parser.add_option('--project-url', dest='projecturl',
-                      help="the project url, appears in the html if given")
-    parser.add_option('--testing', dest='testing', action='store_true',
-                      help="don't complain if the run doesn't have any effects")
-    parser.add_option('--pdb', dest='pdb', action='store_true',
-                      help="like py.test's --pdb")
-    parser.add_option('--target-state', dest='targetstate',
-                      default='finalized',
-                      choices=model.states,
-                      help="the state to move the system to (default: %default).")
-    parser.add_option('--make-html',
-                      action='store_true', dest='makehtml',
-                      help="")
-    parser.add_option('--add-package',
-                      action='append', dest='packages', metavar='PACKAGEDIR',
-                      default=[],
-                      help='Add a package to the system.  Can be repeated '
-                           'to add more than one package.')
-    parser.add_option('--prepend-package',
-                      action='store', dest='prependedpackage',
-                      help='Pretend that all packages are within this one.  '
-                      'Can be used to document part of a package.')
-    parser.add_option('--resolve-aliases',
-                      action='store_true', dest='resolvealiases',
-                      default=False,
-                      help=("This updates references to classes imported from a module "
-                            "into which they were imported to references to where they "
-                            "are defined."))
-    parser.add_option('--abbreviate-specialcase',
-                      action='store', dest='abbrevmapping',
-                      default='',
-                      help=("This is a comma seperated list of key=value pairs.  "
-                            "Where any key corresponds to a module name and value "
-                            "is the desired abbreviation.  This can be used to "
-                            "resolve conflicts with abbreviation where you have two or more "
-                            "modules that start with the same letter.  Ex: twistedcaldav=tcd"))
-    parser.add_option('--docformat', dest='docformat',
-                      action='store', default='epytext',
-                      help="Which epydoc-supported format docstrings are assumed to be in.")
-    parser.add_option('--html-subject', dest='htmlsubjects',
-                      action='append',
-                      help=("fullName of object to generate API docs for"
-                            " (default: everything)."))
-    parser.add_option('--html-summary-pages', dest='htmlsummarypages',
-                      action='store_true',
-                      default=False,
-                      help="Only generate the summary pages.")
-    parser.add_option('--html-write-function-pages', dest='htmlfunctionpages',
-                      default=False,
-                      action='store_true',
-                      help=("Make individual HTML files for every function and "
-                            "method. They're not linked to in any pydoctor-"
-                            "generated HTML, but they can be useful for third-party "
-                            "linking."))
-    parser.add_option('--html-output', dest='htmloutput',
-                      default='apidocs',
-                      help=("Directory to save HTML files to (default 'apidocs')"))
-    parser.add_option('--html-writer', dest='htmlwriter',
-                      help="dotted name of html writer class to use"
-                           "(default 'XXX')")
-    parser.add_option('--html-viewsource-base', dest='htmlsourcebase',
-                      help=("This should be the path to the trac browser for the top of the svn "
-                            "checkout we are documenting part of."))
-    parser.add_option('--html-use-sorttable', dest='htmlusesorttable',
-                      default=False,
-                      action="store_true",
-                      help=("Use the sorttable JS library to make tables of package, module and "
-                            "class contents sortable"))
-    parser.add_option('--html-use-splitlinks', dest='htmlusesplitlinks',
-                      default=False,
-                      action="store_true",
-                      help=("Generate (unobstrusive) JavaScript to allow class methods to be shown "
-                            "either in one table per base class or in one big table."))
-    parser.add_option('--html-shorten-lists', dest='htmlshortenlists',
-                      default=False,
-                      action="store_true",
-                      help=("Generate (unobstrusive) JavaScript to hide some of the "
-                            "entries in long lists of e.g. subclasses."))
-    parser.add_option('-v', '--verbose', action='count', dest='verbosity',
-                      help="Be noisier.  Can be repeated for more noise.")
+    parser.add_option(
+        '-c', '--config', dest='configfile',
+        help=("Use config from this file (any command line"
+              "options override settings from the file)."))
+    parser.add_option(
+        '-p', '--input-pickle', dest='inputpickle',
+        help=("Load the system from this pickle file (default: "
+              "none, a blank system is created)."))
+    parser.add_option(
+        '-o', '--output-pickle', dest='outputpickle',
+        help=("Save the system to this pickle file (default: "
+              "none, the system is not saved by default)."))
+    parser.add_option(
+        '--extra-system', action='append', dest='moresystems',
+        metavar='SYS:URLPREFIX', default=[],
+        help=("Look for objects in this system to.  Links to these objects "
+              "will have URLPREFIX prepended to them."))
+    parser.add_option(
+        '--system-class', dest='systemclass',
+        help=("A dotted name of the class to use to make a system."))
+    parser.add_option(
+        '--builder-class', dest='builderclass',
+        help=("A dotted name of the class to use."))
+    parser.add_option(
+        '--project-name', dest='projectname',
+        help=("The project name, appears in the html."))
+    parser.add_option(
+        '--project-url', dest='projecturl',
+        help=("The project url, appears in the html if given."))
+    parser.add_option(
+        '--testing', dest='testing', action='store_true',
+        help=("Don't complain if the run doesn't have any effects."))
+    parser.add_option(
+        '--pdb', dest='pdb', action='store_true',
+        help=("Like py.test's --pdb."))
+    parser.add_option(
+        '--target-state', dest='targetstate',
+        default='finalized', choices=model.states,
+        help=("The state to move the system to (default: %default)."))
+    parser.add_option(
+        '--make-html', action='store_true', dest='makehtml',
+        help=("Produce html output."))
+    parser.add_option(
+        '--add-package', action='append', dest='packages',
+        metavar='PACKAGEDIR', default=[],
+        help=("Add a package to the system.  Can be repeated "
+              "to add more than one package."))
+    parser.add_option(
+        '--prepend-package', action='store', dest='prependedpackage',
+        help=("Pretend that all packages are within this one.  "
+              "Can be used to document part of a package."))
+    parser.add_option(
+        '--resolve-aliases', action='store_true',
+        dest='resolvealiases', default=False,
+        help=("This updates references to classes imported from a module "
+              "into which they were imported to references to where they "
+              "are defined."))
+    parser.add_option(
+        '--abbreviate-specialcase', action='store',
+        dest='abbrevmapping', default='',
+        help=("This is a comma seperated list of key=value pairs.  "
+              "Where any key corresponds to a module name and value is "
+              "the desired abbreviation.  This can be used to resolve "
+              "conflicts with abbreviation where you have two or more modules "
+              "that start with the same letter.  Example: twistedcaldav=tcd."))
+    parser.add_option(
+        '--docformat', dest='docformat', action='store', default='epytext',
+        help=("Which epydoc-supported format docstrings are assumed to be in."))
+    parser.add_option(
+        '--html-subject', dest='htmlsubjects', action='append',
+        help=("The fullName of object to generate API docs for"
+              " (default: everything)."))
+    parser.add_option(
+        '--html-summary-pages', dest='htmlsummarypages',
+        action='store_true', default=False,
+        help=("Only generate the summary pages."))
+    parser.add_option(
+        '--html-write-function-pages', dest='htmlfunctionpages',
+        default=False, action='store_true',
+        help=("Make individual HTML files for every function and "
+              "method. They're not linked to in any pydoctor-"
+              "generated HTML, but they can be useful for third-party "
+              "linking."))
+    parser.add_option(
+        '--html-output', dest='htmloutput', default='apidocs',
+        help=("Directory to save HTML files to (default 'apidocs')"))
+    parser.add_option(
+        '--html-writer', dest='htmlwriter',
+        help=("Dotted name of html writer class to use (default "
+              "'pydoctor.nevowhtml.NevowWriter', requires Divmod Nevow "
+              "to be installed)."))
+    parser.add_option(
+        '--html-viewsource-base', dest='htmlsourcebase',
+        help=("This should be the path to the trac browser for the top of the "
+              "svn checkout we are documenting part of."))
+    parser.add_option(
+        '--html-use-sorttable', dest='htmlusesorttable',
+        default=False, action="store_true",
+        help=("Use the sorttable JS library to make tables of package, "
+              "module and class contents sortable"))
+    parser.add_option(
+        '--html-use-splitlinks', dest='htmlusesplitlinks',
+        default=False, action="store_true",
+        help=("Generate (unobstrusive) JavaScript to allow class methods to "
+              "be shown either in one table per base class or in one big "
+              "table."))
+    parser.add_option(
+        '--html-shorten-lists', dest='htmlshortenlists',
+        default=False, action="store_true",
+        help=("Generate (unobstrusive) JavaScript to hide some of the "
+              "entries in long lists of e.g. subclasses."))
+    parser.add_option(
+        '-v', '--verbose', action='count', dest='verbosity',
+        help=("Be noisier.  Can be repeated for more noise."))
     return parser
 
 def readConfigFile(options):
