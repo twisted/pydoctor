@@ -75,7 +75,7 @@ class ModuleVistor(object):
                 if isinstance(mod, model.Package):
                     self.builder.warning("import * from a package", modname)
                     return
-                assert mod.processed:
+                assert mod.processed
                 for n in mod.contents:
                     name2fullname[n] = modname + '.' + n
                 return
