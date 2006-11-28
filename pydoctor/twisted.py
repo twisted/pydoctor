@@ -17,6 +17,23 @@ class Attribute(model.Documentable):
     kind = "Attribute"
     document_in_parent_page = True
 
+class TwistedFunction(model.Function):
+    def computeDocsource(self):
+        super(TwistedFunction, self).computeDocsource()
+        if self.docstring is not None or not isinstance(self.parent, model.Class):
+            return
+        for interface in (self.parent.implements_directly +
+                          self.parent.implements_indirectly):
+            if interface in self.system.allobjects:
+                io = self.system.allobjects[interface]
+                if self.name in io.contents:
+                    imeth = io.contents[self.name]
+                    if imeth.docstring:
+                        self.docstring = imeth.docstring
+                        self.docsource = imeth
+                        break
+
+
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly
     if implementsOnly:
@@ -159,6 +176,7 @@ class InterfaceClassFinder(object):
 
 class TwistedASTBuilder(astbuilder.ASTBuilder):
     Class = TwistedClass
+    Function = TwistedFunction
     ModuleVistor = TwistedModuleVisitor
 
     def _finalStateComputations(self):
@@ -222,20 +240,6 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_indirectly.append(cls.fullName())
-
-        for cls in self.system.objectsOfType(model.Class):
-            for meth in cls.contents.itervalues():
-                if not isinstance(meth, model.Function) or meth.docstring is not None:
-                    continue
-                for interface in cls.implements_directly + cls.implements_indirectly:
-                    if interface in self.system.allobjects:
-                        io = self.system.allobjects[interface]
-                        if meth.name in io.contents:
-                            imeth = io.contents[meth.name]
-                            if imeth.docstring:
-                                meth.docstring = imeth.docstring
-                                meth.docsource = imeth
-                                break
 
 
     def markInterface(self, cls):

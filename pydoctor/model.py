@@ -10,6 +10,25 @@ from compiler.visitor import walk
 
 from pydoctor import ast_pp
 
+# originally when I started to write pydoctor I had this idea of a big
+# tree of Documentables arranged in an almost arbitrary tree.
+#
+# this was misguided.  the tree structure is important, to be sure,
+# but the arrangement of the tree is far from arbitrary and there is
+# at least some code that now relies on this (for example, a Function
+# is always contained by a Module; Packages only contain Modules and
+# other Packages).  so here's a list:
+#
+#  Packages can contain Packages and Modules
+#  Modules can contain Functions and Classes
+#  Classes can contain Functions (when they get called Methods) and Classes
+#  Functions can't contain anything.
+#
+# the root objects are weakly assumed to be Packages, but this isn't
+# deep (or, likely, important: if you have a bunch of code that 1) is
+# complicated enough for pydoctor to be useful with it and 2) all
+# arranged in modules, you have a serious problem)
+
 class Documentable(object):
     document_in_parent_page = False
     def __init__(self, system, prefix, name, docstring, parent=None):
@@ -18,6 +37,7 @@ class Documentable(object):
         self.name = name
         self.docstring = docstring
         self.parent = parent
+        self.parentMod = None
         self.setup()
     def setup(self):
         self.contents = {}
@@ -153,6 +173,7 @@ class Package(Documentable):
 
 class Module(Documentable):
     kind = "Module"
+    processed = False
     def name2fullname(self, name):
         if name in self._name2fullname:
             return self._name2fullname[name]
@@ -187,7 +208,17 @@ class Function(Documentable):
         super(Function, self).setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
-
+        self.computeDocsource()
+    def computeDocsource(self):
+        if self.docstring is not None or not isinstance(self.parent, Class):
+            return
+        for b in self.parent.allbases():
+            if self.name in b.contents:
+                overriddenmeth = b.contents[self.name]
+                if overriddenmeth.docstring is not None:
+                    self.docstring = overriddenmeth.docstring
+                    self.docsource = overriddenmeth
+                    break
 
 states = [
     'blank',

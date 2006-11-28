@@ -321,7 +321,7 @@ def maybeShortenList(system, label, lst, idbase):
         del r[-1]
         return r
     p = [label]
-    if len(lst) <= 5:
+    if len(lst) <= 5 or not system.options.htmlshortenlists:
         p.extend(commasep(lst))
     else:
         p.extend(commasep(lst[:3]))

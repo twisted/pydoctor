@@ -194,3 +194,13 @@ def test_inherit_names():
     '''
     mod = fromText(src)
     assert [b.name for b in mod.contents['A'].allbases()] == ['A 0']
+
+def test_nested_class_inheriting_from_same_module():
+    src = '''
+    class A:
+        pass
+    class B:
+        class C(A):
+            pass
+    '''
+    mod = fromText(src)

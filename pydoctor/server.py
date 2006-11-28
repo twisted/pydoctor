@@ -213,9 +213,14 @@ class EditPage(rend.Page):
                 if not hasattr(ob, 'edits'):
                     ob.edits = [Edit(self.origob, 0, ob.docstring, 'no-one', 'Dawn of time')]
                 newDocstring = ctx.arg('docstring', None)
+                if not newDocstring:
+                    newDocstring = None
                 edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
                             time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
+                if hasattr(ob, 'docsource'):
+                    del ob.docsource
+                ob.computeDocsource()
                 ob.edits.append(edit)
                 self.root.edits.append(edit)
             if not isinstance(ob, (model.Package, model.Module, model.Class)):

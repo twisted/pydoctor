@@ -47,7 +47,8 @@ class ModuleVistor(object):
             bases.append(base)
             bob = current.resolveDottedName(base)
             if bob:
-                assert bob.parent is current or bob.parent.processed
+                assert (bob.parentMod is self.builder.currentMod or
+                        bob.parentMod.processed)
             baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
@@ -56,6 +57,9 @@ class ModuleVistor(object):
         cls.rawbases = rawbases
         cls.bases = bases
         cls.baseobjects = baseobjects
+        for b in cls.baseobjects:
+            if b is not None:
+                b.subclasses.append(cls)
         self.default(node)
         self.builder.popClass()
 
@@ -71,14 +75,9 @@ class ModuleVistor(object):
                 if isinstance(mod, model.Package):
                     self.builder.warning("import * from a package", modname)
                     return
-                # this might fail if you have an import-* cycle, or if
-                # you're just not running the import star finder to
-                # save time
-                if mod.processed:
-                    for n in mod.contents:
-                        name2fullname[n] = modname + '.' + n
-                else:
-                    self.builder.warning("unresolvable import *", modname)
+                assert mod.processed:
+                for n in mod.contents:
+                    name2fullname[n] = modname + '.' + n
                 return
             if asname is None:
                 asname = fromname
@@ -186,6 +185,7 @@ class ASTBuilder(object):
     def __init__(self, system):
         self.system = system
         self.current = None
+        self.currentMod = None
         self._stack = []
         self.ast_cache = {}
 
@@ -207,7 +207,7 @@ class ASTBuilder(object):
             parent._name2fullname[name] = obj.fullName()
         else:
             self.system.rootobjects.append(obj)
-        self.current = obj
+        self.push(obj)
         self.system.orderedallobjects.append(obj)
         fullName = obj.fullName()
         #print 'push', cls.__name__, fullName
@@ -249,15 +249,27 @@ class ASTBuilder(object):
 ##             print 'pop', self.current.fullName(), '->', self.current.parent.fullName()
 ##         else:
 ##             print 'pop', self.current.fullName(), '->', self.current.parent
-        self.current = self.current.parent
+        self.pop(self.current)
 
     def push(self, obj):
         self._stack.append(self.current)
         self.current = obj
+        if isinstance(obj, model.Module):
+            assert self.currentMod is None
+            self.currentMod = obj
+        elif self.currentMod is not None:
+            if obj.parentMod is not None:
+                assert obj.parentMod is self.currentMod
+            else:
+                obj.parentMod = self.currentMod
+        else:
+            assert obj.parentMod is None
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)
         self.current = self._stack.pop()
+        if isinstance(obj, model.Module):
+            self.currentMod = None
 
     def pushClass(self, name, docstring):
         return self._push(self.Class, name, docstring)
@@ -285,27 +297,6 @@ class ASTBuilder(object):
     def _finalStateComputations(self):
         if self.system.options.resolvealiases:
             self.system.resolveAliases()
-        self.recordBasesAndSubclasses()
-
-    def recordBasesAndSubclasses(self):
-        for cls in self.system.objectsOfType(model.Class):
-            for o in cls.baseobjects:
-                #o = cls.parent.resolveDottedName(n, verbose=False)
-                #cls.baseobjects.append(o)
-                if o:
-                    o.subclasses.append(cls)
-        for cls in self.system.objectsOfType(model.Class):
-            for name, meth in cls.contents.iteritems():
-                if meth.docstring is None:
-                    for b in cls.allbases():
-                        if name in b.contents:
-                            overriddenmeth = b.contents[name]
-                            if overriddenmeth.docstring is not None:
-                                meth.docstring = overriddenmeth.docstring
-                                meth.docsource = overriddenmeth
-                                break
-
-
 
     def processModuleAST(self, ast, moduleName):
         visitor.walk(ast, self.ModuleVistor(self, moduleName))
@@ -341,13 +332,34 @@ class ASTBuilder(object):
         self.ast_cache[filePath] = ast
         return ast
 
+    def setSourceHref(self, mod):
+        if self.system.sourcebase is None:
+            mod.sourceHref = None
+            return
+
+        trailing = []
+        dir, fname = os.path.split(mod.filepath)
+        while os.path.exists(os.path.join(dir, '.svn')):
+            dir, dirname = os.path.split(dir)
+            trailing.append(dirname)
+
+        # now trailing[-1] would be 'Divmod' in the above example
+        del trailing[-1]
+        trailing.reverse()
+        trailing.append(fname)
+
+        mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
+
+
     def preprocessDirectory(self, dirpath):
         assert self.system.state in ['blank', 'preparse']
         found_init_dot_py = False
+        if not os.path.exists(dirpath):
+            raise Exception, "package path %r does not exist!"%(dirpath,)
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
             package.filepath = dirpath
-            filePathToSourceHref(package)
+            self.setSourceHref(package)
         else:
             package = None
         for fname in os.listdir(dirpath):
@@ -361,7 +373,7 @@ class ASTBuilder(object):
                 mod = self.pushModule(modname, None)
                 mod.filepath = fullname
                 mod.processed = False
-                filePathToSourceHref(mod)
+                self.setSourceHref(mod)
                 self.popModule()
         if package:
             self.popPackage()

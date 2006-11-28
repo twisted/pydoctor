@@ -8,7 +8,7 @@ def error(msg, *args):
     sys.exit(1)
 
 def findClassFromDottedName(dottedname, optionname):
-    # watch out, print a message and SystemExits on error!
+    # watch out, prints a message and SystemExits on error!
     if '.' not in dottedname:
         error("%stakes a dotted name", optionname)
     parts = dottedname.rsplit('.', 1)
@@ -63,26 +63,29 @@ def getparser():
                            'to add more than one package.')
     parser.add_option('--prepend-package',
                       action='store', dest='prependedpackage',
-                      help='')
+                      help='Pretend that all packages are within this one.  '
+                      'Can be used to document part of a package.')
     parser.add_option('--resolve-aliases',
                       action='store_true', dest='resolvealiases',
                       default=False,
-                      help="experimental")
+                      help=("This updates references to classes imported from a module "
+                            "into which they were imported to references to where they "
+                            "are defined."))
     parser.add_option('--abbreviate-specialcase',
                       action='store', dest='abbrevmapping',
                       default='',
-                      help="This is a comma seperated list of key=value pairs.  "
-                          "Where any key corresponds to a module name and value "
-                          "is the desired abbreviation.  This can be used to "
-                          "resolve conflicts with abbreviation where you have two or more "
-                          "modules that start with the same letter.  Ex: twistedcaldav=tcd")
+                      help=("This is a comma seperated list of key=value pairs.  "
+                            "Where any key corresponds to a module name and value "
+                            "is the desired abbreviation.  This can be used to "
+                            "resolve conflicts with abbreviation where you have two or more "
+                            "modules that start with the same letter.  Ex: twistedcaldav=tcd"))
     parser.add_option('--docformat', dest='docformat',
                       action='store', default='epytext',
                       help="Which epydoc-supported format docstrings are assumed to be in.")
     parser.add_option('--html-subject', dest='htmlsubjects',
                       action='append',
-                      help="fullName of object to generate API docs for"
-                      " (default: everything).")
+                      help=("fullName of object to generate API docs for"
+                            " (default: everything)."))
     parser.add_option('--html-summary-pages', dest='htmlsummarypages',
                       action='store_true',
                       default=False,
@@ -90,32 +93,40 @@ def getparser():
     parser.add_option('--html-write-function-pages', dest='htmlfunctionpages',
                       default=False,
                       action='store_true',
-                      help="Make individual HTML files for every function and "
-                      "method. They're not linked to in any pydoctor-"
-                      "generated HTML, but they can be useful for third-party "
-                      "linking.")
+                      help=("Make individual HTML files for every function and "
+                            "method. They're not linked to in any pydoctor-"
+                            "generated HTML, but they can be useful for third-party "
+                            "linking."))
     parser.add_option('--html-output', dest='htmloutput',
                       default='apidocs',
-                      help="Directory to save HTML files to "
-                           "(default 'apidocs')")
+                      help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_option('--html-writer', dest='htmlwriter',
                       help="dotted name of html writer class to use"
                            "(default 'XXX')")
     parser.add_option('--html-viewsource-base', dest='htmlsourcebase',
-                      help="")
+                      help=("This should be the path to the trac browser for the top of the svn "
+                            "checkout we are documenting part of."))
     parser.add_option('--html-use-sorttable', dest='htmlusesorttable',
                       default=False,
                       action="store_true",
-                      help="")
+                      help=("Use the sorttable JS library to make tables of package, module and "
+                            "class contents sortable"))
     parser.add_option('--html-use-splitlinks', dest='htmlusesplitlinks',
                       default=False,
                       action="store_true",
-                      help="")
+                      help=("Generate (unobstrusive) JavaScript to allow class methods to be shown "
+                            "either in one table per base class or in one big table."))
+    parser.add_option('--html-shorten-lists', dest='htmlshortenlists',
+                      default=False,
+                      action="store_true",
+                      help=("Generate (unobstrusive) JavaScript to hide some of the "
+                            "entries in long lists of e.g. subclasses."))
     parser.add_option('-v', '--verbose', action='count', dest='verbosity',
                       help="Be noisier.  Can be repeated for more noise.")
     return parser
 
 def readConfigFile(options):
+    # this is all a bit horrible.  rethink, then rewrite!
     for i, line in enumerate(open(options.configfile, 'rU')):
         line = line.strip()
         if not line or line.startswith('#'):
