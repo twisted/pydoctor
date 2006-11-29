@@ -1,6 +1,6 @@
 from pydoctor import model, ast_pp
 
-from compiler import visitor, transformer
+from compiler import visitor, transformer, ast
 import os, sys, posixpath
 
 class ModuleVistor(object):
@@ -82,6 +82,14 @@ class ModuleVistor(object):
             if asname is None:
                 asname = fromname
             name2fullname[asname] = modname + '.' + fromname
+            if isinstance(self.builder.current, model.Module) and \
+                   self.builder.current.all is not None and \
+                   asname in self.builder.current.all and \
+                   modname in self.system.allobjects:
+                mod = self.system.allobjects[modname]
+                if isinstance(mod, model.Module) and \
+                   fromname in mod.contents:
+                    print 'should move', mod.contents[fromname], 'into', self.builder.current
 
     def visitImport(self, node):
         name2fullname = self.builder.current._name2fullname
@@ -97,9 +105,14 @@ class ModuleVistor(object):
                         name2fullname[asname] = fullname
                         break
                 else:
+                    fullname = '.'.join(parts)
                     name2fullname[asname] = '.'.join(parts)
             else:
                 name2fullname[asname] = fullname
+            if isinstance(self.builder.current, model.Module) and \
+                   self.builder.current.all is not None and \
+                   asname in self.builder.current.all:
+                print "importing", fullname, "into", self.current
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
@@ -386,7 +399,7 @@ class ASTBuilder(object):
         modlist = list(self.system.objectsOfType(model.Module))
         for i, mod in enumerate(modlist):
             self.push(mod.parent)
-            isf = ImportFinder(self, mod.fullName())
+            isf = ImportFinder(self, mod)
             ast = self.parseFile(mod.filepath)
             if not ast:
                 continue
@@ -433,13 +446,23 @@ model.System.defaultBuilder = ASTBuilder
 
 
 class ImportFinder(object):
-    def __init__(self, builder, modfullname):
+    def __init__(self, builder, mod):
         self.builder = builder
         self.system = builder.system
-        self.modfullname = modfullname
+        self.mod = mod
+        self.classLevel = 0
+
+    def default(self, node):
+        for child in node.getChildNodes():
+            self.visit(child)
 
     def visitFunction(self, node):
         pass
+
+    def visitClass(self, node):
+        self.classLevel += 1
+        self.default(node)
+        self.classLevel -= 1
 
     def visitFrom(self, node):
         modname = self.builder.expandModname(node.modname, False)
@@ -448,20 +471,38 @@ class ImportFinder(object):
             return
         if isinstance(mod, model.Module):
             self.system.importgraph.setdefault(
-                self.modfullname, set()).add(modname)
+                self.mod.fullName(), set()).add(modname)
         else:
             for fromname, asname in node.names:
                 m = modname + '.' + fromname
                 if isinstance(self.system.allobjects.get(m), model.Module):
                     self.system.importgraph.setdefault(
-                        self.modfullname, set()).add(m)
+                        self.mod.fullName(), set()).add(m)
 
     def visitImport(self, node):
         for fromname, asname in node.names:
             modname = self.builder.expandModname(fromname)
             if modname in self.system.allobjects:
                 self.system.importgraph.setdefault(
-                    self.modfullname, set()).add(modname)
+                    self.mod.fullName(), set()).add(modname)
+
+    def visitAssign(self, node):
+        if not len(node.nodes) == 1 or \
+               not self.classLevel == 0 or \
+               not isinstance(node.nodes[0], ast.AssName) or \
+               not node.nodes[0].name == '__all__' or \
+               not isinstance(node.expr, ast.List):
+            self.default(node)
+            return
+        items = node.expr.nodes
+        names = []
+        for item in items:
+            if not isinstance(item, ast.Const) or not isinstance(item.value, str):
+                self.default(node)
+                return
+            names.append(item.value)
+        #print self.mod, names
+        self.mod.all = names
 
 def fromText(src, modname='<test>', system=None):
     if system is None:

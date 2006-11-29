@@ -174,6 +174,9 @@ class Package(Documentable):
 class Module(Documentable):
     kind = "Module"
     processed = False
+    def setup(self):
+        super(Module, self).setup()
+        self.all = None
     def name2fullname(self, name):
         if name in self._name2fullname:
             return self._name2fullname[name]
