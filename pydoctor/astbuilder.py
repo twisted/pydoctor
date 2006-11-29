@@ -149,45 +149,6 @@ class ModuleVistor(object):
         #self.postpone(func, node.code)
         self.builder.popFunction()
 
-# if we assume:
-#
-# - that svn://divmod.org/trunk is checked out into ~/src/Divmod
-#
-# - that http://divmod.org/trac/browser/trunk is the trac URL to the
-#   above directory
-#
-# - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
-#   "--add-package" argument
-#
-# we want to work out the sourceHref for nevow.flat.ten.  the answer
-# is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
-#
-# we can work this out by finding that Divmod is the top of the svn
-# checkout, and posixpath.join-ing the parts of the filePath that
-# follows that.
-#
-#  http://divmod.org/trac/browser/trunk
-#                          ~/src/Divmod/Nevow/nevow/flat/ten.py
-
-def filePathToSourceHref(mod):
-    if mod.system.sourcebase is None:
-        mod.sourceHref = None
-        return
-
-    trailing = []
-    dir, fname = os.path.split(mod.filepath)
-    while os.path.exists(os.path.join(dir, '.svn')):
-        dir, dirname = os.path.split(dir)
-        trailing.append(dirname)
-
-    # now trailing[-1] would be 'Divmod' in the above example
-    del trailing[-1]
-    trailing.reverse()
-    trailing.append(fname)
-
-    mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
-
-
 class ASTBuilder(object):
     Class = model.Class
     Module = model.Module
@@ -344,6 +305,27 @@ class ASTBuilder(object):
             ast = None
         self.ast_cache[filePath] = ast
         return ast
+
+
+    # if we assume:
+    #
+    # - that svn://divmod.org/trunk is checked out into ~/src/Divmod
+    #
+    # - that http://divmod.org/trac/browser/trunk is the trac URL to the
+    #   above directory
+    #
+    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
+    #   "--add-package" argument
+    #
+    # we want to work out the sourceHref for nevow.flat.ten.  the answer
+    # is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
+    #
+    # we can work this out by finding that Divmod is the top of the svn
+    # checkout, and posixpath.join-ing the parts of the filePath that
+    # follows that.
+    #
+    #  http://divmod.org/trac/browser/trunk
+    #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
     def setSourceHref(self, mod):
         if self.system.sourcebase is None:
