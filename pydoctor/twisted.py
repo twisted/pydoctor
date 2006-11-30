@@ -75,6 +75,9 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
             return
         attr = self.builder._push(Attribute, node.nodes[0].name, args[0].value)
         attr.linenumber = node.lineno
+        if attr.parentMod.sourceHref:
+            attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
+                              str(attr.linenumber)
         self.builder._pop(Attribute)
 
     def visitCallFunc(self, node):

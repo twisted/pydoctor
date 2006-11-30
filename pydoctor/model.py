@@ -31,6 +31,7 @@ from pydoctor import ast_pp
 
 class Documentable(object):
     document_in_parent_page = False
+    sourceHref = None
     def __init__(self, system, prefix, name, docstring, parent=None):
         self.system = system
         self.prefix = prefix

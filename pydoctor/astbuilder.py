@@ -56,6 +56,8 @@ class ModuleVistor(object):
         cls = self.builder.pushClass(node.name, node.doc)
         if node.lineno is not None:
             cls.linenumber = node.lineno
+        if cls.parentMod.sourceHref:
+            cls.sourceHref = cls.parentMod.sourceHref + '#L' + str(cls.linenumber)
         cls.rawbases = rawbases
         cls.bases = bases
         cls.baseobjects = baseobjects
@@ -131,6 +133,8 @@ class ModuleVistor(object):
         func = self.builder.pushFunction(node.name, node.doc)
         if node.lineno is not None:
             func.linenumber = node.lineno
+        if func.parentMod.sourceHref:
+            func.sourceHref = func.parentMod.sourceHref + '#L' + str(func.linenumber)
         # ast.Function has a pretty lame representation of
         # arguments. Let's convert it to a nice concise format
         # somewhat like what inspect.getargspec returns

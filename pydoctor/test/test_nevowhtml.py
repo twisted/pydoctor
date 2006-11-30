@@ -42,6 +42,7 @@ def test_nonempty_table():
         document_in_parent_page = False
         linenumber = 10
         parent = None
+        sourceHref = None
         class system:
             urlprefix = ''
             sourcebase = None

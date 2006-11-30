@@ -8,20 +8,7 @@ def link(o):
     return o.system.urlprefix+urllib.quote(o.fullName()+'.html')
 
 def srclink(o):
-    system = o.system
-    if not system.sourcebase:
-        return None
-    m = o
-    while not isinstance(m, (model.Module, model.Package)):
-        m = m.parent
-        if m is None:
-            return None
-    sourceHref = m.sourceHref
-    if isinstance(o, model.Module):
-        sourceHref += '#L1'
-    elif hasattr(o, 'linenumber'):
-        sourceHref += '#L'+str(o.linenumber)
-    return sourceHref
+    return o.sourceHref
 
 def templatefile(filename):
     abspath = os.path.abspath(__file__)
