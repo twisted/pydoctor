@@ -46,6 +46,8 @@ class ModuleVistor(object):
             base = current.dottedNameToFullName(str_base)
             bases.append(base)
             bob = current.resolveDottedName(base)
+            if not bob and self.system.options.resolvealiases:
+                bob = self.system.resolveAlias(base)
             if bob:
                 assert (bob.parentMod is self.builder.currentMod or
                         bob.parentMod.processed)
@@ -280,8 +282,7 @@ class ASTBuilder(object):
         self.system._warning(self.current, type, detail)
 
     def _finalStateComputations(self):
-        if self.system.options.resolvealiases:
-            self.system.resolveAliases()
+        pass
 
     def processModuleAST(self, ast, moduleName):
         visitor.walk(ast, self.ModuleVistor(self, moduleName))
