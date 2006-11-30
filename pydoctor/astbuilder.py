@@ -47,7 +47,7 @@ class ModuleVistor(object):
             bases.append(base)
             bob = current.resolveDottedName(base)
             if not bob and self.system.options.resolvealiases:
-                bob = self.system.resolveAlias(base)
+                bob = self.system.allobjects.get(self.system.resolveAlias(base))
             if bob:
                 assert (bob.parentMod is self.builder.currentMod or
                         bob.parentMod.processed)
