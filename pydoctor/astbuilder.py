@@ -85,14 +85,12 @@ class ModuleVistor(object):
                 return
             if asname is None:
                 asname = fromname
-            name2fullname[asname] = modname + '.' + fromname
             if isinstance(self.builder.current, model.Module) and \
                    self.builder.current.all is not None and \
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and \
-                   fromname in mod.contents:
+                if isinstance(mod, model.Module) and fromname in mod.contents:
                     print 'moving', mod.contents[fromname], 'into', self.builder.current
                     # this code attempts to preserve "rather a lot" of
                     # invariants assumed by various bits of pydoctor and that
@@ -109,6 +107,8 @@ class ModuleVistor(object):
                     mod._name2fullname[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
+            else:
+                name2fullname[asname] = modname + '.' + fromname
 
     def visitImport(self, node):
         name2fullname = self.builder.current._name2fullname
