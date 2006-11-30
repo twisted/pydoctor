@@ -163,7 +163,12 @@ class InterfaceClassFinder(object):
         if not isinstance(self.builder.current, model.Module):
             return
         mod = self.builder.current
-        cls = mod.contents[node.name]
+        if node.name in mod.contents:
+            cls = mod.contents[node.name]
+        elif node.name in mod._name2fullname:
+            cls = self.builder.system.allobjects[mod._name2fullname[node.name]]
+        else:
+            return
         for i, (bn, bo) in enumerate(zip(cls.bases, cls.baseobjects)):
             if bo is not None:
                 continue

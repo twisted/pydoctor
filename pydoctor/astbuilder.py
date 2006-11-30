@@ -89,7 +89,22 @@ class ModuleVistor(object):
                 mod = self.system.allobjects[modname]
                 if isinstance(mod, model.Module) and \
                    fromname in mod.contents:
-                    print 'should move', mod.contents[fromname], 'into', self.builder.current
+                    print 'moving', mod.contents[fromname], 'into', self.builder.current
+                    # this code attempts to preserve "rather a lot" of
+                    # invariants assumed by various bits of pydoctor and that
+                    # are of course not written down anywhere :/
+                    ob = mod.contents[fromname]
+                    targetmod = self.builder.current
+                    del self.system.allobjects[ob.fullName()]
+                    ob.parent = ob.parentMod = targetmod
+                    ob.prefix = targetmod.fullName() + '.'
+                    ob.name = asname
+                    self.system.allobjects[ob.fullName()] = ob
+                    del mod.contents[fromname]
+                    mod.orderedcontents.remove(ob)
+                    mod._name2fullname[fromname] = ob.fullName()
+                    targetmod.contents[asname] = ob
+                    targetmod.orderedcontents.append(ob)
 
     def visitImport(self, node):
         name2fullname = self.builder.current._name2fullname
@@ -109,10 +124,6 @@ class ModuleVistor(object):
                     name2fullname[asname] = '.'.join(parts)
             else:
                 name2fullname[asname] = fullname
-            if isinstance(self.builder.current, model.Module) and \
-                   self.builder.current.all is not None and \
-                   asname in self.builder.current.all:
-                print "importing", fullname, "into", self.current
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
