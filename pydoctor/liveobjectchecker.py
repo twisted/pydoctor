@@ -1,4 +1,4 @@
-from pydoctor import model
+from pydoctor import model, astbuilder
 import types, sys, os, warnings, inspect
 
 def loadModulesForSystem(system):
@@ -26,7 +26,9 @@ def loadModulesForSystem(system):
 
         verbosity = system.options.verbosity
 
-        modlist = list(system.objectsOfType(model.Module))
+        modlist = [system.allobjects[m]
+                   for m in astbuilder.toposort([m.fullName() for m in system.objectsOfType(model.Module)],
+                                                system.importgraph)]
         errcount = 0
 
         for i, m in enumerate(modlist):
@@ -68,7 +70,7 @@ def checker(*typs):
 def methChecker(builder, name, OBJ):
     if OBJ.im_self is None:
         return
-    f = builder.pushFunction(OBJ.__name__, OBJ.__doc__)
+    f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
         print '**meth**', builder.current, '*************'
     try:
@@ -143,6 +145,8 @@ def checkDict(builder, aDict):
         OBJ = aDict[name]
         checker = _types.get(type(OBJ))
         if checker is not None:
+            if builder.system.options.verbosity > 1:
+                print 'checking', name, 'in', c
             checker(builder, name, OBJ)
 
 def liveCheck(system, builder=None):
