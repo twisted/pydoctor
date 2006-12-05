@@ -123,6 +123,8 @@ class CommonPage(object):
     def __init__(self, ob):
         self.ob = ob
         self.usesorttable = ob.system.options.htmlusesorttable
+        self.usesplitlinks = ob.system.options.htmlusesplitlinks
+        self.shortenlists = ob.system.options.htmlshortenlists
 
     def title(self):
         return self.ob.fullName()
@@ -240,11 +242,18 @@ class CommonPage(object):
     def ifhasplitlinks(self, tag):
         return ()
 
+    def pydoctorjs(self, tag):
+        if self.usesplitlinks or self.shortenlists:
+            return tag
+        else:
+            return ()
+
     def rend(self, ctx, data):
         tag = tags.invisible[self.docFactory.load()]
         return fillSlots(tag,
                          title=self.title(),
                          ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
+                         pydoctorjs=self.pydoctorjs(tag.onePattern('pydoctorjs')),
                          heading=self.heading(),
                          part=self.part(),
                          source=self.source(tag.onePattern('source')),

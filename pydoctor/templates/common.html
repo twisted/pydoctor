@@ -10,8 +10,10 @@
       <script nevow:pattern="ifusesorttable" type="text/javascript"
               src="sorttable.js"></script>
     </nevow:slot>
-    <script type="text/javascript"
-            src="pydoctor.js"></script>
+    <nevow:slot name="pydoctorjs">
+      <script nevow:pattern="pydoctorjs" type="text/javascript"
+              src="pydoctor.js"></script>
+    </nevow:slot>
   </head>
   <body>
     <nevow:slot name="heading"><h1>Heading</h1></nevow:slot>
