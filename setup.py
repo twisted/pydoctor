@@ -9,6 +9,7 @@ setup(
     description='API doc generator.',
     packages=[
         'pydoctor',
+        'pydoctor.nevowhtml',
         ],
     package_data={
         'pydoctor': [
