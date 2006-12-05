@@ -24,7 +24,11 @@ def _hack_nevow():
         originalContext.inJS = original.inJS
         originalContext.inJSSingleQuoteString = original.inJSSingleQuoteString
         return serialize(data, originalContext)
-    from nevow.stan import _PrecompiledSlot
-    registerFlattener(PrecompiledSlotSerializer, _PrecompiledSlot)
+    try:
+        from nevow.stan import _PrecompiledSlot
+    except ImportError:
+        pass
+    else:
+        registerFlattener(PrecompiledSlotSerializer, _PrecompiledSlot)
 
 _hack_nevow()
