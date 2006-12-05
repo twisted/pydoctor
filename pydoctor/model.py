@@ -255,6 +255,7 @@ class System(object):
         self.options, _ = getparser().parse_args([])
         self.options.verbosity = 3
         self.abbrevmapping = {}
+        self.guessedprojectname = 'my project'
 
     def report(self):
         for o in self.rootobjects:
