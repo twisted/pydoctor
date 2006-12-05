@@ -153,8 +153,10 @@ class CommonPage(object):
     def project(self):
         if self.ob.system.options.projecturl:
             return tags.a(href=self.ob.system.options.projecturl)[self.ob.system.options.projectname]
-        else:
+        elif self.ob.system.options.projectname:
             return self.ob.system.options.projectname
+        else:
+            return self.ob.system.guessedprojectname
 
     def source(self, tag):
         sourceHref = srclink(self.ob)

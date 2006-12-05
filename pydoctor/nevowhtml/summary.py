@@ -157,11 +157,16 @@ class IndexPage(page.Element):
     def project_link(self, request, tag):
         if self.system.options.projecturl:
             return tags.a(href=self.system.options.projecturl)[self.system.options.projectname]
-        else:
+        elif self.system.options.projectname:
             return self.system.options.projectname
+        else:
+            return self.system.guessedprojectname
     @page.renderer
     def project(self, request, tag):
-        return self.system.options.projectname
+        if self.system.options.projectname:
+            return self.system.options.projectname
+        else:
+            return self.system.guessedprojectname
     @page.renderer
     def recentChanges(self, request, tag):
         return ()

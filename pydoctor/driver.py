@@ -286,6 +286,11 @@ def main(args):
             msg = "failed to advance state to %r (this is a bug)"
             error(msg, options.targetstate)
 
+        if system.options.projectname is None:
+            name = '/'.join([ro.name for ro in system.rootobjects])
+            print 'WARNING: guessing', name, 'for project name'
+            system.guessedprojectname = name
+
         # step 4: save the system, if desired
 
         if options.outputpickle:
