@@ -12,3 +12,6 @@ def test_simple():
     assert D.name == 'D'
     assert D.baseobjects == [B]
     assert B.subclasses == [D]
+
+    # we shouldn't find a "new" method called _C__m
+    assert len(mod.contents['C'].contents) == 2

@@ -117,12 +117,12 @@ def typeChecker(builder, name, OBJ):
 
 @checker(types.FunctionType)
 def funcChecker(builder, name, OBJ):
-    c = builder.current
-    mod = c
-    while not isinstance(mod, model.Module):
-        mod = mod.parent
-##     if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
-##         return
+    if isinstance(builder.current, model.Class):
+        cls = builder.current
+        if name.startswith('_' + cls.name + '__'):
+            origname = name[len(cls.name) + 1:]
+            if origname in cls.contents:
+                return
     f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
         print '**func**', builder.current, '*************'

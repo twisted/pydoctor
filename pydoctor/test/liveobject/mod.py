@@ -1,6 +1,8 @@
 class C:
     def m(self):
         "this is a docstring"
+    def __m(self):
+        "this method's name gets mangled"
 
 m = C().m
 
