@@ -56,5 +56,7 @@ class NevowWriter:
         page = pclass(ob)
         self.written_pages += 1
         print '\rwritten', self.written_pages, 'pages',
+        if self.system.options.verbosity > 0:
+            print
         sys.stdout.flush()
         fobj.write(flat.flatten(page))
