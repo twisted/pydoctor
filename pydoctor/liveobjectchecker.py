@@ -121,9 +121,9 @@ def funcChecker(builder, name, OBJ):
     mod = c
     while not isinstance(mod, model.Module):
         mod = mod.parent
-    if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
-        return
-    f = builder.pushFunction(OBJ.__name__, OBJ.__doc__)
+##     if getattr(OBJ, '__module__', None) != mod.fullName() or getattr(OBJ, '__name__', None) != name:
+##         return
+    f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
         print '**func**', builder.current, '*************'
     try:
@@ -139,6 +139,14 @@ def checkDict(builder, aDict):
         if name in ('__name__', '__doc__', '__file__', '__builtins__', '__module__'):
             continue
         if name in c.contents:
+            ob = aDict[name]
+            o = c.contents[name]
+            if hasattr(ob, '__dict__') and not isinstance(ob, types.FunctionType):
+                if builder.system.options.verbosity > 1:
+                    print 'pushing', o
+                builder.push(o)
+                checkDict(builder, ob.__dict__)
+                builder.pop(o)
             continue
         if name in c._name2fullname:
             continue
@@ -154,6 +162,8 @@ def liveCheck(system, builder=None):
         builder = system.defaultBuilder(system)
     realMods = loadModulesForSystem(system)
     for m in realMods:
+        if builder.system.options.verbosity > 1:
+            print 'checking', m
         builder.push(m)
         checkDict(builder, realMods[m].__dict__)
         builder.pop(m)
