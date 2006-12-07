@@ -256,6 +256,7 @@ class System(object):
         self.options.verbosity = 3
         self.abbrevmapping = {}
         self.guessedprojectname = 'my project'
+        self.epytextproblems = [] # fullNames of objects that failed to epytext properly
 
     def report(self):
         for o in self.rootobjects:

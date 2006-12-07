@@ -171,6 +171,8 @@ def main(args):
     parser = getparser()
     options, args = parser.parse_args(args)
 
+    exitcode = 0
+
     if options.configfile:
         readConfigFile(options)
 
@@ -327,11 +329,17 @@ def main(args):
                 writer.writeModuleIndex(system)
                 subjects = system.rootobjects
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+            if system.epytextproblems:
+                print "these objects' docstrings are not proper epytext:"
+                exitcode = 2
+                for fn in system.epytextproblems:
+                    print '    ', fn
     except:
         if options.pdb:
             import pdb
             pdb.post_mortem(sys.exc_traceback)
         raise
+    return exitcode
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))

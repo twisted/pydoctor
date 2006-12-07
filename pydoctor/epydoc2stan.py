@@ -317,6 +317,7 @@ def doc2html(obj, summary=False, docstring=None):
     doc = inspect.getdoc(crappit)
     pdoc = parse_docstring(doc, errs)
     if errs:
+        obj.system.epytextproblems.append(obj.fullName())
         if obj.system.options.verbosity > 0:
             print 'epytext error in', obj
         if obj.system.options.verbosity > 1:
