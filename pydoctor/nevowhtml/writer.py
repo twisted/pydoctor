@@ -53,10 +53,11 @@ class NevowWriter:
                 break
         else:
             pclass = pages.CommonPage
+        if self.system.options.verbosity > 0:
+            print ob
         page = pclass(ob)
         self.written_pages += 1
-        print '\rwritten', self.written_pages, 'pages',
-        if self.system.options.verbosity > 0:
-            print
+        if self.system.options.verbosity == 0:
+            print '\rwritten', self.written_pages, 'pages',
         sys.stdout.flush()
         fobj.write(flat.flatten(page))
