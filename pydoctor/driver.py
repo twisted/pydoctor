@@ -137,6 +137,7 @@ def getparser():
               "entries in long lists of e.g. subclasses."))
     parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
+        default=0,
         help=("Be noisier.  Can be repeated for more noise."))
     return parser
 

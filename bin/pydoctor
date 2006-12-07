@@ -2,4 +2,4 @@
 from pydoctor.driver import main
 import sys
 
-main(sys.argv[1:])
+sys.exit(main(sys.argv[1:]))
