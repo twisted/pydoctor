@@ -8,6 +8,7 @@ import py
 class System:
     class options:
         htmlusesorttable = False
+        verbosity = 0
 
 def getHTMLOf(ob):
     writer = nevowhtml.NevowWriter('')
@@ -31,6 +32,7 @@ def test_empty_table():
             urlprefix = ''
             class options:
                 htmlusesorttable = True
+                verbosity = 0
     t = pages.TableFragment(O, True, [])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
@@ -48,6 +50,7 @@ def test_nonempty_table():
             sourcebase = None
             class options:
                 htmlusesorttable = True
+                verbosity = 0
         def fullName(self):
             return 'fullName'
         name = 'name'
