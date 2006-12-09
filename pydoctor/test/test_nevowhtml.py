@@ -5,14 +5,9 @@ from nevow import flat
 import cStringIO
 import py
 
-class System:
-    class options:
-        htmlusesorttable = False
-        verbosity = 0
-
 def getHTMLOf(ob):
     writer = nevowhtml.NevowWriter('')
-    writer.system = System
+    writer.system = ob.system
     f = cStringIO.StringIO()
     writer.writeDocsForOne(ob, f)
     return f.getvalue()
@@ -27,35 +22,14 @@ def test_simple():
     assert 'This is a docstring' in v
 
 def test_empty_table():
-    class O:
-        class system:
-            urlprefix = ''
-            class options:
-                htmlusesorttable = True
-                verbosity = 0
-    t = pages.TableFragment(O, True, [])
+    mod = fromText('')
+    t = pages.TableFragment(mod, True, [])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table():
-    class Child:
-        kind = "kooky"
-        docstring = None
-        document_in_parent_page = False
-        linenumber = 10
-        parent = None
-        sourceHref = None
-        class system:
-            urlprefix = ''
-            sourcebase = None
-            class options:
-                htmlusesorttable = True
-                verbosity = 0
-        def fullName(self):
-            return 'fullName'
-        name = 'name'
-        contents = {}
-    t = pages.TableFragment(Child(), True, [Child()])
+    mod = fromText('def f(): pass')
+    t = pages.TableFragment(mod, True, mod.orderedcontents)
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
