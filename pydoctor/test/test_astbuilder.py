@@ -13,7 +13,9 @@ def fromText(text, modname='<test>', system=None,
         transformer.parse(textwrap.dedent(text)), modname)
     if system is None:
         builder._finalStateComputations()
-    return _system.allobjects[modname]
+    mod = _system.allobjects[modname]
+    mod.processed = True
+    return mod
 
 def test_simple():
     src = '''
@@ -129,49 +131,60 @@ def test_class_with_base_from_module():
     assert base3 == 'Y.Z.C'
 
 def test_aliasing():
-    src_a = '''
-    class A:
-        pass
-    '''
-    src_b = '''
-    from a import A as B
-    '''
-    src_c = '''
-    from b import B
-    class C(B):
-        pass
-    '''
+    def addsrc(system):
+        src_a = '''
+        class A:
+            pass
+        '''
+        src_b = '''
+        from a import A as B
+        '''
+        src_c = '''
+        from b import B
+        class C(B):
+            pass
+        '''
+        fromText(src_a, 'a', system)
+        fromText(src_b, 'b', system)
+        fromText(src_c, 'c', system)
+
     system = model.System()
-    fromText(src_a, 'a', system)
-    fromText(src_b, 'b', system)
-    fromText(src_c, 'c', system)
+    addsrc(system)
     assert system.allobjects['c.C'].bases == ['b.B']
-    system.resolveAliases()
+
+    system = model.System()
+    system.options.resolvealiases = True
+    addsrc(system)
     assert system.allobjects['c.C'].bases == ['a.A']
 
 def test_more_aliasing():
-    src_a = '''
-    class A:
-        pass
-    '''
-    src_b = '''
-    from a import A as B
-    '''
-    src_c = '''
-    from b import B as C
-    '''
-    src_d = '''
-    from c import C
-    class D(C):
-        pass
-    '''
+    def addsrc(system):
+        src_a = '''
+        class A:
+            pass
+        '''
+        src_b = '''
+        from a import A as B
+        '''
+        src_c = '''
+        from b import B as C
+        '''
+        src_d = '''
+        from c import C
+        class D(C):
+            pass
+        '''
+        fromText(src_a, 'a', system)
+        fromText(src_b, 'b', system)
+        fromText(src_c, 'c', system)
+        fromText(src_d, 'd', system)
     system = model.System()
-    fromText(src_a, 'a', system)
-    fromText(src_b, 'b', system)
-    fromText(src_c, 'c', system)
-    fromText(src_d, 'd', system)
+    addsrc(system)
     assert system.allobjects['d.D'].bases == ['c.C']
-    system.resolveAliases()
+
+    system = model.System()
+    system.options.resolvealiases = True
+    addsrc(system)
     assert system.allobjects['d.D'].bases == ['a.A']
 
 def test_subclasses():

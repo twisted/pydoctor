@@ -284,6 +284,7 @@ class System(object):
             return n
         if clsname in m._name2fullname:
             newname = m.name2fullname(clsname)
+            print newname
             for system in systems:
                 if newname in system.allobjects:
                     return newname
@@ -291,16 +292,6 @@ class System(object):
                 return self.resolveAlias(newname)
         else:
             return n
-
-    def resolveAliases(self):
-        for ob in self.orderedallobjects:
-            if not isinstance(ob, Class):
-                continue
-            for i, b in enumerate(ob.bases):
-                if b not in self.allobjects:
-                    ob.bases[i] = self.resolveAlias(b)
-                    if ob.baseobjects[i] is None and ob.bases[i] in self.allobjects:
-                        ob.baseobjects[i] = self.allobjects[ob.bases[i]]
 
     def _warning(self, current, type, detail):
         if current is not None:

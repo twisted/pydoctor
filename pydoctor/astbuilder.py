@@ -44,13 +44,14 @@ class ModuleVistor(object):
             str_base = ast_pp.pp(n)
             rawbases.append(str_base)
             base = current.dottedNameToFullName(str_base)
-            bases.append(base)
             bob = current.resolveDottedName(base)
             if not bob and self.system.options.resolvealiases:
-                bob = self.system.allobjects.get(self.system.resolveAlias(base))
+                base = self.system.resolveAlias(base)
+                bob = self.system.allobjects.get(base)
             if bob:
                 assert (bob.parentMod is self.builder.currentMod or
                         bob.parentMod.processed)
+            bases.append(base)
             baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
