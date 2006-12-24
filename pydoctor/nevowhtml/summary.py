@@ -201,11 +201,11 @@ class UndocumentedSummaryPage(page.Element):
 
     @page.renderer
     def title(self, request, tag):
-        return tag["Summary of Undocumented Objects"]
+        return tag.clear()["Summary of Undocumented Objects"]
 
     @page.renderer
     def heading(self, request, tag):
-        return tag["Summary of Undocumented Objects"]
+        return tag.clear()["Summary of Undocumented Objects"]
 
     @page.renderer
     def stuff(self, request, tag):
