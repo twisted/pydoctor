@@ -193,5 +193,33 @@ class IndexPage(page.Element):
             r.append(fillSlots(item, root=taglink(o)))
         return tag[r]
 
-summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage]
+class UndocumentedSummaryPage(page.Element):
+    filename = 'undoccedSummary.html'
+    docFactory = loaders.xmlfile(templatefile('summary.html'))
+    def __init__(self, system):
+        self.system = system
+
+    @page.renderer
+    def title(self, request, tag):
+        return tag["Summary of Undocumented Objects"]
+
+    @page.renderer
+    def heading(self, request, tag):
+        return tag["Summary of Undocumented Objects"]
+
+    @page.renderer
+    def stuff(self, request, tag):
+        def public(ob):
+            for part in ob.fullName().split('.'):
+                if part[0] == '_':
+                    return False
+            return True
+        undoccedpublic = [o for o in self.system.orderedallobjects
+                          if public(o) and o.docstring is None]
+        undoccedpublic.sort(key=lambda o:o.fullName())
+        for o in undoccedpublic:
+            tag[tags.li[o.kind, " - ", taglink(o)]]
+        return tag
+
+summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage, UndocumentedSummaryPage]
 
