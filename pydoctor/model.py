@@ -15,14 +15,12 @@ from pydoctor import ast_pp
 #
 # this was misguided.  the tree structure is important, to be sure,
 # but the arrangement of the tree is far from arbitrary and there is
-# at least some code that now relies on this (for example, a Function
-# is always contained by a Module; Packages only contain Modules and
-# other Packages).  so here's a list:
+# at least some code that now relies on this.  so here's a list:
 #
-#  Packages can contain Packages and Modules
-#  Modules can contain Functions and Classes
-#  Classes can contain Functions (when they get called Methods) and Classes
-#  Functions can't contain anything.
+#   Packages can contain Packages and Modules
+#   Modules can contain Functions and Classes
+#   Classes can contain Functions (when they get called Methods) and Classes
+#   Functions can't contain anything.
 #
 # the root objects are weakly assumed to be Packages, but this isn't
 # deep (or, likely, important: if you have a bunch of code that 1) is
