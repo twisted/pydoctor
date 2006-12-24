@@ -214,8 +214,13 @@ class UndocumentedSummaryPage(page.Element):
                 if part[0] == '_':
                     return False
             return True
+        def hasdocstring(ob):
+            if isinstance(ob, model.Package):
+                return ob.contents['__init__'].docstring is not None
+            else:
+                return ob.docstring is not None
         undoccedpublic = [o for o in self.system.orderedallobjects
-                          if public(o) and o.docstring is None]
+                          if public(o) and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
             tag[tags.li[o.kind, " - ", taglink(o)]]
