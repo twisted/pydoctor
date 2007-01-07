@@ -124,6 +124,10 @@ class Field(object):
         self.arg = field.arg()
         self.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
 
+    def __repr__(self):
+        return "<%s %r %r>"%(self.__class__.__name__,
+                             self.tag, self.arg)
+
 class FieldHandler(object):
     def __init__(self, obj):
         self.obj = obj
