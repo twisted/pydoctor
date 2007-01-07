@@ -211,7 +211,7 @@ class UndocumentedSummaryPage(page.Element):
     def stuff(self, request, tag):
         def public(ob):
             for part in ob.fullName().split('.'):
-                if part[0] == '_':
+                if part[0] == '_' and not (part.startswith('__') and part.endswith('__')):
                     return False
             return True
         def hasdocstring(ob):
@@ -226,5 +226,11 @@ class UndocumentedSummaryPage(page.Element):
             tag[tags.li[o.kind, " - ", taglink(o)]]
         return tag
 
-summarypages = [ModuleIndexPage, ClassIndexPage, IndexPage, NameIndexPage, UndocumentedSummaryPage]
+summarypages = [
+    ModuleIndexPage,
+    ClassIndexPage,
+    IndexPage,
+    NameIndexPage,
+    UndocumentedSummaryPage,
+    ]
 
