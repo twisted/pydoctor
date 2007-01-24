@@ -11,4 +11,8 @@ Twisted, knows about zope.interface's declaration API and can present
 information about which classes implement which interface, and vice
 versa.
 
+The default HTML generator uses Nevow, which means that it requires
+Twisted too.  At present it requires Nevow SVN HEAD, unless there's
+meen a release that contains "nevow.page" in the mean time.
+
 There are some more notes in the doc/ subdirectory.
