@@ -29,7 +29,7 @@ def test_no_do_nothing():
 
 def test_cannot_advance_blank_system():
     err = geterrtext('--make-html')
-    assert 'cannot advance totally blank' in err
+    assert 'forget an --add-package?' in err
 
 def test_invalid_systemclasses():
     err = geterrtext('--system-class')

@@ -260,6 +260,10 @@ def main(args):
 
         # step 3: move the system to the desired state
 
+        if not system.packages:
+            error("The system does not contain any code, did you "
+                  "forget an --add-package?")
+
         curstateindex = model.states.index(system.state)
         finalstateindex = model.states.index(options.targetstate)
 
