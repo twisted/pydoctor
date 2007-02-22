@@ -6,7 +6,6 @@ HTML Formatter:
     - work out a sensible way to display deeper interface information.
   - Parameterise epydoc usage instead of just basing on presence of epydoc
   - Make Pretty
-  - use slots a lot more, will hopefully speed things up
 
 Model:
 
