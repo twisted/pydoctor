@@ -31,19 +31,17 @@ class NevowWriter:
         self.dry_run = False
         for ob in obs:
             self.writeDocsFor(ob, functionpages=functionpages)
-        print
 
     def writeModuleIndex(self, system):
         import time
         for i, pclass in enumerate(summary.summarypages):
-            print 'starting', pclass.__name__, '...',
-            sys.stdout.flush()
+            system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
             f.write(flat.flatten(page))
             f.close()
-            print "took", time.time() - T, 's'
+            system.msg('html', "took %fs"%(time.time() - T))
 
     def writeDocsFor(self, ob, functionpages):
         isfunc = ob.document_in_parent_page
@@ -67,11 +65,8 @@ class NevowWriter:
                 break
         else:
             pclass = pages.CommonPage
-        if self.system.options.verbosity > 0:
-            print ob
+        self.system.msg('html', str(ob), thresh=1)
         page = pclass(ob)
         self.written_pages += 1
-        if self.system.options.verbosity == 0:
-            print '\rwritten', self.written_pages, '/', self.total_pages, 'pages',
-        sys.stdout.flush()
+        self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         fobj.write(flat.flatten(page))

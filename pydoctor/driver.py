@@ -139,6 +139,18 @@ def getparser():
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
         help=("Be noisier.  Can be repeated for more noise."))
+    parser.add_option(
+        '-q', '--quiet', action='count', dest='quietness',
+        default=0,
+        help=("Be quieter."))
+    def verbose_about_callback(option, opt_str, value, parser):
+        d = parser.values.verbosity_details
+        d[value] = d.get(value, 0) + 1
+    parser.add_option(
+        '--verbose-about', metavar="stage", action="callback",
+        type=str, default={}, dest='verbosity_details',
+        callback=verbose_about_callback,
+        help=("Be noiser during a particular stage of generation."))
     return parser
 
 def readConfigFile(options):
@@ -167,10 +179,15 @@ def readConfigFile(options):
             if not isinstance(pre_v, list):
                 setattr(options, k, v)
 
-def main(args):
-    import cPickle
+def parse_args(args):
     parser = getparser()
     options, args = parser.parse_args(args)
+    options.verbosity -= options.quietness
+    return options, args
+
+def main(args):
+    import cPickle
+    options, args = parse_args(args)
 
     exitcode = 0
 
@@ -251,7 +268,7 @@ def main(args):
                 if system.state not in ['blank', 'preparse']:
                     msg = 'system is in state %r, which is too late to add new code'
                     error(msg, system.state)
-                print 'adding directory', path
+                system.msg('addPackage', 'adding directory ' + path)
                 builder.preprocessDirectory(path)
                 system.packages.append(path)
             if options.prependedpackage:
@@ -286,7 +303,7 @@ def main(args):
 
         for i in range(curstateindex, finalstateindex):
             f = funcs[i]
-            print f.__name__
+            system.msg(f.__name__, f.__name__)
             f()
 
         if system.state != options.targetstate:
@@ -295,7 +312,7 @@ def main(args):
 
         if system.options.projectname is None:
             name = '/'.join([ro.name for ro in system.rootobjects])
-            print 'WARNING: guessing', name, 'for project name'
+            system.msg('warning', 'WARNING: guessing '+name+' for project name', thresh=-1)
             system.guessedprojectname = name
 
         # step 4: save the system, if desired
@@ -335,10 +352,12 @@ def main(args):
                 subjects = system.rootobjects
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
             if system.epytextproblems:
-                print "these objects' docstrings are not proper epytext:"
+                def p(msg):
+                    system.msg('epytext', msg, thresh=-1, topthresh=1)
+                p("these objects' docstrings are not proper epytext:")
                 exitcode = 2
                 for fn in system.epytextproblems:
-                    print '    ', fn
+                    p('    '+fn)
     except:
         if options.pdb:
             import pdb

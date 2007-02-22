@@ -249,12 +249,31 @@ class System(object):
         self.moresystems = []
         self.subsystems = []
         self.urlprefix = ''
-        from pydoctor.driver import getparser
-        self.options, _ = getparser().parse_args([])
+        from pydoctor.driver import parse_args
+        self.options, _ = parse_args([])
         self.options.verbosity = 3
         self.abbrevmapping = {}
         self.guessedprojectname = 'my project'
         self.epytextproblems = [] # fullNames of objects that failed to epytext properly
+        self.verboselevel = 0
+
+    def verbosity(self, section=None):
+        return self.options.verbosity + self.options.verbosity_details.get(section, 0)
+
+    def progress(self, section, i, n, msg):
+        if self.verbosity(section) == 0 and sys.stdout.isatty():
+            print '\r'+'%s/%s'%(i, n), msg,
+            sys.stdout.flush()
+            if i == n:
+                print
+
+    def msg(self, section, msg, thresh=0, topthresh=100, nonl=False):
+        if thresh <= self.verbosity(section) <= topthresh:
+            print msg,
+            if nonl:
+                sys.stdout.flush()
+            else:
+                print
 
     def report(self):
         for o in self.rootobjects:
