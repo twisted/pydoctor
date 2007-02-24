@@ -66,6 +66,11 @@ class FieldDesc(object):
         if self.type is not None:
             body = body, '(type: ', self.type, ')'
         return body
+    def __repr__(self):
+        contents = []
+        for k, v in self.__dict__.iteritems():
+            contents.append("%s=%r"%(k, v))
+        return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
 
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
@@ -125,8 +130,8 @@ class Field(object):
         self.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
 
     def __repr__(self):
-        return "<%s %r %r>"%(self.__class__.__name__,
-                             self.tag, self.arg)
+        return "<%s %r %r %s>"%(self.__class__.__name__,
+                             self.tag, self.arg, repr(self.body)[:30])
 
 class FieldHandler(object):
     def __init__(self, obj):
@@ -161,8 +166,10 @@ class FieldHandler(object):
     handle_rtype = handle_returntype
 
     def add_type_info(self, desc_list, field):
+        #print desc_list, field
         if desc_list and desc_list[-1].name == field.arg:
-            assert desc_list[-1].type is None
+            if desc_list[-1].type is None:
+                self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
             desc_list[-1].type = field.body
         else:
             d = FieldDesc()
@@ -189,10 +196,12 @@ class FieldHandler(object):
             ivars = self.ivar_descs
             cvars = self.cvar_descs
             if ivars and ivars[-1].name == field.arg:
-                assert ivars[-1].type is None
+                if ivars[-1].type is not None:
+                    self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
                 ivars[-1].type = field.body
             elif cvars and cvars[-1].name == field.arg:
-                assert cvars[-1].type is None
+                if cvars[-1].type is not None:
+                    self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
                 cvars[-1].type = field.body
             else:
                 self.unattached_types[field.arg] = field.body
@@ -322,13 +331,12 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc = parse_docstring(doc, errs)
     if errs:
         obj.system.epytextproblems.append(obj.fullName())
-        if obj.system.options.verbosity > 0:
-            print 'epytext error in', obj
-        if obj.system.options.verbosity > 1:
-            for i, l in enumerate(doc.splitlines()):
-                print "%4s"%(i+1), l
-            for err in errs:
-                print err
+        obj.system.msg('epytext error in %s'%(obj,), thresh=1)
+        p = lambda m:obj.system.msg(m, thresh=2)
+        for i, l in enumerate(doc.splitlines()):
+            p(m%("%4s"%(i+1)+' '+l))
+        for err in errs:
+            p(err)
         global errcount
         errcount += len(errs)
         return boringDocstring(doc, summary)
