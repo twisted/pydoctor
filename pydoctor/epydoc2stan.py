@@ -332,9 +332,9 @@ def doc2html(obj, summary=False, docstring=None):
     if errs:
         obj.system.epytextproblems.append(obj.fullName())
         obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
-        p = lambda m:obj.system.msg(m, thresh=2)
+        p = lambda m:obj.system.msg('epytext', m, thresh=2)
         for i, l in enumerate(doc.splitlines()):
-            p(m%("%4s"%(i+1)+' '+l))
+            p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
         global errcount
