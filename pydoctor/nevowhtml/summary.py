@@ -192,6 +192,12 @@ class IndexPage(page.Element):
         for o in self.system.rootobjects:
             r.append(fillSlots(item, root=taglink(o)))
         return tag[r]
+    @page.renderer
+    def rootkind(self, request, tag):
+        rootkinds = {}
+        for o in self.system.rootobjects:
+            rootkinds[o.kind.lower() + 's']  = 1
+        return tag.clear()['/'.join(sorted(rootkinds))]
 
 class UndocumentedSummaryPage(page.Element):
     filename = 'undoccedSummary.html'
