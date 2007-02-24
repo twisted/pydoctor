@@ -463,7 +463,7 @@ class TwistedClassPage(ClassPage):
             label = 'Implements interfaces: '
         if namelist:
             l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
-            r[l]
+            r[tags.p[l]]
         return r
 
     def interfaceMeth(self, methname):
