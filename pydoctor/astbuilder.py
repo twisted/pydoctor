@@ -397,7 +397,8 @@ class ASTBuilder(object):
         assert self.system.state in ['preparse']
         modlist = list(self.system.objectsOfType(model.Module))
         for i, mod in enumerate(modlist):
-            self.push(mod.parent)
+            if mod.parent:
+                self.push(mod.parent)
             isf = ImportFinder(self, mod)
             ast = self.parseFile(mod.filepath)
             if not ast:
@@ -405,7 +406,8 @@ class ASTBuilder(object):
             self.system.progress('analyseImports', i+1, len(modlist),
                                  "modules parsed")
             visitor.walk(ast, isf)
-            self.pop(mod.parent)
+            if mod.parent:
+                self.pop(mod.parent)
         self.system.state = 'imported'
 
     def extractDocstrings(self):
@@ -416,7 +418,8 @@ class ASTBuilder(object):
 
         for i, mod in enumerate(newlist):
             mod = self.system.allobjects[mod]
-            self.push(mod.parent)
+            if mod.parent:
+                self.push(mod.parent)
             ast = self.parseFile(mod.filepath)
             if not ast:
                 continue
@@ -426,7 +429,8 @@ class ASTBuilder(object):
                 "modules parsed %s warnings"%(
                 sum(len(v) for v in self.system.warnings.itervalues()),))
             mod.processed = True
-            self.pop(mod.parent)
+            if mod.parent:
+                self.pop(mod.parent)
         self.system.state = 'parsed'
 
     def finalStateComputations(self):

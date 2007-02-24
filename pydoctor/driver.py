@@ -72,6 +72,10 @@ def getparser():
         help=("Add a package to the system.  Can be repeated "
               "to add more than one package."))
     parser.add_option(
+        '--add-module', action='append', dest='modules',
+        metavar='MODULE', default=[],
+        help=("Add a module to the system.  Can be repeated."))
+    parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
@@ -255,9 +259,9 @@ def main(args):
                    "maybe supply --make-html and/or --output-pickle?")
             error(msg)
 
-        # step 2: add any packages
+        # step 2: add any packages and modules
 
-        if options.packages:
+        if options.packages or options.modules:
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
                     builder.pushPackage(m, None)
@@ -270,6 +274,24 @@ def main(args):
                     error(msg, system.state)
                 system.msg('addPackage', 'adding directory ' + path)
                 builder.preprocessDirectory(path)
+                system.packages.append(path)
+            for path in options.modules:
+                path = os.path.normpath(path)
+                if path in system.packages:
+                    continue
+                if system.state not in ['blank', 'preparse']:
+                    msg = 'system is in state %r, which is too late to add new code'
+                    error(msg, system.state)
+                system.msg('addModule', 'adding module ' + path)
+                # XXX should be a builder method!
+                assert system.state in ['blank', 'preparse']
+                modname = os.path.splitext(os.path.basename(path))[0]
+                mod = builder.pushModule(modname, None)
+                mod.filepath = path
+                mod.processed = False
+                builder.setSourceHref(mod)
+                builder.popModule()
+                system.state = 'preparse'
                 system.packages.append(path)
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
@@ -333,8 +355,8 @@ def main(args):
                 from pydoctor import nevowhtml
                 writerclass = nevowhtml.NevowWriter
 
-            print 'writing html to', options.htmloutput,
-            print 'using %s.%s'%(writerclass.__module__, writerclass.__name__)
+            system.msg('html', 'writing html to %s using %s.%s'%(
+                options.htmloutput, writerclass.__module__, writerclass.__name__))
 
             writer = writerclass(options.htmloutput)
             writer.system = system

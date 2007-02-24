@@ -21,11 +21,6 @@ from pydoctor import ast_pp
 #   Modules can contain Functions and Classes
 #   Classes can contain Functions (when they get called Methods) and Classes
 #   Functions can't contain anything.
-#
-# the root objects are weakly assumed to be Packages, but this isn't
-# deep (or, likely, important: if you have a bunch of code that 1) is
-# complicated enough for pydoctor to be useful with it and 2) all
-# arranged in modules, you have a serious problem)
 
 class Documentable(object):
     document_in_parent_page = False
