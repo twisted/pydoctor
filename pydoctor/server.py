@@ -218,9 +218,9 @@ class EditPage(rend.Page):
                 edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
                             time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
-                if hasattr(ob, 'docsource'):
+                if hasattr(ob, 'docsource') and hasattr(ob, 'computeDocsource'):
                     del ob.docsource
-                ob.computeDocsource()
+                    ob.computeDocsource()
                 ob.edits.append(edit)
                 self.root.edits.append(edit)
             if not isinstance(ob, (model.Package, model.Module, model.Class)):
