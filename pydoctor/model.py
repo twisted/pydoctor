@@ -168,6 +168,7 @@ class Package(Documentable):
 class Module(Documentable):
     kind = "Module"
     processed = False
+    linenumber = 0
     def setup(self):
         super(Module, self).setup()
         self.all = None
