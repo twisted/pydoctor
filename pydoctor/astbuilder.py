@@ -91,7 +91,7 @@ class ModuleVistor(object):
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and fromname in mod.contents:
+                if 0 and isinstance(mod, model.Module) and fromname in mod.contents:
                     print 'moving', mod.contents[fromname], 'into', self.builder.current
                     # this code attempts to preserve "rather a lot" of
                     # invariants assumed by various bits of pydoctor and that
@@ -248,7 +248,7 @@ class ASTBuilder(object):
         self.current = obj
         if isinstance(obj, model.Module):
             assert self.currentMod is None
-            self.currentMod = obj
+            obj.parentMod = self.currentMod = obj
         elif self.currentMod is not None:
             if obj.parentMod is not None:
                 assert obj.parentMod is self.currentMod
@@ -363,11 +363,23 @@ class ASTBuilder(object):
         mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
 
 
+    def addModule(self, modpath):
+        assert self.system.state in ['blank', 'preparse']
+        fname = os.path.basename(modpath)
+        modname = os.path.splitext(fname)[0]
+        mod = self.pushModule(modname, None)
+        mod.filepath = modpath
+        mod.processed = False
+        self.setSourceHref(mod)
+        self.popModule()
+        self.system.state = 'preparse'
+
     def preprocessDirectory(self, dirpath):
         assert self.system.state in ['blank', 'preparse']
-        found_init_dot_py = False
         if not os.path.exists(dirpath):
             raise Exception, "package path %r does not exist!"%(dirpath,)
+        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
+            raise Exception, "you must pass a package directory to preprocessDirectory"
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
             package.filepath = dirpath
@@ -379,18 +391,9 @@ class ASTBuilder(object):
             if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
                 self.preprocessDirectory(fullname)
             elif fname.endswith('.py') and not fname.startswith('.'):
-                if fname == '__init__.py':
-                    found_init_dot_py = True
-                modname = os.path.splitext(fname)[0]
-                mod = self.pushModule(modname, None)
-                mod.filepath = fullname
-                mod.processed = False
-                self.setSourceHref(mod)
-                self.popModule()
+                self.addModule(fullname)
         if package:
             self.popPackage()
-        if not found_init_dot_py:
-            raise Exception, "you must pass a package directory to preprocessDirectory"
         self.system.state = 'preparse'
 
     def analyseImports(self):

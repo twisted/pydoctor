@@ -284,13 +284,7 @@ def main(args):
                     error(msg, system.state)
                 system.msg('addModule', 'adding module ' + path)
                 # XXX should be a builder method!
-                assert system.state in ['blank', 'preparse']
-                modname = os.path.splitext(os.path.basename(path))[0]
-                mod = builder.pushModule(modname, None)
-                mod.filepath = path
-                mod.processed = False
-                builder.setSourceHref(mod)
-                builder.popModule()
+                builder.addModule(path)
                 system.state = 'preparse'
                 system.packages.append(path)
             if options.prependedpackage:
