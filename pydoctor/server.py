@@ -165,7 +165,7 @@ class EditPage(rend.Page):
         return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" +
                            self.fullName + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_textarea(self, context, data):
-        docstring = context.arg('docstring', self.ob.docstring)
+        docstring = context.arg('docstring', self.ob.docstring.orig)
         if docstring is None:
             docstring = ''
         return context.tag[docstring]
@@ -215,6 +215,11 @@ class EditPage(rend.Page):
                 newDocstring = ctx.arg('docstring', None)
                 if not newDocstring:
                     newDocstring = None
+                else:
+                    from pydoctor.astbuilder import mystr, MyTransformer
+                    import parser
+                    newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring).totuple(1))
+                    newDocstring.linenumber = ob.docstring.linenumber
                 edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
                             time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
@@ -323,6 +328,15 @@ class Edit(object):
         self.user = user
         self.time = time
 
+def filepath(ob):
+    mod = ob.parentMod
+    filepath = mod.filepath
+    while mod:
+        top = mod
+        mod = mod.parent
+    toppath = top.contents['__init__'].filepath[:-(len('__init__.py') + 1 + len(top.name))]
+    return filepath[len(toppath):]
+
 class DiffPage(rend.Page):
     def __init__(self, system):
         self.system = system
@@ -333,14 +347,29 @@ class DiffPage(rend.Page):
                            u"\N{LEFT DOUBLE QUOTATION MARK}" +
                            self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_diff(self, context, data):
-        docA = self.editA.newDocstring
+        docA_ = docA = self.editA.newDocstring
         docB = self.editB.newDocstring
         if docA is None: docA = ''
         if docB is None: docB = ''
-        docA = docA.splitlines()
-        docB = docB.splitlines()
+        docA = docA.orig.splitlines()
+        docB = docB.orig.splitlines()
+        origSrcLines = [l.rstrip('\n') for l in open(self.ob.parentMod.filepath, 'rU').readlines()]
+        assert docA # for now
+        firstdocline = docA_.linenumber
+        prefix = origSrcLines[:firstdocline]
+        lastdocline = firstdocline + len(docA)
+        suffix = origSrcLines[lastdocline:]
+        #print prefix, suffix
+        orig = prefix + docA + suffix
+        new = prefix + docB + suffix
+        orig = [line + '\n' for line in orig]
+        new = [line + '\n' for line in new]
         import difflib
-        return tags.raw(difflib.HtmlDiff().make_table(docA, docB))
+        fpath = filepath(self.ob)
+        return tags.pre[''.join(difflib.unified_diff(orig, new,
+                                                     fromfile=fpath,
+                                                     tofile=fpath,
+                                                     n=3))]
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive("title")),

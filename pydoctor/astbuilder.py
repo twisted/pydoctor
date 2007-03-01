@@ -1,7 +1,58 @@
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer, ast
-import os, sys, posixpath
+import os, sys, posixpath, symbol, token
+
+class mystr(str):
+    pass
+
+class MyTransformer(transformer.Transformer):
+    def get_docstring(self, node, n=None):
+        if n is None:
+            n = node[0]
+            node = node[1:]
+        if n == symbol.suite:
+            if len(node) == 1:
+                return self.get_docstring(node[0])
+            for sub in node:
+                if sub[0] == symbol.stmt:
+                    return self.get_docstring(sub)
+            return None
+        if n == symbol.file_input:
+            for sub in node:
+                if sub[0] == symbol.stmt:
+                    return self.get_docstring(sub)
+            return None
+        if n == symbol.atom:
+            if node[0][0] == token.STRING:
+                s = ''
+                for t in node:
+                    s = s + eval(t[1])
+                r = mystr(s)
+                r.orig = ''.join(t[1] for t in node)
+                r.linenumber = node[0][2]
+                return r
+            return None
+        if n == symbol.stmt or n == symbol.simple_stmt \
+           or n == symbol.small_stmt:
+            return self.get_docstring(node[0])
+        if n in transformer._doc_nodes and len(node) == 1:
+            return self.get_docstring(node[0])
+        return None
+
+def parseFile(path):
+    f = open(path, "U")
+    # XXX The parser API tolerates files without a trailing newline,
+    # but not strings without a trailing newline.  Always add an extra
+    # newline to the file contents, since we're going through the string
+    # version of the API.
+    src = f.read() + "\n"
+    f.close()
+    return parse(src)
+
+def parse(buf):
+    return MyTransformer().parsesuite(buf)
+
 
 class ModuleVistor(object):
     def __init__(self, builder, modname):
@@ -316,7 +367,7 @@ class ASTBuilder(object):
         if filePath in self.ast_cache:
             return self.ast_cache[filePath]
         try:
-            ast = transformer.parseFile(filePath)
+            ast = parseFile(filePath)
         except (SyntaxError, ValueError):
             self.warning("cannot parse", filePath)
             ast = None

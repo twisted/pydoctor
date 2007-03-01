@@ -10,7 +10,7 @@ def fromText(text, modname='<test>', system=None,
         _system = system
     builder = buildercls(_system)
     builder.processModuleAST(
-        transformer.parse(textwrap.dedent(text)), modname)
+        astbuilder.parse(textwrap.dedent(text)), modname)
     if system is None:
         builder._finalStateComputations()
     mod = _system.allobjects[modname]
