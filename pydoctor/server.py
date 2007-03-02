@@ -95,6 +95,7 @@ class RecentChangesPage(page.Element):
         tags.head[tags.title["Recent Changes"],
                   tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
         tags.body[tags.h1["Recent Changes"],
+                  tags.p["See ", tags.a(href="bigDiff")["a diff containing all changes made online"]],
                   tags.ul(render=tags.directive("changes"))
                   [tags.li(pattern="item")
                    [tags.slot("diff"),
@@ -156,6 +157,12 @@ class ErrorPage(rend.Page):
         tags.body[tags.p["An error occurred."]]])
 
 
+def origstring(ob):
+    if hasattr(ob, 'docsource'):
+        return None
+    else:
+        return ob.docstring.orig
+
 class EditPage(rend.Page):
     def __init__(self, system, root):
         self.system = system
@@ -165,7 +172,7 @@ class EditPage(rend.Page):
         return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" +
                            self.fullName + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_textarea(self, context, data):
-        docstring = context.arg('docstring', self.ob.docstring.orig)
+        docstring = context.arg('docstring', origstring(self.ob))
         if docstring is None:
             docstring = ''
         return context.tag[docstring]
@@ -214,7 +221,11 @@ class EditPage(rend.Page):
             ob = self.ob
             if action == 'Submit':
                 if not hasattr(ob, 'edits'):
-                    ob.edits = [Edit(self.origob, 0, ob.docstring, 'no-one', 'Dawn of time')]
+                    if hasattr(ob, 'docsource'):
+                        ds = None
+                    else:
+                        ds = ob.docstring
+                    ob.edits = [Edit(self.origob, 0, ds, 'no-one', 'Dawn of time')]
                 newDocstring = ctx.arg('docstring', None)
                 if not newDocstring:
                     newDocstring = None
@@ -222,7 +233,12 @@ class EditPage(rend.Page):
                     from pydoctor.astbuilder import mystr, MyTransformer
                     import parser
                     newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring).totuple(1))
-                    newDocstring.linenumber = ob.docstring.linenumber - len(ob.docstring.orig.splitlines()) + len(newDocstring.orig.splitlines())
+                    orig = origstring(ob)
+                    if orig:
+                        l = len(orig.splitlines())
+                        newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
+                    else:
+                        newDocstring.linenumber = ob.linenumber + 1
                 edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
                             time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
@@ -343,8 +359,8 @@ def filepath(ob):
 class FileDiff(object):
     def __init__(self, ob):
         self.ob = ob
-        self.orig_lines = [l[:-1] for l in open(ob.filepath, 'rU').readlines()]
-        self.lines = self.orig_lines[:]
+        self.lines = [l[:-1] for l in open(ob.filepath, 'rU').readlines()]
+        self.orig_lines = self.lines[:]
         self.delta = 0
 
     def reset(self):
@@ -352,13 +368,19 @@ class FileDiff(object):
         self.delta = 0
 
     def apply_edit(self, editA, editB):
-        print editA.newDocstring.linenumber
-        origlines = editA.newDocstring.orig.splitlines()
-        firstdocline = editA.newDocstring.linenumber + self.delta - len(origlines)
+        print 'apply_edit'
+        if not editA.newDocstring:
+            lineno = editA.obj.linenumber + 1
+            origlines = []
+        else:
+            origlines = editA.newDocstring.orig.splitlines()
+            lineno = editA.newDocstring.linenumber - len(origlines)
+        firstdocline = lineno + self.delta
         lastdocline = firstdocline + len(origlines)
-        newlines = editB.newDocstring.orig.splitlines()
-        print firstdocline, lastdocline
-        print self.lines[firstdocline:lastdocline], newlines
+        if editB.newDocstring:
+            newlines = editB.newDocstring.orig.splitlines()
+        else:
+            newlines = []
         self.lines[firstdocline:lastdocline] = newlines
         self.delta += len(origlines) - len(newlines)
 
@@ -413,6 +435,33 @@ class DiffPage(rend.Page):
             return ErrorPage()
         return super(DiffPage, self).renderHTTP(context)
 
+class BigDiffPage(rend.Page):
+    def __init__(self, system, root):
+        self.system = system
+        self.root = root
+
+    def render_bigDiff(self, context, data):
+        mods = {}
+        for e in self.root.edits:
+            m = e.obj.parentMod
+            if m not in mods:
+                mods[m] = FileDiff(m)
+            i = e.obj.edits.index(e)
+            mods[m].apply_edit(e.obj.edits[i-1], e.obj.edits[i])
+        r = []
+        for mod in sorted(mods, key=lambda x:x.filepath):
+            r.append(tags.pre[mods[mod].diff()])
+        return r
+
+    docFactory = loaders.stan(tags.html[
+        tags.head[tags.title["Big Diff"],
+                  tags.link(rel="stylesheet", type="text/css", href="apidocs.css")],
+        tags.body[tags.h1["Big Diff"],
+                  tags.div(render=tags.directive("bigDiff"))]])
+
+    def renderHTTP(self, context):
+        return super(BigDiffPage, self).renderHTTP(context)
+
 
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
@@ -430,6 +479,8 @@ class EditingPyDoctorResource(PyDoctorResource):
         return HistoryPage(self.system)
     def child_diff(self, ctx):
         return DiffPage(self.system)
+    def child_bigDiff(self, ctx):
+        return BigDiffPage(self.system, self)
 
 def resourceForPickleFile(pickleFilePath, configFilePath=None):
     import cPickle
