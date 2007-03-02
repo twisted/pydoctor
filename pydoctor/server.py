@@ -176,6 +176,9 @@ class EditPage(rend.Page):
     def render_preview(self, context, data):
         docstring = context.arg('docstring', None)
         if docstring is not None:
+            from pydoctor.astbuilder import mystr, MyTransformer
+            import parser
+            docstring = MyTransformer().get_docstring(parser.suite(docstring).totuple(1))
             return context.tag[epydoc2stan.doc2html(
                 self.system.allobjects[self.fullName], docstring=docstring)]
         else:
@@ -219,7 +222,7 @@ class EditPage(rend.Page):
                     from pydoctor.astbuilder import mystr, MyTransformer
                     import parser
                     newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring).totuple(1))
-                    newDocstring.linenumber = ob.docstring.linenumber
+                    newDocstring.linenumber = ob.docstring.linenumber - len(ob.docstring.orig.splitlines()) + len(newDocstring.orig.splitlines())
                 edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
                             time.strftime("%Y-%m-%d %H:%M:%S"))
                 ob.docstring = newDocstring
@@ -337,6 +340,38 @@ def filepath(ob):
     toppath = top.contents['__init__'].filepath[:-(len('__init__.py') + 1 + len(top.name))]
     return filepath[len(toppath):]
 
+class FileDiff(object):
+    def __init__(self, ob):
+        self.ob = ob
+        self.orig_lines = [l[:-1] for l in open(ob.filepath, 'rU').readlines()]
+        self.lines = self.orig_lines[:]
+        self.delta = 0
+
+    def reset(self):
+        self.orig_lines = self.lines[:]
+        self.delta = 0
+
+    def apply_edit(self, editA, editB):
+        print editA.newDocstring.linenumber
+        origlines = editA.newDocstring.orig.splitlines()
+        firstdocline = editA.newDocstring.linenumber + self.delta - len(origlines)
+        lastdocline = firstdocline + len(origlines)
+        newlines = editB.newDocstring.orig.splitlines()
+        print firstdocline, lastdocline
+        print self.lines[firstdocline:lastdocline], newlines
+        self.lines[firstdocline:lastdocline] = newlines
+        self.delta += len(origlines) - len(newlines)
+
+    def diff(self):
+        orig = [line + '\n' for line in self.orig_lines]
+        new = [line + '\n' for line in self.lines]
+        import difflib
+        fpath = filepath(self.ob)
+        return ''.join(difflib.unified_diff(orig, new,
+                                            fromfile=fpath,
+                                            tofile=fpath))
+
+
 class DiffPage(rend.Page):
     def __init__(self, system):
         self.system = system
@@ -347,29 +382,11 @@ class DiffPage(rend.Page):
                            u"\N{LEFT DOUBLE QUOTATION MARK}" +
                            self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_diff(self, context, data):
-        docA_ = docA = self.editA.newDocstring
-        docB = self.editB.newDocstring
-        if docA is None: docA = ''
-        if docB is None: docB = ''
-        docA = docA.orig.splitlines()
-        docB = docB.orig.splitlines()
-        origSrcLines = [l.rstrip('\n') for l in open(self.ob.parentMod.filepath, 'rU').readlines()]
-        assert docA # for now
-        firstdocline = docA_.linenumber
-        prefix = origSrcLines[:firstdocline]
-        lastdocline = firstdocline + len(docA)
-        suffix = origSrcLines[lastdocline:]
-        #print prefix, suffix
-        orig = prefix + docA + suffix
-        new = prefix + docB + suffix
-        orig = [line + '\n' for line in orig]
-        new = [line + '\n' for line in new]
-        import difflib
-        fpath = filepath(self.ob)
-        return tags.pre[''.join(difflib.unified_diff(orig, new,
-                                                     fromfile=fpath,
-                                                     tofile=fpath,
-                                                     n=3))]
+        fd = FileDiff(self.ob.parentMod)
+        fd.apply_edit(edits(self.ob)[0], self.editA)
+        fd.reset()
+        fd.apply_edit(self.editA, self.editB)
+        return tags.pre[fd.diff()]
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive("title")),
