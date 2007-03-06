@@ -157,11 +157,16 @@ class ErrorPage(rend.Page):
         tags.body[tags.p["An error occurred."]]])
 
 
-def origstring(ob):
+def origstring(ob, lines=None):
     if hasattr(ob, 'docsource'):
         return None
     else:
-        return ob.docstring.orig
+        if lines:
+            firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
+            indent = (len(firstline) - len(firstline.lstrip()))*' '
+        else:
+            indent = ''
+        return indent + ob.docstring.orig
 
 class EditPage(rend.Page):
     def __init__(self, system, root):
@@ -171,25 +176,50 @@ class EditPage(rend.Page):
     def render_title(self, context, data):
         return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" +
                            self.fullName + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
-    def render_textarea(self, context, data):
-        docstring = context.arg('docstring', origstring(self.ob))
-        if docstring is None:
-            docstring = ''
-        return context.tag[docstring]
-    def render_value(self, context, data):
-        return self.fullName
-    def render_url(self, context, data):
-        return 'edit?ob=' + self.fullName
     def render_preview(self, context, data):
         docstring = context.arg('docstring', None)
         if docstring is not None:
             from pydoctor.astbuilder import mystr, MyTransformer
             import parser
-            docstring = MyTransformer().get_docstring(parser.suite(docstring).totuple(1))
+            docstring = MyTransformer().get_docstring(parser.suite(docstring.strip()).totuple(1))
             return context.tag[epydoc2stan.doc2html(
-                self.system.allobjects[self.fullName], docstring=docstring)]
+                self.system.allobjects[self.fullName], docstring=docstring),
+                               tags.h2["Edit"]]
         else:
             return ()
+    def render_value(self, context, data):
+        return self.fullName
+    def render_before(self, context, data):
+        lineno = self.ob.linenumber
+        firstlineno = max(0, lineno-6)
+        lines = self.lines[firstlineno:lineno]
+        if not lines:
+            return ()
+        if lineno > 0:
+            lines.insert(0, '...\n')
+        return context.tag[lines]
+    def render_rows(self, context, data):
+        docstring = context.arg('docstring', origstring(self.ob, self.lines))
+        if docstring is None:
+            docstring = ''
+        return len(docstring.splitlines())
+    def render_textarea(self, context, data):
+        docstring = context.arg('docstring', origstring(self.ob, self.lines))
+        if docstring is None:
+            docstring = ''
+        return context.tag[docstring]
+    def render_after(self, context, data):
+        lineno = self.ob.linenumber + len(self.ob.docstring.orig.splitlines())
+        lastlineno = lineno + 6
+        alllines = open(self.ob.parentMod.filepath, 'rU').readlines()
+        lines = alllines[lineno:lastlineno]
+        if not lines:
+            return ()
+        if lastlineno < len(alllines):
+            lines.append('...\n')
+        return context.tag[lines]
+    def render_url(self, context, data):
+        return 'edit?ob=' + self.fullName
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive('title')),
@@ -201,12 +231,16 @@ class EditPage(rend.Page):
                   tags.div(render=tags.directive('preview'))[tags.h2["Preview"]],
                   tags.form(action=tags.directive('url'), method="post")
                   [tags.input(name="fullName", type="hidden", value=tags.directive('value')),
-                   tags.textarea(rows=40, cols=90, name="docstring",
+                   tags.pre(render=tags.directive('before')),
+                   tags.textarea(style="font-family: monospace; padding: 0",
+                                 rows=tags.directive('rows'), cols=90, name="docstring",
                                  render=tags.directive('textarea')),
                    tags.br(),
                    tags.input(name='action', type="submit", value="Submit"),
                    tags.input(name='action', type="submit", value="Preview"),
-                   tags.input(name='action', type="submit", value="Cancel")]]])
+                   tags.input(name='action', type="submit", value="Cancel"),
+                   tags.pre(render=tags.directive('after')),
+                   ]]])
 
     def renderHTTP(self, ctx):
         self.fullName = ctx.arg('ob')
@@ -215,6 +249,7 @@ class EditPage(rend.Page):
         self.origob = self.ob = self.system.allobjects[self.fullName]
         if isinstance(self.ob, model.Package):
             self.ob = self.ob.contents['__init__']
+        self.lines = open(self.ob.parentMod.filepath, 'rU').readlines()
         req = ctx.locate(inevow.IRequest)
         action = ctx.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
@@ -232,7 +267,7 @@ class EditPage(rend.Page):
                 else:
                     from pydoctor.astbuilder import mystr, MyTransformer
                     import parser
-                    newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring).totuple(1))
+                    newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring.strip()).totuple(1))
                     orig = origstring(ob)
                     if orig:
                         l = len(orig.splitlines())
