@@ -34,3 +34,14 @@ def test_modnamedafterbuiltin():
     system = processPackage("modnamedafterbuiltin")
     # but let's test _something_
     assert system.allobjects['modnamedafterbuiltin.mod.Dict'].baseobjects == [None]
+
+def test_package_docstring():
+    system = processPackage("localimporttest")
+    assert (system.allobjects['localimporttest.__init__'].docstring ==
+            "DOCSTRING")
+
+def test_nestedconfusion():
+    system = processPackage("nestedconfusion")
+    A = system.allobjects['nestedconfusion.mod.nestedconfusion.A']
+    C = system.allobjects['nestedconfusion.mod.C']
+    assert A.baseobjects[0] is C
