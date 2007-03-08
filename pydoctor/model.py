@@ -54,7 +54,7 @@ class Documentable(object):
         else:
             return self.parent.name2fullname(name)
 
-    def _resolveName(self, name, verbose, tryHarder):
+    def _resolveName(self, name, verbose):
         system = self.system
         obj = self
         while obj:
@@ -72,18 +72,14 @@ class Documentable(object):
                     print "from %r, %r resolves to %r which isn't present in the system"%(
                         self.fullName(), name, fn)
                 return o
-            if not tryHarder and isinstance(obj, Module):
-                break
             obj = obj.parent
-        # if that didn't find anything, look inside modules -- sometimes
-        if tryHarder:
-            obj = self
-            while obj:
-                for n, fn in obj._name2fullname.iteritems():
-                    o2 = system.allobjects.get(fn)
-                    if o2 and name in o2.contents:
-                        return o2.contents[name]
-                obj = obj.parent
+        obj = self
+        while obj:
+            for n, fn in obj._name2fullname.iteritems():
+                o2 = system.allobjects.get(fn)
+                if o2 and name in o2.contents:
+                    return o2.contents[name]
+            obj = obj.parent
         if name in system.allobjects:
             return system.allobjects[name]
         for othersys in system.moresystems:
@@ -93,11 +89,11 @@ class Documentable(object):
             print "failed to find %r from %r"%(name, self.fullName())
         return None
 
-    def resolveDottedName(self, dottedname, verbose=None, tryHarder=False):
+    def resolveDottedName(self, dottedname, verbose=None):
         if verbose is None:
             verbose = self.system.options.verbosity
         parts = dottedname.split('.')
-        obj = self._resolveName(parts[0], verbose, tryHarder)
+        obj = self._resolveName(parts[0], verbose)
         if obj is None:
             return obj
         system = self.system

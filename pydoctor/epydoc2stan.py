@@ -42,7 +42,7 @@ class _EpydocLinker(object):
         # are like 2 uses in Twisted.
         return something.to_html(self)
     def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveDottedName(fullID, tryHarder=True)
+        obj = self.obj.resolveDottedName(fullID)
         if obj is None:
             return '<code>%s</code>'%(prettyID,)
         else:
