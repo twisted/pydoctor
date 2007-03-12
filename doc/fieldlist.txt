@@ -31,4 +31,3 @@ actual support::
     @see (synonym: @seealso)
     @type
     @var
-     
