@@ -328,7 +328,10 @@ def doc2html(obj, summary=False, docstring=None):
     def crappit(): pass
     crappit.__doc__ = doc
     doc = inspect.getdoc(crappit)
-    pdoc = parse_docstring(doc, errs)
+    try:
+        pdoc = parse_docstring(doc, errs)
+    except Exception, e:
+        errs = [e.__class__.__name__ +': ' + str(e)]
     if errs:
         obj.system.epytextproblems.append(obj.fullName())
         obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
@@ -341,7 +344,20 @@ def doc2html(obj, summary=False, docstring=None):
         errcount += len(errs)
         return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
-    crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
+    try:
+        crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
+    except Exception, e:
+        errs = [e.__class__.__name__ +': ' + str(e)]
+        obj.system.epytextproblems.append(obj.fullName())
+        obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
+        p = lambda m:obj.system.msg('epytext', m, thresh=2)
+        for i, l in enumerate(doc.splitlines()):
+            p("%4s"%(i+1)+' '+l)
+        for err in errs:
+            p(err)
+        global errcount
+        errcount += len(errs)
+        return boringDocstring(doc, summary)
     if crap.startswith('<p>') and crap.endswith('</p>\n'):
         crap = crap[3:-5] # argh reST
     if isinstance(crap, unicode):
