@@ -109,27 +109,12 @@ class RecentChangesPage(page.Element):
                     tags.slot("user"),
                     ]]]])
 
-def stanForOb(ob):
-    origob = ob
-    if isinstance(ob, model.Package):
-        ob = ob.contents['__init__']
-    r = [epydoc2stan.doc2html(ob),
-         tags.a(href="edit?ob="+origob.fullName())["Edit"],
-         " "]
-    if hasattr(ob, 'edits'):
-        r.append(tags.a(href="history?ob="+origob.fullName())["View docstring history (",
-                                                              len(ob.edits),
-                                                              " versions)"])
-    else:
-        r.append(tags.span(class_='undocumented')["No edits yet."])
-    return r
-
 class EditableDocstringsMixin(object):
     def docstring(self):
-        return stanForOb(self.ob)
+        return self.root.stanForOb(self.ob)
 
     def functionBody(self, data):
-        return stanForOb(data)
+        return self.root.stanForOb(data)
 
 def recursiveSubclasses(cls):
     yield cls
@@ -242,6 +227,37 @@ class EditPage(rend.Page):
                    tags.pre(render=tags.directive('after')),
                    ]]])
 
+    def submit(self, req, newDocstring):
+        ob = self.ob
+        if ob not in self.root.editsbyob:
+            if hasattr(ob, 'docsource'):
+                ds = None
+            else:
+                ds = ob.docstring
+            self.root.editsbyob[ob] = [Edit(self.origob, 0, ds, 'no-one', 'Dawn of time')]
+        if ob.parentMod not in self.root.editsbymod:
+            self.root.editsbymod[ob.parentMod] = []
+            
+
+        if not newDocstring:
+            newDocstring = None
+        else:
+            from pydoctor.astbuilder import mystr, MyTransformer
+            import parser
+            newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring.strip()).totuple(1))
+            orig = origstring(ob)
+            if orig:
+                l = len(orig.splitlines())
+                newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
+            else:
+                newDocstring.linenumber = ob.linenumber + 1
+
+        edit = Edit(self.origob, self.root.editsbyob[ob], newDocstring, userIP(req),
+                    time.strftime("%Y-%m-%d %H:%M:%S"))
+        self.root.editsbyob[ob].append(edit)
+        self.root.editsbymod[ob.parentMod].append(edit)
+        self.root.edits.append(edit)
+
     def renderHTTP(self, ctx):
         self.fullName = ctx.arg('ob')
         if self.fullName not in self.system.allobjects:
@@ -255,33 +271,7 @@ class EditPage(rend.Page):
         if action in ('Submit', 'Cancel'):
             ob = self.ob
             if action == 'Submit':
-                if not hasattr(ob, 'edits'):
-                    if hasattr(ob, 'docsource'):
-                        ds = None
-                    else:
-                        ds = ob.docstring
-                    ob.edits = [Edit(self.origob, 0, ds, 'no-one', 'Dawn of time')]
-                newDocstring = ctx.arg('docstring', None)
-                if not newDocstring:
-                    newDocstring = None
-                else:
-                    from pydoctor.astbuilder import mystr, MyTransformer
-                    import parser
-                    newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring.strip()).totuple(1))
-                    orig = origstring(ob)
-                    if orig:
-                        l = len(orig.splitlines())
-                        newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
-                    else:
-                        newDocstring.linenumber = ob.linenumber + 1
-                edit = Edit(self.origob, len(ob.edits), newDocstring, userIP(req),
-                            time.strftime("%Y-%m-%d %H:%M:%S"))
-                ob.docstring = newDocstring
-                if hasattr(ob, 'docsource') and hasattr(ob, 'computeDocsource'):
-                    del ob.docsource
-                    ob.computeDocsource()
-                ob.edits.append(edit)
-                self.root.edits.append(edit)
+                self.submit(req, ctx.arg('docstring', None))
             if not isinstance(ob, (model.Package, model.Module, model.Class)):
                 p = self.origob.parent
                 if isinstance(p, model.Module) and p.name == '__init__':
@@ -502,8 +492,12 @@ class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
         PyDoctorResource.__init__(self, system)
         self.edits = []
+        self.editsbyob = {}
+        self.editsbymod = {}
     def pageClassForObject(self, ob):
-        return findPageClassInDict(ob, editPageClasses)
+        r = findPageClassInDict(ob, editPageClasses)
+        r.root = self
+        return r
     def indexPage(self):
         return IndexPage(self.system)
     def child_recentChanges(self, ctx):
@@ -516,6 +510,33 @@ class EditingPyDoctorResource(PyDoctorResource):
         return DiffPage(self.system)
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
+
+    def currentDocstringForObject(self, ob):
+        if ob in self.editsbyob:
+            return self.editsbyob[ob][-1].newDocstring
+        else:
+            return ob.docstring
+
+    def addEdit(self, edit):
+        self.editsbyob.setdefault(edit.ob, []).append(edit)
+        self.editsbymod.setdefault(edit.ob.parentMod, []).append(edit)
+        self.edits.append(edit)
+
+    def stanForOb(self, ob):
+        origob = ob
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        r = [tags.div[epydoc2stan.doc2html(ob, self.currentDocstringForObject(ob))],
+             tags.a(href="edit?ob="+origob.fullName())["Edit"],
+             " "]
+        if ob in self.editsbyob:
+            r.append(tags.a(href="history?ob="+origob.fullName())["View docstring history (",
+                                                                  len(self.editsbyob[ob]),
+                                                                  " versions)"])
+        else:
+            r.append(tags.span(class_='undocumented')["No edits yet."])
+        return r
+
 
 def resourceForPickleFile(pickleFilePath, configFilePath=None):
     import cPickle
