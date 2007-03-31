@@ -29,7 +29,6 @@ class TwistedFunction(model.Function):
                 if self.name in io.contents:
                     imeth = io.contents[self.name]
                     if imeth.docstring:
-                        self.docstring = imeth.docstring
                         self.docsource = imeth
                         break
 

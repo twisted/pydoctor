@@ -210,7 +210,6 @@ class Function(Documentable):
             if self.name in b.contents:
                 overriddenmeth = b.contents[self.name]
                 if overriddenmeth.docstring is not None:
-                    self.docstring = overriddenmeth.docstring
                     self.docsource = overriddenmeth
                     break
 
