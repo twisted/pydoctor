@@ -1,7 +1,8 @@
 import py
 import re
+from py.__.test.item import Item
 
-class TidyChecker(py.test.Item):
+class TidyChecker(Item):
     def run(self):
         tidy = py.path.local.sysfind('tidy')
         tidy.sysexec('-qe', self.fspath)
