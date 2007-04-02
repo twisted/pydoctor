@@ -25,6 +25,13 @@
       (hopefully) produce html in a directory called "<tt>apidocs</tt>".
     </p>
     <p>
+      pydoctor's HTML generation side
+      uses <a href="http://www.divmod.org/trac/wiki/DivmodNevow">Nevow</a>
+      templates, and uses some fairly new features of Nevow &ndash; the classic
+      symptom of having too old a Nevow installed is "<tt>from nevow import
+      page</tt>" failing.  Version 0.9.18 or newer should work.
+    </p>
+    <p>
       To learn more, read the output of "<tt>pydoctor --help</tt>" and look at the example
       <tt>*.cfg</tt> files that are checked in to pydoctor svn.  Or read the source.  Or
       wait for me to write more of this web page.  Or write it for me :-)
