@@ -558,24 +558,6 @@ class ImportFinder(object):
                 self.system.importgraph.setdefault(
                     self.mod.fullName(), set()).add(modname)
 
-    def visitAssign(self, node):
-        if not len(node.nodes) == 1 or \
-               not self.classLevel == 0 or \
-               not isinstance(node.nodes[0], ast.AssName) or \
-               not node.nodes[0].name == '__all__' or \
-               not isinstance(node.expr, ast.List):
-            self.default(node)
-            return
-        items = node.expr.nodes
-        names = []
-        for item in items:
-            if not isinstance(item, ast.Const) or not isinstance(item.value, str):
-                self.default(node)
-                return
-            names.append(item.value)
-        #print self.mod, names
-        self.mod.all = names
-
 def fromText(src, modname='<test>', system=None):
     if system is None:
         _system = System()

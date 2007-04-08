@@ -186,6 +186,26 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
     Function = TwistedFunction
     ModuleVistor = TwistedModuleVisitor
 
+    def popModule(self):
+        # hmm, slightly strangely located hack, this
+        mod = self.current
+        assert not mod.processed
+        modast = self.parseFile(mod.filepath)
+        for node in modast.node.nodes:
+            if isinstance(node, ast.Assign) and \
+                   len(node.nodes) == 1 and \
+                   isinstance(node.nodes[0], ast.AssName) and \
+                   node.nodes[0].name == '__all__' and \
+                   isinstance(node.expr, ast.List):
+                items = node.expr.nodes
+                names = []
+                for item in items:
+                    if not isinstance(item, ast.Const) or not isinstance(item.value, str):
+                        return
+                    names.append(item.value)
+                    mod.all = names
+        super(TwistedASTBuilder, self).popModule()
+
     def _finalStateComputations(self):
         super(TwistedASTBuilder, self)._finalStateComputations()
         for cls in self.system.objectsOfType(model.Class):
@@ -251,6 +271,10 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
     def shouldInclude(self, obj):
         if isinstance(obj, model.Package) and obj.name == 'test':
             return False
+        if obj.name.startswith('_') and not obj.name.endswith('__'):
+            return False
+        if isinstance(self.current, model.Module) and self.current.all is not None:
+            return obj.name in self.current.all
         return True
 
     def markInterface(self, cls):
