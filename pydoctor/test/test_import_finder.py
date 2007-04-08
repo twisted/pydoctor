@@ -22,20 +22,3 @@ def test_actual():
     cls = system.allobjects['importstartest.mod1.C']
     assert cls.bases == ['importstartest.mod2.B']
 
-def test_all_recognition():
-    system = model.System()
-    builder = astbuilder.ASTBuilder(system)
-    foo = builder.pushModule('foo', None)
-    builder.popModule()
-    isf = astbuilder.ImportFinder(builder, foo)
-    walk(parse("__all__ = ['bar']"), isf)
-    assert foo.all == ['bar']
-
-def test_all_in_class_non_recognition():
-    system = model.System()
-    builder = astbuilder.ASTBuilder(system)
-    foo = builder.pushModule('foo', None)
-    builder.popModule()
-    isf = astbuilder.ImportFinder(builder, foo)
-    walk(parse("class C: __all__ = ['bar']"), isf)
-    assert foo.all is None

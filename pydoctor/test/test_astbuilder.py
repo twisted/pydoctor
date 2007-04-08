@@ -9,11 +9,12 @@ def fromText(text, modname='<test>', system=None,
     else:
         _system = system
     builder = buildercls(_system)
-    builder.processModuleAST(
-        astbuilder.parse(textwrap.dedent(text)), modname)
+    ast = astbuilder.parse(textwrap.dedent(text))
+    builder.processModuleAST(ast, modname)
     if system is None:
         builder._finalStateComputations()
     mod = _system.allobjects[modname]
+    mod.ast = ast
     mod.processed = True
     return mod
 
@@ -217,3 +218,33 @@ def test_nested_class_inheriting_from_same_module():
             pass
     '''
     mod = fromText(src)
+
+def test_noninclusion():
+    class ASTBuilder(astbuilder.ASTBuilder):
+        def shouldInclude(self, obj):
+            return obj.name != 'f'
+    src = '''
+    def f():
+        pass
+    def g():
+        pass
+    '''
+    mod = fromText(src, buildercls=ASTBuilder)
+    assert 'f' not in mod.contents
+
+def test_all_recognition():
+    mod = fromText('''
+    def f():
+        pass
+    __all__ = ['f']
+    ''')
+    astbuilder.findAll(mod.ast, mod)
+    assert mod.all == ['f']
+
+def test_all_in_class_non_recognition():
+    mod = fromText('''
+    class C:
+        __all__ = ['f']
+    ''')
+    astbuilder.findAll(mod.ast, mod)
+    assert mod.all is None
