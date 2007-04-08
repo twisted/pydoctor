@@ -66,6 +66,7 @@ class ModuleVistor(object):
             self.visit(child)
 
     def visitModule(self, node):
+        # i don't think this needs to be so confusing any more...
         if self.builder.current and self.modname in self.builder.current.contents:
             m = self.builder.current.contents[self.modname]
             assert m.docstring is None
@@ -82,7 +83,9 @@ class ModuleVistor(object):
                     self.default(node)
                     self.builder.pop(mod)
                     return
-            self.builder.pushModule(self.modname, node.doc)
+            m = self.builder.pushModule(self.modname, node.doc)
+            if m is None:
+                return
             self.default(node)
             self.builder.popModule()
 
@@ -106,6 +109,8 @@ class ModuleVistor(object):
             baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
+        if cls is None:
+            return
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:
@@ -183,6 +188,8 @@ class ModuleVistor(object):
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
+        if func is None:
+            return
         if node.lineno is not None:
             func.linenumber = node.lineno
         if func.parentMod.sourceHref:
@@ -232,6 +239,9 @@ class ASTBuilder(object):
         self._stack = []
         self.ast_cache = {}
 
+    def shouldInclude(self, obj):
+        return True
+
     def _push(self, cls, name, docstring):
         if self.current:
             if isinstance(self.current, model.Module) and \
@@ -244,6 +254,8 @@ class ASTBuilder(object):
             prefix = ''
             parent = None
         obj = cls(self.system, prefix, name, docstring, parent)
+        if not self.shouldInclude(obj):
+            return None
         if parent:
             parent.orderedcontents.append(obj)
             parent.contents[name] = obj
@@ -419,6 +431,8 @@ class ASTBuilder(object):
         fname = os.path.basename(modpath)
         modname = os.path.splitext(fname)[0]
         mod = self.pushModule(modname, None)
+        if mod is None:
+            return
         mod.filepath = modpath
         mod.processed = False
         self.setSourceHref(mod)
@@ -433,13 +447,15 @@ class ASTBuilder(object):
             raise Exception, "you must pass a package directory to preprocessDirectory"
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
+            if package is None:
+                return
             package.filepath = dirpath
             self.setSourceHref(package)
         else:
             package = None
         for fname in os.listdir(dirpath):
             fullname = os.path.join(dirpath, fname)
-            if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')) and fname != 'test':
+            if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')):
                 self.preprocessDirectory(fullname)
             elif fname.endswith('.py') and not fname.startswith('.'):
                 self.addModule(fullname)

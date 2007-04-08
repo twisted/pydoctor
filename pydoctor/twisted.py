@@ -248,6 +248,10 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_indirectly.append(cls.fullName())
 
+    def shouldInclude(self, obj):
+        if isinstance(obj, model.Package) and obj.name == 'test':
+            return False
+        return True
 
     def markInterface(self, cls):
         cls.isinterface = True

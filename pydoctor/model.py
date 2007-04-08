@@ -252,8 +252,12 @@ class System(object):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
 
     def progress(self, section, i, n, msg):
+        if n is None:
+            i = str(i)
+        else:
+            i = '%s/%s'%(i,n)
         if self.verbosity(section) == 0 and sys.stdout.isatty():
-            print '\r'+'%s/%s'%(i, n), msg,
+            print '\r'+i, msg,
             sys.stdout.flush()
             if i == n:
                 print
