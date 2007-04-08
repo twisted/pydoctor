@@ -190,20 +190,8 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
         # hmm, slightly strangely located hack, this
         mod = self.current
         assert not mod.processed
-        modast = self.parseFile(mod.filepath)
-        for node in modast.node.nodes:
-            if isinstance(node, ast.Assign) and \
-                   len(node.nodes) == 1 and \
-                   isinstance(node.nodes[0], ast.AssName) and \
-                   node.nodes[0].name == '__all__' and \
-                   isinstance(node.expr, ast.List):
-                items = node.expr.nodes
-                names = []
-                for item in items:
-                    if not isinstance(item, ast.Const) or not isinstance(item.value, str):
-                        return
-                    names.append(item.value)
-                    mod.all = names
+        if hasattr(mod, 'filepath'):
+            astbuilder.findAll(self.parseFile(mod.filepath), mod)
         super(TwistedASTBuilder, self).popModule()
 
     def _finalStateComputations(self):

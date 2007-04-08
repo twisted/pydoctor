@@ -581,3 +581,24 @@ def toposort(input, edges):
     while input:
         p(input.popitem()[0])
     return output
+
+def findAll(modast, mod):
+    for node in modast.node.nodes:
+        if isinstance(node, ast.Assign) and \
+               len(node.nodes) == 1 and \
+               isinstance(node.nodes[0], ast.AssName) and \
+               node.nodes[0].name == '__all__':
+            if mod.all is not None:
+                self.system.msg('all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
+            if not isinstance(node.expr, ast.List):
+                self.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                continue
+            items = node.expr.nodes
+            names = []
+            for item in items:
+                if not isinstance(item, ast.Const) or not isinstance(item.value, str):
+                    self.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                    continue
+                names.append(item.value)
+                mod.all = names
+    
