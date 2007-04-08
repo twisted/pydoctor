@@ -41,7 +41,7 @@ class NevowWriter:
             f = open(os.path.join(self.base, pclass.filename), 'w')
             f.write(flat.flatten(page))
             f.close()
-            system.msg('html', "took %fs"%(time.time() - T))
+            system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def writeDocsFor(self, ob, functionpages):
         isfunc = ob.document_in_parent_page
