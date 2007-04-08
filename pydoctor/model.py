@@ -260,14 +260,21 @@ class System(object):
             print '\r'+i, msg,
             sys.stdout.flush()
             if i == n:
+                self.needsnl = False
                 print
+            else:
+                self.needsnl = True
 
     def msg(self, section, msg, thresh=0, topthresh=100, nonl=False):
+        if self.needsnl:
+            print
         if thresh <= self.verbosity(section) <= topthresh:
             print msg,
             if nonl:
+                self.needsnl = True
                 sys.stdout.flush()
             else:
+                self.needsnl = False
                 print
 
     def report(self):
