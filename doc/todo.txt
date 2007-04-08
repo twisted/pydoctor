@@ -22,4 +22,4 @@ Model:
 
 General:
 
-  - sort out a consistent verbosity story
+  - sort out a consistent verbosity story. getting somewhere with this.
