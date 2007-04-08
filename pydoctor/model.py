@@ -247,6 +247,7 @@ class System(object):
         self.guessedprojectname = 'my project'
         self.epytextproblems = [] # fullNames of objects that failed to epytext properly
         self.verboselevel = 0
+        self.needsnl = False
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
