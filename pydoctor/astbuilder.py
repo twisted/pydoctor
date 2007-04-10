@@ -67,8 +67,12 @@ class ModuleVistor(object):
 
     def visitModule(self, node):
         # i don't think this needs to be so confusing any more...
+        m = None
         if self.builder.current and self.modname in self.builder.current.contents:
             m = self.builder.current.contents[self.modname]
+        elif self.modname in self.system.allobjects:
+            m = self.system.allobjects[self.modname]
+        if m:
             assert m.docstring is None
             m.docstring = node.doc
             self.builder.push(m)
