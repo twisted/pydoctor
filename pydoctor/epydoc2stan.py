@@ -275,6 +275,7 @@ class FieldHandler(object):
 errcount = 0
 
 def doc2html(obj, summary=False, docstring=None):
+    global errcount
     """Generate an HTML representation of a docstring"""
     origobj = obj
     if isinstance(obj, model.Package):
@@ -335,7 +336,6 @@ def doc2html(obj, summary=False, docstring=None):
             p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
-        global errcount
         errcount += len(errs)
         return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
@@ -350,7 +350,6 @@ def doc2html(obj, summary=False, docstring=None):
             p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
-        global errcount
         errcount += len(errs)
         return boringDocstring(doc, summary)
     if crap.startswith('<p>') and crap.endswith('</p>\n'):
