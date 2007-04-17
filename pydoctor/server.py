@@ -416,11 +416,7 @@ class DiffPage(rend.Page):
         fd.apply_edit(self.editA, self.editB)
         return tags.pre[fd.diff()]
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title(render=tags.directive("title")),
-                  tags.link(rel="stylesheet", type="text/css", href="apidocs.css")],
-        tags.body[tags.h1(render=tags.directive("title")),
-                  tags.table(render=tags.directive("diff"))]])
+    docFactory = loaders.xmlfile(util.templatefile('diff.html'))
 
     def renderHTTP(self, context):
         try:
@@ -459,11 +455,7 @@ class BigDiffPage(rend.Page):
             r.append(tags.pre[mods[mod].diff()])
         return r
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title["Big Diff"],
-                  tags.link(rel="stylesheet", type="text/css", href="apidocs.css")],
-        tags.body[tags.h1["Big Diff"],
-                  tags.div(render=tags.directive("bigDiff"))]])
+    docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
 
     def renderHTTP(self, context):
         return super(BigDiffPage, self).renderHTTP(context)
