@@ -318,7 +318,9 @@ def doc2html(obj, summary=False, docstring=None):
                 break
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
-        #obj.system.msg('epytext', '%r parser cannot be imported: %s'%(obj.system.options.docformat, e))
+        msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
+            obj.system.options.docformat, e.__class__.__name__, e)
+        obj.system.msg('epytext', msg, thresh=-1, once=True)
         return boringDocstring(doc, summary)
     errs = []
     def crappit(): pass

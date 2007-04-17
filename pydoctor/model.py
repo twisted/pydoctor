@@ -248,6 +248,7 @@ class System(object):
         self.epytextproblems = [] # fullNames of objects that failed to epytext properly
         self.verboselevel = 0
         self.needsnl = False
+        self.once_msgs = set()
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
@@ -266,7 +267,12 @@ class System(object):
             else:
                 self.needsnl = True
 
-    def msg(self, section, msg, thresh=0, topthresh=100, nonl=False, wantsnl=True):
+    def msg(self, section, msg, thresh=0, topthresh=100, nonl=False, wantsnl=True, once=False):
+        if once:
+            if (section, msg) in self.once_msgs:
+                return
+            else:
+                self.once_msgs.add((section, msg))
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
                 print
