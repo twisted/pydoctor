@@ -97,7 +97,7 @@ class TableFragment(object):
                                         lineno=line)
             else:
                 linenocell_ = ()
-            class_ = child.kind.lower()
+            class_ = child.kind.lower().replace(' ', '')
             if child.parent is not self.ob:
                 class_ = 'base' + class_
             rows.append(fillSlots(row,
@@ -131,7 +131,7 @@ class CommonPage(object):
 
     def heading(self):
         kind = self.ob.kind
-        return tags.h1(class_=kind.lower())[kind + " " + mediumName(self.ob)]
+        return tags.h1(class_=kind.lower().replace(' ', ''))[kind + " " + mediumName(self.ob)]
 
     def part(self):
         tag = tags.invisible()
@@ -221,7 +221,14 @@ class CommonPage(object):
                 else:
                     functionSourceLink = fillSlots(sourceLink,
                                                    sourceHref=sourceHref)
+                if data.kind == "Class Method":
+                    decorator = ('@classmethod', tags.br())
+                elif data.kind == "Static Method":
+                    decorator = ('@staticmethod', tags.br())
+                else:
+                    decorator = ()
                 header = fillSlots(functionHeader,
+                                   decorator=decorator,
                                    functionName=[data.name, '(', signature(data.argspec), '):'],
                                    functionSourceLink=functionSourceLink)
             else:

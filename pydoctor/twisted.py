@@ -52,26 +52,27 @@ class TwistedModuleVisitor(astbuilder.ModuleVistor):
         # i would like pattern matching in python please
         # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
         #     ...
+        sup = lambda : super(TwistedModuleVisitor, self).visitAssign(node)
         if isinstance(self.builder.current, model.Module) and \
                ast_pp.pp(node) == 'Interface = interface.Interface\n':
             # warner!!!
 
             n2fn = self.builder.current._name2fullname
             n2fn['Interface'] = 'zope.interface.Interface'
-            return
+            return sup()
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
                not isinstance(self.builder.current, model.Class) or \
                not isinstance(node.expr, ast.CallFunc) or \
                self.funcNameFromCall(node.expr) != 'zope.interface.Attribute':
             self.default(node)
-            return
+            return sup()
         args = node.expr.args
         if len(args) != 1 or \
                not isinstance(args[0], ast.Const) or \
                not isinstance(args[0].value, str):
             self.default(node)
-            return
+            return sup()
         attr = self.builder._push(Attribute, node.nodes[0].name, args[0].value)
         attr.linenumber = node.lineno
         if attr.parentMod.sourceHref:

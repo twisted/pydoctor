@@ -248,3 +248,19 @@ def test_all_in_class_non_recognition():
     ''')
     astbuilder.findAll(mod.ast, mod)
     assert mod.all is None
+
+def test_classmethod():
+    mod = fromText('''
+    class C:
+        @classmethod
+        def f(klass):
+            pass
+    ''')
+    assert mod.contents['C'].contents['f'].kind == 'Class Method'
+    mod = fromText('''
+    class C:
+        def f(klass):
+            pass
+        f = classmethod(f)
+    ''')
+    assert mod.contents['C'].contents['f'].kind == 'Class Method'

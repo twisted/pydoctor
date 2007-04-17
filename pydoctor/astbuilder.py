@@ -190,10 +190,56 @@ class ModuleVistor(object):
             else:
                 name2fullname[asname] = fullname
 
+    def visitAssign(self, node):
+        if not isinstance(self.builder.current, model.Class):
+            return
+        if len(node.nodes) != 1:
+            return
+        if not isinstance(node.nodes[0], ast.AssName):
+            return
+        target = node.nodes[0].name
+        if not isinstance(node.expr, ast.CallFunc):
+            return
+        func = node.expr.node
+        if not isinstance(func, ast.Name):
+            return
+        func = func.name
+        args = node.expr.args
+        if len(args) != 1:
+            return
+        arg, = args
+        if not isinstance(arg, ast.Name):
+            return
+        arg = arg.name
+        if target == arg and func in ['staticmethod', 'classmethod']:
+            target = self.builder.current.contents.get(target)
+            if target and isinstance(target, model.Function):
+                if target.kind != 'Method':
+                    self.system.msg('ast', 'XXX')
+                else:
+                    target.kind = func.title().replace('m', ' M')
+
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
         if func is None:
             return
+        func.decorators = node.decorators
+        if isinstance(func.parent, model.Class) and node.decorators:
+            isclassmethod = False
+            isstaticmethod = False
+            for d in node.decorators.nodes:
+                if isinstance(d, ast.Name):
+                    if d.name == 'classmethod':
+                        isclassmethod = True
+                    elif d.name == 'staticmethod':
+                        isstaticmethod = True
+            if isstaticmethod:
+                if isclassmethod:
+                    self.system.msg('ast', '%r is both class- and static-method?'%(func.fullName(),), thresh=-1)
+                else:
+                    func.kind = 'Static Method'
+            else:
+                func.kind = 'Class Method'
         if node.lineno is not None:
             func.linenumber = node.lineno
         if func.parentMod.sourceHref:

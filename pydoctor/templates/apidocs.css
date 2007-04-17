@@ -69,6 +69,16 @@ div.toplevel p
   background: lightgreen;
 }
 
+.classmethod
+{
+  background: #b0e070;
+}
+
+.staticmethod
+{
+  background: #e0e0e0;
+}
+
 .attribute
 {
   background: #ddbbff;
@@ -82,6 +92,11 @@ div.toplevel p
 .basemethod
 {
   background: #cceecc;
+}
+
+.baseclassmethod
+{
+  background: #c0e7a0;
 }
 
 .class
