@@ -10,17 +10,10 @@ def link(o):
 def get_parser(formatname):
     try:
         mod = __import__('epydoc.markup.' + formatname, globals(), locals(), ['parse_docstring'])
-    except ImportError:
-        return None
+    except ImportError, e:
+        return None, e
     else:
-        return mod.parse_docstring
-
-try:
-    from epydoc.markup import epytext
-    EPYTEXT = True
-except:
-    print "no epytext found"
-    EPYTEXT = False
+        return mod.parse_docstring, None
 
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring
@@ -322,10 +315,9 @@ def doc2html(obj, summary=False, docstring=None):
             if line.strip():
                 doc = line
                 break
-    if not EPYTEXT:
-        return boringDocstring(doc, summary)
-    parse_docstring = get_parser(obj.system.options.docformat)
+    parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
+        #obj.system.msg('epytext', '%r parser cannot be imported: %s'%(obj.system.options.docformat, e))
         return boringDocstring(doc, summary)
     errs = []
     def crappit(): pass
