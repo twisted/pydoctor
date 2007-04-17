@@ -267,9 +267,9 @@ class System(object):
                 self.needsnl = True
 
     def msg(self, section, msg, thresh=0, topthresh=100, nonl=False, wantsnl=True):
-        if self.needsnl and wantsnl:
-            print
         if thresh <= self.verbosity(section) <= topthresh:
+            if self.needsnl and wantsnl:
+                print
             print msg,
             if nonl:
                 self.needsnl = True
