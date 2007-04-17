@@ -206,26 +206,7 @@ class EditPage(rend.Page):
     def render_url(self, context, data):
         return 'edit?ob=' + self.fullName
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title(render=tags.directive('title')),
-                  tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
-        tags.body[tags.h1(render=tags.directive('title')),
-                  tags.p["Be warned that this is just a plaything currently, "
-                         "changes you make will be lost when the server is restarted, "
-                         "which is likely to be frequently."],
-                  tags.div(render=tags.directive('preview'))[tags.h2["Preview"]],
-                  tags.form(action=tags.directive('url'), method="post")
-                  [tags.input(name="fullName", type="hidden", value=tags.directive('value')),
-                   tags.pre(render=tags.directive('before')),
-                   tags.textarea(style="font-family: monospace; padding: 0",
-                                 rows=tags.directive('rows'), cols=90, name="docstring",
-                                 render=tags.directive('textarea')),
-                   tags.br(),
-                   tags.input(name='action', type="submit", value="Submit"),
-                   tags.input(name='action', type="submit", value="Preview"),
-                   tags.input(name='action', type="submit", value="Cancel"),
-                   tags.pre(render=tags.directive('after')),
-                   ]]])
+    docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
     def submit(self, req, newDocstring):
         ob = self.ob
