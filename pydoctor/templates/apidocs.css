@@ -66,17 +66,17 @@ div.toplevel p
 
 .method
 {
-  background: lightgreen;
+  background: #90ee90;
 }
 
 .classmethod
 {
-  background: #b0e070;
+  background: #c0ee90;
 }
 
 .staticmethod
 {
-  background: #e0e0e0;
+  background: #d0eed0;
 }
 
 .attribute
@@ -96,7 +96,12 @@ div.toplevel p
 
 .baseclassmethod
 {
-  background: #c0e7a0;
+  background: #e0f7c8;
+}
+
+.basestaticmethod
+{
+  background: #e8f7e8;
 }
 
 .class
