@@ -3,7 +3,9 @@ from pydoctor.test.test_astbuilder import fromText
 import py
 
 def setup_module(mod):
-    if not mod.epydoc2stan.EPYTEXT:
+    try:
+        import epydoc
+    except ImportError:
         py.test.skip("tests rather pointless without epydoc installed")
 
 def test_multiple_types():
