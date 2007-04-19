@@ -145,6 +145,12 @@ class FieldHandler(object):
         self.unknowns = []
         self.unattached_types = {}
 
+    def redef(self, field):
+        self.obj.system.msg(
+            "epytext",
+            "on %r: redefinition of @type %s"%(self.obj.fullName(), field.arg),
+            thresh=-1)
+
     def handle_return(self, field):
         if not self.return_desc:
             self.return_desc = FieldDesc()
@@ -164,8 +170,8 @@ class FieldHandler(object):
     def add_type_info(self, desc_list, field):
         #print desc_list, field
         if desc_list and desc_list[-1].name == field.arg:
-            if desc_list[-1].type is None:
-                self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
+            if desc_list[-1].type is not None:
+                self.redef(field)
             desc_list[-1].type = field.body
         else:
             d = FieldDesc()
@@ -193,11 +199,11 @@ class FieldHandler(object):
             cvars = self.cvar_descs
             if ivars and ivars[-1].name == field.arg:
                 if ivars[-1].type is not None:
-                    self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
+                    self.redef(field)
                 ivars[-1].type = field.body
             elif cvars and cvars[-1].name == field.arg:
                 if cvars[-1].type is not None:
-                    self.obj.system.msg("epytext", "redefinition of @type %s"%(field.arg,), thresh=1)
+                    self.redef(field)
                 cvars[-1].type = field.body
             else:
                 self.unattached_types[field.arg] = field.body
@@ -238,7 +244,10 @@ class FieldHandler(object):
         self.authors.append(field)
 
     def handleUnknownField(self, field):
-        self.obj.system.msg('epytext', 'found unknown field on %r: %r'%(self.obj.fullName(), field))
+        self.obj.system.msg(
+            'epytext',
+            'found unknown field on %r: %r'%(self.obj.fullName(), field),
+            thresh=-1)
         self.add_info(self.unknowns, field)
 
     def handle(self, field):
