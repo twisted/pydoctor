@@ -123,8 +123,11 @@ class Field(object):
         self.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
 
     def __repr__(self):
+        r = repr(self.body)
+        if len(r) > 25:
+            r = r[:20] + '...' + r[-2:]
         return "<%s %r %r %s>"%(self.__class__.__name__,
-                             self.tag, self.arg, repr(self.body)[:30])
+                             self.tag, self.arg, r)
 
 class FieldHandler(object):
     def __init__(self, obj):
@@ -235,7 +238,7 @@ class FieldHandler(object):
         self.authors.append(field)
 
     def handleUnknownField(self, field):
-        print 'XXX', 'unknown field', field
+        self.obj.system.msg('epytext', 'found unknown field on %r: %r'%(self.obj.fullName(), field))
         self.add_info(self.unknowns, field)
 
     def handle(self, field):
