@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
+<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Recent Changes</title>
+    <link href="apidocs.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <h1>Recent Changes</h1>
+    <p>See <a href="bigDiff">a diff containing all changes made online</a></p>
+    <ul nevow:render="changes">
+      <li nevow:pattern="item"><nevow:slot name="diff"></nevow:slot> - <nevow:slot name="hist"></nevow:slot> - <nevow:slot name="object"></nevow:slot> - <nevow:slot name="time"></nevow:slot> - <nevow:slot name="user"></nevow:slot></li>
+    </ul>
+  </body>
+</html>

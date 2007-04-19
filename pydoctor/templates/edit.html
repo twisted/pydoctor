@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
+<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title nevow:render="title">Edit</title>
+    <link href="apidocs.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <h1 nevow:render="title">Edit</h1>
+    <p>Be warned that this is just a plaything currently, changes you make will be lost when the server is restarted, which is likely to be frequently.</p>
+    <div nevow:render="preview">
+      <h2>Preview</h2>
+    </div>
+    <form action="" method="post">
+      <nevow:attr nevow:render="url" name="action"></nevow:attr>
+      <input type="hidden" name="fullName" value="">
+        <nevow:attr nevow:render="value" name="value"></nevow:attr>
+      </input>
+      <pre nevow:render="before"></pre>
+      <textarea style="font-family: monospace; padding: 0" rows="10"
+                name="docstring" nevow:render="textarea" cols="90">
+        <nevow:attr nevow:render="rows" name="rows"></nevow:attr>
+      </textarea>
+      <br />
+      <input type="submit" name="action" value="Submit" />
+      <input type="submit" name="action" value="Preview" />
+      <input type="submit" name="action" value="Cancel" />
+      <pre nevow:render="after"></pre>
+    </form>
+  </body>
+</html>
