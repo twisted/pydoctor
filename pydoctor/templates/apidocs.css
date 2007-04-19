@@ -106,7 +106,12 @@ div.toplevel p
 
 .class
 {
-  background: lightblue;
+  background: #add8e6;
+}
+
+.baseclass
+{
+  background: #d6ecf3;
 }
 
 .interface
