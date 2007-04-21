@@ -498,10 +498,11 @@ class EditingPyDoctorResource(PyDoctorResource):
         self.addEdit(edit)
 
     def stanForOb(self, ob):
+        print ob, self.currentDocstringForObject(ob)
         origob = ob
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']
-        r = [tags.div[epydoc2stan.doc2html(ob, self.currentDocstringForObject(ob))],
+        r = [tags.div[epydoc2stan.doc2html(ob, docstring=self.currentDocstringForObject(ob))],
              tags.a(href="edit?ob="+origob.fullName())["Edit"],
              " "]
         if ob in self.editsbyob:
