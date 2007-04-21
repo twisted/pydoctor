@@ -3,8 +3,15 @@ from nevow.static import File
 from zope.interface import implements
 from pydoctor import nevowhtml, model, epydoc2stan
 from pydoctor.nevowhtml import pages, summary, util
+from pydoctor.astbuilder import mystr, MyTransformer
+import parser
 
 import time
+
+def parse_str(s):
+    t = parser.suite(s.strip()).totuple(1)
+    return MyTransformer().get_docstring(t)
+
 
 def findPageClassInDict(obj, d, default="CommonPage"):
     for c in obj.__class__.__mro__:
@@ -164,9 +171,7 @@ class EditPage(rend.Page):
     def render_preview(self, context, data):
         docstring = context.arg('docstring', None)
         if docstring is not None:
-            from pydoctor.astbuilder import mystr, MyTransformer
-            import parser
-            docstring = MyTransformer().get_docstring(parser.suite(docstring.strip()).totuple(1))
+            docstring = parse_str(docstring)
             return context.tag[epydoc2stan.doc2html(
                 self.system.allobjects[self.fullName], docstring=docstring),
                                tags.h2["Edit"]]
@@ -223,9 +228,7 @@ class EditPage(rend.Page):
         if not newDocstring:
             newDocstring = None
         else:
-            from pydoctor.astbuilder import mystr, MyTransformer
-            import parser
-            newDocstring = MyTransformer().get_docstring(parser.suite(newDocstring.strip()).totuple(1))
+            newDocstring = parse_str(newDocstring)
             orig = origstring(ob)
             if orig:
                 l = len(orig.splitlines())
@@ -242,6 +245,7 @@ class EditPage(rend.Page):
     def renderHTTP(self, ctx):
         self.fullName = ctx.arg('ob')
         if self.fullName not in self.system.allobjects:
+            print self.fullName, self.system.allobjects
             return ErrorPage()
         self.origob = self.ob = self.system.allobjects[self.fullName]
         if isinstance(self.ob, model.Package):
