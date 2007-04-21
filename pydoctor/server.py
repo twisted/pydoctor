@@ -245,7 +245,6 @@ class EditPage(rend.Page):
     def renderHTTP(self, ctx):
         self.fullName = ctx.arg('ob')
         if self.fullName not in self.system.allobjects:
-            print self.fullName, self.system.allobjects
             return ErrorPage()
         self.origob = self.ob = self.system.allobjects[self.fullName]
         if isinstance(self.ob, model.Package):
