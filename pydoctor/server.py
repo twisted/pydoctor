@@ -348,14 +348,19 @@ class FileDiff(object):
 
 
 class DiffPage(rend.Page):
-    def __init__(self, root):
+    def __init__(self, root, ob, origob, editA, editB):
         self.root = root
+        self.ob = ob
+        self.origob = origob
+        self.editA = editA
+        self.editB = editB
 
     def render_title(self, context, data):
         return context.tag["Viewing differences between revisions ",
                            self.editA.rev, " and ", self.editB.rev, " of ",
                            u"\N{LEFT DOUBLE QUOTATION MARK}" +
                            self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+
     def render_diff(self, context, data):
         fd = FileDiff(self.ob.parentMod)
         fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
@@ -364,30 +369,6 @@ class DiffPage(rend.Page):
         return tags.pre[fd.diff()]
 
     docFactory = loaders.xmlfile(util.templatefile('diff.html'))
-
-    def renderHTTP(self, context):
-        try:
-            self.origob = self.ob = self.root.system.allobjects[context.arg('ob')]
-        except KeyError:
-            return ErrorPage()
-        if isinstance(self.ob, model.Package):
-            self.ob = self.ob.contents['__init__']
-        try:
-            revA = int(context.arg('revA', ''))
-            revB = int(context.arg('revB', ''))
-        except ValueError:
-            return ErrorPage()
-        try:
-            edits = self.root.editsbyob[self.ob]
-        except KeyError:
-            return ErrorPage()
-        try:
-            self.editA = edits[revA]
-            self.editB = edits[revB]
-        except IndexError:
-            return ErrorPage()
-        print self.editA, self.editB
-        return super(DiffPage, self).renderHTTP(context)
 
 class BigDiffPage(rend.Page):
     def __init__(self, system, root):
@@ -457,7 +438,26 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_history(self, ctx):
         return HistoryPage(self.system)
     def child_diff(self, ctx):
-        return DiffPage(self)
+        origob = ob = self.system.allobjects.get(ctx.arg('ob'))
+        if ob is None:
+            return ErrorPage()
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        try:
+            revA = int(ctx.arg('revA', ''))
+            revB = int(ctx.arg('revB', ''))
+        except ValueError:
+            return ErrorPage()
+        try:
+            edits = self.editsbyob[ob]
+        except KeyError:
+            return ErrorPage()
+        try:
+            editA = edits[revA]
+            editB = edits[revB]
+        except IndexError:
+            return ErrorPage()
+        return DiffPage(self, ob, origob, editA, editB)
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
 
