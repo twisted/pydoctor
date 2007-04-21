@@ -1,4 +1,5 @@
 from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_packages import processPackage
 from pydoctor import server
 from nevow import context, testutil, appserver, flat, inevow
 from twisted.internet.defer import maybeDeferred
@@ -30,13 +31,14 @@ def test_simple():
     root = server.PyDoctorResource(m.system)
     assert 'This is a docstring!' in getTextOfPage(root, 'mod.html')
 
-## doesn't work, as the module doesn't exist on disk, ho hum
+def test_edit_renders_ok():
+    system = processPackage('localimporttest')
+    root = server.EditingPyDoctorResource(system)
+    args = {'ob':['localimporttest.mod1.C']}
+    result = getTextOfPage(root, 'edit', args=args)
+    # very weak, but it's an assert that things didn't explode
+    assert 'textarea' in result
 
-## def test_edit_renders_ok():
-##     m = fromText('''
-##     """This is a docstring!"""
-##     class C:
-##         pass
-##     ''', modname="mod")
-##     root = server.EditingPyDoctorResource(m.system)
-##     assert 'This is a docstring!' in getTextOfPage(root, 'edit', args=dict(ob=('mod',)))
+    args = {'ob':['does.not.exist']}
+    result = getTextOfPage(root, 'edit', args=args)
+    assert 'An error occurred' in result
