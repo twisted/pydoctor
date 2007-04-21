@@ -236,7 +236,7 @@ class EditPage(rend.Page):
             else:
                 newDocstring.linenumber = ob.linenumber + 1
 
-        edit = Edit(self.origob, self.root.editsbyob[ob], newDocstring, userIP(req),
+        edit = Edit(self.origob, len(self.root.editsbyob[ob]), newDocstring, userIP(req),
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.root.editsbyob[ob].append(edit)
         self.root.editsbymod[ob.parentMod].append(edit)
@@ -268,9 +268,6 @@ class EditPage(rend.Page):
             req.redirect(str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag)))
             return ''
         return super(EditPage, self).renderHTTP(ctx)
-
-def edits(ob):
-    return getattr(ob, 'edits', [])
 
 class HistoryPage(rend.Page):
     def __init__(self, system):
@@ -377,7 +374,6 @@ class FileDiff(object):
         self.delta = 0
 
     def apply_edit(self, editA, editB):
-        print 'apply_edit'
         if not editA.newDocstring:
             lineno = editA.obj.linenumber + 1
             origlines = []
@@ -404,8 +400,8 @@ class FileDiff(object):
 
 
 class DiffPage(rend.Page):
-    def __init__(self, system):
-        self.system = system
+    def __init__(self, root):
+        self.root = root
 
     def render_title(self, context, data):
         return context.tag["Viewing differences between revisions ",
@@ -414,7 +410,7 @@ class DiffPage(rend.Page):
                            self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_diff(self, context, data):
         fd = FileDiff(self.ob.parentMod)
-        fd.apply_edit(edits(self.ob)[0], self.editA)
+        fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
         fd.reset()
         fd.apply_edit(self.editA, self.editB)
         return tags.pre[fd.diff()]
@@ -423,7 +419,7 @@ class DiffPage(rend.Page):
 
     def renderHTTP(self, context):
         try:
-            self.origob = self.ob = self.system.allobjects[context.arg('ob')]
+            self.origob = self.ob = self.root.system.allobjects[context.arg('ob')]
         except KeyError:
             return ErrorPage()
         if isinstance(self.ob, model.Package):
@@ -434,10 +430,15 @@ class DiffPage(rend.Page):
         except ValueError:
             return ErrorPage()
         try:
-            self.editA = edits(self.ob)[revA]
-            self.editB = edits(self.ob)[revB]
+            edits = self.root.editsbyob[self.ob]
+        except KeyError:
+            return ErrorPage()
+        try:
+            self.editA = edits[revA]
+            self.editB = edits[revB]
         except IndexError:
             return ErrorPage()
+        print self.editA, self.editB
         return super(DiffPage, self).renderHTTP(context)
 
 class BigDiffPage(rend.Page):
@@ -483,7 +484,7 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_history(self, ctx):
         return HistoryPage(self.system)
     def child_diff(self, ctx):
-        return DiffPage(self.system)
+        return DiffPage(self)
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
 

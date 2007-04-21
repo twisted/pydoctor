@@ -6,8 +6,19 @@ from twisted.internet.defer import maybeDeferred
 
 def deferredResult(*args):
     hack = []
-    maybeDeferred(*args).addCallback(lambda x:hack.append(x))
-    return hack[0]
+    err = []
+    def cb(x):
+        hack.append(x)
+    def eb(f):
+        err.append(f)
+    maybeDeferred(*args).addCallbacks(cb, eb)
+    if hack:
+        return hack[0]
+    elif err:
+        f = err[0]
+        raise f.type, f.value, f.tb
+    else:
+        assert 0, "time to start using trial..."
 
 def getTextOfPage(root, page, args=None, return_request=False):
     """This perpetrates several awful hacks."""
@@ -51,6 +62,13 @@ def test_edit_renders_ok():
     result = getTextOfPage(root, 'edit', args=args)
     assert 'An error occurred' in result
 
+def performEdit(root, ob, newDocstring):
+    args = {'ob':ob.fullName(), 'docstring':newDocstring,
+            'action':'Submit'}
+    result, r = getTextOfPage(root, 'edit', args=args, return_request=True)
+    assert not result
+    assert ob.fullName() in r.redirected_to
+
 def test_edit():
     system = processPackage('localimporttest')
     root = server.EditingPyDoctorResource(system)
@@ -59,11 +77,22 @@ def test_edit():
     docstring = root.currentDocstringForObject(ob)
     assert docstring == ob.docstring
 
-    args = {'ob':ob.fullName(), 'docstring':'"This *is* a docstring"',
-            'action':'Submit'}
-    result, r = getTextOfPage(root, 'edit', args=args, return_request=True)
-    assert not result
-    assert 'localimporttest.mod1.C' in r.redirected_to
+    newDocstring = '"""This *is* a docstring"""'
+    performEdit(root, ob, newDocstring)
     docstring = root.currentDocstringForObject(ob)
-    assert docstring == eval(args['docstring'])
+    assert docstring == eval(newDocstring)
     assert ob.docstring != docstring
+
+def test_diff():
+    system = processPackage('localimporttest')
+    root = server.EditingPyDoctorResource(system)
+
+    ob = system.allobjects['localimporttest.mod1.C']
+
+    performEdit(root, ob, repr("This *is* a docstring"))
+
+    args = {'ob':ob.fullName(),
+            'revA':'0',
+            'revB':'1'}
+    difftext = getTextOfPage(root, 'diff', args)
+    assert "*is*" in difftext
