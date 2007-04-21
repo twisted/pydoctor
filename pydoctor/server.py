@@ -161,24 +161,26 @@ def origstring(ob, lines=None):
         return indent + ob.docstring.orig
 
 class EditPage(rend.Page):
-    def __init__(self, system, root):
-        self.system = system
+    def __init__(self, root, ob, origob, docstring=None):
         self.root = root
+        self.ob = ob
+        self.origob = origob
+        self.docstring = docstring
+        self.lines = open(self.ob.parentMod.filepath, 'rU').readlines()
 
     def render_title(self, context, data):
-        return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.fullName + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+        return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
+                           self.ob.fullName(),
+                           u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
-        docstring = context.arg('docstring', None)
-        if docstring is not None:
-            docstring = parse_str(docstring)
-            return context.tag[epydoc2stan.doc2html(
-                self.system.allobjects[self.fullName], docstring=docstring),
+        if self.docstring is not None:
+            docstring = parse_str(self.docstring)
+            return context.tag[epydoc2stan.doc2html(self.ob, docstring=docstring),
                                tags.h2["Edit"]]
         else:
             return ()
     def render_value(self, context, data):
-        return self.fullName
+        return self.ob.fullName()
     def render_before(self, context, data):
         lineno = self.ob.linenumber
         firstlineno = max(0, lineno-6)
@@ -209,65 +211,12 @@ class EditPage(rend.Page):
             lines.append('...\n')
         return context.tag[lines]
     def render_url(self, context, data):
-        return 'edit?ob=' + self.fullName
+        return 'edit?ob=' + self.ob.fullName()
 
     docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
     def submit(self, req, newDocstring):
-        ob = self.ob
-        if ob not in self.root.editsbyob:
-            if hasattr(ob, 'docsource'):
-                ds = None
-            else:
-                ds = ob.docstring
-            self.root.editsbyob[ob] = [Edit(self.origob, 0, ds, 'no-one', 'Dawn of time')]
-        if ob.parentMod not in self.root.editsbymod:
-            self.root.editsbymod[ob.parentMod] = []
-            
-
-        if not newDocstring:
-            newDocstring = None
-        else:
-            newDocstring = parse_str(newDocstring)
-            orig = origstring(ob)
-            if orig:
-                l = len(orig.splitlines())
-                newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
-            else:
-                newDocstring.linenumber = ob.linenumber + 1
-
-        edit = Edit(self.origob, len(self.root.editsbyob[ob]), newDocstring, userIP(req),
-                    time.strftime("%Y-%m-%d %H:%M:%S"))
-        self.root.editsbyob[ob].append(edit)
-        self.root.editsbymod[ob.parentMod].append(edit)
-        self.root.edits.append(edit)
-
-    def renderHTTP(self, ctx):
-        self.fullName = ctx.arg('ob')
-        if self.fullName not in self.system.allobjects:
-            return ErrorPage()
-        self.origob = self.ob = self.system.allobjects[self.fullName]
-        if isinstance(self.ob, model.Package):
-            self.ob = self.ob.contents['__init__']
-        self.lines = open(self.ob.parentMod.filepath, 'rU').readlines()
-        req = ctx.locate(inevow.IRequest)
-        action = ctx.arg('action', 'Preview')
-        if action in ('Submit', 'Cancel'):
-            ob = self.ob
-            if action == 'Submit':
-                self.submit(req, ctx.arg('docstring', None))
-            if not isinstance(ob, (model.Package, model.Module, model.Class)):
-                p = self.origob.parent
-                if isinstance(p, model.Module) and p.name == '__init__':
-                    p = p.parent
-                child = p.fullName() + '.html'
-                frag = ob.name
-            else:
-                child = self.fullName + '.html'
-                frag = None
-            req.redirect(str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag)))
-            return ''
-        return super(EditPage, self).renderHTTP(ctx)
+        self.root.newDocstring(userIP(req), self.ob, self.origob, newDocstring)
 
 class HistoryPage(rend.Page):
     def __init__(self, system):
@@ -275,7 +224,7 @@ class HistoryPage(rend.Page):
 
     def render_title(self, context, data):
         return context.tag[u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.fullName +
+                           self.ob.fullName() +
                            u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
     def render_links(self, context, data):
         ds = edits(self.ob)
@@ -308,8 +257,7 @@ class HistoryPage(rend.Page):
         docstring = edits(self.ob)[self.rev].newDocstring
         if docstring is None:
             docstring = ''
-        return epydoc2stan.doc2html(
-            self.system.allobjects[self.fullName], docstring=docstring)
+        return epydoc2stan.doc2html(self.ob, docstring=docstring)
     def render_linkback(self, context, data):
         ob = self.system.allobjects[self.fullName]
         if ob.document_in_parent_page:
@@ -465,6 +413,18 @@ class BigDiffPage(rend.Page):
         return super(BigDiffPage, self).renderHTTP(context)
 
 
+def absoluteURL(ctx, ob):
+    if ob.document_in_parent_page:
+        p = self.origob.parent
+        if isinstance(p, model.Module) and p.name == '__init__':
+            p = p.parent
+        child = p.fullName() + '.html'
+        frag = ob.name
+    else:
+        child = ob.fullName() + '.html'
+        frag = None
+    return str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag))
+
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
         PyDoctorResource.__init__(self, system)
@@ -480,7 +440,20 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_recentChanges(self, ctx):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
     def child_edit(self, ctx):
-        return EditPage(self.system, self)
+        origob = ob = self.system.allobjects.get(ctx.arg('ob'))
+        if ob is None:
+            return ErrorPage()
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        newDocstring = ctx.arg('docstring', None)
+        action = ctx.arg('action', 'Preview')
+        if action in ('Submit', 'Cancel'):
+            req = ctx.locate(inevow.IRequest)
+            if action == 'Submit':
+                self.newDocstring(userIP(req), ob, origob, newDocstring)
+            req.redirect(absoluteURL(ctx, ob))
+            return ''
+        return EditPage(self, ob, origob, newDocstring)
     def child_history(self, ctx):
         return HistoryPage(self.system)
     def child_diff(self, ctx):
@@ -495,9 +468,34 @@ class EditingPyDoctorResource(PyDoctorResource):
             return ob.docstring
 
     def addEdit(self, edit):
-        self.editsbyob.setdefault(edit.ob, []).append(edit)
-        self.editsbymod.setdefault(edit.ob.parentMod, []).append(edit)
+        self.editsbyob.setdefault(edit.obj, []).append(edit)
+        self.editsbymod.setdefault(edit.obj.parentMod, []).append(edit)
         self.edits.append(edit)
+
+    def newDocstring(self, user, ob, origob, newDocstring):
+        if ob not in self.editsbyob:
+            if hasattr(ob, 'docsource'):
+                ds = None
+            else:
+                ds = ob.docstring
+            self.editsbyob[ob] = [Edit(origob, 0, ds, 'no-one', 'Dawn of time')]
+        if ob.parentMod not in self.editsbymod:
+            self.editsbymod[ob.parentMod] = []
+
+        if not newDocstring:
+            newDocstring = None
+        else:
+            newDocstring = parse_str(newDocstring)
+            orig = origstring(ob)
+            if orig:
+                l = len(orig.splitlines())
+                newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
+            else:
+                newDocstring.linenumber = ob.linenumber + 1 + len(newDocstring.orig.splitlines())
+
+        edit = Edit(origob, len(self.editsbyob[ob]), newDocstring, user,
+                    time.strftime("%Y-%m-%d %H:%M:%S"))
+        self.addEdit(edit)
 
     def stanForOb(self, ob):
         origob = ob
