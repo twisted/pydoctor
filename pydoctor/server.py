@@ -377,10 +377,13 @@ class EditingPyDoctorResource(PyDoctorResource):
         self.editsbyob = {}
         self.editsbymod = {}
         self.docgetter = EditableDocGetter(self)
+
     def indexPage(self):
         return IndexPage(self.system)
+
     def child_recentChanges(self, ctx):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
+
     def child_edit(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
@@ -396,6 +399,7 @@ class EditingPyDoctorResource(PyDoctorResource):
             req.redirect(absoluteURL(ctx, ob))
             return ''
         return EditPage(self, ob, origob, newDocstring)
+
     def child_history(self, ctx):
         try:
             rev = int(ctx.arg('rev', '-1'))
@@ -412,6 +416,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         except (IndexError, KeyError):
             return ErrorPage()
         return HistoryPage(self, ob, origob, rev)
+
     def child_diff(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
@@ -433,6 +438,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         except IndexError:
             return ErrorPage()
         return DiffPage(self, ob, origob, editA, editB)
+
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
 
