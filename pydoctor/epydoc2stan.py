@@ -293,10 +293,11 @@ def doc2html(obj, summary=False, docstring=None):
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
     if docstring is None:
-        if obj.docstring is None and hasattr(obj, 'docsource'):
-            doc = obj.docsource.docstring
-        else:
-            doc = obj.docstring
+        doc = None
+        for source in obj.docsources():
+            if source.docstring is not None:
+                doc = source.docstring
+                break
     else:
         doc = docstring
     if doc is None or not doc.strip():

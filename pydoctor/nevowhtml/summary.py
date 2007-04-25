@@ -221,10 +221,10 @@ class UndocumentedSummaryPage(page.Element):
                     return False
             return True
         def hasdocstring(ob):
-            if isinstance(ob, model.Package):
-                return ob.contents['__init__'].docstring is not None
-            else:
-                return ob.docstring is not None
+            for source in ob.docsources():
+                if source.docsources is not None:
+                    return True
+            return False
         undoccedpublic = [o for o in self.system.orderedallobjects
                           if public(o) and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())

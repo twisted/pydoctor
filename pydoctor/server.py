@@ -140,15 +140,12 @@ class ErrorPage(rend.Page):
 
 
 def origstring(ob, lines=None):
-    if hasattr(ob, 'docsource'):
-        return None
+    if lines:
+        firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
+        indent = (len(firstline) - len(firstline.lstrip()))*' '
     else:
-        if lines:
-            firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
-            indent = (len(firstline) - len(firstline.lstrip()))*' '
-        else:
-            indent = ''
-        return indent + ob.docstring.orig
+        indent = ''
+    return indent + ob.docstring.orig
 
 class EditPage(rend.Page):
     def __init__(self, root, ob, origob, docstring=None):
@@ -443,10 +440,14 @@ class EditingPyDoctorResource(PyDoctorResource):
         return BigDiffPage(self.system, self)
 
     def currentDocstringForObject(self, ob):
-        if ob in self.editsbyob:
-            return self.editsbyob[ob][-1].newDocstring
-        else:
-            return ob.docstring
+        for source in ob.docsources():
+            if source in self.editsbyob:
+                d = self.editsbyob[source][-1].newDocstring
+            else:
+                d = source.docstring
+            if d is not None:
+                return d
+        return ''
 
     def addEdit(self, edit):
         self.editsbyob.setdefault(edit.obj, []).append(edit)
@@ -455,11 +456,7 @@ class EditingPyDoctorResource(PyDoctorResource):
 
     def newDocstring(self, user, ob, origob, newDocstring):
         if ob not in self.editsbyob:
-            if hasattr(ob, 'docsource'):
-                ds = None
-            else:
-                ds = ob.docstring
-            self.editsbyob[ob] = [Edit(origob, 0, ds, 'no-one', 'Dawn of time')]
+            self.editsbyob[ob] = [Edit(origob, 0, ob.docstring, 'no-one', 'Dawn of time')]
         if ob.parentMod not in self.editsbymod:
             self.editsbymod[ob.parentMod] = []
 

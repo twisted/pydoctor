@@ -18,19 +18,17 @@ class Attribute(model.Documentable):
     document_in_parent_page = True
 
 class TwistedFunction(model.Function):
-    def computeDocsource(self):
-        super(TwistedFunction, self).computeDocsource()
-        if self.docstring is not None or not isinstance(self.parent, model.Class):
+    def docsources(self):
+        for source in super(TwistedFunction, self).docsources():
+            yield source
+        if not isinstance(self.parent, model.Class):
             return
         for interface in (self.parent.implements_directly +
                           self.parent.implements_indirectly):
             if interface in self.system.allobjects:
                 io = self.system.allobjects[interface]
                 if self.name in io.contents:
-                    imeth = io.contents[self.name]
-                    if imeth.docstring:
-                        self.docsource = imeth
-                        break
+                    yield io.contents[self.name]
 
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):

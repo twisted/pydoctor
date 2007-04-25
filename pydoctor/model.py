@@ -41,6 +41,8 @@ class Documentable(object):
         return self.prefix + self.name
     def __repr__(self):
         return "%s %r"%(self.__class__.__name__, self.fullName())
+    def docsources(self):
+        yield self
     def name2fullname(self, name):
         if name in self._name2fullname:
             return self._name2fullname[name]
@@ -152,6 +154,8 @@ class Package(Documentable):
     kind = "Package"
     def name2fullname(self, name):
         raise NameError
+    def docsources(self):
+        yield self.contents['__init__']
 
 
 class Module(Documentable):
@@ -195,16 +199,13 @@ class Function(Documentable):
         super(Function, self).setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
-        self.computeDocsource()
-    def computeDocsource(self):
-        if self.docstring is not None or not isinstance(self.parent, Class):
+    def docsources(self):
+        yield self
+        if not isinstance(self.parent, Class):
             return
         for b in self.parent.allbases():
             if self.name in b.contents:
-                overriddenmeth = b.contents[self.name]
-                if overriddenmeth.docstring is not None:
-                    self.docsource = overriddenmeth
-                    break
+                yield b.contents[self.name]
 
 states = [
     'blank',
