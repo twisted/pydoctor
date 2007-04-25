@@ -114,3 +114,15 @@ def test_diff():
     args = {'ob':ob.fullName(), 'revA':'0', 'revB':'1'}
     difftext = getTextOfPage(root, 'diff', args)
     assert "*is*" in difftext
+
+def test_history():
+    system = processPackage('localimporttest')
+    root = server.EditingPyDoctorResource(system)
+
+    ob = system.allobjects['localimporttest.mod1.C']
+
+    performEdit(root, ob, repr("This *is* a docstring"))
+
+    args = {'ob':ob.fullName()}
+    historytext = getTextOfPage(root, 'history', args)
+    assert "*is*" in historytext

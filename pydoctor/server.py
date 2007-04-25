@@ -244,7 +244,7 @@ class HistoryPage(rend.Page):
             ul[li]
         return context.tag[ul]
     def render_docstring(self, context, data):
-        docstring = edits(self.ob)[self.rev].newDocstring
+        docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
         if docstring is None:
             docstring = ''
         return epydoc2stan.doc2html(self.ob, docstring=docstring)
