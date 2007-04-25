@@ -3,7 +3,7 @@ class C:
     class S:
         pass
     def f(self):
-        """Method docstring."""
+        """Method docstring of C.f."""
     def h(self):
         """Method docstring."""
     @classmethod

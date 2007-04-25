@@ -140,6 +140,8 @@ class ErrorPage(rend.Page):
 
 
 def origstring(ob, lines=None):
+    if ob.docstring is None:
+        return None
     if lines:
         firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
         indent = (len(firstline) - len(firstline.lstrip()))*' '

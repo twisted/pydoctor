@@ -126,3 +126,22 @@ def test_history():
     args = {'ob':ob.fullName()}
     historytext = getTextOfPage(root, 'history', args)
     assert "*is*" in historytext
+
+def test_docstrings_from_superclass():
+    system = processPackage('basic')
+    root = server.EditingPyDoctorResource(system)
+
+    html = getTextOfPage(root, 'basic.mod.D.html')
+    assert 'Method docstring of C.f' in html
+
+    ob = system.allobjects['basic.mod.D.f']
+    root.newDocstring('xxx', ob, ob, repr('Method docstring of D.f.'))
+
+    html = getTextOfPage(root, 'basic.mod.D.html')
+    assert 'Method docstring of C.f' not in html
+
+    ob = system.allobjects['basic.mod.D.f']
+    root.newDocstring('xxx', ob, ob, '')
+
+    html = getTextOfPage(root, 'basic.mod.D.html')
+    assert 'Method docstring of C.f' in html
