@@ -1,9 +1,10 @@
 from pydoctor import nevowhtml, model
 from pydoctor.nevowhtml import util, pages, writer
 from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test import conftest
 from pydoctor.test.test_packages import processPackage
 from nevow import flat
-import cStringIO
+import cStringIO, os
 import py
 
 def getHTMLOf(ob):
@@ -60,8 +61,13 @@ def test_basic_package():
     targetdir = py.test.ensuretemp("pydoctor")
     w = writer.NevowWriter(str(targetdir))
     w.system = system
+    w.prepOutputDirectory()
     root, = system.rootobjects
     w.writeDocsFor(root, False)
+    w.writeModuleIndex(system)
     for ob in system.allobjects.itervalues():
         assert ob.document_in_parent_page or \
                targetdir.join(ob.fullName() + '.html').check(file=1)
+    if conftest.option.viewhtml:
+        r = os.system("open %s"%targetdir.join('index.html'))
+        assert not r
