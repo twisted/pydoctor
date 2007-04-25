@@ -61,6 +61,8 @@ def test_basic_package():
     targetdir = py.test.ensuretemp("pydoctor")
     w = writer.NevowWriter(str(targetdir))
     w.system = system
+    system.options.htmlusesplitlinks = True
+    system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
     w.writeDocsFor(root, False)

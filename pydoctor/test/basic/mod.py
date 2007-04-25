@@ -2,6 +2,8 @@ class C:
     """Class docstring."""
     def f(self):
         """Method docstring."""
+    def h(self):
+        """Method docstring."""
     @classmethod
     def cls_method(cls):
         pass
