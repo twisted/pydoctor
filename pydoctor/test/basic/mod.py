@@ -1,5 +1,7 @@
 class C:
     """Class docstring."""
+    class S:
+        pass
     def f(self):
         """Method docstring."""
     def h(self):
@@ -14,6 +16,8 @@ class C:
 
 class D(C):
     """Subclass docstring."""
+    class T:
+        pass
     def f(self):
         # no docstring, should be inherited from superclass
         pass
