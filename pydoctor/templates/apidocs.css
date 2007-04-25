@@ -62,7 +62,7 @@ div.toplevel p
 .function         { background: lightgreen; }
 .method           { background: #90ee90; }
 .classmethod      { background: #c0ee90; }
-.staticmethod     { background: #d0eed0; }
+.staticmethod     { background: #90eec0; }
 .attribute        { background: #ddbbff; }
 .class            { background: #add8e6; }
 .interface        { background: #ffddff; }
@@ -70,8 +70,8 @@ div.toplevel p
 .package          { background: #ffeeaa; }
 .basefunction     { background: #cceecc; }
 .basemethod       { background: #cceecc; }
-.baseclassmethod  { background: #e0f7c8; }
-.basestaticmethod { background: #e8f7e8; }
+.baseclassmethod  { background: #e0f7cc; }
+.basestaticmethod { background: #ccf7e0; }
 .baseattribute    { background: #ffffff; }
 .baseclass        { background: #d6ecf3; }
 .baseinterface    { background: #ffffff; }
