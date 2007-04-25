@@ -51,9 +51,9 @@ def test_simple():
     assert 'This is a docstring!' in getTextOfPage(root, 'mod.html')
 
 def test_edit_renders_ok():
-    system = processPackage('localimporttest')
+    system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
-    args = {'ob':'localimporttest.mod1.C'}
+    args = {'ob':'basic.mod.C'}
     result = getTextOfPage(root, 'edit', args=args)
     # very weak, but it's an assert that things didn't explode
     assert 'textarea' in result
@@ -70,10 +70,10 @@ def performEdit(root, ob, newDocstring):
     assert ob.fullName() in r.redirected_to
 
 def test_edit():
-    system = processPackage('localimporttest')
+    system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
 
-    ob = system.allobjects['localimporttest.mod1.C']
+    ob = system.allobjects['basic.mod.C']
     docstring = root.currentDocstringForObject(ob)
     assert docstring == ob.docstring
 
@@ -83,17 +83,17 @@ def test_edit():
     assert docstring == eval(newDocstring)
     assert ob.docstring != docstring
 
-    result = getTextOfPage(root, 'localimporttest.mod1.C.html')
+    result = getTextOfPage(root, 'basic.mod.C.html')
     assert eval(newDocstring) in result
 
-    result = getTextOfPage(root, 'localimporttest.mod1.html')
+    result = getTextOfPage(root, 'basic.mod.html')
     assert eval(newDocstring) in result
 
 def test_edit_direct():
-    system = processPackage('localimporttest')
+    system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
 
-    ob = system.allobjects['localimporttest.mod1.C']
+    ob = system.allobjects['basic.mod.C']
     docstring = root.currentDocstringForObject(ob)
     assert docstring == ob.docstring
 
@@ -104,10 +104,10 @@ def test_edit_direct():
     assert ob.docstring != docstring
 
 def test_diff():
-    system = processPackage('localimporttest')
+    system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
 
-    ob = system.allobjects['localimporttest.mod1.C']
+    ob = system.allobjects['basic.mod.C']
 
     performEdit(root, ob, repr("This *is* a docstring"))
 
@@ -116,10 +116,10 @@ def test_diff():
     assert "*is*" in difftext
 
 def test_history():
-    system = processPackage('localimporttest')
+    system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
 
-    ob = system.allobjects['localimporttest.mod1.C']
+    ob = system.allobjects['basic.mod.C']
 
     performEdit(root, ob, repr("This *is* a docstring"))
 
