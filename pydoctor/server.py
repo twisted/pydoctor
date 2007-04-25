@@ -221,9 +221,6 @@ class EditPage(rend.Page):
 
     docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
-    def submit(self, req, newDocstring):
-        self.root.newDocstring(userIP(req), self.ob, self.origob, newDocstring)
-
 class HistoryPage(rend.Page):
     def __init__(self, system):
         self.system = system
