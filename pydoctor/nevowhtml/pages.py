@@ -101,16 +101,14 @@ class TableFragment(object):
             class_ = child.kind.lower().replace(' ', '')
             if child.parent is not self.ob:
                 class_ = 'base' + class_
+            summaryDoc = self.parentpage.docgetter.get(child, summary=True)
             rows.append(fillSlots(row,
                                   class_=class_,
                                   kind=child.kind,
                                   name=taglink(child, child.name),
                                   linenocell=linenocell_,
-                                  summaryDoc=self.summaryDoc(child)))
+                                  summaryDoc=summaryDoc))
         return rows
-
-    def summaryDoc(self, child):
-        return epydoc2stan.doc2html(child, summary=True)
 
     def rend(self, ctx, data):
         tag = tags.invisible[self.docFactory.load()]
@@ -120,13 +118,19 @@ class TableFragment(object):
                          rows=self.rows(tag.patternGenerator('row'),
                                         tag.patternGenerator('linenocell')))
 
+class DocGetter(object):
+    def get(self, ob, summary=False):
+        return epydoc2stan.doc2html(ob, summary=summary)
+
 class CommonPage(object):
     implements(inevow.IRenderer)
     docFactory = loaders.xmlfile(templatefile('common.html'))
-    TableFragment = TableFragment
 
-    def __init__(self, ob):
+    def __init__(self, ob, docgetter=None):
         self.ob = ob
+        if docgetter is None:
+            docgetter = DocGetter()
+        self.docgetter = docgetter
         self.usesorttable = ob.system.options.htmlusesorttable
         self.usesplitlinks = ob.system.options.htmlusesplitlinks
         self.shortenlists = ob.system.options.htmlshortenlists
@@ -176,7 +180,7 @@ class CommonPage(object):
         return tags.invisible()
 
     def docstring(self):
-        return epydoc2stan.doc2html(self.ob)
+        return self.docgetter.get(self.ob)
 
     def children(self):
         return self.ob.orderedcontents
@@ -193,7 +197,7 @@ class CommonPage(object):
     def mainTable(self):
         children = self.children()
         if children:
-            return self.TableFragment(self, self.ob, self.has_lineno_col(), children)
+            return TableFragment(self, self.ob, self.has_lineno_col(), children)
         else:
             return ()
 
@@ -251,7 +255,7 @@ class CommonPage(object):
         return []
 
     def functionBody(self, data):
-        return epydoc2stan.doc2html(data)
+        return self.docgetter.get(data)
 
     def ifhasplitlinks(self, tag):
         return ()
@@ -295,7 +299,7 @@ class PackagePage(CommonPage):
         children = init.orderedcontents
         if children:
             return [tags.p["From the __init__.py module:"],
-                    self.TableFragment(self, init, self.usesorttable, children)]
+                    TableFragment(self, init, self.usesorttable, children)]
         else:
             return ()
 
@@ -366,8 +370,8 @@ def maybeShortenList(system, label, lst, idbase):
     return p
 
 class ClassPage(CommonPage):
-    def __init__(self, ob):
-        CommonPage.__init__(self, ob)
+    def __init__(self, ob, docgetter=None):
+        CommonPage.__init__(self, ob, docgetter)
         self.baselists = []
         self.usesplitlinks = ob.system.options.htmlusesplitlinks
         for baselist in nested_bases(self.ob):
@@ -414,7 +418,7 @@ class ClassPage(CommonPage):
     def baseTables(self, item):
         return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=self.TableFragment(self, self.ob, self.has_lineno_col(), attrs))
+                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(), attrs))
                 for b, attrs in self.baselists[1:]]
 
     def baseName(self, data):
@@ -438,7 +442,7 @@ class ClassPage(CommonPage):
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
         all_attrs.sort(key=lambda o:o.name.lower())
-        return tag[self.TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
+        return tag[TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):
         r = []

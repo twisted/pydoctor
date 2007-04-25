@@ -29,7 +29,7 @@ def test_empty_table():
 
 def test_nonempty_table():
     mod = fromText('def f(): pass')
-    t = pages.TableFragment(None, mod, True, mod.orderedcontents)
+    t = pages.TableFragment(pages.ModulePage(mod), mod, True, mod.orderedcontents)
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 

@@ -30,6 +30,8 @@ class WrapperPage(rend.Page):
 class PyDoctorResource(rend.ChildLookupMixin):
     implements(inevow.IResource)
 
+    docgetter = None
+
     def __init__(self, system):
         self.system = system
         self.putChild('apidocs.css', File(util.templatefile('apidocs.css')))
@@ -58,7 +60,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
         if name not in self.system.allobjects:
             return None
         obj = self.system.allobjects[name]
-        return WrapperPage(self.pageClassForObject(obj)(obj))
+        return WrapperPage(self.pageClassForObject(obj)(obj, self.docgetter))
 
     def renderHTTP(self, ctx):
         return self.index.renderHTTP(ctx)
@@ -116,30 +118,12 @@ class RecentChangesPage(page.Element):
                     tags.slot("user"),
                     ]]]])
 
-class EditableDocstringsTableFragment(pages.TableFragment):
-    def summaryDoc(self, child):
-        return self.parentpage.root.stanForOb(child, summary=True)
+class EditableDocGetter(object):
+    def __init__(self, root):
+        self.root = root
 
-class EditableDocstringsMixin(object):
-    TableFragment = EditableDocstringsTableFragment
-
-    def docstring(self):
-        return self.root.stanForOb(self.ob)
-
-    def functionBody(self, data):
-        return self.root.stanForOb(data)
-
-def recursiveSubclasses(cls):
-    yield cls
-    for sc in cls.__subclasses__():
-        for ssc in recursiveSubclasses(sc):
-            yield ssc
-
-editPageClasses = {}
-
-for cls in list(recursiveSubclasses(pages.CommonPage)):
-    _n = cls.__name__
-    editPageClasses[_n] = type(_n, (EditableDocstringsMixin, cls), {})
+    def get(self, ob, summary=False):
+        return self.root.stanForOb(ob, summary=summary)
 
 def userIP(req):
     # obviously this is at least slightly a guess.
@@ -222,15 +206,18 @@ class EditPage(rend.Page):
     docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
 class HistoryPage(rend.Page):
-    def __init__(self, system):
-        self.system = system
+    def __init__(self, root, ob, origob, rev):
+        self.root = root
+        self.ob = ob
+        self.origob = origob
+        self.rev = rev
 
     def render_title(self, context, data):
         return context.tag[u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
                            self.ob.fullName() +
                            u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
     def render_links(self, context, data):
-        ds = edits(self.ob)
+        ds = self.root.editsbyob[self.ob]
         therange = range(len(ds))
         rev = therange[self.rev]
         ul = tags.ul()
@@ -262,12 +249,7 @@ class HistoryPage(rend.Page):
             docstring = ''
         return epydoc2stan.doc2html(self.ob, docstring=docstring)
     def render_linkback(self, context, data):
-        ob = self.system.allobjects[self.fullName]
-        if ob.document_in_parent_page:
-            url = ob.parent.fullName()+'.html#' + ob.name
-        else:
-            url = ob.fullName()+'.html'
-        return context.tag[tags.a(href=url)["Back"]]
+        return util.taglink(self.ob, label="Back")
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive('title')),
@@ -276,24 +258,6 @@ class HistoryPage(rend.Page):
                   tags.p(render=tags.directive('links')),
                   tags.div(render=tags.directive('docstring')),
                   tags.p(render=tags.directive('linkback'))]])
-
-    def renderHTTP(self, context):
-        try:
-            self.rev = int(context.arg('rev', '-1'))
-        except ValueError:
-            return ErrorPage()
-        self.fullName = context.arg('ob')
-        try:
-            self.origob = self.ob = self.system.allobjects[self.fullName]
-        except KeyError:
-            return ErrorPage()
-        if isinstance(self.ob, model.Package):
-            self.ob = self.ob.contents['__init__']
-        try:
-            edits(self.ob)[self.rev]
-        except IndexError:
-            return ErrorPage()
-        return super(HistoryPage, self).renderHTTP(context)
 
 
 class Edit(object):
@@ -393,9 +357,6 @@ class BigDiffPage(rend.Page):
 
     docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
 
-    def renderHTTP(self, context):
-        return super(BigDiffPage, self).renderHTTP(context)
-
 
 def absoluteURL(ctx, ob):
     if ob.document_in_parent_page:
@@ -415,10 +376,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         self.edits = []
         self.editsbyob = {}
         self.editsbymod = {}
-    def pageClassForObject(self, ob):
-        r = findPageClassInDict(ob, editPageClasses)
-        r.root = self
-        return r
+        self.docgetter = EditableDocGetter(self)
     def indexPage(self):
         return IndexPage(self.system)
     def child_recentChanges(self, ctx):
@@ -439,7 +397,21 @@ class EditingPyDoctorResource(PyDoctorResource):
             return ''
         return EditPage(self, ob, origob, newDocstring)
     def child_history(self, ctx):
-        return HistoryPage(self.system)
+        try:
+            rev = int(ctx.arg('rev', '-1'))
+        except ValueError:
+            return ErrorPage()
+        try:
+            origob = ob = self.system.allobjects[ctx.arg('ob')]
+        except KeyError:
+            return ErrorPage()
+        if isinstance(ob, model.Package):
+            ob = ob.contents['__init__']
+        try:
+            self.editsbyob[ob][rev]
+        except (IndexError, KeyError):
+            return ErrorPage()
+        return HistoryPage(self, ob, origob, rev)
     def child_diff(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
