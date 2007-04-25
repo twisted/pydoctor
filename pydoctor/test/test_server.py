@@ -111,8 +111,6 @@ def test_diff():
 
     performEdit(root, ob, repr("This *is* a docstring"))
 
-    args = {'ob':ob.fullName(),
-            'revA':'0',
-            'revB':'1'}
+    args = {'ob':ob.fullName(), 'revA':'0', 'revB':'1'}
     difftext = getTextOfPage(root, 'diff', args)
     assert "*is*" in difftext
