@@ -153,9 +153,8 @@ class EditPage(rend.Page):
     def __init__(self, root, ob, origob, docstring=None):
         self.root = root
         self.ob = ob
-        self.origob = origob
+        self.lines = open(self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
-        self.lines = open(self.ob.parentMod.filepath, 'rU').readlines()
 
     def render_title(self, context, data):
         return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
@@ -180,17 +179,11 @@ class EditPage(rend.Page):
             lines.insert(0, '...\n')
         return context.tag[lines]
     def render_rows(self, context, data):
-        docstring = context.arg('docstring', origstring(self.ob, self.lines))
-        if docstring is None:
-            docstring = ''
-        return len(docstring.splitlines())
+        return len(self.docstring.splitlines()) + 1
     def render_textarea(self, context, data):
-        docstring = context.arg('docstring', origstring(self.ob, self.lines))
-        if docstring is None:
-            docstring = ''
-        return context.tag[docstring]
+        return context.tag[self.docstring]
     def render_after(self, context, data):
-        lineno = self.ob.linenumber + len(self.ob.docstring.orig.splitlines())
+        lineno = self.ob.linenumber + len(self.ob.doctarget.docstring.orig.splitlines())
         lastlineno = lineno + 6
         alllines = open(self.ob.parentMod.filepath, 'rU').readlines()
         lines = alllines[lineno:lastlineno]
@@ -205,10 +198,9 @@ class EditPage(rend.Page):
     docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
 class HistoryPage(rend.Page):
-    def __init__(self, root, ob, origob, rev):
+    def __init__(self, root, ob, rev):
         self.root = root
         self.ob = ob
-        self.origob = origob
         self.rev = rev
 
     def render_title(self, context, data):
@@ -216,7 +208,7 @@ class HistoryPage(rend.Page):
                            self.ob.fullName() +
                            u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
     def render_links(self, context, data):
-        ds = self.root.editsbyob[self.ob]
+        ds = self.root.edits(self.ob)
         therange = range(len(ds))
         rev = therange[self.rev]
         ul = tags.ul()
@@ -225,7 +217,7 @@ class HistoryPage(rend.Page):
             if i:
                 li[tags.a(href=url.URL.fromContext(context).sibling(
                     'diff').add(
-                    'ob', self.origob.fullName()).add(
+                    'ob', self.ob.fullName()).add(
                     'revA', i-1).add(
                     'revB', i))["(diff)"]]
             else:
@@ -372,7 +364,7 @@ def absoluteURL(ctx, ob):
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
         PyDoctorResource.__init__(self, system)
-        self.edits = []
+        self._edits = []
         self.editsbyob = {}
         self.editsbymod = {}
         self.docgetter = EditableDocGetter(self)
@@ -387,9 +379,13 @@ class EditingPyDoctorResource(PyDoctorResource):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
             return ErrorPage()
-        if isinstance(ob, model.Package):
-            ob = ob.contents['__init__']
         newDocstring = ctx.arg('docstring', None)
+        if newDocstring is None:
+            newDocstring = self.mostRecentEdit(ob).newDocstring
+            if newDocstring is None:
+                newDocstring = ''
+            else:
+                newDocstring = newDocstring.orig
         action = ctx.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
             req = ctx.locate(inevow.IRequest)
@@ -405,16 +401,14 @@ class EditingPyDoctorResource(PyDoctorResource):
         except ValueError:
             return ErrorPage()
         try:
-            origob = ob = self.system.allobjects[ctx.arg('ob')]
+            ob = self.system.allobjects[ctx.arg('ob')]
         except KeyError:
             return ErrorPage()
-        if isinstance(ob, model.Package):
-            ob = ob.contents['__init__']
         try:
             self.editsbyob[ob][rev]
         except (IndexError, KeyError):
             return ErrorPage()
-        return HistoryPage(self, ob, origob, rev)
+        return HistoryPage(self, ob, rev)
 
     def child_diff(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
@@ -441,12 +435,18 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
 
+    def mostRecentEdit(self, ob):
+        return self.edits(ob)[-1]
+
+    def edits(self, ob):
+        ob = ob.doctarget
+        if ob not in self.editsbyob:
+            self.editsbyob[ob] = [Edit(ob, 0, ob.docstring, 'no-one', 'Dawn of time')]
+        return self.editsbyob[ob]
+
     def currentDocstringForObject(self, ob):
         for source in ob.docsources():
-            if source in self.editsbyob:
-                d = self.editsbyob[source][-1].newDocstring
-            else:
-                d = source.docstring
+            d = self.mostRecentEdit(source).newDocstring
             if d is not None:
                 return d
         return ''
@@ -454,11 +454,9 @@ class EditingPyDoctorResource(PyDoctorResource):
     def addEdit(self, edit):
         self.editsbyob.setdefault(edit.obj, []).append(edit)
         self.editsbymod.setdefault(edit.obj.parentMod, []).append(edit)
-        self.edits.append(edit)
+        self._edits.append(edit)
 
     def newDocstring(self, user, ob, origob, newDocstring):
-        if ob not in self.editsbyob:
-            self.editsbyob[ob] = [Edit(origob, 0, ob.docstring, 'no-one', 'Dawn of time')]
         if ob.parentMod not in self.editsbymod:
             self.editsbymod[ob.parentMod] = []
 
@@ -473,23 +471,21 @@ class EditingPyDoctorResource(PyDoctorResource):
             else:
                 newDocstring.linenumber = ob.linenumber + 1 + len(newDocstring.orig.splitlines())
 
-        edit = Edit(origob, len(self.editsbyob[ob]), newDocstring, user,
+        edit = Edit(ob, self.mostRecentEdit(ob).rev + 1, newDocstring, user,
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.addEdit(edit)
 
     def stanForOb(self, ob, summary=False):
         if summary:
-            return epydoc2stan.doc2html(ob, summary=True, docstring=self.currentDocstringForObject(ob))
-        origob = ob
-        if isinstance(ob, model.Package):
-            ob = ob.contents['__init__']
-        r = [tags.div[epydoc2stan.doc2html(ob, docstring=self.currentDocstringForObject(ob))],
-             tags.a(href="edit?ob="+origob.fullName())["Edit"],
+            return epydoc2stan.doc2html(ob.doctarget, summary=True, docstring=self.currentDocstringForObject(ob))
+        r = [tags.div[epydoc2stan.doc2html(ob.doctarget,
+                                           docstring=self.currentDocstringForObject(ob))],
+             tags.a(href="edit?ob="+ob.fullName())["Edit"],
              " "]
-        if ob in self.editsbyob:
-            r.append(tags.a(href="history?ob="+origob.fullName())["View docstring history (",
-                                                                  len(self.editsbyob[ob]),
-                                                                  " versions)"])
+        if ob.doctarget in self.editsbyob:
+            r.append(tags.a(href="history?ob="+ob.fullName())["View docstring history (",
+                                                              len(self.editsbyob[ob.doctarget]),
+                                                              " versions)"])
         else:
             r.append(tags.span(class_='undocumented')["No edits yet."])
         return r

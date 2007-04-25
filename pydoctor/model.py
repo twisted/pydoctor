@@ -33,6 +33,8 @@ class Documentable(object):
         self.parent = parent
         self.parentMod = None
         self.setup()
+        if not isinstance(self, Package):
+            self.doctarget = self
     def setup(self):
         self.contents = {}
         self.orderedcontents = []
@@ -156,6 +158,9 @@ class Package(Documentable):
         raise NameError
     def docsources(self):
         yield self.contents['__init__']
+    @property
+    def doctarget(self):
+        return self.contents['__init__']
 
 
 class Module(Documentable):
