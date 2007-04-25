@@ -10,5 +10,5 @@ Option = py.test.config.Option
 
 option = py.test.config.addoptions("pydoctor options",
         Option('--view-html',
-               action="store_true", dest="viewhtml", 
+               action="store_true", default=False, dest="viewhtml", 
                help=("")))
