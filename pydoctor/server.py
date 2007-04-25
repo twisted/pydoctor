@@ -116,7 +116,13 @@ class RecentChangesPage(page.Element):
                     tags.slot("user"),
                     ]]]])
 
+class EditableDocstringsTableFragment(pages.TableFragment):
+    def summaryDoc(self, child):
+        return self.parentpage.root.stanForOb(child, summary=True)
+
 class EditableDocstringsMixin(object):
+    TableFragment = EditableDocstringsTableFragment
+
     def docstring(self):
         return self.root.stanForOb(self.ob)
 
@@ -497,8 +503,9 @@ class EditingPyDoctorResource(PyDoctorResource):
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.addEdit(edit)
 
-    def stanForOb(self, ob):
-        print ob, self.currentDocstringForObject(ob)
+    def stanForOb(self, ob, summary=False):
+        if summary:
+            return epydoc2stan.doc2html(ob, summary=True, docstring=self.currentDocstringForObject(ob))
         origob = ob
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']

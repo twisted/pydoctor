@@ -59,7 +59,8 @@ class TableFragment(object):
     docFactory = loaders.xmlfile(templatefile('table.html'))
     last_id = 0
     classprefix = ''
-    def __init__(self, ob, has_lineno_col, children):
+    def __init__(self, parentpage, ob, has_lineno_col, children):
+        self.parentpage = parentpage
         self.system = ob.system
         self.has_lineno_col = has_lineno_col
         self.children = children
@@ -105,8 +106,11 @@ class TableFragment(object):
                                   kind=child.kind,
                                   name=taglink(child, child.name),
                                   linenocell=linenocell_,
-                                  summaryDoc=epydoc2stan.doc2html(child, summary=True)))
+                                  summaryDoc=self.summaryDoc(child)))
         return rows
+
+    def summaryDoc(self, child):
+        return epydoc2stan.doc2html(child, summary=True)
 
     def rend(self, ctx, data):
         tag = tags.invisible[self.docFactory.load()]
@@ -119,6 +123,7 @@ class TableFragment(object):
 class CommonPage(object):
     implements(inevow.IRenderer)
     docFactory = loaders.xmlfile(templatefile('common.html'))
+    TableFragment = TableFragment
 
     def __init__(self, ob):
         self.ob = ob
@@ -188,7 +193,7 @@ class CommonPage(object):
     def mainTable(self):
         children = self.children()
         if children:
-            return TableFragment(self.ob, self.has_lineno_col(), children)
+            return self.TableFragment(self, self.ob, self.has_lineno_col(), children)
         else:
             return ()
 
@@ -290,7 +295,7 @@ class PackagePage(CommonPage):
         children = init.orderedcontents
         if children:
             return [tags.p["From the __init__.py module:"],
-                    TableFragment(init, self.usesorttable, children)]
+                    self.TableFragment(self, init, self.usesorttable, children)]
         else:
             return ()
 
@@ -409,7 +414,7 @@ class ClassPage(CommonPage):
     def baseTables(self, item):
         return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=TableFragment(self.ob, self.has_lineno_col(), attrs))
+                          baseTable=self.TableFragment(self, self.ob, self.has_lineno_col(), attrs))
                 for b, attrs in self.baselists[1:]]
 
     def baseName(self, data):
@@ -433,7 +438,7 @@ class ClassPage(CommonPage):
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
         all_attrs.sort(key=lambda o:o.name.lower())
-        return tag[TableFragment(self.ob, self.has_lineno_col(), all_attrs)]
+        return tag[self.TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):
         r = []
