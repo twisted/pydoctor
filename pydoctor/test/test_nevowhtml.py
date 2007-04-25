@@ -1,6 +1,7 @@
 from pydoctor import nevowhtml, model
-from pydoctor.nevowhtml import util, pages
+from pydoctor.nevowhtml import util, pages, writer
 from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_packages import processPackage
 from nevow import flat
 import cStringIO
 import py
@@ -50,8 +51,17 @@ def test_rest_support():
     assert "<pre>" not in html
 
 def test_document_code_in_init_module():
-    from pydoctor.test.test_packages import processPackage
     system = processPackage("codeininit")
     html = getHTMLOf(system.allobjects['codeininit'])
     assert 'functionInInit' in html
 
+def test_basic_package():
+    system = processPackage("basic")
+    targetdir = py.test.ensuretemp("pydoctor")
+    w = writer.NevowWriter(str(targetdir))
+    w.system = system
+    root, = system.rootobjects
+    w.writeDocsFor(root, False)
+    for ob in system.allobjects.itervalues():
+        assert ob.document_in_parent_page or \
+               targetdir.join(ob.fullName() + '.html').check(file=1)
