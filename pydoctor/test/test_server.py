@@ -89,6 +89,20 @@ def test_edit():
     result = getTextOfPage(root, 'localimporttest.mod1.html')
     assert eval(newDocstring) in result
 
+def test_edit_direct():
+    system = processPackage('localimporttest')
+    root = server.EditingPyDoctorResource(system)
+
+    ob = system.allobjects['localimporttest.mod1.C']
+    docstring = root.currentDocstringForObject(ob)
+    assert docstring == ob.docstring
+
+    newDocstring = '"""This *is* a docstring"""'
+    root.newDocstring('xxx', ob, ob, newDocstring)
+    docstring = root.currentDocstringForObject(ob)
+    assert docstring == eval(newDocstring)
+    assert ob.docstring != docstring
+
 def test_diff():
     system = processPackage('localimporttest')
     root = server.EditingPyDoctorResource(system)
