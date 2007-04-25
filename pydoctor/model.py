@@ -39,13 +39,6 @@ class Documentable(object):
         self._name2fullname = {}
     def fullName(self):
         return self.prefix + self.name
-    def shortdocstring(self):
-        docstring = self.docstring
-        if docstring:
-            docstring = docstring.rstrip()
-            if len(docstring) > 20:
-                docstring = docstring[:8] + '...' + docstring[-8:]
-        return docstring
     def __repr__(self):
         return "%s %r"%(self.__class__.__name__, self.fullName())
     def name2fullname(self, name):
