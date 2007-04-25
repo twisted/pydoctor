@@ -59,75 +59,22 @@ div.toplevel p
   margin-top: 0em;
 }
 
-.function
-{
-  background: lightgreen;
-}
-
-.method
-{
-  background: #90ee90;
-}
-
-.classmethod
-{
-  background: #c0ee90;
-}
-
-.staticmethod
-{
-  background: #d0eed0;
-}
-
-.attribute
-{
-  background: #ddbbff;
-}
-
-.basefunction
-{
-  background: #cceecc;
-}
-
-.basemethod
-{
-  background: #cceecc;
-}
-
-.baseclassmethod
-{
-  background: #e0f7c8;
-}
-
-.basestaticmethod
-{
-  background: #e8f7e8;
-}
-
-.class
-{
-  background: #add8e6;
-}
-
-.baseclass
-{
-  background: #d6ecf3;
-}
-
-.interface
-{
-  background: #ffddff;
-}
-
-.module
-{
-  background: lightyellow;
-}
-
-.package
-{
-  background: #ffeeaa;
-}
+.function         { background: lightgreen; }
+.method           { background: #90ee90; }
+.classmethod      { background: #c0ee90; }
+.staticmethod     { background: #d0eed0; }
+.attribute        { background: #ddbbff; }
+.class            { background: #add8e6; }
+.interface        { background: #ffddff; }
+.module           { background: lightyellow;}
+.package          { background: #ffeeaa; }
+.basefunction     { background: #cceecc; }
+.basemethod       { background: #cceecc; }
+.baseclassmethod  { background: #e0f7c8; }
+.basestaticmethod { background: #e8f7e8; }
+.baseattribute    { background: #ffffff; }
+.baseclass        { background: #d6ecf3; }
+.baseinterface    { background: #ffffff; }
 
 div.function
 {
