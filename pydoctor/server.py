@@ -170,7 +170,7 @@ class EditPage(rend.Page):
     def render_value(self, context, data):
         return self.ob.fullName()
     def render_before(self, context, data):
-        lineno = self.ob.linenumber
+        lineno = self.ob.doctarget.linenumber
         firstlineno = max(0, lineno-6)
         lines = self.lines[firstlineno:lineno]
         if not lines:
@@ -183,9 +183,10 @@ class EditPage(rend.Page):
     def render_textarea(self, context, data):
         return context.tag[self.docstring]
     def render_after(self, context, data):
-        lineno = self.ob.linenumber + len(self.ob.doctarget.docstring.orig.splitlines())
+        ob = self.ob.doctarget
+        lineno = ob.linenumber + len(ob.docstring.orig.splitlines())
         lastlineno = lineno + 6
-        alllines = open(self.ob.parentMod.filepath, 'rU').readlines()
+        alllines = open(ob.parentMod.filepath, 'rU').readlines()
         lines = alllines[lineno:lastlineno]
         if not lines:
             return ()
@@ -390,7 +391,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         if action in ('Submit', 'Cancel'):
             req = ctx.locate(inevow.IRequest)
             if action == 'Submit':
-                self.newDocstring(userIP(req), ob, origob, newDocstring)
+                self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
         return EditPage(self, ob, origob, newDocstring)
@@ -452,13 +453,14 @@ class EditingPyDoctorResource(PyDoctorResource):
         return ''
 
     def addEdit(self, edit):
-        self.editsbyob.setdefault(edit.obj, []).append(edit)
-        self.editsbymod.setdefault(edit.obj.parentMod, []).append(edit)
+        self.editsbyob.setdefault(edit.obj.doctarget, []).append(edit)
+        self.editsbymod.setdefault(edit.obj.doctarget, []).append(edit)
         self._edits.append(edit)
 
-    def newDocstring(self, user, ob, origob, newDocstring):
-        if ob.parentMod not in self.editsbymod:
-            self.editsbymod[ob.parentMod] = []
+    def newDocstring(self, user, ob, newDocstring):
+        tob = ob.doctarget
+        if tob.parentMod not in self.editsbymod:
+            self.editsbymod[tob.parentMod] = []
 
         if not newDocstring:
             newDocstring = None
@@ -467,9 +469,9 @@ class EditingPyDoctorResource(PyDoctorResource):
             orig = origstring(ob)
             if orig:
                 l = len(orig.splitlines())
-                newDocstring.linenumber = ob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
+                newDocstring.linenumber = tob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
             else:
-                newDocstring.linenumber = ob.linenumber + 1 + len(newDocstring.orig.splitlines())
+                newDocstring.linenumber = tob.linenumber + 1 + len(newDocstring.orig.splitlines())
 
         edit = Edit(ob, self.mostRecentEdit(ob).rev + 1, newDocstring, user,
                     time.strftime("%Y-%m-%d %H:%M:%S"))

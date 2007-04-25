@@ -98,7 +98,7 @@ def test_edit_direct():
     assert docstring == ob.docstring
 
     newDocstring = '"""This *is* a docstring"""'
-    root.newDocstring('xxx', ob, ob, newDocstring)
+    root.newDocstring('xxx', ob, newDocstring)
     docstring = root.currentDocstringForObject(ob)
     assert docstring == eval(newDocstring)
     assert ob.docstring != docstring
@@ -135,13 +135,13 @@ def test_docstrings_from_superclass():
     assert 'Method docstring of C.f' in html
 
     ob = system.allobjects['basic.mod.D.f']
-    root.newDocstring('xxx', ob, ob, repr('Method docstring of D.f.'))
+    root.newDocstring('xxx', ob, repr('Method docstring of D.f.'))
 
     html = getTextOfPage(root, 'basic.mod.D.html')
     assert 'Method docstring of C.f' not in html
 
     ob = system.allobjects['basic.mod.D.f']
-    root.newDocstring('xxx', ob, ob, '')
+    root.newDocstring('xxx', ob, '')
 
     html = getTextOfPage(root, 'basic.mod.D.html')
     assert 'Method docstring of C.f' in html
