@@ -70,6 +70,7 @@ def test_basic_package():
     for ob in system.allobjects.itervalues():
         assert ob.document_in_parent_page or \
                targetdir.join(ob.fullName() + '.html').check(file=1)
+    assert 'Package docstring' in targetdir.join('basic.html').read()
     if conftest.option.viewhtml:
         r = os.system("open %s"%targetdir.join('index.html'))
         assert not r
