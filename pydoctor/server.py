@@ -150,7 +150,7 @@ def origstring(ob, lines=None):
     return indent + ob.docstring.orig
 
 class EditPage(rend.Page):
-    def __init__(self, root, ob, origob, docstring, isPreview):
+    def __init__(self, root, ob, docstring, isPreview):
         self.root = root
         self.ob = ob
         self.lines = open(self.ob.doctarget.parentMod.filepath, 'rU').readlines()
@@ -378,7 +378,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
 
     def child_edit(self, ctx):
-        origob = ob = self.system.allobjects.get(ctx.arg('ob'))
+        ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
             return ErrorPage()
         newDocstring = ctx.arg('docstring', None)
@@ -398,7 +398,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
-        return EditPage(self, ob, origob, newDocstring, isPreview)
+        return EditPage(self, ob, newDocstring, isPreview)
 
     def child_history(self, ctx):
         try:
