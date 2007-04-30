@@ -15,17 +15,23 @@
     <form action="" method="post">
       <nevow:attr nevow:render="url" name="action"></nevow:attr>
       <input type="hidden" name="fullName" value="">
-        <nevow:attr nevow:render="value" name="value"></nevow:attr>
+        <nevow:attr nevow:render="fullName" name="value"></nevow:attr>
+      </input>
+      <input type="hidden" name="initialWhitespace" value="">
+        <nevow:attr nevow:render="initialWhitespace" name="value"></nevow:attr>
       </input>
       <pre nevow:render="before"></pre>
-      <textarea style="font-family: monospace; padding: 0" rows="10"
-                name="docstring" nevow:render="textarea" cols="90">
-        <nevow:attr nevow:render="rows" name="rows"></nevow:attr>
-      </textarea>
-      <br />
-      <input type="submit" name="action" value="Submit" />
-      <input type="submit" name="action" value="Preview" />
-      <input type="submit" name="action" value="Cancel" />
+      <div style="margin-left: 8ex;">
+        <nevow:attr nevow:render="divIndent" name="style"></nevow:attr>
+        <textarea rows="10" style="margin: 0; font-family: monospace;"
+                  name="docstring" nevow:render="textarea" cols="90">
+          <nevow:attr nevow:render="rows" name="rows"></nevow:attr>
+        </textarea>
+        <br />
+        <input type="submit" name="action" value="Submit" />
+        <input type="submit" name="action" value="Preview" />
+        <input type="submit" name="action" value="Cancel" />
+      </div>
       <pre nevow:render="after"></pre>
     </form>
   </body>

@@ -1,5 +1,9 @@
 class C:
-    """Class docstring."""
+    """Class docstring.
+
+    This docstring has lines, paragraphs and everything!
+
+    @ivar notreally: even a field!"""
     class S:
         pass
     def f(self):

@@ -138,7 +138,7 @@ class ErrorPage(rend.Page):
         tags.head[tags.title["Error"]],
         tags.body[tags.p["An error occurred."]]])
 
-def indent(ob):
+def indentationAmount(ob):
     ob = ob.doctarget
     if isinstance(ob, model.Module):
         return 0
@@ -151,13 +151,38 @@ def indent(ob):
         firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
         return len(firstline) - len(firstline.lstrip())
 
+def indent(ds, data):
+    lines = ds.splitlines()
+    r = [lines[0]]
+    for line in lines[1:]:
+        if line.strip():
+            line = data + line
+        r.append(line)
+    return '\n'.join(r)
+
+def dedent(ds):
+    lines = ds.splitlines()
+    for line in lines[1:]:
+        if line.strip():
+            break
+    else:
+        return ds, None
+    initialWhitespace = line[:len(line) - len(line.lstrip())]
+    r = [lines[0]]
+    for line in lines[1:]:
+        if line.startswith(initialWhitespace):
+            line = line[len(initialWhitespace):]
+        r.append(line)
+    return '\n'.join(r), initialWhitespace
+
 class EditPage(rend.Page):
-    def __init__(self, root, ob, docstring, isPreview):
+    def __init__(self, root, ob, docstring, isPreview, initialWhitespace):
         self.root = root
         self.ob = ob
         self.lines = open(self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
         self.isPreview = isPreview
+        self.initialWhitespace = initialWhitespace
 
     def render_title(self, context, data):
         return context.tag.clear()[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
@@ -170,8 +195,10 @@ class EditPage(rend.Page):
                                tags.h2["Edit"]]
         else:
             return ()
-    def render_value(self, context, data):
+    def render_fullName(self, context, data):
         return self.ob.fullName()
+    def render_initialWhitespace(self, context, data):
+        return self.initialWhitespace
     def render_before(self, context, data):
         tob = self.ob.doctarget
         if tob.docstring:
@@ -185,6 +212,8 @@ class EditPage(rend.Page):
         if firstlineno > 0:
             lines.insert(0, '...\n')
         return context.tag[lines]
+    def render_divIndent(self, context, data):
+        return 'margin-left: %dex;'%(indentationAmount(self.ob),)
     def render_rows(self, context, data):
         return len(self.docstring.splitlines()) + 1
     def render_textarea(self, context, data):
@@ -300,7 +329,7 @@ class FileDiff(object):
         lastdocline = firstdocline + len(origlines)
         if editB.newDocstring:
             newlines = editB.newDocstring.orig.splitlines()
-            newlines[0] = indent(editB.obj)*' ' + newlines[0]
+            newlines[0] = indentationAmount(editB.obj)*' ' + newlines[0]
         else:
             newlines = []
         self.lines[firstdocline:lastdocline] = newlines
@@ -398,17 +427,21 @@ class EditingPyDoctorResource(PyDoctorResource):
                 newDocstring = ''
             else:
                 newDocstring = newDocstring.orig
+            newDocstring, initialWhitespace = dedent(newDocstring)
         else:
             isPreview = True
+            initialWhitespace = ctx.arg('initialWhitespace')
+        print (newDocstring, initialWhitespace)
         action = ctx.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
             req = ctx.locate(inevow.IRequest)
             if action == 'Submit':
+                newDocstring = indent(newDocstring, initialWhitespace)
+                print repr(newDocstring)
                 self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
-        newDocstring = indent(ob)*' ' + newDocstring
-        return EditPage(self, ob, newDocstring, isPreview)
+        return EditPage(self, ob, newDocstring, isPreview, initialWhitespace)
 
     def child_history(self, ctx):
         try:

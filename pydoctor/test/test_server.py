@@ -163,3 +163,10 @@ def test_diff_newDocstring():
             'revB': 1}
     html = getTextOfPage(root, 'diff', args)
     assert '+        """Tee hee."""' in html
+
+def test_dedent_indent():
+    ds = "doc\n    string"
+    d, i = server.dedent(ds)
+    assert d == 'doc\nstring'
+    n = server.indent(d, i)
+    assert n == ds
