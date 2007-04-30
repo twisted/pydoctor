@@ -145,7 +145,6 @@ def indentationAmount(ob):
     lines = open(ob.doctarget.parentMod.filepath, 'rU').readlines()
     if ob.docstring is None:
         line = lines[ob.linenumber-1]
-        print repr(line)
         return len(line) - len(line.lstrip()) + 4
     else:
         firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
@@ -317,7 +316,6 @@ class FileDiff(object):
         self.orig_lines = self.lines[:]
 
     def apply_edit(self, editA, editB):
-        print self.lines
         if not editA.newDocstring:
             lineno = editA.obj.linenumber + 1
             origlines = []
@@ -332,7 +330,6 @@ class FileDiff(object):
         else:
             newlines = []
         self.lines[firstdocline:lastdocline] = newlines
-        print self.lines
 
     def diff(self):
         orig = [line + '\n' for line in self.orig_lines]
@@ -434,13 +431,12 @@ class EditingPyDoctorResource(PyDoctorResource):
         else:
             isPreview = True
             initialWhitespace = ctx.arg('initialWhitespace')
-        print (newDocstring, initialWhitespace)
         action = ctx.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
             req = ctx.locate(inevow.IRequest)
             if action == 'Submit':
-                newDocstring = indent(newDocstring, initialWhitespace)
-                print repr(newDocstring)
+                if newDocstring:
+                    newDocstring = indent(newDocstring, initialWhitespace)
                 self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
@@ -523,7 +519,6 @@ class EditingPyDoctorResource(PyDoctorResource):
                 oldLength = len(prevEdit.newDocstring.orig.splitlines())
                 oldNumber = prevEdit.newDocstring.linenumber
                 newDocstring.linenumber = oldNumber - oldLength + newLength
-                print oldNumber, newDocstring.linenumber
             else:
                 newDocstring.linenumber = tob.linenumber + 1 + newLength
 
