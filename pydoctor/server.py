@@ -312,20 +312,19 @@ class FileDiff(object):
         self.ob = ob
         self.lines = [l[:-1] for l in open(ob.filepath, 'rU').readlines()]
         self.orig_lines = self.lines[:]
-        self.delta = 0
 
     def reset(self):
         self.orig_lines = self.lines[:]
-        self.delta = 0
 
     def apply_edit(self, editA, editB):
+        print self.lines
         if not editA.newDocstring:
             lineno = editA.obj.linenumber + 1
             origlines = []
         else:
             origlines = editA.newDocstring.orig.splitlines()
             lineno = editA.newDocstring.linenumber - len(origlines)
-        firstdocline = lineno + self.delta
+        firstdocline = lineno
         lastdocline = firstdocline + len(origlines)
         if editB.newDocstring:
             newlines = editB.newDocstring.orig.splitlines()
@@ -333,7 +332,7 @@ class FileDiff(object):
         else:
             newlines = []
         self.lines[firstdocline:lastdocline] = newlines
-        self.delta += len(origlines) - len(newlines)
+        print self.lines
 
     def diff(self):
         orig = [line + '\n' for line in self.orig_lines]
@@ -373,14 +372,16 @@ class BigDiffPage(rend.Page):
         self.system = system
         self.root = root
 
-    def render_bigDiff(self, context, data):
+    def render_changes(self, context, data):
         mods = {}
-        for e in self.root.edits:
-            m = e.obj.parentMod
-            if m not in mods:
-                mods[m] = FileDiff(m)
-            i = e.obj.edits.index(e)
-            mods[m].apply_edit(e.obj.edits[i-1], e.obj.edits[i])
+        for m in self.root.editsbymod:
+            l = [e for e in self.root.editsbymod[m]
+                 if e is self.root.editsbyob[e.obj][-1]]
+            l.sort(key=lambda x:x.obj.linenumber, reverse=True)
+            mods[m] = FileDiff(m)
+            for e in l:
+                edit0 = self.root.editsbyob[e.obj][0]
+                mods[m].apply_edit(edit0, e)
         r = []
         for mod in sorted(mods, key=lambda x:x.filepath):
             r.append(tags.pre[mods[mod].diff()])
@@ -428,6 +429,8 @@ class EditingPyDoctorResource(PyDoctorResource):
             else:
                 newDocstring = newDocstring.orig
             newDocstring, initialWhitespace = dedent(newDocstring)
+            if initialWhitespace is None:
+                initialWhitespace = ' '*indentationAmount(ob)
         else:
             isPreview = True
             initialWhitespace = ctx.arg('initialWhitespace')
@@ -501,7 +504,7 @@ class EditingPyDoctorResource(PyDoctorResource):
 
     def addEdit(self, edit):
         self.editsbyob.setdefault(edit.obj.doctarget, []).append(edit)
-        self.editsbymod.setdefault(edit.obj.doctarget, []).append(edit)
+        self.editsbymod.setdefault(edit.obj.doctarget.parentMod, []).append(edit)
         self._edits.append(edit)
 
     def newDocstring(self, user, ob, newDocstring):
@@ -520,6 +523,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 oldLength = len(prevEdit.newDocstring.orig.splitlines())
                 oldNumber = prevEdit.newDocstring.linenumber
                 newDocstring.linenumber = oldNumber - oldLength + newLength
+                print oldNumber, newDocstring.linenumber
             else:
                 newDocstring.linenumber = tob.linenumber + 1 + newLength
 
