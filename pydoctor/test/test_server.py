@@ -53,10 +53,14 @@ def test_simple():
 def test_edit_renders_ok():
     system = processPackage('basic')
     root = server.EditingPyDoctorResource(system)
-    args = {'ob':'basic.mod.C'}
+    args = {'ob':'basic'}
     result = getTextOfPage(root, 'edit', args=args)
-    # very weak, but it's an assert that things didn't explode
-    assert 'textarea' in result
+    assert '# pre comment -7' not in result
+    assert '# pre comment -6' in result
+    assert '# pre comment -1' in result
+    assert '# post comment 1' in result
+    assert '# post comment 6' in result
+    assert '# post comment 7' not in result
 
     args = {'ob':'does.not.exist'}
     result = getTextOfPage(root, 'edit', args=args)
