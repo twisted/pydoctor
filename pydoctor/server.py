@@ -150,18 +150,19 @@ def origstring(ob, lines=None):
     return indent + ob.docstring.orig
 
 class EditPage(rend.Page):
-    def __init__(self, root, ob, origob, docstring=None):
+    def __init__(self, root, ob, origob, docstring, isPreview):
         self.root = root
         self.ob = ob
         self.lines = open(self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
+        self.isPreview = isPreview
 
     def render_title(self, context, data):
-        return context.tag[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
-                           self.ob.fullName(),
-                           u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+        return context.tag.clear()[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
+                                   self.ob.fullName(),
+                                   u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
-        if self.docstring is not None:
+        if self.isPreview:
             docstring = parse_str(self.docstring)
             return context.tag[epydoc2stan.doc2html(self.ob, docstring=docstring),
                                tags.h2["Edit"]]
@@ -382,11 +383,14 @@ class EditingPyDoctorResource(PyDoctorResource):
             return ErrorPage()
         newDocstring = ctx.arg('docstring', None)
         if newDocstring is None:
+            isPreview = False
             newDocstring = self.mostRecentEdit(ob).newDocstring
             if newDocstring is None:
                 newDocstring = ''
             else:
                 newDocstring = newDocstring.orig
+        else:
+            isPreview = True
         action = ctx.arg('action', 'Preview')
         if action in ('Submit', 'Cancel'):
             req = ctx.locate(inevow.IRequest)
@@ -394,7 +398,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
-        return EditPage(self, ob, origob, newDocstring)
+        return EditPage(self, ob, origob, newDocstring, isPreview)
 
     def child_history(self, ctx):
         try:
