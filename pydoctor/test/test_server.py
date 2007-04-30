@@ -145,3 +145,17 @@ def test_docstrings_from_superclass():
 
     html = getTextOfPage(root, 'basic.mod.D.html')
     assert 'Method docstring of C.f' in html
+
+def test_diff_newDocstring():
+    system = processPackage('basic')
+    root = server.EditingPyDoctorResource(system)
+
+    ob = system.allobjects['basic.mod.D.f']
+
+    root.newDocstring('xxx', ob, '"""Tee hee."""')
+
+    args = {'ob': ob.fullName(),
+            'revA': 0,
+            'revB': 1}
+    html = getTextOfPage(root, 'diff', args)
+    assert '+        """Tee hee."""' in html

@@ -138,16 +138,18 @@ class ErrorPage(rend.Page):
         tags.head[tags.title["Error"]],
         tags.body[tags.p["An error occurred."]]])
 
-
-def origstring(ob, lines=None):
+def indent(ob):
+    ob = ob.doctarget
+    if isinstance(ob, model.Module):
+        return 0
+    lines = open(ob.doctarget.parentMod.filepath, 'rU').readlines()
     if ob.docstring is None:
-        return None
-    if lines:
-        firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
-        indent = (len(firstline) - len(firstline.lstrip()))*' '
+        line = lines[ob.linenumber-1]
+        print repr(line)
+        return len(line) - len(line.lstrip()) + 4
     else:
-        indent = ''
-    return indent + ob.docstring.orig
+        firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
+        return len(firstline) - len(firstline.lstrip())
 
 class EditPage(rend.Page):
     def __init__(self, root, ob, docstring, isPreview):
@@ -171,27 +173,34 @@ class EditPage(rend.Page):
     def render_value(self, context, data):
         return self.ob.fullName()
     def render_before(self, context, data):
-        lineno = self.ob.doctarget.linenumber
+        tob = self.ob.doctarget
+        if tob.docstring:
+            lineno = tob.docstring.linenumber - len(tob.docstring.orig.splitlines())
+        else:
+            lineno = tob.linenumber
         firstlineno = max(0, lineno-6)
         lines = self.lines[firstlineno:lineno]
         if not lines:
             return ()
-        if lineno > 0:
+        if firstlineno > 0:
             lines.insert(0, '...\n')
         return context.tag[lines]
     def render_rows(self, context, data):
         return len(self.docstring.splitlines()) + 1
     def render_textarea(self, context, data):
-        return context.tag[self.docstring]
+        return context.tag.clear()[self.docstring]
     def render_after(self, context, data):
-        ob = self.ob.doctarget
-        lineno = ob.linenumber + len(ob.docstring.orig.splitlines())
+        tob = self.ob.doctarget
+        if tob.docstring:
+            lineno = tob.docstring.linenumber
+        else:
+            lineno = tob.linenumber
         lastlineno = lineno + 6
-        alllines = open(ob.parentMod.filepath, 'rU').readlines()
-        lines = alllines[lineno:lastlineno]
+        print self.lines, lineno, lastlineno
+        lines = self.lines[lineno:lastlineno]
         if not lines:
             return ()
-        if lastlineno < len(alllines):
+        if lastlineno < len(self.lines):
             lines.append('...\n')
         return context.tag[lines]
     def render_url(self, context, data):
@@ -292,6 +301,7 @@ class FileDiff(object):
         lastdocline = firstdocline + len(origlines)
         if editB.newDocstring:
             newlines = editB.newDocstring.orig.splitlines()
+            newlines[0] = indent(editB.obj)*' ' + newlines[0]
         else:
             newlines = []
         self.lines[firstdocline:lastdocline] = newlines
@@ -353,7 +363,7 @@ class BigDiffPage(rend.Page):
 
 def absoluteURL(ctx, ob):
     if ob.document_in_parent_page:
-        p = self.origob.parent
+        p = ob.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
         child = p.fullName() + '.html'
@@ -398,6 +408,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 self.newDocstring(userIP(req), ob, newDocstring)
             req.redirect(absoluteURL(ctx, ob))
             return ''
+        newDocstring = indent(ob)*' ' + newDocstring
         return EditPage(self, ob, newDocstring, isPreview)
 
     def child_history(self, ctx):
@@ -466,18 +477,21 @@ class EditingPyDoctorResource(PyDoctorResource):
         if tob.parentMod not in self.editsbymod:
             self.editsbymod[tob.parentMod] = []
 
-        if not newDocstring:
+        prevEdit = self.mostRecentEdit(ob)
+
+        if not newDocstring.strip():
             newDocstring = None
         else:
             newDocstring = parse_str(newDocstring)
-            orig = origstring(ob)
-            if orig:
-                l = len(orig.splitlines())
-                newDocstring.linenumber = tob.docstring.linenumber - l + len(newDocstring.orig.splitlines())
+            newLength = len(newDocstring.orig.splitlines())
+            if prevEdit.newDocstring:
+                oldLength = len(prevEdit.newDocstring.orig.splitlines())
+                oldNumber = prevEdit.newDocstring.linenumber
+                newDocstring.linenumber = oldNumber - oldLength + newLength
             else:
-                newDocstring.linenumber = tob.linenumber + 1 + len(newDocstring.orig.splitlines())
+                newDocstring.linenumber = tob.linenumber + 1 + newLength
 
-        edit = Edit(ob, self.mostRecentEdit(ob).rev + 1, newDocstring, user,
+        edit = Edit(ob, prevEdit.rev + 1, newDocstring, user,
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.addEdit(edit)
 
