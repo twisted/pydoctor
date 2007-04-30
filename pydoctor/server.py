@@ -196,7 +196,6 @@ class EditPage(rend.Page):
         else:
             lineno = tob.linenumber
         lastlineno = lineno + 6
-        print self.lines, lineno, lastlineno
         lines = self.lines[lineno:lastlineno]
         if not lines:
             return ()
