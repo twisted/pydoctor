@@ -1,5 +1,6 @@
 import py
 from pydoctor import model, astbuilder
+from pydoctor.test import test_astbuilder
 
 def processPackage(packname, buildercls=astbuilder.ASTBuilder):
     testpackage = py.magic.autopath().dirpath().join(packname)
@@ -45,3 +46,15 @@ def test_nestedconfusion():
     A = system.allobjects['nestedconfusion.mod.nestedconfusion.A']
     C = system.allobjects['nestedconfusion.mod.C']
     assert A.baseobjects[0] is C
+
+def test_moresystems():
+    system = processPackage("basic")
+    system2 = model.System()
+    system2.moresystems.append(system)
+    mod = test_astbuilder.fromText("""
+    from basic import mod
+    class E(mod.C):
+        pass
+    """, system=system2)
+    E = mod.contents["E"]
+    assert E.baseobjects[0] is not None

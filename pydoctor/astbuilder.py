@@ -102,7 +102,7 @@ class ModuleVistor(object):
             str_base = ast_pp.pp(n)
             rawbases.append(str_base)
             base = current.dottedNameToFullName(str_base)
-            bob = self.system.allobjects.get(base)
+            bob = self.system.objForFullName(base)
             if not bob and self.system.options.resolvealiases:
                 base = self.system.resolveAlias(base)
                 bob = self.system.allobjects.get(base)

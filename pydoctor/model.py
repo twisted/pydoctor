@@ -318,6 +318,12 @@ class System(object):
         else:
             return n
 
+    def objForFullName(self, fullName):
+        for sys in [self] + self.moresystems:
+            if fullName in sys.allobjects:
+                return sys.allobjects[fullName]
+        return None
+
     def _warning(self, current, type, detail):
         if current is not None:
             fn = current.fullName()
