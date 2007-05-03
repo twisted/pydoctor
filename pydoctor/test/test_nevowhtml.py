@@ -74,3 +74,18 @@ def test_basic_package():
     if conftest.option.viewhtml:
         r = os.system("open %s"%targetdir.join('index.html'))
         assert not r
+
+def test_public():
+    system = processPackage("basic")
+    from pydoctor.nevowhtml.summary import public
+    assert public(system.allobjects['basic.mod'])
+    assert not public(system.allobjects['basic._private_mod'])
+
+def test_hasdocstring():
+    system = processPackage("basic")
+    from pydoctor.nevowhtml.summary import hasdocstring
+    assert not hasdocstring(system.allobjects['basic._private_mod'])
+    assert hasdocstring(system.allobjects['basic.mod.C.f'])
+    sub_f = system.allobjects['basic.mod.D.f']
+    assert hasdocstring(sub_f) and not sub_f.docstring
+

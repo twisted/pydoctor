@@ -199,6 +199,18 @@ class IndexPage(page.Element):
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()['/'.join(sorted(rootkinds))]
 
+def hasdocstring(ob):
+    for source in ob.docsources():
+        if source.docstring is not None:
+            return True
+    return False
+
+def public(ob):
+    for part in ob.fullName().split('.'):
+        if part[0] == '_' and not (part.startswith('__') and part.endswith('__')):
+            return False
+    return True
+
 class UndocumentedSummaryPage(page.Element):
     filename = 'undoccedSummary.html'
     docFactory = loaders.xmlfile(templatefile('summary.html'))
@@ -215,16 +227,6 @@ class UndocumentedSummaryPage(page.Element):
 
     @page.renderer
     def stuff(self, request, tag):
-        def public(ob):
-            for part in ob.fullName().split('.'):
-                if part[0] == '_' and not (part.startswith('__') and part.endswith('__')):
-                    return False
-            return True
-        def hasdocstring(ob):
-            for source in ob.docsources():
-                if source.docsources is not None:
-                    return True
-            return False
         undoccedpublic = [o for o in self.system.orderedallobjects
                           if public(o) and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
