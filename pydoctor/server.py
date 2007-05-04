@@ -373,7 +373,7 @@ class BigDiffPage(rend.Page):
         mods = {}
         for m in self.root.editsbymod:
             l = [e for e in self.root.editsbymod[m]
-                 if e is self.root.editsbyob[e.obj][-1]]
+                 if e is self.root.editsbyob[e.obj.doctarget][-1]]
             l.sort(key=lambda x:x.obj.linenumber, reverse=True)
             mods[m] = FileDiff(m)
             for e in l:
@@ -520,9 +520,10 @@ class EditingPyDoctorResource(PyDoctorResource):
                 oldNumber = prevEdit.newDocstring.linenumber
                 newDocstring.linenumber = oldNumber - oldLength + newLength
             else:
+                # XXX check for comments?
                 newDocstring.linenumber = tob.linenumber + 1 + newLength
 
-        edit = Edit(ob, prevEdit.rev + 1, newDocstring, user,
+        edit = Edit(tob, prevEdit.rev + 1, newDocstring, user,
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.addEdit(edit)
 
