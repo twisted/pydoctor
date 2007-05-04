@@ -25,8 +25,8 @@ class TwistedFunction(model.Function):
             return
         for interface in (self.parent.implements_directly +
                           self.parent.implements_indirectly):
-            if interface in self.system.allobjects:
-                io = self.system.allobjects[interface]
+            io = self.system.objForFullName(interface)
+            if io is not None:
                 if self.name in io.contents:
                     yield io.contents[self.name]
 
@@ -146,16 +146,15 @@ class InterfaceClassFinder(object):
         funcName = self.funcNameFromCall(node.expr)
         name = node.nodes[0].name
         args = node.expr.args
-        if funcName in self.system.allobjects:
-            ob = self.system.allobjects[funcName]
-            if isinstance(ob, model.Class) and ob.isinterfaceclass:
-                interface = self.builder.pushClass(name, "...")
-                print 'new interface', interface
-                interface.isinterface = True
-                interface.linenumber = node.lineno
-                interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
-                self.newinterfaces.append(interface)
-                self.builder.popClass()
+        ob = self.system.objForFullName(funcName)
+        if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
+            interface = self.builder.pushClass(name, "...")
+            print 'new interface', interface
+            interface.isinterface = True
+            interface.linenumber = node.lineno
+            interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
+            self.newinterfaces.append(interface)
+            self.builder.popClass()
 
     def visitFunction(self, node):
         return
@@ -237,8 +236,8 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
 
         for cls in self.system.objectsOfType(model.Class):
             for interface in cls.implements_directly:
-                if interface in self.system.allobjects and '.test.' not in interface:
-                    interface_ob = self.system.allobjects[interface]
+                interface_ob = self.system.objForFullName(interface)
+                if interface_ob is not None:
                     if interface_ob.implementedby_directly is None:
                         self.warning("probable interface not marked as such",
                                      interface_ob.fullName())
@@ -246,8 +245,8 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_directly.append(cls.fullName())
             for interface in cls.implements_indirectly:
-                if interface in self.system.allobjects and '.test.' not in interface:
-                    interface_ob = self.system.allobjects[interface]
+                interface_ob = self.system.objForFullName(interface)
+                if interface_ob is not None:
                     if interface_ob.implementedby_indirectly is None:
                         self.warning("probable interface not marked as such",
                                      interface_ob.fullName())

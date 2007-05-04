@@ -105,7 +105,7 @@ class ModuleVistor(object):
             bob = self.system.objForFullName(base)
             if not bob and self.system.options.resolvealiases:
                 base = self.system.resolveAlias(base)
-                bob = self.system.allobjects.get(base)
+                bob = self.system.objForFullName(base)
             if bob:
                 assert (bob.parentMod is self.builder.currentMod or
                         bob.parentMod.processed)

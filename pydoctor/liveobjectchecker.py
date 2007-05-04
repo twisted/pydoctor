@@ -101,7 +101,7 @@ def typeChecker(builder, name, OBJ):
             else:
                 cls.rawbases.append(fullName)
             cls.bases.append(fullName)
-            baseObject = builder.system.allobjects.get(fullName)
+            baseObject = builder.system.objForFullName(fullName)
             cls.baseobjects.append(baseObject)
             if baseObject is not None:
                 baseObject.subclasses.append(cls)
