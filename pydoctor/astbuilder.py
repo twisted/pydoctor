@@ -155,7 +155,7 @@ class ModuleVistor(object):
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if 0 and isinstance(mod, model.Module) and fromname in mod.contents:
+                if isinstance(mod, model.Module) and fromname in mod.contents:
                     print 'moving', mod.contents[fromname], 'into', self.builder.current
                     # this code attempts to preserve "rather a lot" of
                     # invariants assumed by various bits of pydoctor and that
@@ -221,27 +221,6 @@ class ModuleVistor(object):
                         self.system.msg('ast', 'XXX')
                     else:
                         target.kind = func.title().replace('m', ' M')
-        elif isinstance(self.builder.current, model.Module):
-            mod = self.builder.current
-            if len(node.nodes) != 1 or \
-                   not isinstance(node.nodes[0], ast.AssName) or \
-                   node.nodes[0].name != '__all__':
-                return
-            if mod.all is not None:
-                self.builder.system.msg(
-                    'all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
-            if not isinstance(node.expr, ast.List):
-                self.builder.system.msg(
-                    'all', "couldn't parse %s.__all__"%(mod.fullName(),))
-                return
-            items = node.expr.nodes
-            names = []
-            for item in items:
-                if not isinstance(item, ast.Const) or not isinstance(item.value, str):
-                    mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
-                    return
-                names.append(item.value)
-            mod.all = names
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
@@ -540,6 +519,7 @@ class ASTBuilder(object):
             ast = self.parseFile(mod.filepath)
             if not ast:
                 continue
+            findAll(ast, mod)
             self.system.progress('analyseImports', i+1, len(modlist),
                                  "modules parsed")
             visitor.walk(ast, isf)
