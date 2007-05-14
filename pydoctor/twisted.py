@@ -184,14 +184,6 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
     Function = TwistedFunction
     ModuleVistor = TwistedModuleVisitor
 
-    def popModule(self):
-        # hmm, slightly strangely located hack, this
-        mod = self.current
-        assert not mod.processed
-        if hasattr(mod, 'filepath'):
-            astbuilder.findAll(self.parseFile(mod.filepath), mod)
-        super(TwistedASTBuilder, self).popModule()
-
     def _finalStateComputations(self):
         super(TwistedASTBuilder, self)._finalStateComputations()
         for cls in self.system.objectsOfType(model.Class):
@@ -254,14 +246,14 @@ class TwistedASTBuilder(astbuilder.ASTBuilder):
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_indirectly.append(cls.fullName())
 
-    def shouldInclude(self, obj):
-        if isinstance(obj, model.Package) and obj.name == 'test':
-            return False
-        if obj.name.startswith('_') and not obj.name.endswith('__'):
-            return False
-        if isinstance(self.current, model.Module) and self.current.all is not None:
-            return obj.name in self.current.all
-        return True
+##     def shouldInclude(self, obj):
+##         if isinstance(obj, model.Package) and obj.name == 'test':
+##             return False
+##         if obj.name.startswith('_') and not obj.name.endswith('__'):
+##             return False
+##         if isinstance(self.current, model.Module) and self.current.all is not None:
+##             return obj.name in self.current.all
+##         return True
 
     def markInterface(self, cls):
         cls.isinterface = True

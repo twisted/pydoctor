@@ -289,9 +289,6 @@ class ASTBuilder(object):
         self._stack = []
         self.ast_cache = {}
 
-    def shouldInclude(self, obj):
-        return True
-
     def _push(self, cls, name, docstring):
         if self.current:
             if isinstance(self.current, model.Module) and \
@@ -304,8 +301,6 @@ class ASTBuilder(object):
             prefix = ''
             parent = None
         obj = cls(self.system, prefix, name, docstring, parent)
-        if not self.shouldInclude(obj):
-            return None
         if parent:
             parent.orderedcontents.append(obj)
             parent.contents[name] = obj
@@ -481,8 +476,6 @@ class ASTBuilder(object):
         fname = os.path.basename(modpath)
         modname = os.path.splitext(fname)[0]
         mod = self.pushModule(modname, None)
-        if mod is None:
-            return
         self.system.progress("addModule", len(self.system.orderedallobjects),
                              None, "modules and packages discovered")
         mod.filepath = modpath
@@ -499,8 +492,6 @@ class ASTBuilder(object):
             raise Exception, "you must pass a package directory to preprocessDirectory"
         if os.path.basename(dirpath):
             package = self.pushPackage(os.path.basename(dirpath), None)
-            if package is None:
-                return
             package.filepath = dirpath
             self.setSourceHref(package)
         else:

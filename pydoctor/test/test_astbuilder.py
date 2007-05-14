@@ -219,19 +219,6 @@ def test_nested_class_inheriting_from_same_module():
     '''
     mod = fromText(src)
 
-def test_noninclusion():
-    class ASTBuilder(astbuilder.ASTBuilder):
-        def shouldInclude(self, obj):
-            return obj.name != 'f'
-    src = '''
-    def f():
-        pass
-    def g():
-        pass
-    '''
-    mod = fromText(src, buildercls=ASTBuilder)
-    assert 'f' not in mod.contents
-
 def test_all_recognition():
     mod = fromText('''
     def f():
