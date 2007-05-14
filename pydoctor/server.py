@@ -386,6 +386,30 @@ class BigDiffPage(rend.Page):
 
     docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
 
+class RawBigDiffPage(rend.Page):
+    def __init__(self, system, root):
+        self.system = system
+        self.root = root
+
+    def renderHTTP(self, context):
+        request = context.locate(inevow.IRequest)
+        request.setHeader('content-type', 'text/plain')
+        mods = {}
+        if not self.root.editsbymod:
+            return 'No edits yet!'
+        for m in self.root.editsbymod:
+            l = [e for e in self.root.editsbymod[m]
+                 if e is self.root.editsbyob[e.obj.doctarget][-1]]
+            l.sort(key=lambda x:x.obj.linenumber, reverse=True)
+            mods[m] = FileDiff(m)
+            for e in l:
+                edit0 = self.root.editsbyob[e.obj][0]
+                mods[m].apply_edit(edit0, e)
+        r = []
+        for mod in sorted(mods, key=lambda x:x.filepath):
+            request.write(mods[mod].diff())
+        return ''
+
 class ProblemObjectsPage(rend.Page):
     def __init__(self, system):
         self.system = system
@@ -492,6 +516,9 @@ class EditingPyDoctorResource(PyDoctorResource):
 
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
+
+    def child_rawBigDiff(self, ctx):
+        return RawBigDiffPage(self.system, self)
 
     def child_problemObjects(self, ctx):
         return ProblemObjectsPage(self.system)
