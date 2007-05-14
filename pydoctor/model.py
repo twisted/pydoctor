@@ -338,6 +338,9 @@ class System(object):
             if isinstance(o, cls):
                 yield o
 
+    def shouldInclude(self, ob):
+        return True
+
     def __setstate__(self, state):
         if 'abbrevmapping' not in state:
             state['abbrevmapping'] = {}

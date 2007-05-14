@@ -53,6 +53,8 @@ class NevowWriter:
             self.writeDocsFor(o, functionpages)
 
     def writeDocsForOne(self, ob, fobj):
+        if not self.system.shouldInclude(ob):
+            return
         if self.dry_run:
             self.total_pages += 1
             return

@@ -141,7 +141,11 @@ class ModuleVistor(object):
                     self.builder.warning("import * from a package", modname)
                     return
                 assert mod.processed
-                for n in mod.contents:
+                if mod.all is not None:
+                    names = mod.all
+                else:
+                    names = [k for k in mod.contents.keys() if not k.startswith('_')]
+                for n in names:
                     name2fullname[n] = modname + '.' + n
                 return
             if asname is None:
@@ -191,33 +195,53 @@ class ModuleVistor(object):
                 name2fullname[asname] = fullname
 
     def visitAssign(self, node):
-        if not isinstance(self.builder.current, model.Class):
-            return
-        if len(node.nodes) != 1:
-            return
-        if not isinstance(node.nodes[0], ast.AssName):
-            return
-        target = node.nodes[0].name
-        if not isinstance(node.expr, ast.CallFunc):
-            return
-        func = node.expr.node
-        if not isinstance(func, ast.Name):
-            return
-        func = func.name
-        args = node.expr.args
-        if len(args) != 1:
-            return
-        arg, = args
-        if not isinstance(arg, ast.Name):
-            return
-        arg = arg.name
-        if target == arg and func in ['staticmethod', 'classmethod']:
-            target = self.builder.current.contents.get(target)
-            if target and isinstance(target, model.Function):
-                if target.kind != 'Method':
-                    self.system.msg('ast', 'XXX')
-                else:
-                    target.kind = func.title().replace('m', ' M')
+        if isinstance(self.builder.current, model.Class):
+            if len(node.nodes) != 1:
+                return
+            if not isinstance(node.nodes[0], ast.AssName):
+                return
+            target = node.nodes[0].name
+            if not isinstance(node.expr, ast.CallFunc):
+                return
+            func = node.expr.node
+            if not isinstance(func, ast.Name):
+                return
+            func = func.name
+            args = node.expr.args
+            if len(args) != 1:
+                return
+            arg, = args
+            if not isinstance(arg, ast.Name):
+                return
+            arg = arg.name
+            if target == arg and func in ['staticmethod', 'classmethod']:
+                target = self.builder.current.contents.get(target)
+                if target and isinstance(target, model.Function):
+                    if target.kind != 'Method':
+                        self.system.msg('ast', 'XXX')
+                    else:
+                        target.kind = func.title().replace('m', ' M')
+        elif isinstance(self.builder.current, model.Module):
+            mod = self.builder.current
+            if len(node.nodes) != 1 or \
+                   not isinstance(node.nodes[0], ast.AssName) or \
+                   node.nodes[0].name != '__all__':
+                return
+            if mod.all is not None:
+                self.builder.system.msg(
+                    'all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
+            if not isinstance(node.expr, ast.List):
+                self.builder.system.msg(
+                    'all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                return
+            items = node.expr.nodes
+            names = []
+            for item in items:
+                if not isinstance(item, ast.Const) or not isinstance(item.value, str):
+                    mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                    return
+                names.append(item.value)
+            mod.all = names
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)

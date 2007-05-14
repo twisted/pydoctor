@@ -183,7 +183,8 @@ class CommonPage(object):
         return self.docgetter.get(self.ob)
 
     def children(self):
-        return self.ob.orderedcontents
+        return [o for o in self.ob.orderedcontents
+                if self.ob.system.shouldInclude(o)]
 
     def packageInitTable(self):
         return ()
@@ -291,12 +292,12 @@ class CommonPage(object):
 class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
-                       if o.name != '__init__'],
+                       if o.name != '__init__' and self.ob.system.shouldInclude(o)],
                       key=lambda o2:o2.fullName())
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
-        children = init.orderedcontents
+        children = [o for o in init.orderedcontents if self.ob.system.shouldInclude(o)]
         if children:
             return [tags.p["From the __init__.py module:"],
                     TableFragment(self, init, self.usesorttable, children)]

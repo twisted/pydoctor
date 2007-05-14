@@ -29,3 +29,16 @@ class TwistedASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
 
 class TwistedSystem(model.System):
     defaultBuilder = TwistedASTBuilder
+
+    def shouldInclude(self, obj):
+        o = obj
+        while o:
+            if isinstance(o, model.Package) and o.name == 'test':
+                return False
+            if o.name.startswith('_') and not (o.name.startswith('__') and o.name.endswith('__')):
+                return False
+            o = o.parent
+        if isinstance(obj.parent, model.Module) and obj.parent.all is not None:
+            return obj.name in obj.parent.all
+        return True
+
