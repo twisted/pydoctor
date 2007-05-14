@@ -370,7 +370,8 @@ def main(args):
             if system.epytextproblems:
                 def p(msg):
                     system.msg('epytext', msg, thresh=-1, topthresh=1)
-                p("these objects' docstrings are not proper epytext:")
+                p("these %s objects' docstrings are not proper epytext:"
+                  %(len(system.epytextproblems),))
                 exitcode = 2
                 for fn in system.epytextproblems:
                     p('    '+fn)
