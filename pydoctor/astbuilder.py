@@ -644,4 +644,4 @@ def findAll(modast, mod):
                     continue
                 names.append(item.value)
                 mod.all = names
-    
+
