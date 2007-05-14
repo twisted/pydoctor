@@ -316,8 +316,9 @@ def overriding_subclasses(c, name, firstcall=True):
         yield c
     else:
         for sc in c.subclasses:
-            for sc2 in overriding_subclasses(sc, name, False):
-                yield sc2
+            if c.system.shouldInclude(sc):
+                for sc2 in overriding_subclasses(sc, name, False):
+                    yield sc2
 
 def nested_bases(b):
     r = [(b,)]
@@ -336,6 +337,14 @@ def unmasked_attrs(baselist):
 
 
 def maybeShortenList(system, label, lst, idbase):
+    lst2 = []
+    for name in lst:
+        o = system.allobjects.get(name)
+        if o is None or system.shouldInclude(o):
+            lst2.append(name)
+    lst = lst2
+    if not lst:
+        return None
     def one(item):
         if item in system.allobjects:
             return taglink(system.allobjects[item])
@@ -388,7 +397,8 @@ class ClassPage(CommonPage):
             return r
         p = maybeShortenList(self.ob.system, "Known subclasses: ",
                              [o.fullName() for o in scs], "moreSubclasses")
-        r[tags.p[p]]
+        if p is not None:
+            r[tags.p[p]]
         return r
 
     def ifhasplitlinks(self, tag):
@@ -459,7 +469,8 @@ class ClassPage(CommonPage):
             idbase = 'overridenIn' + str(self.overridenInCount)
             l = maybeShortenList(self.ob.system, 'overridden in ',
                                  [o.fullName() for o in ocs], idbase)
-            r.append(tags.div(class_="interfaceinfo")[l])
+            if l is not None:
+                r.append(tags.div(class_="interfaceinfo")[l])
         return r
 
 
@@ -480,7 +491,8 @@ class TwistedClassPage(ClassPage):
             label = 'Implements interfaces: '
         if namelist:
             l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
-            r[tags.p[l]]
+            if l is not None:
+                r[tags.p[l]]
         return r
 
     def interfaceMeth(self, methname):
