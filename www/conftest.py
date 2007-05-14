@@ -4,6 +4,8 @@ import re
 class TidyChecker(py.test.collect.Item):
     def run(self):
         tidy = py.path.local.sysfind('tidy')
+        if not tidy:
+            py.test.skip("tidy not installed")
         tidy.sysexec('-qe', self.fspath)
 
 
