@@ -238,7 +238,7 @@ class ModuleVistor(object):
                     self.system.msg('ast', '%r is both class- and static-method?'%(func.fullName(),), thresh=-1)
                 else:
                     func.kind = 'Static Method'
-            else:
+            elif isclassmethod:
                 func.kind = 'Class Method'
         if node.lineno is not None:
             func.linenumber = node.lineno
