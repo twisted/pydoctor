@@ -5,14 +5,16 @@ from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
     r = tags.li[taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True)]
-    if isinstance(modorpack, model.Package) and len(modorpack.orderedcontents) > 1:
-        ul = tags.ul()
-        for m in sorted(modorpack.orderedcontents,
-                        key=lambda m:m.fullName()):
-            if m.name != '__init__':
-                ul[moduleSummary(m)]
-        r[ul]
-    return r
+    if not isinstance(modorpack, model.Package):
+        return r
+    contents = [m for m in modorpack.orderedcontents
+                if modorpack.system.shouldInclude(m) and m.name != '__init__']
+    if not contents:
+        return r
+    ul = tags.ul()
+    for m in sorted(contents, key=lambda m:m.fullName()):
+        ul[moduleSummary(m)]
+    return r[ul]
 
 def _lckey(x):
     return x.fullName().lower()
@@ -38,11 +40,11 @@ class ModuleIndexPage(page.Element):
 def findRootClasses(system):
     roots = {}
     for cls in system.objectsOfType(model.Class):
-        if ' ' in cls.name:
+        if ' ' in cls.name or not system.shouldInclude(cls):
             continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
-                if b is None:
+                if b is None or not system.shouldInclude(b):
                     roots.setdefault(n, []).append(cls)
                 elif b.system is not system:
                     roots[b.fullName()] = b
@@ -57,7 +59,8 @@ def subclassesFrom(hostsystem, cls, anchors):
         r[tags.a(name=name)]
         anchors.add(name)
     r[taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True)]
-    scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()]
+    scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
+           and hostsystem.shouldInclude(sc)]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
@@ -115,7 +118,8 @@ class NameIndexPage(page.Element):
         manyNames = tag.patternGenerator('manyNames')
         initials = {}
         for ob in self.system.orderedallobjects:
-            initials.setdefault(ob.name[0].upper(), []).append(ob)
+            if self.system.shouldInclude(ob):
+                initials.setdefault(ob.name[0].upper(), []).append(ob)
         for initial in sorted(initials):
             letterlinks = []
             for initial2 in sorted(initials):
@@ -205,12 +209,6 @@ def hasdocstring(ob):
             return True
     return False
 
-def public(ob):
-    for part in ob.fullName().split('.'):
-        if part[0] == '_' and not (part.startswith('__') and part.endswith('__')):
-            return False
-    return True
-
 class UndocumentedSummaryPage(page.Element):
     filename = 'undoccedSummary.html'
     docFactory = loaders.xmlfile(templatefile('summary.html'))
@@ -228,7 +226,7 @@ class UndocumentedSummaryPage(page.Element):
     @page.renderer
     def stuff(self, request, tag):
         undoccedpublic = [o for o in self.system.orderedallobjects
-                          if public(o) and not hasdocstring(o)]
+                          if self.system.shouldInclude(o) and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
             tag[tags.li[o.kind, " - ", taglink(o)]]

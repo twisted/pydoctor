@@ -75,12 +75,6 @@ def test_basic_package():
         r = os.system("open %s"%targetdir.join('index.html'))
         assert not r
 
-def test_public():
-    system = processPackage("basic")
-    from pydoctor.nevowhtml.summary import public
-    assert public(system.allobjects['basic.mod'])
-    assert not public(system.allobjects['basic._private_mod'])
-
 def test_hasdocstring():
     system = processPackage("basic")
     from pydoctor.nevowhtml.summary import hasdocstring
