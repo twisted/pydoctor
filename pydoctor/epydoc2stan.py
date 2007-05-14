@@ -33,7 +33,7 @@ class _EpydocLinker(object):
         # X{foobar} is meant to put foobar in an index page (like, a
         # proper end-of-the-book index). Should we support that? There
         # are like 2 uses in Twisted.
-        return something.to_html(self)
+        return de_p(something.to_html(self))
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveDottedName(fullID)
         if obj is None:
@@ -57,7 +57,7 @@ class FieldDesc(object):
         else:
             body = self.body
         if self.type is not None:
-            body = body, '(type: ', self.type, ')'
+            body = body, ' (type: ', self.type, ')'
         return body
     def __repr__(self):
         contents = []
@@ -120,7 +120,7 @@ class Field(object):
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
-        self.body = tags.raw(field.body().to_html(_EpydocLinker(obj)))
+        self.body = tags.raw(de_p(field.body().to_html(_EpydocLinker(obj))))
 
     def __repr__(self):
         r = repr(self.body)
@@ -286,6 +286,12 @@ class FieldHandler(object):
 
 errcount = 0
 
+def de_p(s):
+    if s.startswith('<p>') and s.endswith('</p>\n'):
+        return s[3:-5] # argh reST
+    else:
+        return s
+
 def doc2html(obj, summary=False, docstring=None):
     global errcount
     """Generate an HTML representation of a docstring"""
@@ -355,7 +361,7 @@ def doc2html(obj, summary=False, docstring=None):
         return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     try:
-        crap = pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj)))
+        crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
     except Exception, e:
         errs = [e.__class__.__name__ +': ' + str(e)]
         obj.system.epytextproblems.append(obj.fullName())
@@ -367,8 +373,6 @@ def doc2html(obj, summary=False, docstring=None):
             p(err)
         errcount += len(errs)
         return boringDocstring(doc, summary)
-    if crap.startswith('<p>') and crap.endswith('</p>\n'):
-        crap = crap[3:-5] # argh reST
     if isinstance(crap, unicode):
         crap = crap.encode('utf-8')
     if summary:
