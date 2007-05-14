@@ -386,6 +386,17 @@ class BigDiffPage(rend.Page):
 
     docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
 
+class ProblemObjectsPage(rend.Page):
+    def __init__(self, system):
+        self.system = system
+    def render_stuff(self, context, data):
+        t = context.tag.clear()
+        for fn in sorted(self.system.epytextproblems):
+            o = self.system.allobjects[fn]
+            t[tags.li[util.taglink(o)]]
+        return t
+    docFactory = loaders.stan(tags.html[
+        tags.body[tags.ul(render=tags.directive('stuff'))]])
 
 def absoluteURL(ctx, ob):
     if ob.document_in_parent_page:
@@ -482,6 +493,9 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_bigDiff(self, ctx):
         return BigDiffPage(self.system, self)
 
+    def child_problemObjects(self, ctx):
+        return ProblemObjectsPage(self.system)
+
     def mostRecentEdit(self, ob):
         return self.edits(ob)[-1]
 
@@ -526,6 +540,8 @@ class EditingPyDoctorResource(PyDoctorResource):
         edit = Edit(tob, prevEdit.rev + 1, newDocstring, user,
                     time.strftime("%Y-%m-%d %H:%M:%S"))
         self.addEdit(edit)
+        if tob.fullName() in self.system.epytextproblems:
+            self.system.epytextproblems.remove(tob.fullName())
 
     def stanForOb(self, ob, summary=False):
         if summary:
@@ -552,4 +568,5 @@ def resourceForPickleFile(pickleFilePath, configFilePath=None):
         readConfigFile(system.options)
     else:
         system.options, _ = getparser().parse_args([])
+        system.options.verbosity = 3
     return EditingPyDoctorResource(system)

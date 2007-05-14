@@ -350,15 +350,17 @@ def doc2html(obj, summary=False, docstring=None):
         pdoc = parse_docstring(doc, errs)
     except Exception, e:
         errs = [e.__class__.__name__ +': ' + str(e)]
-    if errs and source.fullName() not in obj.system.epytextproblems:
-        obj.system.epytextproblems.append(source.fullName())
-        obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
-        p = lambda m:obj.system.msg('epytext', m, thresh=2)
-        for i, l in enumerate(doc.splitlines()):
-            p("%4s"%(i+1)+' '+l)
-        for err in errs:
-            p(err)
-        errcount += len(errs)
+    if errs:
+        if source.fullName() not in obj.system.epytextproblems:
+            obj.system.epytextproblems.append(source.fullName())
+            obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
+            p = lambda m:obj.system.msg('epytext', m, thresh=2)
+            for i, l in enumerate(doc.splitlines()):
+                p("%4s"%(i+1)+' '+l)
+            for err in errs:
+                print err
+                p(err)
+            errcount += len(errs)
         return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     try:

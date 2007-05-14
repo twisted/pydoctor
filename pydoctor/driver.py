@@ -356,6 +356,8 @@ def main(args):
             writer.system = system
             writer.prepOutputDirectory()
 
+            system.epytextproblems = []
+
             if options.htmlsubjects:
                 subjects = []
                 for fn in options.htmlsubjects:
@@ -375,6 +377,13 @@ def main(args):
                 exitcode = 2
                 for fn in system.epytextproblems:
                     p('    '+fn)
+            if options.outputpickle:
+                # save again, with epytextproblems
+                del system.options # don't persist the options
+                f = open(options.outputpickle, 'wb')
+                cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
+                f.close()
+                system.options = options
     except:
         if options.pdb:
             import pdb
