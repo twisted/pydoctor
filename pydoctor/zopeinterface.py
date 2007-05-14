@@ -1,6 +1,6 @@
 from pydoctor import model, ast_pp, astbuilder
 from compiler import ast, visitor, transformer
-
+import re
 
 class ZopeInterfaceClass(model.Class):
     isinterface = False
@@ -39,6 +39,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly.append(
             cls.dottedNameToFullName(ast_pp.pp(arg)))
 
+schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
 
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
@@ -61,18 +62,35 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
                not isinstance(self.builder.current, model.Class) or \
-               not isinstance(node.expr, ast.CallFunc) or \
-               self.funcNameFromCall(node.expr) != 'zope.interface.Attribute':
-            self.default(node)
+               not isinstance(node.expr, ast.CallFunc):
             return sup()
-        args = node.expr.args
-        if len(args) != 1 or \
-               not isinstance(args[0], ast.Const) or \
-               not isinstance(args[0].value, str):
-            self.default(node)
+        funcName = self.funcNameFromCall(node.expr)
+        if funcName == 'zope.interface.Attribute':
+            args = node.expr.args
+            if len(args) != 1 or \
+                   not isinstance(args[0], ast.Const) or \
+                   not isinstance(args[0].value, str):
+                return sup()
+            docstring = args[0].value
+            kind = "Attribute"
+        elif schema_prog.match(funcName):
+            print node.expr
+            descriptions = [arg for arg in node.expr.args if isinstance(arg, ast.Keyword)
+                            and arg.name == 'description']
+            docstring = None
+            if len(descriptions) > 1:
+                self.builder.system.msg('parsing', 'xxx')
+            elif len(descriptions) == 1:
+                description = descriptions[0].expr
+                if isinstance(description, ast.Const) and isinstance(description.value, str):
+                    docstring = description.value
+            kind = schema_prog.match(funcName).group(1)
+        else:
             return sup()
-        attr = self.builder._push(Attribute, node.nodes[0].name, args[0].value)
+
+        attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
         attr.linenumber = node.lineno
+        attr.kind = kind
         if attr.parentMod.sourceHref:
             attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
                               str(attr.linenumber)
