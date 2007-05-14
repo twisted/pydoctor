@@ -305,6 +305,7 @@ def doc2html(obj, summary=False, docstring=None):
                 doc = source.docstring
                 break
     else:
+        source = obj
         doc = docstring
     if doc is None or not doc.strip():
         text = "Undocumented"
@@ -349,8 +350,8 @@ def doc2html(obj, summary=False, docstring=None):
         pdoc = parse_docstring(doc, errs)
     except Exception, e:
         errs = [e.__class__.__name__ +': ' + str(e)]
-    if errs:
-        obj.system.epytextproblems.append(obj.fullName())
+    if errs and source.fullName() not in obj.system.epytextproblems:
+        obj.system.epytextproblems.append(source.fullName())
         obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
         p = lambda m:obj.system.msg('epytext', m, thresh=2)
         for i, l in enumerate(doc.splitlines()):
@@ -364,14 +365,15 @@ def doc2html(obj, summary=False, docstring=None):
         crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
     except Exception, e:
         errs = [e.__class__.__name__ +': ' + str(e)]
-        obj.system.epytextproblems.append(obj.fullName())
-        obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
-        p = lambda m:obj.system.msg('epytext', m, thresh=2)
-        for i, l in enumerate(doc.splitlines()):
-            p("%4s"%(i+1)+' '+l)
-        for err in errs:
-            p(err)
-        errcount += len(errs)
+        if errs and source.fullName() not in obj.system.epytextproblems:
+            obj.system.epytextproblems.append(source.fullName())
+            obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
+            p = lambda m:obj.system.msg('epytext', m, thresh=2)
+            for i, l in enumerate(doc.splitlines()):
+                p("%4s"%(i+1)+' '+l)
+            for err in errs:
+                p(err)
+            errcount += len(errs)
         return boringDocstring(doc, summary)
     if isinstance(crap, unicode):
         crap = crap.encode('utf-8')
