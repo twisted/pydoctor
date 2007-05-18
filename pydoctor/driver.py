@@ -212,6 +212,7 @@ def main(args):
             system = cPickle.load(open(options.inputpickle, 'rb'))
             if options.systemclass:
                 if type(system) is not systemclass:
+                    cls = type(system)
                     msg = ("loaded pickle has class %s.%s, differing "
                            "from explicitly requested %s")
                     error(msg, cls.__module__, cls.__name__, options.systemclass)
