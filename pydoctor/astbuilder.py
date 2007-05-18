@@ -605,16 +605,6 @@ class ImportFinder(object):
                 self.system.importgraph.setdefault(
                     self.mod.fullName(), set()).add(modname)
 
-def fromText(src, modname='<test>', system=None):
-    if system is None:
-        _system = System()
-    else:
-        _system = system
-    processModuleAst(parse(src), modname, _system)
-    if system is None:
-        _system.finalStateComputations()
-    return _system.rootobjects[0]
-
 def toposort(input, edges):
     # this doesn't detect cycles in any clever way.
     output = []
