@@ -1,4 +1,4 @@
-from pydoctor import model, html, astbuilder, liveobjectchecker
+from pydoctor import model, astbuilder, liveobjectchecker
 import sys, os
 
 def error(msg, *args):
