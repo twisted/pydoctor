@@ -1,5 +1,5 @@
 from pydoctor import model, ast_pp, astbuilder
-from compiler import ast, visitor, transformer
+from compiler import ast, visitor
 import re
 
 class ZopeInterfaceClass(model.Class):
