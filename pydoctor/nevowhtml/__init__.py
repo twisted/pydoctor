@@ -1,14 +1,9 @@
-from pydoctor import model, epydoc2stan
-
-from nevow import loaders, tags, page, flat, inevow
-from zope.interface import implements
 
 from pydoctor.nevowhtml.writer import NevowWriter
 
 def _hack_nevow():
     from nevow.flat.flatstan import serialize
     from nevow.flat import registerFlattener
-    from nevow.context import WovenContext
     def PrecompiledSlotSerializer(original, context):
         if context.precompile:
             return original

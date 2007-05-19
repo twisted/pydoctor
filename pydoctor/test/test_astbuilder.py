@@ -1,5 +1,4 @@
 from pydoctor import model, astbuilder
-from compiler import transformer
 import textwrap, inspect
 
 def fromText(text, modname='<test>', system=None,

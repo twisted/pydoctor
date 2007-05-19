@@ -2,7 +2,6 @@ from compiler.visitor import walk
 from compiler.transformer import parse
 from pydoctor import model, astbuilder
 from pydoctor.test.test_packages import processPackage
-import py
 
 def test_simple():
     system = model.System()

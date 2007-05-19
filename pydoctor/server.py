@@ -1,9 +1,9 @@
 from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements
-from pydoctor import nevowhtml, model, epydoc2stan
+from pydoctor import model, epydoc2stan
 from pydoctor.nevowhtml import pages, summary, util
-from pydoctor.astbuilder import mystr, MyTransformer
+from pydoctor.astbuilder import MyTransformer
 import parser
 
 import time

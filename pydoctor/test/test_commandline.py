@@ -1,6 +1,5 @@
 from pydoctor import driver
 import sys, cStringIO
-import py
 
 def geterrtext(*options):
     options = list(options)

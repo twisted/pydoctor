@@ -1,7 +1,7 @@
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 from pydoctor import server
-from nevow import context, testutil, appserver, flat, inevow
+from nevow import context, testutil, appserver, inevow
 from twisted.internet.defer import maybeDeferred
 
 def deferredResult(*args):

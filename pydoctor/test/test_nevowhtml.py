@@ -1,5 +1,5 @@
 from pydoctor import nevowhtml, model
-from pydoctor.nevowhtml import util, pages, writer
+from pydoctor.nevowhtml import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test import conftest
 from pydoctor.test.test_packages import processPackage

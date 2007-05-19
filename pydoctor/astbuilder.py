@@ -1,7 +1,7 @@
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer, ast
-import os, sys, posixpath, symbol, token
+import os, posixpath, symbol, token
 
 class mystr(str):
     pass

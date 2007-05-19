@@ -1,14 +1,5 @@
-from compiler import ast
 import sys
-import os
-import cPickle as pickle
 import __builtin__
-import sets
-
-from compiler.transformer import parse, parseFile
-from compiler.visitor import walk
-
-from pydoctor import ast_pp
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.

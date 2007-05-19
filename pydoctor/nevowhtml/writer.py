@@ -3,7 +3,7 @@ from pydoctor.nevowhtml import pages, summary
 
 from nevow import flat
 
-import os, sys, shutil
+import os, shutil
 
 class NevowWriter:
     def __init__(self, filebase):
