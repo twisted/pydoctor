@@ -360,10 +360,6 @@ class ASTBuilder(object):
 
     def _pop(self, cls):
         assert isinstance(self.current, cls)
-##         if self.current.parent:
-##             print 'pop', self.current.fullName(), '->', self.current.parent.fullName()
-##         else:
-##             print 'pop', self.current.fullName(), '->', self.current.parent
         self.pop(self.current)
 
     def push(self, obj):
