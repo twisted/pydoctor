@@ -201,7 +201,8 @@ def main(args):
     try:
         # step 1: make/find the system
         if options.systemclass:
-            systemclass = findClassFromDottedName(options.systemclass, '--system-class')
+            systemclass = findClassFromDottedName(options.systemclass,
+                                                  '--system-class')
             if not issubclass(systemclass, model.System):
                 msg = "%s is not a subclass of model.System"
                 error(msg, systemclass)
@@ -215,7 +216,8 @@ def main(args):
                     cls = type(system)
                     msg = ("loaded pickle has class %s.%s, differing "
                            "from explicitly requested %s")
-                    error(msg, cls.__module__, cls.__name__, options.systemclass)
+                    error(msg, cls.__module__, cls.__name__,
+                          options.systemclass)
         else:
             system = systemclass()
 
@@ -241,7 +243,8 @@ def main(args):
         # step 1.25: make a builder
 
         if options.builderclass:
-            builderclass = findClassFromDottedName(options.builderclass, '--builder-class')
+            builderclass = findClassFromDottedName(options.builderclass,
+                                                   '--builder-class')
             if not issubclass(builderclass, astbuilder.ASTBuilder):
                 msg = "%s is not a subclass of astbuilder.ASTBuilder"
                 error(msg, builderclass)
@@ -271,7 +274,8 @@ def main(args):
                 if path in system.packages:
                     continue
                 if system.state not in ['blank', 'preparse']:
-                    msg = 'system is in state %r, which is too late to add new code'
+                    msg = ('system is in state %r, which is too late to add '
+                           'new code')
                     error(msg, system.state)
                 system.msg('addPackage', 'adding directory ' + path)
                 builder.preprocessDirectory(path)
@@ -281,7 +285,8 @@ def main(args):
                 if path in system.packages:
                     continue
                 if system.state not in ['blank', 'preparse']:
-                    msg = 'system is in state %r, which is too late to add new code'
+                    msg = ('system is in state %r, which is too late to add '
+                           'new code')
                     error(msg, system.state)
                 system.msg('addModule', 'adding module ' + path)
                 # XXX should be a builder method!
@@ -301,7 +306,9 @@ def main(args):
         curstateindex = model.states.index(system.state)
         finalstateindex = model.states.index(options.targetstate)
 
-        if finalstateindex < curstateindex and (options.targetstate, system.state) != ('finalized', 'livechecked'):
+        if finalstateindex < curstateindex and \
+               (options.targetstate, system.state) != \
+               ('finalized', 'livechecked'):
             msg = 'cannot reverse system from %r to %r'
             error(msg, system.state, options.targetstate)
 
@@ -329,7 +336,9 @@ def main(args):
 
         if system.options.projectname is None:
             name = '/'.join([ro.name for ro in system.rootobjects])
-            system.msg('warning', 'WARNING: guessing '+name+' for project name', thresh=-1)
+            system.msg(
+                'warning',
+                'WARNING: guessing '+name+' for project name', thresh=-1)
             system.guessedprojectname = name
 
         # step 4: save the system, if desired
@@ -345,13 +354,15 @@ def main(args):
 
         if options.makehtml:
             if options.htmlwriter:
-                writerclass = findClassFromDottedName(options.htmlwriter, '--html-writer')
+                writerclass = findClassFromDottedName(
+                    options.htmlwriter, '--html-writer')
             else:
                 from pydoctor import nevowhtml
                 writerclass = nevowhtml.NevowWriter
 
             system.msg('html', 'writing html to %s using %s.%s'%(
-                options.htmloutput, writerclass.__module__, writerclass.__name__))
+                options.htmloutput, writerclass.__module__,
+                writerclass.__name__))
 
             writer = writerclass(options.htmloutput)
             writer.system = system
