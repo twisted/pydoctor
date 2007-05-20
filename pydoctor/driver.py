@@ -39,8 +39,8 @@ def getparser():
     parser.add_option(
         '--extra-system', action='append', dest='moresystems',
         metavar='SYS:URLPREFIX', default=[],
-        help=("Look for objects in this system to.  Links to these objects "
-              "will have URLPREFIX prepended to them."))
+        help=("Look for objects in this system to.  Links to these "
+              "objects will have URLPREFIX prepended to them."))
     parser.add_option(
         '--system-class', dest='systemclass',
         help=("A dotted name of the class to use to make a system."))
@@ -91,11 +91,13 @@ def getparser():
         help=("This is a comma seperated list of key=value pairs.  "
               "Where any key corresponds to a module name and value is "
               "the desired abbreviation.  This can be used to resolve "
-              "conflicts with abbreviation where you have two or more modules "
-              "that start with the same letter.  Example: twistedcaldav=tcd."))
+              "conflicts with abbreviation where you have two or more "
+              "modules that start with the same letter.  Example: "
+              "twistedcaldav=tcd."))
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        help=("Which epydoc-supported format docstrings are assumed to be in."))
+        help=("Which epydoc-supported format docstrings are assumed "
+              "to be in."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of object to generate API docs for"
@@ -121,8 +123,8 @@ def getparser():
               "to be installed)."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
-        help=("This should be the path to the trac browser for the top of the "
-              "svn checkout we are documenting part of."))
+        help=("This should be the path to the trac browser for the top "
+              "of the svn checkout we are documenting part of."))
     parser.add_option(
         '--html-use-sorttable', dest='htmlusesorttable',
         default=False, action="store_true",
