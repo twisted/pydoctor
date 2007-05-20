@@ -68,7 +68,8 @@ class ModuleVistor(object):
     def visitModule(self, node):
         # i don't think this needs to be so confusing any more...
         m = None
-        if self.builder.current and self.modname in self.builder.current.contents:
+        if self.builder.current and self.modname in \
+               self.builder.current.contents:
             m = self.builder.current.contents[self.modname]
         elif self.modname in self.system.allobjects:
             m = self.system.allobjects[self.modname]
@@ -80,7 +81,8 @@ class ModuleVistor(object):
             self.builder.pop(m)
         else:
             if not self.builder.current:
-                roots = [x for x in self.system.rootobjects if x.name == self.modname]
+                roots = [x for x in self.system.rootobjects
+                         if x.name == self.modname]
                 if roots:
                     mod, = roots
                     self.builder.push(mod)
@@ -118,7 +120,8 @@ class ModuleVistor(object):
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:
-            cls.sourceHref = cls.parentMod.sourceHref + '#L' + str(cls.linenumber)
+            cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
+                             str(cls.linenumber)
         cls.rawbases = rawbases
         cls.bases = bases
         cls.baseobjects = baseobjects
@@ -138,13 +141,15 @@ class ModuleVistor(object):
                     return
                 mod = self.system.allobjects[modname]
                 if isinstance(mod, model.Package):
-                    self.builder.warning("import * from a package", modname)
+                    self.builder.warning("import * from a package",
+                                         modname)
                     return
                 assert mod.processed
                 if mod.all is not None:
                     names = mod.all
                 else:
-                    names = [k for k in mod.contents.keys() if not k.startswith('_')]
+                    names = [k for k in mod.contents.keys()
+                             if not k.startswith('_')]
                 for n in names:
                     name2fullname[n] = modname + '.' + n
                 return
@@ -155,11 +160,14 @@ class ModuleVistor(object):
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and fromname in mod.contents:
-                    print 'moving', mod.contents[fromname], 'into', self.builder.current
+                if isinstance(mod, model.Module) and \
+                       fromname in mod.contents:
+                    print 'moving', mod.contents[fromname], 'into', \
+                          self.builder.current
                     # this code attempts to preserve "rather a lot" of
-                    # invariants assumed by various bits of pydoctor and that
-                    # are of course not written down anywhere :/
+                    # invariants assumed by various bits of pydoctor
+                    # and that are of course not written down anywhere
+                    # :/
                     ob = mod.contents[fromname]
                     targetmod = self.builder.current
                     del self.system.allobjects[ob.fullName()]
@@ -238,7 +246,9 @@ class ModuleVistor(object):
                         isstaticmethod = True
             if isstaticmethod:
                 if isclassmethod:
-                    self.system.msg('ast', '%r is both class- and static-method?'%(func.fullName(),), thresh=-1)
+                    self.system.msg(
+                        'ast', '%r is both class- and static-method?'%(
+                        func.fullName(),), thresh=-1)
                 else:
                     func.kind = 'Static Method'
             elif isclassmethod:
@@ -246,7 +256,8 @@ class ModuleVistor(object):
         if node.lineno is not None:
             func.linenumber = node.lineno
         if func.parentMod.sourceHref:
-            func.sourceHref = func.parentMod.sourceHref + '#L' + str(func.linenumber)
+            func.sourceHref = func.parentMod.sourceHref + '#L' + \
+                              str(func.linenumber)
         # ast.Function has a pretty lame representation of
         # arguments. Let's convert it to a nice concise format
         # somewhat like what inspect.getargspec returns
@@ -263,8 +274,9 @@ class ModuleVistor(object):
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception, e:
-                self.builder.warning("unparseable default", "%s: %s %r"%(e.__class__.__name__,
-                                                                       e, default))
+                self.builder.warning("unparseable default",
+                                     "%s: %s %r"%(e.__class__.__name__,
+                                                  e, default))
                 defaults.append('???')
         # argh, convert unpacked-arguments from tuples to lists,
         # because that's what getargspec uses and the unit test
