@@ -272,7 +272,7 @@ def main(args):
                 for m in options.prependedpackage.split('.'):
                     builder.pushPackage(m, None)
             for path in options.packages:
-                path = os.path.normpath(path)
+                path = os.path.abspath(path)
                 if path in system.packages:
                     continue
                 if system.state not in ['blank', 'preparse']:
