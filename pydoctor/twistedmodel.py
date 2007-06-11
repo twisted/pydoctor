@@ -32,6 +32,8 @@ class TwistedSystem(model.System):
 
     def shouldInclude(self, obj):
         o = obj
+        if o.fullName() == 'twisted.words.xish.yappsrt':
+            return False
         while o:
             if isinstance(o, model.Package) and o.name == 'test':
                 return False
