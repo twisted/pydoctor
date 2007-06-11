@@ -32,9 +32,9 @@ class TwistedSystem(model.System):
 
     def shouldInclude(self, obj):
         o = obj
-        if o.fullName() == 'twisted.words.xish.yappsrt':
-            return False
         while o:
+            if o.fullName() == 'twisted.words.xish.yappsrt':
+                return False
             if isinstance(o, model.Package) and o.name == 'test':
                 return False
             if o.name.startswith('_') and not (o.name.startswith('__') and o.name.endswith('__')):
