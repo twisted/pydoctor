@@ -170,3 +170,11 @@ def test_dedent_indent():
     assert d == 'doc\nstring'
     n = server.indent(d, i)
     assert n == ds
+
+def test_recentChanges():
+    system = processPackage('basic')
+    root = server.EditingPyDoctorResource(system)
+    ob = system.allobjects['basic.mod.D.f']
+    root.newDocstring('xxx', ob, '"""Tee hee."""')
+    # just "assertNotRaises"
+    getTextOfPage(root, 'recentChanges')

@@ -78,7 +78,7 @@ class RecentChangesPage(page.Element):
     @page.renderer
     def changes(self, request, tag):
         item = tag.patternGenerator('item')
-        for d in reversed(self.root.edits):
+        for d in reversed(self.root._edits):
             tag[util.fillSlots(item,
                                diff=self.diff(d),
                                hist=self.hist(d),
