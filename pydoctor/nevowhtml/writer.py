@@ -46,17 +46,17 @@ class NevowWriter:
     def writeDocsFor(self, ob, functionpages):
         isfunc = ob.document_in_parent_page
         if (isfunc and functionpages) or not isfunc:
-            f = open(os.path.join(self.base, link(ob)), 'w')
-            self.writeDocsForOne(ob, f)
-            f.close()
+            if self.dry_run:
+                self.total_pages += 1
+            else:
+                f = open(os.path.join(self.base, link(ob)), 'w')
+                self.writeDocsForOne(ob, f)
+                f.close()
         for o in ob.orderedcontents:
             self.writeDocsFor(o, functionpages)
 
     def writeDocsForOne(self, ob, fobj):
         if not self.system.shouldInclude(ob):
-            return
-        if self.dry_run:
-            self.total_pages += 1
             return
         # brrrrrrrr!
         d = pages.__dict__
