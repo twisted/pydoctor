@@ -4,6 +4,7 @@ import re
 
 class ZopeInterfaceClass(model.Class):
     isinterface = False
+    isschemafield = False
     isinterfaceclass = False
     implementsOnly = False
     implementedby_directly = None # [objects], when isinterface == True
@@ -64,16 +65,19 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                not isinstance(self.builder.current, model.Class) or \
                not isinstance(node.expr, ast.CallFunc):
             return sup()
+
         funcName = self.funcNameFromCall(node.expr)
-        if funcName == 'zope.interface.Attribute':
-            args = node.expr.args
-            if len(args) != 1 or \
-                   not isinstance(args[0], ast.Const) or \
-                   not isinstance(args[0].value, str):
-                return sup()
-            docstring = args[0].value
-            kind = "Attribute"
-        elif schema_prog.match(funcName):
+
+        def pushAttribute(docstring, kind):
+            attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
+            attr.linenumber = node.lineno
+            attr.kind = kind
+            if attr.parentMod.sourceHref:
+                attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
+                                  str(attr.linenumber)
+            self.builder._pop(Attribute)
+
+        def handleSchemaField(kind):
             print node.expr
             descriptions = [arg for arg in node.expr.args if isinstance(arg, ast.Keyword)
                             and arg.name == 'description']
@@ -84,17 +88,27 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 description = descriptions[0].expr
                 if isinstance(description, ast.Const) and isinstance(description.value, str):
                     docstring = description.value
-            kind = schema_prog.match(funcName).group(1)
-        else:
+            pushAttribute(docstring, kind)
+
+        if funcName == 'zope.interface.Attribute':
+            args = node.expr.args
+            if len(args) != 1 or \
+                   not isinstance(args[0], ast.Const) or \
+                   not isinstance(args[0].value, str):
+                return sup()
+            docstring = args[0].value
+            pushAttribute(args[0].value, "Attribute")
             return sup()
 
-        attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
-        attr.linenumber = node.lineno
-        attr.kind = kind
-        if attr.parentMod.sourceHref:
-            attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
-                              str(attr.linenumber)
-        self.builder._pop(Attribute)
+        if schema_prog.match(funcName):
+            kind = schema_prog.match(funcName).group(1)
+            handleSchemaField(kind)
+            return sup()
+
+        cls = self.builder.system.objForFullName(funcName)
+        if cls and isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
+            handleSchemaField(cls.name)
+        return sup()
 
     def visitCallFunc(self, node):
         base = self.funcNameFromCall(node)
@@ -180,6 +194,14 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
     Class = ZopeInterfaceClass
     Function = ZopeInterfaceFunction
     ModuleVistor = ZopeInterfaceModuleVisitor
+
+    def popClass(self):
+        c = self.current
+        for n, o in zip(c.bases, c.baseobjects):
+            if schema_prog.match(n) or (o and o.isschemafield):
+                c.isschemafield = True
+                break
+        super(ZopeInterfaceASTBuilder, self).popClass()
 
     def _finalStateComputations(self):
         super(ZopeInterfaceASTBuilder, self)._finalStateComputations()

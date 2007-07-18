@@ -137,15 +137,24 @@ def test_zopeschema():
     assert text.kind == "TextLine"
 
 def test_zopeschema_inheritance():
-    py.test.skip("not there yet")
     src = '''
     from zope import schema, interface
+    from zope.schema import Int as INTEGERSCHMEMAFIELD
     class MyTextLine(zope.schema.TextLine):
+        pass
+    class MyOtherTextLine(MyTextLine):
         pass
     class IMyInterface(interface.Interface):
         mytext = MyTextLine(description="fun in a bun")
+        myothertext = MyOtherTextLine(description="fun in another bun")
+        myint = INTEGERSCHMEMAFIELD(description="not as much fun")
     '''
     mod = fromText(src, buildercls=ZopeInterfaceASTBuilder)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
     assert mytext.kind == "MyTextLine"
+    myothertext = mod.contents['IMyInterface'].contents['myothertext']
+    assert myothertext.docstring == 'fun in another bun'
+    assert myothertext.kind == "MyOtherTextLine"
+    myint = mod.contents['IMyInterface'].contents['myint']
+    assert myint.kind == "Int"
