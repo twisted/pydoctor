@@ -12,7 +12,7 @@ information about which classes implement which interface, and vice
 versa.
 
 The default HTML generator uses Nevow, which means that it requires
-Twisted too.  At present it requires Nevow SVN HEAD, unless there's
-meen a release that contains "nevow.page" in the mean time.
+Twisted too.  It requires Nevow 0.9.18 or newer -- your Nevow is new
+enough if "from nevow import page" succeeds.
 
 There are some more notes in the doc/ subdirectory.
