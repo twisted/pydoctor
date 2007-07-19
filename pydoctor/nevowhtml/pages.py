@@ -2,7 +2,8 @@ from nevow import inevow, loaders, tags
 from zope.interface import implements
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.util import templatefile, fillSlots, srclink, taglink
+from pydoctor.nevowhtml.util import \
+     templatefile, fillSlots, srclink, taglink
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
