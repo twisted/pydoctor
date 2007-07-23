@@ -16,15 +16,6 @@ def test_local_import():
     assert len(system.warnings['local import']) > 0
     assert cls.bases == ['localimporttest.mod2.B']
 
-def test_harder_local_imports():
-    system = processPackage("localimporttest")
-    cls = system.allobjects['localimporttest.sub1.mod.C']
-    assert len(system.warnings['local import']) > 0
-    assert cls.bases == ['localimporttest.sub2.mod.A',
-                         'localimporttest.sub2.mod.B',
-                         'localimporttest.mod1.C',
-                         'localimporttest.mod2.B']
-
 def test_package_docstring():
     system = processPackage("localimporttest")
     assert (system.allobjects['localimporttest.__init__'].docstring ==

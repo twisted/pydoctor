@@ -11,7 +11,9 @@ def test_simple():
     bar = builder.pushModule('bar', None)
     builder.popModule()
     isf = astbuilder.ImportFinder(builder, bar)
+    bar = builder.pushModule('baz', None)
     walk(parse("from foo import bar"), isf)
+    builder.popModule()
     assert len(system.importgraph) == 1
     edge, = system.importgraph.iteritems()
     assert edge == ('bar', set(['foo']))

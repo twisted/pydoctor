@@ -412,24 +412,20 @@ class ASTBuilder(object):
         visitor.walk(ast, self.ModuleVistor(self, moduleName))
 
     def expandModname(self, modname, givewarning=True):
-        c = self.current
         if '.' in modname:
             prefix, suffix = modname.split('.', 1)
             suffix = '.' + suffix
         else:
             prefix, suffix = modname, ''
-        while c is not None and not isinstance(c, model.Package):
-            c = c.parent
-        while c is not None:
-            if prefix in c.contents:
-                break
-            c = c.parent
-        if c is not None:
+        package = self.current.parentMod.parent
+        if package is None:
+            return modname
+        if prefix in package.contents:
             if givewarning:
                 self.warning("local import", modname)
-            return c.contents[prefix].fullName() + suffix
+            return package.contents[prefix].fullName() + suffix
         else:
-            return prefix + suffix
+            return modname
 
     def parseFile(self, filePath):
         if filePath in self.ast_cache:
@@ -521,8 +517,7 @@ class ASTBuilder(object):
         assert self.system.state in ['preparse']
         modlist = list(self.system.objectsOfType(model.Module))
         for i, mod in enumerate(modlist):
-            if mod.parent:
-                self.push(mod.parent)
+            self.push(mod)
             isf = ImportFinder(self, mod)
             ast = self.parseFile(mod.filepath)
             if not ast:
@@ -531,8 +526,7 @@ class ASTBuilder(object):
             self.system.progress('analyseImports', i+1, len(modlist),
                                  "modules parsed")
             visitor.walk(ast, isf)
-            if mod.parent:
-                self.pop(mod.parent)
+            self.pop(mod)
         self.system.state = 'imported'
 
     def extractDocstrings(self):
