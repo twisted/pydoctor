@@ -300,6 +300,8 @@ class System(object):
             return n
         if clsname in m._name2fullname:
             newname = m.name2fullname(clsname)
+            if newname == n:
+                return newname
             print newname
             for system in systems:
                 if newname in system.allobjects:

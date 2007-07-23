@@ -187,6 +187,17 @@ def test_more_aliasing():
     addsrc(system)
     assert system.allobjects['d.D'].bases == ['a.A']
 
+def test_aliasing_recursion():
+    system = model.System()
+    system.options.resolvealiases = True
+    src = '''
+    from mod import C
+    class D(C):
+        pass
+    '''
+    mod = fromText(src, 'mod', system)
+    assert mod.contents['D'].bases == ['mod.C']
+
 def test_subclasses():
     src = '''
     class A:
