@@ -285,10 +285,6 @@ class ModuleVistor(object):
         self.builder.popFunction()
 
 class ASTBuilder(object):
-    Class = model.Class
-    Module = model.Module
-    Package = model.Package
-    Function = model.Function
     ModuleVistor = ModuleVistor
 
     def __init__(self, system):
@@ -329,24 +325,24 @@ class ASTBuilder(object):
             self.currentMod = None
 
     def pushClass(self, name, docstring):
-        return self._push(self.Class, name, docstring)
+        return self._push(self.system.Class, name, docstring)
     def popClass(self):
-        self._pop(self.Class)
+        self._pop(self.system.Class)
 
     def pushModule(self, name, docstring):
-        return self._push(self.Module, name, docstring)
+        return self._push(self.system.Module, name, docstring)
     def popModule(self):
-        self._pop(self.Module)
+        self._pop(self.system.Module)
 
     def pushFunction(self, name, docstring):
-        return self._push(self.Function, name, docstring)
+        return self._push(self.system.Function, name, docstring)
     def popFunction(self):
-        self._pop(self.Function)
+        self._pop(self.system.Function)
 
     def pushPackage(self, name, docstring):
-        return self._push(self.Package, name, docstring)
+        return self._push(self.system.Package, name, docstring)
     def popPackage(self):
-        self._pop(self.Package)
+        self._pop(self.system.Package)
 
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)

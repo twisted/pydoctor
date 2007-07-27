@@ -2,9 +2,12 @@ import py
 from pydoctor import model, astbuilder
 from pydoctor.test import test_astbuilder
 
-def processPackage(packname, buildercls=astbuilder.ASTBuilder):
+def processPackage(packname, buildercls=None,
+                   systemcls=model.System):
     testpackage = py.magic.autopath().dirpath().join(packname)
-    system = model.System()
+    system = systemcls()
+    if buildercls is None:
+        buildercls = system.defaultBuilder
     builder = buildercls(system)
     system.packages.append(testpackage.strpath)
     system.addDirectory(testpackage.strpath)

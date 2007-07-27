@@ -2,11 +2,14 @@ from pydoctor import model, astbuilder
 import textwrap, inspect
 
 def fromText(text, modname='<test>', system=None,
-             buildercls=astbuilder.ASTBuilder):
+             buildercls=None,
+             systemcls=model.System):
     if system is None:
-        _system = model.System()
+        _system = systemcls()
     else:
         _system = system
+    if buildercls is None:
+        buildercls = _system.defaultBuilder
     builder = buildercls(_system)
     ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, modname)

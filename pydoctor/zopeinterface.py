@@ -191,8 +191,6 @@ class InterfaceClassFinder(object):
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
-    Class = ZopeInterfaceClass
-    Function = ZopeInterfaceFunction
     ModuleVistor = ZopeInterfaceModuleVisitor
 
     def popClass(self):
@@ -287,4 +285,6 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
             self.push_implements_info(ob, newinterfaces)
 
 class ZopeInterfaceSystem(model.System):
+    Class = ZopeInterfaceClass
+    Function = ZopeInterfaceFunction
     defaultBuilder = ZopeInterfaceASTBuilder

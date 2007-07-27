@@ -1,4 +1,5 @@
-from pydoctor.zopeinterface import ZopeInterfaceASTBuilder
+from pydoctor.zopeinterface import \
+     ZopeInterfaceASTBuilder, ZopeInterfaceSystem
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
@@ -46,7 +47,7 @@ def test_classImplements():
 
 
 def implements_test(src):
-    mod = fromText(src, 'zi', buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
     foo = mod.contents['Foo']
@@ -78,7 +79,7 @@ def test_subclass_with_same_name():
     class A(A):
         pass
     '''
-    mod = fromText(src, 'zi', buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
 
 def test_multiply_inheriting_interfaces():
     src = '''
@@ -90,7 +91,7 @@ def test_multiply_inheriting_interfaces():
     class Two: implements(ITwo)
     class Both(One, Two): pass
     '''
-    mod = fromText(src, 'zi', buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['Both'].implements_indirectly) == 2
 
 def test_attribute():
@@ -99,7 +100,7 @@ def test_attribute():
     class C:
         attr = zi.Attribute("docstring")
     '''
-    mod = fromText(src, buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['C'].contents) == 1
 
 def test_interfaceclass():
@@ -111,7 +112,7 @@ def test_interfaceclass():
     class AnInterface(MyInterface):
         pass
     '''
-    system = processPackage('interfaceclass', buildercls=ZopeInterfaceASTBuilder)
+    system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
     assert mod.contents['AnInterface'].isinterface
 
@@ -122,7 +123,7 @@ def test_warnerproofing():
     class IMyInterface(Interface):
         pass
     '''
-    mod = fromText(src, buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert mod.contents['IMyInterface'].isinterface
 
 def test_zopeschema():
@@ -131,7 +132,7 @@ def test_zopeschema():
     class IMyInterface(interface.Interface):
         text = zope.schema.TextLine(description="fun in a bun")
     '''
-    mod = fromText(src, buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert text.kind == "TextLine"
@@ -149,7 +150,7 @@ def test_zopeschema_inheritance():
         myothertext = MyOtherTextLine(description="fun in another bun")
         myint = INTEGERSCHMEMAFIELD(description="not as much fun")
     '''
-    mod = fromText(src, buildercls=ZopeInterfaceASTBuilder)
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
     assert mytext.kind == "MyTextLine"
