@@ -299,58 +299,9 @@ class ASTBuilder(object):
         self.ast_cache = {}
 
     def _push(self, cls, name, docstring):
-        if self.current:
-            if isinstance(self.current, model.Module) and \
-                   self.current.name == '__init__':
-                prefix = self.current.parent.fullName() + '.'
-            else:
-                prefix = self.current.fullName() + '.'
-            parent = self.current
-        else:
-            prefix = ''
-            parent = None
-        obj = cls(self.system, prefix, name, docstring, parent)
-        if parent:
-            parent.orderedcontents.append(obj)
-            parent.contents[name] = obj
-            parent._name2fullname[name] = obj.fullName()
-        else:
-            self.system.rootobjects.append(obj)
+        obj = cls(self.system, name, docstring, self.current)
         self.push(obj)
-        self.system.orderedallobjects.append(obj)
-        fullName = obj.fullName()
-        #print 'push', cls.__name__, fullName
-        if fullName in self.system.allobjects:
-            obj = self.handleDuplicate(obj)
-        else:
-            self.system.allobjects[obj.fullName()] = obj
         return obj
-
-    def handleDuplicate(self, obj):
-        '''This is called when we see two objects with the same
-        .fullName(), for example:
-
-        class C:
-            if something:
-                def meth(self):
-                    implementation 1
-            else:
-                def meth(self):
-                    implementation 2
-
-        The default is that the second definition "wins".
-        '''
-        i = 0
-        fn = obj.fullName()
-        while (fn + ' ' + str(i)) in self.system.allobjects:
-            i += 1
-        prev = self.system.allobjects[obj.fullName()]
-        prev.name = obj.name + ' ' + str(i)
-        self.system.allobjects[prev.fullName()] = prev
-        self.warning("duplicate", self.system.allobjects[obj.fullName()])
-        self.system.allobjects[obj.fullName()] = obj
-        return obj
-
 
     def _pop(self, cls):
         assert isinstance(self.current, cls)
@@ -432,81 +383,6 @@ class ASTBuilder(object):
         self.ast_cache[filePath] = ast
         return ast
 
-
-    # if we assume:
-    #
-    # - that svn://divmod.org/trunk is checked out into ~/src/Divmod
-    #
-    # - that http://divmod.org/trac/browser/trunk is the trac URL to the
-    #   above directory
-    #
-    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
-    #   "--add-package" argument
-    #
-    # we want to work out the sourceHref for nevow.flat.ten.  the answer
-    # is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
-    #
-    # we can work this out by finding that Divmod is the top of the svn
-    # checkout, and posixpath.join-ing the parts of the filePath that
-    # follows that.
-    #
-    #  http://divmod.org/trac/browser/trunk
-    #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
-
-    def setSourceHref(self, mod):
-        if self.system.sourcebase is None:
-            mod.sourceHref = None
-            return
-
-        trailing = []
-        dir, fname = os.path.split(mod.filepath)
-        while os.path.exists(os.path.join(dir, '.svn')):
-            dir, dirname = os.path.split(dir)
-            trailing.append(dirname)
-
-        # now trailing[-1] would be 'Divmod' in the above example
-        del trailing[-1]
-        trailing.reverse()
-        trailing.append(fname)
-
-        mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
-
-
-    def addModule(self, modpath):
-        assert self.system.state in ['blank', 'preparse']
-        fname = os.path.basename(modpath)
-        modname = os.path.splitext(fname)[0]
-        mod = self.pushModule(modname, None)
-        self.system.progress("addModule", len(self.system.orderedallobjects),
-                             None, "modules and packages discovered")
-        mod.filepath = modpath
-        mod.processed = False
-        self.setSourceHref(mod)
-        self.popModule()
-        self.system.state = 'preparse'
-
-    def preprocessDirectory(self, dirpath):
-        assert self.system.state in ['blank', 'preparse']
-        if not os.path.exists(dirpath):
-            raise Exception, "package path %r does not exist!"%(dirpath,)
-        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
-            raise Exception, "you must pass a package directory to preprocessDirectory"
-        if os.path.basename(dirpath):
-            package = self.pushPackage(os.path.basename(dirpath), None)
-            package.filepath = dirpath
-            self.setSourceHref(package)
-        else:
-            package = None
-        for fname in os.listdir(dirpath):
-            fullname = os.path.join(dirpath, fname)
-            if os.path.isdir(fullname) and os.path.exists(os.path.join(fullname, '__init__.py')):
-                self.preprocessDirectory(fullname)
-            elif fname.endswith('.py') and not fname.startswith('.'):
-                self.addModule(fullname)
-        if package:
-            self.popPackage()
-        self.system.state = 'preparse'
-
     def analyseImports(self):
         assert self.system.state in ['preparse']
         modlist = list(self.system.objectsOfType(model.Module))
@@ -552,7 +428,6 @@ class ASTBuilder(object):
         self.system.state = 'finalized'
 
     def processDirectory(self, dirpath):
-        self.preprocessDirectory(dirpath)
         self.analyseImports()
         self.extractDocstrings()
         self.finalStateComputations()

@@ -1,3 +1,4 @@
+import os
 import sys
 import __builtin__
 
@@ -16,9 +17,17 @@ import __builtin__
 class Documentable(object):
     document_in_parent_page = False
     sourceHref = None
-    def __init__(self, system, prefix, name, docstring, parent=None):
+    def __init__(self, system, name, docstring, parent=None):
         self.system = system
-        self.prefix = prefix
+        if parent is not None:
+            if (parent.parent and isinstance(parent.parent, Package)
+                and isinstance(parent, Module)
+                and parent.name == '__init__'):
+                self.prefix = parent.parent.fullName() + '.'
+            else:
+                self.prefix = parent.fullName() + '.'
+        else:
+            self.prefix = ''
         self.name = name
         self.docstring = docstring
         self.parent = parent
@@ -26,6 +35,23 @@ class Documentable(object):
         self.setup()
         if not isinstance(self, Package):
             self.doctarget = self
+
+        if system is None:
+            return
+
+        if parent:
+            parent.orderedcontents.append(self)
+            parent.contents[name] = self
+            parent._name2fullname[name] = self.fullName()
+        else:
+            system.rootobjects.append(self)
+        system.orderedallobjects.append(self)
+        fullName = self.fullName()
+        if fullName in system.allobjects:
+            system.handleDuplicate(self)
+        else:
+            system.allobjects[fullName] = self
+
     def setup(self):
         self.contents = {}
         self.orderedcontents = []
@@ -213,6 +239,10 @@ states = [
     ]
 
 class System(object):
+    Class = Class
+    Module = Module
+    Package = Package
+    Function = Function
     # not done here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None
@@ -239,6 +269,7 @@ class System(object):
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs = set()
+        self.unprocessed_modules = set()
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
@@ -369,3 +400,103 @@ class System(object):
                             n[kk] = lookup(vv)
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
+
+
+
+    # if we assume:
+    #
+    # - that svn://divmod.org/trunk is checked out into ~/src/Divmod
+    #
+    # - that http://divmod.org/trac/browser/trunk is the trac URL to the
+    #   above directory
+    #
+    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
+    #   "--add-package" argument
+    #
+    # we want to work out the sourceHref for nevow.flat.ten.  the answer
+    # is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
+    #
+    # we can work this out by finding that Divmod is the top of the svn
+    # checkout, and posixpath.join-ing the parts of the filePath that
+    # follows that.
+    #
+    #  http://divmod.org/trac/browser/trunk
+    #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
+
+    def setSourceHref(self, mod):
+        if self.sourcebase is None:
+            mod.sourceHref = None
+            return
+
+        trailing = []
+        dir, fname = os.path.split(mod.filepath)
+        while os.path.exists(os.path.join(dir, '.svn')):
+            dir, dirname = os.path.split(dir)
+            trailing.append(dirname)
+
+        # now trailing[-1] would be 'Divmod' in the above example
+        del trailing[-1]
+        trailing.reverse()
+        trailing.append(fname)
+
+        mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
+
+    def addModule(self, modpath, parentPackage=None):
+        assert self.state in ['blank', 'preparse']
+        fname = os.path.basename(modpath)
+        modname = os.path.splitext(fname)[0]
+        mod = self.Module(self, modname, None, parentPackage)
+        self.progress(
+            "addModule", len(self.orderedallobjects),
+            None, "modules and packages discovered")
+        mod.filepath = modpath
+        self.unprocessed_modules.add(mod)
+        self.setSourceHref(mod)
+        self.state = 'preparse'
+
+    def addDirectory(self, dirpath, parentPackage=None):
+        assert self.state in ['blank', 'preparse']
+        if not os.path.exists(dirpath):
+            raise Exception("package path %r does not exist!"
+                            %(dirpath,))
+        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
+            raise Exception("you must pass a package directory to "
+                            "preprocessDirectory")
+        package = self.Package(self, os.path.basename(dirpath),
+                               None, parentPackage)
+        package.filepath = dirpath
+        self.setSourceHref(package)
+        for fname in os.listdir(dirpath):
+            fullname = os.path.join(dirpath, fname)
+            if os.path.isdir(fullname):
+                initname = os.path.join(fullname, '__init__.py')
+                if os.path.exists(initname):
+                    self.addDirectory(fullname, package)
+            elif fname.endswith('.py') and not fname.startswith('.'):
+                self.addModule(fullname, package)
+        self.state = 'preparse'
+
+    def handleDuplicate(self, obj):
+        '''This is called when we see two objects with the same
+        .fullName(), for example:
+
+        class C:
+            if something:
+                def meth(self):
+                    implementation 1
+            else:
+                def meth(self):
+                    implementation 2
+
+        The default is that the second definition "wins".
+        '''
+        i = 0
+        fn = obj.fullName()
+        while (fn + ' ' + str(i)) in self.allobjects:
+            i += 1
+        prev = self.allobjects[obj.fullName()]
+        prev.name = obj.name + ' ' + str(i)
+        self.allobjects[prev.fullName()] = prev
+        self._warning(obj.parent, "duplicate", self.allobjects[obj.fullName()])
+        self.allobjects[obj.fullName()] = obj
+        return obj

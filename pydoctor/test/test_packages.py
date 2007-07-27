@@ -7,7 +7,8 @@ def processPackage(packname, buildercls=astbuilder.ASTBuilder):
     system = model.System()
     builder = buildercls(system)
     system.packages.append(testpackage.strpath)
-    builder.processDirectory(testpackage.strpath)
+    system.addDirectory(testpackage.strpath)
+    builder.processDirectory(None)
     return system
 
 def test_local_import():

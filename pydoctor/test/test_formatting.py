@@ -18,11 +18,12 @@ def test_strsigargh():
     assert html.signature(argspec) == 'a, (b, c)'
 
 def test_link():
-    docco = model.Documentable(None, 'twisted.', 'threadz', '')
+    doc0 = model.Documentable(None, 'twisted', None)
+    docco = model.Documentable(None, 'threadz', None, doc0)
     assert html.link(docco) == 'twisted.threadz.html'
 
 def test_summaryDoc():
-    docco = model.Documentable(None, 'twisted.', 'threadz', 'Woot\nYeah')
+    docco = model.Documentable(None, 'threadz', 'Woot\nYeah')
     assert html.summaryDoc(docco) == html.doc2html(docco, 'Woot')
 
 def test_boringDocstring():
@@ -54,9 +55,9 @@ class TestEpyHackers:
         # And *damnit* how do I write teardowners
         html.EPYTEXT = False
         sysw = html.SystemWriter(None)
-        mod = model.Module(None, 'twisted.', 'threadz', 'Woot\nYeah')
-        fun = model.Function(None, 'twisted.threadz.', 'blat',
-                             'HICKY HECK\nYEAH')
+        pack = model.Package(None, 'twisted', None)
+        mod = model.Module(None, 'threadz', 'Woot\nYeah', pack)
+        fun = model.Function(None, 'blat', 'HICKY HECK\nYEAH', mod)
         fun.argspec = [(), None, None, ()]
         out = sysw.getHTMLFor(fun)
         assert 'blat()' in out

@@ -268,19 +268,21 @@ def main(args):
         # step 2: add any packages and modules
 
         if options.packages or options.modules:
+            prependedpackage = None
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
-                    builder.pushPackage(m, None)
+                    prependedpackage = system.Package(
+                        system, m, None, prependedpackage)
             for path in options.packages:
                 path = os.path.abspath(path)
                 if path in system.packages:
                     continue
                 if system.state not in ['blank', 'preparse']:
-                    msg = ('system is in state %r, which is too late to add '
-                           'new code')
+                    msg = ('system is in state %r, which is too late '
+                           'to add new code')
                     error(msg, system.state)
                 system.msg('addPackage', 'adding directory ' + path)
-                builder.preprocessDirectory(path)
+                system.addDirectory(path, prependedpackage)
                 system.packages.append(path)
             for path in options.modules:
                 path = os.path.normpath(path)
@@ -291,13 +293,8 @@ def main(args):
                            'new code')
                     error(msg, system.state)
                 system.msg('addModule', 'adding module ' + path)
-                # XXX should be a builder method!
-                builder.addModule(path)
-                system.state = 'preparse'
+                system.addModule(path)
                 system.packages.append(path)
-            if options.prependedpackage:
-                for m in options.prependedpackage.split('.'):
-                    builder.popPackage()
 
         # step 3: move the system to the desired state
 
