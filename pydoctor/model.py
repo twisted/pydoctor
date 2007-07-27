@@ -36,22 +36,6 @@ class Documentable(object):
         if not isinstance(self, Package):
             self.doctarget = self
 
-        if system is None:
-            return
-
-        if parent:
-            parent.orderedcontents.append(self)
-            parent.contents[name] = self
-            parent._name2fullname[name] = self.fullName()
-        else:
-            system.rootobjects.append(self)
-        system.orderedallobjects.append(self)
-        fullName = self.fullName()
-        if fullName in system.allobjects:
-            system.handleDuplicate(self)
-        else:
-            system.allobjects[fullName] = self
-
     def setup(self):
         self.contents = {}
         self.orderedcontents = []
@@ -401,7 +385,18 @@ class System(object):
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
 
-
+    def addObject(self, obj):
+        if obj.parent:
+            obj.parent.orderedcontents.append(obj)
+            obj.parent.contents[obj.name] = obj
+            obj.parent._name2fullname[obj.name] = obj.fullName()
+        else:
+            self.rootobjects.append(obj)
+        self.orderedallobjects.append(obj)
+        if obj.fullName() in self.allobjects:
+            self.handleDuplicate(obj)
+        else:
+            self.allobjects[obj.fullName()] = obj
 
     # if we assume:
     #
@@ -446,6 +441,7 @@ class System(object):
         fname = os.path.basename(modpath)
         modname = os.path.splitext(fname)[0]
         mod = self.Module(self, modname, None, parentPackage)
+        self.addObject(mod)
         self.progress(
             "addModule", len(self.orderedallobjects),
             None, "modules and packages discovered")
@@ -464,6 +460,7 @@ class System(object):
                             "preprocessDirectory")
         package = self.Package(self, os.path.basename(dirpath),
                                None, parentPackage)
+        self.addObject(package)
         package.filepath = dirpath
         self.setSourceHref(package)
         for fname in os.listdir(dirpath):
