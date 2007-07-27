@@ -90,8 +90,6 @@ class ModuleVistor(object):
                     self.builder.pop(mod)
                     return
             m = self.builder.pushModule(self.modname, node.doc)
-            if m is None:
-                return
             self.default(node)
             self.builder.popModule()
 
@@ -115,8 +113,6 @@ class ModuleVistor(object):
             baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
-        if cls is None:
-            return
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:
@@ -232,8 +228,6 @@ class ModuleVistor(object):
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
-        if func is None:
-            return
         func.decorators = node.decorators
         if isinstance(func.parent, model.Class) and node.decorators:
             isclassmethod = False
