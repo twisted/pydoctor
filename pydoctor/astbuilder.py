@@ -499,7 +499,7 @@ def findAll(modast, mod):
                node.nodes[0].name == '__all__':
             if mod.all is not None:
                 mod.system.msg('all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
-            if not isinstance(node.expr, ast.List):
+            if not isinstance(node.expr, (ast.List, ast.Tuple)):
                 mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
                 continue
             items = node.expr.nodes
