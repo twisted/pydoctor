@@ -512,15 +512,17 @@ class ASTBuilder(object):
         modlist = list(self.system.objectsOfType(model.Module))
         for i, mod in enumerate(modlist):
             self.push(mod)
-            isf = ImportFinder(self, mod)
-            ast = self.parseFile(mod.filepath)
-            if not ast:
-                continue
-            findAll(ast, mod)
-            self.system.progress('analyseImports', i+1, len(modlist),
+            try:
+                isf = ImportFinder(self, mod)
+                ast = self.parseFile(mod.filepath)
+                if not ast:
+                    continue
+                findAll(ast, mod)
+                self.system.progress('analyseImports', i+1, len(modlist),
                                  "modules parsed")
-            visitor.walk(ast, isf)
-            self.pop(mod)
+                visitor.walk(ast, isf)
+            finally:
+                self.pop(mod)
         self.system.state = 'imported'
 
     def extractDocstrings(self):
@@ -533,17 +535,19 @@ class ASTBuilder(object):
             mod = self.system.allobjects[mod]
             if mod.parent:
                 self.push(mod.parent)
-            ast = self.parseFile(mod.filepath)
-            if not ast:
-                continue
-            self.processModuleAST(ast, mod.name)
-            self.system.progress(
-                'extractDocstrings', i+1, len(modlist),
-                "modules parsed %s warnings"%(
-                sum(len(v) for v in self.system.warnings.itervalues()),))
-            mod.processed = True
-            if mod.parent:
-                self.pop(mod.parent)
+            try:
+                ast = self.parseFile(mod.filepath)
+                if not ast:
+                    continue
+                self.processModuleAST(ast, mod.name)
+                self.system.progress(
+                    'extractDocstrings', i+1, len(modlist),
+                    "modules parsed %s warnings"%(
+                    sum(len(v) for v in self.system.warnings.itervalues()),))
+            finally:
+                mod.processed = True
+                if mod.parent:
+                    self.pop(mod.parent)
         self.system.state = 'parsed'
 
     def finalStateComputations(self):
