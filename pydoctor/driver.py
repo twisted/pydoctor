@@ -1,4 +1,4 @@
-from pydoctor import model, astbuilder, liveobjectchecker
+from pydoctor import model, liveobjectchecker
 import sys, os
 
 def error(msg, *args):
@@ -44,9 +44,6 @@ def getparser():
     parser.add_option(
         '--system-class', dest='systemclass',
         help=("A dotted name of the class to use to make a system."))
-    parser.add_option(
-        '--builder-class', dest='builderclass',
-        help=("A dotted name of the class to use."))
     parser.add_option(
         '--project-name', dest='projectname',
         help=("The project name, appears in the html."))
@@ -141,6 +138,11 @@ def getparser():
         default=False, action="store_true",
         help=("Generate (unobstrusive) JavaScript to hide some of the "
               "entries in long lists of e.g. subclasses."))
+    parser.add_option(
+        '--livechceck', action='store_true', dest='livechceck',
+        default=False,
+        help=("Import and examine the modules too.  XXX not working "
+              "right now"))
     parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
@@ -242,21 +244,6 @@ def main(args):
                 k, v = thing.split('=')
                 system.abbrevmapping[k] = v
 
-        # step 1.25: make a builder
-
-        if options.builderclass:
-            builderclass = findClassFromDottedName(options.builderclass,
-                                                   '--builder-class')
-            if not issubclass(builderclass, astbuilder.ASTBuilder):
-                msg = "%s is not a subclass of astbuilder.ASTBuilder"
-                error(msg, builderclass)
-        elif hasattr(system, 'defaultBuilder'):
-            builderclass = system.defaultBuilder
-        else:
-            builderclass = astbuilder.ASTBuilder
-
-        builder = builderclass(system)
-
         # step 1.5: check that we're actually going to accomplish something here
 
         if not options.outputpickle and not options.makehtml \
@@ -302,36 +289,10 @@ def main(args):
             error("The system does not contain any code, did you "
                   "forget an --add-package?")
 
-        curstateindex = model.states.index(system.state)
-        finalstateindex = model.states.index(options.targetstate)
+        system.process()
 
-        if finalstateindex < curstateindex and \
-               (options.targetstate, system.state) != \
-               ('finalized', 'livechecked'):
-            msg = 'cannot reverse system from %r to %r'
-            error(msg, system.state, options.targetstate)
-
-        if finalstateindex > 0 and curstateindex == 0:
-            msg = 'cannot advance totally blank system to %r'
-            error(msg, options.targetstate)
-
-        def liveCheck():
-            liveobjectchecker.liveCheck(system, builder)
-
-        funcs = [None,
-                 system.analyseImports,
-                 system.extractDocstrings,
-                 system.finalStateComputations,
-                 liveCheck]
-
-        for i in range(curstateindex, finalstateindex):
-            f = funcs[i]
-            system.msg(f.__name__, f.__name__)
-            f()
-
-        if system.state != options.targetstate:
-            msg = "failed to advance state to %r (this is a bug)"
-            error(msg, options.targetstate)
+        if system.options.livecheck:
+            error("write this")
 
         if system.options.projectname is None:
             name = '/'.join([ro.name for ro in system.rootobjects])

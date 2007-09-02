@@ -164,10 +164,11 @@ class Package(Documentable):
     def doctarget(self):
         return self.contents['__init__']
 
+[UNPROCESSED, PROCESSING, PROCESSED] = range(3)
 
 class Module(Documentable):
     kind = "Module"
-    processed = False
+    state = UNPROCESSED
     linenumber = 0
     def setup(self):
         super(Module, self).setup()
@@ -217,8 +218,6 @@ class Function(Documentable):
 states = [
     'blank',
     'preparse',
-    'imported',
-    'parsed',
     'finalized',
     'livechecked',
     ]
@@ -458,7 +457,7 @@ class System(object):
                             %(dirpath,))
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
-                            "preprocessDirectory")
+                            "addDirectory")
         package = self.Package(self, os.path.basename(dirpath),
                                None, parentPackage)
         self.addObject(package)
@@ -560,3 +559,37 @@ class System(object):
         self._warning(obj.parent, "duplicate", self.allobjects[obj.fullName()])
         self.allobjects[obj.fullName()] = obj
         return obj
+
+
+    def getProcessedModule(self, modname):
+        mod = self.allobjects.get(modname)
+        if mod is None or not isinstance(mod, Module):
+            return None
+
+        if mod.state == UNPROCESSED:
+            self.processModule(mod)
+
+        return mod
+
+
+    def processModule(self, mod):
+        assert mod.state == UNPROCESSED
+        mod.state = PROCESSING
+        builder = self.defaultBuilder(self)
+        ast = builder.parseFile(mod.filepath)
+        if not ast:
+            return
+        astbuilder.findAll(ast, mod)
+        builder.processModuleAST(ast, mod.name)
+        self.progress(
+            'process', i+1, len(modlist),
+            "modules processed %s warnings"%(
+            sum(len(v) for v in self.warnings.itervalues()),))
+        mod.state = PROCESSED
+        self.unprocessed_modules.remove(mod)
+
+
+    def process(self):
+        while self.unprocessed_modules:
+            mod = iter(self.unprocessed_modules).next()
+            self.processModule(mod)
