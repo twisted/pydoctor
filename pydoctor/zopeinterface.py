@@ -212,12 +212,14 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
             if not hasattr(mod, 'filepath'):
                 continue
             self.push(mod)
-            icf = InterfaceClassFinder(self, mod.fullName())
-            ast = self.parseFile(mod.filepath)
-            if not ast:
-                continue
-            visitor.walk(ast, icf)
-            self.pop(mod)
+            try:
+                icf = InterfaceClassFinder(self, mod.fullName())
+                ast = self.parseFile(mod.filepath)
+                if not ast:
+                    continue
+                visitor.walk(ast, icf)
+            finally:
+                self.pop(mod)
             newinterfaces.extend(icf.newinterfaces)
 
         newinterfacemap = dict([(i.fullName(), i) for i in newinterfaces])
