@@ -201,29 +201,35 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
                 break
         super(ZopeInterfaceASTBuilder, self).popClass()
 
+class ZopeInterfaceSystem(model.System):
+    Class = ZopeInterfaceClass
+    Function = ZopeInterfaceFunction
+    defaultBuilder = ZopeInterfaceASTBuilder
+
     def _finalStateComputations(self):
-        super(ZopeInterfaceASTBuilder, self)._finalStateComputations()
-        for cls in self.system.objectsOfType(model.Class):
+        super(ZopeInterfaceSystem, self)._finalStateComputations()
+        builder = self.defaultBuilder(self)
+        for cls in self.objectsOfType(model.Class):
             if 'zope.interface.interface.InterfaceClass' in cls.bases:
                 markInterfaceClass(cls)
 
         newinterfaces = []
-        for mod in self.system.objectsOfType(model.Module):
+        for mod in self.objectsOfType(model.Module):
             if not hasattr(mod, 'filepath'):
                 continue
-            self.push(mod)
+            builder.push(mod)
             try:
-                icf = InterfaceClassFinder(self, mod.fullName())
-                ast = self.parseFile(mod.filepath)
+                icf = InterfaceClassFinder(builder, mod.fullName())
+                ast = builder.parseFile(mod.filepath)
                 if not ast:
                     continue
                 visitor.walk(ast, icf)
             finally:
-                self.pop(mod)
+                builder.pop(mod)
             newinterfaces.extend(icf.newinterfaces)
 
         newinterfacemap = dict([(i.fullName(), i) for i in newinterfaces])
-        for cls in self.system.objectsOfType(model.Class):
+        for cls in self.objectsOfType(model.Class):
             for i, b in enumerate(cls.bases):
                 if b in newinterfacemap:
                     assert (cls.baseobjects[i] is None or
@@ -233,33 +239,33 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
 
         for newi in newinterfaces:
             self.markInterface(newi)
-        for cls in self.system.objectsOfType(model.Class):
+        for cls in self.objectsOfType(model.Class):
             if 'zope.interface.Interface' in cls.bases:
                 self.markInterface(cls)
             for baseOb in cls.baseobjects:
-                if baseOb and baseOb.system is not self.system and baseOb.isinterface:
+                if baseOb and baseOb.system is not self and baseOb.isinterface:
                     self.markInterface(cls)
 
-        for cls in self.system.objectsOfType(model.Class):
+        for cls in self.objectsOfType(model.Class):
             if cls.isinterface or len(cls.baseobjects) != cls.baseobjects.count(None):
                 continue
             self.push_implements_info(cls, cls.implements_directly)
 
-        for cls in self.system.objectsOfType(model.Class):
+        for cls in self.objectsOfType(model.Class):
             for interface in cls.implements_directly:
-                interface_ob = self.system.objForFullName(interface)
+                interface_ob = self.objForFullName(interface)
                 if interface_ob is not None:
                     if interface_ob.implementedby_directly is None:
-                        self.warning("probable interface not marked as such",
+                        builder.warning("probable interface not marked as such",
                                      interface_ob.fullName())
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_directly.append(cls.fullName())
             for interface in cls.implements_indirectly:
-                interface_ob = self.system.objForFullName(interface)
+                interface_ob = self.objForFullName(interface)
                 if interface_ob is not None:
                     if interface_ob.implementedby_indirectly is None:
-                        self.warning("probable interface not marked as such",
+                        builder.warning("probable interface not marked as such",
                                      interface_ob.fullName())
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
@@ -285,8 +291,3 @@ class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
             else:
                 newinterfaces = interfaces + ob.implements_directly
             self.push_implements_info(ob, newinterfaces)
-
-class ZopeInterfaceSystem(model.System):
-    Class = ZopeInterfaceClass
-    Function = ZopeInterfaceFunction
-    defaultBuilder = ZopeInterfaceASTBuilder

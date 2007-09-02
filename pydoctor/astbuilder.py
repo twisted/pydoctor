@@ -1,7 +1,7 @@
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer, ast
-import os, posixpath, symbol, token
+import symbol, token
 
 class mystr(str):
     pass
@@ -40,15 +40,13 @@ class MyTransformer(transformer.Transformer):
             return self.get_docstring(node[0])
         return None
 
+
 def parseFile(path):
     f = open(path, "U")
-    # XXX The parser API tolerates files without a trailing newline,
-    # but not strings without a trailing newline.  Always add an extra
-    # newline to the file contents, since we're going through the string
-    # version of the API.
     src = f.read() + "\n"
     f.close()
     return parse(src)
+
 
 def parse(buf):
     return MyTransformer().parsesuite(buf)
@@ -347,9 +345,6 @@ class ASTBuilder(object):
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)
 
-    def _finalStateComputations(self):
-        pass
-
     def processModuleAST(self, ast, moduleName):
         visitor.walk(ast, self.ModuleVistor(self, moduleName))
 
@@ -379,59 +374,6 @@ class ASTBuilder(object):
             ast = None
         self.ast_cache[filePath] = ast
         return ast
-
-    def analyseImports(self):
-        assert self.system.state in ['preparse']
-        modlist = list(self.system.objectsOfType(model.Module))
-        for i, mod in enumerate(modlist):
-            self.push(mod)
-            try:
-                isf = ImportFinder(self, mod)
-                ast = self.parseFile(mod.filepath)
-                if not ast:
-                    continue
-                findAll(ast, mod)
-                self.system.progress('analyseImports', i+1, len(modlist),
-                                 "modules parsed")
-                visitor.walk(ast, isf)
-            finally:
-                self.pop(mod)
-        self.system.state = 'imported'
-
-    def extractDocstrings(self):
-        assert self.system.state in ['imported']
-        # and so much more...
-        modlist = list(self.system.objectsOfType(model.Module))
-        newlist = toposort([m.fullName() for m in modlist], self.system.importgraph)
-
-        for i, mod in enumerate(newlist):
-            mod = self.system.allobjects[mod]
-            if mod.parent:
-                self.push(mod.parent)
-            try:
-                ast = self.parseFile(mod.filepath)
-                if not ast:
-                    continue
-                self.processModuleAST(ast, mod.name)
-                self.system.progress(
-                    'extractDocstrings', i+1, len(modlist),
-                    "modules parsed %s warnings"%(
-                    sum(len(v) for v in self.system.warnings.itervalues()),))
-            finally:
-                mod.processed = True
-                if mod.parent:
-                    self.pop(mod.parent)
-        self.system.state = 'parsed'
-
-    def finalStateComputations(self):
-        assert self.system.state in ['parsed']
-        self._finalStateComputations()
-        self.system.state = 'finalized'
-
-    def processDirectory(self, dirpath):
-        self.analyseImports()
-        self.extractDocstrings()
-        self.finalStateComputations()
 
 model.System.defaultBuilder = ASTBuilder
 

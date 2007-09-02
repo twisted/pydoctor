@@ -319,9 +319,9 @@ def main(args):
             liveobjectchecker.liveCheck(system, builder)
 
         funcs = [None,
-                 builder.analyseImports,
-                 builder.extractDocstrings,
-                 builder.finalStateComputations,
+                 system.analyseImports,
+                 system.extractDocstrings,
+                 system.finalStateComputations,
                  liveCheck]
 
         for i in range(curstateindex, finalstateindex):

@@ -27,7 +27,7 @@ that package.
 class TwistedASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
     ModuleVistor = TwistedModuleVisitor
 
-class TwistedSystem(model.System):
+class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
     defaultBuilder = TwistedASTBuilder
 
     def shouldInclude(self, obj):

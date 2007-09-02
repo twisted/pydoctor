@@ -11,7 +11,7 @@ def processPackage(packname, buildercls=None,
     builder = buildercls(system)
     system.packages.append(testpackage.strpath)
     system.addDirectory(testpackage.strpath)
-    builder.processDirectory(None)
+    system.processDirectory(None)
     return system
 
 def test_local_import():
