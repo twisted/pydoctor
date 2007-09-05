@@ -11,7 +11,9 @@ def processPackage(packname, buildercls=None,
     builder = buildercls(system)
     system.packages.append(testpackage.strpath)
     system.addDirectory(testpackage.strpath)
-    system.processDirectory(None)
+    system.process()
+    system.state = 'parsed'
+    system.finalStateComputations()
     return system
 
 def test_local_import():

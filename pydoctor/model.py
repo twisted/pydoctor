@@ -254,6 +254,7 @@ class System(object):
         self.needsnl = False
         self.once_msgs = set()
         self.unprocessed_modules = set()
+        self.module_count = 0
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
@@ -447,6 +448,7 @@ class System(object):
             None, "modules and packages discovered")
         mod.filepath = modpath
         self.unprocessed_modules.add(mod)
+        self.module_count += 1
         self.setSourceHref(mod)
         self.state = 'preparse'
 
@@ -511,7 +513,7 @@ class System(object):
                 ast = builder.parseFile(mod.filepath)
                 if not ast:
                     continue
-                builder.processModuleAST(ast, mod.name)
+                builder.processModuleAST(ast, mod)
                 self.progress(
                     'extractDocstrings', i+1, len(modlist),
                     "modules parsed %s warnings"%(
@@ -579,17 +581,20 @@ class System(object):
         ast = builder.parseFile(mod.filepath)
         if not ast:
             return
-        astbuilder.findAll(ast, mod)
-        builder.processModuleAST(ast, mod.name)
-        self.progress(
-            'process', i+1, len(modlist),
-            "modules processed %s warnings"%(
-            sum(len(v) for v in self.warnings.itervalues()),))
+        builder.processModuleAST(ast, mod)
         mod.state = PROCESSED
         self.unprocessed_modules.remove(mod)
+        self.progress(
+            'process',
+            self.module_count - len(self.unprocessed_modules),
+            self.module_count,
+            "modules processed %s warnings"%(
+            sum(len(v) for v in self.warnings.itervalues()),))
 
 
     def process(self):
         while self.unprocessed_modules:
             mod = iter(self.unprocessed_modules).next()
             self.processModule(mod)
+        self.state = 'parsed'
+        self.finalStateComputations()

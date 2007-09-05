@@ -11,13 +11,15 @@ def fromText(text, modname='<test>', system=None,
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
+    mod = builder.pushModule(modname, None)
+    builder.popModule()
     ast = astbuilder.parse(textwrap.dedent(text))
-    builder.processModuleAST(ast, modname)
+    builder.processModuleAST(ast, mod)
     if system is None:
         _system._finalStateComputations()
     mod = _system.allobjects[modname]
     mod.ast = ast
-    mod.processed = True
+    mod.state = model.PROCESSED
     return mod
 
 def test_simple():

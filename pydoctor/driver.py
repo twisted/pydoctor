@@ -139,7 +139,7 @@ def getparser():
         help=("Generate (unobstrusive) JavaScript to hide some of the "
               "entries in long lists of e.g. subclasses."))
     parser.add_option(
-        '--livechceck', action='store_true', dest='livechceck',
+        '--livechceck', action='store_true', dest='livecheck',
         default=False,
         help=("Import and examine the modules too.  XXX not working "
               "right now"))

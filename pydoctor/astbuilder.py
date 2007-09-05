@@ -106,7 +106,7 @@ class ModuleVistor(object):
                 bob = self.system.objForFullName(base)
             if bob:
                 assert (bob.parentMod is self.builder.currentMod or
-                        bob.parentMod.processed)
+                        bob.parentMod.state > 0)
             bases.append(base)
             baseobjects.append(bob)
 
@@ -133,12 +133,12 @@ class ModuleVistor(object):
                 self.builder.warning("import *", modname)
                 if modname not in self.system.allobjects:
                     return
-                mod = self.system.allobjects[modname]
+                mod = self.system.getProcessedModule(modname)
                 if isinstance(mod, model.Package):
                     self.builder.warning("import * from a package",
                                          modname)
                     return
-                assert mod.processed
+                assert mod.state in [model.PROCESSING, model.PROCESSED]
                 if mod.all is not None:
                     names = mod.all
                 else:
@@ -345,8 +345,9 @@ class ASTBuilder(object):
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)
 
-    def processModuleAST(self, ast, moduleName):
-        visitor.walk(ast, self.ModuleVistor(self, moduleName))
+    def processModuleAST(self, ast, mod):
+        findAll(ast, mod)
+        visitor.walk(ast, self.ModuleVistor(self, mod.fullName()))
 
     def expandModname(self, modname, givewarning=True):
         if '.' in modname:
@@ -415,6 +416,7 @@ class ImportFinder(object):
     def visitImport(self, node):
         for fromname, asname in node.names:
             modname = self.builder.expandModname(fromname)
+            self.system.getProcessedModule(modname)
             if modname in self.system.allobjects:
                 self.system.importgraph.setdefault(
                     self.mod.fullName(), set()).add(modname)
