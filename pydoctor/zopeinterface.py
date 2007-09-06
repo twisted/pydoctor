@@ -37,8 +37,10 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     if implementsOnly:
         cls.implements_directly = []
     for arg in interfaceargs:
-        cls.implements_directly.append(
-            cls.dottedNameToFullName(ast_pp.pp(arg)))
+        fullName = cls.dottedNameToFullName(ast_pp.pp(arg))
+        if fullName not in cls.system.allobjects:
+            fullName = cls.system.resolveAlias(fullName)
+        cls.implements_directly.append(fullName)
 
 schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
 
@@ -78,7 +80,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.builder._pop(Attribute)
 
         def handleSchemaField(kind):
-            print node.expr
+            #print node.expr
             descriptions = [arg for arg in node.expr.args if isinstance(arg, ast.Keyword)
                             and arg.name == 'description']
             docstring = None

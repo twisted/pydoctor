@@ -255,6 +255,7 @@ class System(object):
         self.once_msgs = set()
         self.unprocessed_modules = set()
         self.module_count = 0
+        self.processing_modules = []
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)
@@ -312,13 +313,14 @@ class System(object):
         else:
             return n
         m = system.allobjects[mod]
+        if isinstance(m, Package):
+            m = m.contents['__init__']
         if not isinstance(m, Module):
             return n
         if clsname in m._name2fullname:
             newname = m.name2fullname(clsname)
             if newname == n:
                 return newname
-            print newname
             for system in systems:
                 if newname in system.allobjects:
                     return newname
@@ -565,7 +567,11 @@ class System(object):
 
     def getProcessedModule(self, modname):
         mod = self.allobjects.get(modname)
-        if mod is None or not isinstance(mod, Module):
+        if mod is None:
+            return None
+        if isinstance(mod, Package):
+            return self.getProcessedModule(modname + '.__init__')
+        if not isinstance(mod, Module):
             return None
 
         if mod.state == UNPROCESSED:
@@ -577,13 +583,19 @@ class System(object):
     def processModule(self, mod):
         assert mod.state == UNPROCESSED
         mod.state = PROCESSING
+        if getattr(mod, 'filepath', None) is None:
+            return
         builder = self.defaultBuilder(self)
         ast = builder.parseFile(mod.filepath)
         if not ast:
             return
-        self.msg("processModule", "processing %s"%(mod), 1)
+
+        self.processing_modules.append(mod.fullName())
+        self.msg("processModule", "processing %s"%(self.processing_modules), 1)
         builder.processModuleAST(ast, mod)
         mod.state = PROCESSED
+        head = self.processing_modules.pop()
+        assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
         self.progress(
             'process',

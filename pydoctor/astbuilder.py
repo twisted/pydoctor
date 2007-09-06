@@ -127,18 +127,16 @@ class ModuleVistor(object):
 
     def visitFrom(self, node):
         modname = self.builder.expandModname(node.modname)
+        mod = self.system.getProcessedModule(modname)
+        if mod is not None:
+            assert mod.state in [model.PROCESSING, model.PROCESSED]
         name2fullname = self.builder.current._name2fullname
         for fromname, asname in node.names:
             if fromname == '*':
+                if mod is None:
+                    self.builder.warning("import * from unknown", modname)
+                    return
                 self.builder.warning("import *", modname)
-                if modname not in self.system.allobjects:
-                    return
-                mod = self.system.getProcessedModule(modname)
-                if isinstance(mod, model.Package):
-                    self.builder.warning("import * from a package",
-                                         modname)
-                    return
-                assert mod.state in [model.PROCESSING, model.PROCESSED]
                 if mod.all is not None:
                     names = mod.all
                 else:
@@ -154,7 +152,7 @@ class ModuleVistor(object):
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and \
+                if 0 and isinstance(mod, model.Module) and \
                        fromname in mod.contents:
                     print 'moving', mod.contents[fromname], 'into', \
                           self.builder.current
