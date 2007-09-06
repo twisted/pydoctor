@@ -136,11 +136,12 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                                 funcName == 'zope.interface.classImplementsOnly')
     visitCallFunc_zope_interface_classImplementsOnly = visitCallFunc_zope_interface_classImplements
 
+    def visitClass(self, node):
+        super(ZopeInterfaceModuleVisitor, self).visitClass(node)
+        cls = self.builder.current.contents[node.name]
+        if 'zope.interface.interface.InterfaceClass' in cls.bases:
+            cls.isinterfaceclass = True
 
-def markInterfaceClass(cls):
-    cls.isinterfaceclass = True
-    for sc in cls.subclasses:
-        markInterfaceClass(sc)
 
 class InterfaceClassFinder(object):
     funcNameFromCall = ZopeInterfaceModuleVisitor.funcNameFromCall.im_func
@@ -211,9 +212,6 @@ class ZopeInterfaceSystem(model.System):
     def _finalStateComputations(self):
         super(ZopeInterfaceSystem, self)._finalStateComputations()
         builder = self.defaultBuilder(self)
-        for cls in self.objectsOfType(model.Class):
-            if 'zope.interface.interface.InterfaceClass' in cls.bases:
-                markInterfaceClass(cls)
 
         newinterfaces = []
         for mod in self.objectsOfType(model.Module):

@@ -13,7 +13,6 @@ def processPackage(packname, buildercls=None,
     system.addDirectory(testpackage.strpath)
     system.process()
     system.state = 'parsed'
-    system.finalStateComputations()
     return system
 
 def test_local_import():
