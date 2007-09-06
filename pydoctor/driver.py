@@ -260,6 +260,9 @@ def main(args):
                 for m in options.prependedpackage.split('.'):
                     prependedpackage = system.Package(
                         system, m, None, prependedpackage)
+                    system.addObject(prependedpackage)
+                    initmodule = system.Module(system, '__init__', None, prependedpackage)
+                    system.addObject(initmodule)
             for path in options.packages:
                 path = os.path.abspath(path)
                 if path in system.packages:
@@ -280,7 +283,7 @@ def main(args):
                            'new code')
                     error(msg, system.state)
                 system.msg('addModule', 'adding module ' + path)
-                system.addModule(path)
+                system.addModule(path, prependedpackage)
                 system.packages.append(path)
 
         # step 3: move the system to the desired state
