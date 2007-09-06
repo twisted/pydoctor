@@ -475,9 +475,9 @@ class ClassPage(CommonPage):
         return r
 
 
-class TwistedClassPage(ClassPage):
+class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
-        r = super(TwistedClassPage, self).extras()
+        r = super(ZopeInterfaceClassPage, self).extras()
         system = self.ob.system
         def tl(s):
             if s in system.allobjects:
@@ -510,7 +510,7 @@ class TwistedClassPage(ClassPage):
         r = []
         if imeth:
             r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth, imeth.parent.fullName())])
-        r.extend(super(TwistedClassPage, self).functionExtras(data))
+        r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
         return r
 
 class FunctionPage(CommonPage):
