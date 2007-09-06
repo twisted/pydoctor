@@ -581,6 +581,7 @@ class System(object):
         ast = builder.parseFile(mod.filepath)
         if not ast:
             return
+        self.msg("processModule", "processing %s"%(mod), 1)
         builder.processModuleAST(ast, mod)
         mod.state = PROCESSED
         self.unprocessed_modules.remove(mod)
