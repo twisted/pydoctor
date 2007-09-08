@@ -587,15 +587,13 @@ class System(object):
             return
         builder = self.defaultBuilder(self)
         ast = builder.parseFile(mod.filepath)
-        if not ast:
-            return
-
-        self.processing_modules.append(mod.fullName())
-        self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-        builder.processModuleAST(ast, mod)
-        mod.state = PROCESSED
-        head = self.processing_modules.pop()
-        assert head == mod.fullName()
+        if  ast:
+            self.processing_modules.append(mod.fullName())
+            self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+            builder.processModuleAST(ast, mod)
+            mod.state = PROCESSED
+            head = self.processing_modules.pop()
+            assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
         self.progress(
             'process',
