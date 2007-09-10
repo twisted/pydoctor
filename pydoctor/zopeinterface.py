@@ -160,7 +160,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             cls.implementedby_directly = []
             cls.implementedby_indirectly = []
         for n, o in zip(cls.bases, cls.baseobjects):
-            print n, o
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
                 break
