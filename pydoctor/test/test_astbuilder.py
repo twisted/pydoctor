@@ -15,8 +15,6 @@ def fromText(text, modname='<test>', system=None,
     builder.popModule()
     ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, mod)
-    if system is None:
-        _system._finalStateComputations()
     mod = _system.allobjects[modname]
     mod.ast = ast
     mod.state = model.PROCESSED

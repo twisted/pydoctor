@@ -526,18 +526,10 @@ class System(object):
                     builder.pop(mod.parent)
         self.state = 'parsed'
 
-    def _finalStateComputations(self):
-        pass
-
-    def finalStateComputations(self):
-        assert self.state in ['parsed']
-        self._finalStateComputations()
-        self.state = 'finalized'
 
     def processDirectory(self, dirpath):
         self.analyseImports()
         self.extractDocstrings()
-        self.finalStateComputations()
 
     def handleDuplicate(self, obj):
         '''This is called when we see two objects with the same
@@ -608,4 +600,3 @@ class System(object):
             mod = iter(self.unprocessed_modules).next()
             self.processModule(mod)
         self.state = 'parsed'
-        self.finalStateComputations()
