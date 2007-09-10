@@ -44,7 +44,6 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
 
 schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
 
-
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     def funcNameFromCall(self, node):
         str_base = ast_pp.pp(node.node)
@@ -157,7 +156,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             cls.isinterfaceclass = True
         if 'zope.interface.Interface' in cls.bases \
                or len([b for b in cls.baseobjects if b and b.isinterface]) > 0:
-            cls.isinterface = True
+            cls.kind = "Interface"
+            cls.implementedby_directly = []
+            cls.implementedby_indirectly = []
         for n, o in zip(cls.bases, cls.baseobjects):
             print n, o
             if schema_prog.match(n) or (o and o.isschemafield):
