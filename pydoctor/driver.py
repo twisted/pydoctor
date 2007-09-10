@@ -57,10 +57,6 @@ def getparser():
         '--pdb', dest='pdb', action='store_true',
         help=("Like py.test's --pdb."))
     parser.add_option(
-        '--target-state', dest='targetstate',
-        default='finalized', choices=model.states,
-        help=("The state to move the system to (default: %default)."))
-    parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
         help=("Produce html output."))
     parser.add_option(
@@ -267,10 +263,6 @@ def main(args):
                 path = os.path.abspath(path)
                 if path in system.packages:
                     continue
-                if system.state not in ['blank', 'preparse']:
-                    msg = ('system is in state %r, which is too late '
-                           'to add new code')
-                    error(msg, system.state)
                 system.msg('addPackage', 'adding directory ' + path)
                 system.addDirectory(path, prependedpackage)
                 system.packages.append(path)
@@ -278,10 +270,6 @@ def main(args):
                 path = os.path.normpath(path)
                 if path in system.packages:
                     continue
-                if system.state not in ['blank', 'preparse']:
-                    msg = ('system is in state %r, which is too late to add '
-                           'new code')
-                    error(msg, system.state)
                 system.msg('addModule', 'adding module ' + path)
                 system.addModule(path, prependedpackage)
                 system.packages.append(path)

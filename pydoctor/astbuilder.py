@@ -419,20 +419,6 @@ class ImportFinder(object):
                 self.system.importgraph.setdefault(
                     self.mod.fullName(), set()).add(modname)
 
-def toposort(input, edges):
-    # this doesn't detect cycles in any clever way.
-    output = []
-    input = dict.fromkeys(input)
-    def p(i):
-        for j in edges.get(i, set()):
-            if j in input:
-                del input[j]
-                p(j)
-        output.append(i)
-    while input:
-        p(input.popitem()[0])
-    return output
-
 def findAll(modast, mod):
     for node in modast.node.nodes:
         if isinstance(node, ast.Assign) and \

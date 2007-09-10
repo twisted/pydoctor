@@ -215,12 +215,6 @@ class Function(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-states = [
-    'blank',
-    'preparse',
-    'finalized',
-    'livechecked',
-    ]
 
 class System(object):
     Class = Class
@@ -239,7 +233,6 @@ class System(object):
         # importgraph contains edges {importer:{imported}} but only
         # for module-level import statements
         self.importgraph = {}
-        self.state = 'blank'
         self.packages = []
         self.moresystems = []
         self.subsystems = []
@@ -440,7 +433,6 @@ class System(object):
         mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
 
     def addModule(self, modpath, parentPackage=None):
-        assert self.state in ['blank', 'preparse']
         fname = os.path.basename(modpath)
         modname = os.path.splitext(fname)[0]
         mod = self.Module(self, modname, None, parentPackage)
@@ -455,7 +447,6 @@ class System(object):
         self.state = 'preparse'
 
     def addDirectory(self, dirpath, parentPackage=None):
-        assert self.state in ['blank', 'preparse']
         if not os.path.exists(dirpath):
             raise Exception("package path %r does not exist!"
                             %(dirpath,))
@@ -475,61 +466,6 @@ class System(object):
                     self.addDirectory(fullname, package)
             elif fname.endswith('.py') and not fname.startswith('.'):
                 self.addModule(fullname, package)
-        self.state = 'preparse'
-
-
-    def analyseImports(self):
-        from pydoctor import astbuilder
-        from compiler import visitor
-        assert self.state in ['preparse']
-        modlist = list(self.objectsOfType(Module))
-        builder = self.defaultBuilder(self)
-        for i, mod in enumerate(modlist):
-            builder.push(mod)
-            try:
-                isf = astbuilder.ImportFinder(builder, mod)
-                ast = builder.parseFile(mod.filepath)
-                if not ast:
-                    continue
-                astbuilder.findAll(ast, mod)
-                self.progress('analyseImports', i+1, len(modlist),
-                              "modules parsed")
-                visitor.walk(ast, isf)
-            finally:
-                builder.pop(mod)
-        self.state = 'imported'
-
-    def extractDocstrings(self):
-        from pydoctor.astbuilder import toposort
-        assert self.state in ['imported']
-        # and so much more...
-        modlist = list(self.objectsOfType(Module))
-        newlist = toposort([m.fullName() for m in modlist], self.importgraph)
-        builder = self.defaultBuilder(self)
-
-        for i, mod in enumerate(newlist):
-            mod = self.allobjects[mod]
-            if mod.parent:
-                builder.push(mod.parent)
-            try:
-                ast = builder.parseFile(mod.filepath)
-                if not ast:
-                    continue
-                builder.processModuleAST(ast, mod)
-                self.progress(
-                    'extractDocstrings', i+1, len(modlist),
-                    "modules parsed %s warnings"%(
-                    sum(len(v) for v in self.warnings.itervalues()),))
-            finally:
-                mod.processed = True
-                if mod.parent is builder.current is not None:
-                    builder.pop(mod.parent)
-        self.state = 'parsed'
-
-
-    def processDirectory(self, dirpath):
-        self.analyseImports()
-        self.extractDocstrings()
 
     def handleDuplicate(self, obj):
         '''This is called when we see two objects with the same
@@ -573,6 +509,7 @@ class System(object):
 
 
     def processModule(self, mod):
+        self.msg('', mod)
         assert mod.state == UNPROCESSED
         mod.state = PROCESSING
         if getattr(mod, 'filepath', None) is None:
@@ -599,4 +536,3 @@ class System(object):
         while self.unprocessed_modules:
             mod = iter(self.unprocessed_modules).next()
             self.processModule(mod)
-        self.state = 'parsed'
