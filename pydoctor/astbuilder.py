@@ -127,6 +127,7 @@ class ModuleVistor(object):
 
     def visitFrom(self, node):
         modname = self.builder.expandModname(node.modname)
+        # XXX what about "from package import mod1, mod2" ??
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
             assert mod.state in [model.PROCESSING, model.PROCESSED]
