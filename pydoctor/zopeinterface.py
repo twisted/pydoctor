@@ -8,11 +8,40 @@ class ZopeInterfaceClass(model.Class):
     isinterfaceclass = False
     implementsOnly = False
     implementedby_directly = None # [objects], when isinterface == True
-    implementedby_indirectly = None # [objects], when isinterface == True
     def setup(self):
         super(ZopeInterfaceClass, self).setup()
         self.implements_directly = [] # [name of interface]
-        self.implements_indirectly = [] # [(interface name, directly implemented)]
+
+    @property
+    def allImplementedInterfaces(self):
+        """Return all the interfaces implemented by this class.
+
+        This returns them in something like the classic class MRO.
+        """
+        r = list(self.implements_directly)
+        if self.implementsOnly:
+            return r
+        for b in self.baseobjects:
+            if b is None:
+                continue
+            for interface in b.allImplementedInterfaces:
+                if interface not in r:
+                    r.append(interface)
+        return r
+
+    @property
+    def allImplementations(self):
+        r = list(self.implementedby_directly)
+        stack = [self.system.objForFullName(n) for n in r]
+        while stack:
+            c = stack.pop(0)
+            for sc in c.subclasses:
+                if sc.implementsOnly:
+                    continue
+                stack.append(sc)
+                if sc.fullName() not in r:
+                    r.append(sc.fullName())
+        return r
 
 class Attribute(model.Documentable):
     kind = "Attribute"
@@ -24,8 +53,7 @@ class ZopeInterfaceFunction(model.Function):
             yield source
         if not isinstance(self.parent, model.Class):
             return
-        for interface in (self.parent.implements_directly +
-                          self.parent.implements_indirectly):
+        for interface in self.parent.allImplementedInterfaces:
             io = self.system.objForFullName(interface)
             if io is not None:
                 if self.name in io.contents:
@@ -41,6 +69,10 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         if fullName not in cls.system.allobjects:
             fullName = cls.system.resolveAlias(fullName)
         cls.implements_directly.append(fullName)
+        obj = cls.system.objForFullName(fullName)
+        if obj is not None:
+            obj.implementedby_directly.append(cls.fullName())
+
 
 schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
 
@@ -76,6 +108,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 interface = self.builder.pushClass(name, "...")
                 print 'new interface', interface
                 interface.isinterface = True
+                interface.implementedby_directly = []
                 interface.linenumber = node.lineno
                 self.builder.popClass()
             return sup()
@@ -158,11 +191,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             cls.isinterface = True
             cls.kind = "Interface"
             cls.implementedby_directly = []
-            cls.implementedby_indirectly = []
         for n, o in zip(cls.bases, cls.baseobjects):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
-                break
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
@@ -174,43 +205,3 @@ class ZopeInterfaceSystem(model.System):
     Function = ZopeInterfaceFunction
     defaultBuilder = ZopeInterfaceASTBuilder
 
-    def _finalStateComputations(self):
-        super(ZopeInterfaceSystem, self)._finalStateComputations()
-        builder = self.defaultBuilder(self)
-
-        for cls in self.objectsOfType(model.Class):
-            if cls.isinterface or len(cls.baseobjects) != cls.baseobjects.count(None):
-                continue
-            self.push_implements_info(cls, cls.implements_directly)
-
-        for cls in self.objectsOfType(model.Class):
-            for interface in cls.implements_directly:
-                interface_ob = self.objForFullName(interface)
-                if interface_ob is not None:
-                    if interface_ob.implementedby_directly is None:
-                        builder.warning("probable interface not marked as such",
-                                     interface_ob.fullName())
-                        interface_ob.implementedby_directly = []
-                        interface_ob.implementedby_indirectly = []
-                    interface_ob.implementedby_directly.append(cls.fullName())
-            for interface in cls.implements_indirectly:
-                interface_ob = self.objForFullName(interface)
-                if interface_ob is not None:
-                    if interface_ob.implementedby_indirectly is None:
-                        builder.warning("probable interface not marked as such",
-                                     interface_ob.fullName())
-                        interface_ob.implementedby_directly = []
-                        interface_ob.implementedby_indirectly = []
-                    interface_ob.implementedby_indirectly.append(cls.fullName())
-
-    def push_implements_info(self, cls, interfaces):
-        for ob in cls.subclasses:
-            for interface in interfaces:
-                if interface not in ob.implements_indirectly:
-                    ob.implements_indirectly.append(interface)
-            if ob.implementsOnly:
-                ob.implements_indirectly = []
-                newinterfaces = ob.implements_directly
-            else:
-                newinterfaces = interfaces + ob.implements_directly
-            self.push_implements_info(ob, newinterfaces)

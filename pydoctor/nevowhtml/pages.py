@@ -498,7 +498,7 @@ class ZopeInterfaceClassPage(ClassPage):
 
     def interfaceMeth(self, methname):
         system = self.ob.system
-        for interface in self.ob.implements_directly + self.ob.implements_indirectly:
+        for interface in self.ob.allImplementedInterfaces:
             if interface in system.allobjects:
                 io = system.allobjects[interface]
                 if methname in io.contents:

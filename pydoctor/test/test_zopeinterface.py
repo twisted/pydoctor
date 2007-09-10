@@ -60,16 +60,17 @@ def implements_test(src):
     assert onlybar.implementsOnly
 
     assert foo.implements_directly == ['zi.IFoo']
-    assert foo.implements_indirectly == []
+    assert foo.allImplementedInterfaces == ['zi.IFoo']
     assert foobar.implements_directly == ['zi.IBar']
-    assert foobar.implements_indirectly == ['zi.IFoo']
+    assert foobar.allImplementedInterfaces == ['zi.IBar', 'zi.IFoo']
     assert onlybar.implements_directly == ['zi.IBar']
-    assert onlybar.implements_indirectly == []
+    assert onlybar.allImplementedInterfaces == ['zi.IBar']
 
     assert ifoo.implementedby_directly == ['zi.Foo']
-    assert ifoo.implementedby_indirectly == ['zi.FooBar']
+    assert ifoo.allImplementations == ['zi.Foo', 'zi.FooBar']
     assert ibar.implementedby_directly == ['zi.FooBar', 'zi.OnlyBar']
-    assert ibar.implementedby_indirectly == []
+    assert ibar.allImplementations == ['zi.FooBar', 'zi.OnlyBar']
+
 
 def test_subclass_with_same_name():
     src = '''
@@ -91,7 +92,7 @@ def test_multiply_inheriting_interfaces():
     class Both(One, Two): pass
     '''
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
-    assert len(mod.contents['Both'].implements_indirectly) == 2
+    assert len(mod.contents['Both'].allImplementedInterfaces) == 2
 
 def test_attribute():
     src = '''
