@@ -64,11 +64,25 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return sup()
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
-               not isinstance(self.builder.current, model.Class) or \
                not isinstance(node.expr, ast.CallFunc):
             return sup()
 
         funcName = self.funcNameFromCall(node.expr)
+
+        if isinstance(self.builder.current, model.Module):
+            name = node.nodes[0].name
+            args = node.expr.args
+            ob = self.system.objForFullName(funcName)
+            if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
+                interface = self.builder.pushClass(name, "...")
+                print 'new interface', interface
+                interface.isinterface = True
+                interface.linenumber = node.lineno
+                interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
+                self.builder.popClass()
+            return sup()
+        elif not isinstance(self.builder.current, model.Class):
+            return sup()
 
         def pushAttribute(docstring, kind):
             attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
@@ -141,68 +155,19 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         cls = self.builder.current.contents[node.name]
         if 'zope.interface.interface.InterfaceClass' in cls.bases:
             cls.isinterfaceclass = True
-
-
-class InterfaceClassFinder(object):
-    funcNameFromCall = ZopeInterfaceModuleVisitor.funcNameFromCall.im_func
-    def __init__(self, builder, modfullname):
-        self.builder = builder
-        self.system = builder.system
-        self.modfullname = modfullname
-        self.newinterfaces = []
-
-    def visitAssign(self, node):
-        if len(node.nodes) != 1 or \
-               not isinstance(node.nodes[0], ast.AssName) or \
-               not isinstance(self.builder.current, model.Module) or \
-               not isinstance(node.expr, ast.CallFunc):
-            return
-        funcName = self.funcNameFromCall(node.expr)
-        name = node.nodes[0].name
-        args = node.expr.args
-        ob = self.system.objForFullName(funcName)
-        if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
-            interface = self.builder.pushClass(name, "...")
-            print 'new interface', interface
-            interface.isinterface = True
-            interface.linenumber = node.lineno
-            interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
-            self.newinterfaces.append(interface)
-            self.builder.popClass()
-
-    def visitFunction(self, node):
-        return
-
-    def visitClass(self, node):
-        if not isinstance(self.builder.current, model.Module):
-            return
-        mod = self.builder.current
-        if node.name in mod.contents:
-            cls = mod.contents[node.name]
-        elif node.name in mod._name2fullname:
-            cls = self.builder.system.allobjects[mod._name2fullname[node.name]]
-        else:
-            return
-        for i, (bn, bo) in enumerate(zip(cls.bases, cls.baseobjects)):
-            if bo is not None:
-                continue
-            if bn in mod.contents:
-                cls.baseobjects[i] = mod.contents[bn]
-                cls.bases[i] = mod.fullName() + '.' + bn
-
-
+        if 'zope.interface.Interface' in cls.bases \
+               or len([b for b in cls.baseobjects if b and b.isinterface]) > 0:
+            cls.isinterface = True
+        for n, o in zip(cls.bases, cls.baseobjects):
+            print n, o
+            if schema_prog.match(n) or (o and o.isschemafield):
+                cls.isschemafield = True
+                break
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
     ModuleVistor = ZopeInterfaceModuleVisitor
 
-    def popClass(self):
-        c = self.current
-        for n, o in zip(c.bases, c.baseobjects):
-            if schema_prog.match(n) or (o and o.isschemafield):
-                c.isschemafield = True
-                break
-        super(ZopeInterfaceASTBuilder, self).popClass()
 
 class ZopeInterfaceSystem(model.System):
     Class = ZopeInterfaceClass
@@ -212,39 +177,6 @@ class ZopeInterfaceSystem(model.System):
     def _finalStateComputations(self):
         super(ZopeInterfaceSystem, self)._finalStateComputations()
         builder = self.defaultBuilder(self)
-
-        newinterfaces = []
-        for mod in self.objectsOfType(model.Module):
-            if not hasattr(mod, 'filepath'):
-                continue
-            builder.push(mod)
-            try:
-                icf = InterfaceClassFinder(builder, mod.fullName())
-                ast = builder.parseFile(mod.filepath)
-                if not ast:
-                    continue
-                visitor.walk(ast, icf)
-            finally:
-                builder.pop(mod)
-            newinterfaces.extend(icf.newinterfaces)
-
-        newinterfacemap = dict([(i.fullName(), i) for i in newinterfaces])
-        for cls in self.objectsOfType(model.Class):
-            for i, b in enumerate(cls.bases):
-                if b in newinterfacemap:
-                    assert (cls.baseobjects[i] is None or
-                            cls.baseobjects[i] is newinterfacemap[b])
-                    cls.baseobjects[i] = newinterfacemap[b]
-                    newinterfacemap[b].subclasses.append(cls)
-
-        for newi in newinterfaces:
-            self.markInterface(newi)
-        for cls in self.objectsOfType(model.Class):
-            if 'zope.interface.Interface' in cls.bases:
-                self.markInterface(cls)
-            for baseOb in cls.baseobjects:
-                if baseOb and baseOb.system is not self and baseOb.isinterface:
-                    self.markInterface(cls)
 
         for cls in self.objectsOfType(model.Class):
             if cls.isinterface or len(cls.baseobjects) != cls.baseobjects.count(None):
@@ -270,15 +202,6 @@ class ZopeInterfaceSystem(model.System):
                         interface_ob.implementedby_directly = []
                         interface_ob.implementedby_indirectly = []
                     interface_ob.implementedby_indirectly.append(cls.fullName())
-
-    def markInterface(self, cls):
-        cls.isinterface = True
-        cls.kind = "Interface"
-        cls.implementedby_directly = []
-        cls.implementedby_indirectly = []
-        for sc in cls.subclasses:
-            if '.test.' not in sc.fullName():
-                self.markInterface(sc)
 
     def push_implements_info(self, cls, interfaces):
         for ob in cls.subclasses:

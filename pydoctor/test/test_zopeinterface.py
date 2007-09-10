@@ -1,5 +1,4 @@
-from pydoctor.zopeinterface import \
-     ZopeInterfaceASTBuilder, ZopeInterfaceSystem
+from pydoctor.zopeinterface import ZopeInterfaceSystem
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
