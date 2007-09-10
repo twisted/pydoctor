@@ -77,7 +77,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 print 'new interface', interface
                 interface.isinterface = True
                 interface.linenumber = node.lineno
-                interface.parent.orderedcontents.sort(key=lambda x:x.linenumber)
                 self.builder.popClass()
             return sup()
         elif not isinstance(self.builder.current, model.Class):
@@ -156,6 +155,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             cls.isinterfaceclass = True
         if 'zope.interface.Interface' in cls.bases \
                or len([b for b in cls.baseobjects if b and b.isinterface]) > 0:
+            cls.isinterface = True
             cls.kind = "Interface"
             cls.implementedby_directly = []
             cls.implementedby_indirectly = []
