@@ -183,6 +183,7 @@ class ModuleVistor(object):
         name2fullname = self.builder.current._name2fullname
         for fromname, asname in node.names:
             fullname = self.builder.expandModname(fromname)
+            self.system.getProcessedModule(fullname)
             if asname is None:
                 asname = fromname.split('.', 1)[0]
                 # aaaaargh! python sucks.
