@@ -153,7 +153,7 @@ class ModuleVistor(object):
                    asname in self.builder.current.all and \
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
-                if 0 and isinstance(mod, model.Module) and \
+                if isinstance(mod, model.Module) and \
                        fromname in mod.contents:
                     print 'moving', mod.contents[fromname], 'into', \
                           self.builder.current
@@ -173,8 +173,11 @@ class ModuleVistor(object):
                     mod._name2fullname[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
-            else:
-                name2fullname[asname] = modname + '.' + fromname
+                    continue
+            if isinstance(
+                self.system.objForFullName(modname), model.Package):
+                self.system.getProcessedModule(modname + '.' + fromname)
+            name2fullname[asname] = modname + '.' + fromname
 
     def visitImport(self, node):
         name2fullname = self.builder.current._name2fullname

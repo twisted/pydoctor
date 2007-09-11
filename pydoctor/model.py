@@ -509,7 +509,6 @@ class System(object):
 
 
     def processModule(self, mod):
-        self.msg('', mod)
         assert mod.state == UNPROCESSED
         mod.state = PROCESSING
         if getattr(mod, 'filepath', None) is None:

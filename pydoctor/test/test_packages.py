@@ -2,17 +2,12 @@ import py
 from pydoctor import model, astbuilder
 from pydoctor.test import test_astbuilder
 
-def processPackage(packname, buildercls=None,
-                   systemcls=model.System):
+def processPackage(packname, systemcls=model.System):
     testpackage = py.magic.autopath().dirpath().join(packname)
     system = systemcls()
-    if buildercls is None:
-        buildercls = system.defaultBuilder
-    builder = buildercls(system)
     system.packages.append(testpackage.strpath)
     system.addDirectory(testpackage.strpath)
     system.process()
-    system.state = 'parsed'
     return system
 
 def test_local_import():
@@ -54,3 +49,13 @@ def test_moresystems():
     """, system=system2)
     E = mod.contents["E"]
     assert E.baseobjects[0] is not None
+
+def test_importingfrompackage():
+    packname = 'importingfrompackage'
+    testpackage = py.magic.autopath().dirpath().join(packname)
+    system = model.System()
+    system.packages.append(testpackage.strpath)
+    system.addDirectory(testpackage.strpath)
+    system.getProcessedModule('importingfrompackage.mod')
+    submod = system.allobjects['importingfrompackage.subpack.submod']
+    assert submod.state == model.PROCESSED
