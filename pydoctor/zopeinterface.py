@@ -1,5 +1,5 @@
 from pydoctor import model, ast_pp, astbuilder
-from compiler import ast, visitor
+from compiler import ast
 import re
 
 class ZopeInterfaceClass(model.Class):
@@ -71,10 +71,29 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly.append(fullName)
         obj = cls.system.objForFullName(fullName)
         if obj is not None:
+            if not obj.isinterface:
+                obj.system.msg(
+                    'zopeinterface',
+                    'probable interface %r not marked as such'%obj,
+                    thresh=1)
+                obj.isinterface = True
+                obj.kind = "Interface"
+                obj.implementedby_directly = []
             obj.implementedby_directly.append(cls.fullName())
 
 
 schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
+interface_prog = re.compile(
+    'zope\.schema\.interfaces\.([a-zA-Z_][a-zA-Z0-9_]*)'
+    '|zope\.interface\.Interface')
+
+def namesInterface(system, name):
+    if interface_prog.match(name):
+        return True
+    obj = system.objForFullName(name)
+    if not obj or not isinstance(obj, model.Class):
+        return False
+    return obj.isinterface
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     def funcNameFromCall(self, node):
@@ -186,8 +205,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         cls = self.builder.current.contents[node.name]
         if 'zope.interface.interface.InterfaceClass' in cls.bases:
             cls.isinterfaceclass = True
-        if 'zope.interface.Interface' in cls.bases \
-               or len([b for b in cls.baseobjects if b and b.isinterface]) > 0:
+        if len([b for b in cls.bases
+                if namesInterface(self.system, b)]) > 0:
             cls.isinterface = True
             cls.kind = "Interface"
             cls.implementedby_directly = []

@@ -303,8 +303,8 @@ class SystemWriter(object):
             x += '<p>known implementations: %s</p>'%(', '.join(links),)
         elif cls.allImplementedInterfaces:
             links = []
-            for interface in implements:
-                if implements in cls.implements_directly:
+            for interface in cls.allImplementedInterfaces:
+                if interface in cls.implements_directly:
                     template = '%s'
                 else:
                     template = '<i>%s</i>'

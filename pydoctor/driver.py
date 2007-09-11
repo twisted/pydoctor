@@ -295,7 +295,7 @@ def main(args):
         # step 4: save the system, if desired
 
         if options.outputpickle:
-            system.msg('', 'saving output pickle to' + options.outputpickle)
+            system.msg('', 'saving output pickle to ' + options.outputpickle)
             del system.options # don't persist the options
             f = open(options.outputpickle, 'wb')
             cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
@@ -342,6 +342,8 @@ def main(args):
                 for fn in system.epytextproblems:
                     p('    '+fn)
             if options.outputpickle:
+                system.msg(
+                    '', 'saving output pickle to ' + options.outputpickle)
                 # save again, with epytextproblems
                 del system.options # don't persist the options
                 f = open(options.outputpickle, 'wb')

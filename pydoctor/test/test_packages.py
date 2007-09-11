@@ -1,5 +1,5 @@
 import py
-from pydoctor import model, astbuilder
+from pydoctor import model
 from pydoctor.test import test_astbuilder
 
 def processPackage(packname, systemcls=model.System):
