@@ -230,9 +230,6 @@ class System(object):
         self.orderedallobjects = []
         self.rootobjects = []
         self.warnings = {}
-        # importgraph contains edges {importer:{imported}} but only
-        # for module-level import statements
-        self.importgraph = {}
         self.packages = []
         self.moresystems = []
         self.subsystems = []

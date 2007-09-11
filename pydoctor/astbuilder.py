@@ -53,43 +53,21 @@ def parse(buf):
 
 
 class ModuleVistor(object):
-    def __init__(self, builder, modname):
+    def __init__(self, builder, module):
         self.builder = builder
         self.system = builder.system
-        self.modname = modname
-        self.morenodes = []
+        self.module = module
 
     def default(self, node):
         for child in node.getChildNodes():
             self.visit(child)
 
     def visitModule(self, node):
-        # i don't think this needs to be so confusing any more...
-        m = None
-        if self.builder.current and self.modname in \
-               self.builder.current.contents:
-            m = self.builder.current.contents[self.modname]
-        elif self.modname in self.system.allobjects:
-            m = self.system.allobjects[self.modname]
-        if m:
-            assert m.docstring is None
-            m.docstring = node.doc
-            self.builder.push(m)
-            self.default(node)
-            self.builder.pop(m)
-        else:
-            if not self.builder.current:
-                roots = [x for x in self.system.rootobjects
-                         if x.name == self.modname]
-                if roots:
-                    mod, = roots
-                    self.builder.push(mod)
-                    self.default(node)
-                    self.builder.pop(mod)
-                    return
-            m = self.builder.pushModule(self.modname, node.doc)
-            self.default(node)
-            self.builder.popModule()
+        assert self.module.docstring is None
+        self.module.docstring = node.doc
+        self.builder.push(self.module)
+        self.default(node)
+        self.builder.pop(self.module)
 
     def visitClass(self, node):
         rawbases = []
@@ -350,7 +328,7 @@ class ASTBuilder(object):
 
     def processModuleAST(self, ast, mod):
         findAll(ast, mod)
-        visitor.walk(ast, self.ModuleVistor(self, mod.fullName()))
+        visitor.walk(ast, self.ModuleVistor(self, mod))
 
     def expandModname(self, modname, givewarning=True):
         if '.' in modname:
@@ -380,49 +358,6 @@ class ASTBuilder(object):
         return ast
 
 model.System.defaultBuilder = ASTBuilder
-
-
-class ImportFinder(object):
-    def __init__(self, builder, mod):
-        self.builder = builder
-        self.system = builder.system
-        self.mod = mod
-        self.classLevel = 0
-
-    def default(self, node):
-        for child in node.getChildNodes():
-            self.visit(child)
-
-    def visitFunction(self, node):
-        pass
-
-    def visitClass(self, node):
-        self.classLevel += 1
-        self.default(node)
-        self.classLevel -= 1
-
-    def visitFrom(self, node):
-        modname = self.builder.expandModname(node.modname, False)
-        mod = self.system.allobjects.get(modname)
-        if mod is None:
-            return
-        if isinstance(mod, model.Module):
-            self.system.importgraph.setdefault(
-                self.mod.fullName(), set()).add(modname)
-        else:
-            for fromname, asname in node.names:
-                m = modname + '.' + fromname
-                if isinstance(self.system.allobjects.get(m), model.Module):
-                    self.system.importgraph.setdefault(
-                        self.mod.fullName(), set()).add(m)
-
-    def visitImport(self, node):
-        for fromname, asname in node.names:
-            modname = self.builder.expandModname(fromname)
-            self.system.getProcessedModule(modname)
-            if modname in self.system.allobjects:
-                self.system.importgraph.setdefault(
-                    self.mod.fullName(), set()).add(modname)
 
 def findAll(modast, mod):
     for node in modast.node.nodes:
