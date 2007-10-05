@@ -287,6 +287,7 @@ class CommonPage(object):
                          packageInitTable=self.packageInitTable(),
                          childlist=self.childlist(tag.onePattern('childlist')),
                          project=self.project(),
+                         buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
                          )
 
 

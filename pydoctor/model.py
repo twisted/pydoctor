@@ -1,3 +1,4 @@
+import datetime
 import os
 import posixpath
 import sys
@@ -246,6 +247,7 @@ class System(object):
         self.unprocessed_modules = set()
         self.module_count = 0
         self.processing_modules = []
+        self.buildtime = datetime.datetime.now()
 
     def verbosity(self, section=None):
         return self.options.verbosity + self.options.verbosity_details.get(section, 0)

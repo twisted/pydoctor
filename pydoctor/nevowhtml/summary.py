@@ -202,6 +202,9 @@ class IndexPage(page.Element):
         for o in self.system.rootobjects:
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()['/'.join(sorted(rootkinds))]
+    @page.renderer
+    def buildtime(self, request, tag):
+        return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
 
 def hasdocstring(ob):
     for source in ob.docsources():
