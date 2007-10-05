@@ -5,12 +5,8 @@ from pydoctor import server, model
 from nevow import appserver
 
 system = model.System()
-b = system.defaultBuilder(system)
-b.preprocessDirectory('pydoctor/test/basic')
-for m in [b.analyseImports,
-          b.extractDocstrings,
-          b.finalStateComputations]:
-    m()
+system.addDirectory('pydoctor/test/basic')
+system.process()
 system.options.projectname = 'basic'
 
 root = server.EditingPyDoctorResource(system)
