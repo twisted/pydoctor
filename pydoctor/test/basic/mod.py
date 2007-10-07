@@ -8,8 +8,11 @@ class C:
         pass
     def f(self):
         """Method docstring of C.f."""
+    @some_random_decorator
+    @some_other_decorator
     def h(self):
         """Method docstring."""
+    @some_random_decorator
     @classmethod
     def cls_method(cls):
         pass
@@ -30,9 +33,9 @@ class D(C):
     @classmethod
     def cls_method2(cls):
         pass
-    @staticmethod
     def static_method2():
         pass
+    static_method2 = staticmethod(static_method2)
 
 def _private():
     pass

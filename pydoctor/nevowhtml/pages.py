@@ -1,7 +1,7 @@
 from nevow import inevow, loaders, tags
 from zope.interface import implements
 
-from pydoctor import epydoc2stan, model
+from pydoctor import ast_pp, epydoc2stan, model
 from pydoctor.nevowhtml.util import \
      templatefile, fillSlots, srclink, taglink
 
@@ -232,12 +232,24 @@ class CommonPage(object):
                 else:
                     functionSourceLink = fillSlots(sourceLink,
                                                    sourceHref=sourceHref)
-                if data.kind == "Class Method":
-                    decorator = ('@classmethod', tags.br())
-                elif data.kind == "Static Method":
-                    decorator = ('@staticmethod', tags.br())
+
+                if data.decorators:
+                    decorators = [ast_pp.pp(dec) for dec in data.decorators]
+                else:
+                    decorators = []
+
+                if data.kind == "Class Method" \
+                       and 'classmethod' not in decorators:
+                    decorators.append('classmethod')
+                elif data.kind == "Static Method" \
+                         and 'staticmethod' not in decorators:
+                    decorators.append('staticmethod')
+
+                if decorators:
+                    decorator = [('@' + dec, tags.br()) for dec in decorators]
                 else:
                     decorator = ()
+
                 header = fillSlots(functionHeader,
                                    decorator=decorator,
                                    functionName=[data.name, '(', signature(data.argspec), '):'],
