@@ -284,8 +284,6 @@ class FieldHandler(object):
 
         return tags.table(class_='fieldTable')[r]
 
-errcount = 0
-
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
         return s[3:-5] # argh reST
@@ -293,7 +291,6 @@ def de_p(s):
         return s
 
 def reportErrors(obj, errs):
-    global errcount
     if errs and obj.fullName() not in obj.system.epytextproblems:
         obj.system.epytextproblems.append(obj.fullName())
         obj.system.msg('epydoc2stan',
@@ -303,10 +300,8 @@ def reportErrors(obj, errs):
             p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
-        errcount += len(errs)
 
 def doc2html(obj, summary=False, docstring=None):
-    global errcount
     """Generate an HTML representation of a docstring"""
     origobj = obj
     if isinstance(obj, model.Package):
