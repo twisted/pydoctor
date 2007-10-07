@@ -202,9 +202,12 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     visitCallFunc_zope_interface_implementsOnly = visitCallFunc_zope_interface_implements
 
     def visitCallFunc_zope_interface_classImplements(self, funcName, node):
-        clsname = self.builder.current.dottedNameToFullName(ast_pp.pp(node.args[0]))
+        clsname = self.builder.current.dottedNameToFullName(
+            ast_pp.pp(node.args[0]))
         if clsname not in self.system.allobjects:
-            self.builder.warning("classImplements on unknown class", clsname)
+            self.builder.system.msg(
+                "parsing",
+                "classImplements on unknown class %r"%clsname)
             return
         cls = self.system.allobjects[clsname]
         addInterfaceInfoToClass(cls, node.args[1:],
