@@ -132,8 +132,10 @@ class ModuleVistor(object):
                 mod = self.system.allobjects[modname]
                 if isinstance(mod, model.Module) and \
                        fromname in mod.contents:
-                    print 'moving', mod.contents[fromname], 'into', \
-                          self.builder.current
+                    self.msg("astbuilder",
+                             "moving %r into %r"
+                             % (mod.contents[fromname].fullName(),
+                                self.builder.current.fullName()))
                     # this code attempts to preserve "rather a lot" of
                     # invariants assumed by various bits of pydoctor
                     # and that are of course not written down anywhere

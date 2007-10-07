@@ -155,7 +155,7 @@ class FieldHandler(object):
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.body:
-            print 'XXX'
+            self.msg('epydoc2stan', 'XXX')
         self.return_desc.body = field.body
     handle_returns = handle_return
 
@@ -163,7 +163,7 @@ class FieldHandler(object):
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.type:
-            print 'XXX'
+            self.msg('epydoc2stan', 'XXX')
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
 
@@ -358,7 +358,6 @@ def doc2html(obj, summary=False, docstring=None):
             for i, l in enumerate(doc.splitlines()):
                 p("%4s"%(i+1)+' '+l)
             for err in errs:
-                print err
                 p(err)
             errcount += len(errs)
         return boringDocstring(doc, summary)
