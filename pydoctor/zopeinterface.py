@@ -136,7 +136,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             ob = self.system.objForFullName(funcName)
             if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
                 interface = self.builder.pushClass(name, "...")
-                print 'new interface', interface
+                self.builder.system.msg('parsing', 'new interface')
                 interface.isinterface = True
                 interface.implementedby_directly = []
                 interface.linenumber = node.lineno

@@ -245,7 +245,7 @@ class FieldHandler(object):
 
     def handleUnknownField(self, field):
         self.obj.system.msg(
-            'epytext',
+            'epydoc2stan',
             'found unknown field on %r: %r'%(self.obj.fullName(), field),
             thresh=-1)
         self.add_info(self.unknowns, field)
@@ -291,6 +291,19 @@ def de_p(s):
         return s[3:-5] # argh reST
     else:
         return s
+
+def reportErrors(obj, errs):
+    global errcount
+    if errs and obj.fullName() not in obj.system.epytextproblems:
+        obj.system.epytextproblems.append(obj.fullName())
+        obj.system.msg('epydoc2stan',
+                       'epytext error in %s'%(obj,), thresh=1)
+        p = lambda m:obj.system.msg('epydoc2stan', m, thresh=2)
+        for i, l in enumerate(obj.docstring.splitlines()):
+            p("%4s"%(i+1)+' '+l)
+        for err in errs:
+            p(err)
+        errcount += len(errs)
 
 def doc2html(obj, summary=False, docstring=None):
     global errcount
@@ -340,7 +353,7 @@ def doc2html(obj, summary=False, docstring=None):
     if not parse_docstring:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             obj.system.options.docformat, e.__class__.__name__, e)
-        obj.system.msg('epytext', msg, thresh=-1, once=True)
+        obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         return boringDocstring(doc, summary)
     errs = []
     def crappit(): pass
@@ -351,30 +364,13 @@ def doc2html(obj, summary=False, docstring=None):
     except Exception, e:
         errs = [e.__class__.__name__ +': ' + str(e)]
     if errs:
-        if source.fullName() not in obj.system.epytextproblems:
-            obj.system.epytextproblems.append(source.fullName())
-            obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
-            p = lambda m:obj.system.msg('epytext', m, thresh=2)
-            for i, l in enumerate(doc.splitlines()):
-                p("%4s"%(i+1)+' '+l)
-            for err in errs:
-                p(err)
-            errcount += len(errs)
+        reportErrors(source, errs)
         return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     try:
         crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
     except Exception, e:
-        errs = [e.__class__.__name__ +': ' + str(e)]
-        if errs and source.fullName() not in obj.system.epytextproblems:
-            obj.system.epytextproblems.append(source.fullName())
-            obj.system.msg('epytext', 'epytext error in %s'%(obj,), thresh=1)
-            p = lambda m:obj.system.msg('epytext', m, thresh=2)
-            for i, l in enumerate(doc.splitlines()):
-                p("%4s"%(i+1)+' '+l)
-            for err in errs:
-                p(err)
-            errcount += len(errs)
+        reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
         return boringDocstring(doc, summary)
     if isinstance(crap, unicode):
         crap = crap.encode('utf-8')
