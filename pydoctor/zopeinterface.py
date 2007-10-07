@@ -95,7 +95,18 @@ def namesInterface(system, name):
         return False
     return obj.isinterface
 
+def extractAttributeDescription(node):
+    pass
+
+def extractSchemaDescription(node):
+    pass
+
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
+
+    schema_like_patterns = [
+        ('zope\.interface\.Attribute', extractAttributeDescription),
+        ]
+
     def funcNameFromCall(self, node):
         str_base = ast_pp.pp(node.node)
         return self.builder.current.dottedNameToFullName(str_base)

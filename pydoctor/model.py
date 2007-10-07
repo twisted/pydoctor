@@ -283,15 +283,6 @@ class System(object):
                 self.needsnl = False
                 print
 
-    def report(self):
-        for o in self.rootobjects:
-            self._report(o, '')
-
-    def _report(self, o, indent):
-        print indent, o
-        for o2 in o.orderedcontents:
-            self._report(o2, indent+'  ')
-
     def resolveAlias(self, n):
         if '.' not in n:
             return n
