@@ -155,7 +155,7 @@ class FieldHandler(object):
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.body:
-            self.msg('epydoc2stan', 'XXX')
+            self.obj.system.msg('epydoc2stan', 'XXX')
         self.return_desc.body = field.body
     handle_returns = handle_return
 
@@ -163,7 +163,7 @@ class FieldHandler(object):
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.type:
-            self.msg('epydoc2stan', 'XXX')
+            self.obj.system.msg('epydoc2stan', 'XXX')
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
 
