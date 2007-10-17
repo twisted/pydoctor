@@ -250,7 +250,10 @@ class System(object):
         self.buildtime = datetime.datetime.now()
 
     def verbosity(self, section=None):
-        return self.options.verbosity + self.options.verbosity_details.get(section, 0)
+        if isinstance(section, str):
+            section = (section,)
+        delta = max([self.options.verbosity_details.get(sect, 0) for sect in section])
+        return self.options.verbosity + delta
 
     def progress(self, section, i, n, msg):
         if n is None:

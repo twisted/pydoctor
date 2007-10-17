@@ -335,7 +335,7 @@ def main(args):
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
             if system.epytextproblems:
                 def p(msg):
-                    system.msg('epytext', msg, thresh=-1, topthresh=1)
+                    system.msg(('epytext', 'epytext-summary'), msg, thresh=-1, topthresh=1)
                 p("these %s objects' docstrings are not proper epytext:"
                   %(len(system.epytextproblems),))
                 exitcode = 2
