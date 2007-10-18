@@ -155,6 +155,17 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                                   str(attr.linenumber)
             self.builder._pop(Attribute)
 
+        def extractStringLiteral(node):
+            if isinstance(node, ast.Const) and isinstance(node.value, str):
+                return node.value
+            elif isinstance(node, ast.CallFunc) \
+                  and isinstance(node.node, ast.Name) \
+                  and node.node.name == '_' \
+                  and len(node.args) == 1 \
+                  and isinstance(node.args[0], ast.Const) \
+                  and isinstance(node.args[0].value, str):
+                return node.args[0].value
+
         def handleSchemaField(kind):
             #print node.expr
             descriptions = [arg for arg in node.expr.args if isinstance(arg, ast.Keyword)
@@ -163,19 +174,14 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             if len(descriptions) > 1:
                 self.builder.system.msg('parsing', 'xxx')
             elif len(descriptions) == 1:
-                description = descriptions[0].expr
-                if isinstance(description, ast.Const) and isinstance(description.value, str):
-                    docstring = description.value
+                docstring = extractStringLiteral(descriptions[0].expr)
             pushAttribute(docstring, kind)
 
         if funcName == 'zope.interface.Attribute':
             args = node.expr.args
-            if len(args) != 1 or \
-                   not isinstance(args[0], ast.Const) or \
-                   not isinstance(args[0].value, str):
+            if len(args) != 1:
                 return sup()
-            docstring = args[0].value
-            pushAttribute(args[0].value, "Attribute")
+            pushAttribute(extractStringLiteral(args[0]), "Attribute")
             return sup()
 
         if schema_prog.match(funcName):
