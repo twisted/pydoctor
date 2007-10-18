@@ -19,6 +19,7 @@ import __builtin__
 class Documentable(object):
     document_in_parent_page = False
     sourceHref = None
+    lckind = property(lambda ob:ob.kind.lower().replace(' ', ''))
     def __init__(self, system, name, docstring, parent=None):
         self.system = system
         if parent is not None:
@@ -154,6 +155,7 @@ class Documentable(object):
             else:
                 r[k] = v
         return r
+
 
 class Package(Documentable):
     kind = "Package"

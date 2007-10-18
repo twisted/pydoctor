@@ -99,7 +99,7 @@ class TableFragment(object):
                                         lineno=line)
             else:
                 linenocell_ = ()
-            class_ = child.kind.lower().replace(' ', '')
+            class_ = child.lckind
             if child.parent is not self.ob:
                 class_ = 'base' + class_
             summaryDoc = self.parentpage.docgetter.get(child, summary=True)
@@ -140,8 +140,8 @@ class CommonPage(object):
         return self.ob.fullName()
 
     def heading(self):
-        kind = self.ob.kind
-        return tags.h1(class_=kind.lower().replace(' ', ''))[kind + " " + mediumName(self.ob)]
+        return tags.h1(class_=self.ob.lckind)[
+            self.ob.kind + " " + mediumName(self.ob)]
 
     def part(self):
         tag = tags.invisible()
