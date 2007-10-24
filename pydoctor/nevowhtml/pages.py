@@ -423,12 +423,12 @@ class ClassPage(CommonPage):
 
     def heading(self):
         tag = super(ClassPage, self).heading()
-        zipped = zip(self.ob.rawbases, self.ob.baseobjects)
+        zipped = zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects)
         if zipped:
             tag['(']
-            for i, (n, o) in enumerate(zipped):
+            for i, (n, m, o) in enumerate(zipped):
                 if o is None:
-                    tag[n]
+                    tag[tags.span(title=m)[n]]
                 else:
                     tag[taglink(o, n)]
                 if i != len(zipped)-1:
