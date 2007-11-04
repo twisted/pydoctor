@@ -206,3 +206,10 @@ td.diff_header {text-align:right}
 .diff_add {background-color:#aaffaa}
 .diff_chg {background-color:#ffff77}
 .diff_sub {background-color:#ffaaaa}
+
+.preview { margin: 0; }
+.error { background-color: #ff3333; }
+.errormessage {
+    margin: 0em 0em 0em 2em;
+    font-size: 75%;
+}

@@ -1,4 +1,4 @@
-from nevow import rend, loaders, tags, inevow, url, page
+from nevow import rend, loaders, tags, inevow, url, page, entities
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import model, epydoc2stan
@@ -192,12 +192,30 @@ class EditPage(rend.Page):
             docstring = parse_str(self.docstring)
             stan, errors = epydoc2stan.doc2html(
                 self.ob, docstring=docstring)
-            tag = context.tag[stan]
             if errors:
-                ul = tags.ul()
+                tag = context.tag
+                print stan
+                #assert isinstance(stan, tags.pre)
+                [text] = stan.children
+                lines = text.split('\r\n')
+                line2err = {}
                 for err in errors:
-                    ul[tags.li[str(err)]]
-                tag[ul]
+                    line2err.setdefault(err.linenum(), []).append(err)
+                for i, line in enumerate(lines):
+                    i += 1
+                    cls = "preview"
+                    if i in line2err:
+                        cls += " error"
+                    tag[tags.pre(class_=cls)[i, ' ', line]]
+                    for err in line2err.get(i, []):
+                        tag[tags.p(class_="errormessage")[err.descr()]]
+                items = []
+                for err in line2err.get(None, []):
+                    items.append(tags.li[str(err)])
+                if items:
+                    tag[tags.ul[items]]
+            else:
+                tag = context.tag[stan]
             return tag[tags.h2["Edit"]]
         else:
             return ()
