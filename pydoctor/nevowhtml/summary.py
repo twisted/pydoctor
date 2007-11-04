@@ -4,7 +4,7 @@ from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
-    r = tags.li[taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True)]
+    r = tags.li[taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True)[0]]
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents
@@ -58,7 +58,7 @@ def subclassesFrom(hostsystem, cls, anchors):
     if name not in anchors:
         r[tags.a(name=name)]
         anchors.add(name)
-    r[taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True)]
+    r[taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True)[0]]
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and hostsystem.shouldInclude(sc)]
     if len(scs) > 0:

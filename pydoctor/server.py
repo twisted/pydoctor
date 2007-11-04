@@ -190,8 +190,15 @@ class EditPage(rend.Page):
     def render_preview(self, context, data):
         if self.isPreview:
             docstring = parse_str(self.docstring)
-            return context.tag[epydoc2stan.doc2html(self.ob, docstring=docstring),
-                               tags.h2["Edit"]]
+            stan, errors = epydoc2stan.doc2html(
+                self.ob, docstring=docstring)
+            tag = context.tag[stan]
+            if errors:
+                ul = tags.ul()
+                for err in errors:
+                    ul[tags.li[str(err)]]
+                tag[ul]
+            return tag[tags.h2["Edit"]]
         else:
             return ()
     def render_fullName(self, context, data):
@@ -276,7 +283,7 @@ class HistoryPage(rend.Page):
         docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
         if docstring is None:
             docstring = ''
-        return epydoc2stan.doc2html(self.ob, docstring=docstring)
+        return epydoc2stan.doc2html(self.ob, docstring=docstring)[0]
     def render_linkback(self, context, data):
         return util.taglink(self.ob, label="Back")
 
@@ -572,9 +579,9 @@ class EditingPyDoctorResource(PyDoctorResource):
 
     def stanForOb(self, ob, summary=False):
         if summary:
-            return epydoc2stan.doc2html(ob.doctarget, summary=True, docstring=self.currentDocstringForObject(ob))
+            return epydoc2stan.doc2html(ob.doctarget, summary=True, docstring=self.currentDocstringForObject(ob))[0]
         r = [tags.div[epydoc2stan.doc2html(ob.doctarget,
-                                           docstring=self.currentDocstringForObject(ob))],
+                                           docstring=self.currentDocstringForObject(ob))[0]],
              tags.a(href="edit?ob="+ob.fullName())["Edit"],
              " "]
         if ob.doctarget in self.editsbyob:

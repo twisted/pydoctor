@@ -121,7 +121,7 @@ class TableFragment(object):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2html(ob, summary=summary)
+        return epydoc2stan.doc2html(ob, summary=summary)[0]
 
 class CommonPage(object):
     implements(inevow.IRenderer)

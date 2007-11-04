@@ -336,9 +336,9 @@ def doc2html(obj, summary=False, docstring=None):
                                          plurals.get(k, k+'s')))
                 text += '; ' + ', '.join(u) + " documented"
         if summary:
-            return tags.span(class_="undocumented")[text]
+            return tags.span(class_="undocumented")[text], []
         else:
-            return tags.div(class_="undocumented")[text]
+            return tags.div(class_="undocumented")[text], []
     if summary:
         for line in doc.split('\n'):
             if line.strip():
@@ -349,7 +349,7 @@ def doc2html(obj, summary=False, docstring=None):
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             obj.system.options.docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
-        return boringDocstring(doc, summary)
+        return boringDocstring(doc, summary), []
     errs = []
     def crappit(): pass
     crappit.__doc__ = doc
@@ -360,25 +360,26 @@ def doc2html(obj, summary=False, docstring=None):
         errs = [e.__class__.__name__ +': ' + str(e)]
     if errs:
         reportErrors(source, errs)
-        return boringDocstring(doc, summary)
+        return boringDocstring(doc, summary), errs
     pdoc, fields = pdoc.split_fields()
     try:
         crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
     except Exception, e:
         reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
-        return boringDocstring(doc, summary)
+        return (boringDocstring(doc, summary),
+                [e.__class__.__name__ +': ' + str(e)])
     if isinstance(crap, unicode):
         crap = crap.encode('utf-8')
     if summary:
         if not crap:
-            return ()
+            return (), []
         s = tags.span()[tags.raw(crap)]
     else:
         if not crap and not fields:
-            return ()
+            return (), []
         s = tags.div()[tags.raw(crap)]
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
         s[fh.format()]
-    return s
+    return s, []
