@@ -362,12 +362,15 @@ def doc2html(obj, summary=False, docstring=None):
         reportErrors(source, errs)
         return boringDocstring(doc, summary), errs
     pdoc, fields = pdoc.split_fields()
-    try:
-        crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
-    except Exception, e:
-        reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
-        return (boringDocstring(doc, summary),
-                [e.__class__.__name__ +': ' + str(e)])
+    if pdoc is not None:
+        try:
+            crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
+        except Exception, e:
+            reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
+            return (boringDocstring(doc, summary),
+                    [e.__class__.__name__ +': ' + str(e)])
+    else:
+        crap = ''
     if isinstance(crap, unicode):
         crap = crap.encode('utf-8')
     if summary:

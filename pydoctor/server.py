@@ -188,27 +188,35 @@ class EditPage(rend.Page):
                                    self.ob.fullName(),
                                    u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
-        if self.isPreview:
-            docstring = parse_str(self.docstring)
-            stan, errors = epydoc2stan.doc2html(
-                self.ob, docstring=docstring)
+        docstring = parse_str(self.docstring)
+        stan, errors = epydoc2stan.doc2html(
+            self.ob, docstring=docstring)
+        if self.isPreview or errors:
             if errors:
                 tag = context.tag
-                print stan
+                print stan, errors
                 #assert isinstance(stan, tags.pre)
                 [text] = stan.children
-                lines = text.split('\r\n')
+                lines = text.replace('\r\n', '\n').split('\n')
                 line2err = {}
                 for err in errors:
-                    line2err.setdefault(err.linenum(), []).append(err)
+                    if isinstance(err, str):
+                        ln = None
+                    else:
+                        ln = err.linenum()
+                    line2err.setdefault(ln, []).append(err)
+                w = len(str(len(lines)))
                 for i, line in enumerate(lines):
                     i += 1
                     cls = "preview"
                     if i in line2err:
                         cls += " error"
-                    tag[tags.pre(class_=cls)[i, ' ', line]]
+                    tag[tags.pre(class_=cls)["%*s"%(w, i), ' ', line]]
                     for err in line2err.get(i, []):
                         tag[tags.p(class_="errormessage")[err.descr()]]
+                i += 1
+                for err in line2err.get(i, []):
+                    tag[tags.p(class_="errormessage")[err.descr()]]
                 items = []
                 for err in line2err.get(None, []):
                     items.append(tags.li[str(err)])
