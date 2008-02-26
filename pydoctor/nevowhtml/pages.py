@@ -216,7 +216,7 @@ class CommonPage(object):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.document_in_parent_page]
+                if o.document_in_parent_page and o.system.shouldInclude(o)]
 
     def childlist(self, childlist):
         tag = tags.invisible()
@@ -320,7 +320,7 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.document_in_parent_page]
+                if o.document_in_parent_page and o.system.shouldInclude(o)]
 
 class ModulePage(CommonPage):
     pass
