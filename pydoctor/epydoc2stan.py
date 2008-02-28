@@ -1,4 +1,4 @@
-from pydoctor import model
+from pydoctor import model, zopeinterface
 
 from nevow import tags
 
@@ -9,7 +9,8 @@ def link(o):
 
 def get_parser(formatname):
     try:
-        mod = __import__('epydoc.markup.' + formatname, globals(), locals(), ['parse_docstring'])
+        mod = __import__('epydoc.markup.' + formatname,
+                         globals(), locals(), ['parse_docstring'])
     except ImportError, e:
         return None, e
     else:
@@ -256,6 +257,23 @@ class FieldHandler(object):
 
     def format(self):
         r = []
+
+        ivs = []
+        for iv in self.ivar_descs:
+            attr = zopeinterface.Attribute(
+                self.obj.system, iv.name, iv.body, self.obj)
+            if self.obj.system.shouldInclude(attr):
+                ivs.append(iv)
+        self.ivar_descs = ivs
+
+        cvs = []
+        for cv in self.cvar_descs:
+            attr = zopeinterface.Attribute(
+                self.obj.system, cv.name, cv.body, self.obj)
+            if self.obj.system.shouldInclude(attr):
+                cvs.append(cv)
+        self.cvar_descs = cvs
+
         for d, l in (('Parameters', self.parameter_descs),
                      ('Instance Variables', self.ivar_descs),
                      ('Class Variables', self.cvar_descs),
