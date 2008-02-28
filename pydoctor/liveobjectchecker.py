@@ -11,7 +11,6 @@ def loadModulesForSystem(system):
     mods = sys.modules.copy()
     try:
         sys.path[0:0] = [os.path.dirname(p) for p in system.packages]
-        #print sys.path
         warnings.filterwarnings('ignore')
         # this list found by the lovely hack of python -E -c "import sys; print sys.modules.keys()"
         keeps = ['copy_reg', '__main__', 'site', '__builtin__',
@@ -26,9 +25,7 @@ def loadModulesForSystem(system):
 
         verbosity = system.options.verbosity
 
-        modlist = [system.allobjects[m]
-                   for m in astbuilder.toposort([m.fullName() for m in system.objectsOfType(model.Module)],
-                                                system.importgraph)]
+        modlist = list(system.importgraph)
         errcount = 0
 
         for i, m in enumerate(modlist):
@@ -52,7 +49,7 @@ def loadModulesForSystem(system):
     finally:
         sys.path[:] = savepath
         warnings.filters[:] = savefilters
-        sys.modules.clear()
+        #sys.modules.clear()
         sys.modules.update(mods)
     return result
 
@@ -147,6 +144,10 @@ def checkDict(builder, aDict):
                 builder.push(o)
                 checkDict(builder, ob.__dict__)
                 builder.pop(o)
+            else:
+                doc = getattr(ob, "__doc__", "")
+                if doc:
+                    o.docstring = doc
             continue
         if name in c._name2fullname:
             continue
