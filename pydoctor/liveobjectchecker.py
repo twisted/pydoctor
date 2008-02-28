@@ -49,7 +49,6 @@ def loadModulesForSystem(system):
     finally:
         sys.path[:] = savepath
         warnings.filters[:] = savefilters
-        #sys.modules.clear()
         sys.modules.update(mods)
     return result
 
