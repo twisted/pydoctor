@@ -135,7 +135,7 @@ def getparser():
         help=("Generate (unobstrusive) JavaScript to hide some of the "
               "entries in long lists of e.g. subclasses."))
     parser.add_option(
-        '--livechceck', action='store_true', dest='livecheck',
+        '--livecheck', action='store_true', dest='livecheck',
         default=False,
         help=("Import and examine the modules too.  XXX not working "
               "right now"))
@@ -155,6 +155,9 @@ def getparser():
         type=str, default={}, dest='verbosity_details',
         callback=verbose_about_callback,
         help=("Be noiser during a particular stage of generation."))
+    parser.add_option(
+        '--html-source-href', dest='sourcehref',
+        help=("Configure the source href."))
     return parser
 
 def readConfigFile(options):

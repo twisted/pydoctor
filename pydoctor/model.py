@@ -410,6 +410,10 @@ class System(object):
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
     def setSourceHref(self, mod):
+        if mod.system.options.sourcehref is not None:
+            mod.sourceHref = mod.system.options.sourcehref
+            return
+
         if self.sourcebase is None:
             mod.sourceHref = None
             return
