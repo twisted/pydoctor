@@ -51,6 +51,11 @@ def getparser():
         '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
     parser.add_option(
+        '--project-base-dir', dest='projectbasedirectory',
+        help=("Absolute path to the base directory of the "
+              "project.  Source links will be computed based "
+              "on this value."))
+    parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
     parser.add_option(
@@ -155,9 +160,6 @@ def getparser():
         type=str, default={}, dest='verbosity_details',
         callback=verbose_about_callback,
         help=("Be noiser during a particular stage of generation."))
-    parser.add_option(
-        '--html-source-href', dest='sourcehref',
-        help=("Configure the source href."))
     return parser
 
 def readConfigFile(options):

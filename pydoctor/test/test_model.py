@@ -20,17 +20,24 @@ class FakeDocumentable(object):
 
 def test_setSourceHrefOption():
     """
-    Test that the --html-source-href option sets the model.sourceHref
+    Test that the projectbasedirectory option sets the model.sourceHref
     properly.
     """
+    viewSourceBase = "http://example.org/trac/browser/trunk"
+    projectBaseDir = "/foo/bar/ProjectName"
+    moduleRelativePart = "/package/module.py"
+
     mod = FakeDocumentable()
+    mod.filepath = projectBaseDir + moduleRelativePart
 
     options = FakeOptions()
-    options.sourcehref = "http://example.org/trac/browser/trunk"
+    options.projectbasedirectory = projectBaseDir
 
     system = model.System()
+    system.sourcebase = viewSourceBase
     system.options = options
     mod.system = system
     system.setSourceHref(mod)
 
-    assert mod.sourceHref == "http://example.org/trac/browser/trunk"
+    expected = viewSourceBase + moduleRelativePart
+    assert mod.sourceHref == expected

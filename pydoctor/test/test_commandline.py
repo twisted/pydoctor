@@ -39,3 +39,15 @@ def test_invalid_systemclasses():
     assert 'could not import module' in err
     err = geterrtext('--system-class=pydoctor.model.Class')
     assert 'is not a subclass' in err
+
+
+def test_projectbasedir():
+    """
+    The --project-base-dir option should set the projectbasedirectory attribute
+    on the options object.
+    """
+    value = "projbasedirvalue"
+    options, args = driver.parse_args([
+            "--project-base-dir", value])
+    assert options.projectbasedirectory == value
+
