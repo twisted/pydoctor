@@ -214,6 +214,7 @@ class FieldHandler(object):
     def handle_param(self, field):
         self.add_info(self.parameter_descs, field)
     handle_arg = handle_param
+    handle_keyword = handle_param
 
     def handle_ivar(self, field):
         self.add_info(self.ivar_descs, field)
