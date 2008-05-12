@@ -400,6 +400,11 @@ def main(args):
                 root = PyDoctorResource(system)
             system.msg(
                 "server", "Setting up server at http://localhost:8080/")
+            if options.auto:
+                def wb_open():
+                    import webbrowser
+                    webbrowser.open('http://localhost:8080/')
+                reactor.callWhenRunning(wb_open)
             site = appserver.NevowSite(root)
             reactor.listenTCP(8080, site)
             reactor.run()
