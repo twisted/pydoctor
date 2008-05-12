@@ -194,7 +194,7 @@ class EditPage(rend.Page):
         if self.isPreview or errors:
             if errors:
                 tag = context.tag
-                print stan, errors
+                #print stan, errors
                 #assert isinstance(stan, tags.pre)
                 [text] = stan.children
                 lines = text.replace('\r\n', '\n').split('\n')
