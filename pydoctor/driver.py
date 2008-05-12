@@ -60,6 +60,9 @@ def getparser():
         '--make-html', action='store_true', dest='makehtml',
         help=("Produce html output."))
     parser.add_option(
+        '--server', action='store_true', dest='server',
+        help=("Serve HTML on a local server."))
+    parser.add_option(
         '--add-package', action='append', dest='packages',
         metavar='PACKAGEDIR', default=[],
         help=("Add a package to the system.  Can be repeated "
@@ -243,7 +246,7 @@ def main(args):
         # step 1.5: check that we're actually going to accomplish something here
 
         if not options.outputpickle and not options.makehtml \
-               and not options.testing:
+               and not options.testing and not options.server:
             msg = ("this invocation isn't going to do anything\n"
                    "maybe supply --make-html and/or --output-pickle?")
             error(msg)
@@ -350,6 +353,16 @@ def main(args):
                 cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
                 f.close()
                 system.options = options
+
+        # Finally, if we should serve html, lets serve some html.
+        if options.server:
+            from pydoctor.server import PyDoctorResource
+            from nevow import appserver
+            from twisted.internet import reactor
+            root = PyDoctorResource(system)
+            site = appserver.NevowSite(root)
+            reactor.listenTCP(8080, site)
+            reactor.run()
     except:
         if options.pdb:
             import pdb

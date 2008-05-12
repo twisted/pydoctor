@@ -1,4 +1,4 @@
-from nevow import rend, loaders, tags, inevow, url, page, entities
+from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import model, epydoc2stan
