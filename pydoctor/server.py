@@ -1,4 +1,4 @@
-from nevow import rend, loaders, tags, inevow, url, page, entities
+from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements
 from pydoctor import model, epydoc2stan
@@ -194,7 +194,7 @@ class EditPage(rend.Page):
         if self.isPreview or errors:
             if errors:
                 tag = context.tag
-                print stan, errors
+                #print stan, errors
                 #assert isinstance(stan, tags.pre)
                 [text] = stan.children
                 lines = text.replace('\r\n', '\n').split('\n')

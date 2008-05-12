@@ -60,6 +60,16 @@ def getparser():
         '--make-html', action='store_true', dest='makehtml',
         help=("Produce html output."))
     parser.add_option(
+        '--server', action='store_true', dest='server',
+        help=("Serve HTML on a local server."))
+    parser.add_option(
+        '--edit', action='store_true', dest='edit',
+        help=("When serving HTML, allow editing."))
+    parser.add_option(
+        '--no-check', action='store_true', dest='nocheck',
+        help=("When serving HTML and allow editing, don't check all "
+              "docstrings first."))
+    parser.add_option(
         '--add-package', action='append', dest='packages',
         metavar='PACKAGEDIR', default=[],
         help=("Add a package to the system.  Can be repeated "
@@ -147,6 +157,11 @@ def getparser():
         '-q', '--quiet', action='count', dest='quietness',
         default=0,
         help=("Be quieter."))
+    parser.add_option(
+        '--auto', action="store_true", dest="auto",
+        help=("Automagic mode: analyze all modules and packages in the "
+              "current working directory and run a local server that allows "
+              "examination and editing of the docstrings."))
     def verbose_about_callback(option, opt_str, value, parser):
         d = parser.values.verbosity_details
         d[value] = d.get(value, 0) + 1
@@ -242,8 +257,18 @@ def main(args):
 
         # step 1.5: check that we're actually going to accomplish something here
 
+        if options.auto:
+            options.server = True
+            options.edit = True
+            for fn in os.listdir('.'):
+                if os.path.isdir(fn) and \
+                   os.path.exists(os.path.join(fn, '__init__.py')):
+                    options.packages.append(fn)
+                elif fn.endswith('.py'):
+                    options.modules.append(fn)
+
         if not options.outputpickle and not options.makehtml \
-               and not options.testing:
+               and not options.testing and not options.server:
             msg = ("this invocation isn't going to do anything\n"
                    "maybe supply --make-html and/or --output-pickle?")
             error(msg)
@@ -350,6 +375,39 @@ def main(args):
                 cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
                 f.close()
                 system.options = options
+
+        # Finally, if we should serve html, lets serve some html.
+        if options.server:
+            from pydoctor.server import (
+                EditingPyDoctorResource, PyDoctorResource)
+            from pydoctor.epydoc2stan import doc2html
+            from nevow import appserver
+            from twisted.internet import reactor
+            if options.edit:
+                if not options.nocheck:
+                    system.msg(
+                        "server", "Checking formatting of docstrings.")
+                    included_obs = [ob for ob in system.orderedallobjects
+                                    if system.shouldInclude(ob)]
+                    for i, ob in enumerate(included_obs):
+                        system.progress(
+                            "server", i+1, len(included_obs),
+                            "docstrings checked, found %s problems" % (
+                            len(system.epytextproblems)))
+                        doc2html(ob, docstring=ob.docstring)
+                root = EditingPyDoctorResource(system)
+            else:
+                root = PyDoctorResource(system)
+            system.msg(
+                "server", "Setting up server at http://localhost:8080/")
+            if options.auto:
+                def wb_open():
+                    import webbrowser
+                    webbrowser.open('http://localhost:8080/')
+                reactor.callWhenRunning(wb_open)
+            site = appserver.NevowSite(root)
+            reactor.listenTCP(8080, site)
+            reactor.run()
     except:
         if options.pdb:
             import pdb
