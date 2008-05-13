@@ -69,6 +69,12 @@ class IndexPage(summary.IndexPage):
     @page.renderer
     def recentChanges(self, request, tag):
         return tag
+    @page.renderer
+    def problemObjects(self, request, tag):
+        if self.system.epytextproblems:
+            return tag
+        else:
+            return ()
 
 class RecentChangesPage(page.Element):
     def __init__(self, root, url):
@@ -102,9 +108,11 @@ class RecentChangesPage(page.Element):
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title["Recent Changes"],
-                  tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
+                  tags.link(rel="stylesheet", type="text/css",
+                            href='apidocs.css')],
         tags.body[tags.h1["Recent Changes"],
-                  tags.p["See ", tags.a(href="bigDiff")["a diff containing all changes made online"]],
+                  tags.p["See ", tags.a(href="bigDiff")
+                         ["a diff containing all changes made online"]],
                   tags.ul(render=tags.directive("changes"))
                   [tags.li(pattern="item")
                    [tags.slot("diff"),
@@ -147,7 +155,8 @@ def indentationAmount(ob):
         line = lines[ob.linenumber-1]
         return len(line) - len(line.lstrip()) + 4
     else:
-        firstline = lines[ob.docstring.linenumber - len(ob.docstring.orig.splitlines())]
+        docstring_line_count = len(ob.docstring.orig.splitlines())
+        firstline = lines[ob.docstring.linenumber - docstring_line_count]
         return len(firstline) - len(firstline.lstrip())
 
 def indent(ds, data):
@@ -178,15 +187,17 @@ class EditPage(rend.Page):
     def __init__(self, root, ob, docstring, isPreview, initialWhitespace):
         self.root = root
         self.ob = ob
-        self.lines = open(self.ob.doctarget.parentMod.filepath, 'rU').readlines()
+        self.lines = open(
+            self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
         self.isPreview = isPreview
         self.initialWhitespace = initialWhitespace
 
     def render_title(self, context, data):
-        return context.tag.clear()[u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
-                                   self.ob.fullName(),
-                                   u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+        return context.tag.clear()[
+            u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
+            self.ob.fullName(),
+            u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
         docstring = parse_str(self.docstring)
         stan, errors = epydoc2stan.doc2html(
@@ -234,7 +245,8 @@ class EditPage(rend.Page):
     def render_before(self, context, data):
         tob = self.ob.doctarget
         if tob.docstring:
-            lineno = tob.docstring.linenumber - len(tob.docstring.orig.splitlines())
+            docstring_line_count = len(tob.docstring.orig.splitlines())
+            lineno = tob.docstring.linenumber - docstring_line_count
         else:
             lineno = tob.linenumber
         firstlineno = max(0, lineno-6)
@@ -315,7 +327,8 @@ class HistoryPage(rend.Page):
 
     docFactory = loaders.stan(tags.html[
         tags.head[tags.title(render=tags.directive('title')),
-                  tags.link(rel="stylesheet", type="text/css", href='apidocs.css')],
+                  tags.link(rel="stylesheet", type="text/css",
+                            href='apidocs.css')],
         tags.body[tags.h1(render=tags.directive('title')),
                   tags.p(render=tags.directive('links')),
                   tags.div(render=tags.directive('docstring')),
@@ -386,7 +399,8 @@ class DiffPage(rend.Page):
         return context.tag["Viewing differences between revisions ",
                            self.editA.rev, " and ", self.editB.rev, " of ",
                            u"\N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.origob.fullName() + u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+                           self.origob.fullName() +
+                           u"\N{RIGHT DOUBLE QUOTATION MARK}"]
 
     def render_diff(self, context, data):
         fd = FileDiff(self.ob.parentMod)
@@ -402,7 +416,7 @@ class BigDiffPage(rend.Page):
         self.system = system
         self.root = root
 
-    def render_changes(self, context, data):
+    def render_bigDiff(self, context, data):
         mods = {}
         for m in self.root.editsbymod:
             l = [e for e in self.root.editsbymod[m]
@@ -446,14 +460,14 @@ class RawBigDiffPage(rend.Page):
 class ProblemObjectsPage(rend.Page):
     def __init__(self, system):
         self.system = system
-    def render_stuff(self, context, data):
-        t = context.tag.clear()
+    def render_problemObjects(self, context, data):
+        t = context.tag
+        pat = t.patternGenerator('object')
         for fn in sorted(self.system.epytextproblems):
             o = self.system.allobjects[fn]
-            t[tags.li[util.taglink(o)]]
+            t[pat.fillSlots('link', util.taglink(o))]
         return t
-    docFactory = loaders.stan(tags.html[
-        tags.body[tags.ul(render=tags.directive('stuff'))]])
+    docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
 
 def absoluteURL(ctx, ob):
     if ob.document_in_parent_page:
@@ -562,7 +576,8 @@ class EditingPyDoctorResource(PyDoctorResource):
     def edits(self, ob):
         ob = ob.doctarget
         if ob not in self.editsbyob:
-            self.editsbyob[ob] = [Edit(ob, 0, ob.docstring, 'no-one', 'Dawn of time')]
+            self.editsbyob[ob] = [
+                Edit(ob, 0, ob.docstring, 'no-one', 'Dawn of time')]
         return self.editsbyob[ob]
 
     def currentDocstringForObject(self, ob):
@@ -574,7 +589,8 @@ class EditingPyDoctorResource(PyDoctorResource):
 
     def addEdit(self, edit):
         self.editsbyob.setdefault(edit.obj.doctarget, []).append(edit)
-        self.editsbymod.setdefault(edit.obj.doctarget.parentMod, []).append(edit)
+        self.editsbymod.setdefault(
+            edit.obj.doctarget.parentMod, []).append(edit)
         self._edits.append(edit)
 
     def newDocstring(self, user, ob, newDocstring):
@@ -604,16 +620,20 @@ class EditingPyDoctorResource(PyDoctorResource):
             self.system.epytextproblems.remove(tob.fullName())
 
     def stanForOb(self, ob, summary=False):
+        current_docstring = self.currentDocstringForObject(ob)
         if summary:
-            return epydoc2stan.doc2html(ob.doctarget, summary=True, docstring=self.currentDocstringForObject(ob))[0]
+            return epydoc2stan.doc2html(
+                ob.doctarget, summary=True,
+                docstring=current_docstring)[0]
         r = [tags.div[epydoc2stan.doc2html(ob.doctarget,
-                                           docstring=self.currentDocstringForObject(ob))[0]],
+                                           docstring=current_docstring)[0]],
              tags.a(href="edit?ob="+ob.fullName())["Edit"],
              " "]
         if ob.doctarget in self.editsbyob:
-            r.append(tags.a(href="history?ob="+ob.fullName())["View docstring history (",
-                                                              len(self.editsbyob[ob.doctarget]),
-                                                              " versions)"])
+            r.append(tags.a(href="history?ob="+ob.fullName())[
+                "View docstring history (",
+                len(self.editsbyob[ob.doctarget]),
+                " versions)"])
         else:
             r.append(tags.span(class_='undocumented')["No edits yet."])
         return r

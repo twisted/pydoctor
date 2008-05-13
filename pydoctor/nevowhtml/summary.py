@@ -175,6 +175,9 @@ class IndexPage(page.Element):
     def recentChanges(self, request, tag):
         return ()
     @page.renderer
+    def problemObjects(self, request, tag):
+        return ()
+    @page.renderer
     def onlyIfOneRoot(self, request, tag):
         if len(self.system.rootobjects) != 1:
             return []
