@@ -69,6 +69,12 @@ class IndexPage(summary.IndexPage):
     @page.renderer
     def recentChanges(self, request, tag):
         return tag
+    @page.renderer
+    def problemObjects(self, request, tag):
+        if self.system.epytextproblems:
+            return tag
+        else:
+            return ()
 
 class RecentChangesPage(page.Element):
     def __init__(self, root, url):
@@ -410,7 +416,7 @@ class BigDiffPage(rend.Page):
         self.system = system
         self.root = root
 
-    def render_changes(self, context, data):
+    def render_bigDiff(self, context, data):
         mods = {}
         for m in self.root.editsbymod:
             l = [e for e in self.root.editsbymod[m]
@@ -454,14 +460,14 @@ class RawBigDiffPage(rend.Page):
 class ProblemObjectsPage(rend.Page):
     def __init__(self, system):
         self.system = system
-    def render_stuff(self, context, data):
-        t = context.tag.clear()
+    def render_problemObjects(self, context, data):
+        t = context.tag
+        pat = t.patternGenerator('object')
         for fn in sorted(self.system.epytextproblems):
             o = self.system.allobjects[fn]
-            t[tags.li[util.taglink(o)]]
+            t[pat.fillSlots('link', util.taglink(o))]
         return t
-    docFactory = loaders.stan(tags.html[
-        tags.body[tags.ul(render=tags.directive('stuff'))]])
+    docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
 
 def absoluteURL(ctx, ob):
     if ob.document_in_parent_page:
