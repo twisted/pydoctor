@@ -362,9 +362,8 @@ class System(object):
                 yield o
 
     def privacyClass(self, ob):
-        o = ob
-        if o.name.startswith('_') and \
-               not (o.name.startswith('__') and o.name.endswith('__')):
+        if ob.name.startswith('_') and \
+               not (ob.name.startswith('__') and ob.name.endswith('__')):
             return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
 
