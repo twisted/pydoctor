@@ -51,6 +51,11 @@ def getparser():
         '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
     parser.add_option(
+        '--project-base-dir', dest='projectbasedirectory',
+        help=("Absolute path to the base directory of the "
+              "project.  Source links will be computed based "
+              "on this value."))
+    parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
     parser.add_option(
@@ -145,7 +150,7 @@ def getparser():
         help=("Generate (unobstrusive) JavaScript to hide some of the "
               "entries in long lists of e.g. subclasses."))
     parser.add_option(
-        '--livechceck', action='store_true', dest='livecheck',
+        '--livecheck', action='store_true', dest='livecheck',
         default=False,
         help=("Import and examine the modules too.  XXX not working "
               "right now"))
