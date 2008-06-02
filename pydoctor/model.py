@@ -122,6 +122,14 @@ class Documentable(object):
                 return dottedname
         return obj._name2fullname[start] + rest
 
+    @property
+    def privacyClass(self):
+        return self.system.privacyClass(self)
+
+    @property
+    def shouldInclude(self):
+        return self.privacyClass != PrivacyClass.HIDDEN
+
     def __getstate__(self):
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.

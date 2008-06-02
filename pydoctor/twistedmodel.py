@@ -30,13 +30,13 @@ class TwistedASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
 class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
     defaultBuilder = TwistedASTBuilder
 
-    def shouldInclude(self, obj):
+    def privacyClass(self, obj):
         o = obj
         while o:
             if o.fullName() == 'twisted.words.xish.yappsrt':
-                return False
+                return model.PrivacyClass.HIDDEN
             if isinstance(o, model.Package) and o.name == 'test':
-                return False
+                return model.PrivacyClass.HIDDEN
             o = o.parent
-        return True
+        return model.PrivacyClass.VISIBLE
 

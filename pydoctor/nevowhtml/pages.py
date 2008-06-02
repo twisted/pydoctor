@@ -184,8 +184,7 @@ class CommonPage(object):
         return self.docgetter.get(self.ob)
 
     def children(self):
-        return [o for o in self.ob.orderedcontents
-                if self.ob.system.shouldInclude(o)]
+        return [o for o in self.ob.orderedcontents if o.shouldInclude]
 
     def packageInitTable(self):
         return ()
@@ -216,7 +215,7 @@ class CommonPage(object):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.document_in_parent_page and o.system.shouldInclude(o)]
+                if o.document_in_parent_page and o.shouldInclude]
 
     def childlist(self, childlist):
         tag = tags.invisible()
@@ -306,12 +305,12 @@ class CommonPage(object):
 class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
-                       if o.name != '__init__' and self.ob.system.shouldInclude(o)],
+                       if o.name != '__init__' and o.shouldInclude],
                       key=lambda o2:o2.fullName())
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
-        children = [o for o in init.orderedcontents if self.ob.system.shouldInclude(o)]
+        children = [o for o in init.orderedcontents if o.shouldInclude]
         if children:
             return [tags.p["From the __init__.py module:"],
                     TableFragment(self, init, self.usesorttable, children)]
@@ -320,7 +319,7 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.document_in_parent_page and o.system.shouldInclude(o)]
+                if o.document_in_parent_page and o.shouldInclude]
 
 class ModulePage(CommonPage):
     pass
@@ -330,7 +329,7 @@ def overriding_subclasses(c, name, firstcall=True):
         yield c
     else:
         for sc in c.subclasses:
-            if c.system.shouldInclude(sc):
+            if sc.shouldInclude:
                 for sc2 in overriding_subclasses(sc, name, False):
                     yield sc2
 
@@ -354,7 +353,7 @@ def maybeShortenList(system, label, lst, idbase):
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
-        if o is None or system.shouldInclude(o):
+        if o is None or o.shouldInclude:
             lst2.append(name)
     lst = lst2
     if not lst:

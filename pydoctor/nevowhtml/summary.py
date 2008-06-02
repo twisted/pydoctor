@@ -8,7 +8,7 @@ def moduleSummary(modorpack):
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents
-                if modorpack.system.shouldInclude(m) and m.name != '__init__']
+                if m.shouldInclude and m.name != '__init__']
     if not contents:
         return r
     ul = tags.ul()
@@ -40,11 +40,11 @@ class ModuleIndexPage(page.Element):
 def findRootClasses(system):
     roots = {}
     for cls in system.objectsOfType(model.Class):
-        if ' ' in cls.name or not system.shouldInclude(cls):
+        if ' ' in cls.name or not cls.shouldInclude:
             continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
-                if b is None or not system.shouldInclude(b):
+                if b is None or not b.shouldInclude:
                     roots.setdefault(n, []).append(cls)
                 elif b.system is not system:
                     roots[b.fullName()] = b
@@ -60,7 +60,7 @@ def subclassesFrom(hostsystem, cls, anchors):
         anchors.add(name)
     r[taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True)[0]]
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
-           and hostsystem.shouldInclude(sc)]
+           and sc.shouldInclude]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
@@ -118,7 +118,7 @@ class NameIndexPage(page.Element):
         manyNames = tag.patternGenerator('manyNames')
         initials = {}
         for ob in self.system.orderedallobjects:
-            if self.system.shouldInclude(ob):
+            if ob.shouldInclude:
                 initials.setdefault(ob.name[0].upper(), []).append(ob)
         for initial in sorted(initials):
             letterlinks = []
@@ -232,7 +232,7 @@ class UndocumentedSummaryPage(page.Element):
     @page.renderer
     def stuff(self, request, tag):
         undoccedpublic = [o for o in self.system.orderedallobjects
-                          if self.system.shouldInclude(o) and not hasdocstring(o)]
+                          if o.shouldInclude and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
             tag[tags.li[o.kind, " - ", taglink(o)]]
