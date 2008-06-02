@@ -269,7 +269,7 @@ def main(args):
                 if os.path.isdir(fn) and \
                    os.path.exists(os.path.join(fn, '__init__.py')):
                     options.packages.append(fn)
-                elif fn.endswith('.py'):
+                elif fn.endswith('.py') and fn != 'setup.py':
                     options.modules.append(fn)
 
         if not options.outputpickle and not options.makehtml \
