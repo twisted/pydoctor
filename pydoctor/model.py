@@ -230,7 +230,9 @@ class PrivacyClass:
 
     HIDDEN = 0
 
-    VISIBLE = 1
+    PRIVATE = 1
+
+    VISIBLE = 2
 
 
 
@@ -353,6 +355,12 @@ class System(object):
                 yield o
 
     def privacyClass(self, ob):
+        o = ob
+        while o:
+            if o.name.startswith('_') and \
+                   not (o.name.startswith('__') and o.name.endswith('__')):
+                return PrivacyClass.PRIVATE
+            o = o.parent
         return PrivacyClass.VISIBLE
 
     def __setstate__(self, state):

@@ -38,5 +38,5 @@ class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
             if isinstance(o, model.Package) and o.name == 'test':
                 return model.PrivacyClass.HIDDEN
             o = o.parent
-        return model.PrivacyClass.VISIBLE
+        return super(TwistedSystem, self).privacyClass(obj)
 
