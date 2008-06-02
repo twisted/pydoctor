@@ -218,6 +218,13 @@ class Function(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
+class PrivacyClass:
+
+    HIDDEN = 0
+
+    VISIBLE = 1
+
+
 
 class System(object):
     Class = Class
@@ -338,7 +345,10 @@ class System(object):
                 yield o
 
     def shouldInclude(self, ob):
-        return True
+        return self.privacyClass(ob) == PrivacyClass.VISIBLE
+
+    def privacyClass(self, ob):
+        return PrivacyClass.VISIBLE
 
     def __setstate__(self, state):
         if 'abbrevmapping' not in state:
