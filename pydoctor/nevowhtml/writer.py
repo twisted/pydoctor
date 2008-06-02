@@ -44,6 +44,8 @@ class NevowWriter:
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def writeDocsFor(self, ob, functionpages):
+        if not self.system.shouldInclude(ob):
+            return
         isfunc = ob.document_in_parent_page
         if (isfunc and functionpages) or not isfunc:
             if self.dry_run:
