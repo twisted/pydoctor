@@ -19,7 +19,14 @@ import __builtin__
 class Documentable(object):
     document_in_parent_page = False
     sourceHref = None
-    lckind = property(lambda ob:ob.kind.lower().replace(' ', ''))
+
+    @property
+    def lckind(self):
+        class_ = self.kind.lower().replace(' ', '')
+        if self.privacyClass == PrivacyClass.PRIVATE:
+            class_ += ' private'
+        return class_
+
     def __init__(self, system, name, docstring, parent=None):
         self.system = system
         if parent is not None:

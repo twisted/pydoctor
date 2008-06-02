@@ -76,6 +76,12 @@ div.toplevel p
 .baseclass        { background: #d6ecf3; }
 .baseinterface    { background: #ffffff; }
 
+.private
+{
+  color: grey;
+  background: lightgrey;
+}
+
 div.function
 {
   margin: 1em;
