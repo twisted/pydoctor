@@ -263,7 +263,7 @@ class FieldHandler(object):
         for iv in self.ivar_descs:
             attr = zopeinterface.Attribute(
                 self.obj.system, iv.name, iv.body, self.obj)
-            if self.obj.system.shouldInclude(attr):
+            if attr.isVisible:
                 ivs.append(iv)
         self.ivar_descs = ivs
 
@@ -271,7 +271,7 @@ class FieldHandler(object):
         for cv in self.cvar_descs:
             attr = zopeinterface.Attribute(
                 self.obj.system, cv.name, cv.body, self.obj)
-            if self.obj.system.shouldInclude(attr):
+            if attr.isVisible:
                 cvs.append(cv)
         self.cvar_descs = cvs
 

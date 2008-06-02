@@ -5,6 +5,8 @@ from nevow import tags
 import os, urllib
 
 def link(o):
+    if not o.isVisible:
+        o.system.warning("html", "don't link to %s"%o.fullName())
     return o.system.urlprefix+urllib.quote(o.fullName()+'.html')
 
 def srclink(o):
@@ -21,6 +23,8 @@ def fillSlots(tag, **kw):
     return tag
 
 def taglink(o, label=None):
+    if not o.isVisible:
+        o.system.warning("html", "don't link to %s"%o.fullName())
     if label is None:
         label = o.fullName()
     if o.document_in_parent_page:

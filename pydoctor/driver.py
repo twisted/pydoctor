@@ -392,8 +392,9 @@ def main(args):
                 if not options.nocheck:
                     system.msg(
                         "server", "Checking formatting of docstrings.")
-                    included_obs = [ob for ob in system.orderedallobjects
-                                    if system.shouldInclude(ob)]
+                    included_obs = [
+                        ob for ob in system.orderedallobjects
+                        if ob.isVisible]
                     for i, ob in enumerate(included_obs):
                         system.progress(
                             "server", i+1, len(included_obs),

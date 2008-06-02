@@ -184,8 +184,9 @@ class CommonPage(object):
         return self.docgetter.get(self.ob)
 
     def children(self):
-        return [o for o in self.ob.orderedcontents
-                if self.ob.system.shouldInclude(o)]
+        return sorted(
+            [o for o in self.ob.orderedcontents if o.isVisible],
+            key=lambda o:-o.privacyClass)
 
     def packageInitTable(self):
         return ()
@@ -216,7 +217,7 @@ class CommonPage(object):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.document_in_parent_page and o.system.shouldInclude(o)]
+                if o.document_in_parent_page and o.isVisible]
 
     def childlist(self, childlist):
         tag = tags.invisible()
@@ -306,12 +307,14 @@ class CommonPage(object):
 class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
-                       if o.name != '__init__' and self.ob.system.shouldInclude(o)],
-                      key=lambda o2:o2.fullName())
+                       if o.name != '__init__' and o.isVisible],
+                      key=lambda o2:(-o2.privacyClass, o2.fullName()))
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
-        children = [o for o in init.orderedcontents if self.ob.system.shouldInclude(o)]
+        children = sorted(
+            [o for o in init.orderedcontents if o.isVisible],
+            key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
             return [tags.p["From the __init__.py module:"],
                     TableFragment(self, init, self.usesorttable, children)]
@@ -320,7 +323,7 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.document_in_parent_page and o.system.shouldInclude(o)]
+                if o.document_in_parent_page and o.isVisible]
 
 class ModulePage(CommonPage):
     pass
@@ -330,7 +333,7 @@ def overriding_subclasses(c, name, firstcall=True):
         yield c
     else:
         for sc in c.subclasses:
-            if c.system.shouldInclude(sc):
+            if sc.isVisible:
                 for sc2 in overriding_subclasses(sc, name, False):
                     yield sc2
 
@@ -354,7 +357,7 @@ def maybeShortenList(system, label, lst, idbase):
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
-        if o is None or system.shouldInclude(o):
+        if o is None or o.isVisible:
             lst2.append(name)
     lst = lst2
     if not lst:
@@ -443,7 +446,8 @@ class ClassPage(CommonPage):
     def baseTables(self, item):
         return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(), attrs))
+                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(),
+                                                  sorted(attrs, key=lambda o:-o.privacyClass)))
                 for b, attrs in self.baselists[1:]]
 
     def baseName(self, data):
@@ -466,7 +470,7 @@ class ClassPage(CommonPage):
         all_attrs = []
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
-        all_attrs.sort(key=lambda o:o.name.lower())
+        all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
         return tag[TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):

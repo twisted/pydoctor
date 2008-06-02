@@ -19,7 +19,14 @@ import __builtin__
 class Documentable(object):
     document_in_parent_page = False
     sourceHref = None
-    lckind = property(lambda ob:ob.kind.lower().replace(' ', ''))
+
+    @property
+    def lckind(self):
+        class_ = self.kind.lower().replace(' ', '')
+        if self.privacyClass == PrivacyClass.PRIVATE:
+            class_ += ' private'
+        return class_
+
     def __init__(self, system, name, docstring, parent=None):
         self.system = system
         if parent is not None:
@@ -122,6 +129,14 @@ class Documentable(object):
                 return dottedname
         return obj._name2fullname[start] + rest
 
+    @property
+    def privacyClass(self):
+        return self.system.privacyClass(self)
+
+    @property
+    def isVisible(self):
+        return self.privacyClass != PrivacyClass.HIDDEN
+
     def __getstate__(self):
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
@@ -217,6 +232,15 @@ class Function(Documentable):
         for b in self.parent.allbases():
             if self.name in b.contents:
                 yield b.contents[self.name]
+
+class PrivacyClass:
+
+    HIDDEN = 0
+
+    PRIVATE = 1
+
+    VISIBLE = 2
+
 
 
 class System(object):
@@ -337,8 +361,11 @@ class System(object):
             if isinstance(o, cls):
                 yield o
 
-    def shouldInclude(self, ob):
-        return True
+    def privacyClass(self, ob):
+        if ob.name.startswith('_') and \
+               not (ob.name.startswith('__') and ob.name.endswith('__')):
+            return PrivacyClass.PRIVATE
+        return PrivacyClass.VISIBLE
 
     def __setstate__(self, state):
         if 'abbrevmapping' not in state:

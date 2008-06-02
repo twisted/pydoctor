@@ -5,7 +5,7 @@ from pydoctor.model import Class, Module, Package
 def test_include_private():
     system = TwistedSystem()
     c = Class(system, "_private", "some doc")
-    assert system.shouldInclude(c)
+    assert c.isVisible
 
 
 def test_include_private_not_in_all():
@@ -13,13 +13,13 @@ def test_include_private_not_in_all():
     m = Module(system, "somemodule", "module doc")
     m.all = []
     c = Class(system, "_private", "some doc", m)
-    assert system.shouldInclude(c)
+    assert c.isVisible
 
 
 def test_doesnt_include_test_package():
     system = TwistedSystem()
     c = Class(system, "test", "some doc")
-    assert system.shouldInclude(c)
+    assert c.isVisible
 
     p = Package(system, "test", "package doc")
-    assert not system.shouldInclude(p)
+    assert not p.isVisible
