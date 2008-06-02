@@ -207,29 +207,6 @@ class ModuleVistor(object):
                     else:
                         target.kind = func.title().replace('m', ' M')
 
-        else:
-            if not isinstance(node.nodes[0], ast.AssName):
-                return
-            if not isinstance(node.expr, ast.CallFunc):
-                return
-            func = node.expr.node
-            if not isinstance(func, ast.Name):
-                return
-            args = node.expr.args
-            if len(args) != 1:
-                return
-            arg, = args
-            if not isinstance(arg, ast.Name):
-                return
-            arg = arg.name
-            target = node.nodes[0].name
-            if target != arg:
-                return
-            # Here, we got something in the form of name = func(name)
-            # It's probably a modifying decorator, so we want to have live docstring
-            self.system.importgraph.add(self.builder.current)
-
-
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
         func.decorators = node.decorators
@@ -403,3 +380,4 @@ def findAll(modast, mod):
                     continue
                 names.append(item.value)
                 mod.all = names
+

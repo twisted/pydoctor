@@ -142,7 +142,8 @@ def getparser():
     parser.add_option(
         '--livecheck', action='store_true', dest='livecheck',
         default=False,
-        help=("Import and examine some modules too."))
+        help=("Import and examine the modules too.  XXX not working "
+              "right now"))
     parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
@@ -287,7 +288,7 @@ def main(args):
         system.process()
 
         if system.options.livecheck:
-            liveobjectchecker.liveCheck(system)
+            error("write this")
 
         if system.options.projectname is None:
             name = '/'.join([ro.name for ro in system.rootobjects])

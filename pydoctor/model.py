@@ -233,7 +233,6 @@ class System(object):
         self.orderedallobjects = []
         self.rootobjects = []
         self.warnings = {}
-        self.importgraph = set()
         self.packages = []
         self.moresystems = []
         self.subsystems = []
