@@ -352,9 +352,6 @@ class System(object):
             if isinstance(o, cls):
                 yield o
 
-    def shouldInclude(self, ob):
-        return self.privacyClass(ob) == PrivacyClass.VISIBLE
-
     def privacyClass(self, ob):
         return PrivacyClass.VISIBLE
 
