@@ -184,7 +184,9 @@ class CommonPage(object):
         return self.docgetter.get(self.ob)
 
     def children(self):
-        return [o for o in self.ob.orderedcontents if o.isVisible]
+        return sorted(
+            [o for o in self.ob.orderedcontents if o.isVisible],
+            key=lambda o:-o.privacyClass)
 
     def packageInitTable(self):
         return ()
@@ -306,11 +308,13 @@ class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
                        if o.name != '__init__' and o.isVisible],
-                      key=lambda o2:o2.fullName())
+                      key=lambda o2:(-o2.privacyClass, o2.fullName()))
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
-        children = [o for o in init.orderedcontents if o.isVisible]
+        children = sorted(
+            [o for o in init.orderedcontents if o.isVisible],
+            key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
             return [tags.p["From the __init__.py module:"],
                     TableFragment(self, init, self.usesorttable, children)]
@@ -442,7 +446,8 @@ class ClassPage(CommonPage):
     def baseTables(self, item):
         return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(), attrs))
+                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(),
+                                                  sorted(attrs, key=lambda o:-o.privacyClass)))
                 for b, attrs in self.baselists[1:]]
 
     def baseName(self, data):
@@ -465,7 +470,7 @@ class ClassPage(CommonPage):
         all_attrs = []
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
-        all_attrs.sort(key=lambda o:o.name.lower())
+        all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
         return tag[TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):
