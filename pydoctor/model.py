@@ -363,11 +363,9 @@ class System(object):
 
     def privacyClass(self, ob):
         o = ob
-        while o:
-            if o.name.startswith('_') and \
-                   not (o.name.startswith('__') and o.name.endswith('__')):
-                return PrivacyClass.PRIVATE
-            o = o.parent
+        if o.name.startswith('_') and \
+               not (o.name.startswith('__') and o.name.endswith('__')):
+            return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
 
     def __setstate__(self, state):
