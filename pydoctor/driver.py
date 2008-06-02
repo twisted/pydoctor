@@ -394,7 +394,7 @@ def main(args):
                         "server", "Checking formatting of docstrings.")
                     included_obs = [
                         ob for ob in system.orderedallobjects
-                        if ob.shouldInclude]
+                        if ob.isVisible]
                     for i, ob in enumerate(included_obs):
                         system.progress(
                             "server", i+1, len(included_obs),

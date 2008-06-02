@@ -44,7 +44,7 @@ class NevowWriter:
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def writeDocsFor(self, ob, functionpages):
-        if not ob.shouldInclude:
+        if not ob.isVisible:
             return
         isfunc = ob.document_in_parent_page
         if (isfunc and functionpages) or not isfunc:
@@ -58,7 +58,7 @@ class NevowWriter:
             self.writeDocsFor(o, functionpages)
 
     def writeDocsForOne(self, ob, fobj):
-        if not ob.shouldInclude:
+        if not ob.isVisible:
             return
         # brrrrrrrr!
         d = pages.__dict__

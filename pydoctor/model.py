@@ -127,7 +127,7 @@ class Documentable(object):
         return self.system.privacyClass(self)
 
     @property
-    def shouldInclude(self):
+    def isVisible(self):
         return self.privacyClass != PrivacyClass.HIDDEN
 
     def __getstate__(self):
