@@ -437,6 +437,8 @@ def main(args):
                     webbrowser.open(
                         'http://localhost:%d/' % options.server_port)
                 reactor.callWhenRunning(wb_open)
+            from twisted.python import log
+            log.startLogging(sys.stdout)
             site = appserver.NevowSite(root)
             if options.local_only:
                 interface = 'localhost'
