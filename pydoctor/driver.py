@@ -72,6 +72,12 @@ def getparser():
         type=int, default=8080,
         help=("The port for --server to use."))
     parser.add_option(
+        '--local-only', action='store_true', dest='local_only',
+        help=("Bind the server to localhost only."))
+    parser.add_option(
+        '--facing-path', action='store', dest='facing_path',
+        help=("Set up a VHostMonster, with all the confusion that implies."))
+    parser.add_option(
         '--edit', action='store_true', dest='edit',
         help=("When serving HTML, allow editing."))
     parser.add_option(
@@ -408,6 +414,19 @@ def main(args):
                 root = EditingPyDoctorResource(system)
             else:
                 root = PyDoctorResource(system)
+            if options.facing_path:
+                options.local_only = True
+                from nevow import rend, vhost
+                realroot = rend.Page()
+                cur = realroot
+                realroot.putChild('vhost', vhost.VHostMonsterResource())
+                segments = options.facing_hostname.split('/')
+                for segment in segments[:-1]:
+                    next = rend.Page()
+                    cur.putChild(segment, next)
+                    cur = next
+                cur.putChild(segments[-1], root)
+                root = realroot
             system.msg(
                 "server",
                 "Setting up server at http://localhost:%d/" %
@@ -419,7 +438,11 @@ def main(args):
                         'http://localhost:%d/' % options.server_port)
                 reactor.callWhenRunning(wb_open)
             site = appserver.NevowSite(root)
-            reactor.listenTCP(options.server_port, site)
+            if options.local_only:
+                interface = 'localhost'
+            else:
+                interface = ''
+            reactor.listenTCP(options.server_port, site, interface=interface)
             reactor.run()
     except:
         if options.pdb:
