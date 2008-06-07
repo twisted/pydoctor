@@ -420,7 +420,7 @@ def main(args):
                 realroot = rend.Page()
                 cur = realroot
                 realroot.putChild('vhost', vhost.VHostMonsterResource())
-                segments = options.facing_hostname.split('/')
+                segments = options.facing_path.split('/')
                 for segment in segments[:-1]:
                     next = rend.Page()
                     cur.putChild(segment, next)
