@@ -68,6 +68,10 @@ def getparser():
         '--server', action='store_true', dest='server',
         help=("Serve HTML on a local server."))
     parser.add_option(
+        '--server-port', action='store', dest='server_port',
+        type=int, default=8080,
+        help=("The port for --server to use."))
+    parser.add_option(
         '--edit', action='store_true', dest='edit',
         help=("When serving HTML, allow editing."))
     parser.add_option(
@@ -405,14 +409,17 @@ def main(args):
             else:
                 root = PyDoctorResource(system)
             system.msg(
-                "server", "Setting up server at http://localhost:8080/")
+                "server",
+                "Setting up server at http://localhost:%d/" %
+                options.server_port)
             if options.auto:
                 def wb_open():
                     import webbrowser
-                    webbrowser.open('http://localhost:8080/')
+                    webbrowser.open(
+                        'http://localhost:%d/' % options.server_port)
                 reactor.callWhenRunning(wb_open)
             site = appserver.NevowSite(root)
-            reactor.listenTCP(8080, site)
+            reactor.listenTCP(options.server_port, site)
             reactor.run()
     except:
         if options.pdb:
