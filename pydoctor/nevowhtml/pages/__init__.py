@@ -220,55 +220,15 @@ class CommonPage(object):
                 if o.document_in_parent_page and o.isVisible]
 
     def childlist(self, childlist):
+        from pydoctor.nevowhtml.pages.attributechild import AttributeChild
         from pydoctor.nevowhtml.pages.functionchild import FunctionChild
-        return [FunctionChild(self.docgetter, c) for c in self.methods()]
-        for c in childlist:
-            f = FunctionChild(self.docgetter, c)
-        tag = tags.invisible()
-        functionHeader = childlist.patternGenerator('functionHeader')
-        attributeHeader = childlist.patternGenerator('attributeHeader')
-        sourceLink = childlist.patternGenerator('sourceLink')
-        child = childlist.patternGenerator('child')
-        for data in self.methods():
-            if isinstance(data, model.Function):
-                sourceHref = srclink(data)
-                if not sourceHref:
-                    functionSourceLink = ()
-                else:
-                    functionSourceLink = fillSlots(sourceLink,
-                                                   sourceHref=sourceHref)
-
-                if data.decorators:
-                    decorators = [ast_pp.pp(dec) for dec in data.decorators]
-                else:
-                    decorators = []
-
-                if data.kind == "Class Method" \
-                       and 'classmethod' not in decorators:
-                    decorators.append('classmethod')
-                elif data.kind == "Static Method" \
-                         and 'staticmethod' not in decorators:
-                    decorators.append('staticmethod')
-
-                if decorators:
-                    decorator = [('@' + dec, tags.br()) for dec in decorators]
-                else:
-                    decorator = ()
-
-                header = fillSlots(functionHeader,
-                                   decorator=decorator,
-                                   functionName=[data.name, '(', signature(data.argspec), '):'],
-                                   functionSourceLink=functionSourceLink)
+        r = []
+        for c in self.methods():
+            if isinstance(c, model.Function):
+                r.append(FunctionChild(self.docgetter, c))
             else:
-                header = fillSlots(attributeHeader,
-                                   attribute=data.name)
-            tag[fillSlots(child,
-                          header=header,
-                          functionAnchor=data.fullName(),
-                          shortFunctionAnchor=data.name,
-                          functionExtras=self.functionExtras(data),
-                          functionBody=self.functionBody(data))]
-        return tag
+                r.append(AttributeChild(self.docgetter, c))
+        return r
 
     def functionExtras(self, data):
         return []

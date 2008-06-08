@@ -1,0 +1,16 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="function">
+  <a>
+    <nevow:attr name="name" render="functionAnchor" />
+  </a>
+  <a>
+    <nevow:attr name="name" render="shortFunctionAnchor" />
+  </a>
+  <div class="functionHeader">
+    <nevow:invisible nevow:render="attribute">attribute</nevow:invisible> =
+  </div>
+  <div class="functionBody">
+    <nevow:invisible nevow:render="functionBody">
+      Docstring.
+    </nevow:invisible>
+  </div>
+</div>
