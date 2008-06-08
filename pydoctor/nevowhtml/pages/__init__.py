@@ -162,7 +162,7 @@ class CommonPage(object):
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c)))
             else:
                 r.append(AttributeChild(self.docgetter, c))
         return r

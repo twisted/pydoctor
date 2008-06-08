@@ -9,9 +9,10 @@ class FunctionChild(page.Element):
 
     docFactory = loaders.xmlfile(util.templatefile('function-child.html'))
 
-    def __init__(self, docgetter, ob):
+    def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter
         self.ob = ob
+        self._functionExtras = functionExtras
 
     @page.renderer
     def functionAnchor(self, request, tag):
@@ -55,7 +56,7 @@ class FunctionChild(page.Element):
 
     @page.renderer
     def functionExtras(self, request, tag):
-        return ()
+        return self._functionExtras
 
     @page.renderer
     def functionBody(self, request, tag):
