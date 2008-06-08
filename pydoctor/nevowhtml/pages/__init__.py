@@ -219,7 +219,7 @@ class CommonPage(object):
         return [o for o in self.ob.orderedcontents
                 if o.document_in_parent_page and o.isVisible]
 
-    def childlist(self, childlist):
+    def childlist(self):
         from pydoctor.nevowhtml.pages.attributechild import AttributeChild
         from pydoctor.nevowhtml.pages.functionchild import FunctionChild
         r = []
@@ -262,7 +262,7 @@ class CommonPage(object):
                          baseTables=self.baseTables(tag.patternGenerator('baseTable')),
                          bigTable=self.bigTable(tag.patternGenerator('bigTable')),
                          packageInitTable=self.packageInitTable(),
-                         childlist=self.childlist(tag.onePattern('childlist')),
+                         childlist=self.childlist(),
                          project=self.project(),
                          buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
                          )
