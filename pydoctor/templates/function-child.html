@@ -1,0 +1,28 @@
+<div class="function" nevow:pattern="child">
+  <a>
+    <nevow:attr name="name">
+      <nevow:slot name="functionAnchor" />
+    </nevow:attr>
+  </a>
+  <a>
+    <nevow:attr name="name">
+      <nevow:slot name="shortFunctionAnchor" />
+    </nevow:attr>
+  </a>
+  <div class="functionHeader">
+    <nevow:slot name="decorator"/>
+    def <nevow:slot name="functionName">functionName():</nevow:slot>
+    <a class="functionSourceLink" nevow:pattern="sourceLink">
+      <nevow:attr name="href">
+        <nevow:slot name="sourceHref" />
+      </nevow:attr>
+      (source)
+    </a>
+  </div>
+  <div class="functionBody">
+    <nevow:slot name="functionExtras" />
+    <nevow:slot name="functionBody">
+      Docstring.
+    </nevow:slot>
+  </div>
+</div>
