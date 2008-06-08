@@ -12,17 +12,17 @@ class AttributeChild(page.Element):
         self.ob = ob
 
     @page.renderer
-    def functionAnchor(self, tag, request):
+    def functionAnchor(self, request, tag):
         return self.ob.fullName()
 
     @page.renderer
-    def shortFunctionAnchor(self, tag, request):
+    def shortFunctionAnchor(self, request, tag):
         return self.ob.name
 
     @page.renderer
-    def attribute(self, tag, request):
+    def attribute(self, request, tag):
         return self.ob.name
 
     @page.renderer
-    def functionBody(self, tag, request):
+    def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)

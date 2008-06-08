@@ -14,15 +14,15 @@ class FunctionChild(page.Element):
         self.ob = ob
 
     @page.renderer
-    def functionAnchor(self, tag, request):
+    def functionAnchor(self, request, tag):
         return self.ob.fullName()
 
     @page.renderer
-    def shortFunctionAnchor(self, tag, request):
+    def shortFunctionAnchor(self, request, tag):
         return self.ob.name
 
     @page.renderer
-    def decorator(self, tag, request):
+    def decorator(self, request, tag):
         if self.ob.decorators:
             decorators = [ast_pp.pp(dec) for dec in self.ob.decorators]
         else:
@@ -43,20 +43,20 @@ class FunctionChild(page.Element):
         return decorator
 
     @page.renderer
-    def functionName(self, tag, request):
+    def functionName(self, request, tag):
         return [self.ob.name, '(', signature(self.ob.argspec), '):']
 
     @page.renderer
-    def sourceLink(self, tag, request):
+    def sourceLink(self, request, tag):
         if self.ob.sourceHref:
             return tag.fillSlots('sourceHref', self.ob.sourceHref)
         else:
             return ()
 
     @page.renderer
-    def functionExtras(self, tag, request):
+    def functionExtras(self, request, tag):
         return ()
 
     @page.renderer
-    def functionBody(self, tag, request):
+    def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)
