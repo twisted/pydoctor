@@ -220,6 +220,10 @@ class CommonPage(object):
                 if o.document_in_parent_page and o.isVisible]
 
     def childlist(self, childlist):
+        from pydoctor.nevowhtml.pages.functionchild import FunctionChild
+        return [FunctionChild(self.docgetter, c) for c in self.methods()]
+        for c in childlist:
+            f = FunctionChild(self.docgetter, c)
         tag = tags.invisible()
         functionHeader = childlist.patternGenerator('functionHeader')
         attributeHeader = childlist.patternGenerator('attributeHeader')
