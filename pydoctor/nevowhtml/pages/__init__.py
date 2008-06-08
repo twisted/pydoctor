@@ -2,6 +2,7 @@ from nevow import inevow, loaders, tags
 from zope.interface import implements
 
 from pydoctor import ast_pp, epydoc2stan, model
+from pydoctor.nevowhtml.pages.table import ChildTable
 from pydoctor.nevowhtml.util import \
      templatefile, fillSlots, srclink, taglink
 
@@ -54,70 +55,6 @@ def mediumName(obj):
     def process(part):
         return obj.system.abbrevmapping.get(part, part[0])
     return '.'.join([process(p) for p in path.split('.')]) + '.' + name
-
-class TableFragment(object):
-    implements(inevow.IRenderer)
-    docFactory = loaders.xmlfile(templatefile('table.html'))
-    last_id = 0
-    classprefix = ''
-    def __init__(self, parentpage, ob, has_lineno_col, children):
-        self.parentpage = parentpage
-        self.system = ob.system
-        self.has_lineno_col = has_lineno_col
-        self.children = children
-        TableFragment.last_id += 1
-        self._id = TableFragment.last_id
-        self.ob = ob
-
-    def id(self):
-        return 'id'+str(self._id)
-
-    def header(self, header):
-        if self.system.options.htmlusesorttable:
-            if self.has_lineno_col:
-                return fillSlots(header,
-                                 linenohead=header.onePattern('linenohead'))
-            else:
-                return fillSlots(header,
-                                 linenohead=())
-        else:
-            return ()
-
-    def rows(self, row, linenocell):
-        rows = []
-        for child in self.children:
-            if self.has_lineno_col:
-                if hasattr(child, 'linenumber'):
-                    sourceHref = srclink(child)
-                    if not sourceHref:
-                        line = child.linenumber
-                    else:
-                        line = tags.a(href=sourceHref)[child.linenumber]
-                else:
-                    line = ()
-                linenocell_ = fillSlots(linenocell,
-                                        lineno=line)
-            else:
-                linenocell_ = ()
-            class_ = child.lckind
-            if child.parent is not self.ob:
-                class_ = 'base' + class_
-            summaryDoc = self.parentpage.docgetter.get(child, summary=True)
-            rows.append(fillSlots(row,
-                                  class_=class_,
-                                  kind=child.kind,
-                                  name=taglink(child, child.name),
-                                  linenocell=linenocell_,
-                                  summaryDoc=summaryDoc))
-        return rows
-
-    def rend(self, ctx, data):
-        tag = tags.invisible[self.docFactory.load()]
-        return fillSlots(tag,
-                         id=self.id(),
-                         header=self.header(tag.onePattern('header')),
-                         rows=self.rows(tag.patternGenerator('row'),
-                                        tag.patternGenerator('linenocell')))
 
 class DocGetter(object):
     def get(self, ob, summary=False):
@@ -200,7 +137,7 @@ class CommonPage(object):
     def mainTable(self):
         children = self.children()
         if children:
-            return TableFragment(self, self.ob, self.has_lineno_col(), children)
+            return ChildTable(self.docgetter, self.ob, self.has_lineno_col(), children)
         else:
             return ()
 
@@ -281,7 +218,7 @@ class PackagePage(CommonPage):
             key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
             return [tags.p["From the __init__.py module:"],
-                    TableFragment(self, init, self.usesorttable, children)]
+                    ChildTable(self.docgetter, init, self.usesorttable, children)]
         else:
             return ()
 
@@ -410,7 +347,7 @@ class ClassPage(CommonPage):
     def baseTables(self, item):
         return [fillSlots(item,
                           baseName=self.baseName(b),
-                          baseTable=TableFragment(self, self.ob, self.has_lineno_col(),
+                          baseTable=ChildTable(self.docgetter, self.ob, self.has_lineno_col(),
                                                   sorted(attrs, key=lambda o:-o.privacyClass)))
                 for b, attrs in self.baselists[1:]]
 
@@ -435,7 +372,7 @@ class ClassPage(CommonPage):
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
         all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
-        return tag[TableFragment(self, self.ob, self.has_lineno_col(), all_attrs)]
+        return tag[ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs)]
 
     def functionExtras(self, data):
         r = []
