@@ -1,0 +1,25 @@
+<div xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="function">
+  <a>
+    <nevow:attr name="name" nevow:render="functionAnchor" />
+  </a>
+  <a>
+    <nevow:attr name="name" nevow:render="shortFunctionAnchor" />
+  </a>
+  <div class="functionHeader">
+    <nevow:invisible nevow:render="decorator" />
+    def
+    <nevow:invisible nevow:render="functionName">
+      functionName():
+    </nevow:invisible>
+    <a class="functionSourceLink" nevow:render="sourceLink">
+      <nevow:attr name="href"><nevow:slot name="sourceHref" /></nevow:attr>
+      (source)
+    </a>
+  </div>
+  <div class="functionBody">
+    <nevow:invisible nevow:render="functionExtras" />
+    <nevow:invisible nevow:render="functionBody">
+      Docstring.
+    </nevow:invisible>
+  </div>
+</div>

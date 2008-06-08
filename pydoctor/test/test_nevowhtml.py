@@ -25,13 +25,13 @@ def test_simple():
 
 def test_empty_table():
     mod = fromText('')
-    t = pages.TableFragment(None, mod, True, [])
+    t = pages.ChildTable(pages.DocGetter(), mod, True, [])
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table():
     mod = fromText('def f(): pass')
-    t = pages.TableFragment(pages.ModulePage(mod), mod, True, mod.orderedcontents)
+    t = pages.ChildTable(pages.DocGetter(), mod, True, mod.orderedcontents)
     flattened = flat.flatten(t)
     assert 'The renderer named' not in flattened
 
