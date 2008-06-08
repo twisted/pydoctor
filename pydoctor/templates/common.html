@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
-<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+<html xmlns:nevow="http://nevow.com/ns/nevow/0.1" nevow:render="all">
   <head>
     <title>API docs for &ldquo;<nevow:slot name="title">Something</nevow:slot>&rdquo;</title>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <link rel="stylesheet" type="text/css" href="apidocs.css"/>
+    <link rel="stylesheet" type="text/css" href="apidocs.css" />
     <nevow:slot name="ifusesorttable">
       <script nevow:pattern="ifusesorttable" type="text/javascript"
               src="sorttable.js"></script>
@@ -34,6 +34,7 @@
     <nevow:slot name="docstring">
       A docstring.
     </nevow:slot>
+
     <nevow:slot name="splittingLinks" />
     <p nevow:pattern="splittingLinks">
       <a id="showSplitLink" href="#" onclick="showSplit()" class="jslink">Split Table into Classes</a>
@@ -53,6 +54,7 @@
     <div id="bigTable" nevow:pattern="bigTable">
     </div>
     <nevow:slot name="packageInitTable" />
+
     <nevow:slot name="childlist" />
     <address>
       <a href="index.html">API Documentation</a> for <nevow:slot name="project">Some
