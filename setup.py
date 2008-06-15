@@ -3,14 +3,15 @@ from distutils.core import setup
 
 setup(
     name='pydoctor',
-    version='0.2',
+    version='0.3',
     author='Michael Hudson',
-    author_email='mwh@python.net',
+    author_email='micahel@gmail.com',
     url='http://codespeak.net/svn/user/mwh/pydoctor/trunk',
     description='API doc generator.',
     packages=[
         'pydoctor',
         'pydoctor.nevowhtml',
+        'pydoctor.nevowhtml.pages',
         ],
     package_data={
         'pydoctor': [
