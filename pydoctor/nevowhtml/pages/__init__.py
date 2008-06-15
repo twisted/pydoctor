@@ -1,7 +1,6 @@
-from nevow import inevow, loaders, tags
-from zope.interface import implements
+from nevow import loaders, page, tags
 
-from pydoctor import ast_pp, epydoc2stan, model
+from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.pages.table import ChildTable
 from pydoctor.nevowhtml.util import \
      templatefile, fillSlots, srclink, taglink
@@ -60,8 +59,7 @@ class DocGetter(object):
     def get(self, ob, summary=False):
         return epydoc2stan.doc2html(ob, summary=summary)[0]
 
-class CommonPage(object):
-    implements(inevow.IRenderer)
+class CommonPage(page.Element):
     docFactory = loaders.xmlfile(templatefile('common.html'))
 
     def __init__(self, ob, docgetter=None):
@@ -182,8 +180,8 @@ class CommonPage(object):
         else:
             return ()
 
-    def rend(self, ctx, data):
-        tag = tags.invisible[self.docFactory.load()]
+    @page.renderer
+    def all(self, request, tag):
         return fillSlots(tag,
                          title=self.title(),
                          ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
