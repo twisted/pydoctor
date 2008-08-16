@@ -4,7 +4,7 @@ from pydoctor import model, ast_pp
 from compiler import visitor, transformer, ast
 import symbol, token
 
-class mystr(str):
+class str_with_orig(str):
     """Hack to allow recovery of the literal that gave rise to a docstring in an AST.
 
     We do this to allow the users to edit the original form of the docstring in the
@@ -38,7 +38,7 @@ class MyTransformer(transformer.Transformer):
                 s = ''
                 for t in node:
                     s = s + eval(t[1])
-                r = mystr(s)
+                r = str_with_orig(s)
                 r.orig = ''.join(t[1] for t in node)
                 r.linenumber = node[0][2]
                 return r

@@ -11,7 +11,7 @@ import parser
 import time
 
 def parse_str(s):
-    """Parse the string literal into a `mystr` that has the literal form as an attribute."""
+    """Parse the string literal into a L{str_with_orig} that has the literal form as an attribute."""
     t = parser.suite(s.strip()).totuple(1)
     return MyTransformer().get_docstring(t)
 
