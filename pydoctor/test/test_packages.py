@@ -3,7 +3,7 @@ from pydoctor import model
 from pydoctor.test import test_astbuilder
 
 def processPackage(packname, systemcls=model.System):
-    testpackage = py.magic.autopath().dirpath().join(packname)
+    testpackage = py.magic.autopath().dirpath().join('testpackages', packname)
     system = systemcls()
     system.packages.append(testpackage.strpath)
     system.addDirectory(testpackage.strpath)
