@@ -1,3 +1,5 @@
+"""Support for a few things specific to documenting Twisted."""
+
 from pydoctor import model, ast_pp, zopeinterface
 
 class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):

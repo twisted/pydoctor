@@ -5,10 +5,13 @@ from compiler import visitor, transformer, ast
 import symbol, token
 
 class mystr(str):
+    """Hack to allow recovery of the literal that gave rise to a string constant in an AST."""
     pass
 
 class MyTransformer(transformer.Transformer):
+    """Custom transformer that records the string literal that gave rise to a docstring."""
     def get_docstring(self, node, n=None):
+        """Override C{transformer.Transformer.get_docstring} to record the literal docstring."""
         if n is None:
             n = node[0]
             node = node[1:]
@@ -43,6 +46,7 @@ class MyTransformer(transformer.Transformer):
 
 
 def parseFile(path):
+    """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
     f = open(path, "U")
     src = f.read() + "\n"
     f.close()
@@ -50,6 +54,7 @@ def parseFile(path):
 
 
 def parse(buf):
+    """Duplicate of L{compiler.parse} that uses L{MyTransformer}."""
     return MyTransformer().parsesuite(buf)
 
 
@@ -363,6 +368,7 @@ class ASTBuilder(object):
 model.System.defaultBuilder = ASTBuilder
 
 def findAll(modast, mod):
+    """Find and attempt to parse into a list of names the __all__ of a module's AST."""
     for node in modast.node.nodes:
         if isinstance(node, ast.Assign) and \
                len(node.nodes) == 1 and \

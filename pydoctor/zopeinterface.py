@@ -1,3 +1,5 @@
+"""Support for Zope interfaces."""
+
 from pydoctor import model, ast_pp, astbuilder
 from compiler import ast
 import re

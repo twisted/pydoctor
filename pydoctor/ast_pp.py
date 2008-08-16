@@ -320,18 +320,7 @@ class SourceWriter(object):
         return self.s.getvalue()
 
 def pp(ast):
+    """Convert `ast` to Python source."""
     sw = SourceWriter()
     walk(ast, sw)
     return sw.s.getvalue()
-
-def magic(s):
-    ast = parse(s)
-    sw = SourceWriter()
-    walk(ast, sw)
-    return ast, sw
-
-if __name__ == '__main__':
-    f = file(__file__, 'r').read()
-    ast, sw = magic(f)
-    print sw
-    print ast

@@ -1,3 +1,5 @@
+"""A web application that dynamically generates pydoctor documentation."""
+
 from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from zope.interface import implements

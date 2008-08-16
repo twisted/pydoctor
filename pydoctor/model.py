@@ -1,3 +1,5 @@
+"""Core pydoctor objects."""
+
 import datetime
 import os
 import posixpath
