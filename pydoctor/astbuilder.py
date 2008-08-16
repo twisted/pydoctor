@@ -5,13 +5,19 @@ from compiler import visitor, transformer, ast
 import symbol, token
 
 class mystr(str):
-    """Hack to allow recovery of the literal that gave rise to a string constant in an AST."""
+    """Hack to allow recovery of the literal that gave rise to a docstring in an AST.
+
+    We do this to allow the users to edit the original form of the docstring in the
+    editing server defined in the L{server} module.
+
+    @ivar orig: The literal that gave rise to this constant in the AST.
+    """
     pass
 
 class MyTransformer(transformer.Transformer):
-    """Custom transformer that records the string literal that gave rise to a docstring."""
+    """Custom transformer that creates Nodes with L{str_with_orig} instances for docstrings."""
     def get_docstring(self, node, n=None):
-        """Override C{transformer.Transformer.get_docstring} to record the literal docstring."""
+        """Override C{transformer.Transformer.get_docstring} to return a L{str_with_orig} object."""
         if n is None:
             n = node[0]
             node = node[1:]
