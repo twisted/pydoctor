@@ -1,3 +1,5 @@
+"""Classes that generate the summary pages."""
+
 from nevow import page, loaders, tags
 
 from pydoctor import epydoc2stan, model

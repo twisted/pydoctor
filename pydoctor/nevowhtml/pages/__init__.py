@@ -1,3 +1,5 @@
+"""The classes that turn  L{Documentable} instances into objects Nevow can render."""
+
 from nevow import loaders, page, tags
 
 from pydoctor import epydoc2stan, model
