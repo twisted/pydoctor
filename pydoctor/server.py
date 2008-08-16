@@ -364,7 +364,7 @@ class FileDiff(object):
     def apply_edit(self, editA, editB):
         if not editA.newDocstring:
             if editA.obj.linenumber:
-                lineno = editA.obj.linenumber + 1
+                lineno = editA.obj.linenumber + 0
             else:
                 lineno = 0
             origlines = []
@@ -376,7 +376,7 @@ class FileDiff(object):
         if editB.newDocstring:
             newlines = editB.newDocstring.orig.splitlines()
             newlines[0] = indentationAmount(editB.obj)*' ' + newlines[0]
-            if lineno == 0 and self.lines[0].strip() != '':
+            if lineno == 0 and self.lines and self.lines[0].strip() != '':
                 newlines.append('')
         else:
             newlines = []
