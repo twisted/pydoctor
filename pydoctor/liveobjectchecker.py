@@ -1,3 +1,5 @@
+"""Extremely experimental code for augmenting pydoctor's data by introspection."""
+
 from pydoctor import model, astbuilder
 import types, sys, os, warnings, inspect
 

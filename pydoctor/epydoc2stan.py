@@ -1,3 +1,5 @@
+"""Convert epydoc markup into content renderable by Nevow."""
+
 from pydoctor import model, zopeinterface
 
 from nevow import tags

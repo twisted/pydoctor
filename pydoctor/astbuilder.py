@@ -1,3 +1,4 @@
+"""Convert ASTs into L{pydoctor.model.Documentable} instances."""
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer, ast

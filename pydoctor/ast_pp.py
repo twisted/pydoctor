@@ -1,4 +1,8 @@
-# this is stolen from exarkun's sandbox
+"""Convert compiler module ASTs back into Python source code.
+
+This was stolen from exarkun's sandbox in svn.twistedmatrix.com:
+U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
+"""
 
 from cStringIO import StringIO
 from compiler import parse, walk

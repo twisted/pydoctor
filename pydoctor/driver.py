@@ -1,3 +1,4 @@
+"""The command-line parsing and entry point."""
 from pydoctor import model, liveobjectchecker
 import sys, os
 
