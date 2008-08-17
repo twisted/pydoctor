@@ -1,4 +1,4 @@
-  Copyright 2006-2007 Michael Hudson mwh@python.net
+  Copyright 2006-2008 Michael Hudson mwh@python.net
 
                        All Rights Reserved
 
