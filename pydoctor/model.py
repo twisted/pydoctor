@@ -532,13 +532,13 @@ class System(object):
         self.module_count += 1
         self.setSourceHref(mod)
 
-    def addDirectory(self, dirpath, parentPackage=None):
+    def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
             raise Exception("package path %r does not exist!"
                             %(dirpath,))
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
-                            "addDirectory")
+                            "addPackage")
         package = self.Package(self, os.path.basename(dirpath),
                                None, parentPackage)
         self.addObject(package)
@@ -549,7 +549,7 @@ class System(object):
             if os.path.isdir(fullname):
                 initname = os.path.join(fullname, '__init__.py')
                 if os.path.exists(initname):
-                    self.addDirectory(fullname, package)
+                    self.addPackage(fullname, package)
             elif fname.endswith('.py') and not fname.startswith('.'):
                 self.addModule(fullname, package)
 

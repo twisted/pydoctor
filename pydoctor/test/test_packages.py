@@ -6,7 +6,7 @@ def processPackage(packname, systemcls=model.System):
     testpackage = py.magic.autopath().dirpath().join('testpackages', packname)
     system = systemcls()
     system.packages.append(testpackage.strpath)
-    system.addDirectory(testpackage.strpath)
+    system.addPackage(testpackage.strpath)
     system.process()
     return system
 
@@ -26,11 +26,6 @@ def test_modnamedafterbuiltin():
     system = processPackage("modnamedafterbuiltin")
     # but let's test _something_
     assert system.allobjects['modnamedafterbuiltin.mod.Dict'].baseobjects == [None]
-
-def test_package_docstring():
-    system = processPackage("localimporttest")
-    assert (system.allobjects['localimporttest.__init__'].docstring ==
-            "DOCSTRING")
 
 def test_nestedconfusion():
     system = processPackage("nestedconfusion")
@@ -55,7 +50,7 @@ def test_importingfrompackage():
     testpackage = py.magic.autopath().dirpath().join(packname)
     system = model.System()
     system.packages.append(testpackage.strpath)
-    system.addDirectory(testpackage.strpath)
+    system.addPackage(testpackage.strpath)
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
     assert submod.state == model.PROCESSED

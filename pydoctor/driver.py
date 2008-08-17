@@ -305,7 +305,7 @@ def main(args):
                 if path in system.packages:
                     continue
                 system.msg('addPackage', 'adding directory ' + path)
-                system.addDirectory(path, prependedpackage)
+                system.addPackage(path, prependedpackage)
                 system.packages.append(path)
             for path in options.modules:
                 path = os.path.normpath(path)
