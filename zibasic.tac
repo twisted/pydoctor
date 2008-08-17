@@ -5,7 +5,7 @@ from pydoctor import server, zopeinterface
 from nevow import appserver
 
 system = zopeinterface.ZopeInterfaceSystem()
-system.addDirectory('pydoctor/test/interfaceclass')
+system.addDirectory('pydoctor/test/testpackages/interfaceclass')
 system.process()
 system.options.projectname = 'basic'
 
