@@ -1,3 +1,5 @@
+"""The classes that turn  L{Documentable} instances into objects Nevow can render."""
+
 from nevow import loaders, page, tags
 
 from pydoctor import epydoc2stan, model
@@ -75,7 +77,7 @@ class CommonPage(page.Element):
         return self.ob.fullName()
 
     def heading(self):
-        return tags.h1(class_=self.ob.lckind)[
+        return tags.h1(class_=self.ob.css_class)[
             self.ob.kind + " " + mediumName(self.ob)]
 
     def part(self):

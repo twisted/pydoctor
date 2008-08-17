@@ -1,3 +1,11 @@
+"""Core pydoctor objects.
+
+The two core objects are L{Documentable} and L{System}.  Instances of
+(subclasses of) L{Documentable} represent the documentable 'things' in the
+system being documented.  An instance of L{System} represents the whole system
+being documented -- a System is a bad of Documentables, in some sense.
+"""
+
 import datetime
 import os
 import posixpath
@@ -17,11 +25,26 @@ import __builtin__
 #   Functions can't contain anything.
 
 class Documentable(object):
+    """An object that can be documented.
+
+    The interface is a bit ridiculously wide.
+
+    @ivar docstring: The object's docstring.  But also see docsources.
+    @ivar system: The system the object is part of.
+    @ivar prefix: ...
+    @ivar parent: ...
+    @ivar parentMod: ...
+    @ivar name: ...
+    @ivar document_in_parent_page: ...
+    @ivar sourceHref: ...
+    @ivar kind: ...
+    """
     document_in_parent_page = False
     sourceHref = None
 
     @property
-    def lckind(self):
+    def css_class(self):
+        """A short, lower case description for use as a CSS class in HTML."""
         class_ = self.kind.lower().replace(' ', '')
         if self.privacyClass == PrivacyClass.PRIVATE:
             class_ += ' private'
@@ -50,19 +73,32 @@ class Documentable(object):
         self.contents = {}
         self.orderedcontents = []
         self._name2fullname = {}
+
     def fullName(self):
         return self.prefix + self.name
+
     def __repr__(self):
         return "%s %r"%(self.__class__.__name__, self.fullName())
+
     def docsources(self):
+        """Objects that can be consisdered as a source of documentation.
+
+        The motivating example for having multiple sources is looking at a
+        superclass' implementation of a method for documentation for a
+        subclass'.
+        """
         yield self
+
     def name2fullname(self, name):
+        """XXX what is the difference between name2fullname,
+        dottedNameToFullName and resolveDottedName??"""
         if name in self._name2fullname:
             return self._name2fullname[name]
         else:
             return self.parent.name2fullname(name)
 
     def _resolveName(self, name, verbose):
+        """Helper for resolveDottedName."""
         system = self.system
         obj = self
         while obj:
@@ -98,6 +134,8 @@ class Documentable(object):
         return None
 
     def resolveDottedName(self, dottedname, verbose=None):
+        """XXX what is the difference between name2fullname,
+        dottedNameToFullName and resolveDottedName??"""
         if verbose is None:
             verbose = self.system.options.verbosity
         parts = dottedname.split('.')
@@ -117,6 +155,8 @@ class Documentable(object):
         return obj
 
     def dottedNameToFullName(self, dottedname):
+        """XXX what is the difference between name2fullname,
+        dottedNameToFullName and resolveDottedName??"""
         if '.' not in dottedname:
             start, rest = dottedname, ''
         else:
@@ -131,10 +171,18 @@ class Documentable(object):
 
     @property
     def privacyClass(self):
+        """How visible this object should be.
+
+        @rtype: a member of the L{PrivacyClass} class/enum.
+        """
         return self.system.privacyClass(self)
 
     @property
     def isVisible(self):
+        """Is this object is so private as to be not shown at all?
+
+        This is just a simple helper which defers to self.privacyClass.
+        """
         return self.privacyClass != PrivacyClass.HIDDEN
 
     def __getstate__(self):
@@ -234,16 +282,26 @@ class Function(Documentable):
                 yield b.contents[self.name]
 
 class PrivacyClass:
+    """'enum' containing values indicating how private an object should be.
+
+    @cvar HIDDEN: Don't show the object at all.
+    @cvar PRIVATE: Show, but de-emphasize the object.
+    @cvar VISIBLE: Show the object as normal.
+    """
 
     HIDDEN = 0
-
     PRIVATE = 1
-
     VISIBLE = 2
 
 
 
 class System(object):
+    """A collection of related documentable objects.
+
+    PyDoctor documents collections of objects, often the contents of a
+    package.
+    """
+
     Class = Class
     Module = Module
     Package = Package
@@ -473,15 +531,14 @@ class System(object):
         self.unprocessed_modules.add(mod)
         self.module_count += 1
         self.setSourceHref(mod)
-        self.state = 'preparse'
 
-    def addDirectory(self, dirpath, parentPackage=None):
+    def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
             raise Exception("package path %r does not exist!"
                             %(dirpath,))
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
-                            "addDirectory")
+                            "addPackage")
         package = self.Package(self, os.path.basename(dirpath),
                                None, parentPackage)
         self.addObject(package)
@@ -492,7 +549,7 @@ class System(object):
             if os.path.isdir(fullname):
                 initname = os.path.join(fullname, '__init__.py')
                 if os.path.exists(initname):
-                    self.addDirectory(fullname, package)
+                    self.addPackage(fullname, package)
             elif fname.endswith('.py') and not fname.startswith('.'):
                 self.addModule(fullname, package)
 

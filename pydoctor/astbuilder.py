@@ -1,13 +1,23 @@
+"""Convert ASTs into L{pydoctor.model.Documentable} instances."""
 from pydoctor import model, ast_pp
 
 from compiler import visitor, transformer, ast
 import symbol, token
 
-class mystr(str):
+class str_with_orig(str):
+    """Hack to allow recovery of the literal that gave rise to a docstring in an AST.
+
+    We do this to allow the users to edit the original form of the docstring in the
+    editing server defined in the L{server} module.
+
+    @ivar orig: The literal that gave rise to this constant in the AST.
+    """
     pass
 
 class MyTransformer(transformer.Transformer):
+    """Custom transformer that creates Nodes with L{str_with_orig} instances for docstrings."""
     def get_docstring(self, node, n=None):
+        """Override C{transformer.Transformer.get_docstring} to return a L{str_with_orig} object."""
         if n is None:
             n = node[0]
             node = node[1:]
@@ -28,7 +38,7 @@ class MyTransformer(transformer.Transformer):
                 s = ''
                 for t in node:
                     s = s + eval(t[1])
-                r = mystr(s)
+                r = str_with_orig(s)
                 r.orig = ''.join(t[1] for t in node)
                 r.linenumber = node[0][2]
                 return r
@@ -42,6 +52,7 @@ class MyTransformer(transformer.Transformer):
 
 
 def parseFile(path):
+    """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
     f = open(path, "U")
     src = f.read() + "\n"
     f.close()
@@ -49,6 +60,7 @@ def parseFile(path):
 
 
 def parse(buf):
+    """Duplicate of L{compiler.parse} that uses L{MyTransformer}."""
     return MyTransformer().parsesuite(buf)
 
 
@@ -362,6 +374,7 @@ class ASTBuilder(object):
 model.System.defaultBuilder = ASTBuilder
 
 def findAll(modast, mod):
+    """Find and attempt to parse into a list of names the __all__ of a module's AST."""
     for node in modast.node.nodes:
         if isinstance(node, ast.Assign) and \
                len(node.nodes) == 1 and \

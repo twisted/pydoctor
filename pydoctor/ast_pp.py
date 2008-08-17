@@ -1,4 +1,14 @@
-# this is stolen from exarkun's sandbox
+"""Convert compiler package AST nodes into Python source code.
+
+The entry point is the L{pp} function.
+
+This is mostly used to present certain nodes in the rendered documentation -- for
+example any default values for a function's arguments are rendered using L{pp}.
+
+The code was stolen from exarkun's svn.twistedmatrix.com sandbox:
+U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
+"""
+
 
 from cStringIO import StringIO
 from compiler import parse, walk
@@ -316,18 +326,10 @@ class SourceWriter(object):
         return self.s.getvalue()
 
 def pp(ast):
+    """Convert C{ast} to Python source.
+
+    @param ast: The node to render into Python source.
+    """
     sw = SourceWriter()
     walk(ast, sw)
     return sw.s.getvalue()
-
-def magic(s):
-    ast = parse(s)
-    sw = SourceWriter()
-    walk(ast, sw)
-    return ast, sw
-
-if __name__ == '__main__':
-    f = file(__file__, 'r').read()
-    ast, sw = magic(f)
-    print sw
-    print ast

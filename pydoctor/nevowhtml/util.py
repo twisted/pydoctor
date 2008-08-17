@@ -1,3 +1,5 @@
+"""Miscellaneous utilities."""
+
 from pydoctor import model
 
 from nevow import tags

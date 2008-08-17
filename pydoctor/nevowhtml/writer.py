@@ -1,3 +1,5 @@
+"""Badly named module that contains the driving code for the rendering."""
+
 from pydoctor.nevowhtml.util import link, templatefile
 from pydoctor.nevowhtml import pages, summary
 

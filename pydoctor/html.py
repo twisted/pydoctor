@@ -1,3 +1,5 @@
+"""The old HTML generator.  Deprecated, do not use."""
+
 from pydoctor import model
 from os.path import join as opj
 import os, inspect, shutil

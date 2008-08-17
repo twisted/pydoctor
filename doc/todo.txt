@@ -16,9 +16,6 @@ Model:
   - understand import * from a package
   - the package.contents vs package.contents['__init__'].contents
     thing is getting out of hand.  really really really.
-  - should probably aim for slightly smarter data model --
-    .parentModule attributes, having the .kind of Function contained in
-    a Class be "Method", that sort of thing.
 
 General:
 

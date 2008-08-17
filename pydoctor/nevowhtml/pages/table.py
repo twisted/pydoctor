@@ -14,7 +14,7 @@ class TableRow(page.Element):
 
     @page.renderer
     def class_(self, request, tag):
-        class_ = self.child.lckind
+        class_ = self.child.css_class
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
