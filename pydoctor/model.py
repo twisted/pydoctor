@@ -171,7 +171,10 @@ class Documentable(object):
 
     @property
     def privacyClass(self):
-        """"""
+        """How visible this object should be.
+
+        @rtype: a member of the L{PrivacyClass} class/enum.
+        """
         return self.system.privacyClass(self)
 
     @property
@@ -279,16 +282,26 @@ class Function(Documentable):
                 yield b.contents[self.name]
 
 class PrivacyClass:
+    """'enum' containing values indicating how private an object should be.
+
+    @cvar HIDDEN: Don't show the object at all.
+    @cvar PRIVATE: Show, but de-emphasize the object.
+    @cvar VISIBLE: Show the object as normal.
+    """
 
     HIDDEN = 0
-
     PRIVATE = 1
-
     VISIBLE = 2
 
 
 
 class System(object):
+    """A collection of related documentable objects.
+
+    PyDoctor documents collections of objects, often the contents of a
+    package.
+    """
+
     Class = Class
     Module = Module
     Package = Package
@@ -518,7 +531,6 @@ class System(object):
         self.unprocessed_modules.add(mod)
         self.module_count += 1
         self.setSourceHref(mod)
-        self.state = 'preparse'
 
     def addDirectory(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
