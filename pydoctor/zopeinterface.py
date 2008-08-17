@@ -47,7 +47,7 @@ class ZopeInterfaceClass(model.Class):
 
 class Attribute(model.Documentable):
     kind = "Attribute"
-    lckind = "attribute"
+    css_class = "attribute"
     document_in_parent_page = True
 
 class ZopeInterfaceFunction(model.Function):
