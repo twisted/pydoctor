@@ -3,7 +3,9 @@ class C:
 
     This docstring has lines, paragraphs and everything!
 
-    @ivar notreally: even a field!"""
+    @ivar notreally: even a field!
+    @since: 2.1
+    """
     class S:
         pass
     def f(self):

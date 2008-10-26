@@ -145,6 +145,7 @@ class FieldHandler(object):
         self.seealsos = []
         self.notes = []
         self.authors = []
+        self.sinces = []
         self.unknowns = []
         self.unattached_types = {}
 
@@ -247,6 +248,9 @@ class FieldHandler(object):
     def handle_author(self, field):
         self.authors.append(field)
 
+    def handle_since(self, field):
+        self.sinces.append(field)
+
     def handleUnknownField(self, field):
         self.obj.system.msg(
             'epydoc2stan',
@@ -288,6 +292,7 @@ class FieldHandler(object):
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
+                        ('Present Since', 'Present Since', self.sinces),
                         ('Note', 'Notes', self.notes)):
             r.append(format_field_list(self.obj, s, l, p))
         unknowns = {}
