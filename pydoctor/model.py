@@ -415,6 +415,7 @@ class System(object):
         self.warnings.setdefault(type, []).append((fn, detail))
 
     def objectsOfType(self, cls):
+        """Iterate over all instances of C{cls} present in the system. """
         for o in self.orderedallobjects:
             if isinstance(o, cls):
                 yield o
@@ -462,6 +463,7 @@ class System(object):
                         obj.__dict__[k[1:]] = n
 
     def addObject(self, obj):
+        """Add C{object} to the system."""
         if obj.parent:
             obj.parent.orderedcontents.append(obj)
             obj.parent.contents[obj.name] = obj
