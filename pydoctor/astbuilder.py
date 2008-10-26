@@ -172,6 +172,18 @@ class ModuleVistor(object):
             name2fullname[asname] = modname + '.' + fromname
 
     def visitImport(self, node):
+        """Process an import statement.
+
+        The grammar for the statement is roughly:
+
+        mod_as := DOTTEDNAME ['as' NAME]
+        import_stmt := 'import' mod_as (',' mod_as)*
+
+        and this is translated into a node which is an instance of Import wih
+        an attribute 'names', which is in turn a list of 2-tuples
+        (dotted_name, as_name) where as_name is None if there was no 'as foo'
+        part of the statement.
+        """
         name2fullname = self.builder.current._name2fullname
         for fromname, asname in node.names:
             fullname = self.builder.expandModname(fromname)

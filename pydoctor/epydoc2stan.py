@@ -19,8 +19,8 @@ def get_parser(formatname):
         return mod.parse_docstring, None
 
 def boringDocstring(doc, summary=False):
-    """Generate an HTML representation of a docstring in a really boring
-    way."""
+    """Generate an HTML representation of a docstring in a really boring way.
+    """
     # inspect.getdoc requires an object with a __doc__ attribute, not
     # just a string :-(
     if doc is None or not doc.strip():
