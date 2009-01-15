@@ -141,13 +141,18 @@ class Documentable(object):
         parts = dottedname.split('.')
         obj = self._resolveName(parts[0], verbose)
         if obj is None:
+            self.system.msg(
+                "resolveDottedName", "%s:%s invalid ref to %s" % (
+                self.fullName(), self.linenumber, dottedname),
+                thresh=-1)
             return obj
         system = self.system
         for p in parts[1:]:
             if p not in obj.contents:
-                if verbose > 0:
-                    print "2 didn't find %r from %r"%(dottedname,
-                                                      self.fullName())
+                self.system.msg(
+                    "resolveDottedName", "%s:%s invalid ref to %s" % (
+                        self.fullName(), self.linenumber, dottedname),
+                    thresh=-1)
                 return None
             obj = obj.contents[p]
         if verbose > 1:
