@@ -322,7 +322,7 @@ def reportErrors(obj, errs):
             'epydoc2stan2',
             '%s:%s epytext error %r' % (obj.fullName(),
                                         obj.linenumber + err.linenum(),
-                                        err.descr()))
+                                        err._descr))
     if errs and obj.fullName() not in obj.system.epytextproblems:
         obj.system.epytextproblems.append(obj.fullName())
         obj.system.msg('epydoc2stan',
