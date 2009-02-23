@@ -269,7 +269,7 @@ class FieldHandler(object):
         for iv in self.ivar_descs:
             attr = zopeinterface.Attribute(
                 self.obj.system, iv.name, iv.body, self.obj)
-            if attr.isVisible:
+            if iv.name is None or attr.isVisible:
                 ivs.append(iv)
         self.ivar_descs = ivs
 
