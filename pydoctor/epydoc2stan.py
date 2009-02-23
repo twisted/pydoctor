@@ -318,11 +318,15 @@ def de_p(s):
 
 def reportErrors(obj, errs):
     for err in errs:
+        if isinstance(err, str):
+            linenumber = '??'
+            descr = err
+        else:
+            linenumber = obj.linenumber + err.linenum()
+            descr = err._descr
         obj.system.msg(
             'epydoc2stan2',
-            '%s:%s epytext error %r' % (obj.fullName(),
-                                        obj.linenumber + err.linenum(),
-                                        err._descr))
+            '%s:%s epytext error %r' % (obj.fullName(), linenumber, descr))
     if errs and obj.fullName() not in obj.system.epytextproblems:
         obj.system.epytextproblems.append(obj.fullName())
         obj.system.msg('epydoc2stan',
