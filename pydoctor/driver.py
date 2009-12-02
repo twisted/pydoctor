@@ -64,7 +64,7 @@ def getparser():
         help=("Like py.test's --pdb."))
     parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
-        help=("Produce html output."))
+        default=True, help=("Produce html output."))
     parser.add_option(
         '--server', action='store_true', dest='server',
         help=("Serve HTML on a local server."))
@@ -224,6 +224,8 @@ def main(args):
     import cPickle
     options, args = parse_args(args)
 
+    args = list(args) + options.modules + options.packages
+
     exitcode = 0
 
     if options.configfile:
@@ -300,19 +302,16 @@ def main(args):
                     system.addObject(prependedpackage)
                     initmodule = system.Module(system, '__init__', None, prependedpackage)
                     system.addObject(initmodule)
-            for path in options.packages:
+            for path in args:
                 path = os.path.abspath(path)
                 if path in system.packages:
                     continue
-                system.msg('addPackage', 'adding directory ' + path)
-                system.addPackage(path, prependedpackage)
-                system.packages.append(path)
-            for path in options.modules:
-                path = os.path.normpath(path)
-                if path in system.packages:
-                    continue
-                system.msg('addModule', 'adding module ' + path)
-                system.addModule(path, prependedpackage)
+                if os.path.isdir(path):
+                    system.msg('addPackage', 'adding directory ' + path)
+                    system.addPackage(path, prependedpackage)
+                else:
+                    system.msg('addModule', 'adding module ' + path)
+                    system.addModule(path, prependedpackage)
                 system.packages.append(path)
 
         # step 3: move the system to the desired state
