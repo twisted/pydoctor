@@ -293,7 +293,7 @@ def main(args):
 
         # step 2: add any packages and modules
 
-        if options.packages or options.modules:
+        if args:
             prependedpackage = None
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
