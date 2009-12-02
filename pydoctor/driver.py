@@ -1,5 +1,5 @@
 """The command-line parsing and entry point."""
-from pydoctor import model, liveobjectchecker
+from pydoctor import model, zopeinterface
 import sys, os
 
 def error(msg, *args):
@@ -240,7 +240,7 @@ def main(args):
                 msg = "%s is not a subclass of model.System"
                 error(msg, systemclass)
         else:
-            systemclass = model.System
+            systemclass = zopeinterface.ZopeInterfaceSystem
 
         if options.inputpickle:
             system = cPickle.load(open(options.inputpickle, 'rb'))
