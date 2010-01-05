@@ -1,5 +1,5 @@
 """The command-line parsing and entry point."""
-from pydoctor import model, liveobjectchecker
+from pydoctor import model, zopeinterface
 import sys, os
 
 def error(msg, *args):
@@ -64,7 +64,7 @@ def getparser():
         help=("Like py.test's --pdb."))
     parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
-        help=("Produce html output."))
+        default=True, help=("Produce html output."))
     parser.add_option(
         '--server', action='store_true', dest='server',
         help=("Serve HTML on a local server."))
@@ -224,6 +224,8 @@ def main(args):
     import cPickle
     options, args = parse_args(args)
 
+    args = list(args) + options.modules + options.packages
+
     exitcode = 0
 
     if options.configfile:
@@ -238,7 +240,7 @@ def main(args):
                 msg = "%s is not a subclass of model.System"
                 error(msg, systemclass)
         else:
-            systemclass = model.System
+            systemclass = zopeinterface.ZopeInterfaceSystem
 
         if options.inputpickle:
             system = cPickle.load(open(options.inputpickle, 'rb'))
@@ -291,7 +293,7 @@ def main(args):
 
         # step 2: add any packages and modules
 
-        if options.packages or options.modules:
+        if args:
             prependedpackage = None
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
@@ -300,19 +302,16 @@ def main(args):
                     system.addObject(prependedpackage)
                     initmodule = system.Module(system, '__init__', None, prependedpackage)
                     system.addObject(initmodule)
-            for path in options.packages:
+            for path in args:
                 path = os.path.abspath(path)
                 if path in system.packages:
                     continue
-                system.msg('addPackage', 'adding directory ' + path)
-                system.addPackage(path, prependedpackage)
-                system.packages.append(path)
-            for path in options.modules:
-                path = os.path.normpath(path)
-                if path in system.packages:
-                    continue
-                system.msg('addModule', 'adding module ' + path)
-                system.addModule(path, prependedpackage)
+                if os.path.isdir(path):
+                    system.msg('addPackage', 'adding directory ' + path)
+                    system.addPackage(path, prependedpackage)
+                else:
+                    system.msg('addModule', 'adding module ' + path)
+                    system.addModule(path, prependedpackage)
                 system.packages.append(path)
 
         # step 3: move the system to the desired state
