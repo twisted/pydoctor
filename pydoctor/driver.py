@@ -23,6 +23,8 @@ def findClassFromDottedName(dottedname, optionname):
     except AttributeError:
         error("did not find %s in module %s", parts[1], parts[0])
 
+MAKE_HTML_DEFAULT = object()
+
 def getparser():
     from optparse import OptionParser
     parser = OptionParser()
@@ -65,7 +67,7 @@ def getparser():
         help=("Like py.test's --pdb."))
     parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
-        default=True, help=("Produce html output."))
+        default=MAKE_HTML_DEFAULT, help=("Produce html output."))
     parser.add_option(
         '--server', action='store_true', dest='server',
         help=("Serve HTML on a local server."))
@@ -286,11 +288,12 @@ def main(args):
                 elif fn.endswith('.py') and fn != 'setup.py':
                     options.modules.append(fn)
 
-        if not options.outputpickle and not options.makehtml \
-               and not options.testing and not options.server:
-            msg = ("this invocation isn't going to do anything\n"
-                   "maybe supply --make-html and/or --output-pickle?")
-            error(msg)
+        if options.makehtml == MAKE_HTML_DEFAULT:
+            if not options.outputpickle and not options.testing \
+                   and not options.server:
+                options.makehtml = True
+            else:
+                options.makehtml = False
 
         # step 2: add any packages and modules
 
