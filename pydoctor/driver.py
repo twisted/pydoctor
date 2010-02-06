@@ -1,4 +1,5 @@
 """The command-line parsing and entry point."""
+
 from pydoctor import model, zopeinterface
 import sys, os
 
