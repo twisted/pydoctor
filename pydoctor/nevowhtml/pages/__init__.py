@@ -307,8 +307,6 @@ class ClassPage(CommonPage):
             attrs = unmasked_attrs(baselist)
             if attrs:
                 self.baselists.append((baselist, attrs))
-        if ob.fullName() == 'twisted.internet.interfaces.IReadWriteDescriptor':
-            print self.baselists
         self.overridenInCount = 0
 
     def extras(self):
