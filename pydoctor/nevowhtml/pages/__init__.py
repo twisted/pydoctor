@@ -48,15 +48,6 @@ def signature(argspec):
         things.append('**%s' % varkwname)
     return ', '.join(things)
 
-def mediumName(obj):
-    fn = obj.fullName()
-    if '.' not in fn:
-        return fn
-    path, name = fn.rsplit('.', 1)
-    def process(part):
-        return obj.system.abbrevmapping.get(part, part[0])
-    return '.'.join([process(p) for p in path.split('.')]) + '.' + name
-
 class DocGetter(object):
     def get(self, ob, summary=False):
         return epydoc2stan.doc2html(ob, summary=summary)[0]
@@ -76,9 +67,19 @@ class CommonPage(page.Element):
     def title(self):
         return self.ob.fullName()
 
+    def mediumName(self, obj):
+        fn = obj.fullName()
+        if '.' not in fn:
+            return fn
+        path, name = fn.rsplit('.', 1)
+        def process(part):
+            return obj.system.abbrevmapping.get(part, part[0])
+        return '.'.join([process(p) for p in path.split('.')]) + '.' + name
+
     def heading(self):
         return tags.h1(class_=self.ob.css_class)[
-            self.ob.kind + " " + mediumName(self.ob)]
+            self.mediumName(self.ob), " : ", self.ob.kind.lower(),
+            " documentation"]
 
     def part(self):
         tag = tags.invisible()
@@ -325,21 +326,20 @@ class ClassPage(CommonPage):
         else:
             return ()
 
-    def heading(self):
-        tag = super(ClassPage, self).heading()
+    def mediumName(self, ob):
+        r = [super(ClassPage, self).mediumName(ob)]
         zipped = zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects)
         if zipped:
-            tag['(']
+            r.append('(')
             for i, (n, m, o) in enumerate(zipped):
                 if o is None:
-                    tag[tags.span(title=m)[n]]
+                    r.append(tags.span(title=m)[n])
                 else:
-                    tag[taglink(o, n)]
+                    r.append(taglink(o, n))
                 if i != len(zipped)-1:
-                    tag[', ']
-            tag[')']
-        tag[':']
-        return tag
+                    r.append(', ')
+            r.append(')')
+        return r
 
     def inhierarchy(self, tag):
         return tag(href="classIndex.html#"+self.ob.fullName())
@@ -432,6 +432,7 @@ class ZopeInterfaceClassPage(ClassPage):
         return r
 
 class FunctionPage(CommonPage):
-    def heading(self):
-        tag = super(FunctionPage, self).heading()
-        return tag['(', signature(self.ob.argspec), '):']
+    def mediumName(self, ob):
+        return [
+            super(FunctionPage, self).mediumName(ob), '(',
+            signature(self.ob.argspec), ')']
