@@ -346,6 +346,8 @@ class ClassPage(CommonPage):
 
     def baseTables(self, item):
         baselists = self.baselists[:]
+        if not baselists:
+            return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
         return [fillSlots(item,
