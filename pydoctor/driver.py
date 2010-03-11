@@ -227,8 +227,6 @@ def main(args):
     import cPickle
     options, args = parse_args(args)
 
-    args = list(args) + options.modules + options.packages
-
     exitcode = 0
 
     if options.configfile:
@@ -287,6 +285,8 @@ def main(args):
                     options.packages.append(fn)
                 elif fn.endswith('.py') and fn != 'setup.py':
                     options.modules.append(fn)
+
+        args = list(args) + options.modules + options.packages
 
         if options.makehtml == MAKE_HTML_DEFAULT:
             if not options.outputpickle and not options.testing \
