@@ -460,7 +460,6 @@ class RawBigDiffPage(rend.Page):
             for e in l:
                 edit0 = self.root.editsbyob[e.obj][0]
                 mods[m].apply_edit(edit0, e)
-        r = []
         for mod in sorted(mods, key=lambda x:x.filepath):
             request.write(mods[mod].diff())
         return ''
