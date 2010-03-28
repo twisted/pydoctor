@@ -8,6 +8,7 @@ setup(
     author_email='micahel@gmail.com',
     url='http://codespeak.net/svn/user/mwh/pydoctor/trunk',
     description='API doc generator.',
+    license='MIT/X11',
     packages=[
         'pydoctor',
         'pydoctor.nevowhtml',
