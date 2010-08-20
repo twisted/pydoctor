@@ -22,10 +22,6 @@ def test_invalid_option():
     err = geterrtext('--no-such-option')
     assert 'no such option' in err
 
-def test_no_do_nothing():
-    err = geterrtext()
-    assert "this invocation isn't going to do anything" in err
-
 def test_cannot_advance_blank_system():
     err = geterrtext('--make-html')
     assert 'forget an --add-package?' in err
