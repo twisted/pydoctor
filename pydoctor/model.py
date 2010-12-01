@@ -10,6 +10,7 @@ import datetime
 import os
 import posixpath
 import sys
+import types
 import __builtin__
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -572,6 +573,13 @@ class System(object):
         py_mod = __import__(module_full_name, globals(), locals(), '.')
         del sys.path[0]
         module.docstring = py_mod.__doc__
+        for k, v in py_mod.__dict__.iteritems():
+            print k, v
+            if isinstance(v, types.BuiltinFunctionType):
+                f = self.Function(self, k, v.__doc__, module)
+                f.decorators = None
+                f.argspec = ((), None, None, ())
+                self.addObject(f)
         print py_mod
 
     def addPackage(self, dirpath, parentPackage=None):
