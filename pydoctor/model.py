@@ -227,6 +227,7 @@ class Documentable(object):
 
 class Package(Documentable):
     kind = "Package"
+    dirpath = None
     def name2fullname(self, name):
         raise NameError
     def docsources(self):
@@ -539,6 +540,40 @@ class System(object):
         self.module_count += 1
         self.setSourceHref(mod)
 
+    def ensureModule(self, module_full_name):
+        if module_full_name in self.allobjects:
+            return self.allobjects[module_full_name]
+        if '.' in module_full_name:
+            parent_name, module_name = module_full_name.rsplit('.', 1)
+            parent_package = self.ensurePackage(parent_name)
+        else:
+            parent_package = None
+            module_name = module_full_name
+        module = self.Module(self, module_name, None, parent_package)
+        self.addObject(module)
+        return module
+
+    def ensurePackage(self, package_full_name):
+        if package_full_name in self.allobjects:
+            return self.allobjects[package_full_name]
+        if '.' in package_full_name:
+            parent_name, package_name = package_full_name.rsplit('.', 1)
+            parent_package = self.ensurePackage(parent_name)
+        else:
+            parent_package = None
+            package_name = package_full_name
+        package = self.Package(self, package_name, None, parent_package)
+        self.addObject(package)
+        return package
+
+    def introspectModule(self, module_full_name):
+        module = self.ensureModule(module_full_name)
+        sys.path.insert(0, '.')
+        py_mod = __import__(module_full_name, globals(), locals(), '.')
+        del sys.path[0]
+        module.docstring = py_mod.__doc__
+        print py_mod
+
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
             raise Exception("package path %r does not exist!"
@@ -546,9 +581,13 @@ class System(object):
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
                             "addPackage")
-        package = self.Package(self, os.path.basename(dirpath),
-                               None, parentPackage)
-        self.addObject(package)
+        if parentPackage:
+            prefix = parentPackage.fullName() + '.'
+        else:
+            prefix = ''
+        package_name = os.path.basename(dirpath)
+        package_full_name = prefix + package_name
+        package = self.ensurePackage(package_full_name)
         package.filepath = dirpath
         self.setSourceHref(package)
         for fname in os.listdir(dirpath):

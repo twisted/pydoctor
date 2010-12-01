@@ -189,6 +189,10 @@ def getparser():
         type=str, default={}, dest='verbosity_details',
         callback=verbose_about_callback,
         help=("Be noiser during a particular stage of generation."))
+    parser.add_option(
+        '--introspect', metavar="module", action="append",
+        type=str, default=[], dest='introspect_modules',
+        help=("XXX."))
     return parser
 
 def readConfigFile(options):
@@ -296,6 +300,10 @@ def main(args):
                 options.makehtml = False
 
         # step 2: add any packages and modules
+
+        for m in options.introspect_modules:
+            print system.msg("introspection", "introspecting " + m)
+            m = system.introspectModule(m)
 
         if args:
             prependedpackage = None
