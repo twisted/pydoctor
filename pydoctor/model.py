@@ -625,6 +625,9 @@ class System(object):
             if not path.endswith(suffix):
                 continue
             if type == imp.C_EXTENSION:
+                # FIXME: This should probably use imp.load_module(),
+                # rather than assuming path is in the right place in
+                # sys.path.
                 self.introspectModule("%s.%s" % (
                     package.fullName(), os.path.basename(path[:-len(suffix)])))
             elif type == imp.PY_SOURCE:
