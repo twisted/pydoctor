@@ -7,6 +7,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 """
 
 import datetime
+import imp
 import os
 import posixpath
 import sys
@@ -614,8 +615,19 @@ class System(object):
                 initname = os.path.join(fullname, '__init__.py')
                 if os.path.exists(initname):
                     self.addPackage(fullname, package)
-            elif fname.endswith('.py') and not fname.startswith('.'):
-                self.addModule(fullname, package)
+            elif not fname.startswith('.'):
+                self._addModuleFromPath(package, fullname)
+
+    def _addModuleFromPath(self, package, path):
+        for (suffix, mode, type) in imp.get_suffixes():
+            if not path.endswith(suffix):
+                continue
+            if type == imp.C_EXTENSION:
+                self.introspectModule("%s.%s" % (
+                    package.fullName(), os.path.basename(path[:-len(suffix)])))
+            elif type == imp.PY_SOURCE:
+                self.addModule(path, package)
+            break
 
     def handleDuplicate(self, obj):
         '''This is called when we see two objects with the same
