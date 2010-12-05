@@ -569,20 +569,22 @@ class System(object):
         self.addObject(package)
         return package
 
-    def _introspectThing(self, thing, parent):
+    def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.iteritems():
             if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
                 f = self.Function(self, k, v.__doc__, parent)
+                f.parentMod = parentMod
                 f.decorators = None
                 f.argspec = ((), None, None, ())
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, v.__doc__, parent)
+                c.parentMod = parentMod
                 self.addObject(c)
-                self._introspectThing(v, c)
+                self._introspectThing(v, c, parentMod)
             else:
                 print k, v
-        
+
 
     def introspectModule(self, module_full_name):
         module = self.ensureModule(module_full_name)
@@ -590,7 +592,7 @@ class System(object):
         py_mod = __import__(module_full_name, globals(), locals(), '.')
         del sys.path[0]
         module.docstring = py_mod.__doc__
-        self._introspectThing(py_mod, module)
+        self._introspectThing(py_mod, module, module)
         print py_mod
 
     def addPackage(self, dirpath, parentPackage=None):
