@@ -81,7 +81,7 @@ class Documentable(object):
         return "%s %r"%(self.__class__.__name__, self.fullName())
 
     def docsources(self):
-        """Objects that can be consisdered as a source of documentation.
+        """Objects that can be considered as a source of documentation.
 
         The motivating example for having multiple sources is looking at a
         superclass' implementation of a method for documentation for a
