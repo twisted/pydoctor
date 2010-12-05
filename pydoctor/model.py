@@ -276,6 +276,7 @@ class Class(Documentable):
 class Function(Documentable):
     document_in_parent_page = True
     kind = "Function"
+    linenumber = 0
     def setup(self):
         super(Function, self).setup()
         if isinstance(self.parent, Class):
