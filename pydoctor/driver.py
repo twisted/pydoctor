@@ -191,7 +191,7 @@ def getparser():
         help=("Be noiser during a particular stage of generation."))
     parser.add_option(
         '--introspect-c-modules', default=False, action='store_true',
-        help=("XXX."))
+        help=("Import and introspect any C modules found."))
     return parser
 
 def readConfigFile(options):
