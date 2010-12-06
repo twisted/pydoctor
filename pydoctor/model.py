@@ -7,9 +7,11 @@ being documented -- a System is a bad of Documentables, in some sense.
 """
 
 import datetime
+import imp
 import os
 import posixpath
 import sys
+import types
 import __builtin__
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -274,6 +276,7 @@ class Class(Documentable):
 class Function(Documentable):
     document_in_parent_page = True
     kind = "Function"
+    linenumber = 0
     def setup(self):
         super(Function, self).setup()
         if isinstance(self.parent, Class):
@@ -539,6 +542,52 @@ class System(object):
         self.module_count += 1
         self.setSourceHref(mod)
 
+    def ensureModule(self, module_full_name):
+        if module_full_name in self.allobjects:
+            return self.allobjects[module_full_name]
+        if '.' in module_full_name:
+            parent_name, module_name = module_full_name.rsplit('.', 1)
+            parent_package = self.ensurePackage(parent_name)
+        else:
+            parent_package = None
+            module_name = module_full_name
+        module = self.Module(self, module_name, None, parent_package)
+        self.addObject(module)
+        return module
+
+    def ensurePackage(self, package_full_name):
+        if package_full_name in self.allobjects:
+            return self.allobjects[package_full_name]
+        if '.' in package_full_name:
+            parent_name, package_name = package_full_name.rsplit('.', 1)
+            parent_package = self.ensurePackage(parent_name)
+        else:
+            parent_package = None
+            package_name = package_full_name
+        package = self.Package(self, package_name, None, parent_package)
+        self.addObject(package)
+        return package
+
+    def _introspectThing(self, thing, parent, parentMod):
+        for k, v in thing.__dict__.iteritems():
+            if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
+                f = self.Function(self, k, v.__doc__, parent)
+                f.parentMod = parentMod
+                f.decorators = None
+                f.argspec = ((), None, None, ())
+                self.addObject(f)
+            elif isinstance(v, type):
+                c = self.Class(self, k, v.__doc__, parent)
+                c.parentMod = parentMod
+                self.addObject(c)
+                self._introspectThing(v, c, parentMod)
+
+    def introspectModule(self, module_full_name, py_mod):
+        module = self.ensureModule(module_full_name)
+        module.docstring = py_mod.__doc__
+        self._introspectThing(py_mod, module, module)
+        print py_mod
+
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
             raise Exception("package path %r does not exist!"
@@ -546,9 +595,13 @@ class System(object):
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
                             "addPackage")
-        package = self.Package(self, os.path.basename(dirpath),
-                               None, parentPackage)
-        self.addObject(package)
+        if parentPackage:
+            prefix = parentPackage.fullName() + '.'
+        else:
+            prefix = ''
+        package_name = os.path.basename(dirpath)
+        package_full_name = prefix + package_name
+        package = self.ensurePackage(package_full_name)
         package.filepath = dirpath
         self.setSourceHref(package)
         for fname in os.listdir(dirpath):
@@ -557,8 +610,25 @@ class System(object):
                 initname = os.path.join(fullname, '__init__.py')
                 if os.path.exists(initname):
                     self.addPackage(fullname, package)
-            elif fname.endswith('.py') and not fname.startswith('.'):
-                self.addModule(fullname, package)
+            elif not fname.startswith('.'):
+                self._addModuleFromPath(package, fullname)
+
+    def _addModuleFromPath(self, package, path):
+        for (suffix, mode, type) in imp.get_suffixes():
+            if not path.endswith(suffix):
+                continue
+            if type == imp.C_EXTENSION:
+                if not self.options.introspect_c_modules:
+                    continue
+                module_full_name = "%s.%s" % (
+                    package.fullName(), os.path.basename(path[:-len(suffix)]))
+                py_mod = imp.load_module(
+                    module_full_name, open(path, 'rb'), path,
+                    (suffix, mode, type))
+                self.introspectModule(module_full_name, py_mod)
+            elif type == imp.PY_SOURCE:
+                self.addModule(path, package)
+            break
 
     def handleDuplicate(self, obj):
         '''This is called when we see two objects with the same

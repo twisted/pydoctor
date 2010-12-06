@@ -189,6 +189,9 @@ def getparser():
         type=str, default={}, dest='verbosity_details',
         callback=verbose_about_callback,
         help=("Be noiser during a particular stage of generation."))
+    parser.add_option(
+        '--introspect-c-modules', default=False, action='store_true',
+        help=("Import and introspect any C modules found."))
     return parser
 
 def readConfigFile(options):
