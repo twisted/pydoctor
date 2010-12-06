@@ -582,15 +582,9 @@ class System(object):
                 c.parentMod = parentMod
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
-            else:
-                print k, v
 
-
-    def introspectModule(self, module_full_name):
+    def introspectModule(self, module_full_name, py_mod):
         module = self.ensureModule(module_full_name)
-        sys.path.insert(0, '.')
-        py_mod = __import__(module_full_name, globals(), locals(), '.')
-        del sys.path[0]
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
         print py_mod
@@ -625,11 +619,12 @@ class System(object):
             if not path.endswith(suffix):
                 continue
             if type == imp.C_EXTENSION:
-                # FIXME: This should probably use imp.load_module(),
-                # rather than assuming path is in the right place in
-                # sys.path.
-                self.introspectModule("%s.%s" % (
-                    package.fullName(), os.path.basename(path[:-len(suffix)])))
+                module_full_name = "%s.%s" % (
+                    package.fullName(), os.path.basename(path[:-len(suffix)]))
+                py_mod = imp.load_module(
+                    module_full_name, open(path, 'rb'), path,
+                    (suffix, mode, type))
+                self.introspectModule(module_full_name, py_mod)
             elif type == imp.PY_SOURCE:
                 self.addModule(path, package)
             break
