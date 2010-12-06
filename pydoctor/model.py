@@ -229,7 +229,6 @@ class Documentable(object):
 
 class Package(Documentable):
     kind = "Package"
-    dirpath = None
     def name2fullname(self, name):
         raise NameError
     def docsources(self):
@@ -619,6 +618,8 @@ class System(object):
             if not path.endswith(suffix):
                 continue
             if type == imp.C_EXTENSION:
+                if not self.options.introspect_c_modules:
+                    continue
                 module_full_name = "%s.%s" % (
                     package.fullName(), os.path.basename(path[:-len(suffix)]))
                 py_mod = imp.load_module(
