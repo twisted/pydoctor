@@ -619,7 +619,11 @@ class System(object):
             if type == imp.C_EXTENSION:
                 if not self.options.introspect_c_modules:
                     continue
-                module_full_name = "%s.%s" % (package.fullName(), module_name)
+                if package is not None:
+                    module_full_name = "%s.%s" % (
+                        package.fullName(), module_name)
+                else:
+                    module_full_name = module_name
                 py_mod = imp.load_module(
                     module_full_name, open(path, 'rb'), path,
                     (suffix, mode, type))
