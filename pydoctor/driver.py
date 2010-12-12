@@ -317,8 +317,8 @@ def main(args):
                     system.msg('addPackage', 'adding directory ' + path)
                     system.addPackage(path, prependedpackage)
                 else:
-                    system.msg('addModule', 'adding module ' + path)
-                    system.addModule(path, prependedpackage)
+                    system.msg('addModuleFromPath', 'adding module ' + path)
+                    system.addModuleFromPath(prependedpackage, path)
                 system.packages.append(path)
 
         # step 3: move the system to the desired state

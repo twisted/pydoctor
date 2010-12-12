@@ -529,9 +529,7 @@ class System(object):
 
         mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
 
-    def addModule(self, modpath, parentPackage=None):
-        fname = os.path.basename(modpath)
-        modname = os.path.splitext(fname)[0]
+    def addModule(self, modpath, modname, parentPackage=None):
         mod = self.Module(self, modname, None, parentPackage)
         self.addObject(mod)
         self.progress(
@@ -582,7 +580,7 @@ class System(object):
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, module_full_name, py_mod):
+    def introspectModule(self, py_mod, module_full_name):
         module = self.ensureModule(module_full_name)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
@@ -611,23 +609,27 @@ class System(object):
                 if os.path.exists(initname):
                     self.addPackage(fullname, package)
             elif not fname.startswith('.'):
-                self._addModuleFromPath(package, fullname)
+                self.addModuleFromPath(package, fullname)
 
-    def _addModuleFromPath(self, package, path):
+    def addModuleFromPath(self, package, path):
         for (suffix, mode, type) in imp.get_suffixes():
             if not path.endswith(suffix):
                 continue
+            module_name = os.path.basename(path[:-len(suffix)])
             if type == imp.C_EXTENSION:
                 if not self.options.introspect_c_modules:
                     continue
-                module_full_name = "%s.%s" % (
-                    package.fullName(), os.path.basename(path[:-len(suffix)]))
+                if package is not None:
+                    module_full_name = "%s.%s" % (
+                        package.fullName(), module_name)
+                else:
+                    module_full_name = module_name
                 py_mod = imp.load_module(
                     module_full_name, open(path, 'rb'), path,
                     (suffix, mode, type))
-                self.introspectModule(module_full_name, py_mod)
+                self.introspectModule(py_mod, module_full_name)
             elif type == imp.PY_SOURCE:
-                self.addModule(path, package)
+                self.addModule(path, module_name, package)
             break
 
     def handleDuplicate(self, obj):
