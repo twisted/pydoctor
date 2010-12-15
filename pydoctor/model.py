@@ -26,6 +26,11 @@ import __builtin__
 #   Classes can contain Functions (when they get called Methods) and Classes
 #   Functions can't contain anything.
 
+
+class DocumentationLocation:
+    OWN_PAGE = 1
+    PARENT_PAGE = 2
+
 class Documentable(object):
     """An object that can be documented.
 
@@ -37,11 +42,11 @@ class Documentable(object):
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
-    @ivar document_in_parent_page: ...
+    @ivar documentation_location: ...
     @ivar sourceHref: ...
     @ivar kind: ...
     """
-    document_in_parent_page = False
+    documentation_location = DocumentationLocation.OWN_PAGE
     sourceHref = None
 
     @property
@@ -274,7 +279,7 @@ class Class(Documentable):
 
 
 class Function(Documentable):
-    document_in_parent_page = True
+    documentation_location = DocumentationLocation.PARENT_PAGE
     kind = "Function"
     linenumber = 0
     def setup(self):

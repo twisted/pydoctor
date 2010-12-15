@@ -20,7 +20,6 @@ def getBetterThanArgspec(argspec):
     defaults.reverse()
     kws = zip(backargs, defaults)
     kws.reverse()
-    allargs = args[:-len(kws)] + kws
     return (args[:-len(kws)], kws)
 
 def _strtup(tup):
@@ -155,7 +154,8 @@ class CommonPage(page.Element):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.document_in_parent_page and o.isVisible]
+                if o.documentation_location == model.DocumentationLocation.PARENT_PAGE 
+                and o.isVisible]
 
     def childlist(self):
         from pydoctor.nevowhtml.pages.attributechild import AttributeChild
@@ -225,7 +225,8 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.document_in_parent_page and o.isVisible]
+                if o.documentation_location == model.DocumentationLocation.PARENT_PAGE
+                and o.isVisible]
 
 class ModulePage(CommonPage):
     pass

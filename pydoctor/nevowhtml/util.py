@@ -29,11 +29,13 @@ def taglink(o, label=None):
         o.system.warning("html", "don't link to %s"%o.fullName())
     if label is None:
         label = o.fullName()
-    if o.document_in_parent_page:
+    if o.documentation_location == model.DocumentationLocation.PARENT_PAGE:
         p = o.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
         linktext = link(p) + '#' + urllib.quote(o.name)
-    else:
+    elif o.documentation_location == model.DocumentationLocation.OWN_PAGE:
         linktext = link(o)
+    else:
+        raise AssertionError("XXX")
     return tags.a(href=linktext)[label]
