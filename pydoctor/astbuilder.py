@@ -143,7 +143,8 @@ class ModuleVistor(object):
                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
                 if isinstance(mod, model.Module) and \
-                       fromname in mod.contents:
+                       fromname in mod.contents and \
+                       (mod.all is None or fromname not in mod.all):
                     self.system.msg(
                         "astbuilder",
                         "moving %r into %r"

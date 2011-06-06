@@ -54,3 +54,9 @@ def test_importingfrompackage():
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
     assert submod.state == model.PROCESSED
+
+def test_allgames():
+    system = processPackage("allgames")
+    # InSourceAll is not moved into mod2, but NotInSourceAll is.
+    assert 'InSourceAll' in system.allobjects['allgames.mod1'].contents
+    assert 'NotInSourceAll' in system.allobjects['allgames.mod2'].contents
