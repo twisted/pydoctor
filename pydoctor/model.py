@@ -148,7 +148,6 @@ class Documentable(object):
                 self.fullName(), self.linenumber, dottedname),
                 thresh=-1)
             return obj
-        system = self.system
         for p in parts[1:]:
             if p not in obj.contents:
                 self.system.msg(
