@@ -33,3 +33,34 @@ def test_multiple_types():
     epydoc2stan.doc2html(mod.contents['f'])
     epydoc2stan.doc2html(mod.contents['C'])
     epydoc2stan.doc2html(mod.contents['D'])
+
+def test_summary():
+    mod = fromText('''
+    def single_line_summary():
+        """
+        Lorem Ipsum
+
+        Ipsum Lorem
+        """
+    def no_summary():
+        """
+        Foo
+        Bar
+        Baz
+        Qux
+        """
+    def three_lines_summary():
+        """
+        Foo
+        Bar
+        Baz
+
+        Lorem Ipsum
+        """
+    ''')
+    def get_summary(func):
+        return epydoc2stan.doc2html(mod.contents[func],
+                                    summary=True)[0].children[0]
+    assert 'Lorem Ipsum' == get_summary('single_line_summary')
+    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
+    assert 'No summary' == get_summary('no_summary')
