@@ -6,7 +6,8 @@ from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
-    r = tags.li[taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True)[0]]
+    from twisted.web.template import tags
+    r = tags.li(taglink(modorpack, tags=tags), ' - ', )#epydoc2stan.doc2html(modorpack, summary=True)[0]]
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents
@@ -15,29 +16,31 @@ def moduleSummary(modorpack):
         return r
     ul = tags.ul()
     for m in sorted(contents, key=lambda m:m.fullName()):
-        ul[moduleSummary(m)]
-    return r[ul]
+        ul(moduleSummary(m))
+    return r(ul)
 
 def _lckey(x):
     return x.fullName().lower()
 
-class ModuleIndexPage(page.Element):
+from twisted.web.template import Element, renderer, XMLFile
+
+class ModuleIndexPage(Element):
     filename = 'moduleIndex.html'
-    docFactory = loaders.xmlfile(templatefile('summary.html'))
+    loader = XMLFile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
-    @page.renderer
+    @renderer
     def title(self, request, tag):
-        return tag.clear()["Module Index"]
-    @page.renderer
+        return tag.clear()("Module Index")
+    @renderer
     def stuff(self, request, tag):
         r = []
         for o in self.system.rootobjects:
             r.append(moduleSummary(o))
-        return tag.clear()[r]
-    @page.renderer
+        return tag.clear()(r)
+    @renderer
     def heading(self, request, tag):
-        return tag().clear()["Module Index"]
+        return tag().clear()("Module Index")
 
 def findRootClasses(system):
     roots = {}

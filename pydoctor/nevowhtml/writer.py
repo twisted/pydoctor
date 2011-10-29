@@ -4,6 +4,7 @@ from pydoctor.nevowhtml.util import link, templatefile
 from pydoctor.nevowhtml import pages, summary
 
 from nevow import flat
+from twisted.web.template import flattenString
 
 import os, shutil
 
@@ -41,7 +42,13 @@ class NevowWriter:
             T = time.time()
             page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
-            f.write(flat.flatten(page))
+            import nevow.page
+            if isinstance(page, nevow.page.Element):
+                f.write(flat.flatten(page))
+            else:
+                def e(r):
+                    raise r.value
+                flattenString(None, page).addCallback(f.write).addErrback(e)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 

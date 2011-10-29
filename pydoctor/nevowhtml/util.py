@@ -24,7 +24,7 @@ def fillSlots(tag, **kw):
         tag = tag.fillSlots(k, v)
     return tag
 
-def taglink(o, label=None):
+def taglink(o, label=None, tags=tags):
     if not o.isVisible:
         o.system.warning("html", "don't link to %s"%o.fullName())
     if label is None:
@@ -36,4 +36,8 @@ def taglink(o, label=None):
         linktext = link(p) + '#' + urllib.quote(o.name)
     else:
         linktext = link(o)
-    return tags.a(href=linktext)[label]
+    import nevow.tags
+    if isinstance(tags.a, nevow.tags.Tag):
+        return tags.a(href=linktext)[label]
+    else:
+        return tags.a(href=linktext)(label)
