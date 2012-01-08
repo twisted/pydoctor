@@ -312,9 +312,10 @@ class FieldHandler(object):
 
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
-        return s[3:-5] # argh reST
-    else:
-        return s
+        s = s[3:-5] # argh reST
+    if s.endswith('\n'):
+        s = s[:-1]
+    return s
 
 def reportErrors(obj, errs):
     for err in errs:
