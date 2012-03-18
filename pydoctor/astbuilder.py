@@ -302,10 +302,13 @@ class ASTBuilder(object):
 
     def _push(self, cls, name, docstring):
         obj = cls(self.system, name, docstring, self.current)
-        from pydoctor import epydoc2stan
-        epydoc2stan.extract_fields(obj)
         self.system.addObject(obj)
         self.push(obj)
+        from pydoctor import epydoc2stan
+        for attrkind, name, body in epydoc2stan.extract_fields(obj):
+            #import pdb; pdb.set_trace()
+            attrobj = self.system.Attribute(self.system, name, body.to_plaintext(None), obj)
+            self.system.addObject(attrobj)
         return obj
 
     def _pop(self, cls):

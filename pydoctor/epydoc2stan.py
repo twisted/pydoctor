@@ -282,9 +282,10 @@ class FieldHandler(object):
         self.cvar_descs = cvs
 
         for d, l in (('Parameters', self.parameter_descs),
-                     ('Instance Variables', self.ivar_descs),
-                     ('Class Variables', self.cvar_descs),
-                     ('Variables', self.var_descs)):
+                     #('Instance Variables', self.ivar_descs),
+                     #('Class Variables', self.cvar_descs),
+                     #('Variables', self.var_descs),
+                     ):
             r.append(format_desc_list(d, l, d))
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
@@ -435,10 +436,10 @@ def extract_fields(obj):
         obj = obj.contents['__init__']
     doc = obj.docstring
     if doc is None or not doc.strip():
-        return []
+        return
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
-        return []
+        return
     errs = []
     def crappit(): pass
     crappit.__doc__ = doc
@@ -446,9 +447,10 @@ def extract_fields(obj):
     try:
         pdoc = parse_docstring(doc, errs)
     except Exception:
-        return []
+        return
     pdoc, fields = pdoc.split_fields()
     if not fields:
-        return []
+        return
     for field in fields:
-        print field.tag()
+        if field.tag() in ['ivar', 'cvar', 'var']:
+            yield field.tag(), field.arg(), field.body()

@@ -300,7 +300,7 @@ class Attribute(Documentable):
 
     kind = "Attribute"
     css_class = "attribute"
-    documentation_location = DocumentationLocation.UNDER_PARENT_DOCSTRING
+    documentation_location = DocumentationLocation.PARENT_PAGE
 
 
 class PrivacyClass:
@@ -328,6 +328,7 @@ class System(object):
     Module = Module
     Package = Package
     Function = Function
+    Attribute = Attribute
     # not done here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None
