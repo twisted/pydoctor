@@ -37,7 +37,7 @@ def test_reallyBoringDocstring():
 def test_doc2htmlEpy():
     if not html.EPYTEXT:
         test.skip("Epytext not available")
-    assert html.doc2html(None, 'Woot\nYeah') == '<div>Woot Yeah\n</div>'
+    assert html.doc2html(None, 'Woot\nYeah') == '<div><p>Woot Yeah</p>\n</div>'
 
 class TestEpyHackers:
     def setup_method(self, meth):
