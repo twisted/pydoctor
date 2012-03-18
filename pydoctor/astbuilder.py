@@ -302,6 +302,7 @@ class ASTBuilder(object):
 
     def _push(self, cls, name, docstring):
         obj = cls(self.system, name, docstring, self.current)
+        # Hook here to parse attributes out of docstring?
         self.system.addObject(obj)
         self.push(obj)
         return obj
