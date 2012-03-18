@@ -4,7 +4,7 @@ from pydoctor import model, zopeinterface
 
 from nevow import tags
 
-import inspect, urllib
+import inspect, itertools, urllib
 
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
@@ -312,9 +312,10 @@ class FieldHandler(object):
 
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
-        return s[3:-5] # argh reST
-    else:
-        return s
+        s = s[3:-5] # argh reST
+    if s.endswith('\n'):
+        s = s[:-1]
+    return s
 
 def reportErrors(obj, errs):
     for err in errs:
@@ -376,10 +377,15 @@ def doc2html(obj, summary=False, docstring=None):
         else:
             return tags.div(class_="undocumented")[text], []
     if summary:
-        for line in doc.split('\n'):
-            if line.strip():
-                doc = line
-                break
+        # Use up to three first non-empty lines of doc string as summary.
+        lines = itertools.dropwhile(lambda line: not line.strip(),
+                                    doc.split('\n'))
+        lines = itertools.takewhile(lambda line: line.strip(), lines)
+        lines = [ line.strip() for line in lines ]
+        if len(lines) > 3:
+            return tags.span(class_="undocumented")['No summary'], []
+        else:
+            doc = ' '.join(lines)
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
