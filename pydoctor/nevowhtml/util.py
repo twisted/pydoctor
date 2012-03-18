@@ -37,5 +37,6 @@ def taglink(o, label=None):
     elif o.documentation_location == model.DocumentationLocation.OWN_PAGE:
         linktext = link(o)
     else:
-        raise AssertionError("XXX")
+        raise AssertionError(
+            "Unknown documentation_location: %s" % o.documentation_location)
     return tags.a(href=linktext)[label]
