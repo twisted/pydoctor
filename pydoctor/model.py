@@ -30,6 +30,8 @@ import __builtin__
 class DocumentationLocation:
     OWN_PAGE = 1
     PARENT_PAGE = 2
+    UNDER_PARENT_DOCSTRING = 3
+
 
 class Documentable(object):
     """An object that can be documented.
@@ -292,6 +294,14 @@ class Function(Documentable):
         for b in self.parent.allbases():
             if self.name in b.contents:
                 yield b.contents[self.name]
+
+
+class Attribute(Documentable):
+
+    kind = "Attribute"
+    css_class = "attribute"
+    documentation_location = DocumentationLocation.UNDER_PARENT_DOCSTRING
+
 
 class PrivacyClass:
     """'enum' containing values indicating how private an object should be.
