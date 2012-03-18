@@ -428,3 +428,27 @@ def doc2html(obj, summary=False, docstring=None):
             fh.handle(Field(field, obj))
         s[fh.format()]
     return s, []
+
+
+def extract_fields(obj):
+    if isinstance(obj, model.Package):
+        obj = obj.contents['__init__']
+    doc = obj.docstring
+    if doc is None or not doc.strip():
+        return []
+    parse_docstring, e = get_parser(obj.system.options.docformat)
+    if not parse_docstring:
+        return []
+    errs = []
+    def crappit(): pass
+    crappit.__doc__ = doc
+    doc = inspect.getdoc(crappit)
+    try:
+        pdoc = parse_docstring(doc, errs)
+    except Exception:
+        return []
+    pdoc, fields = pdoc.split_fields()
+    if not fields:
+        return []
+    for field in fields:
+        print field.tag()
