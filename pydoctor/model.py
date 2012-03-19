@@ -298,8 +298,8 @@ class Function(Documentable):
 
 class Attribute(Documentable):
 
+    linenumber = 0
     kind = "Attribute"
-    css_class = "attribute"
     documentation_location = DocumentationLocation.PARENT_PAGE
 
 
