@@ -42,10 +42,16 @@ class _EpydocLinker(object):
         if obj is None:
             return '<code>%s</code>'%(prettyID,)
         else:
-            if isinstance(obj, model.Function):
-                linktext = link(obj.parent) + '#' + urllib.quote(obj.name)
-            else:
+            if obj.documentation_location == model.DocumentationLocation.PARENT_PAGE:
+                p = obj.parent
+                if isinstance(p, model.Module) and p.name == '__init__':
+                    p = p.parent
+                linktext = link(p) + '#' + urllib.quote(obj.name)
+            elif obj.documentation_location == model.DocumentationLocation.OWN_PAGE:
                 linktext = link(obj)
+            else:
+                raise AssertionError(
+                    "Unknown documentation_location: %s" % obj.documentation_location)
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
 
 class FieldDesc(object):
