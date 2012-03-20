@@ -307,6 +307,7 @@ class ASTBuilder(object):
         from pydoctor import epydoc2stan
         for attrkind, name, body in epydoc2stan.extract_fields(obj):
             attrobj = self.system.Attribute(self.system, name, body, obj)
+            attrobj.kind = attrkind
             self.system.addObject(attrobj)
         return obj
 

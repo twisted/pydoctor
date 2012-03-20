@@ -437,6 +437,12 @@ def doc2html(obj, summary=False, docstring=None):
     return s, []
 
 
+field_name_to_human_name = {
+    'ivar': 'Instance Variable',
+    'cvar': 'Class Variable',
+    'var': 'Variable',
+    }
+
 def extract_fields(obj):
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
@@ -463,12 +469,11 @@ def extract_fields(obj):
     for field in fields:
         if field.tag() == 'type':
             types[field.arg()] = field.body().to_plaintext(None).strip('\n')
-    print types
     for field in fields:
         if field.tag() in ['ivar', 'cvar', 'var']:
             body = field.body().to_plaintext(None)
             if field.arg() in types:
                 body = '%s (type: %s)' % (body.strip('\n'), types[field.arg()])
             r.append(
-                [field.tag(), field.arg(), body])
+                [field_name_to_human_name[field.tag()], field.arg(), body])
     return r
