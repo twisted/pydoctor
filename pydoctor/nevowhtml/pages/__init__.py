@@ -154,7 +154,7 @@ class CommonPage(page.Element):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.documentation_location == model.DocumentationLocation.PARENT_PAGE 
+                if o.documentation_location == model.DocLocation.PARENT_PAGE 
                 and o.isVisible]
 
     def childlist(self):
@@ -225,7 +225,7 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.documentation_location == model.DocumentationLocation.PARENT_PAGE
+                if o.documentation_location == model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
 class ModulePage(CommonPage):

@@ -42,12 +42,12 @@ class _EpydocLinker(object):
         if obj is None:
             return '<code>%s</code>'%(prettyID,)
         else:
-            if obj.documentation_location == model.DocumentationLocation.PARENT_PAGE:
+            if obj.documentation_location == model.DocLocation.PARENT_PAGE:
                 p = obj.parent
                 if isinstance(p, model.Module) and p.name == '__init__':
                     p = p.parent
                 linktext = link(p) + '#' + urllib.quote(obj.name)
-            elif obj.documentation_location == model.DocumentationLocation.OWN_PAGE:
+            elif obj.documentation_location == model.DocLocation.OWN_PAGE:
                 linktext = link(obj)
             else:
                 raise AssertionError(

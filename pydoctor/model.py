@@ -27,7 +27,7 @@ import __builtin__
 #   Functions can't contain anything.
 
 
-class DocumentationLocation:
+class DocLocation:
     OWN_PAGE = 1
     PARENT_PAGE = 2
     # Nothing uses this yet.  Parameters will one day.
@@ -49,7 +49,7 @@ class Documentable(object):
     @ivar sourceHref: ...
     @ivar kind: ...
     """
-    documentation_location = DocumentationLocation.OWN_PAGE
+    documentation_location = DocLocation.OWN_PAGE
     sourceHref = None
 
     @property
@@ -281,7 +281,7 @@ class Class(Documentable):
 
 
 class Function(Documentable):
-    documentation_location = DocumentationLocation.PARENT_PAGE
+    documentation_location = DocLocation.PARENT_PAGE
     kind = "Function"
     linenumber = 0
     def setup(self):
@@ -301,7 +301,7 @@ class Attribute(Documentable):
 
     linenumber = 0
     kind = "Attribute"
-    documentation_location = DocumentationLocation.PARENT_PAGE
+    documentation_location = DocLocation.PARENT_PAGE
 
 
 class PrivacyClass:

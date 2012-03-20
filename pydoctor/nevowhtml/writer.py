@@ -49,7 +49,7 @@ class NevowWriter:
     def writeDocsFor(self, ob, functionpages):
         if not ob.isVisible:
             return
-        isfunc = ob.documentation_location == model.DocumentationLocation.PARENT_PAGE
+        isfunc = ob.documentation_location == model.DocLocation.PARENT_PAGE
         if (isfunc and functionpages) or not isfunc:
             if self.dry_run:
                 self.total_pages += 1

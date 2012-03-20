@@ -68,7 +68,7 @@ def test_basic_package():
     w.writeDocsFor(root, False)
     w.writeModuleIndex(system)
     for ob in system.allobjects.itervalues():
-        if ob.documentation_location == model.DocumentationLocation.OWN_PAGE:
+        if ob.documentation_location == model.DocLocation.OWN_PAGE:
             assert targetdir.join(ob.fullName() + '.html').check(file=1)
     assert 'Package docstring' in targetdir.join('basic.html').read()
     if conftest.option.viewhtml:

@@ -477,13 +477,13 @@ class ProblemObjectsPage(rend.Page):
     docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
 
 def absoluteURL(ctx, ob):
-    if ob.documentation_location == model.DocumentationLocation.PARENT_PAGE:
+    if ob.documentation_location == model.DocLocation.PARENT_PAGE:
         p = ob.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
         child = p.fullName() + '.html'
         frag = ob.name
-    elif ob.documentation_location == model.DocumentationLocation.OWN_PAGE:
+    elif ob.documentation_location == model.DocLocation.OWN_PAGE:
         child = ob.fullName() + '.html'
         frag = None
     else:
