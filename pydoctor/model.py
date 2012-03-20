@@ -30,7 +30,8 @@ import __builtin__
 class DocumentationLocation:
     OWN_PAGE = 1
     PARENT_PAGE = 2
-    UNDER_PARENT_DOCSTRING = 3
+    # Nothing uses this yet.  Parameters will one day.
+    #UNDER_PARENT_DOCSTRING = 3
 
 
 class Documentable(object):
