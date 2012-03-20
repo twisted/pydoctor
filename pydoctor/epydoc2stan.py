@@ -142,10 +142,9 @@ class FieldHandler(object):
     def __init__(self, obj):
         self.obj = obj
 
+        self.types = {}
+
         self.parameter_descs = []
-        self.ivar_descs = []
-        self.cvar_descs = []
-        self.var_descs = []
         self.return_desc = None
         self.raise_descs = []
         self.seealsos = []
@@ -191,54 +190,28 @@ class FieldHandler(object):
             desc_list.append(d)
 
     def add_info(self, desc_list, field):
-        if desc_list and desc_list[-1].name == field.arg and desc_list[-1].body is None:
-            desc_list[-1].body = field.body
-        else:
-            d = FieldDesc()
-            d.kind = field.tag
-            d.name = field.arg
-            d.body = field.body
-            desc_list.append(d)
+        d = FieldDesc()
+        d.kind = field.tag
+        d.name = field.arg
+        d.body = field.body
+        desc_list.append(d)
 
     def handle_type(self, field):
-        obj = self.obj
-        if isinstance(obj, model.Function):
-            self.add_type_info(self.parameter_descs, field)
-        elif isinstance(obj, model.Class):
-            ivars = self.ivar_descs
-            cvars = self.cvar_descs
-            if ivars and ivars[-1].name == field.arg:
-                if ivars[-1].type is not None:
-                    self.redef(field)
-                ivars[-1].type = field.body
-            elif cvars and cvars[-1].name == field.arg:
-                if cvars[-1].type is not None:
-                    self.redef(field)
-                cvars[-1].type = field.body
-            else:
-                self.unattached_types[field.arg] = field.body
-        else:
-            self.add_type_info(self.var_descs, field)
+        self.types[field.arg] = field.body
 
     def handle_param(self, field):
         self.add_info(self.parameter_descs, field)
     handle_arg = handle_param
     handle_keyword = handle_param
 
-    def handle_ivar(self, field):
-        self.add_info(self.ivar_descs, field)
-        if field.arg in self.unattached_types:
-            self.ivar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
 
-    def handle_cvar(self, field):
-        self.add_info(self.cvar_descs, field)
-        if field.arg in self.unattached_types:
-            self.cvar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
+    def handled_elsewhere(self, field):
+        # Some fields are handled by extract_fields below.
+        pass
 
-    def handle_var(self, field):
-        self.add_info(self.var_descs, field)
+    handle_ivar = handled_elsewhere
+    handle_cvar = handled_elsewhere
+    handle_var = handled_elsewhere
 
     def handle_raises(self, field):
         self.add_info(self.raise_descs, field)
@@ -268,31 +241,15 @@ class FieldHandler(object):
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
         m(field)
 
+    def resolve_types(self):
+        for pd in self.parameter_descs:
+            if pd.name in self.types:
+                pd.type = self.types[pd.name]
+
     def format(self):
         r = []
 
-        ivs = []
-        for iv in self.ivar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, iv.name, iv.body, self.obj)
-            if iv.name is None or attr.isVisible:
-                ivs.append(iv)
-        self.ivar_descs = ivs
-
-        cvs = []
-        for cv in self.cvar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, cv.name, cv.body, self.obj)
-            if attr.isVisible:
-                cvs.append(cv)
-        self.cvar_descs = cvs
-
-        for d, l in (('Parameters', self.parameter_descs),
-                     #('Instance Variables', self.ivar_descs),
-                     #('Class Variables', self.cvar_descs),
-                     #('Variables', self.var_descs),
-                     ):
-            r.append(format_desc_list(d, l, d))
+        r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
                                tags.td(colspan="2")[self.return_desc.format()]])
@@ -433,6 +390,7 @@ def doc2html(obj, summary=False, docstring=None):
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
+        fh.resolve_types()
         s[fh.format()]
     return s, []
 
