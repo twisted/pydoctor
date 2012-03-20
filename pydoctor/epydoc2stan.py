@@ -440,23 +440,35 @@ def doc2html(obj, summary=False, docstring=None):
 def extract_fields(obj):
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
+    if isinstance(obj, model.Function):
+        return []
     doc = obj.docstring
     if doc is None or not doc.strip():
-        return
+        return []
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
-        return
-    errs = []
+        return []
     def crappit(): pass
     crappit.__doc__ = doc
     doc = inspect.getdoc(crappit)
     try:
-        pdoc = parse_docstring(doc, errs)
+        pdoc = parse_docstring(doc, [])
     except Exception:
-        return
+        return []
     pdoc, fields = pdoc.split_fields()
     if not fields:
-        return
+        return []
+    r = []
+    types = {}
+    for field in fields:
+        if field.tag() == 'type':
+            types[field.arg()] = field.body().to_plaintext(None).strip('\n')
+    print types
     for field in fields:
         if field.tag() in ['ivar', 'cvar', 'var']:
-            yield field.tag(), field.arg(), field.body()
+            body = field.body().to_plaintext(None)
+            if field.arg() in types:
+                body = '%s (type: %s)' % (body.strip('\n'), types[field.arg()])
+            r.append(
+                [field.tag(), field.arg(), body])
+    return r

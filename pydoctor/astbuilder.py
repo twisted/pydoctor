@@ -306,8 +306,7 @@ class ASTBuilder(object):
         self.push(obj)
         from pydoctor import epydoc2stan
         for attrkind, name, body in epydoc2stan.extract_fields(obj):
-            #import pdb; pdb.set_trace()
-            attrobj = self.system.Attribute(self.system, name, body.to_plaintext(None), obj)
+            attrobj = self.system.Attribute(self.system, name, body, obj)
             self.system.addObject(attrobj)
         return obj
 
