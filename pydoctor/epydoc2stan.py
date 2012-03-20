@@ -413,7 +413,7 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
+            crap = de_p(pdoc.to_html(_EpydocLinker(source)))
         except Exception, e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
