@@ -48,7 +48,7 @@ class ZopeInterfaceClass(model.Class):
 class Attribute(model.Documentable):
     kind = "Attribute"
     css_class = "attribute"
-    document_in_parent_page = True
+    documentation_location = model.DocLocation.PARENT_PAGE
 
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):

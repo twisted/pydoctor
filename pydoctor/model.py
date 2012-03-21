@@ -26,6 +26,14 @@ import __builtin__
 #   Classes can contain Functions (when they get called Methods) and Classes
 #   Functions can't contain anything.
 
+
+class DocLocation:
+    OWN_PAGE = 1
+    PARENT_PAGE = 2
+    # Nothing uses this yet.  Parameters will one day.
+    #UNDER_PARENT_DOCSTRING = 3
+
+
 class Documentable(object):
     """An object that can be documented.
 
@@ -37,11 +45,11 @@ class Documentable(object):
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
-    @ivar document_in_parent_page: ...
+    @ivar documentation_location: ...
     @ivar sourceHref: ...
     @ivar kind: ...
     """
-    document_in_parent_page = False
+    documentation_location = DocLocation.OWN_PAGE
     sourceHref = None
 
     @property
@@ -273,7 +281,7 @@ class Class(Documentable):
 
 
 class Function(Documentable):
-    document_in_parent_page = True
+    documentation_location = DocLocation.PARENT_PAGE
     kind = "Function"
     linenumber = 0
     def setup(self):
@@ -287,6 +295,14 @@ class Function(Documentable):
         for b in self.parent.allbases():
             if self.name in b.contents:
                 yield b.contents[self.name]
+
+
+class Attribute(Documentable):
+
+    linenumber = 0
+    kind = "Attribute"
+    documentation_location = DocLocation.PARENT_PAGE
+
 
 class PrivacyClass:
     """'enum' containing values indicating how private an object should be.
@@ -313,6 +329,7 @@ class System(object):
     Module = Module
     Package = Package
     Function = Function
+    Attribute = Attribute
     # not done here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None

@@ -1,6 +1,6 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
-from pydoctor import model, zopeinterface
+from pydoctor import model
 
 from nevow import tags
 
@@ -42,10 +42,16 @@ class _EpydocLinker(object):
         if obj is None:
             return '<code>%s</code>'%(prettyID,)
         else:
-            if isinstance(obj, model.Function):
-                linktext = link(obj.parent) + '#' + urllib.quote(obj.name)
-            else:
+            if obj.documentation_location == model.DocLocation.PARENT_PAGE:
+                p = obj.parent
+                if isinstance(p, model.Module) and p.name == '__init__':
+                    p = p.parent
+                linktext = link(p) + '#' + urllib.quote(obj.name)
+            elif obj.documentation_location == model.DocLocation.OWN_PAGE:
                 linktext = link(obj)
+            else:
+                raise AssertionError(
+                    "Unknown documentation_location: %s" % obj.documentation_location)
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
 
 class FieldDesc(object):
@@ -136,10 +142,9 @@ class FieldHandler(object):
     def __init__(self, obj):
         self.obj = obj
 
+        self.types = {}
+
         self.parameter_descs = []
-        self.ivar_descs = []
-        self.cvar_descs = []
-        self.var_descs = []
         self.return_desc = None
         self.raise_descs = []
         self.seealsos = []
@@ -185,54 +190,28 @@ class FieldHandler(object):
             desc_list.append(d)
 
     def add_info(self, desc_list, field):
-        if desc_list and desc_list[-1].name == field.arg and desc_list[-1].body is None:
-            desc_list[-1].body = field.body
-        else:
-            d = FieldDesc()
-            d.kind = field.tag
-            d.name = field.arg
-            d.body = field.body
-            desc_list.append(d)
+        d = FieldDesc()
+        d.kind = field.tag
+        d.name = field.arg
+        d.body = field.body
+        desc_list.append(d)
 
     def handle_type(self, field):
-        obj = self.obj
-        if isinstance(obj, model.Function):
-            self.add_type_info(self.parameter_descs, field)
-        elif isinstance(obj, model.Class):
-            ivars = self.ivar_descs
-            cvars = self.cvar_descs
-            if ivars and ivars[-1].name == field.arg:
-                if ivars[-1].type is not None:
-                    self.redef(field)
-                ivars[-1].type = field.body
-            elif cvars and cvars[-1].name == field.arg:
-                if cvars[-1].type is not None:
-                    self.redef(field)
-                cvars[-1].type = field.body
-            else:
-                self.unattached_types[field.arg] = field.body
-        else:
-            self.add_type_info(self.var_descs, field)
+        self.types[field.arg] = field.body
 
     def handle_param(self, field):
         self.add_info(self.parameter_descs, field)
     handle_arg = handle_param
     handle_keyword = handle_param
 
-    def handle_ivar(self, field):
-        self.add_info(self.ivar_descs, field)
-        if field.arg in self.unattached_types:
-            self.ivar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
 
-    def handle_cvar(self, field):
-        self.add_info(self.cvar_descs, field)
-        if field.arg in self.unattached_types:
-            self.cvar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
+    def handled_elsewhere(self, field):
+        # Some fields are handled by extract_fields below.
+        pass
 
-    def handle_var(self, field):
-        self.add_info(self.var_descs, field)
+    handle_ivar = handled_elsewhere
+    handle_cvar = handled_elsewhere
+    handle_var = handled_elsewhere
 
     def handle_raises(self, field):
         self.add_info(self.raise_descs, field)
@@ -262,30 +241,15 @@ class FieldHandler(object):
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
         m(field)
 
+    def resolve_types(self):
+        for pd in self.parameter_descs:
+            if pd.name in self.types:
+                pd.type = self.types[pd.name]
+
     def format(self):
         r = []
 
-        ivs = []
-        for iv in self.ivar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, iv.name, iv.body, self.obj)
-            if iv.name is None or attr.isVisible:
-                ivs.append(iv)
-        self.ivar_descs = ivs
-
-        cvs = []
-        for cv in self.cvar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, cv.name, cv.body, self.obj)
-            if attr.isVisible:
-                cvs.append(cv)
-        self.cvar_descs = cvs
-
-        for d, l in (('Parameters', self.parameter_descs),
-                     ('Instance Variables', self.ivar_descs),
-                     ('Class Variables', self.cvar_descs),
-                     ('Variables', self.var_descs)):
-            r.append(format_desc_list(d, l, d))
+        r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
                                tags.td(colspan="2")[self.return_desc.format()]])
@@ -340,6 +304,11 @@ def reportErrors(obj, errs):
 
 def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
+    if getattr(obj, 'parsed_docstring', None) is not None:
+        r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
+        if getattr(obj, 'parsed_type', None) is not None:
+            r = [r, ' (type: ', tags.raw(de_p(obj.parsed_type.to_html(_EpydocLinker(obj)))), ')']
+        return r, []
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
@@ -406,7 +375,7 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
+            crap = de_p(pdoc.to_html(_EpydocLinker(source)))
         except Exception, e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
@@ -426,5 +395,48 @@ def doc2html(obj, summary=False, docstring=None):
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
+        fh.resolve_types()
         s[fh.format()]
     return s, []
+
+
+field_name_to_human_name = {
+    'ivar': 'Instance Variable',
+    'cvar': 'Class Variable',
+    'var': 'Variable',
+    }
+
+def extract_fields(obj):
+    if isinstance(obj, model.Package):
+        obj = obj.contents['__init__']
+    if isinstance(obj, model.Function):
+        return []
+    doc = obj.docstring
+    if doc is None or not doc.strip():
+        return []
+    parse_docstring, e = get_parser(obj.system.options.docformat)
+    if not parse_docstring:
+        return []
+    def crappit(): pass
+    crappit.__doc__ = doc
+    doc = inspect.getdoc(crappit)
+    try:
+        pdoc = parse_docstring(doc, [])
+    except Exception:
+        return []
+    pdoc, fields = pdoc.split_fields()
+    if not fields:
+        return []
+    r = []
+    types = {}
+    for field in fields:
+        if field.tag() == 'type':
+            types[field.arg()] = field.body()
+    for field in fields:
+        if field.tag() in ['ivar', 'cvar', 'var']:
+            attrobj = obj.system.Attribute(obj.system, field.arg(), None, obj)
+            attrobj.parsed_docstring = field.body()
+            attrobj.parsed_type = types.get(field.arg())
+            attrobj.kind = field_name_to_human_name[field.tag()]
+            r.append(attrobj)
+    return r

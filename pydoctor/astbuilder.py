@@ -304,6 +304,10 @@ class ASTBuilder(object):
         obj = cls(self.system, name, docstring, self.current)
         self.system.addObject(obj)
         self.push(obj)
+        # Method-level import to avoid a circular dependency.
+        from pydoctor import epydoc2stan
+        for attrobj in epydoc2stan.extract_fields(obj):
+            self.system.addObject(attrobj)
         return obj
 
     def _pop(self, cls):

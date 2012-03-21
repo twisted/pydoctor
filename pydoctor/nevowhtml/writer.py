@@ -2,6 +2,7 @@
 
 from pydoctor.nevowhtml.util import link, templatefile
 from pydoctor.nevowhtml import pages, summary
+from pydoctor import model
 
 from nevow import flat
 
@@ -48,7 +49,7 @@ class NevowWriter:
     def writeDocsFor(self, ob, functionpages):
         if not ob.isVisible:
             return
-        isfunc = ob.document_in_parent_page
+        isfunc = ob.documentation_location == model.DocLocation.PARENT_PAGE
         if (isfunc and functionpages) or not isfunc:
             if self.dry_run:
                 self.total_pages += 1
