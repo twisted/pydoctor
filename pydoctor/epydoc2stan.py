@@ -1,6 +1,6 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
-from pydoctor import model, zopeinterface
+from pydoctor import model
 
 from nevow import tags
 
@@ -304,6 +304,11 @@ def reportErrors(obj, errs):
 
 def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
+    if getattr(obj, 'parsed_docstring', None) is not None:
+        r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
+        if getattr(obj, 'parsed_type', None) is not None:
+            r = [r, ' (type: ', tags.raw(de_p(obj.parsed_type.to_html(_EpydocLinker(obj)))), ')']
+        return r, []
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
@@ -426,12 +431,12 @@ def extract_fields(obj):
     types = {}
     for field in fields:
         if field.tag() == 'type':
-            types[field.arg()] = field.body().to_plaintext(None).strip('\n')
+            types[field.arg()] = field.body()
     for field in fields:
         if field.tag() in ['ivar', 'cvar', 'var']:
-            body = field.body().to_plaintext(None)
-            if field.arg() in types:
-                body = '%s (type: %s)' % (body.strip('\n'), types[field.arg()])
-            r.append(
-                [field_name_to_human_name[field.tag()], field.arg(), body])
+            attrobj = obj.system.Attribute(obj.system, field.arg(), None, obj)
+            attrobj.parsed_docstring = field.body()
+            attrobj.parsed_type = types.get(field.arg())
+            attrobj.kind = field_name_to_human_name[field.tag()]
+            r.append(attrobj)
     return r

@@ -306,9 +306,7 @@ class ASTBuilder(object):
         self.push(obj)
         # Method-level import to avoid a circular dependency.
         from pydoctor import epydoc2stan
-        for attrkind, name, body in epydoc2stan.extract_fields(obj):
-            attrobj = self.system.Attribute(self.system, name, body, obj)
-            attrobj.kind = attrkind
+        for attrobj in epydoc2stan.extract_fields(obj):
             self.system.addObject(attrobj)
         return obj
 
