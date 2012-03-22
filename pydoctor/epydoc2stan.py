@@ -4,7 +4,7 @@ from pydoctor import model
 
 from nevow import tags
 
-import inspect, itertools, urllib
+import inspect, itertools, os, urllib
 
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
@@ -40,9 +40,18 @@ class _EpydocLinker(object):
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveDottedName(fullID)
         if obj is None:
-            self.system.msg(
+            stdlib_dir = os.path.dirname(os.__file__)
+            stdlib_url = 'http://docs.python.org/library/'
+            parts = fullID.split('.')
+            for i in range(len(parts), 0, -1):
+                sub_parts = parts[:i]
+                filename = '/'.join(sub_parts) + '.py'
+                if os.path.exists(os.path.join(stdlib_dir, filename)):
+                    linktext = stdlib_url + '.'.join(sub_parts) + '.html#' + fullID
+                    return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            self.obj.system.msg(
                 "resolveDottedName", "%s:%s invalid ref to %s" % (
-                    obj.fullName(), obj.linenumber, fullID),
+                    self.obj.fullName(), self.obj.linenumber, fullID),
                 thresh=-1)
             return '<code>%s</code>'%(prettyID,)
         else:
