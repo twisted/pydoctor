@@ -4,7 +4,7 @@ from pydoctor import model
 
 from nevow import tags
 
-import inspect, itertools, os, urllib
+import inspect, itertools, os, sys, urllib
 
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
@@ -45,9 +45,13 @@ class _EpydocLinker(object):
             parts = fullID.split('.')
             for i in range(len(parts), 0, -1):
                 sub_parts = parts[:i]
-                filename = '/'.join(sub_parts) + '.py'
-                if sub_parts == ['os', 'path'] or os.path.exists(os.path.join(stdlib_dir, filename)):
-                    linktext = stdlib_url + '.'.join(sub_parts) + '.html#' + fullID
+                filename = '/'.join(sub_parts)
+                sub_name = '.'.join(sub_parts)
+                if sub_parts == ['os', 'path'] \
+                       or os.path.exists(os.path.join(stdlib_dir, filename) + '.py') \
+                       or os.path.exists(os.path.join(stdlib_dir, 'lib-dynload', filename) + '.so') \
+                       or sub_name in sys.builtin_module_names:
+                    linktext = stdlib_url + sub_name + '.html#' + fullID
                     return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
             self.obj.system.msg(
                 "resolveDottedName", "%s:%s invalid ref to %s" % (
