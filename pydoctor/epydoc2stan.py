@@ -46,7 +46,7 @@ class _EpydocLinker(object):
             for i in range(len(parts), 0, -1):
                 sub_parts = parts[:i]
                 filename = '/'.join(sub_parts) + '.py'
-                if os.path.exists(os.path.join(stdlib_dir, filename)):
+                if sub_parts == ['os', 'path'] or os.path.exists(os.path.join(stdlib_dir, filename)):
                     linktext = stdlib_url + '.'.join(sub_parts) + '.html#' + fullID
                     return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
             self.obj.system.msg(
