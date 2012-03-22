@@ -40,6 +40,10 @@ class _EpydocLinker(object):
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveDottedName(fullID)
         if obj is None:
+            self.system.msg(
+                "resolveDottedName", "%s:%s invalid ref to %s" % (
+                    obj.fullName(), obj.linenumber, fullID),
+                thresh=-1)
             return '<code>%s</code>'%(prettyID,)
         else:
             if obj.documentation_location == model.DocLocation.PARENT_PAGE:
