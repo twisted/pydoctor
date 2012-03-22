@@ -4,7 +4,11 @@ from pydoctor import model
 
 from nevow import tags
 
-import inspect, itertools, urllib
+import exceptions, inspect, itertools, os, sys, urllib
+
+STDLIB_DIR = os.path.dirname(os.__file__)
+STDLIB_URL = 'http://docs.python.org/library/'
+
 
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
@@ -40,7 +44,32 @@ class _EpydocLinker(object):
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveDottedName(fullID)
         if obj is None:
-            return '<code>%s</code>'%(prettyID,)
+            parts = fullID.split('.')
+            linktext = None
+            for i in range(len(parts), 0, -1):
+                sub_parts = parts[:i]
+                filename = '/'.join(sub_parts)
+                sub_name = '.'.join(sub_parts)
+                if sub_name == 'os.path' \
+                       or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
+                       or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
+                       or sub_name in sys.builtin_module_names:
+                    linktext = STDLIB_URL + sub_name + '.html#' + fullID
+                    break
+            else:
+                if fullID in __builtins__:
+                    if fullID in exceptions.__dict__:
+                        linktext = STDLIB_URL + 'exceptions.html#exceptions.' + fullID
+                    else:
+                        linktext = STDLIB_URL + 'functions.html#' + fullID
+            if linktext is not None:
+                return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            else:
+                self.obj.system.msg(
+                    "resolveDottedName", "%s:%s invalid ref to %s" % (
+                        self.obj.fullName(), self.obj.linenumber, fullID),
+                    thresh=-1)
+                return '<code>%s</code>'%(prettyID,)
         else:
             if obj.documentation_location == model.DocLocation.PARENT_PAGE:
                 p = obj.parent
