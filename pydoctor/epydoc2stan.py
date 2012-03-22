@@ -4,7 +4,7 @@ from pydoctor import model
 
 from nevow import tags
 
-import inspect, itertools, os, sys, urllib
+import exceptions, inspect, itertools, os, sys, urllib
 
 def link(o):
     return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
@@ -52,6 +52,13 @@ class _EpydocLinker(object):
                        or os.path.exists(os.path.join(stdlib_dir, 'lib-dynload', filename) + '.so') \
                        or sub_name in sys.builtin_module_names:
                     linktext = stdlib_url + sub_name + '.html#' + fullID
+                    return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            if fullID in __builtins__:
+                if fullID in exceptions.__dict__:
+                    linktext = 'http://docs.python.org/library/exceptions.html#exceptions.' + fullID
+                    return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+                else:
+                    linktext = 'http://docs.python.org/library/functions.html#' + fullID
                     return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
             self.obj.system.msg(
                 "resolveDottedName", "%s:%s invalid ref to %s" % (
