@@ -1,5 +1,7 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
+import __builtin__
+
 from pydoctor import model
 
 from nevow import tags
@@ -57,7 +59,7 @@ class _EpydocLinker(object):
                     linktext = STDLIB_URL + sub_name + '.html#' + fullID
                     break
             else:
-                if fullID in __builtins__:
+                if fullID in __builtin__.__dict__:
                     if fullID in exceptions.__dict__:
                         linktext = STDLIB_URL + 'exceptions.html#exceptions.' + fullID
                     else:
