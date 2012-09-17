@@ -166,6 +166,7 @@ class ModuleVistor(object):
                     mod._name2fullname[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
+                    targetmod._name2fullname[ob.name] = ob.fullName()
                     continue
             if isinstance(
                 self.system.objForFullName(modname), model.Package):

@@ -153,9 +153,12 @@ class Documentable(object):
         if obj is None:
             return obj
         for p in parts[1:]:
-            if p not in obj.contents:
+            if p not in obj._name2fullname:
                 return None
-            obj = obj.contents[p]
+            fn = obj._name2fullname[p]
+            if fn not in self.system.allobjects:
+                return None
+            obj = self.system.allobjects[fn]
         if verbose > 1:
             print dottedname, '->', obj.fullName(), 'in', self.fullName()
         return obj
