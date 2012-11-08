@@ -68,9 +68,12 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     if implementsOnly:
         cls.implements_directly = []
     for arg in interfaceargs:
-        fullName = cls.dottedNameToFullName(ast_pp.pp(arg))
-        if fullName not in cls.system.allobjects:
-            fullName = cls.system.resolveAlias(fullName)
+        if not isinstance(arg, tuple):
+            fullName = cls.dottedNameToFullName(ast_pp.pp(arg))
+            if fullName not in cls.system.allobjects:
+                fullName = cls.system.resolveAlias(fullName)
+        else:
+            fullName = arg[1]
         cls.implements_directly.append(fullName)
         obj = cls.system.objForFullName(fullName)
         if obj is not None:
@@ -236,10 +239,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for n, o in zip(cls.bases, cls.baseobjects):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
-        for (dn, fn, o) in cls.decorators:
+        for ((dn, fn, o), args) in cls.decorators:
             if fn == 'zope.interface.implementer':
-                addInterfaceInfoToClass(self.builder.current, node.args,
-                                        funcName == 'zope.interface.implementsOnly')
+                addInterfaceInfoToClass(cls, args, False)
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
