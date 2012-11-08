@@ -118,14 +118,14 @@ class ModuleVistor(object):
             return (dotted_name, full_name, obj)
 
         if node.decorators:
-            for node in node.decorators:
-                if isinstance(node, ast.CallFunc):
+            for decnode in node.decorators:
+                if isinstance(decnode, ast.CallFunc):
                     args = []
-                    for arg in node.args:
+                    for arg in decnode.args:
                         args.append(node2data(arg))
-                    base = node2data(node.node)
+                    base = node2data(decnode.node)
                 else:
-                    base = node2data(node)
+                    base = node2data(decnode)
                     args = None
                 cls.decorators.append((base, args))
 

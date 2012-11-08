@@ -288,8 +288,10 @@ def test_classdecorator():
     class C:
         pass
     ''', modname='mod')
-    assert mod.contents['C'].decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
-      mod.contents['C'].decorators
+    C = mod.contents['C']
+    assert C.decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
+      C.decorators
+
 
 def test_classdecorator_with_args():
     mod = fromText('''
