@@ -267,27 +267,48 @@ def test_classmethod():
 
 def test_classdecorator():
     mod = fromText('''
-    @classdecorator
+    @cd
     class C:
         pass
     ''')
-    assert mod.contents['C'].decorators == [('classdecorator', 'classdecorator', None)], \
+    assert mod.contents['C'].decorators == [(('cd', 'cd', None), None)], \
       mod.contents['C'].decorators
     mod = fromText('''
-    @module.classdecorator
+    @module.cd
     class C:
         pass
     ''')
-    assert mod.contents['C'].decorators == [('module.classdecorator', 'module.classdecorator', None)], \
+    assert mod.contents['C'].decorators == [(('module.cd', 'module.cd', None), None)], \
       mod.contents['C'].decorators
 
     mod = fromText('''
-    def classdecorator(cls):
+    def cd(cls):
         pass
-    @classdecorator
+    @cd
     class C:
         pass
     ''', modname='mod')
-    assert mod.contents['C'].decorators == [('classdecorator', 'mod.classdecorator', mod.contents['classdecorator'])], \
+    assert mod.contents['C'].decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
       mod.contents['C'].decorators
+
+def test_classdecorator_with_args():
+    mod = fromText('''
+    @cd()
+    class C:
+        pass
+    ''', modname='test')
+    A = mod.contents['A']
+    C = mod.contents['C']
+    assert C.decorators == [(('cd', 'cd', None), [])], \
+      C.decorators
+    mod = fromText('''
+    class A: pass
+    @cd(A)
+    class C:
+        pass
+    ''', modname='test')
+    A = mod.contents['A']
+    C = mod.contents['C']
+    assert C.decorators == [(('cd', 'cd', None), [('A', 'test.A', A)])], \
+      C.decorators
 

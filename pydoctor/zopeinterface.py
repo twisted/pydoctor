@@ -236,6 +236,10 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for n, o in zip(cls.bases, cls.baseobjects):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
+        for (dn, fn, o) in cls.decorators:
+            if fn == 'zope.interface.implementer':
+                addInterfaceInfoToClass(self.builder.current, node.args,
+                                        funcName == 'zope.interface.implementsOnly')
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):

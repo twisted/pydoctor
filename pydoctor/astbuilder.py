@@ -102,20 +102,32 @@ class ModuleVistor(object):
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
+
+        def node2data(node):
+            parts = []
+            while isinstance(node, ast.Getattr):
+                parts.append(node.attrname)
+                node = node.expr
+            if isinstance(node, ast.Name):
+                parts.append(node.name)
+            else:
+                return None
+            dotted_name = '.'.join(reversed(parts))
+            full_name = self.builder.current.dottedNameToFullName(dotted_name)
+            obj = self.system.allobjects.get(full_name)
+            return (dotted_name, full_name, obj)
+
         if node.decorators:
             for node in node.decorators:
-                parts = []
-                while isinstance(node, ast.Getattr):
-                    parts.append(node.attrname)
-                    node = node.expr
-                if isinstance(node, ast.Name):
-                    parts.append(node.name)
+                if isinstance(node, ast.CallFunc):
+                    args = []
+                    for arg in node.args:
+                        args.append(node2data(arg))
+                    base = node2data(node.node)
                 else:
-                    continue
-                dotted_name = '.'.join(reversed(parts))
-                full_name = self.builder.current.dottedNameToFullName(dotted_name)
-                obj = self.system.allobjects.get(full_name)
-                cls.decorators.append((dotted_name, full_name, obj))
+                    base = node2data(node)
+                    args = None
+                cls.decorators.append((base, args))
 
         if node.lineno is not None:
             cls.linenumber = node.lineno
