@@ -44,6 +44,26 @@ def test_classImplements():
     '''
     implements_test(src)
 
+def test_implementer():
+    src = '''
+    import zope.interface
+
+    class IFoo(zope.interface.Interface):
+        pass
+    class IBar(zope.interface.Interface):
+        pass
+
+    @zope.interface.implementer(IFoo)
+    class Foo:
+        pass
+    @zope.interface.implementer(IBar)
+    class FooBar(Foo):
+        pass
+    class OnlyBar(Foo):
+        zope.interface.implementsOnly(IBar)
+    '''
+    implements_test(src)
+
 
 def implements_test(src):
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
