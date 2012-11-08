@@ -101,6 +101,12 @@ class ModuleVistor(object):
             baseobjects.append(bob)
 
         cls = self.builder.pushClass(node.name, node.doc)
+        cls.decorators = []
+        if node.decorators:
+            for node in node.decorators:
+                print node
+                if isinstance(node, ast.Name):
+                    pass
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:

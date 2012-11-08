@@ -264,3 +264,17 @@ def test_classmethod():
         f = classmethod(f)
     ''')
     assert mod.contents['C'].contents['f'].kind == 'Class Method'
+
+def test_classdecorator():
+    mod = fromText('''
+    @classdecorator
+    class C:
+        pass
+    ''')
+    #assert mod.contents['C'].decorators == ['classdecorator']
+    mod = fromText('''
+    @module.classdecorator
+    class C:
+        pass
+    ''')
+    assert mod.contents['C'].decorators == ['classdecorator']
