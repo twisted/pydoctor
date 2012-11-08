@@ -271,10 +271,23 @@ def test_classdecorator():
     class C:
         pass
     ''')
-    #assert mod.contents['C'].decorators == ['classdecorator']
+    assert mod.contents['C'].decorators == [('classdecorator', 'classdecorator', None)], \
+      mod.contents['C'].decorators
     mod = fromText('''
     @module.classdecorator
     class C:
         pass
     ''')
-    assert mod.contents['C'].decorators == ['classdecorator']
+    assert mod.contents['C'].decorators == [('module.classdecorator', 'module.classdecorator', None)], \
+      mod.contents['C'].decorators
+
+    mod = fromText('''
+    def classdecorator(cls):
+        pass
+    @classdecorator
+    class C:
+        pass
+    ''', modname='mod')
+    assert mod.contents['C'].decorators == [('classdecorator', 'mod.classdecorator', mod.contents['classdecorator'])], \
+      mod.contents['C'].decorators
+

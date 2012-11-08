@@ -104,9 +104,19 @@ class ModuleVistor(object):
         cls.decorators = []
         if node.decorators:
             for node in node.decorators:
-                print node
+                parts = []
+                while isinstance(node, ast.Getattr):
+                    parts.append(node.attrname)
+                    node = node.expr
                 if isinstance(node, ast.Name):
-                    pass
+                    parts.append(node.name)
+                else:
+                    continue
+                dotted_name = '.'.join(reversed(parts))
+                full_name = self.builder.current.dottedNameToFullName(dotted_name)
+                obj = self.system.allobjects.get(full_name)
+                cls.decorators.append((dotted_name, full_name, obj))
+
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:
