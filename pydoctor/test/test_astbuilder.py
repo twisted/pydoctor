@@ -299,7 +299,6 @@ def test_classdecorator_with_args():
     class C:
         pass
     ''', modname='test')
-    A = mod.contents['A']
     C = mod.contents['C']
     assert C.decorators == [(('cd', 'cd', None), [])], \
       C.decorators
