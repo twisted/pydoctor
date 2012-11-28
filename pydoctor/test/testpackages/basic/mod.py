@@ -1,7 +1,15 @@
+"""
+Module docstring.
+
+@var CONSTANT: A shiny constant.
+"""
+
 class C:
     """Class docstring.
 
     This docstring has lines, paragraphs and everything!
+
+    Please see L{CONSTANT}.
 
     @ivar notreally: even a field!
     @since: 2.1

@@ -389,6 +389,9 @@ class ASTBuilder(object):
     def processModuleAST(self, ast, mod):
         findAll(ast, mod)
         visitor.walk(ast, self.ModuleVistor(self, mod))
+        from pydoctor import epydoc2stan
+        for attrobj in epydoc2stan.extract_fields(mod):
+            self.system.addObject(attrobj)
 
     def expandModname(self, modname, givewarning=True):
         if '.' in modname:

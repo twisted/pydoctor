@@ -691,7 +691,7 @@ class System(object):
             return
         builder = self.defaultBuilder(self)
         ast = builder.parseFile(mod.filepath)
-        if  ast:
+        if ast:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             builder.processModuleAST(ast, mod)
