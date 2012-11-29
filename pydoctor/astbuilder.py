@@ -333,10 +333,6 @@ class ASTBuilder(object):
         obj = cls(self.system, name, docstring, self.current)
         self.system.addObject(obj)
         self.push(obj)
-        # Method-level import to avoid a circular dependency.
-        from pydoctor import epydoc2stan
-        for attrobj in epydoc2stan.extract_fields(obj):
-            self.system.addObject(attrobj)
         return obj
 
     def _pop(self, cls):
@@ -356,6 +352,10 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
+        # Method-level import to avoid a circular dependency.
+        from pydoctor import epydoc2stan
+        for attrobj in epydoc2stan.extract_fields(obj):
+            self.system.addObject(attrobj)
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)
@@ -389,9 +389,6 @@ class ASTBuilder(object):
     def processModuleAST(self, ast, mod):
         findAll(ast, mod)
         visitor.walk(ast, self.ModuleVistor(self, mod))
-        from pydoctor import epydoc2stan
-        for attrobj in epydoc2stan.extract_fields(mod):
-            self.system.addObject(attrobj)
 
     def expandModname(self, modname, givewarning=True):
         if '.' in modname:
