@@ -23,7 +23,8 @@ import __builtin__
 #
 #   Packages can contain Packages and Modules
 #   Modules can contain Functions and Classes
-#   Classes can contain Functions (when they get called Methods) and Classes
+#   Classes can contain Functions (in this case they get called Methods) and
+#       Classes
 #   Functions can't contain anything.
 
 
@@ -98,14 +99,6 @@ class Documentable(object):
         subclass'.
         """
         yield self
-
-    def name2fullname(self, name):
-        """XXX what is the difference between name2fullname,
-        dottedNameToFullName and resolveDottedName??"""
-        if name in self._name2fullname:
-            return self._name2fullname[name]
-        else:
-            return self.parent.name2fullname(name)
 
     def _resolveName(self, name, verbose):
         """Helper for resolveDottedName."""
@@ -231,8 +224,6 @@ class Documentable(object):
 
 class Package(Documentable):
     kind = "Package"
-    def name2fullname(self, name):
-        raise NameError
     def docsources(self):
         yield self.contents['__init__']
     @property
@@ -407,7 +398,7 @@ class System(object):
         if not isinstance(m, Module):
             return n
         if clsname in m._name2fullname:
-            newname = m.name2fullname(clsname)
+            newname = m._name2fullname[clsname]
             if newname == n:
                 return newname
             for system in systems:
