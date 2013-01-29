@@ -240,10 +240,17 @@ class Class(CanContainImportsDocumentable):
     kind = "Class"
     def setup(self):
         super(Class, self).setup()
-        self.bases = []
         self.rawbases = []
-        self.baseobjects = []
         self.subclasses = []
+
+    @property
+    def bases(self):
+        return [self.expandName(name) for name in self.rawbases]
+
+    @property
+    def baseobjects(self):
+        return [self.resolveName(name) for name in self.rawbases]
+
     def allbases(self):
         for b in self.baseobjects:
             if b is None:

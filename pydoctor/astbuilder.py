@@ -83,22 +83,8 @@ class ModuleVistor(object):
 
     def visitClass(self, node):
         rawbases = []
-        bases = []
-        baseobjects = []
-        current = self.builder.current
         for n in node.bases:
-            str_base = ast_pp.pp(n)
-            rawbases.append(str_base)
-            base = current.dottedNameToFullName(str_base)
-            bob = self.system.objForFullName(base)
-            if not bob and self.system.options.resolvealiases:
-                base = self.system.resolveAlias(base)
-                bob = self.system.objForFullName(base)
-            if bob:
-                assert (bob.parentMod is self.builder.currentMod or
-                        bob.parentMod.state > 0)
-            bases.append(base)
-            baseobjects.append(bob)
+            rawbases.append(ast_pp.pp(n))
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
@@ -113,7 +99,7 @@ class ModuleVistor(object):
             else:
                 return None
             dotted_name = '.'.join(reversed(parts))
-            full_name = self.builder.current.dottedNameToFullName(dotted_name)
+            full_name = self.builder.current.expandName(dotted_name)
             obj = self.system.allobjects.get(full_name)
             return (dotted_name, full_name, obj)
 
@@ -135,8 +121,6 @@ class ModuleVistor(object):
             cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
                              str(cls.linenumber)
         cls.rawbases = rawbases
-        cls.bases = bases
-        cls.baseobjects = baseobjects
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)

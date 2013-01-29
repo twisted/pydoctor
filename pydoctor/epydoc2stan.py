@@ -44,9 +44,9 @@ class _EpydocLinker(object):
         # are like 2 uses in Twisted.
         return de_p(something.to_html(self))
     def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveDottedName(fullID)
+        obj = self.obj.resolveName(fullID)
         if obj is None:
-            parts = fullID.split('.')
+            parts = self.obj.expandName(fullID).split('.')
             linktext = None
             for i in range(len(parts), 0, -1):
                 sub_parts = parts[:i]
@@ -68,7 +68,7 @@ class _EpydocLinker(object):
                 return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
             else:
                 self.obj.system.msg(
-                    "resolveDottedName", "%s:%s invalid ref to %s" % (
+                    "translate_identifier_xref", "%s:%s invalid ref to %s" % (
                         self.obj.fullName(), self.obj.linenumber, fullID),
                     thresh=-1)
                 return '<code>%s</code>'%(prettyID,)
