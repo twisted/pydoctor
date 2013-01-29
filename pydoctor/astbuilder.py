@@ -109,7 +109,7 @@ class ModuleVistor(object):
                 return None
             dotted_name = '.'.join(reversed(parts))
             full_name = self.builder.current.expandName(dotted_name)
-            obj = self.system.allobjects.get(full_name)
+            obj = self.system.objForFullName(full_name)
             return (dotted_name, full_name, obj)
 
         if node.decorators:

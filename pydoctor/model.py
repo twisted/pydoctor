@@ -124,22 +124,20 @@ class Documentable(object):
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
         should be "mod1.Local". """
-        parts_iter = iter(name.split('.'))
+        parts = name.split('.')
         obj = self
-        for p in parts_iter:
+        for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
-            if full_name not in self.system.allobjects:
+            obj = self.system.objForFullName(full_name)
+            if obj is None:
                 break
-            obj = self.system.allobjects[full_name]
-        remaning = list(parts_iter)
-        if remaning:
-            full_name += '.' + '.'.join(remaning)
-        return full_name
+        remaning = parts[i+1:]
+        return '.'.join([full_name] + remaning)
 
     def resolveName(self, name):
         """Return the object named by "name" in this context, if any is known
         to pydoctor. """
-        return self.system.allobjects.get(self.expandName(name))
+        return self.system.objForFullName(self.expandName(name))
 
     @property
     def privacyClass(self):
