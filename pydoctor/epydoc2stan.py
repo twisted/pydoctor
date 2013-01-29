@@ -93,14 +93,15 @@ class _EpydocLinker(object):
             if target is not None:
                 return self._objLink(target, prettyID)
             src = src.parent
-        if self.obj.parentMod:
-            for name in self.obj.parentMod._localNameToFullName_map:
-                o = self.obj.system.objForFullName(
-                    self.obj.parentMod._localNameToFullName_map[name])
-                if o:
-                    target = o.resolveName(fullID)
-                    if target is not None:
-                        return self._objLink(target, prettyID)
+        part0 = fullID.split('.')[0]
+        for mod in itertools.chain(
+                self.obj.system.objectsOfType(model.Module),
+                self.obj.system.objectsOfType(model.Package)):
+            if part0 not in mod.contents:
+                continue
+            target = mod.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target, prettyID)
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
