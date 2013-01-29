@@ -69,9 +69,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly = []
     for arg in interfaceargs:
         if not isinstance(arg, tuple):
-            fullName = cls.dottedNameToFullName(ast_pp.pp(arg))
-            if fullName not in cls.system.allobjects:
-                fullName = cls.system.resolveAlias(fullName)
+            fullName = cls.expandName(ast_pp.pp(arg))
         else:
             fullName = arg[1]
         cls.implements_directly.append(fullName)
@@ -115,7 +113,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def funcNameFromCall(self, node):
         str_base = ast_pp.pp(node.node)
-        return self.builder.current.dottedNameToFullName(str_base)
+        return self.builder.current.expandName(str_base)
 
     def visitAssign(self, node):
         # i would like pattern matching in python please
@@ -214,7 +212,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     visitCallFunc_zope_interface_implementsOnly = visitCallFunc_zope_interface_implements
 
     def visitCallFunc_zope_interface_classImplements(self, funcName, node):
-        clsname = self.builder.current.dottedNameToFullName(
+        clsname = self.builder.current.expandName(
             ast_pp.pp(node.args[0]))
         if clsname not in self.system.allobjects:
             self.builder.system.msg(

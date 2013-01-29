@@ -123,7 +123,7 @@ class Documentable(object):
 
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
-        sohuld be "mod1.Local". """
+        should be "mod1.Local". """
         parts_iter = iter(name.split('.'))
         obj = self
         for p in parts_iter:
@@ -133,7 +133,7 @@ class Documentable(object):
             obj = self.system.allobjects[full_name]
         remaning = list(parts_iter)
         if remaning:
-            full_name += '.' + '.'.join(parts_iter)
+            full_name += '.' + '.'.join(remaning)
         return full_name
 
     def resolveName(self, name):
@@ -242,14 +242,6 @@ class Class(CanContainImportsDocumentable):
         super(Class, self).setup()
         self.rawbases = []
         self.subclasses = []
-
-    @property
-    def bases(self):
-        return [self.expandName(name) for name in self.rawbases]
-
-    @property
-    def baseobjects(self):
-        return [self.resolveName(name) for name in self.rawbases]
 
     def allbases(self):
         for b in self.baseobjects:

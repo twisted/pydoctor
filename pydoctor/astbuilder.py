@@ -83,11 +83,19 @@ class ModuleVistor(object):
 
     def visitClass(self, node):
         rawbases = []
+        bases = []
+        baseobjects = []
         for n in node.bases:
-            rawbases.append(ast_pp.pp(n))
+            str_base = ast_pp.pp(n)
+            rawbases.append(str_base)
+            full_name = self.builder.current.expandName(str_base)
+            bases.append(full_name)
+            baseobjects.append(self.system.allobjects.get(full_name))
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
+        cls.bases = bases
+        cls.baseobjects = baseobjects
 
         def node2data(node):
             parts = []
@@ -120,7 +128,6 @@ class ModuleVistor(object):
         if cls.parentMod.sourceHref:
             cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
                              str(cls.linenumber)
-        cls.rawbases = rawbases
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
@@ -181,7 +188,7 @@ class ModuleVistor(object):
                     self.system.allobjects[ob.fullName()] = ob
                     del mod.contents[fromname]
                     mod.orderedcontents.remove(ob)
-                    mod._localNameToFullName[fromname] = ob.fullName()
+                    mod._localNameToFullName_map[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
                     continue
@@ -214,7 +221,7 @@ class ModuleVistor(object):
                 assert mod.state in [model.PROCESSING, model.PROCESSED]
                 expandName = mod.expandName
             else:
-                expandName = lambda name: fullname + '.' + name
+                expandName = lambda name: name
             if asname is None:
                 asname = fromname.split('.', 1)[0]
                 # aaaaargh! python sucks.
