@@ -94,6 +94,7 @@ class ModuleVistor(object):
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
+        cls.rawbases = rawbases
         cls.bases = bases
         cls.baseobjects = baseobjects
 
