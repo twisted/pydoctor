@@ -45,10 +45,6 @@ class ZopeInterfaceClass(model.Class):
                     r.append(sc.fullName())
         return r
 
-class Attribute(model.Documentable):
-    kind = "Attribute"
-    css_class = "attribute"
-    documentation_location = model.DocLocation.PARENT_PAGE
 
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):
@@ -150,13 +146,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return sup()
 
         def pushAttribute(docstring, kind):
-            attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
+            attr = self.builder._push(model.Attribute, node.nodes[0].name, docstring)
             attr.linenumber = node.lineno
             attr.kind = kind
             if attr.parentMod.sourceHref:
                 attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
                                   str(attr.linenumber)
-            self.builder._pop(Attribute)
+            self.builder._pop(model.Attribute)
 
         def extractStringLiteral(node):
             if isinstance(node, ast.Const) and isinstance(node.value, str):

@@ -199,6 +199,9 @@ class Package(Documentable):
     @property
     def doctarget(self):
         return self.contents['__init__']
+    @property
+    def state(self):
+        return self.contents['__init__'].state
 
     def _localNameToFullName(self, name):
         if name in self.contents:
@@ -632,7 +635,7 @@ class System(object):
         if mod is None:
             return None
         if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__')
+            return self.getProcessedModule(modname + '.__init__').parent
         if not isinstance(mod, Module):
             return None
 
