@@ -234,7 +234,7 @@ class Module(CanContainImportsDocumentable):
         elif name in __builtin__.__dict__:
             return name
         else:
-            return self.fullName() + '.' + name
+            return name
 
 
 class Class(CanContainImportsDocumentable):

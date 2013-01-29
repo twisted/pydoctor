@@ -1,12 +1,17 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
 import __builtin__
-
-from pydoctor import model
+import exceptions
+import inspect
+import itertools
+import os
+import sys
+import urllib
 
 from nevow import tags
 
-import exceptions, inspect, itertools, os, sys, urllib
+from pydoctor import model
+
 
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'
@@ -14,6 +19,7 @@ STDLIB_URL = 'http://docs.python.org/library/'
 
 def link(o):
     return o.system.urlprefix + urllib.quote(o.fullName()+'.html')
+
 
 def get_parser(formatname):
     try:
@@ -23,6 +29,7 @@ def get_parser(formatname):
         return None, e
     else:
         return mod.parse_docstring, None
+
 
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
@@ -66,18 +73,7 @@ class _EpydocLinker(object):
         # are like 2 uses in Twisted.
         return de_p(something.to_html(self))
 
-    def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveName(fullID)
-        if obj is None:
-            linktext = stdlib_doc_link_for_name(self.obj.expandName(fullID))
-            if linktext is not None:
-                return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
-            else:
-                self.obj.system.msg(
-                    "translate_identifier_xref", "%s:%s invalid ref to %s" % (
-                        self.obj.fullName(), self.obj.linenumber, fullID),
-                    thresh=-1)
-                return '<code>%s</code>'%(prettyID,)
+    def _objLink(self, obj, prettyID):
         if obj.documentation_location == model.DocLocation.PARENT_PAGE:
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
@@ -89,6 +85,32 @@ class _EpydocLinker(object):
             raise AssertionError(
                 "Unknown documentation_location: %s" % obj.documentation_location)
         return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+
+    def translate_identifier_xref(self, fullID, prettyID):
+        src = self.obj
+        while src is not None:
+            target = src.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target, prettyID)
+            src = src.parent
+        if self.obj.parentMod:
+            for name in self.obj.parentMod._localNameToFullName_map:
+                o = self.obj.system.objForFullName(
+                    self.obj.parentMod._localNameToFullName_map[name])
+                if o:
+                    target = o.resolveName(fullID)
+                    if target is not None:
+                        return self._objLink(target, prettyID)
+        fullerID = self.obj.expandName(fullID)
+        linktext = stdlib_doc_link_for_name(fullerID)
+        if linktext is not None:
+            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+        else:
+            self.obj.system.msg(
+                "translate_identifier_xref", "%s:%s invalid ref to %s" % (
+                    self.obj.fullName(), self.obj.linenumber, fullID),
+                thresh=-1)
+            return '<code>%s</code>'%(prettyID,)
 
 
 class FieldDesc(object):
@@ -111,7 +133,7 @@ class FieldDesc(object):
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
 
-    
+
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
         plural = singular + 's'
