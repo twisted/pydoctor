@@ -144,11 +144,14 @@ class ModuleVistor(object):
         self.builder.popClass()
 
     def visitFrom(self, node):
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            self.warning("processing import statement in odd context")
+            return
         modname = self.builder.expandModname(node.modname)
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
             assert mod.state in [model.PROCESSING, model.PROCESSED]
-        name2fullname = self.builder.current._name2fullname
+        _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
             if fromname == '*':
                 if mod is None:
@@ -158,10 +161,10 @@ class ModuleVistor(object):
                 if mod.all is not None:
                     names = mod.all
                 else:
-                    names = [k for k in mod.contents.keys()
-                             if not k.startswith('_')]
+                    names = mod.contents.keys() + mod._localNameToFullName.keys()
+                    names = [k for k in names if not k.startswith('_')]
                 for n in names:
-                    name2fullname[n] = modname + '.' + n
+                    _localNameToFullName[n] = mod.expandName(n)
                 return
             if asname is None:
                 asname = fromname
@@ -191,15 +194,14 @@ class ModuleVistor(object):
                     self.system.allobjects[ob.fullName()] = ob
                     del mod.contents[fromname]
                     mod.orderedcontents.remove(ob)
-                    mod._name2fullname[fromname] = ob.fullName()
+                    mod._localNameToFullName[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
-                    targetmod._name2fullname[ob.name] = ob.fullName()
                     continue
             if isinstance(
                 self.system.objForFullName(modname), model.Package):
                 self.system.getProcessedModule(modname + '.' + fromname)
-            name2fullname[asname] = modname + '.' + fromname
+            _localNameToFullName[asname] = mod.expandName(fromname)
 
     def visitImport(self, node):
         """Process an import statement.
@@ -214,10 +216,15 @@ class ModuleVistor(object):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        name2fullname = self.builder.current._name2fullname
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            self.warning("processing import statement in odd context")
+            return
+        _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
             fullname = self.builder.expandModname(fromname)
-            self.system.getProcessedModule(fullname)
+            mod = self.system.getProcessedModule(fullname)
+            if mod is not None:
+                assert mod.state in [model.PROCESSING, model.PROCESSED]
             if asname is None:
                 asname = fromname.split('.', 1)[0]
                 # aaaaargh! python sucks.
@@ -225,13 +232,13 @@ class ModuleVistor(object):
                 for i, part in enumerate(fullname.split('.')[::-1]):
                     if part == asname:
                         fullname = '.'.join(parts[:len(parts)-i])
-                        name2fullname[asname] = fullname
+                        _localNameToFullName[asname] = mod.expandName(fullname)
                         break
                 else:
                     fullname = '.'.join(parts)
-                    name2fullname[asname] = '.'.join(parts)
+                    _localNameToFullName[asname] = '.'.join(parts)
             else:
-                name2fullname[asname] = fullname
+                _localNameToFullName[asname] = fullname
 
     def visitAssign(self, node):
         if isinstance(self.builder.current, model.Class):
