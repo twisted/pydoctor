@@ -128,9 +128,9 @@ class Documentable(object):
         obj = self
         for p in parts_iter:
             full_name = obj._localNameToFullName(p)
-            if full_name not in self.allobjects:
+            if full_name not in self.system.allobjects:
                 break
-            obj = self.allobjects[full_name]
+            obj = self.system.allobjects[full_name]
         remaning = list(parts_iter)
         if remaning:
             full_name += '.' + '.'.join(parts_iter)
@@ -139,7 +139,7 @@ class Documentable(object):
     def resolveName(self, name):
         """Return the object named by "name" in this context, if any is known
         to pydoctor. """
-        return self.system.get(self.expandName(name))
+        return self.system.allobjects.get(self.expandName(name))
 
     @property
     def privacyClass(self):

@@ -135,6 +135,9 @@ class ModuleVistor(object):
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
             assert mod.state in [model.PROCESSING, model.PROCESSED]
+            expandName = mod.expandName
+        else:
+            expandName = lambda name: modname + '.' + name
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
             if fromname == '*':
@@ -148,7 +151,7 @@ class ModuleVistor(object):
                     names = mod.contents.keys() + mod._localNameToFullName.keys()
                     names = [k for k in names if not k.startswith('_')]
                 for n in names:
-                    _localNameToFullName[n] = mod.expandName(n)
+                    _localNameToFullName[n] = expandName(n)
                 return
             if asname is None:
                 asname = fromname
@@ -185,7 +188,7 @@ class ModuleVistor(object):
             if isinstance(
                 self.system.objForFullName(modname), model.Package):
                 self.system.getProcessedModule(modname + '.' + fromname)
-            _localNameToFullName[asname] = mod.expandName(fromname)
+            _localNameToFullName[asname] = expandName(fromname)
 
     def visitImport(self, node):
         """Process an import statement.
@@ -209,6 +212,9 @@ class ModuleVistor(object):
             mod = self.system.getProcessedModule(fullname)
             if mod is not None:
                 assert mod.state in [model.PROCESSING, model.PROCESSED]
+                expandName = mod.expandName
+            else:
+                expandName = lambda name: fullname + '.' + name
             if asname is None:
                 asname = fromname.split('.', 1)[0]
                 # aaaaargh! python sucks.
@@ -216,7 +222,7 @@ class ModuleVistor(object):
                 for i, part in enumerate(fullname.split('.')[::-1]):
                     if part == asname:
                         fullname = '.'.join(parts[:len(parts)-i])
-                        _localNameToFullName[asname] = mod.expandName(fullname)
+                        _localNameToFullName[asname] = expandName(fullname)
                         break
                 else:
                     fullname = '.'.join(parts)
