@@ -35,35 +35,41 @@ def boringDocstring(doc, summary=False):
     crappit.__doc__ = doc
     return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
 
+
+def stdlib_doc_link_for_name(name):
+    parts = name.split('.')
+    for i in range(len(parts), 0, -1):
+        sub_parts = parts[:i]
+        filename = '/'.join(sub_parts)
+        sub_name = '.'.join(sub_parts)
+        if sub_name == 'os.path' \
+               or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
+               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
+               or sub_name in sys.builtin_module_names:
+            return STDLIB_URL + sub_name + '.html#' + name
+    if name in __builtin__.__dict__:
+        if name in exceptions.__dict__:
+            return STDLIB_URL + 'exceptions.html#exceptions.' + name
+        else:
+            return STDLIB_URL + 'functions.html#' + name
+    return None
+
+
 class _EpydocLinker(object):
+
     def __init__(self, obj):
         self.obj = obj
+
     def translate_indexterm(self, something):
         # X{foobar} is meant to put foobar in an index page (like, a
         # proper end-of-the-book index). Should we support that? There
         # are like 2 uses in Twisted.
         return de_p(something.to_html(self))
+
     def translate_identifier_xref(self, fullID, prettyID):
         obj = self.obj.resolveName(fullID)
         if obj is None:
-            parts = self.obj.expandName(fullID).split('.')
-            linktext = None
-            for i in range(len(parts), 0, -1):
-                sub_parts = parts[:i]
-                filename = '/'.join(sub_parts)
-                sub_name = '.'.join(sub_parts)
-                if sub_name == 'os.path' \
-                       or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
-                       or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
-                       or sub_name in sys.builtin_module_names:
-                    linktext = STDLIB_URL + sub_name + '.html#' + fullID
-                    break
-            else:
-                if fullID in __builtin__.__dict__:
-                    if fullID in exceptions.__dict__:
-                        linktext = STDLIB_URL + 'exceptions.html#exceptions.' + fullID
-                    else:
-                        linktext = STDLIB_URL + 'functions.html#' + fullID
+            linktext = stdlib_doc_link_for_name(self.obj.expandName(fullID))
             if linktext is not None:
                 return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
             else:
@@ -72,18 +78,18 @@ class _EpydocLinker(object):
                         self.obj.fullName(), self.obj.linenumber, fullID),
                     thresh=-1)
                 return '<code>%s</code>'%(prettyID,)
+        if obj.documentation_location == model.DocLocation.PARENT_PAGE:
+            p = obj.parent
+            if isinstance(p, model.Module) and p.name == '__init__':
+                p = p.parent
+            linktext = link(p) + '#' + urllib.quote(obj.name)
+        elif obj.documentation_location == model.DocLocation.OWN_PAGE:
+            linktext = link(obj)
         else:
-            if obj.documentation_location == model.DocLocation.PARENT_PAGE:
-                p = obj.parent
-                if isinstance(p, model.Module) and p.name == '__init__':
-                    p = p.parent
-                linktext = link(p) + '#' + urllib.quote(obj.name)
-            elif obj.documentation_location == model.DocLocation.OWN_PAGE:
-                linktext = link(obj)
-            else:
-                raise AssertionError(
-                    "Unknown documentation_location: %s" % obj.documentation_location)
-            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            raise AssertionError(
+                "Unknown documentation_location: %s" % obj.documentation_location)
+        return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+
 
 class FieldDesc(object):
     def __init__(self):
@@ -105,6 +111,7 @@ class FieldDesc(object):
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
 
+    
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
         plural = singular + 's'
@@ -153,6 +160,7 @@ def format_field_list(obj, singular, fields, plural=None):
         row[tags.td(colspan=2)[field.body]]
         rows.append(row)
     return rows
+
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
@@ -305,12 +313,14 @@ class FieldHandler(object):
 
         return tags.table(class_='fieldTable')[r]
 
+
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
         s = s[3:-5] # argh reST
     if s.endswith('\n'):
         s = s[:-1]
     return s
+
 
 def reportErrors(obj, errs):
     for err in errs:
@@ -332,6 +342,7 @@ def reportErrors(obj, errs):
             p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
+
 
 def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
@@ -436,6 +447,7 @@ field_name_to_human_name = {
     'cvar': 'Class Variable',
     'var': 'Variable',
     }
+
 
 def extract_fields(obj):
     if isinstance(obj, model.Package):

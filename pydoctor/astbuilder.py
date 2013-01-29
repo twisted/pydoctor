@@ -395,21 +395,19 @@ class ASTBuilder(object):
         findAll(ast, mod)
         visitor.walk(ast, self.ModuleVistor(self, mod))
 
-    def expandModname(self, modname, givewarning=True):
+    def expandModname(self, modname):
         if '.' in modname:
             prefix, suffix = modname.split('.', 1)
             suffix = '.' + suffix
         else:
             prefix, suffix = modname, ''
         package = self.current.parentMod.parent
-        if package is None:
-            return modname
-        if prefix in package.contents:
-            if givewarning:
+        while package is not None:
+            if prefix in package.contents:
                 self.warning("local import", modname)
-            return package.contents[prefix].fullName() + suffix
-        else:
-            return modname
+                return package.contents[prefix].fullName() + suffix
+            package = package.parent
+        return modname
 
     def parseFile(self, filePath):
         if filePath in self.ast_cache:
