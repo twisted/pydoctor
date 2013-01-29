@@ -187,7 +187,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             pushAttribute(extractStringLiteral(args[0]), "Attribute")
             return sup()
 
-        print funcName
         if schema_prog.match(funcName):
             kind = schema_prog.match(funcName).group(1)
             handleSchemaField(kind)
