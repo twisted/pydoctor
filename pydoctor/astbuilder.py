@@ -90,7 +90,7 @@ class ModuleVistor(object):
             rawbases.append(str_base)
             full_name = self.builder.current.expandName(str_base)
             bases.append(full_name)
-            baseobjects.append(self.system.allobjects.get(full_name))
+            baseobjects.append(self.system.objForFullName(full_name))
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []

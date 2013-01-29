@@ -124,8 +124,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                ast_pp.pp(node) == 'Interface = interface.Interface\n':
             # warner!!!
 
-            n2fn = self.builder.current._name2fullname
-            n2fn['Interface'] = 'zope.interface.Interface'
+            l = self.builder.current._localNameToFullName_map
+            l['Interface'] = 'zope.interface.Interface'
             return sup()
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
@@ -187,6 +187,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             pushAttribute(extractStringLiteral(args[0]), "Attribute")
             return sup()
 
+        print funcName
         if schema_prog.match(funcName):
             kind = schema_prog.match(funcName).group(1)
             handleSchemaField(kind)
