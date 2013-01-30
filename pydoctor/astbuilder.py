@@ -104,8 +104,9 @@ class ModuleVistor(object):
             full_name = self.builder.current.expandName(str_base)
             bases.append(full_name)
             baseobj = self.system.objForFullName(full_name)
-            if isinstance(baseobj, model.Class):
-                baseobjects.append(baseobj)
+            if not isinstance(baseobj, model.Class):
+                baseobj = None
+            baseobjects.append(baseobj)
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
@@ -114,15 +115,10 @@ class ModuleVistor(object):
         cls.baseobjects = baseobjects
 
         def node2data(node):
-            parts = []
-            while isinstance(node, ast.Getattr):
-                parts.append(node.attrname)
-                node = node.expr
-            if isinstance(node, ast.Name):
-                parts.append(node.name)
-            else:
+            dotted_name = node2dottedname(node)
+            if dotted_name is None:
                 return None
-            dotted_name = '.'.join(reversed(parts))
+            dotted_name = '.'.join(dotted_name)
             full_name = self.builder.current.expandName(dotted_name)
             obj = self.system.objForFullName(full_name)
             return (dotted_name, full_name, obj)
