@@ -281,9 +281,13 @@ class ModuleVistor(object):
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
             return
         c = self.builder.current
+        base = None
         if dottedname[0] in c._localNameToFullName_map:
-            c._localNameToFullName_map[target] = '.'.join(
-                [c._localNameToFullName_map[dottedname[0]]] + dottedname[1:])
+            base = c._localNameToFullName_map[dottedname[0]]
+        elif dottedname[0] in c.contents:
+            base = c.contents[dottedname[0]].fullName()
+        if base:
+            c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
 
     def visitAssign(self, node):
         if len(node.nodes) != 1:

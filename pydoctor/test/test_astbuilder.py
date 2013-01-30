@@ -91,6 +91,17 @@ def test_class_with_base():
     base, = clsD.bases
     assert base == '<test>.C'
 
+def test_follow_renaming():
+    src = '''
+    class C: pass
+    D = C
+    class E(D): pass
+    '''
+    mod = fromText(src)
+    C = mod.contents['C']
+    E = mod.contents['E']
+    assert E.baseobjects == [C], E.baseobjects
+
 def test_class_with_base_from_module():
     src = '''
     from X.Y import A
