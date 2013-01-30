@@ -120,6 +120,9 @@ class _EpydocLinker(object):
 
           3. Check if fullID is the fullName of an object.
 
+          4. Check to see if fullID names a builtin or standard library
+             module.
+
           4. Walk up the object tree again and see if fullID refers to an
              object in an "uncle" object.  (So if p.m1 has a class C, the
              docstring for p.m2 can say L{C} to refer to the class in m1).  If
@@ -139,6 +142,10 @@ class _EpydocLinker(object):
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
             return self._objLink(target, prettyID)
+        fullerID = self.obj.expandName(fullID)
+        linktext = stdlib_doc_link_for_name(fullerID)
+        if linktext is not None:
+            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
@@ -150,16 +157,11 @@ class _EpydocLinker(object):
             self.obj.system.objectsOfType(model.Package)))
         if target is not None:
             return self._objLink(target, prettyID)
-        fullerID = self.obj.expandName(fullID)
-        linktext = stdlib_doc_link_for_name(fullerID)
-        if linktext is not None:
-            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
-        else:
-            self.obj.system.msg(
-                "translate_identifier_xref", "%s:%s invalid ref to %s" % (
-                    self.obj.fullName(), self.obj.linenumber, fullID),
-                thresh=-1)
-            return '<code>%s</code>'%(prettyID,)
+        self.obj.system.msg(
+            "translate_identifier_xref", "%s:%s invalid ref to %s" % (
+                self.obj.fullName(), self.obj.linenumber, fullID),
+            thresh=-1)
+        return '<code>%s</code>'%(prettyID,)
 
 
 class FieldDesc(object):
