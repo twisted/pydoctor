@@ -45,10 +45,6 @@ class ZopeInterfaceClass(model.Class):
                     r.append(sc.fullName())
         return r
 
-class Attribute(model.Documentable):
-    kind = "Attribute"
-    css_class = "attribute"
-    documentation_location = model.DocLocation.PARENT_PAGE
 
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):
@@ -69,9 +65,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
         cls.implements_directly = []
     for arg in interfaceargs:
         if not isinstance(arg, tuple):
-            fullName = cls.dottedNameToFullName(ast_pp.pp(arg))
-            if fullName not in cls.system.allobjects:
-                fullName = cls.system.resolveAlias(fullName)
+            fullName = cls.expandName(ast_pp.pp(arg))
         else:
             fullName = arg[1]
         cls.implements_directly.append(fullName)
@@ -115,20 +109,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def funcNameFromCall(self, node):
         str_base = ast_pp.pp(node.node)
-        return self.builder.current.dottedNameToFullName(str_base)
+        return self.builder.current.expandName(str_base)
 
     def visitAssign(self, node):
         # i would like pattern matching in python please
         # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
         #     ...
         sup = lambda : super(ZopeInterfaceModuleVisitor, self).visitAssign(node)
-        if isinstance(self.builder.current, model.Module) and \
-               ast_pp.pp(node) == 'Interface = interface.Interface\n':
-            # warner!!!
-
-            n2fn = self.builder.current._name2fullname
-            n2fn['Interface'] = 'zope.interface.Interface'
-            return sup()
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
                not isinstance(node.expr, ast.CallFunc):
@@ -152,13 +139,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return sup()
 
         def pushAttribute(docstring, kind):
-            attr = self.builder._push(Attribute, node.nodes[0].name, docstring)
+            attr = self.builder._push(model.Attribute, node.nodes[0].name, docstring)
             attr.linenumber = node.lineno
             attr.kind = kind
             if attr.parentMod.sourceHref:
                 attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
                                   str(attr.linenumber)
-            self.builder._pop(Attribute)
+            self.builder._pop(model.Attribute)
 
         def extractStringLiteral(node):
             if isinstance(node, ast.Const) and isinstance(node.value, str):
@@ -214,7 +201,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     visitCallFunc_zope_interface_implementsOnly = visitCallFunc_zope_interface_implements
 
     def visitCallFunc_zope_interface_classImplements(self, funcName, node):
-        clsname = self.builder.current.dottedNameToFullName(
+        clsname = self.builder.current.expandName(
             ast_pp.pp(node.args[0]))
         if clsname not in self.system.allobjects:
             self.builder.system.msg(

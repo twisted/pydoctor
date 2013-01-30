@@ -102,12 +102,6 @@ def getparser():
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
     parser.add_option(
-        '--resolve-aliases', action='store_true',
-        dest='resolvealiases', default=False,
-        help=("This updates references to classes imported from a module "
-              "into which they were imported to references to where they "
-              "are defined."))
-    parser.add_option(
         '--abbreviate-specialcase', action='store',
         dest='abbrevmapping', default='',
         help=("This is a comma seperated list of key=value pairs.  "

@@ -64,6 +64,19 @@ def parse(buf):
     return MyTransformer().parsesuite(buf)
 
 
+def node2dottedname(node):
+    parts = []
+    while isinstance(node, ast.Getattr):
+        parts.append(node.attrname)
+        node = node.expr
+    if isinstance(node, ast.Name):
+        parts.append(node.name)
+    else:
+        return None
+    parts.reverse()
+    return parts
+
+
 class ModuleVistor(object):
     def __init__(self, builder, module):
         self.builder = builder
@@ -85,36 +98,29 @@ class ModuleVistor(object):
         rawbases = []
         bases = []
         baseobjects = []
-        current = self.builder.current
         for n in node.bases:
             str_base = ast_pp.pp(n)
             rawbases.append(str_base)
-            base = current.dottedNameToFullName(str_base)
-            bob = self.system.objForFullName(base)
-            if not bob and self.system.options.resolvealiases:
-                base = self.system.resolveAlias(base)
-                bob = self.system.objForFullName(base)
-            if bob:
-                assert (bob.parentMod is self.builder.currentMod or
-                        bob.parentMod.state > 0)
-            bases.append(base)
-            baseobjects.append(bob)
+            full_name = self.builder.current.expandName(str_base)
+            bases.append(full_name)
+            baseobj = self.system.objForFullName(full_name)
+            if not isinstance(baseobj, model.Class):
+                baseobj = None
+            baseobjects.append(baseobj)
 
         cls = self.builder.pushClass(node.name, node.doc)
         cls.decorators = []
+        cls.rawbases = rawbases
+        cls.bases = bases
+        cls.baseobjects = baseobjects
 
         def node2data(node):
-            parts = []
-            while isinstance(node, ast.Getattr):
-                parts.append(node.attrname)
-                node = node.expr
-            if isinstance(node, ast.Name):
-                parts.append(node.name)
-            else:
+            dotted_name = node2dottedname(node)
+            if dotted_name is None:
                 return None
-            dotted_name = '.'.join(reversed(parts))
-            full_name = self.builder.current.dottedNameToFullName(dotted_name)
-            obj = self.system.allobjects.get(full_name)
+            dotted_name = '.'.join(dotted_name)
+            full_name = self.builder.current.expandName(dotted_name)
+            obj = self.system.objForFullName(full_name)
             return (dotted_name, full_name, obj)
 
         if node.decorators:
@@ -134,9 +140,6 @@ class ModuleVistor(object):
         if cls.parentMod.sourceHref:
             cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
                              str(cls.linenumber)
-        cls.rawbases = rawbases
-        cls.bases = bases
-        cls.baseobjects = baseobjects
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
@@ -144,11 +147,17 @@ class ModuleVistor(object):
         self.builder.popClass()
 
     def visitFrom(self, node):
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            self.warning("processing import statement in odd context")
+            return
         modname = self.builder.expandModname(node.modname)
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
             assert mod.state in [model.PROCESSING, model.PROCESSED]
-        name2fullname = self.builder.current._name2fullname
+            expandName = mod.expandName
+        else:
+            expandName = lambda name: modname + '.' + name
+        _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
             if fromname == '*':
                 if mod is None:
@@ -158,10 +167,10 @@ class ModuleVistor(object):
                 if mod.all is not None:
                     names = mod.all
                 else:
-                    names = [k for k in mod.contents.keys()
-                             if not k.startswith('_')]
+                    names = mod.contents.keys() + mod._localNameToFullName.keys()
+                    names = [k for k in names if not k.startswith('_')]
                 for n in names:
-                    name2fullname[n] = modname + '.' + n
+                    _localNameToFullName[n] = expandName(n)
                 return
             if asname is None:
                 asname = fromname
@@ -191,15 +200,14 @@ class ModuleVistor(object):
                     self.system.allobjects[ob.fullName()] = ob
                     del mod.contents[fromname]
                     mod.orderedcontents.remove(ob)
-                    mod._name2fullname[fromname] = ob.fullName()
+                    mod._localNameToFullName_map[fromname] = ob.fullName()
                     targetmod.contents[asname] = ob
                     targetmod.orderedcontents.append(ob)
-                    targetmod._name2fullname[ob.name] = ob.fullName()
                     continue
             if isinstance(
                 self.system.objForFullName(modname), model.Package):
                 self.system.getProcessedModule(modname + '.' + fromname)
-            name2fullname[asname] = modname + '.' + fromname
+            _localNameToFullName[asname] = expandName(fromname)
 
     def visitImport(self, node):
         """Process an import statement.
@@ -214,10 +222,18 @@ class ModuleVistor(object):
         (dotted_name, as_name) where as_name is None if there was no 'as foo'
         part of the statement.
         """
-        name2fullname = self.builder.current._name2fullname
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            self.warning("processing import statement in odd context")
+            return
+        _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
             fullname = self.builder.expandModname(fromname)
-            self.system.getProcessedModule(fullname)
+            mod = self.system.getProcessedModule(fullname)
+            if mod is not None:
+                assert mod.state in [model.PROCESSING, model.PROCESSED]
+                expandName = mod.expandName
+            else:
+                expandName = lambda name: name
             if asname is None:
                 asname = fromname.split('.', 1)[0]
                 # aaaaargh! python sucks.
@@ -225,28 +241,23 @@ class ModuleVistor(object):
                 for i, part in enumerate(fullname.split('.')[::-1]):
                     if part == asname:
                         fullname = '.'.join(parts[:len(parts)-i])
-                        name2fullname[asname] = fullname
+                        _localNameToFullName[asname] = expandName(fullname)
                         break
                 else:
                     fullname = '.'.join(parts)
-                    name2fullname[asname] = '.'.join(parts)
+                    _localNameToFullName[asname] = '.'.join(parts)
             else:
-                name2fullname[asname] = fullname
+                _localNameToFullName[asname] = fullname
 
-    def visitAssign(self, node):
+    def _handleOldSchoolDecoration(self, target, expr):
         if isinstance(self.builder.current, model.Class):
-            if len(node.nodes) != 1:
+            if not isinstance(expr, ast.CallFunc):
                 return
-            if not isinstance(node.nodes[0], ast.AssName):
-                return
-            target = node.nodes[0].name
-            if not isinstance(node.expr, ast.CallFunc):
-                return
-            func = node.expr.node
+            func = expr.node
             if not isinstance(func, ast.Name):
                 return
             func = func.name
-            args = node.expr.args
+            args = expr.args
             if len(args) != 1:
                 return
             arg, = args
@@ -260,6 +271,30 @@ class ModuleVistor(object):
                         self.system.msg('ast', 'XXX')
                     else:
                         target.kind = func.title().replace('m', ' M')
+
+    def _handleAliasing(self, target, expr):
+        dottedname = node2dottedname(expr)
+        if dottedname is None:
+            return
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            return
+        c = self.builder.current
+        base = None
+        if dottedname[0] in c._localNameToFullName_map:
+            base = c._localNameToFullName_map[dottedname[0]]
+        elif dottedname[0] in c.contents:
+            base = c.contents[dottedname[0]].fullName()
+        if base:
+            c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
+
+    def visitAssign(self, node):
+        if len(node.nodes) != 1:
+            return
+        if not isinstance(node.nodes[0], ast.AssName):
+            return
+        target = node.nodes[0].name
+        self._handleOldSchoolDecoration(target, node.expr)
+        self._handleAliasing(target, node.expr)
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
@@ -390,21 +425,19 @@ class ASTBuilder(object):
         findAll(ast, mod)
         visitor.walk(ast, self.ModuleVistor(self, mod))
 
-    def expandModname(self, modname, givewarning=True):
+    def expandModname(self, modname):
         if '.' in modname:
             prefix, suffix = modname.split('.', 1)
             suffix = '.' + suffix
         else:
             prefix, suffix = modname, ''
         package = self.current.parentMod.parent
-        if package is None:
-            return modname
-        if prefix in package.contents:
-            if givewarning:
+        while package is not None:
+            if prefix in package.contents:
                 self.warning("local import", modname)
-            return package.contents[prefix].fullName() + suffix
-        else:
-            return modname
+                return package.contents[prefix].fullName() + suffix
+            package = package.parent
+        return modname
 
     def parseFile(self, filePath):
         if filePath in self.ast_cache:

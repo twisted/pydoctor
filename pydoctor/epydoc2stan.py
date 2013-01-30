@@ -1,12 +1,17 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
 import __builtin__
-
-from pydoctor import model
+import exceptions
+import inspect
+import itertools
+import os
+import sys
+import urllib
 
 from nevow import tags
 
-import exceptions, inspect, itertools, os, sys, urllib
+from pydoctor import model
+
 
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'
@@ -14,6 +19,7 @@ STDLIB_URL = 'http://docs.python.org/library/'
 
 def link(o):
     return o.system.urlprefix + urllib.quote(o.fullName()+'.html')
+
 
 def get_parser(formatname):
     try:
@@ -23,6 +29,7 @@ def get_parser(formatname):
         return None, e
     else:
         return mod.parse_docstring, None
+
 
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
@@ -35,55 +42,127 @@ def boringDocstring(doc, summary=False):
     crappit.__doc__ = doc
     return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
 
+
+def stdlib_doc_link_for_name(name):
+    parts = name.split('.')
+    for i in range(len(parts), 0, -1):
+        sub_parts = parts[:i]
+        filename = '/'.join(sub_parts)
+        sub_name = '.'.join(sub_parts)
+        if sub_name == 'os.path' \
+               or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
+               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
+               or sub_name in sys.builtin_module_names:
+            return STDLIB_URL + sub_name + '.html#' + name
+    if parts[0] in __builtin__.__dict__:
+        if parts[0] in exceptions.__dict__:
+            return STDLIB_URL + 'exceptions.html#exceptions.' + name
+        elif isinstance(__builtin__.__dict__[parts[0]], type):
+            return STDLIB_URL + 'stdtypes.html#' + name
+        else:
+            return STDLIB_URL + 'functions.html#' + name
+    return None
+
+
 class _EpydocLinker(object):
+
     def __init__(self, obj):
         self.obj = obj
+
     def translate_indexterm(self, something):
         # X{foobar} is meant to put foobar in an index page (like, a
         # proper end-of-the-book index). Should we support that? There
         # are like 2 uses in Twisted.
         return de_p(something.to_html(self))
-    def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveDottedName(fullID)
-        if obj is None:
-            parts = fullID.split('.')
-            linktext = None
-            for i in range(len(parts), 0, -1):
-                sub_parts = parts[:i]
-                filename = '/'.join(sub_parts)
-                sub_name = '.'.join(sub_parts)
-                if sub_name == 'os.path' \
-                       or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
-                       or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
-                       or sub_name in sys.builtin_module_names:
-                    linktext = STDLIB_URL + sub_name + '.html#' + fullID
-                    break
-            else:
-                if fullID in __builtin__.__dict__:
-                    if fullID in exceptions.__dict__:
-                        linktext = STDLIB_URL + 'exceptions.html#exceptions.' + fullID
-                    else:
-                        linktext = STDLIB_URL + 'functions.html#' + fullID
-            if linktext is not None:
-                return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
-            else:
-                self.obj.system.msg(
-                    "resolveDottedName", "%s:%s invalid ref to %s" % (
-                        self.obj.fullName(), self.obj.linenumber, fullID),
-                    thresh=-1)
-                return '<code>%s</code>'%(prettyID,)
+
+    def _objLink(self, obj, prettyID):
+        if obj.documentation_location == model.DocLocation.PARENT_PAGE:
+            p = obj.parent
+            if isinstance(p, model.Module) and p.name == '__init__':
+                p = p.parent
+            linktext = link(p) + '#' + urllib.quote(obj.name)
+        elif obj.documentation_location == model.DocLocation.OWN_PAGE:
+            linktext = link(obj)
         else:
-            if obj.documentation_location == model.DocLocation.PARENT_PAGE:
-                p = obj.parent
-                if isinstance(p, model.Module) and p.name == '__init__':
-                    p = p.parent
-                linktext = link(p) + '#' + urllib.quote(obj.name)
-            elif obj.documentation_location == model.DocLocation.OWN_PAGE:
-                linktext = link(obj)
-            else:
-                raise AssertionError(
-                    "Unknown documentation_location: %s" % obj.documentation_location)
+            raise AssertionError(
+                "Unknown documentation_location: %s" % obj.documentation_location)
+        return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+
+    def look_for_name(self, name, candidates):
+        part0 = name.split('.')[0]
+        potential_targets = []
+        for src in candidates:
+            if part0 not in src.contents:
+                continue
+            target = src.resolveName(name)
+            if target is not None and target not in potential_targets:
+                potential_targets.append(target)
+        if len(potential_targets) == 1:
+            return potential_targets[0]
+        elif len(potential_targets) > 1:
+            self.obj.system.msg(
+                "translate_identifier_xref", "%s:%s ambiguous ref to %s, could be %s" % (
+                    self.obj.fullName(), self.obj.linenumber, name,
+            ', '.join([ob.fullName() for ob in potential_targets])),
+                thresh=-1)
+        return None
+
+    def translate_identifier_xref(self, fullID, prettyID):
+        """Figure out what ``L{fullID}`` should link to.
+
+        There is a lot of DWIM here.  The order goes:
+
+          1. Check if fullID refers to an object by Python name resolution in
+             our context.
+
+          2. Walk up the object tree and see if fullID refers to an object by
+             Python name resolution in each context.
+
+          3. Check if fullID is the fullName of an object.
+
+          4. Check to see if fullID names a builtin or standard library
+             module.
+
+          4. Walk up the object tree again and see if fullID refers to an
+             object in an "uncle" object.  (So if p.m1 has a class C, the
+             docstring for p.m2 can say L{C} to refer to the class in m1).  If
+             at any level fullID refers to more than one object, complain.
+
+          5. Examine every module and package in the system and see if fullID
+             names an object in each one.  Again, if more than one object is
+             found, complain.
+
+        """
+        src = self.obj
+        while src is not None:
+            target = src.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target, prettyID)
+            src = src.parent
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return self._objLink(target, prettyID)
+        fullerID = self.obj.expandName(fullID)
+        linktext = stdlib_doc_link_for_name(fullerID)
+        if linktext is not None:
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+        src = self.obj
+        while src is not None:
+            target = self.look_for_name(fullID, src.contents.values())
+            if target is not None:
+                return self._objLink(target, prettyID)
+            src = src.parent
+        target = self.look_for_name(fullID, itertools.chain(
+            self.obj.system.objectsOfType(model.Module),
+            self.obj.system.objectsOfType(model.Package)))
+        if target is not None:
+            return self._objLink(target, prettyID)
+        self.obj.system.msg(
+            "translate_identifier_xref", "%s:%s invalid ref to %s" % (
+                self.obj.fullName(), self.obj.linenumber, fullID),
+            thresh=-1)
+        return '<code>%s</code>'%(prettyID,)
+
 
 class FieldDesc(object):
     def __init__(self):
@@ -104,6 +183,7 @@ class FieldDesc(object):
         for k, v in self.__dict__.iteritems():
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
+
 
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
@@ -153,6 +233,7 @@ def format_field_list(obj, singular, fields, plural=None):
         row[tags.td(colspan=2)[field.body]]
         rows.append(row)
     return rows
+
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
@@ -305,12 +386,14 @@ class FieldHandler(object):
 
         return tags.table(class_='fieldTable')[r]
 
+
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
         s = s[3:-5] # argh reST
     if s.endswith('\n'):
         s = s[:-1]
     return s
+
 
 def reportErrors(obj, errs):
     for err in errs:
@@ -332,6 +415,7 @@ def reportErrors(obj, errs):
             p("%4s"%(i+1)+' '+l)
         for err in errs:
             p(err)
+
 
 def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
@@ -436,6 +520,7 @@ field_name_to_human_name = {
     'cvar': 'Class Variable',
     'var': 'Variable',
     }
+
 
 def extract_fields(obj):
     if isinstance(obj, model.Package):

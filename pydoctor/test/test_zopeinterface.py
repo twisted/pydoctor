@@ -99,7 +99,7 @@ def test_subclass_with_same_name():
     class A(A):
         pass
     '''
-    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
+    fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
 
 def test_multiply_inheriting_interfaces():
     src = '''
@@ -124,14 +124,6 @@ def test_attribute():
     assert len(mod.contents['C'].contents) == 1
 
 def test_interfaceclass():
-    src = '''
-    import zope.interface as zi
-    class MyInterfaceClass(zi.interface.InterfaceClass):
-        pass
-    MyInterface = MyInterfaceClass("MyInterface")
-    class AnInterface(MyInterface):
-        pass
-    '''
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
     assert mod.contents['AnInterface'].isinterface
@@ -150,7 +142,7 @@ def test_zopeschema():
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
-        text = zope.schema.TextLine(description="fun in a bun")
+        text = schema.TextLine(description="fun in a bun")
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
@@ -161,8 +153,8 @@ def test_with_underscore():
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
-        attribute = zope.interface.Attribute(_("fun in a bun"))
-        text = zope.schema.TextLine(description=_("fun in a bap"))
+        attribute = interface.Attribute(_("fun in a bun"))
+        text = schema.TextLine(description=_("fun in a bap"))
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['attribute']
@@ -177,7 +169,7 @@ def test_zopeschema_inheritance():
     src = '''
     from zope import schema, interface
     from zope.schema import Int as INTEGERSCHMEMAFIELD
-    class MyTextLine(zope.schema.TextLine):
+    class MyTextLine(schema.TextLine):
         pass
     class MyOtherTextLine(MyTextLine):
         pass
