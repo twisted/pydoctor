@@ -135,8 +135,8 @@ class Documentable(object):
         return '.'.join([full_name] + remaning)
 
     def resolveName(self, name):
-        """Return the object named by "name" in this context, if any is known
-        to pydoctor. """
+        """Return the object named by "name" (using Python's lookup rules) in
+        this context, if any is known to pydoctor."""
         return self.system.objForFullName(self.expandName(name))
 
     @property
