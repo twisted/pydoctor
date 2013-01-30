@@ -86,22 +86,68 @@ class _EpydocLinker(object):
                 "Unknown documentation_location: %s" % obj.documentation_location)
         return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
 
+    def look_for_name(self, name, candidates):
+        part0 = name.split('.')[0]
+        potential_targets = []
+        for src in candidates:
+            if part0 not in src.contents:
+                continue
+            target = src.resolveName(name)
+            if target is not None and target not in potential_targets:
+                potential_targets.append(target)
+        if len(potential_targets) == 1:
+            return potential_targets[0]
+        elif len(potential_targets) > 1:
+            self.obj.system.msg(
+                "translate_identifier_xref", "%s:%s ambiguous ref to %s, could be %s" % (
+                    self.obj.fullName(), self.obj.linenumber, name,
+            ', '.join([ob.fullName() for ob in potential_targets])),
+                thresh=-1)
+        return None
+
     def translate_identifier_xref(self, fullID, prettyID):
+        """Figure out what ``L{fullID}`` should link to.
+
+        There is a lot of DWIM here.  The order goes:
+
+          1. Check if fullID refers to an object by Python name resolution in
+             our context.
+
+          2. Walk up the object tree and see if fullID refers to an object by
+             Python name resolution in each context.
+
+          3. Check if fullID is the fullName of an object.
+
+          4. Walk up the object tree again and see if fullID refers to an
+             object in an "uncle" object.  (So if p.m1 has a class C, the
+             docstring for p.m2 can say L{C} to refer to the class in m1).  If
+             at any level fullID refers to more than one object, complain.
+
+          5. Examine every module and package in the system and see if fullID
+             names an object in each one.  Again, if more than one object is
+             found, complain.
+
+        """
         src = self.obj
         while src is not None:
             target = src.resolveName(fullID)
             if target is not None:
                 return self._objLink(target, prettyID)
             src = src.parent
-        part0 = fullID.split('.')[0]
-        for mod in itertools.chain(
-                self.obj.system.objectsOfType(model.Module),
-                self.obj.system.objectsOfType(model.Package)):
-            if part0 not in mod.contents:
-                continue
-            target = mod.resolveName(fullID)
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return self._objLink(target, prettyID)
+        src = self.obj
+        while src is not None:
+            target = self.look_for_name(fullID, src.contents.values())
             if target is not None:
                 return self._objLink(target, prettyID)
+            src = src.parent
+        target = self.look_for_name(fullID, itertools.chain(
+            self.obj.system.objectsOfType(model.Module),
+            self.obj.system.objectsOfType(model.Package)))
+        if target is not None:
+            return self._objLink(target, prettyID)
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
