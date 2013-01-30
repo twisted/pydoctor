@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name='pydoctor',
-    version='0.4',
+    version='0.5b1',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
     url='http://codespeak.net/~mwh/pydoctor/',
