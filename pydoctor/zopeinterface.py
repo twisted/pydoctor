@@ -116,13 +116,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
         #     ...
         sup = lambda : super(ZopeInterfaceModuleVisitor, self).visitAssign(node)
-        if isinstance(self.builder.current, model.Module) and \
-               ast_pp.pp(node) == 'Interface = interface.Interface\n':
-            # warner!!!
-
-            l = self.builder.current._localNameToFullName_map
-            l['Interface'] = 'zope.interface.Interface'
-            return sup()
         if len(node.nodes) != 1 or \
                not isinstance(node.nodes[0], ast.AssName) or \
                not isinstance(node.expr, ast.CallFunc):

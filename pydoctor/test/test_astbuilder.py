@@ -189,7 +189,7 @@ def test_aliasing_recursion():
         pass
     '''
     mod = fromText(src, 'mod', system)
-    assert mod.contents['D'].bases == ['mod.C']
+    assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
 def test_subclasses():
     src = '''

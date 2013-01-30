@@ -64,6 +64,19 @@ def parse(buf):
     return MyTransformer().parsesuite(buf)
 
 
+def node2dottedname(node):
+    parts = []
+    while isinstance(node, ast.Getattr):
+        parts.append(node.attrname)
+        node = node.expr
+    if isinstance(node, ast.Name):
+        parts.append(node.name)
+    else:
+        return None
+    parts.reverse()
+    return parts
+
+
 class ModuleVistor(object):
     def __init__(self, builder, module):
         self.builder = builder
@@ -238,20 +251,15 @@ class ModuleVistor(object):
             else:
                 _localNameToFullName[asname] = fullname
 
-    def visitAssign(self, node):
+    def _handleOldSchoolDecoration(self, target, expr):
         if isinstance(self.builder.current, model.Class):
-            if len(node.nodes) != 1:
+            if not isinstance(expr, ast.CallFunc):
                 return
-            if not isinstance(node.nodes[0], ast.AssName):
-                return
-            target = node.nodes[0].name
-            if not isinstance(node.expr, ast.CallFunc):
-                return
-            func = node.expr.node
+            func = expr.node
             if not isinstance(func, ast.Name):
                 return
             func = func.name
-            args = node.expr.args
+            args = expr.args
             if len(args) != 1:
                 return
             arg, = args
@@ -265,6 +273,26 @@ class ModuleVistor(object):
                         self.system.msg('ast', 'XXX')
                     else:
                         target.kind = func.title().replace('m', ' M')
+
+    def _handleAliasing(self, target, expr):
+        dottedname = node2dottedname(expr)
+        if dottedname is None:
+            return
+        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
+            return
+        c = self.builder.current
+        if dottedname[0] in c._localNameToFullName_map:
+            c._localNameToFullName_map[target] = '.'.join(
+                [c._localNameToFullName_map[dottedname[0]]] + dottedname[1:])
+
+    def visitAssign(self, node):
+        if len(node.nodes) != 1:
+            return
+        if not isinstance(node.nodes[0], ast.AssName):
+            return
+        target = node.nodes[0].name
+        self._handleOldSchoolDecoration(target, node.expr)
+        self._handleAliasing(target, node.expr)
 
     def visitFunction(self, node):
         func = self.builder.pushFunction(node.name, node.doc)
