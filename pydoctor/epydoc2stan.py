@@ -54,9 +54,11 @@ def stdlib_doc_link_for_name(name):
                or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
                or sub_name in sys.builtin_module_names:
             return STDLIB_URL + sub_name + '.html#' + name
-    if name in __builtin__.__dict__:
-        if name in exceptions.__dict__:
+    if parts[0] in __builtin__.__dict__:
+        if parts[0] in exceptions.__dict__:
             return STDLIB_URL + 'exceptions.html#exceptions.' + name
+        elif isinstance(__builtin__.__dict__[parts[0]], type):
+            return STDLIB_URL + 'stdtypes.html#' + name
         else:
             return STDLIB_URL + 'functions.html#' + name
     return None
