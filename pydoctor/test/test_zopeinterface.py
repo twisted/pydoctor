@@ -187,3 +187,38 @@ def test_zopeschema_inheritance():
     assert myothertext.kind == "MyOtherTextLine"
     myint = mod.contents['IMyInterface'].contents['myint']
     assert myint.kind == "Int"
+
+def test_docsources_includes_interface():
+    src = '''
+    from zope import interface
+    class IInterface(interface.Interface):
+        def method(self):
+            """documentation"""
+    class Implementation:
+        interface.implements(IInterface)
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IInterface'].contents['method']
+    method = mod.contents['Implementation'].contents['method']
+    assert imethod in method.docsources(), list(method.docsources())
+
+def test_docsources_includes_baseinterface():
+    src = '''
+    from zope import interface
+    class IBase(interface.Interface):
+        def method(self):
+            """documentation"""
+    class IExtended(IBase):
+        pass
+    class Implementation:
+        interface.implements(IExtended)
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IBase'].contents['method']
+    method = mod.contents['Implementation'].contents['method']
+    assert imethod in method.docsources(), list(method.docsources())
+

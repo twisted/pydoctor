@@ -244,12 +244,13 @@ class Class(CanContainImportsDocumentable):
         self.rawbases = []
         self.subclasses = []
 
-    def allbases(self):
+    def allbases(self, include_self=False):
+        if include_self:
+            yield self
         for b in self.baseobjects:
             if b is None:
                 continue
-            yield b
-            for b2 in b.allbases():
+            for b2 in b.allbases(True):
                 yield b2
     def _localNameToFullName(self, name):
         if name in self.contents:
@@ -273,7 +274,7 @@ class Function(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.allbases():
+        for b in self.parent.allbases(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
     def _localNameToFullName(self, name):

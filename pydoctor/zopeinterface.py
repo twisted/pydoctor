@@ -55,8 +55,9 @@ class ZopeInterfaceFunction(model.Function):
         for interface in self.parent.allImplementedInterfaces:
             io = self.system.objForFullName(interface)
             if io is not None:
-                if self.name in io.contents:
-                    yield io.contents[self.name]
+                for io2 in io.allbases(include_self=True):
+                    if self.name in io2.contents:
+                        yield io2.contents[self.name]
 
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
