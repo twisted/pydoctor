@@ -3,7 +3,6 @@
 from pydoctor import model, ast_pp, astbuilder
 from compiler import ast
 import re
-import pytest
 
 
 class ZopeInterfaceModule(model.Module):
@@ -76,7 +75,6 @@ class ZopeInterfaceFunction(model.Function):
                         yield io2.contents[self.name]
 
 def addInterfaceInfoToModule(module, interfaceargs):
-#    pytest.set_trace()
     for arg in interfaceargs:
         if not isinstance(arg, tuple):
             fullName = module.expandName(ast_pp.pp(arg))
