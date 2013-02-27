@@ -3,6 +3,7 @@
 from pydoctor import model, ast_pp, astbuilder
 from compiler import ast
 import re
+import pytest
 
 class ZopeInterfaceClass(model.Class):
     isinterface = False
@@ -50,7 +51,7 @@ class ZopeInterfaceFunction(model.Function):
     def docsources(self):
         for source in super(ZopeInterfaceFunction, self).docsources():
             yield source
-        if not isinstance(self.parent, model.Class):
+        if not isinstance(self.parent, (model.Class, model.Module)):
             return
         for interface in self.parent.allImplementedInterfaces:
             io = self.system.objForFullName(interface)
@@ -59,6 +60,25 @@ class ZopeInterfaceFunction(model.Function):
                     if self.name in io2.contents:
                         yield io2.contents[self.name]
 
+def addInterfaceInfoToModule(module, interfaceargs):
+#    pytest.set_trace()
+    for arg in interfaceargs:
+        if not isinstance(arg, tuple):
+            fullName = module.expandName(ast_pp.pp(arg))
+        else:
+            fullName = arg[1]
+        module.implements_directly.append(fullName)
+        obj = module.system.objForFullName(fullName)
+        if obj is not None:
+            if not obj.isinterface:
+                obj.system.msg(
+                    'zopeinterface',
+                    'probable interface %r not marked as such'%obj,
+                    thresh=1)
+                obj.isinterface = True
+                obj.kind = "Interface"
+                obj.implementedby_directly = []
+            obj.implementedby_directly.append(module.fullName())
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly
@@ -193,6 +213,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if meth is not None:
             meth(base, node)
 
+    def visitCallFunc_zope_interface_moduleProvides(self, funcName, node):
+        if not isinstance(self.builder.current, model.Module):
+            self.default(node)
+            return
+
+        addInterfaceInfoToModule(self.builder.current, node.args)
+
     def visitCallFunc_zope_interface_implements(self, funcName, node):
         if not isinstance(self.builder.current, model.Class):
             self.default(node)
@@ -232,11 +259,26 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 addInterfaceInfoToClass(cls, args, False)
 
 
+class ZopeInterfaceModule(model.Module):
+    def setup(self):
+        super(ZopeInterfaceModule, self).setup()
+        self.implements_directly = [] # [name of interface]
+
+    @property
+    def allImplementedInterfaces(self):
+        """Return all the interfaces implemented by this class.
+
+        This returns them in something like the classic class MRO.
+        """
+        return list(self.implements_directly)
+
+
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
     ModuleVistor = ZopeInterfaceModuleVisitor
 
 
 class ZopeInterfaceSystem(model.System):
+    Module = ZopeInterfaceModule
     Class = ZopeInterfaceClass
     Function = ZopeInterfaceFunction
     defaultBuilder = ZopeInterfaceASTBuilder
