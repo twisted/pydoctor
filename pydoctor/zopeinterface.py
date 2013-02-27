@@ -5,6 +5,21 @@ from compiler import ast
 import re
 import pytest
 
+
+class ZopeInterfaceModule(model.Module):
+    def setup(self):
+        super(ZopeInterfaceModule, self).setup()
+        self.implements_directly = [] # [name of interface]
+
+    @property
+    def allImplementedInterfaces(self):
+        """Return all the interfaces implemented by this class.
+
+        This returns them in something like the classic class MRO.
+        """
+        return list(self.implements_directly)
+
+
 class ZopeInterfaceClass(model.Class):
     isinterface = False
     isschemafield = False
@@ -257,20 +272,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for ((dn, fn, o), args) in cls.decorators:
             if fn == 'zope.interface.implementer':
                 addInterfaceInfoToClass(cls, args, False)
-
-
-class ZopeInterfaceModule(model.Module):
-    def setup(self):
-        super(ZopeInterfaceModule, self).setup()
-        self.implements_directly = [] # [name of interface]
-
-    @property
-    def allImplementedInterfaces(self):
-        """Return all the interfaces implemented by this class.
-
-        This returns them in something like the classic class MRO.
-        """
-        return list(self.implements_directly)
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
