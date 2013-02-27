@@ -240,4 +240,3 @@ class ZopeInterfaceSystem(model.System):
     Class = ZopeInterfaceClass
     Function = ZopeInterfaceFunction
     defaultBuilder = ZopeInterfaceASTBuilder
-
