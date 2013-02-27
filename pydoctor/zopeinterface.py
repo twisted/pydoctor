@@ -12,9 +12,7 @@ class ZopeInterfaceModule(model.Module):
 
     @property
     def allImplementedInterfaces(self):
-        """Return all the interfaces implemented by this class.
-
-        This returns them in something like the classic class MRO.
+        """Return all the interfaces provided by this module
         """
         return list(self.implements_directly)
 
