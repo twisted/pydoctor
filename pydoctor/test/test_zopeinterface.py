@@ -64,7 +64,6 @@ def test_implementer():
     '''
     implements_test(src)
 
-
 def implements_test(src):
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     ifoo = mod.contents['IFoo']
@@ -222,3 +221,20 @@ def test_docsources_includes_baseinterface():
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
+def test_docsources_from_moduleprovides():
+    src = '''
+    from zope import interface
+
+    class IBase(interface.Interface):
+        def bar():
+            """documentation"""
+
+    interface.moduleProvides(IBase)
+
+    def bar():
+        pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IBase'].contents['bar']
+    function = mod.contents['bar']
+    assert imethod in function.docsources(), list(function.docsources())
