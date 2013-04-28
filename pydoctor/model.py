@@ -42,7 +42,6 @@ class Documentable(object):
 
     @ivar docstring: The object's docstring.  But also see docsources.
     @ivar system: The system the object is part of.
-    @ivar prefix: ...
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
@@ -63,15 +62,6 @@ class Documentable(object):
 
     def __init__(self, system, name, docstring, parent=None):
         self.system = system
-        if parent is not None:
-            if (parent.parent and isinstance(parent.parent, Package)
-                and isinstance(parent, Module)
-                and parent.name == '__init__'):
-                self.prefix = parent.parent.fullName() + '.'
-            else:
-                self.prefix = parent.fullName() + '.'
-        else:
-            self.prefix = ''
         self.name = name
         self.docstring = docstring
         self.parent = parent
@@ -85,7 +75,17 @@ class Documentable(object):
         self.orderedcontents = []
 
     def fullName(self):
-        return self.prefix + self.name
+        parent = self.parent
+        if parent is not None:
+            if (parent.parent and isinstance(parent.parent, Package)
+                and isinstance(parent, Module)
+                and parent.name == '__init__'):
+                prefix = parent.parent.fullName() + '.'
+            else:
+                prefix = parent.fullName() + '.'
+        else:
+            prefix = ''
+        return prefix + self.name
 
     def __repr__(self):
         return "%s %r"%(self.__class__.__name__, self.fullName())

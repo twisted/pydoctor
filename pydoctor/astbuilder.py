@@ -195,7 +195,6 @@ class ModuleVistor(object):
                     targetmod = self.builder.current
                     del self.system.allobjects[ob.fullName()]
                     ob.parent = ob.parentMod = targetmod
-                    ob.prefix = targetmod.fullName() + '.'
                     ob.name = asname
                     self.system.allobjects[ob.fullName()] = ob
                     del mod.contents[fromname]
