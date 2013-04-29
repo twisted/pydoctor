@@ -100,6 +100,34 @@ class Documentable(object):
         yield self
 
 
+    def reparent(self, new_parent, new_name):
+        # this code attempts to preserve "rather a lot" of
+        # invariants assumed by various bits of pydoctor
+        # and that are of course not written down anywhere
+        # :/
+        self._handle_reparenting_pre()
+        old_parent = self.parent
+        old_name = self.name
+        self.parent = self.parentMod = new_parent
+        self.name = new_name
+        self._handle_reparenting_post()
+        del old_parent.contents[old_name]
+        old_parent.orderedcontents.remove(self)
+        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        new_parent.contents[new_name] = self
+        new_parent.orderedcontents.append(self)
+        self._handle_reparenting_post()
+
+    def _handle_reparenting_pre(self):
+        del self.system.allobjects[self.fullName()]
+        for o in self.orderedcontents:
+            o._handle_reparenting_pre()
+
+    def _handle_reparenting_post(self):
+        self.system.allobjects[self.fullName()] = self
+        for o in self.orderedcontents:
+            o._handle_reparenting_post()
+
     def _localNameToFullName(self, name):
         raise NotImplementedError(self._localNameToFullName)
 

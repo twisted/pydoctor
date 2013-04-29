@@ -187,21 +187,8 @@ class ModuleVistor(object):
                         "moving %r into %r"
                         % (mod.contents[fromname].fullName(),
                            self.builder.current.fullName()))
-                    # this code attempts to preserve "rather a lot" of
-                    # invariants assumed by various bits of pydoctor
-                    # and that are of course not written down anywhere
-                    # :/
                     ob = mod.contents[fromname]
-                    targetmod = self.builder.current
-                    del self.system.allobjects[ob.fullName()]
-                    ob.parent = ob.parentMod = targetmod
-                    ob.name = asname
-                    self.system.allobjects[ob.fullName()] = ob
-                    del mod.contents[fromname]
-                    mod.orderedcontents.remove(ob)
-                    mod._localNameToFullName_map[fromname] = ob.fullName()
-                    targetmod.contents[asname] = ob
-                    targetmod.orderedcontents.append(ob)
+                    ob.reparent(self.builder.current, asname)
                     continue
             if isinstance(
                 self.system.objForFullName(modname), model.Package):
