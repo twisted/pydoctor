@@ -1,25 +1,25 @@
-<div xmlns:nevow="http://nevow.com/ns/nevow/0.1" class="function">
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1" class="function">
   <a>
-    <nevow:attr name="name" nevow:render="functionAnchor" />
+    <t:attr name="name" t:render="functionAnchor" />
   </a>
   <a>
-    <nevow:attr name="name" nevow:render="shortFunctionAnchor" />
+    <t:attr name="name" t:render="shortFunctionAnchor" />
   </a>
   <div class="functionHeader">
-    <nevow:invisible nevow:render="decorator" />
+    <t:invisible t:render="decorator" />
     def
-    <nevow:invisible nevow:render="functionName">
+    <t:invisible t:render="functionName">
       functionName():
-    </nevow:invisible>
-    <a class="functionSourceLink" nevow:render="sourceLink">
-      <nevow:attr name="href"><nevow:slot name="sourceHref" /></nevow:attr>
+    </t:invisible>
+    <a class="functionSourceLink" t:render="sourceLink">
+      <t:attr name="href"><t:slot name="sourceHref" /></t:attr>
       (source)
     </a>
   </div>
   <div class="functionBody">
-    <nevow:invisible nevow:render="functionExtras" />
-    <nevow:invisible nevow:render="functionBody">
+    <t:invisible t:render="functionExtras" />
+    <t:invisible t:render="functionBody">
       Docstring.
-    </nevow:invisible>
+    </t:invisible>
   </div>
 </div>

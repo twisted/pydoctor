@@ -1,12 +1,12 @@
 """Classes that generate the summary pages."""
 
-from nevow import page, loaders, tags
+from twisted.web.template import tags
+from twisted.web.template import Element, renderer, TagLoader, XMLFile
 
 from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
-    from twisted.web.template import tags
     r = tags.li(taglink(modorpack, tags=tags), ' - ', )#epydoc2stan.doc2html(modorpack, summary=True)[0]]
     if not isinstance(modorpack, model.Package):
         return r
@@ -22,7 +22,6 @@ def moduleSummary(modorpack):
 def _lckey(x):
     return x.fullName().lower()
 
-from twisted.web.template import Element, renderer, XMLFile
 
 class ModuleIndexPage(Element):
     filename = 'moduleIndex.html'
@@ -73,15 +72,15 @@ def subclassesFrom(hostsystem, cls, anchors):
         r[ul]
     return r
 
-class ClassIndexPage(page.Element):
+class ClassIndexPage(Element):
     filename = 'classIndex.html'
-    docFactory = loaders.xmlfile(templatefile('summary.html'))
+    loader = XMLFile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
-    @page.renderer
+    @renderer
     def title(self, request, tag):
         return tag.clear()["Class Hierarchy"]
-    @page.renderer
+    @renderer
     def stuff(self, request, tag):
         t = tag
         anchors = set()
@@ -97,7 +96,7 @@ class ClassIndexPage(page.Element):
                     item[ul]
                 t[item]
         return t
-    @page.renderer
+    @renderer
     def heading(self, request, tag):
         return tag.clear()["Class Hierarchy"]
 
@@ -157,60 +156,60 @@ class NameIndexPage(Element):
                           lettercontents=lettercontents)]
         return tag
 
-class IndexPage(page.Element):
+class IndexPage(Element):
     filename = 'index.html'
-    docFactory = loaders.xmlfile(templatefile('index.html'))
+    loader = XMLFile(templatefile('index.html'))
     def __init__(self, system):
         self.system = system
-    @page.renderer
+    @renderer
     def project_link(self, request, tag):
         if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)[self.system.options.projectname]
+            return tags.a(href=self.system.options.projecturl)(self.system.options.projectname)
         elif self.system.options.projectname:
             return self.system.options.projectname
         else:
             return self.system.guessedprojectname
-    @page.renderer
+    @renderer
     def project(self, request, tag):
         if self.system.options.projectname:
             return self.system.options.projectname
         else:
             return self.system.guessedprojectname
-    @page.renderer
+    @renderer
     def recentChanges(self, request, tag):
         return ()
-    @page.renderer
+    @renderer
     def problemObjects(self, request, tag):
         return ()
-    @page.renderer
+    @renderer
     def onlyIfOneRoot(self, request, tag):
         if len(self.system.rootobjects) != 1:
             return []
         else:
             root, = self.system.rootobjects
-            return tag.clear()[
+            return tag.clear()(
                 "Start at ", taglink(root),
-                ", the root ", root.kind.lower(), "."]
-    @page.renderer
+                ", the root ", root.kind.lower(), ".")
+    @renderer
     def onlyIfMultipleRoots(self, request, tag):
         if len(self.system.rootobjects) == 1:
             return []
         else:
             return tag
-    @page.renderer
+    @renderer
     def roots(self, request, tag):
         item = tag.patternGenerator("item")
         r = []
         for o in self.system.rootobjects:
             r.append(fillSlots(item, root=taglink(o)))
         return tag[r]
-    @page.renderer
+    @renderer
     def rootkind(self, request, tag):
         rootkinds = {}
         for o in self.system.rootobjects:
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()['/'.join(sorted(rootkinds))]
-    @page.renderer
+    @renderer
     def buildtime(self, request, tag):
         return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -220,21 +219,21 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(page.Element):
+class UndocumentedSummaryPage(Element):
     filename = 'undoccedSummary.html'
-    docFactory = loaders.xmlfile(templatefile('summary.html'))
+    loader = XMLFile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
 
-    @page.renderer
+    @renderer
     def title(self, request, tag):
         return tag.clear()["Summary of Undocumented Objects"]
 
-    @page.renderer
+    @renderer
     def heading(self, request, tag):
         return tag.clear()["Summary of Undocumented Objects"]
 
-    @page.renderer
+    @renderer
     def stuff(self, request, tag):
         undoccedpublic = [o for o in self.system.orderedallobjects
                           if o.isVisible and not hasdocstring(o)]

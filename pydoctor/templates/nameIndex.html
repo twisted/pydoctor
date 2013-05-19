@@ -7,29 +7,29 @@
     <link rel="stylesheet" type="text/css" href="apidocs.css"/>
   </head>
   <body>
-    <h1 nevow:render="heading">Heading</h1>
-    <nevow:invisible nevow:render="index">
-      <nevow:invisible nevow:pattern="letter">
+    <h1 t:render="heading">Heading</h1>
+    <t:transparent t:render="index">
+      <t:transparent t:render="letter">
         <a>
-          <nevow:attr name="name"><nevow:slot name="letter"/></nevow:attr>
+          <t:attr name="name"><t:slot name="letter"/></t:attr>
         </a>
-        <h2><nevow:slot name="letter"/></h2>
+        <h2><t:slot name="letter"/></h2>
         <p class="letterlinks">
-          <nevow:slot name="letterlinks">A - B - C - ...</nevow:slot>
+          <t:slot name="letterlinks">A - B - C - ...</t:slot>
         </p>
         <ul>
-          <nevow:slot name="lettercontents"/>
+          <t:slot name="lettercontents"/>
         </ul>
-      </nevow:invisible>
-      <li nevow:pattern="singleName">
-        <nevow:slot name="name" /> - <nevow:slot name="link" />
+      </t:transparent>
+      <li t:pattern="singleName">
+        <t:slot name="name" /> - <t:slot name="link" />
       </li>
-      <li nevow:pattern="manyNames">
-        <nevow:slot name="name" />
+      <li t:pattern="manyNames">
+        <t:slot name="name" />
         <ul>
-          <nevow:slot name="manyNames" />
+          <t:slot name="manyNames" />
         </ul>
       </li>
-    </nevow:invisible>
+    </t:transparent>
   </body>
 </html>

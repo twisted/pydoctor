@@ -2,7 +2,7 @@
 
 from pydoctor import model
 
-from nevow import tags
+from twisted.web.template import tags
 
 import os, urllib
 

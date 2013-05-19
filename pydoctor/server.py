@@ -5,7 +5,7 @@ from nevow.static import File
 from twisted.web.template import flattenString
 from zope.interface import implements
 from pydoctor import model, epydoc2stan
-from pydoctor.nevowhtml import pages, summary, util
+from pydoctor.nevowhtml import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
 import parser
 
@@ -31,7 +31,9 @@ class WrapperPage(rend.Page):
         if isinstance(self.element, page.Element):
             return self.element
         else:
-            return flattenString(None, self.element).addCallback(tags.raw)
+            def _cb(v):
+                return tags.raw(DOCTYPE + v)
+            return flattenString(None, self.element).addCallback(_cb)
     docFactory = loaders.stan(tags.directive('content'))
 
 class PyDoctorResource(rend.ChildLookupMixin):

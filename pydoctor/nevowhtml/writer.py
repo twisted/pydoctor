@@ -1,7 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
 from pydoctor.nevowhtml.util import link, templatefile
-from pydoctor.nevowhtml import pages, summary
+from pydoctor.nevowhtml import DOCTYPE, pages, summary
 
 from nevow import flat
 from twisted.web.template import flattenString
@@ -46,6 +46,7 @@ class NevowWriter:
             if isinstance(page, nevow.page.Element):
                 f.write(flat.flatten(page))
             else:
+                f.write(DOCTYPE)
                 def e(r):
                     raise r.value
                 flattenString(None, page).addCallback(f.write).addErrback(e)
