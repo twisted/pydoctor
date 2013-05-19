@@ -102,21 +102,21 @@ class ClassIndexPage(page.Element):
         return tag.clear()["Class Hierarchy"]
 
 
-class NameIndexPage(page.Element):
+class NameIndexPage(Element):
     filename = 'nameIndex.html'
-    docFactory = loaders.xmlfile(templatefile('nameIndex.html'))
+    loader = XMLFile(templatefile('nameIndex.html'))
     def __init__(self, system):
         self.system = system
 
-    @page.renderer
+    @renderer
     def title(self, request, tag):
-        return tag.clear()["Index Of Names"]
+        return tag.clear()("Index Of Names")
 
-    @page.renderer
+    @renderer
     def heading(self, request, tag):
-        return tag.clear()["Index Of Names"]
+        return tag.clear()("Index Of Names")
 
-    @page.renderer
+    @renderer
     def index(self, request, tag):
         letter = tag.patternGenerator('letter')
         singleName = tag.patternGenerator('singleName')

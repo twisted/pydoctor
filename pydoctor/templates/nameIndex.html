@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
-<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <head>
-    <title nevow:render="title">Something</title>
+    <title t:render="title">Something</title>
     <link rel="stylesheet" type="text/css" href="apidocs.css"/>
   </head>
   <body>
@@ -21,15 +21,15 @@
           <nevow:slot name="lettercontents"/>
         </ul>
       </nevow:invisible>
-    <li nevow:pattern="singleName">
-      <nevow:slot name="name" /> - <nevow:slot name="link" />
-    </li>
-    <li nevow:pattern="manyNames">
-      <nevow:slot name="name" />
-      <ul>
-        <nevow:slot name="manyNames" />
-      </ul>
-    </li>
+      <li nevow:pattern="singleName">
+        <nevow:slot name="name" /> - <nevow:slot name="link" />
+      </li>
+      <li nevow:pattern="manyNames">
+        <nevow:slot name="name" />
+        <ul>
+          <nevow:slot name="manyNames" />
+        </ul>
+      </li>
     </nevow:invisible>
   </body>
 </html>
