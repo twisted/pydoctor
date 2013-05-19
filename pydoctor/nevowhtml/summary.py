@@ -60,45 +60,49 @@ def subclassesFrom(hostsystem, cls, anchors):
     r = tags.li()
     name = cls.fullName()
     if name not in anchors:
-        r[tags.a(name=name)]
+        r(tags.a(name=name))
         anchors.add(name)
-    r[taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True)[0]]
+    r(taglink(cls), ' - ', epydoc2stan.doc2html(cls, summary=True, tags=tags)[0])
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
-            ul[subclassesFrom(hostsystem, sc, anchors)]
-        r[ul]
+            ul(subclassesFrom(hostsystem, sc, anchors))
+        r(ul)
     return r
 
 class ClassIndexPage(Element):
     filename = 'classIndex.html'
     loader = XMLFile(templatefile('summary.html'))
+
     def __init__(self, system):
         self.system = system
+
     @renderer
     def title(self, request, tag):
-        return tag.clear()["Class Hierarchy"]
+        return tag.clear()("Class Hierarchy")
+
     @renderer
     def stuff(self, request, tag):
         t = tag
         anchors = set()
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
-                t[subclassesFrom(self.system, o, anchors)]
+                t(subclassesFrom(self.system, o, anchors))
             else:
-                item = tags.li[b]
+                item = tags.li(b)
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):
-                        ul[subclassesFrom(self.system, sc, anchors)]
-                    item[ul]
-                t[item]
+                        ul(subclassesFrom(self.system, sc, anchors))
+                    item(ul)
+                t(item)
         return t
+
     @renderer
     def heading(self, request, tag):
-        return tag.clear()["Class Hierarchy"]
+        return tag.clear()("Class Hierarchy")
 
 
 class NameIndexPage(Element):
