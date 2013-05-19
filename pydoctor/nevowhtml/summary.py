@@ -159,28 +159,35 @@ class NameIndexPage(Element):
 class IndexPage(Element):
     filename = 'index.html'
     loader = XMLFile(templatefile('index.html'))
+
     def __init__(self, system):
         self.system = system
+
     @renderer
     def project_link(self, request, tag):
         if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(self.system.options.projectname)
+            return tags.a(href=self.system.options.projecturl)(
+                self.system.options.projectname)
         elif self.system.options.projectname:
             return self.system.options.projectname
         else:
             return self.system.guessedprojectname
+
     @renderer
     def project(self, request, tag):
         if self.system.options.projectname:
             return self.system.options.projectname
         else:
             return self.system.guessedprojectname
+
     @renderer
     def recentChanges(self, request, tag):
         return ()
+
     @renderer
     def problemObjects(self, request, tag):
         return ()
+
     @renderer
     def onlyIfOneRoot(self, request, tag):
         if len(self.system.rootobjects) != 1:
@@ -190,28 +197,32 @@ class IndexPage(Element):
             return tag.clear()(
                 "Start at ", taglink(root),
                 ", the root ", root.kind.lower(), ".")
+
     @renderer
     def onlyIfMultipleRoots(self, request, tag):
         if len(self.system.rootobjects) == 1:
             return []
         else:
             return tag
+
     @renderer
     def roots(self, request, tag):
-        item = tag.patternGenerator("item")
         r = []
         for o in self.system.rootobjects:
-            r.append(fillSlots(item, root=taglink(o)))
-        return tag[r]
+            r.append(tag.clone().fillSlots(root=taglink(o)))
+        return r
+
     @renderer
     def rootkind(self, request, tag):
         rootkinds = {}
         for o in self.system.rootobjects:
             rootkinds[o.kind.lower() + 's']  = 1
-        return tag.clear()['/'.join(sorted(rootkinds))]
+        return tag.clear()('/'.join(sorted(rootkinds)))
+
     @renderer
     def buildtime(self, request, tag):
         return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
+
 
 def hasdocstring(ob):
     for source in ob.docsources():
