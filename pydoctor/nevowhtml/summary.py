@@ -1,13 +1,13 @@
 """Classes that generate the summary pages."""
 
 from twisted.web.template import tags
-from twisted.web.template import Element, renderer, TagLoader, XMLFile
+from twisted.web.template import Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
 
 def moduleSummary(modorpack):
-    r = tags.li(taglink(modorpack, tags=tags), ' - ', )#epydoc2stan.doc2html(modorpack, summary=True)[0]]
+    r = tags.li(taglink(modorpack, tags=tags), ' - ', epydoc2stan.doc2html(modorpack, summary=True, tags=tags)[0])
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents

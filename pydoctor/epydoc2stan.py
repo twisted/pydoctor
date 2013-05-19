@@ -417,7 +417,7 @@ def reportErrors(obj, errs):
             p(err)
 
 
-def doc2html(obj, summary=False, docstring=None):
+def doc2html(obj, summary=False, docstring=None, tags=tags):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
         r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
@@ -457,7 +457,7 @@ def doc2html(obj, summary=False, docstring=None):
                                          plurals.get(k, k+'s')))
                 text += '; ' + ', '.join(u) + " documented"
         if summary:
-            return tags.span(class_="undocumented")[text], []
+            return tags.span(class_="undocumented")(text), []
         else:
             return tags.div(class_="undocumented")[text], []
     if summary:
@@ -490,7 +490,7 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = de_p(pdoc.to_html(_EpydocLinker(source)))
+            crap = pdoc.to_html(_EpydocLinker(source))
         except Exception, e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
@@ -502,7 +502,13 @@ def doc2html(obj, summary=False, docstring=None):
     if summary:
         if not crap:
             return (), []
-        s = tags.span()[tags.raw(crap)]
+        from twisted.web.template import XMLString
+        print repr(crap)
+        stan = XMLString(crap).load()[0]
+        if stan.tagName == 'p':
+            stan = stan.children
+            #import pdb; pdb.set_trace()
+        s = tags.span(stan)
     else:
         if not crap and not fields:
             return (), []
