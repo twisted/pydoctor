@@ -20,7 +20,6 @@ def getBetterThanArgspec(argspec):
     defaults.reverse()
     kws = zip(backargs, defaults)
     kws.reverse()
-    allargs = args[:-len(kws)] + kws
     return (args[:-len(kws)], kws)
 
 def _strtup(tup):
@@ -155,7 +154,8 @@ class CommonPage(page.Element):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.document_in_parent_page and o.isVisible]
+                if o.documentation_location == model.DocLocation.PARENT_PAGE
+                and o.isVisible]
 
     def childlist(self):
         from pydoctor.nevowhtml.pages.attributechild import AttributeChild
@@ -225,7 +225,8 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.document_in_parent_page and o.isVisible]
+                if o.documentation_location == model.DocLocation.PARENT_PAGE
+                and o.isVisible]
 
 class ModulePage(CommonPage):
     pass
@@ -381,7 +382,7 @@ class ClassPage(CommonPage):
 
     def functionExtras(self, data):
         r = []
-        for b in self.ob.allbases():
+        for b in self.ob.allbases(include_self=False):
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
@@ -424,8 +425,9 @@ class ZopeInterfaceClassPage(ClassPage):
         for interface in self.ob.allImplementedInterfaces:
             if interface in system.allobjects:
                 io = system.allobjects[interface]
-                if methname in io.contents:
-                    return io.contents[methname]
+                for io2 in io.allbases(include_self=True):
+                    if methname in io2.contents:
+                        return io2.contents[methname]
         return None
 
     def functionExtras(self, data):

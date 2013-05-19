@@ -91,6 +91,17 @@ def test_class_with_base():
     base, = clsD.bases
     assert base == '<test>.C'
 
+def test_follow_renaming():
+    src = '''
+    class C: pass
+    D = C
+    class E(D): pass
+    '''
+    mod = fromText(src)
+    C = mod.contents['C']
+    E = mod.contents['E']
+    assert E.baseobjects == [C], E.baseobjects
+
 def test_class_with_base_from_module():
     src = '''
     from X.Y import A
@@ -129,9 +140,9 @@ def test_class_with_base_from_module():
 
     assert len(clsD.bases) == 3
     base1, base2, base3 = clsD.bases
-    assert base1 == 'X.A'
-    assert base2 == 'X.B.C'
-    assert base3 == 'Y.Z.C'
+    assert base1 == 'X.A', base1
+    assert base2 == 'X.B.C', base2
+    assert base3 == 'Y.Z.C', base3
 
 def test_aliasing():
     def addsrc(system):
@@ -152,11 +163,6 @@ def test_aliasing():
         fromText(src_c, 'c', system)
 
     system = model.System()
-    addsrc(system)
-    assert system.allobjects['c.C'].bases == ['b.B']
-
-    system = model.System()
-    system.options.resolvealiases = True
     addsrc(system)
     assert system.allobjects['c.C'].bases == ['a.A']
 
@@ -181,25 +187,20 @@ def test_more_aliasing():
         fromText(src_b, 'b', system)
         fromText(src_c, 'c', system)
         fromText(src_d, 'd', system)
-    system = model.System()
-    addsrc(system)
-    assert system.allobjects['d.D'].bases == ['c.C']
 
     system = model.System()
-    system.options.resolvealiases = True
     addsrc(system)
     assert system.allobjects['d.D'].bases == ['a.A']
 
 def test_aliasing_recursion():
     system = model.System()
-    system.options.resolvealiases = True
     src = '''
     from mod import C
     class D(C):
         pass
     '''
     mod = fromText(src, 'mod', system)
-    assert mod.contents['D'].bases == ['mod.C']
+    assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
 def test_subclasses():
     src = '''
@@ -264,3 +265,31 @@ def test_classmethod():
         f = classmethod(f)
     ''')
     assert mod.contents['C'].contents['f'].kind == 'Class Method'
+
+def test_classdecorator():
+    mod = fromText('''
+    def cd(cls):
+        pass
+    @cd
+    class C:
+        pass
+    ''', modname='mod')
+    C = mod.contents['C']
+    assert C.decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
+      C.decorators
+
+
+def test_classdecorator_with_args():
+    mod = fromText('''
+    def cd(): pass
+    class A: pass
+    @cd(A)
+    class C:
+        pass
+    ''', modname='test')
+    cd = mod.contents['cd']
+    A = mod.contents['A']
+    C = mod.contents['C']
+    assert C.decorators == [(('cd', 'test.cd', cd), [('A', 'test.A', A)])], \
+      C.decorators
+

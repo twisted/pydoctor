@@ -23,8 +23,17 @@ import __builtin__
 #
 #   Packages can contain Packages and Modules
 #   Modules can contain Functions and Classes
-#   Classes can contain Functions (when they get called Methods) and Classes
+#   Classes can contain Functions (in this case they get called Methods) and
+#       Classes
 #   Functions can't contain anything.
+
+
+class DocLocation:
+    OWN_PAGE = 1
+    PARENT_PAGE = 2
+    # Nothing uses this yet.  Parameters will one day.
+    #UNDER_PARENT_DOCSTRING = 3
+
 
 class Documentable(object):
     """An object that can be documented.
@@ -33,15 +42,14 @@ class Documentable(object):
 
     @ivar docstring: The object's docstring.  But also see docsources.
     @ivar system: The system the object is part of.
-    @ivar prefix: ...
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
-    @ivar document_in_parent_page: ...
+    @ivar documentation_location: ...
     @ivar sourceHref: ...
     @ivar kind: ...
     """
-    document_in_parent_page = False
+    documentation_location = DocLocation.OWN_PAGE
     sourceHref = None
 
     @property
@@ -54,15 +62,6 @@ class Documentable(object):
 
     def __init__(self, system, name, docstring, parent=None):
         self.system = system
-        if parent is not None:
-            if (parent.parent and isinstance(parent.parent, Package)
-                and isinstance(parent, Module)
-                and parent.name == '__init__'):
-                self.prefix = parent.parent.fullName() + '.'
-            else:
-                self.prefix = parent.fullName() + '.'
-        else:
-            self.prefix = ''
         self.name = name
         self.docstring = docstring
         self.parent = parent
@@ -74,10 +73,19 @@ class Documentable(object):
     def setup(self):
         self.contents = {}
         self.orderedcontents = []
-        self._name2fullname = {}
 
     def fullName(self):
-        return self.prefix + self.name
+        parent = self.parent
+        if parent is not None:
+            if (parent.parent and isinstance(parent.parent, Package)
+                and isinstance(parent, Module)
+                and parent.name == '__init__'):
+                prefix = parent.parent.fullName() + '.'
+            else:
+                prefix = parent.fullName() + '.'
+        else:
+            prefix = ''
+        return prefix + self.name
 
     def __repr__(self):
         return "%s %r"%(self.__class__.__name__, self.fullName())
@@ -91,89 +99,73 @@ class Documentable(object):
         """
         yield self
 
-    def name2fullname(self, name):
-        """XXX what is the difference between name2fullname,
-        dottedNameToFullName and resolveDottedName??"""
-        if name in self._name2fullname:
-            return self._name2fullname[name]
-        else:
-            return self.parent.name2fullname(name)
 
-    def _resolveName(self, name, verbose):
-        """Helper for resolveDottedName."""
-        system = self.system
-        obj = self
-        while obj:
-            if name in obj.contents:
-                return obj.contents[name]
-            elif name in obj._name2fullname:
-                fn = obj._name2fullname[name]
-                o = system.allobjects.get(fn)
-                if o is None:
-                    for othersys in system.moresystems:
-                        o = othersys.allobjects.get(fn)
-                        if o is not None:
-                            break
-                if o is None and verbose > 0:
-                    print "from %r, %r resolves to %r which isn't present in the system"%(
-                        self.fullName(), name, fn)
-                return o
-            obj = obj.parent
-        obj = self
-        while obj:
-            for n, fn in obj._name2fullname.iteritems():
-                o2 = system.allobjects.get(fn)
-                if o2 and name in o2.contents:
-                    return o2.contents[name]
-            obj = obj.parent
-        if name in system.allobjects:
-            return system.allobjects[name]
-        for othersys in system.moresystems:
-            if name in othersys.allobjects:
-                return othersys.allobjects[name]
-        if verbose > 0:
-            print "failed to find %r from %r"%(name, self.fullName())
-        return None
+    def reparent(self, new_parent, new_name):
+        # this code attempts to preserve "rather a lot" of
+        # invariants assumed by various bits of pydoctor
+        # and that are of course not written down anywhere
+        # :/
+        self._handle_reparenting_pre()
+        old_parent = self.parent
+        old_name = self.name
+        self.parent = self.parentMod = new_parent
+        self.name = new_name
+        self._handle_reparenting_post()
+        del old_parent.contents[old_name]
+        old_parent.orderedcontents.remove(self)
+        old_parent._localNameToFullName_map[old_name] = self.fullName()
+        new_parent.contents[new_name] = self
+        new_parent.orderedcontents.append(self)
+        self._handle_reparenting_post()
 
-    def resolveDottedName(self, dottedname, verbose=None):
-        """XXX what is the difference between name2fullname,
-        dottedNameToFullName and resolveDottedName??"""
-        if verbose is None:
-            verbose = self.system.options.verbosity
-        parts = dottedname.split('.')
-        obj = self._resolveName(parts[0], verbose)
-        if obj is None:
-            self.system.msg(
-                "resolveDottedName", "%s:%s invalid ref to %s" % (
-                self.fullName(), self.linenumber, dottedname),
-                thresh=-1)
-            return obj
-        for p in parts[1:]:
-            if p not in obj.contents:
-                self.system.msg(
-                    "resolveDottedName", "%s:%s invalid ref to %s" % (
-                        self.fullName(), self.linenumber, dottedname),
-                    thresh=-1)
-                return None
-            obj = obj.contents[p]
-        if verbose > 1:
-            print dottedname, '->', obj.fullName(), 'in', self.fullName()
-        return obj
+    def _handle_reparenting_pre(self):
+        del self.system.allobjects[self.fullName()]
+        for o in self.orderedcontents:
+            o._handle_reparenting_pre()
 
-    def dottedNameToFullName(self, dottedname):
-        """XXX what is the difference between name2fullname,
-        dottedNameToFullName and resolveDottedName??"""
-        if '.' not in dottedname:
-            start, rest = dottedname, ''
-        else:
-            start, rest = dottedname.split('.', 1)
-            rest = '.' + rest
+    def _handle_reparenting_post(self):
+        self.system.allobjects[self.fullName()] = self
+        for o in self.orderedcontents:
+            o._handle_reparenting_post()
+
+    def _localNameToFullName(self, name):
+        raise NotImplementedError(self._localNameToFullName)
+
+    def expandName(self, name):
+        """Return a fully qualified name for the possibly-dotted `name`.
+
+        To explain what this means, consider the following modules:
+
+        mod1.py::
+
+            from external_location import External
+            class Local(object):
+                pass
+
+        mod2.py::
+
+            from mod1 import External as RenamedExternal
+            import mod1 as renamed_mod
+            class E:
+                pass
+
+        In the context of mod2.E, expandName("RenamedExternal") should be
+        "external_location.External" and expandName("renamed_mod.Local")
+        should be "mod1.Local". """
+        parts = name.split('.')
         obj = self
-        while start not in obj._name2fullname:
-            obj = obj.parent
-            if obj is None or isinstance(obj, Package):
-                return dottedname
-        return obj._name2fullname[start] + rest
+        for i, p in enumerate(parts):
+            full_name = obj._localNameToFullName(p)
+            obj = self.system.objForFullName(full_name)
+            if obj is None:
+                break
+        remaning = parts[i+1:]
+        return '.'.join([full_name] + remaning)
+
+    def resolveName(self, name):
+        """Return the object named by "name" (using Python's lookup rules) in
+        this context, if any is known to pydoctor."""
+        return self.system.objForFullName(self.expandName(name))
 
     @property
     def privacyClass(self):
@@ -228,52 +220,78 @@ class Documentable(object):
 
 class Package(Documentable):
     kind = "Package"
-    def name2fullname(self, name):
-        raise NameError
     def docsources(self):
         yield self.contents['__init__']
     @property
     def doctarget(self):
         return self.contents['__init__']
+    @property
+    def state(self):
+        return self.contents['__init__'].state
+
+    def _localNameToFullName(self, name):
+        if name in self.contents:
+            o = self.contents[name]
+            return o.fullName()
+        else:
+            return self.contents['__init__']._localNameToFullName(name)
+
 
 [UNPROCESSED, PROCESSING, PROCESSED] = range(3)
 
-class Module(Documentable):
+class CanContainImportsDocumentable(Documentable):
+    def setup(self):
+        super(CanContainImportsDocumentable, self).setup()
+        self._localNameToFullName_map = {}
+
+
+class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = UNPROCESSED
     linenumber = 0
     def setup(self):
         super(Module, self).setup()
         self.all = None
-    def name2fullname(self, name):
-        if name in self._name2fullname:
-            return self._name2fullname[name]
+
+    def _localNameToFullName(self, name):
+        if name in self.contents:
+            o = self.contents[name]
+            return o.fullName()
+        elif name in self._localNameToFullName_map:
+            return self._localNameToFullName_map[name]
         elif name in __builtin__.__dict__:
             return name
         else:
-            self.system.warning("optimistic name resolution", name)
             return name
 
 
-class Class(Documentable):
+class Class(CanContainImportsDocumentable):
     kind = "Class"
     def setup(self):
         super(Class, self).setup()
-        self.bases = []
         self.rawbases = []
-        self.baseobjects = []
         self.subclasses = []
-    def allbases(self):
+
+    def allbases(self, include_self=False):
+        if include_self:
+            yield self
         for b in self.baseobjects:
             if b is None:
                 continue
-            yield b
-            for b2 in b.allbases():
+            for b2 in b.allbases(True):
                 yield b2
+    def _localNameToFullName(self, name):
+        if name in self.contents:
+            o = self.contents[name]
+            return o.fullName()
+        elif name in self._localNameToFullName_map:
+            return self._localNameToFullName_map[name]
+        else:
+            return self.parent._localNameToFullName(name)
 
 
 class Function(Documentable):
-    document_in_parent_page = True
+    documentation_location = DocLocation.PARENT_PAGE
     kind = "Function"
     linenumber = 0
     def setup(self):
@@ -284,9 +302,20 @@ class Function(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.allbases():
+        for b in self.parent.allbases(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
+    def _localNameToFullName(self, name):
+        return self.parent._localNameToFullName(name)
+
+class Attribute(Documentable):
+
+    linenumber = 0
+    kind = "Attribute"
+    documentation_location = DocLocation.PARENT_PAGE
+
+    def _localNameToFullName(self, name):
+        return self.parent._localNameToFullName(name)
 
 class PrivacyClass:
     """'enum' containing values indicating how private an object should be.
@@ -313,6 +342,7 @@ class System(object):
     Module = Module
     Package = Package
     Function = Function
+    Attribute = Attribute
     # not done here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None
@@ -376,35 +406,6 @@ class System(object):
             else:
                 self.needsnl = False
                 print
-
-    def resolveAlias(self, n):
-        if '.' not in n:
-            return n
-        mod, clsname = n.rsplit('.', 1)
-        if not mod:
-            return mod
-        systems = [self] + self.moresystems
-        for system in systems:
-            if mod in system.allobjects:
-                break
-        else:
-            return n
-        m = system.allobjects[mod]
-        if isinstance(m, Package):
-            m = m.contents['__init__']
-        if not isinstance(m, Module):
-            return n
-        if clsname in m._name2fullname:
-            newname = m.name2fullname(clsname)
-            if newname == n:
-                return newname
-            for system in systems:
-                if newname in system.allobjects:
-                    return newname
-            else:
-                return self.resolveAlias(newname)
-        else:
-            return n
 
     def objForFullName(self, fullName):
         for sys in [self] + self.moresystems:
@@ -474,7 +475,6 @@ class System(object):
         if obj.parent:
             obj.parent.orderedcontents.append(obj)
             obj.parent.contents[obj.name] = obj
-            obj.parent._name2fullname[obj.name] = obj.fullName()
         else:
             self.rootobjects.append(obj)
         self.orderedallobjects.append(obj)
@@ -662,7 +662,7 @@ class System(object):
         if mod is None:
             return None
         if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__')
+            return self.getProcessedModule(modname + '.__init__').parent
         if not isinstance(mod, Module):
             return None
 
@@ -679,7 +679,7 @@ class System(object):
             return
         builder = self.defaultBuilder(self)
         ast = builder.parseFile(mod.filepath)
-        if  ast:
+        if ast:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             builder.processModuleAST(ast, mod)

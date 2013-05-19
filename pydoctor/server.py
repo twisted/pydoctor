@@ -483,15 +483,17 @@ class ProblemObjectsPage(rend.Page):
     docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
 
 def absoluteURL(ctx, ob):
-    if ob.document_in_parent_page:
+    if ob.documentation_location == model.DocLocation.PARENT_PAGE:
         p = ob.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
         child = p.fullName() + '.html'
         frag = ob.name
-    else:
+    elif ob.documentation_location == model.DocLocation.OWN_PAGE:
         child = ob.fullName() + '.html'
         frag = None
+    else:
+        raise AssertionError("XXX")
     return str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag))
 
 class EditingPyDoctorResource(PyDoctorResource):

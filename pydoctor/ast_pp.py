@@ -186,6 +186,11 @@ class SourceWriter(object):
         self.w(' + ')
         walk(node.right, self)
 
+    def visitPower(self, node):
+        walk(node.left, self)
+        self.w('**')
+        walk(node.right, self)
+
     def visitMod(self, node):
         walk(node.left, self)
         self.w(' % ')

@@ -1,17 +1,19 @@
+import cStringIO
+import os
+import shutil
+import tempfile
+
 from pydoctor import nevowhtml, model
 from pydoctor.nevowhtml import pages, writer
 from pydoctor.test.test_astbuilder import fromText
-from pydoctor.test import conftest
 from pydoctor.test.test_packages import processPackage
 from nevow import flat
-import cStringIO, os
-import py
 
 def getHTMLOf(ob):
-    writer = nevowhtml.NevowWriter('')
-    writer.system = ob.system
+    wr = nevowhtml.NevowWriter('')
+    wr.system = ob.system
     f = cStringIO.StringIO()
-    writer.writeDocsForOne(ob, f)
+    wr.writeDocsForOne(ob, f)
     return f.getvalue()
 
 def test_simple():
@@ -36,10 +38,6 @@ def test_nonempty_table():
     assert 'The renderer named' not in flattened
 
 def test_rest_support():
-    try:
-        import docutils, epydoc
-    except ImportError:
-        py.test.skip("Requires both docutils and epydoc to be importable")
     system = model.System()
     system.options.docformat = 'restructuredtext'
     system.options.verbosity = 4
@@ -58,22 +56,22 @@ def test_document_code_in_init_module():
 
 def test_basic_package():
     system = processPackage("basic")
-    targetdir = py.test.ensuretemp("pydoctor")
-    w = writer.NevowWriter(str(targetdir))
-    w.system = system
-    system.options.htmlusesplitlinks = True
-    system.options.htmlusesorttable = True
-    w.prepOutputDirectory()
-    root, = system.rootobjects
-    w.writeDocsFor(root, False)
-    w.writeModuleIndex(system)
-    for ob in system.allobjects.itervalues():
-        assert ob.document_in_parent_page or \
-               targetdir.join(ob.fullName() + '.html').check(file=1)
-    assert 'Package docstring' in targetdir.join('basic.html').read()
-    if conftest.option.viewhtml:
-        r = os.system("open %s"%targetdir.join('index.html'))
-        assert not r
+    targetdir = tempfile.mkdtemp()
+    try:
+        w = writer.NevowWriter(targetdir)
+        w.system = system
+        system.options.htmlusesplitlinks = True
+        system.options.htmlusesorttable = True
+        w.prepOutputDirectory()
+        root, = system.rootobjects
+        w.writeDocsFor(root, False)
+        w.writeModuleIndex(system)
+        for ob in system.allobjects.itervalues():
+            if ob.documentation_location == model.DocLocation.OWN_PAGE:
+                assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
+        assert 'Package docstring' in open(os.path.join(targetdir, 'basic.html')).read()
+    finally:
+        shutil.rmtree(targetdir)
 
 def test_hasdocstring():
     system = processPackage("basic")

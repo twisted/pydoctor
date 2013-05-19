@@ -103,7 +103,7 @@ class _EpydocLinker(object):
         # are like 2 uses in Twisted.
         return something.to_html(self)
     def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveDottedName(fullID)
+        obj = self.obj.resolveName(fullID)
         if obj is None:
             return prettyID
         else:
@@ -123,7 +123,6 @@ def getBetterThanArgspec(argspec):
     defaults.reverse()
     kws = zip(backargs, defaults)
     kws.reverse()
-    allargs = args[:-len(kws)] + kws
     return (args[:-len(kws)], kws)
 
 def _strtup(tup):

@@ -1,13 +1,25 @@
 """Convert epydoc markup into content renderable by Nevow."""
 
-from pydoctor import model, zopeinterface
+import __builtin__
+import exceptions
+import inspect
+import itertools
+import os
+import sys
+import urllib
 
 from nevow import tags
 
-import inspect, itertools, urllib
+from pydoctor import model
+
+
+STDLIB_DIR = os.path.dirname(os.__file__)
+STDLIB_URL = 'http://docs.python.org/library/'
+
 
 def link(o):
-    return urllib.quote(o.system.urlprefix+o.fullName()+'.html')
+    return o.system.urlprefix + urllib.quote(o.fullName()+'.html')
+
 
 def get_parser(formatname):
     try:
@@ -17,6 +29,7 @@ def get_parser(formatname):
         return None, e
     else:
         return mod.parse_docstring, None
+
 
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
@@ -29,24 +42,127 @@ def boringDocstring(doc, summary=False):
     crappit.__doc__ = doc
     return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
 
+
+def stdlib_doc_link_for_name(name):
+    parts = name.split('.')
+    for i in range(len(parts), 0, -1):
+        sub_parts = parts[:i]
+        filename = '/'.join(sub_parts)
+        sub_name = '.'.join(sub_parts)
+        if sub_name == 'os.path' \
+               or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
+               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
+               or sub_name in sys.builtin_module_names:
+            return STDLIB_URL + sub_name + '.html#' + name
+    if parts[0] in __builtin__.__dict__:
+        if parts[0] in exceptions.__dict__:
+            return STDLIB_URL + 'exceptions.html#exceptions.' + name
+        elif isinstance(__builtin__.__dict__[parts[0]], type):
+            return STDLIB_URL + 'stdtypes.html#' + name
+        else:
+            return STDLIB_URL + 'functions.html#' + name
+    return None
+
+
 class _EpydocLinker(object):
+
     def __init__(self, obj):
         self.obj = obj
+
     def translate_indexterm(self, something):
         # X{foobar} is meant to put foobar in an index page (like, a
         # proper end-of-the-book index). Should we support that? There
         # are like 2 uses in Twisted.
         return de_p(something.to_html(self))
-    def translate_identifier_xref(self, fullID, prettyID):
-        obj = self.obj.resolveDottedName(fullID)
-        if obj is None:
-            return '<code>%s</code>'%(prettyID,)
+
+    def _objLink(self, obj, prettyID):
+        if obj.documentation_location == model.DocLocation.PARENT_PAGE:
+            p = obj.parent
+            if isinstance(p, model.Module) and p.name == '__init__':
+                p = p.parent
+            linktext = link(p) + '#' + urllib.quote(obj.name)
+        elif obj.documentation_location == model.DocLocation.OWN_PAGE:
+            linktext = link(obj)
         else:
-            if isinstance(obj, model.Function):
-                linktext = link(obj.parent) + '#' + urllib.quote(obj.name)
-            else:
-                linktext = link(obj)
+            raise AssertionError(
+                "Unknown documentation_location: %s" % obj.documentation_location)
+        return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+
+    def look_for_name(self, name, candidates):
+        part0 = name.split('.')[0]
+        potential_targets = []
+        for src in candidates:
+            if part0 not in src.contents:
+                continue
+            target = src.resolveName(name)
+            if target is not None and target not in potential_targets:
+                potential_targets.append(target)
+        if len(potential_targets) == 1:
+            return potential_targets[0]
+        elif len(potential_targets) > 1:
+            self.obj.system.msg(
+                "translate_identifier_xref", "%s:%s ambiguous ref to %s, could be %s" % (
+                    self.obj.fullName(), self.obj.linenumber, name,
+            ', '.join([ob.fullName() for ob in potential_targets])),
+                thresh=-1)
+        return None
+
+    def translate_identifier_xref(self, fullID, prettyID):
+        """Figure out what ``L{fullID}`` should link to.
+
+        There is a lot of DWIM here.  The order goes:
+
+          1. Check if fullID refers to an object by Python name resolution in
+             our context.
+
+          2. Walk up the object tree and see if fullID refers to an object by
+             Python name resolution in each context.
+
+          3. Check if fullID is the fullName of an object.
+
+          4. Check to see if fullID names a builtin or standard library
+             module.
+
+          4. Walk up the object tree again and see if fullID refers to an
+             object in an "uncle" object.  (So if p.m1 has a class C, the
+             docstring for p.m2 can say L{C} to refer to the class in m1).  If
+             at any level fullID refers to more than one object, complain.
+
+          5. Examine every module and package in the system and see if fullID
+             names an object in each one.  Again, if more than one object is
+             found, complain.
+
+        """
+        src = self.obj
+        while src is not None:
+            target = src.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target, prettyID)
+            src = src.parent
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return self._objLink(target, prettyID)
+        fullerID = self.obj.expandName(fullID)
+        linktext = stdlib_doc_link_for_name(fullerID)
+        if linktext is not None:
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+        src = self.obj
+        while src is not None:
+            target = self.look_for_name(fullID, src.contents.values())
+            if target is not None:
+                return self._objLink(target, prettyID)
+            src = src.parent
+        target = self.look_for_name(fullID, itertools.chain(
+            self.obj.system.objectsOfType(model.Module),
+            self.obj.system.objectsOfType(model.Package)))
+        if target is not None:
+            return self._objLink(target, prettyID)
+        self.obj.system.msg(
+            "translate_identifier_xref", "%s:%s invalid ref to %s" % (
+                self.obj.fullName(), self.obj.linenumber, fullID),
+            thresh=-1)
+        return '<code>%s</code>'%(prettyID,)
+
 
 class FieldDesc(object):
     def __init__(self):
@@ -67,6 +183,7 @@ class FieldDesc(object):
         for k, v in self.__dict__.iteritems():
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
+
 
 def format_desc_list(singular, descs, plural=None):
     if plural is None:
@@ -117,6 +234,7 @@ def format_field_list(obj, singular, fields, plural=None):
         rows.append(row)
     return rows
 
+
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
@@ -136,10 +254,9 @@ class FieldHandler(object):
     def __init__(self, obj):
         self.obj = obj
 
+        self.types = {}
+
         self.parameter_descs = []
-        self.ivar_descs = []
-        self.cvar_descs = []
-        self.var_descs = []
         self.return_desc = None
         self.raise_descs = []
         self.seealsos = []
@@ -185,54 +302,28 @@ class FieldHandler(object):
             desc_list.append(d)
 
     def add_info(self, desc_list, field):
-        if desc_list and desc_list[-1].name == field.arg and desc_list[-1].body is None:
-            desc_list[-1].body = field.body
-        else:
-            d = FieldDesc()
-            d.kind = field.tag
-            d.name = field.arg
-            d.body = field.body
-            desc_list.append(d)
+        d = FieldDesc()
+        d.kind = field.tag
+        d.name = field.arg
+        d.body = field.body
+        desc_list.append(d)
 
     def handle_type(self, field):
-        obj = self.obj
-        if isinstance(obj, model.Function):
-            self.add_type_info(self.parameter_descs, field)
-        elif isinstance(obj, model.Class):
-            ivars = self.ivar_descs
-            cvars = self.cvar_descs
-            if ivars and ivars[-1].name == field.arg:
-                if ivars[-1].type is not None:
-                    self.redef(field)
-                ivars[-1].type = field.body
-            elif cvars and cvars[-1].name == field.arg:
-                if cvars[-1].type is not None:
-                    self.redef(field)
-                cvars[-1].type = field.body
-            else:
-                self.unattached_types[field.arg] = field.body
-        else:
-            self.add_type_info(self.var_descs, field)
+        self.types[field.arg] = field.body
 
     def handle_param(self, field):
         self.add_info(self.parameter_descs, field)
     handle_arg = handle_param
     handle_keyword = handle_param
 
-    def handle_ivar(self, field):
-        self.add_info(self.ivar_descs, field)
-        if field.arg in self.unattached_types:
-            self.ivar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
 
-    def handle_cvar(self, field):
-        self.add_info(self.cvar_descs, field)
-        if field.arg in self.unattached_types:
-            self.cvar_descs[-1].type = self.unattached_types[field.arg]
-            del self.unattached_types[field.arg]
+    def handled_elsewhere(self, field):
+        # Some fields are handled by extract_fields below.
+        pass
 
-    def handle_var(self, field):
-        self.add_info(self.var_descs, field)
+    handle_ivar = handled_elsewhere
+    handle_cvar = handled_elsewhere
+    handle_var = handled_elsewhere
 
     def handle_raises(self, field):
         self.add_info(self.raise_descs, field)
@@ -262,30 +353,15 @@ class FieldHandler(object):
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
         m(field)
 
+    def resolve_types(self):
+        for pd in self.parameter_descs:
+            if pd.name in self.types:
+                pd.type = self.types[pd.name]
+
     def format(self):
         r = []
 
-        ivs = []
-        for iv in self.ivar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, iv.name, iv.body, self.obj)
-            if iv.name is None or attr.isVisible:
-                ivs.append(iv)
-        self.ivar_descs = ivs
-
-        cvs = []
-        for cv in self.cvar_descs:
-            attr = zopeinterface.Attribute(
-                self.obj.system, cv.name, cv.body, self.obj)
-            if attr.isVisible:
-                cvs.append(cv)
-        self.cvar_descs = cvs
-
-        for d, l in (('Parameters', self.parameter_descs),
-                     ('Instance Variables', self.ivar_descs),
-                     ('Class Variables', self.cvar_descs),
-                     ('Variables', self.var_descs)):
-            r.append(format_desc_list(d, l, d))
+        r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
                                tags.td(colspan="2")[self.return_desc.format()]])
@@ -310,11 +386,14 @@ class FieldHandler(object):
 
         return tags.table(class_='fieldTable')[r]
 
+
 def de_p(s):
     if s.startswith('<p>') and s.endswith('</p>\n'):
-        return s[3:-5] # argh reST
-    else:
-        return s
+        s = s[3:-5] # argh reST
+    if s.endswith('\n'):
+        s = s[:-1]
+    return s
+
 
 def reportErrors(obj, errs):
     for err in errs:
@@ -337,8 +416,14 @@ def reportErrors(obj, errs):
         for err in errs:
             p(err)
 
+
 def doc2html(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
+    if getattr(obj, 'parsed_docstring', None) is not None:
+        r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
+        if getattr(obj, 'parsed_type', None) is not None:
+            r = [r, ' (type: ', tags.raw(de_p(obj.parsed_type.to_html(_EpydocLinker(obj)))), ')']
+        return r, []
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
@@ -405,7 +490,7 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = de_p(pdoc.to_html(_EpydocLinker(getattr(obj, 'docsource', obj))))
+            crap = de_p(pdoc.to_html(_EpydocLinker(source)))
         except Exception, e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
@@ -425,5 +510,49 @@ def doc2html(obj, summary=False, docstring=None):
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
+        fh.resolve_types()
         s[fh.format()]
     return s, []
+
+
+field_name_to_human_name = {
+    'ivar': 'Instance Variable',
+    'cvar': 'Class Variable',
+    'var': 'Variable',
+    }
+
+
+def extract_fields(obj):
+    if isinstance(obj, model.Package):
+        obj = obj.contents['__init__']
+    if isinstance(obj, model.Function):
+        return []
+    doc = obj.docstring
+    if doc is None or not doc.strip():
+        return []
+    parse_docstring, e = get_parser(obj.system.options.docformat)
+    if not parse_docstring:
+        return []
+    def crappit(): pass
+    crappit.__doc__ = doc
+    doc = inspect.getdoc(crappit)
+    try:
+        pdoc = parse_docstring(doc, [])
+    except Exception:
+        return []
+    pdoc, fields = pdoc.split_fields()
+    if not fields:
+        return []
+    r = []
+    types = {}
+    for field in fields:
+        if field.tag() == 'type':
+            types[field.arg()] = field.body()
+    for field in fields:
+        if field.tag() in ['ivar', 'cvar', 'var']:
+            attrobj = obj.system.Attribute(obj.system, field.arg(), None, obj)
+            attrobj.parsed_docstring = field.body()
+            attrobj.parsed_type = types.get(field.arg())
+            attrobj.kind = field_name_to_human_name[field.tag()]
+            r.append(attrobj)
+    return r

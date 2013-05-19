@@ -44,6 +44,25 @@ def test_classImplements():
     '''
     implements_test(src)
 
+def test_implementer():
+    src = '''
+    import zope.interface
+
+    class IFoo(zope.interface.Interface):
+        pass
+    class IBar(zope.interface.Interface):
+        pass
+
+    @zope.interface.implementer(IFoo)
+    class Foo:
+        pass
+    @zope.interface.implementer(IBar)
+    class FooBar(Foo):
+        pass
+    class OnlyBar(Foo):
+        zope.interface.implementsOnly(IBar)
+    '''
+    implements_test(src)
 
 def implements_test(src):
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
@@ -79,7 +98,7 @@ def test_subclass_with_same_name():
     class A(A):
         pass
     '''
-    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
+    fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
 
 def test_multiply_inheriting_interfaces():
     src = '''
@@ -104,14 +123,6 @@ def test_attribute():
     assert len(mod.contents['C'].contents) == 1
 
 def test_interfaceclass():
-    src = '''
-    import zope.interface as zi
-    class MyInterfaceClass(zi.interface.InterfaceClass):
-        pass
-    MyInterface = MyInterfaceClass("MyInterface")
-    class AnInterface(MyInterface):
-        pass
-    '''
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
     assert mod.contents['AnInterface'].isinterface
@@ -130,7 +141,7 @@ def test_zopeschema():
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
-        text = zope.schema.TextLine(description="fun in a bun")
+        text = schema.TextLine(description="fun in a bun")
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
@@ -141,8 +152,8 @@ def test_with_underscore():
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
-        attribute = zope.interface.Attribute(_("fun in a bun"))
-        text = zope.schema.TextLine(description=_("fun in a bap"))
+        attribute = interface.Attribute(_("fun in a bun"))
+        text = schema.TextLine(description=_("fun in a bap"))
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['attribute']
@@ -157,7 +168,7 @@ def test_zopeschema_inheritance():
     src = '''
     from zope import schema, interface
     from zope.schema import Int as INTEGERSCHMEMAFIELD
-    class MyTextLine(zope.schema.TextLine):
+    class MyTextLine(schema.TextLine):
         pass
     class MyOtherTextLine(MyTextLine):
         pass
@@ -175,3 +186,55 @@ def test_zopeschema_inheritance():
     assert myothertext.kind == "MyOtherTextLine"
     myint = mod.contents['IMyInterface'].contents['myint']
     assert myint.kind == "Int"
+
+def test_docsources_includes_interface():
+    src = '''
+    from zope import interface
+    class IInterface(interface.Interface):
+        def method(self):
+            """documentation"""
+    class Implementation:
+        interface.implements(IInterface)
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IInterface'].contents['method']
+    method = mod.contents['Implementation'].contents['method']
+    assert imethod in method.docsources(), list(method.docsources())
+
+def test_docsources_includes_baseinterface():
+    src = '''
+    from zope import interface
+    class IBase(interface.Interface):
+        def method(self):
+            """documentation"""
+    class IExtended(IBase):
+        pass
+    class Implementation:
+        interface.implements(IExtended)
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IBase'].contents['method']
+    method = mod.contents['Implementation'].contents['method']
+    assert imethod in method.docsources(), list(method.docsources())
+
+def test_docsources_from_moduleprovides():
+    src = '''
+    from zope import interface
+
+    class IBase(interface.Interface):
+        def bar():
+            """documentation"""
+
+    interface.moduleProvides(IBase)
+
+    def bar():
+        pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    imethod = mod.contents['IBase'].contents['bar']
+    function = mod.contents['bar']
+    assert imethod in function.docsources(), list(function.docsources())

@@ -29,13 +29,16 @@ def taglink(o, label=None, tags=tags):
         o.system.warning("html", "don't link to %s"%o.fullName())
     if label is None:
         label = o.fullName()
-    if o.document_in_parent_page:
+    if o.documentation_location == model.DocLocation.PARENT_PAGE:
         p = o.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
         linktext = link(p) + '#' + urllib.quote(o.name)
-    else:
+    elif o.documentation_location == model.DocLocation.OWN_PAGE:
         linktext = link(o)
+    else:
+        raise AssertionError(
+            "Unknown documentation_location: %s" % o.documentation_location)
     import nevow.tags
     if isinstance(tags.a, nevow.tags.Tag):
         return tags.a(href=linktext)[label]
