@@ -1,7 +1,7 @@
 """Classes that generate the summary pages."""
 
 from twisted.web.template import tags
-from twisted.web.template import Element, renderer, XMLFile
+from twisted.web.template import Element, renderer, TagLoader, XMLFile
 
 from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
@@ -105,11 +105,40 @@ class ClassIndexPage(Element):
         return tag.clear()("Class Hierarchy")
 
 
+class LetterElement(Element):
+    def __init__(self, loader, initials, letter):
+        Element.__init__(self, loader)
+        self.initials = initials
+        self.my_letter = letter
+
+    @renderer
+    def letter(self, request, tag):
+        return tag(self.my_letter)
+
+    @renderer
+    def letterlinks(self, request, tag):
+        letterlinks = []
+        for initial in sorted(self.initials):
+            if initial == self.my_letter:
+                letterlinks.append(initial)
+            else:
+                letterlinks.append(tags.a(href='#'+initial)(initial))
+            letterlinks.append(' - ')
+        if letterlinks:
+            del letterlinks[-1]
+        return letterlinks
+
+
 class NameIndexPage(Element):
     filename = 'nameIndex.html'
     loader = XMLFile(templatefile('nameIndex.html'))
+
     def __init__(self, system):
         self.system = system
+        self.initials = {}
+        for ob in self.system.orderedallobjects:
+            if ob.isVisible:
+                self.initials.setdefault(ob.name[0].upper(), []).append(ob)
 
     @renderer
     def title(self, request, tag):
@@ -121,13 +150,13 @@ class NameIndexPage(Element):
 
     @renderer
     def index(self, request, tag):
+        r = []
+        for i in sorted(self.initials):
+            r.append(LetterElement(TagLoader(tag), self.initials, i))
+        return r
         letter = tag.patternGenerator('letter')
         singleName = tag.patternGenerator('singleName')
         manyNames = tag.patternGenerator('manyNames')
-        initials = {}
-        for ob in self.system.orderedallobjects:
-            if ob.isVisible:
-                initials.setdefault(ob.name[0].upper(), []).append(ob)
         for initial in sorted(initials):
             letterlinks = []
             for initial2 in sorted(initials):

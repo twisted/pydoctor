@@ -9,27 +9,14 @@
   <body>
     <h1 t:render="heading">Heading</h1>
     <t:transparent t:render="index">
-      <t:transparent t:render="letter">
         <a>
-          <t:attr name="name"><t:slot name="letter"/></t:attr>
+          <t:attr name="name" t:render="letter" />
         </a>
-        <h2><t:slot name="letter"/></h2>
-        <p class="letterlinks">
-          <t:slot name="letterlinks">A - B - C - ...</t:slot>
-        </p>
-        <ul>
+        <h2 t:render="letter" />
+        <p class="letterlinks" t:render="letterlinks" />
+<!--        <ul>
           <t:slot name="lettercontents"/>
-        </ul>
-      </t:transparent>
-      <li t:pattern="singleName">
-        <t:slot name="name" /> - <t:slot name="link" />
-      </li>
-      <li t:pattern="manyNames">
-        <t:slot name="name" />
-        <ul>
-          <t:slot name="manyNames" />
-        </ul>
-      </li>
+        </ul>-->
     </t:transparent>
   </body>
 </html>

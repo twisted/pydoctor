@@ -467,7 +467,7 @@ def doc2html(obj, summary=False, docstring=None, tags=tags):
         lines = itertools.takewhile(lambda line: line.strip(), lines)
         lines = [ line.strip() for line in lines ]
         if len(lines) > 3:
-            return tags.span(class_="undocumented")['No summary'], []
+            return tags.span(class_="undocumented")('No summary'), []
         else:
             doc = ' '.join(lines)
     parse_docstring, e = get_parser(obj.system.options.docformat)
@@ -507,7 +507,6 @@ def doc2html(obj, summary=False, docstring=None, tags=tags):
         stan = XMLString(crap).load()[0]
         if stan.tagName == 'p':
             stan = stan.children
-            #import pdb; pdb.set_trace()
         s = tags.span(stan)
     else:
         if not crap and not fields:
