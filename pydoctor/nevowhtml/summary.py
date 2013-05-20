@@ -128,6 +128,23 @@ class LetterElement(Element):
             del letterlinks[-1]
         return letterlinks
 
+    @renderer
+    def names(self, request, tag):
+        name2obs = {}
+        for obj in self.initials[self.my_letter]:
+            name2obs.setdefault(obj.name, []).append(obj)
+        r = []
+        for name in sorted(name2obs):
+            obs = name2obs[name]
+            if len(obs) == 1:
+                r.append(tag.clone()(name, ' - ', taglink(obs[0], tags=tags)))
+            else:
+                ul = tags.ul()
+                for ob in sorted(obs, key=lambda ob:ob.fullName()):
+                    ul(tags.li(taglink(ob, tags=tags)))
+                r.append(tag.clone()(name, ul))
+        return r
+
 
 class NameIndexPage(Element):
     filename = 'nameIndex.html'
