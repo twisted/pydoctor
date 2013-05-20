@@ -171,40 +171,7 @@ class NameIndexPage(Element):
         for i in sorted(self.initials):
             r.append(LetterElement(TagLoader(tag), self.initials, i))
         return r
-        letter = tag.patternGenerator('letter')
-        singleName = tag.patternGenerator('singleName')
-        manyNames = tag.patternGenerator('manyNames')
-        for initial in sorted(initials):
-            letterlinks = []
-            for initial2 in sorted(initials):
-                if initial == initial2:
-                    letterlinks.append(initial2)
-                else:
-                    letterlinks.append(tags.a(href='#'+initial2)[initial2])
-                letterlinks.append(' - ')
-            if letterlinks:
-                del letterlinks[-1]
-            name2obs = {}
-            for obj in initials[initial]:
-                name2obs.setdefault(obj.name, []).append(obj)
-            lettercontents = []
-            for name in sorted(name2obs, key=lambda x:x.lower()):
-                obs = sorted(name2obs[name], key=lambda x:x.fullName().lower())
-                if len(obs) == 1:
-                    ob, = obs
-                    lettercontents.append(fillSlots(singleName,
-                                                    name=ob.name,
-                                                    link=taglink(ob)))
-                else:
-                    lettercontents.append(fillSlots(manyNames,
-                                                    name=obs[0].name,
-                                                    manyNames=[tags.li[taglink(ob)] for ob in obs]))
 
-            tag[fillSlots(letter,
-                          letter=initial,
-                          letterlinks=letterlinks,
-                          lettercontents=lettercontents)]
-        return tag
 
 class IndexPage(Element):
     filename = 'index.html'
