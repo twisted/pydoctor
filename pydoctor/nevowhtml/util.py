@@ -39,8 +39,4 @@ def taglink(o, label=None):
     else:
         raise AssertionError(
             "Unknown documentation_location: %s" % o.documentation_location)
-    import nevow.tags
-    if isinstance(tags.a, nevow.tags.Tag):
-        return tags.a(href=linktext)[label]
-    else:
-        return tags.a(href=linktext)(label)
+    return tags.a(href=linktext)(label)
