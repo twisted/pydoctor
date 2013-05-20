@@ -4,10 +4,10 @@ from twisted.web.template import tags
 from twisted.web.template import Element, renderer, TagLoader, XMLFile
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.util import fillSlots, taglink, templatefile
+from pydoctor.nevowhtml.util import taglink, templatefile
 
 def moduleSummary(modorpack):
-    r = tags.li(taglink(modorpack, tags=tags), ' - ', epydoc2stan.doc2html(modorpack, summary=True, tags=tags)[0])
+    r = tags.li(taglink(modorpack), ' - ', epydoc2stan.doc2html(modorpack, summary=True, tags=tags)[0])
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents
@@ -20,7 +20,7 @@ def moduleSummary(modorpack):
     return r(ul)
 
 def _lckey(x):
-    return x.fullName().lower()
+    return (x.fullName().lower(), x.fullName())
 
 
 class ModuleIndexPage(Element):
@@ -134,14 +134,14 @@ class LetterElement(Element):
         for obj in self.initials[self.my_letter]:
             name2obs.setdefault(obj.name, []).append(obj)
         r = []
-        for name in sorted(name2obs, key=lambda x:x.lower()):
+        for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
             obs = name2obs[name]
             if len(obs) == 1:
-                r.append(tag.clone()(name, ' - ', taglink(obs[0], tags=tags)))
+                r.append(tag.clone()(name, ' - ', taglink(obs[0])))
             else:
                 ul = tags.ul()
-                for ob in sorted(obs, key=lambda ob:ob.fullName().lower()):
-                    ul(tags.li(taglink(ob, tags=tags)))
+                for ob in sorted(obs, key=_lckey):
+                    ul(tags.li(taglink(ob)))
                 r.append(tag.clone()(name, ul))
         return r
 

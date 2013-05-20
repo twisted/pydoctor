@@ -24,7 +24,7 @@ def fillSlots(tag, **kw):
         tag = tag.fillSlots(k, v)
     return tag
 
-def taglink(o, label=None, tags=tags):
+def taglink(o, label=None):
     if not o.isVisible:
         o.system.warning("html", "don't link to %s"%o.fullName())
     if label is None:
