@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects Nevow can render."""
 
-from nevow import loaders, page, tags
+from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
 from pydoctor.nevowhtml.pages.table import ChildTable
@@ -51,8 +51,8 @@ class DocGetter(object):
     def get(self, ob, summary=False):
         return epydoc2stan.doc2html(ob, summary=summary)[0]
 
-class CommonPage(page.Element):
-    docFactory = loaders.xmlfile(templatefile('common.html'))
+class CommonPage(Element):
+    loader = XMLFile(templatefile('common.html'))
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob
@@ -105,13 +105,15 @@ class CommonPage(page.Element):
         else:
             return self.ob.system.guessedprojectname
 
-    def source(self, tag):
+    @renderer
+    def source(self, request, tag):
         sourceHref = srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
 
-    def inhierarchy(self, tag):
+    @renderer
+    def inhierarchy(self, request, tag):
         return ()
 
     def extras(self):
@@ -128,10 +130,12 @@ class CommonPage(page.Element):
     def packageInitTable(self):
         return ()
 
-    def baseTables(self, tag):
+    @renderer
+    def baseTables(self, request, tag):
         return ()
 
-    def bigTable(self, tag):
+    @renderer
+    def bigTable(self, request, tag):
         return ()
 
     def mainTable(self):
@@ -146,7 +150,8 @@ class CommonPage(page.Element):
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
-    def ifusesorttable(self, tag):
+    @renderer
+    def ifusesorttable(self, request, tag):
         if self.usesorttable:
             return tag
         else:
@@ -174,36 +179,30 @@ class CommonPage(page.Element):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    def ifhasplitlinks(self, tag):
+    def splittingLinks(self, request, tag):
         return ()
 
-    def pydoctorjs(self, tag):
+    @renderer
+    def pydoctorjs(self, request, tag):
         if self.usesplitlinks or self.shortenlists:
             return tag
         else:
             return ()
 
-    @page.renderer
+    @renderer
     def all(self, request, tag):
-        return fillSlots(tag,
-                         title=self.title(),
-                         ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
-                         pydoctorjs=self.pydoctorjs(tag.onePattern('pydoctorjs')),
-                         heading=self.heading(),
-                         part=self.part(),
-                         source=self.source(tag.onePattern('source')),
-                         inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
-                         extras=self.extras(),
-                         docstring=self.docstring(),
-                         splittingLinks=self.ifhasplitlinks(tag.onePattern('splittingLinks')),
-                         mainTable=self.mainTable(),
-                         baseTables=self.baseTables(tag.patternGenerator('baseTable')),
-                         bigTable=self.bigTable(tag.patternGenerator('bigTable')),
-                         packageInitTable=self.packageInitTable(),
-                         childlist=self.childlist(),
-                         project=self.project(),
-                         buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
-                         )
+        return tag.fillSlots(
+            title=self.title(),
+            heading=self.heading(),
+            part=self.part(),
+            inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
+            extras=self.extras(),
+            docstring=self.docstring(),
+            mainTable=self.mainTable(),
+            packageInitTable=self.packageInitTable(),
+            childlist=self.childlist(),
+            project=self.project(),
+            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 class PackagePage(CommonPage):
@@ -321,7 +320,7 @@ class ClassPage(CommonPage):
             r[tags.p[p]]
         return r
 
-    def ifhasplitlinks(self, tag):
+    def splittingLinks(self, request, tag):
         if self.usesplitlinks and len(self.baselists) > 1:
             return tag
         else:
