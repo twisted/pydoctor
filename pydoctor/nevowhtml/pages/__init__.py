@@ -216,7 +216,7 @@ class PackagePage(CommonPage):
             [o for o in init.orderedcontents if o.isVisible],
             key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
-            return [tags.p["From the __init__.py module:"],
+            return [tags.p("From the __init__.py module:"),
                     ChildTable(self.docgetter, init, self.usesorttable, children)]
         else:
             return ()
@@ -317,7 +317,7 @@ class ClassPage(CommonPage):
         p = maybeShortenList(self.ob.system, "Known subclasses: ",
                              [o.fullName() for o in scs], "moreSubclasses")
         if p is not None:
-            r.append(tags.p[p])
+            r.append(tags.p(p))
         return r
 
     @renderer
@@ -353,7 +353,7 @@ class ClassPage(CommonPage):
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
-        return [fillSlots(item,
+        return [item.fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob, self.has_lineno_col(),
                                                   sorted(attrs, key=lambda o:-o.privacyClass)))
@@ -389,7 +389,7 @@ class ClassPage(CommonPage):
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
-            r.append(tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)])
+            r.append(tags.div(class_="interfaceinfo")('overrides ', taglink(overridden)))
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
@@ -398,13 +398,13 @@ class ClassPage(CommonPage):
             l = maybeShortenList(self.ob.system, 'overridden in ',
                                  [o.fullName() for o in ocs], idbase)
             if l is not None:
-                r.append(tags.div(class_="interfaceinfo")[l])
+                r.append(tags.div(class_="interfaceinfo")(l))
         return r
 
 
 class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
-        r = super(ZopeInterfaceClassPage, self).extras()
+        r = [super(ZopeInterfaceClassPage, self).extras()]
         system = self.ob.system
         def tl(s):
             if s in system.allobjects:
@@ -420,7 +420,7 @@ class ZopeInterfaceClassPage(ClassPage):
         if namelist:
             l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
             if l is not None:
-                r[tags.p[l]]
+                r.append(tags.p(l))
         return r
 
     def interfaceMeth(self, methname):
@@ -437,7 +437,7 @@ class ZopeInterfaceClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         r = []
         if imeth:
-            r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth, imeth.parent.fullName())])
+            r.append(tags.div(class_="interfaceinfo")('from ', taglink(imeth, imeth.parent.fullName())))
         r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
         return r
 
