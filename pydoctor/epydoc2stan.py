@@ -509,6 +509,7 @@ def doc2stan(obj, summary=False, docstring=None):
     else:
         if not crap and not fields:
             return (), []
+        crap = "<div>" + crap + "</div>"
         stan = XMLString(crap).load()[0]
         s = tags.div(stan)
         fh = FieldHandler(obj)
