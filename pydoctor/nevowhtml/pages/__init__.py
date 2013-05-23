@@ -116,7 +116,7 @@ class CommonPage(Element):
         return ()
 
     def extras(self):
-        return ()
+        return []
 
     def docstring(self):
         return self.docgetter.get(self.ob)
@@ -297,6 +297,7 @@ def maybeShortenList(system, label, lst, idbase):
             ['... and %d more'%len(lst[3:])]])
     return p
 
+
 class ClassPage(CommonPage):
     def __init__(self, ob, docgetter=None):
         CommonPage.__init__(self, ob, docgetter)
@@ -316,7 +317,7 @@ class ClassPage(CommonPage):
         p = maybeShortenList(self.ob.system, "Known subclasses: ",
                              [o.fullName() for o in scs], "moreSubclasses")
         if p is not None:
-            r[tags.p[p]]
+            r.append(tags.p[p])
         return r
 
     @renderer
@@ -333,7 +334,7 @@ class ClassPage(CommonPage):
             r.append('(')
             for i, (n, m, o) in enumerate(zipped):
                 if o is None:
-                    r.append(tags.span(title=m)[n])
+                    r.append(tags.span(title=m)(n))
                 else:
                     r.append(taglink(o, n))
                 if i != len(zipped)-1:
@@ -341,10 +342,12 @@ class ClassPage(CommonPage):
             r.append(')')
         return r
 
-    def inhierarchy(self, tag):
+    @renderer
+    def inhierarchy(self, request, tag):
         return tag(href="classIndex.html#"+self.ob.fullName())
 
-    def baseTables(self, item):
+    @renderer
+    def baseTables(self, request, item):
         baselists = self.baselists[:]
         if not baselists:
             return []
@@ -370,7 +373,8 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def bigTable(self, tag):
+    @renderer
+    def bigTable(self, request, tag):
         if not self.usesplitlinks or len(self.baselists) == 1:
             return ()
         all_attrs = []
