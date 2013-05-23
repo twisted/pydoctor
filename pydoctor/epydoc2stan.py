@@ -235,13 +235,17 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
+def html2stan(crap):
+    crap = "<div>" + crap + "</div>"
+    return XMLString(crap).load()[0].children
+
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
-        self.body = tags.raw(de_p(field.body().to_html(_EpydocLinker(obj))))
+        self.body = html2stan(field.body().to_html(_EpydocLinker(obj)))
 
     def __repr__(self):
         r = repr(self.body)
@@ -420,9 +424,9 @@ def reportErrors(obj, errs):
 def doc2stan(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
+        r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
         if getattr(obj, 'parsed_type', None) is not None:
-            r = [r, ' (type: ', tags.raw(de_p(obj.parsed_type.to_html(_EpydocLinker(obj)))), ')']
+            r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
         return r, []
     origobj = obj
     if isinstance(obj, model.Package):
@@ -502,15 +506,14 @@ def doc2stan(obj, summary=False, docstring=None):
     if summary:
         if not crap:
             return (), []
-        stan = XMLString(crap).load()[0]
+        stan = html2stan(crap)
         if stan.tagName == 'p':
             stan = stan.children
         s = tags.span(stan)
     else:
         if not crap and not fields:
             return (), []
-        crap = "<div>" + crap + "</div>"
-        stan = XMLString(crap).load()[0]
+        stan = html2stan(crap)
         s = tags.div(stan)
         fh = FieldHandler(obj)
         for field in fields:
