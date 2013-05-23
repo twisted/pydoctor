@@ -8,7 +8,7 @@ import os
 import sys
 import urllib
 
-from nevow import tags
+from twisted.web.template import tags
 
 from pydoctor import model
 
@@ -417,7 +417,7 @@ def reportErrors(obj, errs):
             p(err)
 
 
-def doc2html(obj, summary=False, docstring=None, tags=tags):
+def doc2stan(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
         r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
@@ -503,7 +503,6 @@ def doc2html(obj, summary=False, docstring=None, tags=tags):
         if not crap:
             return (), []
         from twisted.web.template import XMLString
-        print repr(crap)
         stan = XMLString(crap).load()[0]
         if stan.tagName == 'p':
             stan = stan.children
