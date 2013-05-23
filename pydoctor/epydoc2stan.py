@@ -199,15 +199,15 @@ def format_desc_list(singular, descs, plural=None):
     for d in descs:
         if first:
             row = tags.tr(class_="fieldStart")
-            row[tags.td(class_="fieldName")[label]]
+            row(tags.td(class_="fieldName")(label))
             first = False
         else:
             row = tags.tr()
-            row[tags.td()]
+            row(tags.td())
         if d.name is None:
-            row[tags.td(colspan=2)[d.format()]]
+            row(tags.td(colspan=2)(d.format()))
         else:
-            row[tags.td(class_="fieldArg")[d.name], tags.td[d.format()]]
+            row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
         r.append(row)
     return r
 
@@ -225,12 +225,12 @@ def format_field_list(obj, singular, fields, plural=None):
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
-            row[tags.td(class_="fieldName")[label]]
+            row(tags.td(class_="fieldName")(label))
             first=False
         else:
             row = tags.tr()
-            row[tags.td()]
-        row[tags.td(colspan=2)[field.body]]
+            row(tags.td())
+        row(tags.td(colspan=2)(field.body))
         rows.append(row)
     return rows
 
@@ -367,8 +367,8 @@ class FieldHandler(object):
 
         r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
-                               tags.td(colspan="2")[self.return_desc.format()]])
+            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
+                               tags.td(colspan="2")(self.return_desc.format())))
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
@@ -507,8 +507,8 @@ def doc2stan(obj, summary=False, docstring=None):
         if not crap:
             return (), []
         stan = html2stan(crap)
-        if stan.tagName == 'p':
-            stan = stan.children
+        if len(stan) == 1 and stan[0].tagName == 'p':
+            stan = stan[0].children
         s = tags.span(stan)
     else:
         if not crap and not fields:
