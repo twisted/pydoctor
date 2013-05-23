@@ -459,7 +459,7 @@ def doc2stan(obj, summary=False, docstring=None):
         if summary:
             return tags.span(class_="undocumented")(text), []
         else:
-            return tags.div(class_="undocumented")[text], []
+            return tags.div(class_="undocumented")(text), []
     if summary:
         # Use up to three first non-empty lines of doc string as summary.
         lines = itertools.dropwhile(lambda line: not line.strip(),
