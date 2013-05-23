@@ -40,7 +40,7 @@ def boringDocstring(doc, summary=False):
         return '<pre class="undocumented">Undocumented</pre>'
     def crappit(): pass
     crappit.__doc__ = doc
-    return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
+    return (tags.pre, tags.tt)[bool(summary)](inspect.getdoc(crappit))
 
 
 def stdlib_doc_link_for_name(name):
