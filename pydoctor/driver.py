@@ -396,7 +396,7 @@ def main(args):
         if options.server:
             from pydoctor.server import (
                 EditingPyDoctorResource, PyDoctorResource)
-            from pydoctor.epydoc2stan import doc2html
+            from pydoctor.epydoc2stan import doc2stan
             from nevow import appserver
             from twisted.internet import reactor
             if options.edit:
@@ -411,7 +411,7 @@ def main(args):
                             "server", i+1, len(included_obs),
                             "docstrings checked, found %s problems" % (
                             len(system.epytextproblems)))
-                        doc2html(ob, docstring=ob.docstring)
+                        doc2stan(ob, docstring=ob.docstring)
                 root = EditingPyDoctorResource(system)
             else:
                 root = PyDoctorResource(system)

@@ -49,7 +49,7 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2html(ob, summary=summary)[0]
+        return epydoc2stan.doc2stan(ob, summary=summary)[0]
 
 class CommonPage(Element):
     loader = XMLFile(templatefile('common.html'))
@@ -76,12 +76,11 @@ class CommonPage(Element):
         return '.'.join([process(p) for p in path.split('.')]) + '.' + name
 
     def heading(self):
-        return tags.h1(class_=self.ob.css_class)[
+        return tags.h1(class_=self.ob.css_class)(
             self.mediumName(self.ob), " : ", self.ob.kind.lower(),
-            " documentation"]
+            " documentation")
 
     def part(self):
-        tag = tags.invisible()
         if self.ob.parent:
             parent = self.ob.parent
             if isinstance(parent, model.Module) and parent.name == '__init__':
@@ -93,9 +92,9 @@ class CommonPage(Element):
                 parent = parent.parent
             parts.append(taglink(parent, parent.name))
             parts.reverse()
-            return tag['Part of ', parts]
+            return 'Part of ', parts
         else:
-            return tag
+            return []
 
     def project(self):
         if self.ob.system.options.projecturl:
@@ -117,7 +116,7 @@ class CommonPage(Element):
         return ()
 
     def extras(self):
-        return tags.invisible()
+        return ()
 
     def docstring(self):
         return self.docgetter.get(self.ob)
@@ -195,7 +194,6 @@ class CommonPage(Element):
             title=self.title(),
             heading=self.heading(),
             part=self.part(),
-            inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
             extras=self.extras(),
             docstring=self.docstring(),
             mainTable=self.mainTable(),
@@ -357,9 +355,9 @@ class ClassPage(CommonPage):
                 for b, attrs in baselists]
 
     def baseName(self, data):
-        tag = tags.invisible()
+        r = []
         source_base = data[0]
-        tag[taglink(source_base, source_base.name)]
+        r.append(taglink(source_base, source_base.name))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
@@ -367,8 +365,8 @@ class ClassPage(CommonPage):
                 tail.append(taglink(b, b.name))
                 tail.append(', ')
             del tail[-1]
-            tag[' (via ', tail, ')']
-        return tag
+            r.extend([' (via ', tail, ')'])
+        return r
 
     def bigTable(self, tag):
         if not self.usesplitlinks or len(self.baselists) == 1:
