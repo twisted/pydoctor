@@ -8,7 +8,7 @@ import os
 import sys
 import urllib
 
-from twisted.web.template import tags
+from twisted.web.template import tags, XMLString
 
 from pydoctor import model
 
@@ -384,7 +384,7 @@ class FieldHandler(object):
             label = "Unknown Field: " + fieldlist[0].kind
             r.append(format_desc_list(label, fieldlist, label))
 
-        return tags.table(class_='fieldTable')[r]
+        return tags.table(class_='fieldTable')(r)
 
 
 def de_p(s):
@@ -502,7 +502,6 @@ def doc2stan(obj, summary=False, docstring=None):
     if summary:
         if not crap:
             return (), []
-        from twisted.web.template import XMLString
         stan = XMLString(crap).load()[0]
         if stan.tagName == 'p':
             stan = stan.children
@@ -510,12 +509,13 @@ def doc2stan(obj, summary=False, docstring=None):
     else:
         if not crap and not fields:
             return (), []
-        s = tags.div()[tags.raw(crap)]
+        stan = XMLString(crap).load()[0]
+        s = tags.div(stan)
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
-        s[fh.format()]
+        s(fh.format())
     return s, []
 
 

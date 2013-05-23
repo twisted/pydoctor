@@ -178,6 +178,7 @@ class CommonPage(Element):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
+    @renderer
     def splittingLinks(self, request, tag):
         return ()
 
@@ -318,6 +319,7 @@ class ClassPage(CommonPage):
             r[tags.p[p]]
         return r
 
+    @renderer
     def splittingLinks(self, request, tag):
         if self.usesplitlinks and len(self.baselists) > 1:
             return tag
