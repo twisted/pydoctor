@@ -28,12 +28,9 @@ class WrapperPage(rend.Page):
     def __init__(self, element):
         self.element = element
     def render_content(self, context, data):
-        if isinstance(self.element, page.Element):
-            return self.element
-        else:
-            def _cb(v):
-                return tags.raw(DOCTYPE + v)
-            return flattenString(None, self.element).addCallback(_cb)
+        def _cb(v):
+            return tags.raw(DOCTYPE + v)
+        return flattenString(None, self.element).addCallback(_cb)
     docFactory = loaders.stan(tags.directive('content'))
 
 class PyDoctorResource(rend.ChildLookupMixin):
