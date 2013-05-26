@@ -205,7 +205,7 @@ def format_desc_list(singular, descs, plural=None):
             row = tags.tr()
             row(tags.td())
         if d.name is None:
-            row(tags.td(colspan=2)(d.format()))
+            row(tags.td(colspan="2")(d.format()))
         else:
             row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
         r.append(row)
@@ -230,7 +230,7 @@ def format_field_list(obj, singular, fields, plural=None):
         else:
             row = tags.tr()
             row(tags.td())
-        row(tags.td(colspan=2)(field.body))
+        row(tags.td(colspan="2")(field.body))
         rows.append(row)
     return rows
 

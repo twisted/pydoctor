@@ -80,6 +80,9 @@ class NevowWriter:
         self.written_pages += 1
         self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         fobj.write(DOCTYPE)
+        err = []
         def e(r):
-            raise r.value
+            err.append(r.value)
         flattenString(None, page).addCallback(fobj.write).addErrback(e)
+        if err:
+            raise err[0]
