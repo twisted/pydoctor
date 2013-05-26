@@ -79,4 +79,7 @@ class NevowWriter:
         page = pclass(ob)
         self.written_pages += 1
         self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
-        fobj.write(flat.flatten(page))
+        fobj.write(DOCTYPE)
+        def e(r):
+            raise r.value
+        flattenString(None, page).addCallback(fobj.write).addErrback(e)
