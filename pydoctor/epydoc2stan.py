@@ -237,7 +237,10 @@ def format_field_list(obj, singular, fields, plural=None):
 
 def html2stan(crap):
     crap = "<div>" + crap + "</div>"
-    return XMLString(crap).load()[0].children
+    crap = XMLString(crap).load()[0].children
+    if crap[-1] == u'\n':
+        del crap[-1]
+    return crap
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
