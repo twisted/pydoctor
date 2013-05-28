@@ -169,9 +169,14 @@ td p
   margin-top: 0.0em;
 }
 
-p:first-child
+.docstring p:first-child
 {
   margin-top: 0.0em;
+}
+
+.docstring p:last-of-type
+{
+  margin-bottom: 0.0em;
 }
 
 td.fieldName

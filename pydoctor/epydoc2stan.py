@@ -238,7 +238,7 @@ def format_field_list(obj, singular, fields, plural=None):
 def html2stan(crap):
     crap = "<div>" + crap + "</div>"
     crap = XMLString(crap).load()[0].children
-    if crap[-1] == u'\n':
+    if crap and crap[-1] == u'\n':
         del crap[-1]
     return crap
 
