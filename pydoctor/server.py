@@ -283,17 +283,20 @@ class EditPage(rend.Page):
 
     docFactory = loaders.xmlfile(util.templatefile("edit.html"))
 
-class HistoryPage(rend.Page):
+class HistoryElement(Element):
     def __init__(self, root, ob, rev):
         self.root = root
         self.ob = ob
         self.rev = rev
 
-    def render_title(self, context, data):
-        return context.tag[u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.ob.fullName() +
-                           u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
-    def render_links(self, context, data):
+    @renderer
+    def title(self, request, tag):
+        return tag(u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
+                   self.ob.fullName() +
+                   u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring")
+
+    @renderer
+    def links(self, request, tag):
         ds = self.root.edits(self.ob)
         therange = range(len(ds))
         rev = therange[self.rev]
@@ -307,8 +310,8 @@ class HistoryPage(rend.Page):
                     'revA', i-1).add(
                     'revB', i))("(diff)"))
             else:
-                li["(diff)"]
-            li[" - "]
+                li("(diff)")
+            li(" - ")
             if i == len(ds) - 1:
                 label = "Latest"
             else:
@@ -319,23 +322,33 @@ class HistoryPage(rend.Page):
                 li(tags.a(href=url.gethere.replace('rev', str(i)))(label))
             li(' - ' + ds[i].user + '/' + ds[i].time)
             ul(li)
-        return context.tag(ul)
-    def render_docstring(self, context, data):
-        docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
+        return tag(ul)
+
+    @renderer
+    def docstring(self, request, tag):
+        docstring = self.root.edits(self.ob)[self.rev].newDocstring
         if docstring is None:
             docstring = ''
         return epydoc2stan.doc2stan(self.ob, docstring=docstring)[0]
-    def render_linkback(self, context, data):
+
+    @renderer
+    def linkback(self, context, data):
         return util.taglink(self.ob, label="Back")
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title(render=tags.directive('title')),
-                  tags.link(rel="stylesheet", type="text/css",
-                            href='apidocs.css')],
-        tags.body[tags.h1(render=tags.directive('title')),
-                  tags.p(render=tags.directive('links')),
-                  tags.div(render=tags.directive('docstring')),
-                  tags.p(render=tags.directive('linkback'))]])
+    loader = XMLString('''\
+    <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <head>
+    <title t:render="title" />
+    <link rel="stylesheet" type="text/css" href="apidocs.css" />
+    </head>
+    <body>
+    <h1 t:render="title"/>
+    <p t:render="links" />
+    <div t:render="docstring" />
+    <p t:render="linkback" />
+    </body>
+    </html>
+    ''')
 
 
 class Edit(object):
@@ -539,20 +552,23 @@ class EditingPyDoctorResource(PyDoctorResource):
             return ''
         return EditPage(self, ob, newDocstring, isPreview, initialWhitespace)
 
-    def child_history(self, ctx):
+    def child_history(self, request):
         try:
-            rev = int(ctx.arg('rev', '-1'))
+            rev = int(request.args.get('rev', ['-1'])[0])
         except ValueError:
             return WrapperPage(ErrorElement())
         try:
-            ob = self.system.allobjects[ctx.arg('ob')]
+            ob = request.args['ob'][0]
+            ob = self.system.allobjects[ob]
         except KeyError:
+            raise
             return WrapperPage(ErrorElement())
         try:
-            self.editsbyob[ob][rev]
+            self.edits(ob)[rev]
         except (IndexError, KeyError):
+            raise
             return WrapperPage(ErrorElement())
-        return HistoryPage(self, ob, rev)
+        return WrapperPage(HistoryElement(self, ob, rev))
 
     def child_diff(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
@@ -647,7 +663,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         if ob.doctarget in self.editsbyob:
             r.append(tags.a(href="history?ob="+ob.fullName())(
                 "View docstring history (",
-                len(self.editsbyob[ob.doctarget]),
+                str(len(self.editsbyob[ob.doctarget])),
                 " versions)"))
         else:
             r.append(tags.span(class_='undocumented')("No edits yet."))
