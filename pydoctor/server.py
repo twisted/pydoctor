@@ -304,7 +304,7 @@ class HistoryElement(Element):
         for i in therange:
             li = tags.li()
             if i:
-                li(tags.a(href=url.URL.fromContext(context).sibling(
+                li(tags.a(href=url.URL.fromRequest(request).sibling(
                     'diff').add(
                     'ob', self.ob.fullName()).add(
                     'revA', i-1).add(
