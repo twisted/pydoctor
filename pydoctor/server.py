@@ -3,7 +3,7 @@
 from nevow import rend, loaders, inevow, url
 from twisted.web.static import File
 from twisted.web import resource
-from twisted.web.template import Element, renderElement, renderer, XMLString, tags
+from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
@@ -408,7 +408,7 @@ class FileDiff(object):
                                             tofile=fpath))
 
 
-class DiffPage(rend.Page):
+class DiffElement(Element):
     def __init__(self, root, ob, origob, editA, editB):
         self.root = root
         self.ob = ob
@@ -416,23 +416,25 @@ class DiffPage(rend.Page):
         self.editA = editA
         self.editB = editB
 
-    def render_title(self, context, data):
+    @renderer
+    def title(self, context, data):
         return context.tag["Viewing differences between revisions ",
                            self.editA.rev, " and ", self.editB.rev, " of ",
                            u"\N{LEFT DOUBLE QUOTATION MARK}" +
                            self.origob.fullName() +
                            u"\N{RIGHT DOUBLE QUOTATION MARK}"]
 
-    def render_diff(self, context, data):
+    @renderer
+    def diff(self, context, data):
         fd = FileDiff(self.ob.parentMod)
         fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
         fd.reset()
         fd.apply_edit(self.editA, self.editB)
         return tags.pre(fd.diff())
 
-    docFactory = loaders.xmlfile(util.templatefile('diff.html'))
+    loader = XMLFile(util.templatefile('diff.html'))
 
-class BigDiffPage(rend.Page):
+class BigDiffElement(Element):
     def __init__(self, system, root):
         self.system = system
         self.root = root
@@ -452,15 +454,14 @@ class BigDiffPage(rend.Page):
             r.append(tags.pre(mods[mod].diff()))
         return r
 
-    docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
+    loader = XMLFile(util.templatefile('bigDiff.html'))
 
-class RawBigDiffPage(rend.Page):
+class RawBigDiffPage(resource.Resource):
     def __init__(self, system, root):
         self.system = system
         self.root = root
 
-    def renderHTTP(self, context):
-        request = context.locate(inevow.IRequest)
+    def render_GET(self, request):
         request.setHeader('content-type', 'text/plain')
         mods = {}
         if not self.root.editsbymod:
@@ -477,17 +478,20 @@ class RawBigDiffPage(rend.Page):
             request.write(mods[mod].diff())
         return ''
 
-class ProblemObjectsPage(rend.Page):
+class ProblemObjectsElement(Element):
+
     def __init__(self, system):
         self.system = system
-    def render_problemObjects(self, context, data):
-        t = context.tag
-        pat = t.patternGenerator('object')
+
+    @renderer
+    def problemObjects(self, request, tag):
+        r = []
         for fn in sorted(self.system.epytextproblems):
             o = self.system.allobjects[fn]
-            t[pat.fillSlots('link', util.taglink(o))]
-        return t
-    docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
+            r.append(tag.clone().fillSlots('link', util.taglink(o)))
+        return r
+
+    loader = XMLFile(util.templatefile('problemObjects.html'))
 
 def absoluteURL(ctx, ob):
     if ob.documentation_location == model.DocLocation.PARENT_PAGE:
@@ -590,16 +594,16 @@ class EditingPyDoctorResource(PyDoctorResource):
             editB = edits[revB]
         except IndexError:
             return WrapperPage(ErrorElement())
-        return DiffPage(self, ob, origob, editA, editB)
+        return WrapperPage(DiffElement(self, ob, origob, editA, editB))
 
     def child_bigDiff(self, ctx):
-        return BigDiffPage(self.system, self)
+        return WrapperPage(BigDiffElement(self.system, self))
 
     def child_rawBigDiff(self, ctx):
         return RawBigDiffPage(self.system, self)
 
     def child_problemObjects(self, ctx):
-        return ProblemObjectsPage(self.system)
+        return WrapperPage(ProblemObjectsElement(self.system))
 
     def mostRecentEdit(self, ob):
         return self.edits(ob)[-1]
