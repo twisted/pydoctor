@@ -1,15 +1,18 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import url
+import parser
+import urllib
+import time
+
+from twisted.python.urlpath import URLPath
 from twisted.web.static import File
 from twisted.web import resource
 from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
+
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
-import parser
 
-import time
 
 def parse_str(s):
     """Parse the string literal into a L{str_with_orig} that has the literal form as an attribute."""
@@ -89,7 +92,6 @@ class RecentChangesElement(Element):
 
     def __init__(self, root, url):
         self.root = root
-        self.url = url
 
     @renderer
     def changes(self, request, tag):
@@ -97,25 +99,31 @@ class RecentChangesElement(Element):
         for d in reversed(self.root._edits):
             r.append(
                 tag.clone().fillSlots(
-                    diff=self.diff(d),
-                    hist=self.hist(d),
+                    diff=self.diff(d, request),
+                    hist=self.hist(d, request),
                     object=util.taglink(d.obj),
                     time=d.time,
                     user=d.user))
         return r
 
-    def diff(self, data):
-        return tags.a(href=str(self.url.sibling(
-            'diff').add(
-            'ob', data.obj.fullName()).add(
-            'revA', data.rev-1).add(
-            'revB', data.rev)))("(diff)")
+    def diff(self, data, request):
+        u = URLPath.fromRequest(request)
+        u = u.sibling('diff')
+        u.query = urllib.urlencode({
+            'ob': self.ob.fullName(),
+            'revA': data.rev-1,
+            'revB': data.rev,
+            })
+        return tags.a(href=str(u))("(diff)")
 
-    def hist(self, data):
-        return tags.a(href=str(self.url.sibling(
-            'history').add(
-            'ob', data.obj.fullName()).add(
-            'rev', data.rev)))("(hist)")
+    def hist(self, data, request):
+        u = URLPath.fromRequest(request)
+        u = u.sibling('diff')
+        u.query = urllib.urlencode({
+            'ob': self.ob.fullName(),
+            'rev': data.rev,
+            })
+        return tags.a(href=str(u))("(hist)")
 
     loader = XMLString('''\
     <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
@@ -327,11 +335,14 @@ class HistoryElement(Element):
         for i in therange:
             li = tags.li()
             if i:
-                li(tags.a(href=str(url.URL.fromRequest(request).sibling(
-                    'diff').add(
-                    'ob', self.ob.fullName()).add(
-                    'revA', i-1).add(
-                    'revB', i)))("(diff)"))
+                u = URLPath.fromRequest(request)
+                u = u.sibling('diff')
+                u.query = urllib.urlencode({
+                    'ob': self.ob.fullName(),
+                    'revA': i-1,
+                    'revB': i,
+                    })
+                li(tags.a(href=str(u))("(diff)"))
             else:
                 li("(diff)")
             li(" - ")
@@ -342,7 +353,12 @@ class HistoryElement(Element):
             if i == rev:
                 li(label)
             else:
-                li(tags.a(href=str(url.URL.fromRequest(request).replace('rev', str(i))))(label))
+                u = URLPath.fromRequest(request)
+                u.query = urllib.urlencode({
+                    'rev': str(i),
+                    'ob': self.ob.fullName(),
+                    })
+                li(tags.a(href=str(u))(label))
             li(' - ' + ds[i].user + '/' + ds[i].time)
             ul(li)
         return tag(ul)
@@ -530,7 +546,11 @@ def absoluteURL(request, ob):
         frag = None
     else:
         raise AssertionError("XXX")
-    return str(url.URL.fromContext(request).clear().sibling(child).anchor(frag))
+    u = URLPath.fromRequest(request)
+    u = u.sibling(child)
+    u.query = ''
+    u.fragment = frag
+    return str(u)
 
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
@@ -550,7 +570,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         return PyDoctorResource.getChild(self, name, request)
     
     def child_recentChanges(self, ctx):
-        return WrapperPage(RecentChangesElement(self, url.URL.fromContext(ctx)))
+        return WrapperPage(RecentChangesElement(self))
 
     def child_edit(self, request):
         ob = self.system.allobjects.get(request.args.get('ob', [None])[0])
