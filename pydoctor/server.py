@@ -3,7 +3,7 @@
 from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
 from twisted.web import server, resource
-from twisted.web.template import flattenString
+from twisted.web.template import flattenString, renderElement
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
@@ -29,11 +29,7 @@ class WrapperPage(resource.Resource):
         self.element = element
     def render_GET(self, request):
         request.write(DOCTYPE)
-        def _cb(v):
-            request.write(v)
-            request.finish()
-        flattenString(None, self.element).addCallback(_cb)
-        return server.NOT_DONE_YET
+        return renderElement(request, self.element)
 
 class PyDoctorResource(resource.Resource):
 
