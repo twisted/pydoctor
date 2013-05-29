@@ -1,7 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
-from pydoctor.nevowhtml.util import link, templatefile
-from pydoctor.nevowhtml import DOCTYPE, pages, summary
+from pydoctor.templatewriter.util import link, templatefile
+from pydoctor.templatewriter import DOCTYPE, pages, summary
 from pydoctor import model
 
 from twisted.web.template import flattenString

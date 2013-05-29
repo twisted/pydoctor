@@ -1,7 +1,7 @@
 
 from twisted.web.template import Element, renderer, XMLFile
 
-from pydoctor.nevowhtml import util
+from pydoctor.templatewriter import util
 
 class AttributeChild(Element):
 

@@ -5,7 +5,7 @@ from nevow.static import File
 from twisted.web.template import flattenString
 from zope.interface import implements
 from pydoctor import model, epydoc2stan
-from pydoctor.nevowhtml import DOCTYPE, pages, summary, util
+from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
 import parser
 

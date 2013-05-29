@@ -6,4 +6,4 @@ DOCTYPE = '''\
           "DTD/xhtml1-strict.dtd">
 '''
 
-from pydoctor.nevowhtml.writer import NevowWriter
+from pydoctor.templatewriter.writer import TemplateWriter

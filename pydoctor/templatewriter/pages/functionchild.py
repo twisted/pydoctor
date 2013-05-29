@@ -2,8 +2,8 @@
 from twisted.web.template import Element, renderer, tags, XMLFile
 
 from pydoctor import ast_pp
-from pydoctor.nevowhtml import util
-from pydoctor.nevowhtml.pages import signature
+from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import signature
 
 class FunctionChild(Element):
 

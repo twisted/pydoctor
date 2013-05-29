@@ -3,9 +3,9 @@
 from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.pages.table import ChildTable
-from pydoctor.nevowhtml.util import \
-     templatefile, fillSlots, srclink, taglink
+from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.templatewriter.util import \
+     templatefile, srclink, taglink
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -162,8 +162,8 @@ class CommonPage(Element):
                 and o.isVisible]
 
     def childlist(self):
-        from pydoctor.nevowhtml.pages.attributechild import AttributeChild
-        from pydoctor.nevowhtml.pages.functionchild import FunctionChild
+        from pydoctor.templatewriter.pages.attributechild import AttributeChild
+        from pydoctor.templatewriter.pages.functionchild import FunctionChild
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):

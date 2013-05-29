@@ -3,14 +3,16 @@ import os
 import shutil
 import tempfile
 
-from pydoctor import nevowhtml, model
-from pydoctor.nevowhtml import pages, writer
+from pydoctor import templatewriter, model
+from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
-from nevow import flat
+
+def flatten(t):
+    XXX
 
 def getHTMLOf(ob):
-    wr = nevowhtml.NevowWriter('')
+    wr = templatewriter.TemplateWriter('')
     wr.system = ob.system
     f = cStringIO.StringIO()
     wr.writeDocsForOne(ob, f)
@@ -28,13 +30,13 @@ def test_simple():
 def test_empty_table():
     mod = fromText('')
     t = pages.ChildTable(pages.DocGetter(), mod, True, [])
-    flattened = flat.flatten(t)
+    flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table():
     mod = fromText('def f(): pass')
     t = pages.ChildTable(pages.DocGetter(), mod, True, mod.orderedcontents)
-    flattened = flat.flatten(t)
+    flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_rest_support():
@@ -75,7 +77,7 @@ def test_basic_package():
 
 def test_hasdocstring():
     system = processPackage("basic")
-    from pydoctor.nevowhtml.summary import hasdocstring
+    from pydoctor.templatewriter.summary import hasdocstring
     assert not hasdocstring(system.allobjects['basic._private_mod'])
     assert hasdocstring(system.allobjects['basic.mod.C.f'])
     sub_f = system.allobjects['basic.mod.D.f']

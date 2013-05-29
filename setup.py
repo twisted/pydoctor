@@ -11,8 +11,8 @@ setup(
     license='MIT/X11',
     packages=[
         'pydoctor',
-        'pydoctor.nevowhtml',
-        'pydoctor.nevowhtml.pages',
+        'pydoctor.templatewriter',
+        'pydoctor.templatewriter.pages',
         ],
     package_data={
         'pydoctor': [

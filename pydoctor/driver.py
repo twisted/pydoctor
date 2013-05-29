@@ -135,8 +135,7 @@ def getparser():
     parser.add_option(
         '--html-writer', dest='htmlwriter',
         help=("Dotted name of html writer class to use (default "
-              "'pydoctor.nevowhtml.NevowWriter', requires Divmod Nevow "
-              "to be installed)."))
+              "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
         help=("This should be the path to the trac browser for the top "
@@ -350,8 +349,8 @@ def main(args):
                 writerclass = findClassFromDottedName(
                     options.htmlwriter, '--html-writer')
             else:
-                from pydoctor import nevowhtml
-                writerclass = nevowhtml.NevowWriter
+                from pydoctor import templatewriter
+                writerclass = templatewriter.TemplateWriter
 
             system.msg('html', 'writing html to %s using %s.%s'%(
                 options.htmloutput, writerclass.__module__,
