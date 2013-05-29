@@ -1,6 +1,6 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import rend, loaders, inevow, url
+from nevow import rend, loaders, url
 from twisted.web.static import File
 from twisted.web import resource
 from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
@@ -202,6 +202,7 @@ class EditPage(rend.Page):
             self.ob.fullName(),
             u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
+        from nevow import tags
         docstring = parse_str(self.docstring)
         stan, errors = epydoc2stan.doc2stan(
             self.ob, docstring=docstring)
@@ -493,7 +494,7 @@ class ProblemObjectsElement(Element):
 
     loader = XMLFile(util.templatefile('problemObjects.html'))
 
-def absoluteURL(ctx, ob):
+def absoluteURL(request, ob):
     if ob.documentation_location == model.DocLocation.PARENT_PAGE:
         p = ob.parent
         if isinstance(p, model.Module) and p.name == '__init__':
@@ -505,7 +506,7 @@ def absoluteURL(ctx, ob):
         frag = None
     else:
         raise AssertionError("XXX")
-    return str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag))
+    return str(url.URL.fromContext(request).clear().sibling(child).anchor(frag))
 
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
@@ -527,11 +528,11 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_recentChanges(self, ctx):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
 
-    def child_edit(self, ctx):
-        ob = self.system.allobjects.get(ctx.arg('ob'))
+    def child_edit(self, request):
+        ob = self.system.allobjects.get(request.args.get('ob', [None])[0])
         if ob is None:
             return WrapperPage(ErrorElement())
-        newDocstring = ctx.arg('docstring', None)
+        newDocstring = request.args.get('docstring', [None])[0]
         if newDocstring is None:
             isPreview = False
             newDocstring = self.mostRecentEdit(ob).newDocstring
@@ -544,15 +545,14 @@ class EditingPyDoctorResource(PyDoctorResource):
                 initialWhitespace = ' '*indentationAmount(ob)
         else:
             isPreview = True
-            initialWhitespace = ctx.arg('initialWhitespace')
-        action = ctx.arg('action', 'Preview')
+            initialWhitespace = request.args['initialWhitespace'][0]
+        action = request.args.get('action', ['Preview'])[0]
         if action in ('Submit', 'Cancel'):
-            req = ctx.locate(inevow.IRequest)
             if action == 'Submit':
                 if newDocstring:
                     newDocstring = indent(newDocstring, initialWhitespace)
-                self.newDocstring(userIP(req), ob, newDocstring)
-            req.redirect(absoluteURL(ctx, ob))
+                self.newDocstring(userIP(request), ob, newDocstring)
+            request.redirect(absoluteURL(request, ob))
             return ''
         return EditPage(self, ob, newDocstring, isPreview, initialWhitespace)
 
