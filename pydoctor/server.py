@@ -668,16 +668,3 @@ class EditingPyDoctorResource(PyDoctorResource):
         else:
             r.append(tags.span(class_='undocumented')("No edits yet."))
         return r
-
-
-def resourceForPickleFile(pickleFilePath, configFilePath=None):
-    import cPickle
-    system = cPickle.load(open(pickleFilePath, 'rb'))
-    from pydoctor.driver import getparser, readConfigFile
-    if configFilePath is not None:
-        system.options, _ = getparser().parse_args(['-c', configFilePath])
-        readConfigFile(system.options)
-    else:
-        system.options, _ = getparser().parse_args([])
-        system.options.verbosity = 3
-    return EditingPyDoctorResource(system)
