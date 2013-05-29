@@ -1,6 +1,6 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import rend, loaders, url
+from nevow import url
 from twisted.web.static import File
 from twisted.web import resource
 from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
@@ -28,6 +28,11 @@ class WrapperPage(resource.Resource):
     def __init__(self, element):
         self.element = element
     def render_GET(self, request):
+        request.write(DOCTYPE)
+        return renderElement(request, self.element)
+
+class PostWrapperPage(WrapperPage):
+    def render_POST(self, request):
         request.write(DOCTYPE)
         return renderElement(request, self.element)
 
@@ -186,7 +191,7 @@ def dedent(ds):
         r.append(line)
     return '\n'.join(r), initialWhitespace
 
-class EditPage(rend.Page):
+class EditElement(Element):
     def __init__(self, root, ob, docstring, isPreview, initialWhitespace):
         self.root = root
         self.ob = ob
@@ -194,21 +199,22 @@ class EditPage(rend.Page):
             self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
         self.isPreview = isPreview
-        self.initialWhitespace = initialWhitespace
+        self._initialWhitespace = initialWhitespace
 
-    def render_title(self, context, data):
-        return context.tag.clear()[
+    @renderer
+    def title(self, request, tag):
+        return tag.clear()(
             u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
             self.ob.fullName(),
-            u"\N{RIGHT DOUBLE QUOTATION MARK}"]
-    def render_preview(self, context, data):
-        from nevow import tags
+            u"\N{RIGHT DOUBLE QUOTATION MARK}")
+
+    @renderer
+    def preview(self, request, tag):
         docstring = parse_str(self.docstring)
         stan, errors = epydoc2stan.doc2stan(
             self.ob, docstring=docstring)
         if self.isPreview or errors:
             if errors:
-                tag = context.tag
                 #print stan, errors
                 #assert isinstance(stan, tags.pre)
                 [text] = stan.children
@@ -238,15 +244,21 @@ class EditPage(rend.Page):
                 if items:
                     tag(tags.ul(items))
             else:
-                tag = context.tag[stan]
+                tag = tag(stan)
             return tag(tags.h2("Edit"))
         else:
             return ()
-    def render_fullName(self, context, data):
+
+    @renderer
+    def fullName(self, request, tag):
         return self.ob.fullName()
-    def render_initialWhitespace(self, context, data):
-        return self.initialWhitespace
-    def render_before(self, context, data):
+
+    @renderer
+    def initialWhitespace(self, request, tag):
+        return self._initialWhitespace
+
+    @renderer
+    def before(self, request, tag):
         tob = self.ob.doctarget
         if tob.docstring:
             docstring_line_count = len(tob.docstring.orig.splitlines())
@@ -259,14 +271,22 @@ class EditPage(rend.Page):
             return ()
         if firstlineno > 0:
             lines.insert(0, '...\n')
-        return context.tag[lines]
-    def render_divIndent(self, context, data):
+        return tag(lines)
+
+    @renderer
+    def divIndent(self, request, tag):
         return 'margin-left: %dex;'%(indentationAmount(self.ob),)
-    def render_rows(self, context, data):
-        return len(self.docstring.splitlines()) + 1
-    def render_textarea(self, context, data):
-        return context.tag.clear()[self.docstring]
-    def render_after(self, context, data):
+
+    @renderer
+    def rows(self, request, tag):
+        return str(len(self.docstring.splitlines()) + 1)
+
+    @renderer
+    def textarea(self, request, tag):
+        return tag.clear()(self.docstring)
+
+    @renderer
+    def after(self, request, tag):
         tob = self.ob.doctarget
         if tob.docstring:
             lineno = tob.docstring.linenumber
@@ -278,11 +298,13 @@ class EditPage(rend.Page):
             return ()
         if lastlineno < len(self.lines):
             lines.append('...\n')
-        return context.tag[lines]
-    def render_url(self, context, data):
+        return tag(lines)
+
+    @renderer
+    def url(self, request, tag):
         return 'edit?ob=' + self.ob.fullName()
 
-    docFactory = loaders.xmlfile(util.templatefile("edit.html"))
+    loader = XMLFile(util.templatefile("edit.html"))
 
 class HistoryElement(Element):
     def __init__(self, root, ob, rev):
@@ -333,7 +355,7 @@ class HistoryElement(Element):
         return epydoc2stan.doc2stan(self.ob, docstring=docstring)[0]
 
     @renderer
-    def linkback(self, context, data):
+    def linkback(self, request, tag):
         return util.taglink(self.ob, label="Back")
 
     loader = XMLString('''\
@@ -410,6 +432,7 @@ class FileDiff(object):
 
 
 class DiffElement(Element):
+
     def __init__(self, root, ob, origob, editA, editB):
         self.root = root
         self.ob = ob
@@ -418,15 +441,15 @@ class DiffElement(Element):
         self.editB = editB
 
     @renderer
-    def title(self, context, data):
-        return context.tag["Viewing differences between revisions ",
-                           self.editA.rev, " and ", self.editB.rev, " of ",
-                           u"\N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.origob.fullName() +
-                           u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+    def title(self, request, tag):
+        return tag("Viewing differences between revisions ",
+                   self.editA.rev, " and ", self.editB.rev, " of ",
+                   u"\N{LEFT DOUBLE QUOTATION MARK}" +
+                   self.origob.fullName() +
+                   u"\N{RIGHT DOUBLE QUOTATION MARK}")
 
     @renderer
-    def diff(self, context, data):
+    def diff(self, request, tag):
         fd = FileDiff(self.ob.parentMod)
         fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
         fd.reset()
@@ -440,7 +463,8 @@ class BigDiffElement(Element):
         self.system = system
         self.root = root
 
-    def render_bigDiff(self, context, data):
+    @renderer
+    def bigDiff(self, request, tag):
         mods = {}
         for m in self.root.editsbymod:
             l = [e for e in self.root.editsbymod[m]
@@ -554,7 +578,8 @@ class EditingPyDoctorResource(PyDoctorResource):
                 self.newDocstring(userIP(request), ob, newDocstring)
             request.redirect(absoluteURL(request, ob))
             return ''
-        return EditPage(self, ob, newDocstring, isPreview, initialWhitespace)
+        return PostWrapperPage(
+            EditElement(self, ob, newDocstring, isPreview, initialWhitespace))
 
     def child_history(self, request):
         try:
