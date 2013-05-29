@@ -8,6 +8,7 @@ from twisted.python.urlpath import URLPath
 from twisted.web.static import File
 from twisted.web import resource
 from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
+from twisted.web.util import Redirect
 
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
@@ -90,7 +91,7 @@ class IndexPage(summary.IndexPage):
 
 class RecentChangesElement(Element):
 
-    def __init__(self, root, url):
+    def __init__(self, root):
         self.root = root
 
     @renderer
@@ -110,7 +111,7 @@ class RecentChangesElement(Element):
         u = URLPath.fromRequest(request)
         u = u.sibling('diff')
         u.query = urllib.urlencode({
-            'ob': self.ob.fullName(),
+            'ob': data.obj.fullName(),
             'revA': data.rev-1,
             'revB': data.rev,
             })
@@ -120,7 +121,7 @@ class RecentChangesElement(Element):
         u = URLPath.fromRequest(request)
         u = u.sibling('diff')
         u.query = urllib.urlencode({
-            'ob': self.ob.fullName(),
+            'ob': data.obj.fullName(),
             'rev': data.rev,
             })
         return tags.a(href=str(u))("(hist)")
@@ -529,7 +530,7 @@ class ProblemObjectsElement(Element):
         r = []
         for fn in sorted(self.system.epytextproblems):
             o = self.system.allobjects[fn]
-            r.append(tag.clone().fillSlots('link', util.taglink(o)))
+            r.append(tag.clone().fillSlots(link=util.taglink(o)))
         return r
 
     loader = XMLFile(util.templatefile('problemObjects.html'))
@@ -596,8 +597,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 if newDocstring:
                     newDocstring = indent(newDocstring, initialWhitespace)
                 self.newDocstring(userIP(request), ob, newDocstring)
-            request.redirect(absoluteURL(request, ob))
-            return ''
+            return Redirect(absoluteURL(request, ob))
         return PostWrapperPage(
             EditElement(self, ob, newDocstring, isPreview, initialWhitespace))
 

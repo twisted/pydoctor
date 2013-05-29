@@ -396,7 +396,9 @@ def main(args):
             from pydoctor.server import (
                 EditingPyDoctorResource, PyDoctorResource)
             from pydoctor.epydoc2stan import doc2stan
-            from nevow import appserver
+            from twisted.web.server import Site
+            from twisted.web.resource import Resource
+            from twisted.web.vhost import VHostMonsterResource
             from twisted.internet import reactor
             if options.edit:
                 if not options.nocheck:
@@ -416,13 +418,12 @@ def main(args):
                 root = PyDoctorResource(system)
             if options.facing_path:
                 options.local_only = True
-                from nevow import rend, vhost
-                realroot = rend.Page()
+                realroot = Resource()
                 cur = realroot
-                realroot.putChild('vhost', vhost.VHostMonsterResource())
+                realroot.putChild('vhost', VHostMonsterResource())
                 segments = options.facing_path.split('/')
                 for segment in segments[:-1]:
-                    next = rend.Page()
+                    next = Resource()
                     cur.putChild(segment, next)
                     cur = next
                 cur.putChild(segments[-1], root)
@@ -439,7 +440,7 @@ def main(args):
                 reactor.callWhenRunning(wb_open)
             from twisted.python import log
             log.startLogging(sys.stdout)
-            site = appserver.NevowSite(root)
+            site = Site(root)
             if options.local_only:
                 interface = 'localhost'
             else:
