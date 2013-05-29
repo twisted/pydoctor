@@ -8,7 +8,7 @@ from twisted.web.template import flattenString
 
 import os, shutil
 
-class NevowWriter:
+class TemplateWriter:
     def __init__(self, filebase):
         self.base = filebase
         self.written_pages = 0
