@@ -1,9 +1,9 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import rend, loaders, tags, inevow, url, page
-from nevow.static import File
-from twisted.web import server, resource
-from twisted.web.template import flattenString, renderElement
+from nevow import rend, loaders, tags, inevow, url
+from twisted.web.static import File
+from twisted.web import resource
+from twisted.web.template import Element, renderElement, renderer, XMLString
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
@@ -68,65 +68,68 @@ class PyDoctorResource(resource.Resource):
 
 
 class IndexPage(summary.IndexPage):
-    @page.renderer
+
+    @renderer
     def recentChanges(self, request, tag):
         return tag
-    @page.renderer
+
+    @renderer
     def problemObjects(self, request, tag):
         if self.system.epytextproblems:
             return tag
         else:
             return ()
 
-class RecentChangesPage(page.Element):
+class RecentChangesPage(Element):
+
     def __init__(self, root, url):
         self.root = root
         self.url = url
 
-    @page.renderer
+    @renderer
     def changes(self, request, tag):
-        item = tag.patternGenerator('item')
+        r = []
         for d in reversed(self.root._edits):
-            tag[util.fillSlots(item,
-                               diff=self.diff(d),
-                               hist=self.hist(d),
-                               object=util.taglink(d.obj),
-                               time=d.time,
-                               user=d.user)]
-        return tag
+            r.append(
+                tag.clone().fillSlots(
+                    diff=self.diff(d),
+                    hist=self.hist(d),
+                    object=util.taglink(d.obj),
+                    time=d.time,
+                    user=d.user))
+        return r
 
     def diff(self, data):
         return tags.a(href=self.url.sibling(
             'diff').add(
             'ob', data.obj.fullName()).add(
             'revA', data.rev-1).add(
-            'revB', data.rev))["(diff)"]
+            'revB', data.rev))("(diff)")
 
     def hist(self, data):
         return tags.a(href=self.url.sibling(
             'history').add(
             'ob', data.obj.fullName()).add(
-            'rev', data.rev))["(hist)"]
+            'rev', data.rev))("(hist)")
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title["Recent Changes"],
-                  tags.link(rel="stylesheet", type="text/css",
-                            href='apidocs.css')],
-        tags.body[tags.h1["Recent Changes"],
-                  tags.p["See ", tags.a(href="bigDiff")
-                         ["a diff containing all changes made online"]],
-                  tags.ul(render=tags.directive("changes"))
-                  [tags.li(pattern="item")
-                   [tags.slot("diff"),
-                    " - ",
-                    tags.slot("hist"),
-                    " - ",
-                    tags.slot("object"),
-                    " - ",
-                    tags.slot("time"),
-                    " - ",
-                    tags.slot("user"),
-                    ]]]])
+    loader = XMLString('''\
+    <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <head>
+    <title>Recent Changes</title>
+    <link rel="stylesheet" type="text/css" href="apidocs.css" />
+    </head>
+    <body>
+    <h1>Recent Changes</h1>
+    <p>See <a href="bigDiff">a diff containing all changes made online</a></p>
+    <ul>
+    <li t:render="changes">
+    <t:slot name="diff" /> - <t:slot name="hist" /> - <t:slot name="object" />
+    - <t:slot name="time" /> - <t:slot name="user" /> 
+    </li>
+    </ul>
+    </body>
+    </html>
+    ''')
 
 class EditableDocGetter(object):
     def __init__(self, root):
@@ -500,6 +503,12 @@ class EditingPyDoctorResource(PyDoctorResource):
     def indexPage(self):
         return IndexPage(self.system)
 
+    def getChild(self, name, request):
+        meth = getattr(self, 'child_' + name, None)
+        if meth:
+            return meth(request)
+        return PyDoctorResource.getChild(self, name, request)
+    
     def child_recentChanges(self, ctx):
         return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
 
