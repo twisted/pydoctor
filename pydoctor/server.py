@@ -85,7 +85,7 @@ class IndexPage(summary.IndexPage):
         else:
             return ()
 
-class RecentChangesPage(Element):
+class RecentChangesElement(Element):
 
     def __init__(self, root, url):
         self.root = root
@@ -105,17 +105,17 @@ class RecentChangesPage(Element):
         return r
 
     def diff(self, data):
-        return tags.a(href=self.url.sibling(
+        return tags.a(href=str(self.url.sibling(
             'diff').add(
             'ob', data.obj.fullName()).add(
             'revA', data.rev-1).add(
-            'revB', data.rev))("(diff)")
+            'revB', data.rev)))("(diff)")
 
     def hist(self, data):
-        return tags.a(href=self.url.sibling(
+        return tags.a(href=str(self.url.sibling(
             'history').add(
             'ob', data.obj.fullName()).add(
-            'rev', data.rev))("(hist)")
+            'rev', data.rev)))("(hist)")
 
     loader = XMLString('''\
     <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
@@ -327,11 +327,11 @@ class HistoryElement(Element):
         for i in therange:
             li = tags.li()
             if i:
-                li(tags.a(href=url.URL.fromRequest(request).sibling(
+                li(tags.a(href=str(url.URL.fromRequest(request).sibling(
                     'diff').add(
                     'ob', self.ob.fullName()).add(
                     'revA', i-1).add(
-                    'revB', i))("(diff)"))
+                    'revB', i)))("(diff)"))
             else:
                 li("(diff)")
             li(" - ")
@@ -342,7 +342,7 @@ class HistoryElement(Element):
             if i == rev:
                 li(label)
             else:
-                li(tags.a(href=url.gethere.replace('rev', str(i)))(label))
+                li(tags.a(href=str(url.URL.fromRequest(request).replace('rev', str(i))))(label))
             li(' - ' + ds[i].user + '/' + ds[i].time)
             ul(li)
         return tag(ul)
@@ -443,7 +443,7 @@ class DiffElement(Element):
     @renderer
     def title(self, request, tag):
         return tag("Viewing differences between revisions ",
-                   self.editA.rev, " and ", self.editB.rev, " of ",
+                   str(self.editA.rev), " and ", str(self.editB.rev), " of ",
                    u"\N{LEFT DOUBLE QUOTATION MARK}" +
                    self.origob.fullName() +
                    u"\N{RIGHT DOUBLE QUOTATION MARK}")
@@ -550,7 +550,7 @@ class EditingPyDoctorResource(PyDoctorResource):
         return PyDoctorResource.getChild(self, name, request)
     
     def child_recentChanges(self, ctx):
-        return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
+        return WrapperPage(RecentChangesElement(self, url.URL.fromContext(ctx)))
 
     def child_edit(self, request):
         ob = self.system.allobjects.get(request.args.get('ob', [None])[0])
@@ -599,15 +599,15 @@ class EditingPyDoctorResource(PyDoctorResource):
             return WrapperPage(ErrorElement())
         return WrapperPage(HistoryElement(self, ob, rev))
 
-    def child_diff(self, ctx):
-        origob = ob = self.system.allobjects.get(ctx.arg('ob'))
+    def child_diff(self, request):
+        origob = ob = self.system.allobjects.get(request.args['ob'][0])
         if ob is None:
             return WrapperPage(ErrorElement())
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']
         try:
-            revA = int(ctx.arg('revA', ''))
-            revB = int(ctx.arg('revB', ''))
+            revA = int(request.args.get('revA', [''])[0])
+            revB = int(request.args.get('revB', [''])[0])
         except ValueError:
             return WrapperPage(ErrorElement())
         try:
@@ -621,13 +621,13 @@ class EditingPyDoctorResource(PyDoctorResource):
             return WrapperPage(ErrorElement())
         return WrapperPage(DiffElement(self, ob, origob, editA, editB))
 
-    def child_bigDiff(self, ctx):
+    def child_bigDiff(self, request):
         return WrapperPage(BigDiffElement(self.system, self))
 
-    def child_rawBigDiff(self, ctx):
+    def child_rawBigDiff(self, request):
         return RawBigDiffPage(self.system, self)
 
-    def child_problemObjects(self, ctx):
+    def child_problemObjects(self, request):
         return WrapperPage(ProblemObjectsElement(self.system))
 
     def mostRecentEdit(self, ob):
