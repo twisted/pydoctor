@@ -1,4 +1,4 @@
-"""The classes that turn  L{Documentable} instances into objects Nevow can render."""
+"""The classes that turn  L{Documentable} instances into objects we can render."""
 
 from twisted.web.template import tags, Element, renderer, XMLFile
 

@@ -1,4 +1,4 @@
-"""Convert epydoc markup into content renderable by Nevow."""
+"""Convert epydoc markup into renderable content."""
 
 import __builtin__
 import exceptions

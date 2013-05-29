@@ -2,8 +2,8 @@
 
 from nevow import rend, loaders, tags, inevow, url, page
 from nevow.static import File
+from twisted.web import server, resource
 from twisted.web.template import flattenString
-from zope.interface import implements
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
@@ -24,21 +24,23 @@ def findPageClassInDict(obj, d, default="CommonPage"):
             return d[n]
     return d[default]
 
-class WrapperPage(rend.Page):
+class WrapperPage(resource.Resource):
     def __init__(self, element):
         self.element = element
-    def render_content(self, context, data):
+    def render_GET(self, request):
+        request.write(DOCTYPE)
         def _cb(v):
-            return tags.raw(DOCTYPE + v)
-        return flattenString(None, self.element).addCallback(_cb)
-    docFactory = loaders.stan(tags.directive('content'))
+            request.write(v)
+            request.finish()
+        flattenString(None, self.element).addCallback(_cb)
+        return server.NOT_DONE_YET
 
-class PyDoctorResource(rend.ChildLookupMixin):
-    implements(inevow.IResource)
+class PyDoctorResource(resource.Resource):
 
     docgetter = None
 
     def __init__(self, system):
+        resource.Resource.__init__(self)
         self.system = system
         self.putChild('apidocs.css', File(util.templatefile('apidocs.css')))
         self.putChild('sorttable.js', File(util.templatefile('sorttable.js')))
@@ -59,7 +61,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, pages.__dict__)
 
-    def childFactory(self, ctx, name):
+    def getChild(self, name, request):
         if not name.endswith('.html'):
             return None
         name = name[0:-5]
@@ -68,8 +70,6 @@ class PyDoctorResource(rend.ChildLookupMixin):
         obj = self.system.allobjects[name]
         return WrapperPage(self.pageClassForObject(obj)(obj, self.docgetter))
 
-    def renderHTTP(self, ctx):
-        return self.index.renderHTTP(ctx)
 
 class IndexPage(summary.IndexPage):
     @page.renderer
@@ -206,7 +206,7 @@ class EditPage(rend.Page):
             u"\N{RIGHT DOUBLE QUOTATION MARK}"]
     def render_preview(self, context, data):
         docstring = parse_str(self.docstring)
-        stan, errors = epydoc2stan.doc2html(
+        stan, errors = epydoc2stan.doc2stan(
             self.ob, docstring=docstring)
         if self.isPreview or errors:
             if errors:
@@ -327,7 +327,7 @@ class HistoryPage(rend.Page):
         docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
         if docstring is None:
             docstring = ''
-        return epydoc2stan.doc2html(self.ob, docstring=docstring)[0]
+        return epydoc2stan.doc2stan(self.ob, docstring=docstring)[0]
     def render_linkback(self, context, data):
         return util.taglink(self.ob, label="Back")
 
@@ -634,10 +634,10 @@ class EditingPyDoctorResource(PyDoctorResource):
     def stanForOb(self, ob, summary=False):
         current_docstring = self.currentDocstringForObject(ob)
         if summary:
-            return epydoc2stan.doc2html(
+            return epydoc2stan.doc2stan(
                 ob.doctarget, summary=True,
                 docstring=current_docstring)[0]
-        r = [tags.div[epydoc2stan.doc2html(ob.doctarget,
+        r = [tags.div[epydoc2stan.doc2stan(ob.doctarget,
                                            docstring=current_docstring)[0]],
              tags.a(href="edit?ob="+ob.fullName())["Edit"],
              " "]
