@@ -1,9 +1,9 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import rend, loaders, tags, inevow, url
+from nevow import rend, loaders, inevow, url
 from twisted.web.static import File
 from twisted.web import resource
-from twisted.web.template import Element, renderElement, renderer, XMLString
+from twisted.web.template import Element, renderElement, renderer, XMLString, tags
 from pydoctor import model, epydoc2stan
 from pydoctor.templatewriter import DOCTYPE, pages, summary, util
 from pydoctor.astbuilder import MyTransformer
@@ -146,10 +146,8 @@ def userIP(req):
     else:
         return req.getClientIP()
 
-class ErrorPage(rend.Page):
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title["Error"]],
-        tags.body[tags.p["An error occurred."]]])
+class ErrorElement(Element):
+    loader = XMLString("<html><head><title>Error</title></head><body><p>An error occurred.</p></body></html>")
 
 def indentationAmount(ob):
     ob = ob.doctarget
@@ -227,20 +225,20 @@ class EditPage(rend.Page):
                     cls = "preview"
                     if i in line2err:
                         cls += " error"
-                    tag[tags.pre(class_=cls)["%*s"%(w, i), ' ', line]]
+                    tag(tags.pre(class_=cls)("%*s"%(w, i), ' ', line))
                     for err in line2err.get(i, []):
-                        tag[tags.p(class_="errormessage")[err.descr()]]
+                        tag(tags.p(class_="errormessage")(err.descr()))
                 i += 1
                 for err in line2err.get(i, []):
-                    tag[tags.p(class_="errormessage")[err.descr()]]
+                    tag(tags.p(class_="errormessage")(err.descr()))
                 items = []
                 for err in line2err.get(None, []):
-                    items.append(tags.li[str(err)])
+                    items.append(tags.li(str(err)))
                 if items:
-                    tag[tags.ul[items]]
+                    tag(tags.ul(items))
             else:
                 tag = context.tag[stan]
-            return tag[tags.h2["Edit"]]
+            return tag(tags.h2("Edit"))
         else:
             return ()
     def render_fullName(self, context, data):
@@ -303,11 +301,11 @@ class HistoryPage(rend.Page):
         for i in therange:
             li = tags.li()
             if i:
-                li[tags.a(href=url.URL.fromContext(context).sibling(
+                li(tags.a(href=url.URL.fromContext(context).sibling(
                     'diff').add(
                     'ob', self.ob.fullName()).add(
                     'revA', i-1).add(
-                    'revB', i))["(diff)"]]
+                    'revB', i))("(diff)"))
             else:
                 li["(diff)"]
             li[" - "]
@@ -316,12 +314,12 @@ class HistoryPage(rend.Page):
             else:
                 label = str(i)
             if i == rev:
-                li[label]
+                li(label)
             else:
-                li[tags.a(href=url.gethere.replace('rev', str(i)))[label]]
-            li[' - ' + ds[i].user + '/' + ds[i].time]
-            ul[li]
-        return context.tag[ul]
+                li(tags.a(href=url.gethere.replace('rev', str(i)))(label))
+            li(' - ' + ds[i].user + '/' + ds[i].time)
+            ul(li)
+        return context.tag(ul)
     def render_docstring(self, context, data):
         docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
         if docstring is None:
@@ -417,7 +415,7 @@ class DiffPage(rend.Page):
         fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
         fd.reset()
         fd.apply_edit(self.editA, self.editB)
-        return tags.pre[fd.diff()]
+        return tags.pre(fd.diff())
 
     docFactory = loaders.xmlfile(util.templatefile('diff.html'))
 
@@ -438,7 +436,7 @@ class BigDiffPage(rend.Page):
                 mods[m].apply_edit(edit0, e)
         r = []
         for mod in sorted(mods, key=lambda x:x.filepath):
-            r.append(tags.pre[mods[mod].diff()])
+            r.append(tags.pre(mods[mod].diff()))
         return r
 
     docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
@@ -515,7 +513,7 @@ class EditingPyDoctorResource(PyDoctorResource):
     def child_edit(self, ctx):
         ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         newDocstring = ctx.arg('docstring', None)
         if newDocstring is None:
             isPreview = False
@@ -545,37 +543,37 @@ class EditingPyDoctorResource(PyDoctorResource):
         try:
             rev = int(ctx.arg('rev', '-1'))
         except ValueError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             ob = self.system.allobjects[ctx.arg('ob')]
         except KeyError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             self.editsbyob[ob][rev]
         except (IndexError, KeyError):
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         return HistoryPage(self, ob, rev)
 
     def child_diff(self, ctx):
         origob = ob = self.system.allobjects.get(ctx.arg('ob'))
         if ob is None:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']
         try:
             revA = int(ctx.arg('revA', ''))
             revB = int(ctx.arg('revB', ''))
         except ValueError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             edits = self.editsbyob[ob]
         except KeyError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             editA = edits[revA]
             editB = edits[revB]
         except IndexError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         return DiffPage(self, ob, origob, editA, editB)
 
     def child_bigDiff(self, ctx):
@@ -642,17 +640,17 @@ class EditingPyDoctorResource(PyDoctorResource):
             return epydoc2stan.doc2stan(
                 ob.doctarget, summary=True,
                 docstring=current_docstring)[0]
-        r = [tags.div[epydoc2stan.doc2stan(ob.doctarget,
-                                           docstring=current_docstring)[0]],
-             tags.a(href="edit?ob="+ob.fullName())["Edit"],
+        r = [tags.div(epydoc2stan.doc2stan(ob.doctarget,
+                                           docstring=current_docstring)[0]),
+             tags.a(href="edit?ob="+ob.fullName())("Edit"),
              " "]
         if ob.doctarget in self.editsbyob:
-            r.append(tags.a(href="history?ob="+ob.fullName())[
+            r.append(tags.a(href="history?ob="+ob.fullName())(
                 "View docstring history (",
                 len(self.editsbyob[ob.doctarget]),
-                " versions)"])
+                " versions)"))
         else:
-            r.append(tags.span(class_='undocumented')["No edits yet."])
+            r.append(tags.span(class_='undocumented')("No edits yet."))
         return r
 
 
