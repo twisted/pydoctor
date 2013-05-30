@@ -157,7 +157,7 @@ def userIP(req):
     xff = req.received_headers.get('x-forwarded-for')
     if xff:
         return xff
-    else:
+    elif getattr(req, 'client', None):
         return req.getClientIP()
 
 class ErrorElement(Element):
@@ -590,7 +590,7 @@ class EditingPyDoctorResource(PyDoctorResource):
                 initialWhitespace = ' '*indentationAmount(ob)
         else:
             isPreview = True
-            initialWhitespace = request.args['initialWhitespace'][0]
+            initialWhitespace = request.args.get('initialWhitespace', [None])[0]
         action = request.args.get('action', ['Preview'])[0]
         if action in ('Submit', 'Cancel'):
             if action == 'Submit':
