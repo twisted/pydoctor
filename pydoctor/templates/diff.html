@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
-<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title nevow:render="title"></title>
+    <title t:render="title"></title>
     <link href="apidocs.css" type="text/css" rel="stylesheet" />
   </head>
   <body>
-    <h1 nevow:render="title"></h1>
-    <table nevow:render="diff"></table>
+    <h1 t:render="title"></h1>
+    <table t:render="diff"></table>
   </body>
 </html>

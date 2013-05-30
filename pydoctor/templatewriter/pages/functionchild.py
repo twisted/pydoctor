@@ -1,28 +1,28 @@
 
-from nevow import loaders, page, tags
+from twisted.web.template import Element, renderer, tags, XMLFile
 
 from pydoctor import ast_pp
-from pydoctor.nevowhtml import util
-from pydoctor.nevowhtml.pages import signature
+from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import signature
 
-class FunctionChild(page.Element):
+class FunctionChild(Element):
 
-    docFactory = loaders.xmlfile(util.templatefile('function-child.html'))
+    loader = XMLFile(util.templatefile('function-child.html'))
 
     def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter
         self.ob = ob
         self._functionExtras = functionExtras
 
-    @page.renderer
+    @renderer
     def functionAnchor(self, request, tag):
         return self.ob.fullName()
 
-    @page.renderer
+    @renderer
     def shortFunctionAnchor(self, request, tag):
         return self.ob.name
 
-    @page.renderer
+    @renderer
     def decorator(self, request, tag):
         if self.ob.decorators:
             decorators = [ast_pp.pp(dec) for dec in self.ob.decorators]
@@ -43,21 +43,21 @@ class FunctionChild(page.Element):
 
         return decorator
 
-    @page.renderer
+    @renderer
     def functionName(self, request, tag):
         return [self.ob.name, '(', signature(self.ob.argspec), '):']
 
-    @page.renderer
+    @renderer
     def sourceLink(self, request, tag):
         if self.ob.sourceHref:
-            return tag.fillSlots('sourceHref', self.ob.sourceHref)
+            return tag.fillSlots(sourceHref=self.ob.sourceHref)
         else:
             return ()
 
-    @page.renderer
+    @renderer
     def functionExtras(self, request, tag):
         return self._functionExtras
 
-    @page.renderer
+    @renderer
     def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)

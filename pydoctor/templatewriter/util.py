@@ -2,7 +2,7 @@
 
 from pydoctor import model
 
-from nevow import tags
+from twisted.web.template import tags
 
 import os, urllib
 
@@ -39,4 +39,4 @@ def taglink(o, label=None):
     else:
         raise AssertionError(
             "Unknown documentation_location: %s" % o.documentation_location)
-    return tags.a(href=linktext)[label]
+    return tags.a(href=linktext)(label)

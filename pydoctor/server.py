@@ -1,14 +1,19 @@
 """A web application that dynamically generates pydoctor documentation."""
 
-from nevow import rend, loaders, tags, inevow, url, page
-from nevow.static import File
-from zope.interface import implements
-from pydoctor import model, epydoc2stan
-from pydoctor.nevowhtml import pages, summary, util
-from pydoctor.astbuilder import MyTransformer
 import parser
-
+import urllib
 import time
+
+from twisted.python.urlpath import URLPath
+from twisted.web.static import File
+from twisted.web import resource
+from twisted.web.template import Element, renderElement, renderer, XMLFile, XMLString, tags
+from twisted.web.util import Redirect
+
+from pydoctor import model, epydoc2stan
+from pydoctor.templatewriter import DOCTYPE, pages, summary, util
+from pydoctor.astbuilder import MyTransformer
+
 
 def parse_str(s):
     """Parse the string literal into a L{str_with_orig} that has the literal form as an attribute."""
@@ -23,19 +28,24 @@ def findPageClassInDict(obj, d, default="CommonPage"):
             return d[n]
     return d[default]
 
-class WrapperPage(rend.Page):
+class WrapperPage(resource.Resource):
     def __init__(self, element):
         self.element = element
-    def render_content(self, context, data):
-        return self.element
-    docFactory = loaders.stan(tags.directive('content'))
+    def render_GET(self, request):
+        request.write(DOCTYPE)
+        return renderElement(request, self.element)
 
-class PyDoctorResource(rend.ChildLookupMixin):
-    implements(inevow.IResource)
+class PostWrapperPage(WrapperPage):
+    def render_POST(self, request):
+        request.write(DOCTYPE)
+        return renderElement(request, self.element)
+
+class PyDoctorResource(resource.Resource):
 
     docgetter = None
 
     def __init__(self, system):
+        resource.Resource.__init__(self)
         self.system = system
         self.putChild('apidocs.css', File(util.templatefile('apidocs.css')))
         self.putChild('sorttable.js', File(util.templatefile('sorttable.js')))
@@ -56,7 +66,7 @@ class PyDoctorResource(rend.ChildLookupMixin):
     def pageClassForObject(self, ob):
         return findPageClassInDict(ob, pages.__dict__)
 
-    def childFactory(self, ctx, name):
+    def getChild(self, name, request):
         if not name.endswith('.html'):
             return None
         name = name[0:-5]
@@ -65,69 +75,75 @@ class PyDoctorResource(rend.ChildLookupMixin):
         obj = self.system.allobjects[name]
         return WrapperPage(self.pageClassForObject(obj)(obj, self.docgetter))
 
-    def renderHTTP(self, ctx):
-        return self.index.renderHTTP(ctx)
 
 class IndexPage(summary.IndexPage):
-    @page.renderer
+
+    @renderer
     def recentChanges(self, request, tag):
         return tag
-    @page.renderer
+
+    @renderer
     def problemObjects(self, request, tag):
         if self.system.epytextproblems:
             return tag
         else:
             return ()
 
-class RecentChangesPage(page.Element):
-    def __init__(self, root, url):
+class RecentChangesElement(Element):
+
+    def __init__(self, root):
         self.root = root
-        self.url = url
 
-    @page.renderer
+    @renderer
     def changes(self, request, tag):
-        item = tag.patternGenerator('item')
+        r = []
         for d in reversed(self.root._edits):
-            tag[util.fillSlots(item,
-                               diff=self.diff(d),
-                               hist=self.hist(d),
-                               object=util.taglink(d.obj),
-                               time=d.time,
-                               user=d.user)]
-        return tag
+            r.append(
+                tag.clone().fillSlots(
+                    diff=self.diff(d, request),
+                    hist=self.hist(d, request),
+                    object=util.taglink(d.obj),
+                    time=d.time,
+                    user=d.user))
+        return r
 
-    def diff(self, data):
-        return tags.a(href=self.url.sibling(
-            'diff').add(
-            'ob', data.obj.fullName()).add(
-            'revA', data.rev-1).add(
-            'revB', data.rev))["(diff)"]
+    def diff(self, data, request):
+        u = URLPath.fromRequest(request)
+        u = u.sibling('diff')
+        u.query = urllib.urlencode({
+            'ob': data.obj.fullName(),
+            'revA': data.rev-1,
+            'revB': data.rev,
+            })
+        return tags.a(href=str(u))("(diff)")
 
-    def hist(self, data):
-        return tags.a(href=self.url.sibling(
-            'history').add(
-            'ob', data.obj.fullName()).add(
-            'rev', data.rev))["(hist)"]
+    def hist(self, data, request):
+        u = URLPath.fromRequest(request)
+        u = u.sibling('diff')
+        u.query = urllib.urlencode({
+            'ob': data.obj.fullName(),
+            'rev': data.rev,
+            })
+        return tags.a(href=str(u))("(hist)")
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title["Recent Changes"],
-                  tags.link(rel="stylesheet", type="text/css",
-                            href='apidocs.css')],
-        tags.body[tags.h1["Recent Changes"],
-                  tags.p["See ", tags.a(href="bigDiff")
-                         ["a diff containing all changes made online"]],
-                  tags.ul(render=tags.directive("changes"))
-                  [tags.li(pattern="item")
-                   [tags.slot("diff"),
-                    " - ",
-                    tags.slot("hist"),
-                    " - ",
-                    tags.slot("object"),
-                    " - ",
-                    tags.slot("time"),
-                    " - ",
-                    tags.slot("user"),
-                    ]]]])
+    loader = XMLString('''\
+    <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <head>
+    <title>Recent Changes</title>
+    <link rel="stylesheet" type="text/css" href="apidocs.css" />
+    </head>
+    <body>
+    <h1>Recent Changes</h1>
+    <p>See <a href="bigDiff">a diff containing all changes made online</a></p>
+    <ul>
+    <li t:render="changes">
+    <t:slot name="diff" /> - <t:slot name="hist" /> - <t:slot name="object" />
+    - <t:slot name="time" /> - <t:slot name="user" /> 
+    </li>
+    </ul>
+    </body>
+    </html>
+    ''')
 
 class EditableDocGetter(object):
     def __init__(self, root):
@@ -141,13 +157,11 @@ def userIP(req):
     xff = req.received_headers.get('x-forwarded-for')
     if xff:
         return xff
-    else:
+    elif getattr(req, 'client', None):
         return req.getClientIP()
 
-class ErrorPage(rend.Page):
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title["Error"]],
-        tags.body[tags.p["An error occurred."]]])
+class ErrorElement(Element):
+    loader = XMLString("<html><head><title>Error</title></head><body><p>An error occurred.</p></body></html>")
 
 def indentationAmount(ob):
     ob = ob.doctarget
@@ -186,7 +200,7 @@ def dedent(ds):
         r.append(line)
     return '\n'.join(r), initialWhitespace
 
-class EditPage(rend.Page):
+class EditElement(Element):
     def __init__(self, root, ob, docstring, isPreview, initialWhitespace):
         self.root = root
         self.ob = ob
@@ -194,20 +208,22 @@ class EditPage(rend.Page):
             self.ob.doctarget.parentMod.filepath, 'rU').readlines()
         self.docstring = docstring
         self.isPreview = isPreview
-        self.initialWhitespace = initialWhitespace
+        self._initialWhitespace = initialWhitespace
 
-    def render_title(self, context, data):
-        return context.tag.clear()[
+    @renderer
+    def title(self, request, tag):
+        return tag.clear()(
             u"Editing docstring of \N{LEFT DOUBLE QUOTATION MARK}",
             self.ob.fullName(),
-            u"\N{RIGHT DOUBLE QUOTATION MARK}"]
-    def render_preview(self, context, data):
+            u"\N{RIGHT DOUBLE QUOTATION MARK}")
+
+    @renderer
+    def preview(self, request, tag):
         docstring = parse_str(self.docstring)
-        stan, errors = epydoc2stan.doc2html(
+        stan, errors = epydoc2stan.doc2stan(
             self.ob, docstring=docstring)
         if self.isPreview or errors:
             if errors:
-                tag = context.tag
                 #print stan, errors
                 #assert isinstance(stan, tags.pre)
                 [text] = stan.children
@@ -225,27 +241,33 @@ class EditPage(rend.Page):
                     cls = "preview"
                     if i in line2err:
                         cls += " error"
-                    tag[tags.pre(class_=cls)["%*s"%(w, i), ' ', line]]
+                    tag(tags.pre(class_=cls)("%*s"%(w, i), ' ', line))
                     for err in line2err.get(i, []):
-                        tag[tags.p(class_="errormessage")[err.descr()]]
+                        tag(tags.p(class_="errormessage")(err.descr()))
                 i += 1
                 for err in line2err.get(i, []):
-                    tag[tags.p(class_="errormessage")[err.descr()]]
+                    tag(tags.p(class_="errormessage")(err.descr()))
                 items = []
                 for err in line2err.get(None, []):
-                    items.append(tags.li[str(err)])
+                    items.append(tags.li(str(err)))
                 if items:
-                    tag[tags.ul[items]]
+                    tag(tags.ul(items))
             else:
-                tag = context.tag[stan]
-            return tag[tags.h2["Edit"]]
+                tag = tag(stan)
+            return tag(tags.h2("Edit"))
         else:
             return ()
-    def render_fullName(self, context, data):
+
+    @renderer
+    def fullName(self, request, tag):
         return self.ob.fullName()
-    def render_initialWhitespace(self, context, data):
-        return self.initialWhitespace
-    def render_before(self, context, data):
+
+    @renderer
+    def initialWhitespace(self, request, tag):
+        return self._initialWhitespace
+
+    @renderer
+    def before(self, request, tag):
         tob = self.ob.doctarget
         if tob.docstring:
             docstring_line_count = len(tob.docstring.orig.splitlines())
@@ -258,14 +280,22 @@ class EditPage(rend.Page):
             return ()
         if firstlineno > 0:
             lines.insert(0, '...\n')
-        return context.tag[lines]
-    def render_divIndent(self, context, data):
+        return tag(lines)
+
+    @renderer
+    def divIndent(self, request, tag):
         return 'margin-left: %dex;'%(indentationAmount(self.ob),)
-    def render_rows(self, context, data):
-        return len(self.docstring.splitlines()) + 1
-    def render_textarea(self, context, data):
-        return context.tag.clear()[self.docstring]
-    def render_after(self, context, data):
+
+    @renderer
+    def rows(self, request, tag):
+        return str(len(self.docstring.splitlines()) + 1)
+
+    @renderer
+    def textarea(self, request, tag):
+        return tag.clear()(self.docstring)
+
+    @renderer
+    def after(self, request, tag):
         tob = self.ob.doctarget
         if tob.docstring:
             lineno = tob.docstring.linenumber
@@ -277,23 +307,28 @@ class EditPage(rend.Page):
             return ()
         if lastlineno < len(self.lines):
             lines.append('...\n')
-        return context.tag[lines]
-    def render_url(self, context, data):
+        return tag(lines)
+
+    @renderer
+    def url(self, request, tag):
         return 'edit?ob=' + self.ob.fullName()
 
-    docFactory = loaders.xmlfile(util.templatefile("edit.html"))
+    loader = XMLFile(util.templatefile("edit.html"))
 
-class HistoryPage(rend.Page):
+class HistoryElement(Element):
     def __init__(self, root, ob, rev):
         self.root = root
         self.ob = ob
         self.rev = rev
 
-    def render_title(self, context, data):
-        return context.tag[u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.ob.fullName() +
-                           u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring"]
-    def render_links(self, context, data):
+    @renderer
+    def title(self, request, tag):
+        return tag(u"History of \N{LEFT DOUBLE QUOTATION MARK}" +
+                   self.ob.fullName() +
+                   u"\N{RIGHT DOUBLE QUOTATION MARK}s docstring")
+
+    @renderer
+    def links(self, request, tag):
         ds = self.root.edits(self.ob)
         therange = range(len(ds))
         rev = therange[self.rev]
@@ -301,41 +336,59 @@ class HistoryPage(rend.Page):
         for i in therange:
             li = tags.li()
             if i:
-                li[tags.a(href=url.URL.fromContext(context).sibling(
-                    'diff').add(
-                    'ob', self.ob.fullName()).add(
-                    'revA', i-1).add(
-                    'revB', i))["(diff)"]]
+                u = URLPath.fromRequest(request)
+                u = u.sibling('diff')
+                u.query = urllib.urlencode({
+                    'ob': self.ob.fullName(),
+                    'revA': i-1,
+                    'revB': i,
+                    })
+                li(tags.a(href=str(u))("(diff)"))
             else:
-                li["(diff)"]
-            li[" - "]
+                li("(diff)")
+            li(" - ")
             if i == len(ds) - 1:
                 label = "Latest"
             else:
                 label = str(i)
             if i == rev:
-                li[label]
+                li(label)
             else:
-                li[tags.a(href=url.gethere.replace('rev', str(i)))[label]]
-            li[' - ' + ds[i].user + '/' + ds[i].time]
-            ul[li]
-        return context.tag[ul]
-    def render_docstring(self, context, data):
-        docstring = self.root.editsbyob[self.ob][self.rev].newDocstring
+                u = URLPath.fromRequest(request)
+                u.query = urllib.urlencode({
+                    'rev': str(i),
+                    'ob': self.ob.fullName(),
+                    })
+                li(tags.a(href=str(u))(label))
+            li(' - ' + ds[i].user + '/' + ds[i].time)
+            ul(li)
+        return tag(ul)
+
+    @renderer
+    def docstring(self, request, tag):
+        docstring = self.root.edits(self.ob)[self.rev].newDocstring
         if docstring is None:
             docstring = ''
-        return epydoc2stan.doc2html(self.ob, docstring=docstring)[0]
-    def render_linkback(self, context, data):
+        return epydoc2stan.doc2stan(self.ob, docstring=docstring)[0]
+
+    @renderer
+    def linkback(self, request, tag):
         return util.taglink(self.ob, label="Back")
 
-    docFactory = loaders.stan(tags.html[
-        tags.head[tags.title(render=tags.directive('title')),
-                  tags.link(rel="stylesheet", type="text/css",
-                            href='apidocs.css')],
-        tags.body[tags.h1(render=tags.directive('title')),
-                  tags.p(render=tags.directive('links')),
-                  tags.div(render=tags.directive('docstring')),
-                  tags.p(render=tags.directive('linkback'))]])
+    loader = XMLString('''\
+    <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <head>
+    <title t:render="title" />
+    <link rel="stylesheet" type="text/css" href="apidocs.css" />
+    </head>
+    <body>
+    <h1 t:render="title"/>
+    <p t:render="links" />
+    <div t:render="docstring" />
+    <p t:render="linkback" />
+    </body>
+    </html>
+    ''')
 
 
 class Edit(object):
@@ -395,7 +448,8 @@ class FileDiff(object):
                                             tofile=fpath))
 
 
-class DiffPage(rend.Page):
+class DiffElement(Element):
+
     def __init__(self, root, ob, origob, editA, editB):
         self.root = root
         self.ob = ob
@@ -403,28 +457,31 @@ class DiffPage(rend.Page):
         self.editA = editA
         self.editB = editB
 
-    def render_title(self, context, data):
-        return context.tag["Viewing differences between revisions ",
-                           self.editA.rev, " and ", self.editB.rev, " of ",
-                           u"\N{LEFT DOUBLE QUOTATION MARK}" +
-                           self.origob.fullName() +
-                           u"\N{RIGHT DOUBLE QUOTATION MARK}"]
+    @renderer
+    def title(self, request, tag):
+        return tag("Viewing differences between revisions ",
+                   str(self.editA.rev), " and ", str(self.editB.rev), " of ",
+                   u"\N{LEFT DOUBLE QUOTATION MARK}" +
+                   self.origob.fullName() +
+                   u"\N{RIGHT DOUBLE QUOTATION MARK}")
 
-    def render_diff(self, context, data):
+    @renderer
+    def diff(self, request, tag):
         fd = FileDiff(self.ob.parentMod)
         fd.apply_edit(self.root.editsbyob[self.ob][0], self.editA)
         fd.reset()
         fd.apply_edit(self.editA, self.editB)
-        return tags.pre[fd.diff()]
+        return tags.pre(fd.diff())
 
-    docFactory = loaders.xmlfile(util.templatefile('diff.html'))
+    loader = XMLFile(util.templatefile('diff.html'))
 
-class BigDiffPage(rend.Page):
+class BigDiffElement(Element):
     def __init__(self, system, root):
         self.system = system
         self.root = root
 
-    def render_bigDiff(self, context, data):
+    @renderer
+    def bigDiff(self, request, tag):
         mods = {}
         for m in self.root.editsbymod:
             l = [e for e in self.root.editsbymod[m]
@@ -436,18 +493,17 @@ class BigDiffPage(rend.Page):
                 mods[m].apply_edit(edit0, e)
         r = []
         for mod in sorted(mods, key=lambda x:x.filepath):
-            r.append(tags.pre[mods[mod].diff()])
+            r.append(tags.pre(mods[mod].diff()))
         return r
 
-    docFactory = loaders.xmlfile(util.templatefile('bigDiff.html'))
+    loader = XMLFile(util.templatefile('bigDiff.html'))
 
-class RawBigDiffPage(rend.Page):
+class RawBigDiffPage(resource.Resource):
     def __init__(self, system, root):
         self.system = system
         self.root = root
 
-    def renderHTTP(self, context):
-        request = context.locate(inevow.IRequest)
+    def render_GET(self, request):
         request.setHeader('content-type', 'text/plain')
         mods = {}
         if not self.root.editsbymod:
@@ -464,19 +520,22 @@ class RawBigDiffPage(rend.Page):
             request.write(mods[mod].diff())
         return ''
 
-class ProblemObjectsPage(rend.Page):
+class ProblemObjectsElement(Element):
+
     def __init__(self, system):
         self.system = system
-    def render_problemObjects(self, context, data):
-        t = context.tag
-        pat = t.patternGenerator('object')
+
+    @renderer
+    def problemObjects(self, request, tag):
+        r = []
         for fn in sorted(self.system.epytextproblems):
             o = self.system.allobjects[fn]
-            t[pat.fillSlots('link', util.taglink(o))]
-        return t
-    docFactory = loaders.xmlfile(util.templatefile('problemObjects.html'))
+            r.append(tag.clone().fillSlots(link=util.taglink(o)))
+        return r
 
-def absoluteURL(ctx, ob):
+    loader = XMLFile(util.templatefile('problemObjects.html'))
+
+def absoluteURL(request, ob):
     if ob.documentation_location == model.DocLocation.PARENT_PAGE:
         p = ob.parent
         if isinstance(p, model.Module) and p.name == '__init__':
@@ -488,7 +547,11 @@ def absoluteURL(ctx, ob):
         frag = None
     else:
         raise AssertionError("XXX")
-    return str(url.URL.fromContext(ctx).clear().sibling(child).anchor(frag))
+    u = URLPath.fromRequest(request)
+    u = u.sibling(child)
+    u.query = ''
+    u.fragment = frag
+    return str(u)
 
 class EditingPyDoctorResource(PyDoctorResource):
     def __init__(self, system):
@@ -501,14 +564,20 @@ class EditingPyDoctorResource(PyDoctorResource):
     def indexPage(self):
         return IndexPage(self.system)
 
+    def getChild(self, name, request):
+        meth = getattr(self, 'child_' + name, None)
+        if meth:
+            return meth(request)
+        return PyDoctorResource.getChild(self, name, request)
+    
     def child_recentChanges(self, ctx):
-        return WrapperPage(RecentChangesPage(self, url.URL.fromContext(ctx)))
+        return WrapperPage(RecentChangesElement(self))
 
-    def child_edit(self, ctx):
-        ob = self.system.allobjects.get(ctx.arg('ob'))
+    def child_edit(self, request):
+        ob = self.system.allobjects.get(request.args.get('ob', [None])[0])
         if ob is None:
-            return ErrorPage()
-        newDocstring = ctx.arg('docstring', None)
+            return WrapperPage(ErrorElement())
+        newDocstring = request.args.get('docstring', [None])[0]
         if newDocstring is None:
             isPreview = False
             newDocstring = self.mostRecentEdit(ob).newDocstring
@@ -521,63 +590,65 @@ class EditingPyDoctorResource(PyDoctorResource):
                 initialWhitespace = ' '*indentationAmount(ob)
         else:
             isPreview = True
-            initialWhitespace = ctx.arg('initialWhitespace')
-        action = ctx.arg('action', 'Preview')
+            initialWhitespace = request.args.get('initialWhitespace', [None])[0]
+        action = request.args.get('action', ['Preview'])[0]
         if action in ('Submit', 'Cancel'):
-            req = ctx.locate(inevow.IRequest)
             if action == 'Submit':
                 if newDocstring:
                     newDocstring = indent(newDocstring, initialWhitespace)
-                self.newDocstring(userIP(req), ob, newDocstring)
-            req.redirect(absoluteURL(ctx, ob))
-            return ''
-        return EditPage(self, ob, newDocstring, isPreview, initialWhitespace)
+                self.newDocstring(userIP(request), ob, newDocstring)
+            return Redirect(absoluteURL(request, ob))
+        return PostWrapperPage(
+            EditElement(self, ob, newDocstring, isPreview, initialWhitespace))
 
-    def child_history(self, ctx):
+    def child_history(self, request):
         try:
-            rev = int(ctx.arg('rev', '-1'))
+            rev = int(request.args.get('rev', ['-1'])[0])
         except ValueError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
-            ob = self.system.allobjects[ctx.arg('ob')]
+            ob = request.args['ob'][0]
+            ob = self.system.allobjects[ob]
         except KeyError:
-            return ErrorPage()
+            raise
+            return WrapperPage(ErrorElement())
         try:
-            self.editsbyob[ob][rev]
+            self.edits(ob)[rev]
         except (IndexError, KeyError):
-            return ErrorPage()
-        return HistoryPage(self, ob, rev)
+            raise
+            return WrapperPage(ErrorElement())
+        return WrapperPage(HistoryElement(self, ob, rev))
 
-    def child_diff(self, ctx):
-        origob = ob = self.system.allobjects.get(ctx.arg('ob'))
+    def child_diff(self, request):
+        origob = ob = self.system.allobjects.get(request.args['ob'][0])
         if ob is None:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         if isinstance(ob, model.Package):
             ob = ob.contents['__init__']
         try:
-            revA = int(ctx.arg('revA', ''))
-            revB = int(ctx.arg('revB', ''))
+            revA = int(request.args.get('revA', [''])[0])
+            revB = int(request.args.get('revB', [''])[0])
         except ValueError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             edits = self.editsbyob[ob]
         except KeyError:
-            return ErrorPage()
+            return WrapperPage(ErrorElement())
         try:
             editA = edits[revA]
             editB = edits[revB]
         except IndexError:
-            return ErrorPage()
-        return DiffPage(self, ob, origob, editA, editB)
+            return WrapperPage(ErrorElement())
+        return WrapperPage(DiffElement(self, ob, origob, editA, editB))
 
-    def child_bigDiff(self, ctx):
-        return BigDiffPage(self.system, self)
+    def child_bigDiff(self, request):
+        return WrapperPage(BigDiffElement(self.system, self))
 
-    def child_rawBigDiff(self, ctx):
+    def child_rawBigDiff(self, request):
         return RawBigDiffPage(self.system, self)
 
-    def child_problemObjects(self, ctx):
-        return ProblemObjectsPage(self.system)
+    def child_problemObjects(self, request):
+        return WrapperPage(ProblemObjectsElement(self.system))
 
     def mostRecentEdit(self, ob):
         return self.edits(ob)[-1]
@@ -631,31 +702,18 @@ class EditingPyDoctorResource(PyDoctorResource):
     def stanForOb(self, ob, summary=False):
         current_docstring = self.currentDocstringForObject(ob)
         if summary:
-            return epydoc2stan.doc2html(
+            return epydoc2stan.doc2stan(
                 ob.doctarget, summary=True,
                 docstring=current_docstring)[0]
-        r = [tags.div[epydoc2stan.doc2html(ob.doctarget,
-                                           docstring=current_docstring)[0]],
-             tags.a(href="edit?ob="+ob.fullName())["Edit"],
+        r = [tags.div(epydoc2stan.doc2stan(ob.doctarget,
+                                           docstring=current_docstring)[0]),
+             tags.a(href="edit?ob="+ob.fullName())("Edit"),
              " "]
         if ob.doctarget in self.editsbyob:
-            r.append(tags.a(href="history?ob="+ob.fullName())[
+            r.append(tags.a(href="history?ob="+ob.fullName())(
                 "View docstring history (",
-                len(self.editsbyob[ob.doctarget]),
-                " versions)"])
+                str(len(self.editsbyob[ob.doctarget])),
+                " versions)"))
         else:
-            r.append(tags.span(class_='undocumented')["No edits yet."])
+            r.append(tags.span(class_='undocumented')("No edits yet."))
         return r
-
-
-def resourceForPickleFile(pickleFilePath, configFilePath=None):
-    import cPickle
-    system = cPickle.load(open(pickleFilePath, 'rb'))
-    from pydoctor.driver import getparser, readConfigFile
-    if configFilePath is not None:
-        system.options, _ = getparser().parse_args(['-c', configFilePath])
-        readConfigFile(system.options)
-    else:
-        system.options, _ = getparser().parse_args([])
-        system.options.verbosity = 3
-    return EditingPyDoctorResource(system)

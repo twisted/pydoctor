@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
-<html xmlns:nevow="http://nevow.com/ns/nevow/0.1">
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>All Online Changes</title>
@@ -11,7 +11,7 @@
     <p>
       You can also see the diff in <a href="rawBigDiff">plain text format</a>.
     </p>
-    <ul nevow:render="bigDiff">
+    <ul t:render="bigDiff">
       -
     </ul>
   </body>

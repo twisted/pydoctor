@@ -1,11 +1,11 @@
-"""The classes that turn  L{Documentable} instances into objects Nevow can render."""
+"""The classes that turn  L{Documentable} instances into objects we can render."""
 
-from nevow import loaders, page, tags
+from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
-from pydoctor.nevowhtml.pages.table import ChildTable
-from pydoctor.nevowhtml.util import \
-     templatefile, fillSlots, srclink, taglink
+from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.templatewriter.util import \
+     templatefile, srclink, taglink
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -49,10 +49,10 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2html(ob, summary=summary)[0]
+        return epydoc2stan.doc2stan(ob, summary=summary)[0]
 
-class CommonPage(page.Element):
-    docFactory = loaders.xmlfile(templatefile('common.html'))
+class CommonPage(Element):
+    loader = XMLFile(templatefile('common.html'))
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob
@@ -76,12 +76,11 @@ class CommonPage(page.Element):
         return '.'.join([process(p) for p in path.split('.')]) + '.' + name
 
     def heading(self):
-        return tags.h1(class_=self.ob.css_class)[
+        return tags.h1(class_=self.ob.css_class)(
             self.mediumName(self.ob), " : ", self.ob.kind.lower(),
-            " documentation"]
+            " documentation")
 
     def part(self):
-        tag = tags.invisible()
         if self.ob.parent:
             parent = self.ob.parent
             if isinstance(parent, model.Module) and parent.name == '__init__':
@@ -93,9 +92,9 @@ class CommonPage(page.Element):
                 parent = parent.parent
             parts.append(taglink(parent, parent.name))
             parts.reverse()
-            return tag['Part of ', parts]
+            return 'Part of ', parts
         else:
-            return tag
+            return []
 
     def project(self):
         if self.ob.system.options.projecturl:
@@ -105,17 +104,19 @@ class CommonPage(page.Element):
         else:
             return self.ob.system.guessedprojectname
 
-    def source(self, tag):
+    @renderer
+    def source(self, request, tag):
         sourceHref = srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
 
-    def inhierarchy(self, tag):
+    @renderer
+    def inhierarchy(self, request, tag):
         return ()
 
     def extras(self):
-        return tags.invisible()
+        return []
 
     def docstring(self):
         return self.docgetter.get(self.ob)
@@ -128,10 +129,12 @@ class CommonPage(page.Element):
     def packageInitTable(self):
         return ()
 
-    def baseTables(self, tag):
+    @renderer
+    def baseTables(self, request, tag):
         return ()
 
-    def bigTable(self, tag):
+    @renderer
+    def bigTable(self, request, tag):
         return ()
 
     def mainTable(self):
@@ -146,7 +149,8 @@ class CommonPage(page.Element):
             return False
         return isinstance(self.ob, (model.Class, model.Module))
 
-    def ifusesorttable(self, tag):
+    @renderer
+    def ifusesorttable(self, request, tag):
         if self.usesorttable:
             return tag
         else:
@@ -158,8 +162,8 @@ class CommonPage(page.Element):
                 and o.isVisible]
 
     def childlist(self):
-        from pydoctor.nevowhtml.pages.attributechild import AttributeChild
-        from pydoctor.nevowhtml.pages.functionchild import FunctionChild
+        from pydoctor.templatewriter.pages.attributechild import AttributeChild
+        from pydoctor.templatewriter.pages.functionchild import FunctionChild
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):
@@ -174,36 +178,30 @@ class CommonPage(page.Element):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    def ifhasplitlinks(self, tag):
+    @renderer
+    def splittingLinks(self, request, tag):
         return ()
 
-    def pydoctorjs(self, tag):
+    @renderer
+    def pydoctorjs(self, request, tag):
         if self.usesplitlinks or self.shortenlists:
             return tag
         else:
             return ()
 
-    @page.renderer
+    @renderer
     def all(self, request, tag):
-        return fillSlots(tag,
-                         title=self.title(),
-                         ifusesorttable=self.ifusesorttable(tag.onePattern('ifusesorttable')),
-                         pydoctorjs=self.pydoctorjs(tag.onePattern('pydoctorjs')),
-                         heading=self.heading(),
-                         part=self.part(),
-                         source=self.source(tag.onePattern('source')),
-                         inhierarchy=self.inhierarchy(tag.onePattern('inhierarchy')),
-                         extras=self.extras(),
-                         docstring=self.docstring(),
-                         splittingLinks=self.ifhasplitlinks(tag.onePattern('splittingLinks')),
-                         mainTable=self.mainTable(),
-                         baseTables=self.baseTables(tag.patternGenerator('baseTable')),
-                         bigTable=self.bigTable(tag.patternGenerator('bigTable')),
-                         packageInitTable=self.packageInitTable(),
-                         childlist=self.childlist(),
-                         project=self.project(),
-                         buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
-                         )
+        return tag.fillSlots(
+            title=self.title(),
+            heading=self.heading(),
+            part=self.part(),
+            extras=self.extras(),
+            docstring=self.docstring(),
+            mainTable=self.mainTable(),
+            packageInitTable=self.packageInitTable(),
+            childlist=self.childlist(),
+            project=self.project(),
+            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 class PackagePage(CommonPage):
@@ -218,7 +216,7 @@ class PackagePage(CommonPage):
             [o for o in init.orderedcontents if o.isVisible],
             key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
-            return [tags.p["From the __init__.py module:"],
+            return [tags.p("From the __init__.py module:"),
                     ChildTable(self.docgetter, init, self.usesorttable, children)]
         else:
             return ()
@@ -299,6 +297,7 @@ def maybeShortenList(system, label, lst, idbase):
             ['... and %d more'%len(lst[3:])]])
     return p
 
+
 class ClassPage(CommonPage):
     def __init__(self, ob, docgetter=None):
         CommonPage.__init__(self, ob, docgetter)
@@ -318,10 +317,11 @@ class ClassPage(CommonPage):
         p = maybeShortenList(self.ob.system, "Known subclasses: ",
                              [o.fullName() for o in scs], "moreSubclasses")
         if p is not None:
-            r[tags.p[p]]
+            r.append(tags.p(p))
         return r
 
-    def ifhasplitlinks(self, tag):
+    @renderer
+    def splittingLinks(self, request, tag):
         if self.usesplitlinks and len(self.baselists) > 1:
             return tag
         else:
@@ -334,7 +334,7 @@ class ClassPage(CommonPage):
             r.append('(')
             for i, (n, m, o) in enumerate(zipped):
                 if o is None:
-                    r.append(tags.span(title=m)[n])
+                    r.append(tags.span(title=m)(n))
                 else:
                     r.append(taglink(o, n))
                 if i != len(zipped)-1:
@@ -342,25 +342,27 @@ class ClassPage(CommonPage):
             r.append(')')
         return r
 
-    def inhierarchy(self, tag):
+    @renderer
+    def inhierarchy(self, request, tag):
         return tag(href="classIndex.html#"+self.ob.fullName())
 
-    def baseTables(self, item):
+    @renderer
+    def baseTables(self, request, item):
         baselists = self.baselists[:]
         if not baselists:
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
-        return [fillSlots(item,
+        return [item.fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob, self.has_lineno_col(),
                                                   sorted(attrs, key=lambda o:-o.privacyClass)))
                 for b, attrs in baselists]
 
     def baseName(self, data):
-        tag = tags.invisible()
+        r = []
         source_base = data[0]
-        tag[taglink(source_base, source_base.name)]
+        r.append(taglink(source_base, source_base.name))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
@@ -368,17 +370,18 @@ class ClassPage(CommonPage):
                 tail.append(taglink(b, b.name))
                 tail.append(', ')
             del tail[-1]
-            tag[' (via ', tail, ')']
-        return tag
+            r.extend([' (via ', tail, ')'])
+        return r
 
-    def bigTable(self, tag):
+    @renderer
+    def bigTable(self, request, tag):
         if not self.usesplitlinks or len(self.baselists) == 1:
             return ()
         all_attrs = []
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
         all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
-        return tag[ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs)]
+        return tag(ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs))
 
     def functionExtras(self, data):
         r = []
@@ -386,7 +389,7 @@ class ClassPage(CommonPage):
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
-            r.append(tags.div(class_="interfaceinfo")['overrides ', taglink(overridden)])
+            r.append(tags.div(class_="interfaceinfo")('overrides ', taglink(overridden)))
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
@@ -395,13 +398,13 @@ class ClassPage(CommonPage):
             l = maybeShortenList(self.ob.system, 'overridden in ',
                                  [o.fullName() for o in ocs], idbase)
             if l is not None:
-                r.append(tags.div(class_="interfaceinfo")[l])
+                r.append(tags.div(class_="interfaceinfo")(l))
         return r
 
 
 class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
-        r = super(ZopeInterfaceClassPage, self).extras()
+        r = [super(ZopeInterfaceClassPage, self).extras()]
         system = self.ob.system
         def tl(s):
             if s in system.allobjects:
@@ -417,7 +420,7 @@ class ZopeInterfaceClassPage(ClassPage):
         if namelist:
             l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
             if l is not None:
-                r[tags.p[l]]
+                r.append(tags.p(l))
         return r
 
     def interfaceMeth(self, methname):
@@ -434,7 +437,7 @@ class ZopeInterfaceClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         r = []
         if imeth:
-            r.append(tags.div(class_="interfaceinfo")['from ', taglink(imeth, imeth.parent.fullName())])
+            r.append(tags.div(class_="interfaceinfo")('from ', taglink(imeth, imeth.parent.fullName())))
         r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
         return r
 

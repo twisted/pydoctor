@@ -1,8 +1,15 @@
+import re
+from StringIO import StringIO
+import urllib
+
+from twisted.internet.defer import maybeDeferred
+from twisted.web.test.requesthelper import DummyChannel
+from twisted.web.server import Request, Site
+
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 from pydoctor import server
-from nevow import context, testutil, appserver, inevow
-from twisted.internet.defer import maybeDeferred
+
 
 def deferredResult(*args):
     hack = []
@@ -23,23 +30,16 @@ def deferredResult(*args):
 def getTextOfPage(root, page, args=None, return_request=False):
     """This perpetrates several awful hacks."""
     if args is not None:
-        args_ = {}
-        for k, v in args.iteritems():
-            args_[k] = [v]
-        args = args_
-    r = testutil.FakeRequest(args=args)
-    r.postpath = [page]
-    ctx = context.RequestContext(tag=r)
-    pageContext = deferredResult(appserver.NevowSite(root).getPageContextForRequestContext, ctx)
-    while 1:
-        html = deferredResult(pageContext.tag.renderHTTP, pageContext)
-        if isinstance(html, str):
-            if return_request:
-                return r.v + html, r
-            else:
-                return r.v + html
-        res = inevow.IResource(html)
-        pageContext = context.PageContext(tag=res, parent=pageContext)
+        page += '?' + urllib.urlencode(args)
+    channel = DummyChannel()
+    channel.site = Site(root)
+    r = Request(channel, 0)
+    r.content = StringIO()
+    r.requestReceived("GET", "/" + page, "1.1")
+    if return_request:
+        return channel.transport.written.getvalue(), r
+    else:
+        return channel.transport.written.getvalue()
 
 def test_simple():
     m = fromText('''
@@ -70,8 +70,7 @@ def performEdit(root, ob, newDocstring):
     args = {'ob':ob.fullName(), 'docstring':newDocstring,
             'action':'Submit'}
     result, r = getTextOfPage(root, 'edit', args=args, return_request=True)
-    assert not result
-    assert ob.fullName() in r.redirected_to
+    assert re.search("^Location:.*" + re.escape(ob.fullName()), result, re.M), result
 
 def test_edit():
     system = processPackage('basic')

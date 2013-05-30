@@ -6,13 +6,13 @@ setup(
     version='0.5b1',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
-    url='http://codespeak.net/~mwh/pydoctor/',
+    url='http://launchpad.net/pydoctor',
     description='API doc generator.',
     license='MIT/X11',
     packages=[
         'pydoctor',
-        'pydoctor.nevowhtml',
-        'pydoctor.nevowhtml.pages',
+        'pydoctor.templatewriter',
+        'pydoctor.templatewriter.pages',
         ],
     package_data={
         'pydoctor': [
@@ -22,4 +22,5 @@ setup(
     scripts=[
         'bin/pydoctor',
         ],
+    install_requires=["Twisted", "epydoc"],
     )

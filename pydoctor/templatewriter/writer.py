@@ -1,14 +1,14 @@
 """Badly named module that contains the driving code for the rendering."""
 
-from pydoctor.nevowhtml.util import link, templatefile
-from pydoctor.nevowhtml import pages, summary
+from pydoctor.templatewriter.util import link, templatefile
+from pydoctor.templatewriter import DOCTYPE, pages, summary
 from pydoctor import model
 
-from nevow import flat
+from twisted.web.template import flattenString
 
 import os, shutil
 
-class NevowWriter:
+class TemplateWriter:
     def __init__(self, filebase):
         self.base = filebase
         self.written_pages = 0
@@ -42,7 +42,10 @@ class NevowWriter:
             T = time.time()
             page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
-            f.write(flat.flatten(page))
+            f.write(DOCTYPE)
+            def e(r):
+                raise r.value
+            flattenString(None, page).addCallback(f.write).addErrback(e)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
@@ -76,4 +79,10 @@ class NevowWriter:
         page = pclass(ob)
         self.written_pages += 1
         self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
-        fobj.write(flat.flatten(page))
+        fobj.write(DOCTYPE)
+        err = []
+        def e(r):
+            err.append(r.value)
+        flattenString(None, page).addCallback(fobj.write).addErrback(e)
+        if err:
+            raise err[0]

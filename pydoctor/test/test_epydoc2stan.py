@@ -1,12 +1,5 @@
 from pydoctor import epydoc2stan
 from pydoctor.test.test_astbuilder import fromText
-import py
-
-def setup_module(mod):
-    try:
-        import epydoc
-    except ImportError:
-        py.test.skip("tests rather pointless without epydoc installed")
 
 def test_multiple_types():
     mod = fromText('''
@@ -30,9 +23,9 @@ def test_multiple_types():
         """
     ''')
     # basically "assert not fail":
-    epydoc2stan.doc2html(mod.contents['f'])
-    epydoc2stan.doc2html(mod.contents['C'])
-    epydoc2stan.doc2html(mod.contents['D'])
+    epydoc2stan.doc2stan(mod.contents['f'])
+    epydoc2stan.doc2stan(mod.contents['C'])
+    epydoc2stan.doc2stan(mod.contents['D'])
 
 def test_summary():
     mod = fromText('''
@@ -59,8 +52,15 @@ def test_summary():
         """
     ''')
     def get_summary(func):
-        return epydoc2stan.doc2html(mod.contents[func],
-                                    summary=True)[0].children[0]
-    assert 'Lorem Ipsum' == get_summary('single_line_summary')
-    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert 'No summary' == get_summary('no_summary')
+        def part_flat(x):
+            if isinstance(x, list):
+                return ''.join(map(part_flat, x))
+            else:
+                return x
+        return part_flat(
+            epydoc2stan.doc2stan(
+                mod.contents[func],
+                summary=True)[0].children)
+    assert u'Lorem Ipsum' == get_summary('single_line_summary')
+    assert u'Foo Bar Baz' == get_summary('three_lines_summary')
+    assert u'No summary' == get_summary('no_summary')

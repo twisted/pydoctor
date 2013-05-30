@@ -135,8 +135,7 @@ def getparser():
     parser.add_option(
         '--html-writer', dest='htmlwriter',
         help=("Dotted name of html writer class to use (default "
-              "'pydoctor.nevowhtml.NevowWriter', requires Divmod Nevow "
-              "to be installed)."))
+              "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
         help=("This should be the path to the trac browser for the top "
@@ -350,8 +349,8 @@ def main(args):
                 writerclass = findClassFromDottedName(
                     options.htmlwriter, '--html-writer')
             else:
-                from pydoctor import nevowhtml
-                writerclass = nevowhtml.NevowWriter
+                from pydoctor import templatewriter
+                writerclass = templatewriter.TemplateWriter
 
             system.msg('html', 'writing html to %s using %s.%s'%(
                 options.htmloutput, writerclass.__module__,
@@ -396,8 +395,10 @@ def main(args):
         if options.server:
             from pydoctor.server import (
                 EditingPyDoctorResource, PyDoctorResource)
-            from pydoctor.epydoc2stan import doc2html
-            from nevow import appserver
+            from pydoctor.epydoc2stan import doc2stan
+            from twisted.web.server import Site
+            from twisted.web.resource import Resource
+            from twisted.web.vhost import VHostMonsterResource
             from twisted.internet import reactor
             if options.edit:
                 if not options.nocheck:
@@ -411,19 +412,18 @@ def main(args):
                             "server", i+1, len(included_obs),
                             "docstrings checked, found %s problems" % (
                             len(system.epytextproblems)))
-                        doc2html(ob, docstring=ob.docstring)
+                        doc2stan(ob, docstring=ob.docstring)
                 root = EditingPyDoctorResource(system)
             else:
                 root = PyDoctorResource(system)
             if options.facing_path:
                 options.local_only = True
-                from nevow import rend, vhost
-                realroot = rend.Page()
+                realroot = Resource()
                 cur = realroot
-                realroot.putChild('vhost', vhost.VHostMonsterResource())
+                realroot.putChild('vhost', VHostMonsterResource())
                 segments = options.facing_path.split('/')
                 for segment in segments[:-1]:
-                    next = rend.Page()
+                    next = Resource()
                     cur.putChild(segment, next)
                     cur = next
                 cur.putChild(segments[-1], root)
@@ -440,7 +440,7 @@ def main(args):
                 reactor.callWhenRunning(wb_open)
             from twisted.python import log
             log.startLogging(sys.stdout)
-            site = appserver.NevowSite(root)
+            site = Site(root)
             if options.local_only:
                 interface = 'localhost'
             else:

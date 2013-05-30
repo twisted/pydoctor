@@ -1,4 +1,4 @@
-"""Convert epydoc markup into content renderable by Nevow."""
+"""Convert epydoc markup into renderable content."""
 
 import __builtin__
 import exceptions
@@ -8,7 +8,7 @@ import os
 import sys
 import urllib
 
-from nevow import tags
+from twisted.web.template import tags, XMLString
 
 from pydoctor import model
 
@@ -40,7 +40,7 @@ def boringDocstring(doc, summary=False):
         return '<pre class="undocumented">Undocumented</pre>'
     def crappit(): pass
     crappit.__doc__ = doc
-    return [tags.pre, tags.tt][bool(summary)][inspect.getdoc(crappit)]
+    return (tags.pre, tags.tt)[bool(summary)](inspect.getdoc(crappit))
 
 
 def stdlib_doc_link_for_name(name):
@@ -199,15 +199,15 @@ def format_desc_list(singular, descs, plural=None):
     for d in descs:
         if first:
             row = tags.tr(class_="fieldStart")
-            row[tags.td(class_="fieldName")[label]]
+            row(tags.td(class_="fieldName")(label))
             first = False
         else:
             row = tags.tr()
-            row[tags.td()]
+            row(tags.td())
         if d.name is None:
-            row[tags.td(colspan=2)[d.format()]]
+            row(tags.td(colspan="2")(d.format()))
         else:
-            row[tags.td(class_="fieldArg")[d.name], tags.td[d.format()]]
+            row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
         r.append(row)
     return r
 
@@ -225,15 +225,22 @@ def format_field_list(obj, singular, fields, plural=None):
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
-            row[tags.td(class_="fieldName")[label]]
+            row(tags.td(class_="fieldName")(label))
             first=False
         else:
             row = tags.tr()
-            row[tags.td()]
-        row[tags.td(colspan=2)[field.body]]
+            row(tags.td())
+        row(tags.td(colspan="2")(field.body))
         rows.append(row)
     return rows
 
+
+def html2stan(crap):
+    crap = "<div>" + crap + "</div>"
+    crap = XMLString(crap).load()[0].children
+    if crap and crap[-1] == u'\n':
+        del crap[-1]
+    return crap
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor
@@ -241,7 +248,7 @@ class Field(object):
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
-        self.body = tags.raw(de_p(field.body().to_html(_EpydocLinker(obj))))
+        self.body = html2stan(field.body().to_html(_EpydocLinker(obj)))
 
     def __repr__(self):
         r = repr(self.body)
@@ -363,8 +370,8 @@ class FieldHandler(object):
 
         r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")[tags.td(class_="fieldName")['Returns'],
-                               tags.td(colspan="2")[self.return_desc.format()]])
+            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
+                               tags.td(colspan="2")(self.return_desc.format())))
         r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
@@ -384,7 +391,7 @@ class FieldHandler(object):
             label = "Unknown Field: " + fieldlist[0].kind
             r.append(format_desc_list(label, fieldlist, label))
 
-        return tags.table(class_='fieldTable')[r]
+        return tags.table(class_='fieldTable')(r)
 
 
 def de_p(s):
@@ -417,12 +424,12 @@ def reportErrors(obj, errs):
             p(err)
 
 
-def doc2html(obj, summary=False, docstring=None):
+def doc2stan(obj, summary=False, docstring=None):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        r = tags.raw(de_p(obj.parsed_docstring.to_html(_EpydocLinker(obj))))
+        r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
         if getattr(obj, 'parsed_type', None) is not None:
-            r = [r, ' (type: ', tags.raw(de_p(obj.parsed_type.to_html(_EpydocLinker(obj)))), ')']
+            r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
         return r, []
     origobj = obj
     if isinstance(obj, model.Package):
@@ -457,9 +464,9 @@ def doc2html(obj, summary=False, docstring=None):
                                          plurals.get(k, k+'s')))
                 text += '; ' + ', '.join(u) + " documented"
         if summary:
-            return tags.span(class_="undocumented")[text], []
+            return tags.span(class_="undocumented")(text), []
         else:
-            return tags.div(class_="undocumented")[text], []
+            return tags.div(class_="undocumented")(text), []
     if summary:
         # Use up to three first non-empty lines of doc string as summary.
         lines = itertools.dropwhile(lambda line: not line.strip(),
@@ -467,7 +474,7 @@ def doc2html(obj, summary=False, docstring=None):
         lines = itertools.takewhile(lambda line: line.strip(), lines)
         lines = [ line.strip() for line in lines ]
         if len(lines) > 3:
-            return tags.span(class_="undocumented")['No summary'], []
+            return tags.span(class_="undocumented")('No summary'), []
         else:
             doc = ' '.join(lines)
     parse_docstring, e = get_parser(obj.system.options.docformat)
@@ -490,7 +497,7 @@ def doc2html(obj, summary=False, docstring=None):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = de_p(pdoc.to_html(_EpydocLinker(source)))
+            crap = pdoc.to_html(_EpydocLinker(source))
         except Exception, e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
@@ -502,16 +509,20 @@ def doc2html(obj, summary=False, docstring=None):
     if summary:
         if not crap:
             return (), []
-        s = tags.span()[tags.raw(crap)]
+        stan = html2stan(crap)
+        if len(stan) == 1 and stan[0].tagName == 'p':
+            stan = stan[0].children
+        s = tags.span(stan)
     else:
         if not crap and not fields:
             return (), []
-        s = tags.div()[tags.raw(crap)]
+        stan = html2stan(crap)
+        s = tags.div(stan)
         fh = FieldHandler(obj)
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
-        s[fh.format()]
+        s(fh.format())
     return s, []
 
 

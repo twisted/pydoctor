@@ -1,28 +1,28 @@
 
-from nevow import loaders, page
+from twisted.web.template import Element, renderer, XMLFile
 
-from pydoctor.nevowhtml import util
+from pydoctor.templatewriter import util
 
-class AttributeChild(page.Element):
+class AttributeChild(Element):
 
-    docFactory = loaders.xmlfile(util.templatefile('attribute-child.html'))
+    loader = XMLFile(util.templatefile('attribute-child.html'))
 
     def __init__(self, docgetter, ob):
         self.docgetter = docgetter
         self.ob = ob
 
-    @page.renderer
+    @renderer
     def functionAnchor(self, request, tag):
         return self.ob.fullName()
 
-    @page.renderer
+    @renderer
     def shortFunctionAnchor(self, request, tag):
         return self.ob.name
 
-    @page.renderer
+    @renderer
     def attribute(self, request, tag):
         return self.ob.name
 
-    @page.renderer
+    @renderer
     def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)
