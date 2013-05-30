@@ -22,4 +22,5 @@ setup(
     scripts=[
         'bin/pydoctor',
         ],
+    install_requires=["Twisted", "epydoc"],
     )
