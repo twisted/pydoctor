@@ -3,13 +3,23 @@ import os
 import shutil
 import tempfile
 
+from twisted.web.template import flattenString
+
 from pydoctor import templatewriter, model
 from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
 def flatten(t):
-    XXX
+    io = cStringIO.StringIO()
+    err = []
+    def e(r):
+        err.append(r.value)
+    flattenString(None, t).addCallback(io.write).addErrback(e)
+    if err:
+        raise err[0]
+    return io.getvalue()
+
 
 def getHTMLOf(ob):
     wr = templatewriter.TemplateWriter('')
@@ -60,7 +70,7 @@ def test_basic_package():
     system = processPackage("basic")
     targetdir = tempfile.mkdtemp()
     try:
-        w = writer.NevowWriter(targetdir)
+        w = writer.TemplateWriter(targetdir)
         w.system = system
         system.options.htmlusesplitlinks = True
         system.options.htmlusesorttable = True

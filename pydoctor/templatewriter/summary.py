@@ -255,11 +255,11 @@ class UndocumentedSummaryPage(Element):
 
     @renderer
     def title(self, request, tag):
-        return tag.clear()["Summary of Undocumented Objects"]
+        return tag.clear()("Summary of Undocumented Objects")
 
     @renderer
     def heading(self, request, tag):
-        return tag.clear()["Summary of Undocumented Objects"]
+        return tag.clear()("Summary of Undocumented Objects")
 
     @renderer
     def stuff(self, request, tag):
@@ -267,7 +267,7 @@ class UndocumentedSummaryPage(Element):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag[tags.li[o.kind, " - ", taglink(o)]]
+            tag(tags.li(o.kind, " - ", taglink(o)))
         return tag
 
 summarypages = [

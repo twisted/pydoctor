@@ -381,7 +381,7 @@ class ClassPage(CommonPage):
         for b, attrs in self.baselists:
             all_attrs.extend(attrs)
         all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
-        return tag[ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs)]
+        return tag(ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs))
 
     def functionExtras(self, data):
         r = []

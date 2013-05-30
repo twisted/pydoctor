@@ -24,7 +24,7 @@ class TableRow(Element):
         if not self.has_lineno_col:
             return ()
         if hasattr(self.child, 'linenumber'):
-            line = self.child.linenumber
+            line = str(self.child.linenumber)
             if self.child.sourceHref:
                 line = tags.a(href=self.child.sourceHref)(line)
             return tag.clear()(line)
