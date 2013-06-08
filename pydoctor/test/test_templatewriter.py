@@ -3,8 +3,6 @@ import os
 import shutil
 import tempfile
 
-from twisted.web.template import flattenString
-
 from pydoctor import templatewriter, model
 from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
@@ -12,12 +10,7 @@ from pydoctor.test.test_packages import processPackage
 
 def flatten(t):
     io = cStringIO.StringIO()
-    err = []
-    def e(r):
-        err.append(r.value)
-    flattenString(None, t).addCallback(io.write).addErrback(e)
-    if err:
-        raise err[0]
+    writer.flattenToFile(io, t)
     return io.getvalue()
 
 

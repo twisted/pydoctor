@@ -8,6 +8,17 @@ from twisted.web.template import flattenString
 
 import os, shutil
 
+
+def flattenToFile(fobj, page):
+    fobj.write(DOCTYPE)
+    err = []
+    def e(r):
+        err.append(r.value)
+    flattenString(None, page).addCallback(fobj.write).addErrback(e)
+    if err:
+        raise err[0]
+
+
 class TemplateWriter:
     def __init__(self, filebase):
         self.base = filebase
@@ -42,10 +53,7 @@ class TemplateWriter:
             T = time.time()
             page = pclass(system)
             f = open(os.path.join(self.base, pclass.filename), 'w')
-            f.write(DOCTYPE)
-            def e(r):
-                raise r.value
-            flattenString(None, page).addCallback(f.write).addErrback(e)
+            flattenToFile(f, page)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
@@ -79,10 +87,4 @@ class TemplateWriter:
         page = pclass(ob)
         self.written_pages += 1
         self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
-        fobj.write(DOCTYPE)
-        err = []
-        def e(r):
-            err.append(r.value)
-        flattenString(None, page).addCallback(fobj.write).addErrback(e)
-        if err:
-            raise err[0]
+        flattenToFile(fobj, page)
