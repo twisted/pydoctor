@@ -8,7 +8,7 @@ import os
 import sys
 import urllib
 
-from twisted.web.template import tags, XMLString
+from twisted.web.template import Tag, tags, XMLString
 
 from pydoctor import model
 
@@ -510,7 +510,7 @@ def doc2stan(obj, summary=False, docstring=None):
         if not crap:
             return (), []
         stan = html2stan(crap)
-        if len(stan) == 1 and stan[0].tagName == 'p':
+        if len(stan) == 1 and isinstance(stan[0], Tag) and stan[0].tagName == 'p':
             stan = stan[0].children
         s = tags.span(stan)
     else:

@@ -575,6 +575,9 @@ class System(object):
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, v.__doc__, parent)
+                c.bases = []
+                c.baseobjects = []
+                c.rawbases = []
                 c.parentMod = parentMod
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
