@@ -195,6 +195,8 @@ def test_more_aliasing():
 def test_aliasing_recursion():
     system = model.System()
     src = '''
+    class C:
+        pass
     from mod import C
     class D(C):
         pass
