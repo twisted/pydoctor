@@ -167,7 +167,7 @@ class ModuleVistor(object):
                 if mod.all is not None:
                     names = mod.all
                 else:
-                    names = mod.contents.keys() + mod._localNameToFullName.keys()
+                    names = mod.contents.keys() + mod._localNameToFullName_map.keys()
                     names = [k for k in names if not k.startswith('_')]
                 for n in names:
                     _localNameToFullName[n] = expandName(n)

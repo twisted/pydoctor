@@ -293,3 +293,13 @@ def test_classdecorator_with_args():
     assert C.decorators == [(('cd', 'test.cd', cd), [('A', 'test.A', A)])], \
       C.decorators
 
+
+def test_import_star():
+    mod_a = fromText('''
+    def f(): pass
+    ''', modname='a')
+    mod_b = fromText('''
+    from a import *
+    ''', modname='b', system=mod_a.system)
+    assert mod_b.resolveName('f') == mod_a.contents['f']
+
