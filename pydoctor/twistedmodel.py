@@ -34,9 +34,15 @@ class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
 
     def privacyClass(self, obj):
         o = obj
+        if o.fullName() == 'twisted.test':
+            # Match this package exactly, so that proto_helpers
+            # below is visible
+            return model.PrivacyClass.VISIBLE
         while o:
             if o.fullName() == 'twisted.words.xish.yappsrt':
                 return model.PrivacyClass.HIDDEN
+            if o.fullName() == 'twisted.test.proto_helpers':
+                return model.PrivacyClass.VISIBLE
             if isinstance(o, model.Package) and o.name == 'test':
                 return model.PrivacyClass.HIDDEN
             o = o.parent
