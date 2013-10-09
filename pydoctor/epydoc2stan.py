@@ -51,6 +51,7 @@ def stdlib_doc_link_for_name(name):
         sub_name = '.'.join(sub_parts)
         if sub_name == 'os.path' \
                or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
+               or os.path.exists(os.path.join(STDLIB_DIR, filename, '__init__.py')) \
                or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
                or sub_name in sys.builtin_module_names:
             return STDLIB_URL + sub_name + '.html#' + name
