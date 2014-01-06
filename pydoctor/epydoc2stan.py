@@ -5,6 +5,7 @@ import exceptions
 import inspect
 import itertools
 import os
+import re
 import sys
 import urllib
 
@@ -240,7 +241,16 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
+_ok_chars = '\r\n\t\f'
+_class = ''
+for _c in map(chr, range(0, 32)):
+    if _c not in _ok_chars:
+        _class += _c
+_control_pat = re.compile('[' + _class + ']')
+
+
 def html2stan(crap):
+    crap = _control_pat.sub(lambda m:'\\x%02x'%ord(m.group()), crap)
     crap = "<div>" + crap + "</div>"
     crap = XMLString(crap).load()[0].children
     if crap and crap[-1] == u'\n':
