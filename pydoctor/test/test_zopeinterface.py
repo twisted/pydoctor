@@ -2,8 +2,6 @@ from pydoctor.zopeinterface import ZopeInterfaceSystem
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
-import py
-
 # we set up the same situation using both implements and
 # classImplements and run the same tests.
 
@@ -85,10 +83,10 @@ def implements_test(src):
     assert onlybar.implements_directly == ['zi.IBar']
     assert onlybar.allImplementedInterfaces == ['zi.IBar']
 
-    assert ifoo.implementedby_directly == ['zi.Foo']
-    assert ifoo.allImplementations == ['zi.Foo', 'zi.FooBar']
-    assert ibar.implementedby_directly == ['zi.FooBar', 'zi.OnlyBar']
-    assert ibar.allImplementations == ['zi.FooBar', 'zi.OnlyBar']
+    assert ifoo.implementedby_directly == [foo]
+    assert ifoo.allImplementations == [foo, foobar]
+    assert ibar.implementedby_directly == [foobar, onlybar]
+    assert ibar.allImplementations == [foobar, onlybar]
 
 
 def test_subclass_with_same_name():
@@ -238,3 +236,8 @@ def test_docsources_from_moduleprovides():
     imethod = mod.contents['IBase'].contents['bar']
     function = mod.contents['bar']
     assert imethod in function.docsources(), list(function.docsources())
+
+def test_interfaceallgames():
+    system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
+    mod = system.allobjects['interfaceallgames.interface']
+    assert [o.fullName() for o in mod.contents['IAnInterface'].allImplementations] == ['interfaceallgames.implementation.Implementation']

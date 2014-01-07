@@ -47,15 +47,15 @@ class ZopeInterfaceClass(model.Class):
     @property
     def allImplementations(self):
         r = list(self.implementedby_directly)
-        stack = [self.system.objForFullName(n) for n in r]
+        stack = list(r)
         while stack:
             c = stack.pop(0)
             for sc in c.subclasses:
                 if sc.implementsOnly:
                     continue
                 stack.append(sc)
-                if sc.fullName() not in r:
-                    r.append(sc.fullName())
+                if sc not in r:
+                    r.append(sc)
         return r
 
 
@@ -89,7 +89,7 @@ def addInterfaceInfoToModule(module, interfaceargs):
                 obj.isinterface = True
                 obj.kind = "Interface"
                 obj.implementedby_directly = []
-            obj.implementedby_directly.append(module.fullName())
+            obj.implementedby_directly.append(module)
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly
@@ -111,7 +111,7 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
                 obj.isinterface = True
                 obj.kind = "Interface"
                 obj.implementedby_directly = []
-            obj.implementedby_directly.append(cls.fullName())
+            obj.implementedby_directly.append(cls)
 
 
 schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')

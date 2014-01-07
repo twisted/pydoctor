@@ -412,7 +412,7 @@ class ZopeInterfaceClassPage(ClassPage):
             else:
                 return s
         if self.ob.isinterface:
-            namelist = sorted(self.ob.implementedby_directly, key=lambda x:x.lower())
+            namelist = sorted([o.fullName() for o in self.ob.implementedby_directly], key=lambda x:x.lower())
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
