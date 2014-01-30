@@ -1,18 +1,19 @@
-'''
-Sphinx/docutils extension to create links to pyDoctor documentation using
-a RestructuredText interpreted text role that looks like this:
+"""
+Sphinx/docutils extension to create links to pyDoctor documentation using a
+RestructuredText interpreted text role that looks like this::
 
     :api:`python_object_to_link_to <label>`
 
-for example:
+for example::
 
     :api:`twisted.internet.defer.Deferred <Deferred>`
-'''
+
+"""
 
 
 
 def make_api_link(name, rawtext, text, lineno, inliner,
-                     options={}, content=[]):
+                  options={}, content=[]):
 
     from docutils import nodes, utils
 
@@ -22,7 +23,7 @@ def make_api_link(name, rawtext, text, lineno, inliner,
         full_name = full_name.strip()
         label = label.strip('>').strip()
     else:
-        full_name = text
+        full_name = label = text
 
     #get the base url for api links from the config file
     env = inliner.document.settings.env
@@ -43,7 +44,7 @@ def make_api_link(name, rawtext, text, lineno, inliner,
 # setup function to register the extension
 
 def setup(app):
-    app.add_config_value('apilinks_base_url', 
-                         'http://twistedmatrix.com/documents/current/api/', 
+    app.add_config_value('apilinks_base_url',
+                         'http://twistedmatrix.com/documents/current/api/',
                          'env')
     app.add_role('api', make_api_link)
