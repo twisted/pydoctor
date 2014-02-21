@@ -1,5 +1,5 @@
 from pydoctor import html, model
-from py import test
+from unittest.case import SkipTest
 
 def test_signatures():
     argspec = [['a', 'b', 'c'], None, None, (1,2)]
@@ -36,7 +36,7 @@ def test_reallyBoringDocstring():
 
 def test_doc2htmlEpy():
     if not html.EPYTEXT:
-        test.skip("Epytext not available")
+        raise SkipTest("Epytext not available")
     assert html.doc2html(None, 'Woot\nYeah') == '<div><p>Woot Yeah</p>\n</div>'
 
 class TestEpyHackers:
