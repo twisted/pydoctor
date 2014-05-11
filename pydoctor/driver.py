@@ -1,6 +1,7 @@
 """The command-line parsing and entry point."""
 
 from pydoctor import model, zopeinterface
+from pydoctor.sphinx import SphinxInventory
 import sys, os
 
 def error(msg, *args):
@@ -331,6 +332,8 @@ def main(args):
                 'warning',
                 'WARNING: guessing '+name+' for project name', thresh=-1)
             system.guessedprojectname = name
+        else:
+            system.guessedprojectname = system.options.projectname
 
         # step 4: save the system, if desired
 
@@ -390,6 +393,17 @@ def main(args):
                 cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
                 f.close()
                 system.options = options
+
+            # Generate Sphinx inventory.
+            sphinx_inventory = SphinxInventory(
+                logger=system.msg,
+                project_name=system.guessedprojectname,
+                )
+            sphinx_inventory.generate(
+                subjects=subjects,
+                basepath=options.htmloutput,
+                )
+
 
         # Finally, if we should serve html, lets serve some html.
         if options.server:

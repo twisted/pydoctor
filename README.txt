@@ -14,3 +14,33 @@ versa.
 The default HTML generator requires Twisted.
 
 There are some more notes in the doc/ subdirectory.
+
+
+Sphinx Integration
+------------------
+
+HTML generator will also generate a Sphinx objects inventory using the
+following mapping:
+
+* packages, modules -> py:mod:
+* classes -> py:class:
+* functions -> py:func:
+* methods -> py:meth:
+* attributes -> py:attr:
+
+Configure Sphinx intersphinx extension:
+
+    intersphinx_mapping = {
+        'pydoctor': ('http://domain.tld/api', None),
+    }
+
+Use external references::
+
+    :py:func:`External API <pydoctor:pydoctor.model.Documentable.reparent>`
+
+    :py:mod:`pydoctor:pydoctor`
+    :py:mod:`pydoctor:pydoctor.model`
+    :py:func:`pydoctor:pydoctor.driver.getparser`
+    :py:class:`pydoctor:pydoctor.model.Documentable`
+    :py:meth:`pydoctor:pydoctor.model.Documentable.reparent`
+    :py:attr:`pydoctor:pydoctor.model.Documentable.kind`
