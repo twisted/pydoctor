@@ -5,8 +5,6 @@ from __future__ import absolute_import
 import os
 import zlib
 
-from pydoctor import model
-
 
 class SphinxInventory(object):
     """
@@ -70,28 +68,25 @@ class SphinxInventory(object):
         Display name is always: -
         """
         full_name = obj.fullName()
+        full_parent_name = ''
+        if obj.parent:
+            full_parent_name = obj.parent.fullName()
         display = '-'
-        anchor = None
-        if isinstance(obj, (model.Package, model.Module)):
-            domainname = 'module'
-            base_url = full_name
-        elif isinstance(obj, model.Class):
-            domainname = 'class'
-            base_url = full_name
-        elif isinstance(obj, model.Function):
-            if obj.kind == 'Method':
-                domainname = 'method'
-            else:
-                domainname = 'function'
-            base_url = obj.parent.fullName()
-            anchor = obj.name
-        elif isinstance(obj, model.Attribute):
-            domainname = 'attribute'
-            base_url = obj.parent.fullName()
-            anchor = obj.name
-        else:
+        mapping = {
+            'package': ('module', full_name, None),
+            'module': ('module', full_name, None),
+            'class': ('class', full_name, None),
+            'method': ('method', full_parent_name, obj.name),
+            'function': ('function', full_parent_name, obj.name),
+            'attribute': ('attribute', full_parent_name, obj.name),
+            }
+
+        try:
+            domainname, base_url, anchor = mapping[obj.kind.lower()]
+        except (KeyError, AttributeError):
             domainname = 'obj'
             base_url = full_name
+            anchor = None
             self.msg('sphinx', "Unknown type for %s." % (full_name,))
 
         base_url += '.html'

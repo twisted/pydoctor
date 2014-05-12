@@ -332,8 +332,9 @@ def main(args):
                 'warning',
                 'WARNING: guessing '+name+' for project name', thresh=-1)
             system.guessedprojectname = name
+            system.projectname = name
         else:
-            system.guessedprojectname = system.options.projectname
+            system.projectname = system.options.projectname
 
         # step 4: save the system, if desired
 
@@ -397,7 +398,7 @@ def main(args):
             # Generate Sphinx inventory.
             sphinx_inventory = SphinxInventory(
                 logger=system.msg,
-                project_name=system.guessedprojectname,
+                project_name=system.projectname,
                 )
             sphinx_inventory.generate(
                 subjects=subjects,
