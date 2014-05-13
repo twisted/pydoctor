@@ -98,11 +98,9 @@ class CommonPage(Element):
 
     def project(self):
         if self.ob.system.options.projecturl:
-            return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.options.projectname)
-        elif self.ob.system.options.projectname:
-            return self.ob.system.options.projectname
+            return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
         else:
-            return self.ob.system.guessedprojectname
+            return self.ob.system.projectname
 
     @renderer
     def source(self, request, tag):

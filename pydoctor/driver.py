@@ -331,7 +331,6 @@ def main(args):
             system.msg(
                 'warning',
                 'WARNING: guessing '+name+' for project name', thresh=-1)
-            system.guessedprojectname = name
             system.projectname = name
         else:
             system.projectname = system.options.projectname
