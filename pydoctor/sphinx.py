@@ -55,6 +55,8 @@ class SphinxInventory(object):
         """
         content = []
         for obj in subjects:
+            if not obj.isVisible:
+                continue
             content.append(self._generateLine(obj))
             content.append(self._generateContent(obj.orderedcontents))
 
