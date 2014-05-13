@@ -184,18 +184,13 @@ class IndexPage(Element):
     def project_link(self, request, tag):
         if self.system.options.projecturl:
             return tags.a(href=self.system.options.projecturl)(
-                self.system.options.projectname)
-        elif self.system.options.projectname:
-            return self.system.options.projectname
+                self.system.projectname)
         else:
-            return self.system.guessedprojectname
+            return self.system.projectname
 
     @renderer
     def project(self, request, tag):
-        if self.system.options.projectname:
-            return self.system.options.projectname
-        else:
-            return self.system.guessedprojectname
+        return self.system.projectname
 
     @renderer
     def recentChanges(self, request, tag):
@@ -277,4 +272,3 @@ summarypages = [
     NameIndexPage,
     UndocumentedSummaryPage,
     ]
-
