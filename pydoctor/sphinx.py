@@ -2,8 +2,11 @@
 Support for Sphinx compatibility.
 """
 from __future__ import absolute_import
+
 import os
 import zlib
+
+from pydoctor import model
 
 
 class SphinxInventory(object):
@@ -68,31 +71,26 @@ class SphinxInventory(object):
         Display name is always: -
         """
         full_name = obj.fullName()
-        full_parent_name = ''
-        if obj.parent:
-            full_parent_name = obj.parent.fullName()
-        display = '-'
-        mapping = {
-            'package': ('module', full_name, None),
-            'module': ('module', full_name, None),
-            'class': ('class', full_name, None),
-            'method': ('method', full_parent_name, obj.name),
-            'function': ('function', full_parent_name, obj.name),
-            'attribute': ('attribute', full_parent_name, obj.name),
-            }
 
-        try:
-            domainname, base_url, anchor = mapping[obj.kind.lower()]
-        except (KeyError, AttributeError):
-            domainname = 'obj'
-            base_url = full_name
-            anchor = None
-            self.msg('sphinx', "Unknown type for %s." % (full_name,))
-
-        base_url += '.html'
-        if anchor:
-            url = '%s#%s' % (base_url, anchor)
+        if obj.documentation_location == model.DocLocation.OWN_PAGE:
+            url = obj.fullName() + '.html'
         else:
-            url = base_url
+            url = obj.parent.fullName() + '.html#' + obj.name
+
+        display = '-'
+        if isinstance(obj, (model.Package, model.Module)):
+            domainname = 'module'
+        elif isinstance(obj, model.Class):
+            domainname = 'class'
+        elif isinstance(obj, model.Function):
+            if obj.kind == 'Function':
+                domainname = 'function'
+            else:
+                domainname = 'method'
+        elif isinstance(obj, model.Attribute):
+            domainname = 'attribute'
+        else:
+            domainname = 'obj'
+            self.msg('sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
         return '%s py:%s -1 %s %s\n' % (full_name, domainname, url, display)
