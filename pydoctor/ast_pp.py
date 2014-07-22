@@ -9,9 +9,8 @@ The code was stolen from exarkun's svn.twistedmatrix.com sandbox:
 U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
 """
 
-
 from cStringIO import StringIO
-from compiler import parse, walk
+from compiler import walk
 
 class SourceWriter(object):
     _i = 0
@@ -43,8 +42,8 @@ class SourceWriter(object):
         for n in node.getChildren():
             walk(n, self)
 
-    def visitFunction(self, node):
-        fmt = 'def %s(%s):'
+
+    def _functionSignature(self, node, fmt):
         if node.defaults:
             nargs = len(node.argnames)
             ndefs = len(node.defaults)
@@ -55,7 +54,14 @@ class SourceWriter(object):
                 s = s + ', ' + ', '.join(['='.join(x) for x in argdefs])
         else:
             s = ', '.join(node.argnames)
-        self.w(fmt % (node.name, s))
+        self.w(fmt % (s,))
+
+    def visitLambda(self, node):
+        self._functionSignature(node, 'lambda %s: ')
+        walk(node.code, self)
+
+    def visitFunction(self, node):
+        self._functionSignature(node, 'def %s(%%s):' % node.name)
         self.indent()
         try:
             walk(node.code, self)
@@ -87,6 +93,24 @@ class SourceWriter(object):
         for q in node.quals:
             walk(q, self)
         self.w(']')
+
+    def visitList(self, node):
+        self.w('[')
+        for a in node.nodes[:-1]:
+            walk(a, self)
+            self.w(', ')
+        for a in node.nodes[-1:]:
+            walk(a, self)
+        self.w(']')
+
+    def visitSet(self, node):
+        self.w('{')
+        for a in node.nodes[:-1]:
+            walk(a, self)
+            self.w(', ')
+        for a in node.nodes[-1:]:
+            walk(a, self)
+        self.w('}')
 
     def visitListCompFor(self, node):
         self.w(' for ')
@@ -320,11 +344,15 @@ class SourceWriter(object):
 
     def visitDict(self, node):
         self.w('{')
-        for (k, v) in node.items:
+        for (k, v) in node.items[:-1]:
             walk(k, self)
             self.w(':')
             walk(v, self)
-            self.w(',')
+            self.w(', ')
+        for (k, v) in node.items[-1:]:
+            walk(k, self)
+            self.w(':')
+            walk(v, self)
         self.w('}')
 
     def __str__(self):
@@ -338,3 +366,10 @@ def pp(ast):
     sw = SourceWriter()
     walk(ast, sw)
     return sw.s.getvalue()
+
+if __name__ == '__main__':
+    from compiler import parse
+    import sys
+    ast = parse(sys.argv[1])
+    print ast
+    print pp(ast)
