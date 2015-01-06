@@ -440,16 +440,16 @@ class System(object):
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
         def lookup(name):
-            for sys in [self] + self.moresystems + self.subsystems:
-                if name in sys.allobjects:
-                    return sys.allobjects[name]
+            for system in [self] + self.moresystems + self.subsystems:
+                if name in system.allobjects:
+                    return system.allobjects[name]
             raise KeyError, name
         self.__dict__.update(state)
-        for sys in [self] + self.moresystems + self.subsystems:
-            if 'allobjects' not in sys.__dict__:
+        for system in [self] + self.moresystems + self.subsystems:
+            if 'allobjects' not in system.__dict__:
                 return
-        for sys in [self] + self.moresystems + self.subsystems:
-            for obj in sys.orderedallobjects:
+        for system in [self] + self.moresystems + self.subsystems:
+            for obj in system.orderedallobjects:
                 for k, v in obj.__dict__.copy().iteritems():
                     if k.startswith('$'):
                         del obj.__dict__[k]
@@ -653,9 +653,18 @@ class System(object):
         while (fn + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[obj.fullName()]
+        self._warning(obj.parent, "duplicate", prev)
+        def remove(o):
+            del self.allobjects[o.fullName()]
+            for c in o.orderedcontents:
+                remove(c)
+        remove(prev)
         prev.name = obj.name + ' ' + str(i)
-        self.allobjects[prev.fullName()] = prev
-        self._warning(obj.parent, "duplicate", self.allobjects[obj.fullName()])
+        def readd(o):
+            self.allobjects[o.fullName()] = o
+            for c in o.orderedcontents:
+                readd(c)
+        readd(prev)
         self.allobjects[obj.fullName()] = obj
         return obj
 
