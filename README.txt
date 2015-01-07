@@ -44,3 +44,8 @@ Use external references::
     :py:class:`pydoctor:pydoctor.model.Documentable`
     :py:meth:`pydoctor:pydoctor.model.Documentable.reparent`
     :py:attr:`pydoctor:pydoctor.model.Documentable.kind`
+
+It can link to external API documentation using Sphinx objects inventory using
+the following cumulative configuration option::
+
+    --intersphinx=http://sphinx.org/objects.inv

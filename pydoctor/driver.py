@@ -186,6 +186,14 @@ def getparser():
     parser.add_option(
         '--introspect-c-modules', default=False, action='store_true',
         help=("Import and introspect any C modules found."))
+
+    parser.add_option(
+        '--intersphinx', action='append', dest='intersphinx',
+        metavar='URL_TO_OBJECTS.INV', default=[],
+        help=(
+            "Use Sphinx objects inventory to generate links to external"
+            "documetation. Can be repeated."))
+
     return parser
 
 def readConfigFile(options):
@@ -252,7 +260,10 @@ def main(args):
         else:
             system = systemclass()
 
+        # Once pickle support is removed, always instantiate System with
+        # options and make fetchIntersphinxInventories private in __init__.
         system.options = options
+        system.fetchIntersphinxInventories()
 
         system.urlprefix = ''
         if options.moresystems:

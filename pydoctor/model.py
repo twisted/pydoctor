@@ -14,6 +14,8 @@ import sys
 import types
 import __builtin__
 
+from pydoctor.sphinx import SphinxInventory
+
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
 #
@@ -347,7 +349,7 @@ class System(object):
     #defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None
 
-    def __init__(self):
+    def __init__(self, options=None):
         self.allobjects = {}
         self.orderedallobjects = []
         self.rootobjects = []
@@ -356,9 +358,14 @@ class System(object):
         self.moresystems = []
         self.subsystems = []
         self.urlprefix = ''
-        from pydoctor.driver import parse_args
-        self.options, _ = parse_args([])
-        self.options.verbosity = 3
+
+        if options:
+            self.options = options
+        else:
+            from pydoctor.driver import parse_args
+            self.options, _ = parse_args([])
+            self.options.verbosity = 3
+
         self.abbrevmapping = {}
         self.projectname = 'my project'
         self.epytextproblems = [] # fullNames of objects that failed to epytext properly
@@ -369,6 +376,10 @@ class System(object):
         self.module_count = 0
         self.processing_modules = []
         self.buildtime = datetime.datetime.now()
+        # Once pickle support is removed, System should be
+        # initialized with project name so that we can reuse intersphinx instace for
+        # object.inv generation.
+        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
 
     def verbosity(self, section=None):
         if isinstance(section, str):
@@ -711,3 +722,11 @@ class System(object):
         while self.unprocessed_modules:
             mod = iter(self.unprocessed_modules).next()
             self.processModule(mod)
+
+
+    def fetchIntersphinxInventories(self):
+        """
+        Download and parse intersphinx inventories based on configuration.
+        """
+        for url in self.options.intersphinx:
+            self.intersphinx.update(url)
