@@ -377,7 +377,7 @@ class System(object):
         self.processing_modules = []
         self.buildtime = datetime.datetime.now()
         # Once pickle support is removed, System should be
-        # initialized with project name so that we can reuse intersphinx instace for
+        # initialized with project name so that we can reuse intersphinx instance for
         # object.inv generation.
         self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
 
@@ -445,6 +445,11 @@ class System(object):
             return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['intersphinx']
+        return d
+
     def __setstate__(self, state):
         if 'abbrevmapping' not in state:
             state['abbrevmapping'] = {}
@@ -480,6 +485,7 @@ class System(object):
                             n[kk] = lookup(vv)
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
+        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
 
     def addObject(self, obj):
         """Add C{object} to the system."""
