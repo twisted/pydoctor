@@ -4,9 +4,8 @@ Support for Sphinx compatibility.
 from __future__ import absolute_import
 
 import os
+import urllib2
 import zlib
-
-from pydoctor import model
 
 
 class SphinxInventory(object):
@@ -19,6 +18,7 @@ class SphinxInventory(object):
     def __init__(self, logger, project_name):
         self.project_name = project_name
         self.msg = logger
+        self._links = {}
 
     def generate(self, subjects, basepath):
         """
@@ -72,6 +72,9 @@ class SphinxInventory(object):
         Priority is always: -1
         Display name is always: -
         """
+        # Avoid circular import.
+        from pydoctor import model
+
         full_name = obj.fullName()
 
         if obj.documentation_location == model.DocLocation.OWN_PAGE:
@@ -96,3 +99,89 @@ class SphinxInventory(object):
             self.msg('sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
         return '%s py:%s -1 %s %s\n' % (full_name, domainname, url, display)
+
+    def update(self, url):
+        """
+        Update inventory from URL.
+        """
+        parts = url.rsplit('/', 1)
+        if len(parts) != 2:
+            self.msg(
+                'sphinx', 'Failed to get remote base url for %s' % (url,))
+            return
+
+        base_url = parts[0]
+
+        data = self._getURL(url)
+
+        if not data:
+            self.msg(
+                'sphinx', 'Failed to get object inventory from %s' % (url, ))
+            return
+
+        payload = self._getPayload(base_url, data)
+        self._links.update(self._parseInventory(base_url, payload))
+
+    def _getURL(self, url):
+        """
+        Get content of URL.
+
+        This is a helper for testing.
+        """
+        try:
+            response = urllib2.urlopen(url)
+            return response.read()
+        except:
+            return None
+
+    def _getPayload(self, base_url, data):
+        """
+        Parse inventory and return clear text payload without comments.
+        """
+        payload = ''
+        while True:
+            parts = data.split('\n', 1)
+            if len(parts) != 2:
+                payload = data
+                break
+            if not parts[0].startswith('#'):
+                payload = data
+                break
+            data = parts[1]
+        try:
+            return zlib.decompress(payload)
+        except:
+            self.msg(
+                'sphinx',
+                'Failed to uncompress inventory from %s' % (base_url,))
+            return ''
+
+    def _parseInventory(self, base_url, payload):
+        """
+        Parse clear text payload and return a dict with module to link mapping.
+        """
+        result = {}
+        for line in payload.splitlines():
+            parts = line.split(' ', 4)
+            if len(parts) != 5:
+                self.msg(
+                    'sphinx',
+                    'Failed to parse line "%s" for %s' % (line, base_url),
+                    )
+                continue
+            result[parts[0]] = (base_url, parts[3])
+        return result
+
+    def getLink(self, name):
+        """
+        Return link for `name` or None if no link is found.
+        """
+        base_url, relative_link = self._links.get(name, (None, None))
+        if not relative_link:
+            return None
+
+        # For links ending with $, replace it with full name.
+        if relative_link.endswith('$'):
+            relative_link = relative_link[:-1] + name
+
+        return '%s/%s' % (base_url, relative_link)
