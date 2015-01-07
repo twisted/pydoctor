@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name='pydoctor',
-    version='0.6b1',
+    version='0.6b2',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
     url='http://launchpad.net/pydoctor',
