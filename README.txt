@@ -48,4 +48,4 @@ Use external references::
 It can link to external API documentation using Sphinx objects inventory using
 the following cumulative configuration option::
 
-    --intersphinx=http://sphinx.org/objects.inv
+    --intersphinx=http://sphinx-doc.org/objects.inv
