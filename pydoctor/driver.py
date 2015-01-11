@@ -70,6 +70,9 @@ def getparser():
         '--make-html', action='store_true', dest='makehtml',
         default=MAKE_HTML_DEFAULT, help=("Produce html output."))
     parser.add_option(
+        '--make-intersphinx', action='store_true', dest='makeintersphinx',
+        default=False, help=("Produce (only) the objects.inv intersphinx file."))
+    parser.add_option(
         '--server', action='store_true', dest='server',
         help=("Serve HTML on a local server."))
     parser.add_option(
@@ -298,7 +301,7 @@ def main(args):
 
         if options.makehtml == MAKE_HTML_DEFAULT:
             if not options.outputpickle and not options.testing \
-                   and not options.server:
+                   and not options.server and not options.makeintersphinx:
                 options.makehtml = True
             else:
                 options.makehtml = False
@@ -359,6 +362,7 @@ def main(args):
         # step 5: make html, if desired
 
         if options.makehtml:
+            options.makeintersphinx = True
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
                     options.htmlwriter, '--html-writer')
@@ -405,11 +409,15 @@ def main(args):
                 f.close()
                 system.options = options
 
+        if options.makeintersphinx:
+            if not options.makehtml:
+                subjects = system.rootobjects
             # Generate Sphinx inventory.
             sphinx_inventory = SphinxInventory(
                 logger=system.msg,
                 project_name=system.projectname,
                 )
+            os.makedirs(options.htmloutput)
             sphinx_inventory.generate(
                 subjects=subjects,
                 basepath=options.htmloutput,
