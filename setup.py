@@ -6,7 +6,7 @@ setup(
     version='0.6b2',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
-    url='http://launchpad.net/pydoctor',
+    url='http://github.com/twisted/pydoctor',
     description='API doc generator.',
     license='MIT/X11',
     packages=[
