@@ -1,1 +1,0 @@
-"""PyDoctor's test suite."""
