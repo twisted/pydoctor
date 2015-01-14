@@ -1,0 +1,8 @@
+build
+MANIFEST
+dist
+*.pyc
+.tox/
+.coverage
+.DS_Store
+*~
