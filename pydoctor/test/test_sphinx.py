@@ -202,13 +202,6 @@ def test_generateLine_unknown():
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
 
 
-def make_SphinxInventory():
-    """
-    Return a SphinxInventory.
-    """
-    return SphinxInventory(logger=object(), project_name='project_name')
-
-
 def make_SphinxInventoryWithLog():
     """
     Return a SphinxInventory with patched log.

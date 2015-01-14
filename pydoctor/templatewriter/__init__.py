@@ -7,3 +7,4 @@ DOCTYPE = '''\
 '''
 
 from pydoctor.templatewriter.writer import TemplateWriter
+TemplateWriter = TemplateWriter

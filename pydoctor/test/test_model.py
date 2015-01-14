@@ -3,7 +3,6 @@ Unit tests for model.
 """
 from pydoctor import model
 from pydoctor.driver import parse_args
-from pydoctor.sphinx import SphinxInventory
 import zlib
 
 

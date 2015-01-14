@@ -222,8 +222,8 @@ class SystemWriter(object):
         x += self._parentLink(pkg)
         z = doc2html(pkg, pkg.contents['__init__'].docstring)
         x += '<div class="toplevel">%s</div>' % (z,)
-        x += self._genChildren([x for x in pkg.orderedcontents
-                                 if x.name != '__init__'])
+        x += self._genChildren([y for y in pkg.orderedcontents
+                                 if y.name != '__init__'])
         return x
 
     def html_Module(self, mod):

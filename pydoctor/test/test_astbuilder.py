@@ -233,7 +233,7 @@ def test_nested_class_inheriting_from_same_module():
         class C(A):
             pass
     '''
-    mod = fromText(src)
+    fromText(src)
 
 def test_all_recognition():
     mod = fromText('''

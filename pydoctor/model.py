@@ -419,9 +419,9 @@ class System(object):
                 print
 
     def objForFullName(self, fullName):
-        for sys in [self] + self.moresystems:
-            if fullName in sys.allobjects:
-                return sys.allobjects[fullName]
+        for system in [self] + self.moresystems:
+            if fullName in system.allobjects:
+                return system.allobjects[fullName]
         return None
 
     def _warning(self, current, type, detail):
