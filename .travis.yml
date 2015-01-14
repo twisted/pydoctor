@@ -6,6 +6,9 @@ env:
     - TOX_ENV=pypy
     - TOX_ENV=py27
 
+install:
+  - tox
+
 script: tox -e $TOX_ENV
 
 notifications:
