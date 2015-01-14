@@ -49,12 +49,8 @@ def test_moresystems():
     E = mod.contents["E"]
     assert E.baseobjects[0] is not None
 
-def dont_test_importingfrompackage():
-    packname = 'importingfrompackage'
-    testpackage = os.path.join(testpackages, '..', packname)
-    system = model.System()
-    system.packages.append(testpackage)
-    system.addPackage(testpackage)
+def test_importingfrompackage():
+    system = processPackage("importingfrompackage")
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
     assert submod.state == model.PROCESSED
