@@ -417,7 +417,8 @@ def main(args):
                 logger=system.msg,
                 project_name=system.projectname,
                 )
-            os.makedirs(options.htmloutput)
+            if not os.path.exists(options.htmloutput):
+                os.makedirs(options.htmloutput)
             sphinx_inventory.generate(
                 subjects=subjects,
                 basepath=options.htmloutput,
