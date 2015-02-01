@@ -2,7 +2,9 @@
 
 from pydoctor import model, zopeinterface
 from pydoctor.sphinx import SphinxInventory
-import sys, os
+import sys, os, datetime
+
+BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 def error(msg, *args):
     if args:
@@ -161,6 +163,10 @@ def getparser():
         help=("Generate (unobstrusive) JavaScript to hide some of the "
               "entries in long lists of e.g. subclasses."))
     parser.add_option(
+        '--buildtime', dest='buildtime',
+        help=("Use the specified build time over the current time. "
+              "Format: %s" % BUILDTIME_FORMAT))
+    parser.add_option(
         '--livecheck', action='store_true', dest='livecheck',
         default=False,
         help=("Import and examine the modules too.  XXX not working "
@@ -305,6 +311,13 @@ def main(args):
                 options.makehtml = True
             else:
                 options.makehtml = False
+
+        if options.buildtime:
+            try:
+                system.buildtime = datetime.datetime.strptime(
+                    options.buildtime, BUILDTIME_FORMAT)
+            except ValueError, e:
+                error(e)
 
         # step 2: add any packages and modules
 
