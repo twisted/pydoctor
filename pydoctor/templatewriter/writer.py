@@ -31,12 +31,8 @@ class TemplateWriter:
             os.mkdir(self.base)
         shutil.copyfile(templatefile('apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
-        if self.system.options.htmlusesorttable:
-            shutil.copyfile(templatefile('sorttable.js'),
-                            os.path.join(self.base, 'sorttable.js'))
-        if self.system.options.htmlusesplitlinks or self.system.options.htmlshortenlists:
-            shutil.copyfile(templatefile('pydoctor.js'),
-                            os.path.join(self.base, 'pydoctor.js'))
+        shutil.copyfile(templatefile('bootstrap.min.css'),
+                        os.path.join(self.base, 'bootstrap.min.css'))
 
     def writeIndividualFiles(self, obs, functionpages=False):
         self.dry_run = True
@@ -74,7 +70,7 @@ class TemplateWriter:
     def writeDocsForOne(self, ob, fobj):
         if not ob.isVisible:
             return
-        # brrrrrrrr!
+        # brrrrrrr!
         d = pages.__dict__
         for c in ob.__class__.__mro__:
             n = c.__name__ + 'Page'

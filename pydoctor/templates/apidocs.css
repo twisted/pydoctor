@@ -1,287 +1,210 @@
-/* body { */
-/*     background: white url("http://twistedmatrix.com/images/TwistedMatrixLabs.png"); */
-/*     background-repeat: no-repeat; */
-/*     background-position: 100% 10%; */
-/* } */
-
-table.children
-{
-  border-top: thin black solid;
-  border-bottom: thin black solid;
+.navbar {
+    margin-bottom: 0px;
 }
 
-.undocumented
-{
-  color: grey;
+.page-header {
+    margin-top: 22px;
 }
 
-h1
-{
-  background: rgb(112, 176, 240);
-  border: thin black solid;
-  padding-left: 1ex;
+
+ul {
+    margin-top: 10px;
+    padding-left: 10px;
+    list-style-type: none;
 }
 
-h2
-{
-  background: rgb(200, 230, 255);
-  border: thin black solid;
-  padding-left: 1ex;
+li {
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
-#part
-{
-  font-style: italic;
+li a {
+    text-decoration: none;
 }
 
-#bigTable, #showSplitLink, #showBigLink, #moreSubclassesLink
-{
-  display: none;
+ul {
+    margin-left: 10px;
 }
 
-.showIfJS
-{
-  display: none;
+ul ul {
+    border-left-color: #e1f5fe;
+    border-left-width: 1px;
+    border-left-style: solid;
 }
 
-.hideIfJS
-{
-  display: inline;
+ul ul ul {
+    border-left-color: #b3e5fc;
 }
 
-.toplevel
-{
-  margin-top: 2em;
+ul ul ul ul {
+    border-left-color: #81d4fa;
 }
 
-div.toplevel p
-{
-  margin-top: 0em;
+ul ul ul ul ul {
+    border-left-color: #4fc3f7;
 }
 
-.function         { background: lightgreen; }
-.method           { background: #90ee90; }
-.classmethod      { background: #c0ee90; }
-.staticmethod     { background: #90eec0; }
-.attribute, .classvariable, .variable, .instancevariable        { background: #ddbbff; }
-.class            { background: #add8e6; }
-.interface        { background: #ffddff; }
-.module           { background: lightyellow;}
-.package          { background: #ffeeaa; }
-.basefunction     { background: #cceecc; }
-.basemethod       { background: #cceecc; }
-.baseclassmethod  { background: #e0f7cc; }
-.basestaticmethod { background: #ccf7e0; }
-.baseattribute, .baseclassvariable, .basevariable, .baseinstancevariable    { background: #ffeeff; }
-.baseclass        { background: #d6ecf3; }
-.baseinterface    { background: #ffeeff; }
-
-.private
-{
-  color: grey;
-  background: lightgrey;
+ul ul ul ul ul ul {
+    border-left-color: #29b6f6;
 }
 
-div.function
-{
-  margin: 1em;
-  font-family: monospace;
-  background: rgb(232, 240, 248);
+ul ul ul ul ul ul ul {
+    border-left-color: #03a9f4;
 }
 
-div.functionHeader
-{
-  font-weight: bold;
-  color: #000080;
+ul ul ul ul ul ul ul {
+    border-left-color: #039be5;
 }
 
-a.functionSourceLink
-{
-  text-decoration: none;
-  font-style: italic;
-  font-weight: normal;
+.undocumented {
+    font-style: italic;
+    color: #9e9e9e;
 }
 
-a:hover.functionSourceLink
-{
-  text-decoration: underline;
+.functionBody p {
+    margin-top: 6px;
+    margin-bottom: 6px;
 }
 
-div.functionHeader a
-{
-  color: black;
+#splitTables > p {
+    margin-bottom: 5px;
 }
 
-a.jslink
-{
-  color: #007FFF;
+#splitTables > table, .fieldTable {
+    margin-bottom: 20px;
+    width: 100%;
+    border: 0;
 }
 
-span.tag
-{
-  font-weight: bold;
-  font-family: monospace;
+#splitTables > table {
+    border: 1px solid #eee;
 }
 
-span.arg
-{
-  padding-right: 4ex;
-  font-family: monospace;
+#splitTables > table tr {
+    border-bottom-color: #eee;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
 }
 
-.children
-{
-  margin: 1em;
+#splitTables > table tr td, .fieldTable tr td {
+    padding: 5px;
 }
 
-th a
-{
-  text-decoration: none;
+#splitTables > table tr td {
+    border-left-color: #eee;
+    border-left-width: 1px;
+    border-left-style: solid;
 }
 
-.lineno
-{
-  text-align: center;
+#splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
+    border-left: none;
+    width: 150px;
 }
 
-.functionBody
-{
-  margin-left: 2em;
-  padding-top: 0.25em;
-  padding-bottom: 1em;
-  font-family: sans-serif;
+#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    width: 200px;
 }
 
-.interfaceinfo
-{
-  padding-left: 2em;
-  color: blue;
-  font-size: 75%;
+tr.package {
+    background-color: #fff3e0;
 }
 
-.fieldName
-{
-  font-weight: bold;
+tr.module {
+    background-color: #fff8e1;
 }
 
-td p
-{
-  margin-top: 0.0em;
+tr.class {
+    background-color: #fffde7;
 }
 
-.docstring p:first-child
-{
-  margin-top: 0.0em;
+tr.instancevariable, tr.variable, tr.baseclassvariable, tr.attribute {
+    background-color: #f3e5f5;
 }
 
-.docstring p:last-of-type
-{
-  margin-bottom: 0.0em;
+tr.interface {
+    background-color: #fbe9e7;
 }
 
-td.fieldName
-{
-  vertical-align: baseline;
+tr.method, tr.function, tr.basemethod, tr.baseclassmethod, tr.classmethod {
+    background-color: #f1f8e9;
 }
 
-tr.fieldStart td
-{
-  padding-top: 0.5em;
+tr.private {
+    background-color: #f1f1f1;
 }
 
-table.fieldTable td
-{
-  padding-left: 0.5em;
-  padding-right: 0.5em;
+.fieldTable {
+    margin-top: 10px;
 }
 
-.fieldArg
-{
-  font-weight: bold;
-  color: #000080;
-  font-family: monospace;
+
+#childList > div {
+    margin: 20px;
+    padding: 15px;
+    padding-bottom: 5px;
 }
 
-td.fieldArg
-{
-  vertical-align: baseline;
+.functionBody {
+    margin-left: 15px;
 }
 
-.letterlinks
-{
-  font-size: 75%;
-  padding-left: 8ex;
+.functionBody > #part {
+    font-style: italic;
 }
 
-/* for the difflib-generated table */
-
-table.diff {font-family:Courier; border:medium;}
-.diff_header {background-color:#e0e0e0}
-td.diff_header {text-align:right}
-.diff_next {background-color:#c0c0c0}
-.diff_add {background-color:#aaffaa}
-.diff_chg {background-color:#ffff77}
-.diff_sub {background-color:#ffaaaa}
-
-.preview { margin: 0; }
-.error { background-color: #ff3333; }
-.errormessage {
-    margin: 0em 0em 0em 2em;
-    font-size: 75%;
-    color: #773333;
+.functionBody > #part > a {
+    text-decoration: none;
 }
 
-/* Syntax Highlighting for Source Code
- *   - doctest examples are displayed in a 'pre.py-doctest' block.
- *     If the example is in a details table entry, then it will use
- *     the colors specified by the 'table pre.py-doctest' line.
- *   - Source code listings are displayed in a 'pre.py-src' block.
- *     Each line is marked with 'span.py-line' (used to draw a line
- *     down the left margin, separating the code from the line
- *     numbers).  Line numbers are displayed with 'span.py-lineno'.
- *     The expand/collapse block toggle button is displayed with
- *     'a.py-toggle' (Note: the CSS style for 'a.py-toggle' should not
- *     modify the font size of the text.)
- *   - If a source code page is opened with an anchor, then the
- *     corresponding code block will be highlighted.  The code
- *     block's header is highlighted with 'py-highlight-hdr'; and
- *     the code block's body is highlighted with 'py-highlight'.
- *   - The remaining py-* classes are used to perform syntax
- *     highlighting (py-string for string literals, py-name for names,
- *     etc.)
- */
-pre.py-doctest              { padding: .5em; margin: 1em;
-                              background: #e8f0f8; color: #000000;
-                              border: 1px solid #708890; }
-table pre.py-doctest        { background: #dce4ec;
-                              color: #000000; }
-pre.py-src                  { border: 2px solid #000000; 
-                              background: #f0f0f0; color: #000000; }
-.py-line                    { border-left: 2px solid #000000; 
-                              margin-left: .2em; padding-left: .4em; }
-.py-lineno                  { font-style: italic; font-size: 90%;
-                              padding-left: .5em; }
-a.py-toggle                 { text-decoration: none; }
-div.py-highlight-hdr        { border-top: 2px solid #000000;
-                              border-bottom: 2px solid #000000;
-                              background: #d8e8e8; }
-div.py-highlight            { border-bottom: 2px solid #000000;
-                              background: #d0e0e0; }
-.py-prompt                  { color: #005050; font-weight: bold;}
-.py-more                    { color: #005050; font-weight: bold;}
-.py-string                  { color: #006030; }
-.py-comment                 { color: #003060; }
-.py-keyword                 { color: #600000; }
-.py-output                  { color: #404040; }
-.py-name                    { color: #000050; }
-.py-name:link               { color: #000050 !important; }
-.py-name:visited            { color: #000050 !important; }
-.py-number                  { color: #005000; }
-.py-defname                 { color: #000060; font-weight: bold; }
-.py-def-name                { color: #000060; font-weight: bold; }
-.py-base-class              { color: #000060; }
-.py-param                   { color: #000060; }
-.py-docstring               { color: #006030; }
-.py-decorator               { color: #804020; }
-/* Use this if you don't want links to names underlined: */
-/*a.py-name                   { text-decoration: none; }*/
+.functionBody .interfaceinfo {
+    font-style: italic;
+    margin-bottom: 3px;
+}
+
+.functionBody > .undocumented {
+
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.code {
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    padding:2px 4px;
+    font-size:90%;
+    color:#c7254e;
+    background-color:#f9f2f4;
+    border-radius:4px
+}
+
+code > .code {
+    padding: 0px;
+}
+
+
+div.function {
+    border-left-color: #03a9f4;
+    border-left-width: 1px;
+    border-left-style: solid;
+}
+
+div.function .functionHeader {
+    font-family: monospace;
+}
+
+.moduleDocstring {
+    margin: 20px;
+}
+
+#partOf {
+    margin-top: -13px;
+    margin-bottom: 19px;
+}
+
+.fromInitPy {
+    font-style: italic;
+}
+
+pre {
+    padding-left: 0px;
+}

@@ -32,13 +32,13 @@ def test_simple():
 
 def test_empty_table():
     mod = fromText('')
-    t = pages.ChildTable(pages.DocGetter(), mod, True, [])
+    t = pages.ChildTable(pages.DocGetter(), mod, [])
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table():
     mod = fromText('def f(): pass')
-    t = pages.ChildTable(pages.DocGetter(), mod, True, mod.orderedcontents)
+    t = pages.ChildTable(pages.DocGetter(), mod, mod.orderedcontents)
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -85,4 +85,3 @@ def test_hasdocstring():
     assert hasdocstring(system.allobjects['basic.mod.C.f'])
     sub_f = system.allobjects['basic.mod.D.f']
     assert hasdocstring(sub_f) and not sub_f.docstring
-

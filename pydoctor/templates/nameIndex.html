@@ -1,14 +1,33 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <head>
     <title t:render="title">Something</title>
+
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
     <link rel="stylesheet" type="text/css" href="apidocs.css"/>
   </head>
   <body>
-    <h1 t:render="heading">Heading</h1>
-    <t:transparent t:render="index">
+
+    <nav class="navbar navbar-default">
+      <div class="container">
+
+        <div class="navbar-header">
+          <a class="navbar-brand" href="index.html">
+            <t:transparent t:render="project">Some Project</t:transparent> API Documentation
+          </a>
+        </div>
+      </div>
+    </nav>
+
+
+    <div class="container">
+
+      <div class="page-header">
+        <h1 t:render="heading">Heading</h1>
+      </div>
+
+      <t:transparent t:render="index">
         <a>
           <t:attr name="name" t:render="letter" />
         </a>
@@ -17,6 +36,9 @@
         <ul>
           <li t:render="names" />
         </ul>
-    </t:transparent>
+      </t:transparent>
+
+    </div>
   </body>
+
 </html>

@@ -147,22 +147,6 @@ def getparser():
         help=("This should be the path to the trac browser for the top "
               "of the svn checkout we are documenting part of."))
     parser.add_option(
-        '--html-use-sorttable', dest='htmlusesorttable',
-        default=False, action="store_true",
-        help=("Use the sorttable JS library to make tables of package, "
-              "module and class contents sortable"))
-    parser.add_option(
-        '--html-use-splitlinks', dest='htmlusesplitlinks',
-        default=False, action="store_true",
-        help=("Generate (unobstrusive) JavaScript to allow class methods to "
-              "be shown either in one table per base class or in one big "
-              "table."))
-    parser.add_option(
-        '--html-shorten-lists', dest='htmlshortenlists',
-        default=False, action="store_true",
-        help=("Generate (unobstrusive) JavaScript to hide some of the "
-              "entries in long lists of e.g. subclasses."))
-    parser.add_option(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
               "Format: %s" % BUILDTIME_FORMAT))
