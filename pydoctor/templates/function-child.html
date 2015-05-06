@@ -6,20 +6,20 @@
     <t:attr name="name" t:render="shortFunctionAnchor" />
   </a>
   <div class="functionHeader">
-    <t:invisible t:render="decorator" />
+    <t:transparent t:render="decorator" />
     def
-    <t:invisible t:render="functionName">
+    <t:transparent t:render="functionName">
       functionName():
-    </t:invisible>
+    </t:transparent>
     <a class="functionSourceLink" t:render="sourceLink">
       <t:attr name="href"><t:slot name="sourceHref" /></t:attr>
       (source)
     </a>
   </div>
   <div class="docstring functionBody">
-    <t:invisible t:render="functionExtras" />
-    <t:invisible t:render="functionBody">
+    <t:transparent t:render="functionExtras" />
+    <t:transparent t:render="functionBody">
       Docstring.
-    </t:invisible>
+    </t:transparent>
   </div>
 </div>

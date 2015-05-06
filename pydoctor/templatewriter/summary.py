@@ -28,9 +28,15 @@ class ModuleIndexPage(Element):
     loader = XMLFile(templatefile('summary.html'))
     def __init__(self, system):
         self.system = system
+
+    @renderer
+    def project(self, request, tag):
+        return self.system.projectname
+
     @renderer
     def title(self, request, tag):
         return tag.clear()("Module Index")
+
     @renderer
     def stuff(self, request, tag):
         r = []
@@ -84,6 +90,10 @@ class ClassIndexPage(Element):
         return tag.clear()("Class Hierarchy")
 
     @renderer
+    def project(self, request, tag):
+        return self.system.projectname
+
+    @renderer
     def stuff(self, request, tag):
         t = tag
         anchors = set()
@@ -91,7 +101,7 @@ class ClassIndexPage(Element):
             if isinstance(o, model.Class):
                 t(subclassesFrom(self.system, o, anchors))
             else:
-                item = tags.li(b)
+                item = tags.li(tags.code(b))
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):
@@ -164,6 +174,10 @@ class NameIndexPage(Element):
     @renderer
     def heading(self, request, tag):
         return tag.clear()("Index Of Names")
+
+    @renderer
+    def project(self, request, tag):
+        return self.system.projectname
 
     @renderer
     def index(self, request, tag):
@@ -255,6 +269,10 @@ class UndocumentedSummaryPage(Element):
     @renderer
     def heading(self, request, tag):
         return tag.clear()("Summary of Undocumented Objects")
+
+    @renderer
+    def project(self, request, tag):
+        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):

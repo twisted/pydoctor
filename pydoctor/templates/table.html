@@ -1,16 +1,7 @@
 <table xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1" class="children sortable">
   <t:attr name="id" t:render="id" />
-  <tr t:render="header">
-    <th t:render="linenohead">Line #</th>
-    <th>Kind</th>
-    <th>Name</th>
-    <th>Docs</th>
-  </tr>
   <tr t:render="rows">
     <t:attr name="class" t:render="class_" />
-    <td class="lineno" t:render="lineno">
-      Line #
-    </td>
     <td t:render="kind">
       Kind
     </td>

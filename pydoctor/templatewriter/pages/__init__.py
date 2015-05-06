@@ -59,26 +59,18 @@ class CommonPage(Element):
         if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
-        self.usesorttable = ob.system.options.htmlusesorttable
-        self.usesplitlinks = ob.system.options.htmlusesplitlinks
-        self.shortenlists = ob.system.options.htmlshortenlists
 
     def title(self):
         return self.ob.fullName()
 
     def mediumName(self, obj):
-        fn = obj.fullName()
-        if '.' not in fn:
-            return fn
-        path, name = fn.rsplit('.', 1)
-        def process(part):
-            return obj.system.abbrevmapping.get(part, part[0])
-        return '.'.join([process(p) for p in path.split('.')]) + '.' + name
+        return self.ob.fullName()
 
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
-            self.mediumName(self.ob), " : ", self.ob.kind.lower(),
-            " documentation")
+            tags.code(self.mediumName(self.ob)), " ",
+            tags.small(self.ob.kind.lower(), " documentation"),
+            )
 
     def part(self):
         if self.ob.parent:
@@ -92,7 +84,7 @@ class CommonPage(Element):
                 parent = parent.parent
             parts.append(taglink(parent, parent.name))
             parts.reverse()
-            return 'Part of ', parts
+            return 'Part of ', tags.code(parts)
         else:
             return []
 
@@ -131,26 +123,10 @@ class CommonPage(Element):
     def baseTables(self, request, tag):
         return ()
 
-    @renderer
-    def bigTable(self, request, tag):
-        return ()
-
     def mainTable(self):
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, self.has_lineno_col(), children)
-        else:
-            return ()
-
-    def has_lineno_col(self):
-        if not self.usesorttable:
-            return False
-        return isinstance(self.ob, (model.Class, model.Module))
-
-    @renderer
-    def ifusesorttable(self, request, tag):
-        if self.usesorttable:
-            return tag
+            return ChildTable(self.docgetter, self.ob, children)
         else:
             return ()
 
@@ -175,17 +151,6 @@ class CommonPage(Element):
 
     def functionBody(self, data):
         return self.docgetter.get(data)
-
-    @renderer
-    def splittingLinks(self, request, tag):
-        return ()
-
-    @renderer
-    def pydoctorjs(self, request, tag):
-        if self.usesplitlinks or self.shortenlists:
-            return tag
-        else:
-            return ()
 
     @renderer
     def all(self, request, tag):
@@ -214,8 +179,9 @@ class PackagePage(CommonPage):
             [o for o in init.orderedcontents if o.isVisible],
             key=lambda o2:(-o2.privacyClass, o2.fullName()))
         if children:
-            return [tags.p("From the __init__.py module:"),
-                    ChildTable(self.docgetter, init, self.usesorttable, children)]
+            return [tags.p("From the ", tags.code("__init__.py"), " module:",
+                           class_="fromInitPy"),
+                    ChildTable(self.docgetter, init, children)]
         else:
             return ()
 
@@ -252,7 +218,7 @@ def unmasked_attrs(baselist):
     return [o for o in baselist[0].orderedcontents if o.name not in maybe_masking]
 
 
-def maybeShortenList(system, label, lst, idbase):
+def assembleList(system, label, lst, idbase):
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
@@ -274,25 +240,7 @@ def maybeShortenList(system, label, lst, idbase):
         del r[-1]
         return r
     p = [label]
-    if len(lst) <= 5 or not system.options.htmlshortenlists:
-        p.extend(commasep(lst))
-    else:
-        p.extend(commasep(lst[:3]))
-        q = [', ']
-        q.extend(commasep(lst[3:]))
-        q.append(tags.span(class_='showIfJS')[
-            ' ',
-            tags.a(href="#",
-                   onclick="showAndHide('%s');"%idbase,
-                   class_="jslink")
-            ['(hide last %d again)'%len(lst[3:])]])
-        p.append(tags.span(id=idbase, class_='hideIfJS')[q])
-        p.append(tags.span(id=idbase+'Link', class_='showIfJS')[
-            ' ',
-            tags.a(href="#",
-                   onclick="hideAndShow('%s');"%idbase,
-                   class_="jslink")
-            ['... and %d more'%len(lst[3:])]])
+    p.extend(commasep(lst))
     return p
 
 
@@ -300,7 +248,6 @@ class ClassPage(CommonPage):
     def __init__(self, ob, docgetter=None):
         CommonPage.__init__(self, ob, docgetter)
         self.baselists = []
-        self.usesplitlinks = ob.system.options.htmlusesplitlinks
         for baselist in nested_bases(self.ob):
             attrs = unmasked_attrs(baselist)
             if attrs:
@@ -312,18 +259,11 @@ class ClassPage(CommonPage):
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
-        p = maybeShortenList(self.ob.system, "Known subclasses: ",
-                             [o.fullName() for o in scs], "moreSubclasses")
+        p = assembleList(self.ob.system, "Known subclasses: ",
+                         [o.fullName() for o in scs], "moreSubclasses")
         if p is not None:
             r.append(tags.p(p))
         return r
-
-    @renderer
-    def splittingLinks(self, request, tag):
-        if self.usesplitlinks and len(self.baselists) > 1:
-            return tag
-        else:
-            return ()
 
     def mediumName(self, ob):
         r = [super(ClassPage, self).mediumName(ob)]
@@ -353,8 +293,8 @@ class ClassPage(CommonPage):
             del baselists[0]
         return [item.fillSlots(
                           baseName=self.baseName(b),
-                          baseTable=ChildTable(self.docgetter, self.ob, self.has_lineno_col(),
-                                                  sorted(attrs, key=lambda o:-o.privacyClass)))
+                          baseTable=ChildTable(self.docgetter, self.ob,
+                                               sorted(attrs, key=lambda o:-o.privacyClass)))
                 for b, attrs in baselists]
 
     def baseName(self, data):
@@ -371,16 +311,6 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    @renderer
-    def bigTable(self, request, tag):
-        if not self.usesplitlinks or len(self.baselists) == 1:
-            return ()
-        all_attrs = []
-        for b, attrs in self.baselists:
-            all_attrs.extend(attrs)
-        all_attrs.sort(key=lambda o:(-o.privacyClass, o.name.lower()))
-        return tag(ChildTable(self.docgetter, self.ob, self.has_lineno_col(), all_attrs))
-
     def functionExtras(self, data):
         r = []
         for b in self.ob.allbases(include_self=False):
@@ -393,8 +323,8 @@ class ClassPage(CommonPage):
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
-            l = maybeShortenList(self.ob.system, 'overridden in ',
-                                 [o.fullName() for o in ocs], idbase)
+            l = assembleList(self.ob.system, 'overridden in ',
+                             [o.fullName() for o in ocs], idbase)
             if l is not None:
                 r.append(tags.div(class_="interfaceinfo")(l))
         return r
@@ -403,12 +333,6 @@ class ClassPage(CommonPage):
 class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
         r = [super(ZopeInterfaceClassPage, self).extras()]
-        system = self.ob.system
-        def tl(s):
-            if s in system.allobjects:
-                return taglink(system.allobjects[s])
-            else:
-                return s
         if self.ob.isinterface:
             namelist = sorted([o.fullName() for o in self.ob.implementedby_directly], key=lambda x:x.lower())
             label = 'Known implementations: '
@@ -416,7 +340,7 @@ class ZopeInterfaceClassPage(ClassPage):
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
-            l = maybeShortenList(self.ob.system, label, namelist, "moreInterface")
+            l = assembleList(self.ob.system, label, namelist, "moreInterface")
             if l is not None:
                 r.append(tags.p(l))
         return r
