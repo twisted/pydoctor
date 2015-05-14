@@ -15,6 +15,13 @@ class FunctionChild(Element):
         self._functionExtras = functionExtras
 
     @renderer
+    def class_(self, request, tag):
+        class_ = self.ob.css_class
+        if self.ob.parent is not self.ob:
+            class_ = 'base' + class_
+        return class_
+
+    @renderer
     def functionAnchor(self, request, tag):
         return self.ob.fullName()
 

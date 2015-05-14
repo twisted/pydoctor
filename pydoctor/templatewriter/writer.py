@@ -33,6 +33,8 @@ class TemplateWriter:
                         os.path.join(self.base, 'apidocs.css'))
         shutil.copyfile(templatefile('bootstrap.min.css'),
                         os.path.join(self.base, 'bootstrap.min.css'))
+        shutil.copyfile(templatefile('pydoctor.js'),
+                        os.path.join(self.base, 'pydoctor.js'))
 
     def writeIndividualFiles(self, obs, functionpages=False):
         self.dry_run = True
