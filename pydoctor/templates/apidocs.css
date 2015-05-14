@@ -211,7 +211,7 @@ pre {
 
 /* Private stuff */
 
-body.private-hidden .private {
+body.private-hidden #splitTables .private, body.private-hidden #childList .private {
     display: none;
 }
 
