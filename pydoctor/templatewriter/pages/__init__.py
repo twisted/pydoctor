@@ -88,11 +88,14 @@ class CommonPage(Element):
         else:
             return []
 
-    def project(self):
+    def projectURL(self):
         if self.ob.system.options.projecturl:
             return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
         else:
             return self.ob.system.projectname
+
+    def project(self):
+        return self.ob.system.projectname
 
     @renderer
     def source(self, request, tag):
@@ -164,6 +167,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
+            projectURL=self.projectURL(),
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
