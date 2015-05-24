@@ -39,4 +39,4 @@ def taglink(o, label=None):
     else:
         raise AssertionError(
             "Unknown documentation_location: %s" % o.documentation_location)
-    return tags.a(href=linktext, class_="code")(label)
+    return tags.a(href=linktext, class_="code", **{"data-type":o.kind})(label)

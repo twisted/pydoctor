@@ -1,9 +1,9 @@
 #!/usr/bin/python
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='pydoctor',
-    version='0.6b2',
+    version='15.0.0',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
     url='http://github.com/twisted/pydoctor',
