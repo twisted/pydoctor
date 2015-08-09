@@ -182,13 +182,13 @@ code > .code {
 }
 
 
-div.function {
+#childList > div {
     border-left-color: #03a9f4;
     border-left-width: 1px;
     border-left-style: solid;
 }
 
-div.function .functionHeader {
+#childList > div .functionHeader {
     font-family: monospace;
 }
 
@@ -207,4 +207,22 @@ div.function .functionHeader {
 
 pre {
     padding-left: 0px;
+}
+
+/* Private stuff */
+
+body.private-hidden #splitTables .private, body.private-hidden #childList .private {
+    display: none;
+}
+
+#showPrivate {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding: 10px;
+    opacity: 0.7;
+}
+
+#showPrivate:hover {
+    opacity: 1;
 }
