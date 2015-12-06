@@ -296,6 +296,16 @@ def main(args):
             else:
                 options.makehtml = False
 
+        # Support source date epoch:
+        # https://reproducible-builds.org/specs/source-date-epoch/
+        try:
+            system.buildtime = datetime.datetime.utcfromtimestamp(
+                int(os.environ['SOURCE_DATE_EPOCH']))
+        except ValueError, e:
+            error(e)
+        except KeyError:
+            pass
+
         if options.buildtime:
             try:
                 system.buildtime = datetime.datetime.strptime(
