@@ -544,7 +544,7 @@ def absoluteURL(request, ob):
         frag = ob.name
     elif ob.documentation_location == model.DocLocation.OWN_PAGE:
         child = ob.fullName() + '.html'
-        frag = None
+        frag = ''
     else:
         raise AssertionError("XXX")
     u = URLPath.fromRequest(request)
