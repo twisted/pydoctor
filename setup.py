@@ -10,7 +10,7 @@ from setuptools import setup
 
 setup(
     name='pydoctor',
-    version='15.0.0',
+    version='15.1.0',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
     url='http://github.com/twisted/pydoctor',
