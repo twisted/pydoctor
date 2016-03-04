@@ -226,3 +226,9 @@ body.private-hidden #splitTables .private, body.private-hidden #childList .priva
 #showPrivate:hover {
     opacity: 1;
 }
+
+/* Deprecation stuff */
+
+.deprecationNotice {
+    margin: 10px;
+}

@@ -68,3 +68,10 @@ class FunctionChild(Element):
     @renderer
     def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)
+
+    @renderer
+    def functionDeprecated(self, request, tag):
+        if hasattr(self.ob, "_deprecated_info"):
+            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
+        else:
+            return ()
