@@ -27,13 +27,18 @@ that package.
         self.builder.current.docstring = modoc
 
     def visitClass(self, node):
+
         super(TwistedModuleVisitor, self).visitClass(node)
 
         cls = self.builder.current.contents[node.name]
 
-        for ((dn, fn, o), args) in cls.decorators:
-            if fn == 'twisted.python.deprecate.deprecated':
-                addInterfaceInfoToClass(cls, args, False)
+        for a in list(cls.raw_decorators):
+            if isinstance(a, ast.CallFunc):
+                decorator = a.asList()
+                fn = cls.expandName(decorator[0].name)
+                if fn == "twisted.python.deprecate.deprecated":
+                    cls._deprecated_info = deprecatedToUsefulText(cls.name, decorator)
+
 
 
 def versionToUsefulText(version):

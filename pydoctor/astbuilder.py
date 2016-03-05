@@ -134,6 +134,7 @@ class ModuleVistor(object):
                     base = node2data(decnode)
                     args = None
                 cls.decorators.append((base, args))
+        cls.raw_decorators = node.decorators
 
         if node.lineno is not None:
             cls.linenumber = node.lineno
