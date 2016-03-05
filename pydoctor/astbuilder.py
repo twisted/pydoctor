@@ -134,7 +134,7 @@ class ModuleVistor(object):
                     base = node2data(decnode)
                     args = None
                 cls.decorators.append((base, args))
-        cls.raw_decorators = node.decorators
+        cls.raw_decorators = node.decorators if node.decorators else []
 
         if node.lineno is not None:
             cls.linenumber = node.lineno
@@ -459,4 +459,3 @@ def findAll(modast, mod):
                     continue
                 names.append(item.value)
                 mod.all = names
-

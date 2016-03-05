@@ -1,9 +1,11 @@
+from compiler import ast
 
 from twisted.web.template import Element, renderer, tags, XMLFile
 
 from pydoctor import ast_pp
 from pydoctor.templatewriter import util
 from pydoctor.templatewriter.pages import signature
+
 
 class FunctionChild(Element):
 
@@ -36,11 +38,14 @@ class FunctionChild(Element):
 
         if self.ob.decorators:
             for dec in self.ob.decorators:
-                fn = self.ob.expandName(dec.asList()[0].name)
-                # We don't want to show the deprecated decorator, it shows up
-                # as an infobox
-                if fn != "twisted.python.deprecate.deprecated":
-                    decorators = ast_pp.pp(dec)
+                if isinstance(dec.asList()[0], ast.Name):
+                    fn = self.ob.expandName(dec.asList()[0].name)
+                    # We don't want to show the deprecated decorator, it shows up
+                    # as an infobox
+                    print(fn)
+                    if fn == "twisted.python.deprecate.deprecated":
+                        break
+                decorators.append(ast_pp.pp(dec))
 
         if self.ob.kind == "Class Method" \
                and 'classmethod' not in decorators:
