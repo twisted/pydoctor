@@ -1,4 +1,6 @@
-"""Convert epydoc markup into renderable content."""
+"""
+Convert epydoc markup into renderable content.
+"""
 
 import __builtin__
 import exceptions
@@ -262,13 +264,23 @@ for _c in map(chr, range(0, 32)):
 _control_pat = re.compile('[' + _class + ']')
 
 
-def html2stan(crap):
-    crap = _control_pat.sub(lambda m:'\\x%02x'%ord(m.group()), crap)
-    crap = "<div>" + crap + "</div>"
-    crap = XMLString(crap).load()[0].children
-    if crap and crap[-1] == u'\n':
-        del crap[-1]
-    return crap
+def html2stan(html):
+    """
+    Convert HTML to a Stan structure.
+
+    @param html: A HTML string.
+    @type html: L{unicode} or L{bytes}
+    """
+    if isinstance(html, unicode):
+        html = html.encode('utf8')
+
+    html = _control_pat.sub(lambda m:'\\x%02x' % ord(m.group()), html)
+    html = "<div>" + html + "</div>"
+    html = XMLString(html).load()[0].children
+    if html and html[-1] == u'\n':
+        del html[-1]
+    return html
+
 
 class Field(object):
     """Like epydoc.markup.Field, but without the gross accessor

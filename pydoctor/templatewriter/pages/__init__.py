@@ -98,6 +98,10 @@ class CommonPage(Element):
         return self.ob.system.projectname
 
     @renderer
+    def deprecated(self, request, tag):
+        return ()
+
+    @renderer
     def source(self, request, tag):
         sourceHref = srclink(self.ob)
         if not sourceHref:
@@ -314,6 +318,14 @@ class ClassPage(CommonPage):
             del tail[-1]
             r.extend([' (via ', tail, ')'])
         return r
+
+    @renderer
+    def deprecated(self, request, tag):
+        if hasattr(self.ob, "_deprecated_info"):
+            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
+        else:
+            return ()
+
 
     def functionExtras(self, data):
         r = []

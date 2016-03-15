@@ -230,4 +230,9 @@ body.private-hidden #splitTables .private, body.private-hidden #childList .priva
 #current-docs-container {
     font-style: italic;
     padding-top: 11px;
+
+/* Deprecation stuff */
+
+.deprecationNotice {
+    margin: 10px;
 }
