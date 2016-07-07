@@ -75,26 +75,6 @@ def getparser():
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
     parser.add_option(
-        '--server', action='store_true', dest='server',
-        help=("Serve HTML on a local server."))
-    parser.add_option(
-        '--server-port', action='store', dest='server_port',
-        type=int, default=8080,
-        help=("The port for --server to use."))
-    parser.add_option(
-        '--local-only', action='store_true', dest='local_only',
-        help=("Bind the server to localhost only."))
-    parser.add_option(
-        '--facing-path', action='store', dest='facing_path',
-        help=("Set up a VHostMonster, with all the confusion that implies."))
-    parser.add_option(
-        '--edit', action='store_true', dest='edit',
-        help=("When serving HTML, allow editing."))
-    parser.add_option(
-        '--no-check', action='store_true', dest='nocheck',
-        help=("When serving HTML and allow editing, don't check all "
-              "docstrings first."))
-    parser.add_option(
         '--add-package', action='append', dest='packages',
         metavar='PACKAGEDIR', default=[],
         help=("Add a package to the system.  Can be repeated "
@@ -163,11 +143,6 @@ def getparser():
         '-q', '--quiet', action='count', dest='quietness',
         default=0,
         help=("Be quieter."))
-    parser.add_option(
-        '--auto', action="store_true", dest="auto",
-        help=("Automagic mode: analyze all modules and packages in the "
-              "current working directory and run a local server that allows "
-              "examination and editing of the docstrings."))
     def verbose_about_callback(option, opt_str, value, parser):
         d = parser.values.verbosity_details
         d[value] = d.get(value, 0) + 1
@@ -276,22 +251,11 @@ def main(args):
                 system.abbrevmapping[k] = v
 
         # step 1.5: check that we're actually going to accomplish something here
-
-        if options.auto:
-            options.server = True
-            options.edit = True
-            for fn in os.listdir('.'):
-                if os.path.isdir(fn) and \
-                   os.path.exists(os.path.join(fn, '__init__.py')):
-                    options.packages.append(fn)
-                elif fn.endswith('.py') and fn != 'setup.py':
-                    options.modules.append(fn)
-
         args = list(args) + options.modules + options.packages
 
         if options.makehtml == MAKE_HTML_DEFAULT:
             if not options.outputpickle and not options.testing \
-                   and not options.server and not options.makeintersphinx:
+                   and not options.makeintersphinx:
                 options.makehtml = True
             else:
                 options.makehtml = False
@@ -430,64 +394,6 @@ def main(args):
                 subjects=subjects,
                 basepath=options.htmloutput,
                 )
-
-
-        # Finally, if we should serve html, lets serve some html.
-        if options.server:
-            from pydoctor.server import (
-                EditingPyDoctorResource, PyDoctorResource)
-            from pydoctor.epydoc2stan import doc2stan
-            from twisted.web.server import Site
-            from twisted.web.resource import Resource
-            from twisted.web.vhost import VHostMonsterResource
-            from twisted.internet import reactor
-            if options.edit:
-                if not options.nocheck:
-                    system.msg(
-                        "server", "Checking formatting of docstrings.")
-                    included_obs = [
-                        ob for ob in system.orderedallobjects
-                        if ob.isVisible]
-                    for i, ob in enumerate(included_obs):
-                        system.progress(
-                            "server", i+1, len(included_obs),
-                            "docstrings checked, found %s problems" % (
-                            len(system.epytextproblems)))
-                        doc2stan(ob, docstring=ob.docstring)
-                root = EditingPyDoctorResource(system)
-            else:
-                root = PyDoctorResource(system)
-            if options.facing_path:
-                options.local_only = True
-                realroot = Resource()
-                cur = realroot
-                realroot.putChild('vhost', VHostMonsterResource())
-                segments = options.facing_path.split('/')
-                for segment in segments[:-1]:
-                    next = Resource()
-                    cur.putChild(segment, next)
-                    cur = next
-                cur.putChild(segments[-1], root)
-                root = realroot
-            system.msg(
-                "server",
-                "Setting up server at http://localhost:%d/" %
-                options.server_port)
-            if options.auto:
-                def wb_open():
-                    import webbrowser
-                    webbrowser.open(
-                        'http://localhost:%d/' % options.server_port)
-                reactor.callWhenRunning(wb_open)
-            from twisted.python import log
-            log.startLogging(sys.stdout)
-            site = Site(root)
-            if options.local_only:
-                interface = 'localhost'
-            else:
-                interface = ''
-            reactor.listenTCP(options.server_port, site, interface=interface)
-            reactor.run()
     except:
         if options.pdb:
             import pdb
