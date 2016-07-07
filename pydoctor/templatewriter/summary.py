@@ -4,10 +4,10 @@ from twisted.web.template import tags
 from twisted.web.template import Element, renderer, TagLoader, XMLFile
 
 from pydoctor import epydoc2stan, model
-from pydoctor.templatewriter.util import taglink, templatefile
+from pydoctor.templatewriter import util
 
 def moduleSummary(modorpack):
-    r = tags.li(taglink(modorpack), ' - ', epydoc2stan.doc2stan(modorpack, summary=True)[0])
+    r = tags.li(util.taglink(modorpack), ' - ', epydoc2stan.doc2stan(modorpack, summary=True)[0])
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.orderedcontents
@@ -25,7 +25,11 @@ def _lckey(x):
 
 class ModuleIndexPage(Element):
     filename = 'moduleIndex.html'
-    loader = XMLFile(templatefile('summary.html'))
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('summary.html'))
+
     def __init__(self, system):
         self.system = system
 
@@ -68,7 +72,7 @@ def subclassesFrom(hostsystem, cls, anchors):
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(taglink(cls), ' - ', epydoc2stan.doc2stan(cls, summary=True)[0])
+    r(util.taglink(cls), ' - ', epydoc2stan.doc2stan(cls, summary=True)[0])
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
@@ -80,7 +84,10 @@ def subclassesFrom(hostsystem, cls, anchors):
 
 class ClassIndexPage(Element):
     filename = 'classIndex.html'
-    loader = XMLFile(templatefile('summary.html'))
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('summary.html'))
 
     def __init__(self, system):
         self.system = system
@@ -147,18 +154,21 @@ class LetterElement(Element):
         for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
             obs = name2obs[name]
             if len(obs) == 1:
-                r.append(tag.clone()(name, ' - ', taglink(obs[0])))
+                r.append(tag.clone()(name, ' - ', util.taglink(obs[0])))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    ul(tags.li(taglink(ob)))
+                    ul(tags.li(util.taglink(ob)))
                 r.append(tag.clone()(name, ul))
         return r
 
 
 class NameIndexPage(Element):
     filename = 'nameIndex.html'
-    loader = XMLFile(templatefile('nameIndex.html'))
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('nameIndex.html'))
 
     def __init__(self, system):
         self.system = system
@@ -189,7 +199,10 @@ class NameIndexPage(Element):
 
 class IndexPage(Element):
     filename = 'index.html'
-    loader = XMLFile(templatefile('index.html'))
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('index.html'))
 
     def __init__(self, system):
         self.system = system
@@ -221,7 +234,7 @@ class IndexPage(Element):
         else:
             root, = self.system.rootobjects
             return tag.clear()(
-                "Start at ", taglink(root),
+                "Start at ", util.taglink(root),
                 ", the root ", root.kind.lower(), ".")
 
     @renderer
@@ -235,7 +248,7 @@ class IndexPage(Element):
     def roots(self, request, tag):
         r = []
         for o in self.system.rootobjects:
-            r.append(tag.clone().fillSlots(root=taglink(o)))
+            r.append(tag.clone().fillSlots(root=util.taglink(o)))
         return r
 
     @renderer
@@ -258,7 +271,11 @@ def hasdocstring(ob):
 
 class UndocumentedSummaryPage(Element):
     filename = 'undoccedSummary.html'
-    loader = XMLFile(templatefile('summary.html'))
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('summary.html'))
+
     def __init__(self, system):
         self.system = system
 
@@ -280,7 +297,7 @@ class UndocumentedSummaryPage(Element):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", taglink(o)))
+            tag(tags.li(o.kind, " - ", util.taglink(o)))
         return tag
 
 summarypages = [

@@ -4,8 +4,7 @@ from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.util import \
-     templatefile, srclink, taglink
+from pydoctor.templatewriter import util
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -52,13 +51,16 @@ class DocGetter(object):
         return epydoc2stan.doc2stan(ob, summary=summary)[0]
 
 class CommonPage(Element):
-    loader = XMLFile(templatefile('common.html'))
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
+
+    @property
+    def loader(self):
+        return XMLFile(util.templatefile('common.html'))
 
     def title(self):
         return self.ob.fullName()
@@ -79,10 +81,10 @@ class CommonPage(Element):
                 parent = parent.parent
             parts = []
             while parent.parent:
-                parts.append(taglink(parent, parent.name))
+                parts.append(util.taglink(parent, parent.name))
                 parts.append('.')
                 parent = parent.parent
-            parts.append(taglink(parent, parent.name))
+            parts.append(util.taglink(parent, parent.name))
             parts.reverse()
             return 'Part of ', tags.code(parts)
         else:
@@ -100,7 +102,7 @@ class CommonPage(Element):
 
     @renderer
     def source(self, request, tag):
-        sourceHref = srclink(self.ob)
+        sourceHref = util.srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
@@ -233,7 +235,7 @@ def assembleList(system, label, lst, idbase):
         return None
     def one(item):
         if item in system.allobjects:
-            return taglink(system.allobjects[item])
+            return util.taglink(system.allobjects[item])
         else:
             return item
     def commasep(items):
@@ -278,7 +280,7 @@ class ClassPage(CommonPage):
                 if o is None:
                     r.append(tags.span(title=m)(n))
                 else:
-                    r.append(taglink(o, n))
+                    r.append(util.taglink(o, n))
                 if i != len(zipped)-1:
                     r.append(', ')
             r.append(')')
@@ -304,12 +306,12 @@ class ClassPage(CommonPage):
     def baseName(self, data):
         r = []
         source_base = data[0]
-        r.append(taglink(source_base, source_base.name))
+        r.append(util.taglink(source_base, source_base.name))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
             for b in reversed(bases_to_mention):
-                tail.append(taglink(b, b.name))
+                tail.append(util.taglink(b, b.name))
                 tail.append(', ')
             del tail[-1]
             r.extend([' (via ', tail, ')'])
@@ -329,7 +331,7 @@ class ClassPage(CommonPage):
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
-            r.append(tags.div(class_="interfaceinfo")('overrides ', taglink(overridden)))
+            r.append(tags.div(class_="interfaceinfo")('overrides ', util.taglink(overridden)))
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
@@ -371,7 +373,7 @@ class ZopeInterfaceClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         r = []
         if imeth:
-            r.append(tags.div(class_="interfaceinfo")('from ', taglink(imeth, imeth.parent.fullName())))
+            r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
         return r
 
