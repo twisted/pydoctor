@@ -42,7 +42,6 @@ class FunctionChild(Element):
                     fn = self.ob.expandName(dec.asList()[0].name)
                     # We don't want to show the deprecated decorator, it shows up
                     # as an infobox
-                    print(fn)
                     if fn == "twisted.python.deprecate.deprecated":
                         break
                 decorators.append(ast_pp.pp(dec))
