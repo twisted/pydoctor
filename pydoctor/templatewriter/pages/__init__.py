@@ -168,7 +168,6 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
-            projectURL=self.projectURL(),
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
