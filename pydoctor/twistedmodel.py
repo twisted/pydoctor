@@ -3,6 +3,9 @@
 from pydoctor import model, ast_pp, zopeinterface
 from compiler import ast
 
+from twisted.python.versions import Version
+from twisted.python.deprecate import _getDeprecationWarningString
+
 class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
 
     def visitCallFunc_twisted_python_util_moduleMovedForSplit(self, funcName, node):
@@ -42,14 +45,11 @@ that package.
 
 
 def versionToUsefulText(version):
-    from twisted.python.versions import Version
 
     return Version(*[x.value for x in version.asList()[1:] if x])
 
 
 def deprecatedToUsefulText(name, deprecated):
-
-    from twisted.python.deprecate import _getDeprecationWarningString
 
     version = versionToUsefulText(deprecated[1])
     if deprecated[2]:

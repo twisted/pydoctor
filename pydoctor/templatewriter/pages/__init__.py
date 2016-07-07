@@ -88,14 +88,11 @@ class CommonPage(Element):
         else:
             return []
 
-    def projectURL(self):
+    def project(self):
         if self.ob.system.options.projecturl:
             return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
         else:
             return self.ob.system.projectname
-
-    def project(self):
-        return self.ob.system.projectname
 
     @renderer
     def deprecated(self, request, tag):
