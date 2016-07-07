@@ -1,6 +1,7 @@
 """Support for a few things specific to documenting Twisted."""
 
 from pydoctor import model, ast_pp, zopeinterface
+from compiler import ast
 
 class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
 
@@ -25,12 +26,66 @@ that package.
        'projectURL': projectURL}
         self.builder.current.docstring = modoc
 
+    def visitClass(self, node):
+
+        super(TwistedModuleVisitor, self).visitClass(node)
+
+        cls = self.builder.current.contents[node.name]
+
+        for a in list(cls.raw_decorators):
+            if isinstance(a, ast.CallFunc):
+                decorator = a.asList()
+                fn = cls.expandName(decorator[0].name)
+                if fn == "twisted.python.deprecate.deprecated":
+                    cls._deprecated_info = deprecatedToUsefulText(cls.name, decorator)
+
+
+
+def versionToUsefulText(version):
+    from twisted.python.versions import Version
+
+    return Version(*[x.value for x in version.asList()[1:] if x])
+
+
+def deprecatedToUsefulText(name, deprecated):
+
+    from twisted.python.deprecate import _getDeprecationWarningString
+
+    version = versionToUsefulText(deprecated[1])
+    if deprecated[2]:
+        if isinstance(deprecated[2], ast.Keyword):
+            replacement = deprecated[2].asList()[1].value
+        else:
+            replacement = deprecated[2].value
+    else:
+        replacement = None
+
+    return _getDeprecationWarningString(name, version, replacement=replacement) + "."
+
+
+class TwistedFunction(zopeinterface.ZopeInterfaceFunction):
+
+    def docsources(self):
+
+        if self.decorators:
+            for a in list(self.decorators):
+                if isinstance(a, ast.CallFunc):
+                    decorator = a.asList()
+                    fn = self.expandName(decorator[0].name)
+                    if fn == "twisted.python.deprecate.deprecated":
+                        self._deprecated_info = deprecatedToUsefulText(self.name, decorator)
+
+        for x in super(TwistedFunction, self).docsources():
+            yield x
+
 
 class TwistedASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
     ModuleVistor = TwistedModuleVisitor
 
+
 class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
     defaultBuilder = TwistedASTBuilder
+    Function = TwistedFunction
 
     def privacyClass(self, obj):
         o = obj
@@ -47,4 +102,3 @@ class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
                 return model.PrivacyClass.HIDDEN
             o = o.parent
         return super(TwistedSystem, self).privacyClass(obj)
-

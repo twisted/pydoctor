@@ -88,11 +88,18 @@ class CommonPage(Element):
         else:
             return []
 
-    def project(self):
+    def projectURL(self):
         if self.ob.system.options.projecturl:
             return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
         else:
             return self.ob.system.projectname
+
+    def project(self):
+        return self.ob.system.projectname
+
+    @renderer
+    def deprecated(self, request, tag):
+        return ()
 
     @renderer
     def source(self, request, tag):
@@ -164,6 +171,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
+            projectURL=self.projectURL(),
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
@@ -310,6 +318,14 @@ class ClassPage(CommonPage):
             del tail[-1]
             r.extend([' (via ', tail, ')'])
         return r
+
+    @renderer
+    def deprecated(self, request, tag):
+        if hasattr(self.ob, "_deprecated_info"):
+            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
+        else:
+            return ()
+
 
     def functionExtras(self, data):
         r = []
