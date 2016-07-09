@@ -7,7 +7,7 @@ matrix:
     - python: pypy
       env: TOX_ENV=pypy
     - python: 2.7
-      env: TOX_ENV=py27-codecov-travis
+      env: TOX_ENV=test-py27-codecov-travis
 
 install:
     - pip install tox
