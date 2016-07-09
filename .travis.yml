@@ -5,7 +5,7 @@ matrix:
     - python: 2.7
       env: TOX_ENV=pyflakes
     - python: pypy
-      env: TOX_ENV=pypy
+      env: TOX_ENV=test-pypy
     - python: 2.7
       env: TOX_ENV=test-py27-codecov-travis
 
