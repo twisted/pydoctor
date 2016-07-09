@@ -1,10 +1,13 @@
 language: python
-python: 2.7
 
-env:
-    - TOX_ENV=pyflakes
-    - TOX_ENV=pypy
-    - TOX_ENV=py27
+matrix:
+  include:
+    - python: 2.7
+      env: TOX_ENV=pyflakes
+    - python: pypy
+      env: TOX_ENV=test-pypy
+    - python: 2.7
+      env: TOX_ENV=test-py27-codecov-travis
 
 install:
     - pip install tox
