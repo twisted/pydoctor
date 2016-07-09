@@ -4,6 +4,9 @@ pydoctor
 .. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
     :target: https://travis-ci.org/twisted/pydoctor
 
+.. image:: https://codecov.io/gh/twisted/pydoctor/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/twisted/pydoctor
+
 This is 'pydoctor', an API documentation generator that works by
 static analysis.
 
