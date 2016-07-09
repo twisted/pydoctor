@@ -1,3 +1,6 @@
+import sys
+from io import BytesIO
+
 from pydoctor import epydoc2stan
 from pydoctor import model
 from pydoctor.sphinx import SphinxInventory
@@ -98,9 +101,11 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     assert 'http://tm.tld/some.html' == result
 
 
-def test_EpydocLinker_translate_identifier_xref_intersphinx():
+def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     """
-    Return the link from inventory.
+    Returns the link from Sphinx inventory based on a cross reference
+    ID specified in absolute dotted path and with a custom pretty text for the
+    URL.
     """
     system = model.System()
     inventory = SphinxInventory(system.msg, 'some-project')
@@ -116,3 +121,68 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx():
         '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
         )
     assert expected == result
+
+
+def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
+    """
+    Return the link from inventory using short names, by resolving them based
+    on the imports done in the module.
+    """
+    system = model.System()
+    inventory = SphinxInventory(system.msg, 'some-project')
+    inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    # Here we set up the target module as it would have this import.
+    # from ext_package import ext_module
+    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
+    target.contents['ext_module'] = model.Module(
+        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+
+    sut = epydoc2stan._EpydocLinker(target)
+
+    # This is called for the L{ext_module<Pretty Text>} markup.
+    result = sut.translate_identifier_xref(
+        'ext_module', 'Pretty Text')
+
+    expected = (
+        '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
+        )
+    assert expected == result
+
+
+def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
+    """
+    A message is sent to stdout when no link could be found for the reference,
+    while returning the reference name without an A link tag.
+    The message contains the full name under which the reference was resolved.
+    """
+    system = model.System()
+    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    # Here we set up the target module as it would have this import.
+    # from ext_package import ext_module
+    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
+    target.contents['ext_module'] = model.Module(
+        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+    stdout = BytesIO()
+    sut = epydoc2stan._EpydocLinker(target)
+
+    try:
+        # FIXME: https://github.com/twisted/pydoctor/issues/112
+        # We no have this ugly hack to capture stdout.
+        previousStdout = sys.stdout
+        sys.stdout = stdout
+        # This is called for the L{ext_module} markup.
+        result = sut.translate_identifier_xref(
+            fullID='ext_module', prettyID='ext_module')
+    finally:
+        sys.stdout = previousStdout
+
+
+    assert '<code>ext_module</code>' == result
+
+    expected = (
+        b"ignore-name:0 invalid ref to 'ext_module' "
+        b"resolved as 'ext_package.ext_module'\n"
+        )
+    assert expected == stdout.getvalue()
