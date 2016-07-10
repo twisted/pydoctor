@@ -23,7 +23,6 @@ notifications:
 # trigger a build.
 deploy:
   provider: pypi
-  server: https://testpypi.python.org/pypi
   # twistedchecker-robot is associated with adi.roiban email address from
   # Gmail. It uses a random password which was not recorded in plain text.
   user: twistedchecker-robot
