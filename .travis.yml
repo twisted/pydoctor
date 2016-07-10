@@ -16,3 +16,21 @@ script: tox -e $TOX_ENV
 
 notifications:
     email: false
+
+# Do an automatic PyPi release when a tag is created.
+# http://docs.travis-ci.com/user/deployment/pypi/
+# Make sure builds are triggered for any push so that the tag push will also
+# trigger a build.
+deploy:
+  provider: pypi
+  server: https://testpypi.python.org/pypi
+  # twistedchecker-robot is associated with adi.roiban email address from
+  # Gmail. It uses a random password which was not recorded in plain text.
+  user: twistedchecker-robot
+  password:
+    secure: VS3uq3pdprwQUQmMFlS0ieXTX7UKvNjAQi/6CXfxqcJVlExVojsiSwOIgE76r74TuLRKDzlYD+G6dGkvaRmlfV2GVMhChUCN71Y0QtFPB68M9MuFyf/ICHb0zhs2f53/86m+ThphCOQwnOYxDeramR4TAsQR95buDO2Ko590vnQ=
+  on:
+    tags: true
+    # All branches is still required.
+    # https://github.com/travis-ci/travis-ci/issues/1675
+    all_branches: true
