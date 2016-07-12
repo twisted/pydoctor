@@ -174,13 +174,14 @@ class _EpydocLinker(object):
         if target is not None:
             return self._objLink(target, prettyID)
 
-        target = self.look_for_intersphinx(fullID)
+        target = self.look_for_intersphinx(fullerID)
         if target:
             return '<a href="%s"><code>%s</code></a>'%(target, prettyID)
 
         self.obj.system.msg(
-            "translate_identifier_xref", "%s:%s invalid ref to %s" % (
-                self.obj.fullName(), self.obj.linenumber, fullID),
+            "translate_identifier_xref", "%s:%s invalid ref to '%s' "
+            "resolved as '%s'" % (
+                self.obj.fullName(), self.obj.linenumber, fullID, fullerID),
             thresh=-1)
         return '<code>%s</code>'%(prettyID,)
 
