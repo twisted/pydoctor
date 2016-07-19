@@ -11,7 +11,7 @@ matrix:
     - python: 2.7
       env: TOX_ENV=twisted-apidoc
 
- allow_failures:
+  allow_failures:
     # Twisted trunk is broken for now.
     - env: TOX_ENV=twisted-apidoc
 
