@@ -25,6 +25,15 @@ The default HTML generator requires Twisted.
 There are some more notes in the doc/ subdirectory.
 
 
+Tox development environment
+---------------------------
+
+Since Python 3 is not yet supported, you the case in which your default
+tox runs with Python 3, call the tox as::
+
+    python2 -m tox -e pyflakes
+
+
 Sphinx Integration
 ------------------
 
