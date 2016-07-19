@@ -31,6 +31,28 @@ class PersistentStringIO(StringIO):
         return self.buf
 
 
+def make_SphinxInventory(logger=object()):
+    """
+    Return a SphinxInventory.
+    """
+    return SphinxInventory(logger=logger, project_name='project_name')
+
+
+def make_SphinxInventoryWithLog():
+    """
+    Return a SphinxInventory with patched log.
+    """
+    log = []
+    def msg(section, msg, thresh=0):
+        """
+        Partial implementation of pydoctor.model.System.msg
+        """
+        log.append((section, msg, thresh))
+
+    inventory = make_SphinxInventory(logger=msg)
+    return (inventory, log)
+
+
 def test_initialization():
     """
     Is initialized with logger and project name.
@@ -40,7 +62,7 @@ def test_initialization():
 
     sut = SphinxInventory(logger=logger, project_name=name)
 
-    assert logger is sut.msg
+    assert logger is sut.info
     assert name is sut.project_name
 
 
@@ -52,7 +74,8 @@ def test_generate_empty_functional():
     """
     project_name = 'some-name'
     log = []
-    logger = lambda part, message: log.append((part, message))
+    logger = lambda section, message, thresh=0: log.append((
+        section, message, thresh))
     sut = SphinxInventory(logger=logger, project_name=project_name)
     output = PersistentStringIO()
     sut._openFileForWriting = lambda path: closing(output)
@@ -61,7 +84,8 @@ def test_generate_empty_functional():
 
     expected_log = [(
         'sphinx',
-        'Generating objects inventory at base-path/objects.inv'
+        'Generating objects inventory at base-path/objects.inv',
+        0
         )]
     assert expected_log == log
 
@@ -72,12 +96,6 @@ def test_generate_empty_functional():
 x\x9c\x03\x00\x00\x00\x00\x01"""
     assert expected_ouput == output.getvalue()
 
-
-def make_SphinxInventory():
-    """
-    Return a SphinxInventory.
-    """
-    return SphinxInventory(logger=object(), project_name='project_name')
 
 
 def test_generateContent():
@@ -192,24 +210,13 @@ def test_generateLine_unknown():
     When object type is uknown a message is logged and is handled as
     generic object.
     """
-    log = []
-    sut = make_SphinxInventory()
-    sut.msg = lambda part, message: log.append((part, message))
+    sut, log = make_SphinxInventoryWithLog()
 
     result = sut._generateLine(
         UnknownType('ignore-system', 'unknown1', 'ignore-docstring'))
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
 
-
-def make_SphinxInventoryWithLog():
-    """
-    Return a SphinxInventory with patched log.
-    """
-    inventory = make_SphinxInventory()
-    log = []
-    inventory.msg = lambda part, msg: log.append((part, msg))
-    return (inventory, log)
 
 
 def test_getPayload_empty():
@@ -259,7 +266,7 @@ not-valid-zlib-content"""
 
     assert '' == result
     assert [(
-        'sphinx', 'Failed to uncompress inventory from http://tm.tld',
+        'sphinx', 'Failed to uncompress inventory from http://tm.tld', -1,
         )] == log
 
 
@@ -325,7 +332,7 @@ def test_update_bad_url():
 
     assert sut._links == {}
     expected_log = [(
-        'sphinx', 'Failed to get remote base url for really.bad.url'
+        'sphinx', 'Failed to get remote base url for really.bad.url', -1
         )]
     assert expected_log == log
 
@@ -341,7 +348,9 @@ def test_update_fail():
 
     assert sut._links == {}
     expected_log = [(
-        'sphinx', 'Failed to get object inventory from http://some.tld/o.inv'
+        'sphinx',
+        'Failed to get object inventory from http://some.tld/o.inv',
+        -1,
         )]
     assert expected_log == log
 
@@ -392,8 +401,9 @@ def test_parseInventory_invalid_lines():
     assert [
         (
             'sphinx',
-            'Failed to parse line "bad.attr bad format" for http://tm.tld'
+            'Failed to parse line "bad.attr bad format" for http://tm.tld',
+            -1,
             ),
-        ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld'),
-        ('sphinx', 'Failed to parse line "" for http://tm.tld'),
+        ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
+        ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
         ] == log
