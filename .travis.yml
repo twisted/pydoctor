@@ -8,6 +8,12 @@ matrix:
       env: TOX_ENV=test-pypy
     - python: 2.7
       env: TOX_ENV=test-py27-codecov-travis
+    - python: 2.7
+      env: TOX_ENV=twisted-apidoc
+
+ allow_failures:
+    # Twisted trunk is broken for now.
+    - env: TOX_ENV=twisted-apidoc
 
 install:
     - pip install tox
