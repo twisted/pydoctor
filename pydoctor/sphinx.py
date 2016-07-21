@@ -17,15 +17,16 @@ class SphinxInventory(object):
 
     def __init__(self, logger, project_name):
         self.project_name = project_name
-        self.msg = logger
+        self.info = logger
         self._links = {}
+        self.error = lambda where, message: logger(where, message, thresh=-1)
 
     def generate(self, subjects, basepath):
         """
         Generate Sphinx objects inventory version 2 at `basepath`/objects.inv.
         """
         path = os.path.join(basepath, 'objects.inv')
-        self.msg('sphinx', 'Generating objects inventory at %s' % (path,))
+        self.info('sphinx', 'Generating objects inventory at %s' % (path,))
 
         with self._openFileForWriting(path) as target:
             target.write(self._generateHeader())
@@ -96,7 +97,8 @@ class SphinxInventory(object):
             domainname = 'attribute'
         else:
             domainname = 'obj'
-            self.msg('sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
+            self.error(
+                'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
         return '%s py:%s -1 %s %s\n' % (full_name, domainname, url, display)
 
@@ -106,7 +108,7 @@ class SphinxInventory(object):
         """
         parts = url.rsplit('/', 1)
         if len(parts) != 2:
-            self.msg(
+            self.error(
                 'sphinx', 'Failed to get remote base url for %s' % (url,))
             return
 
@@ -115,7 +117,7 @@ class SphinxInventory(object):
         data = self._getURL(url)
 
         if not data:
-            self.msg(
+            self.error(
                 'sphinx', 'Failed to get object inventory from %s' % (url, ))
             return
 
@@ -151,7 +153,7 @@ class SphinxInventory(object):
         try:
             return zlib.decompress(payload)
         except:
-            self.msg(
+            self.error(
                 'sphinx',
                 'Failed to uncompress inventory from %s' % (base_url,))
             return ''
@@ -164,7 +166,7 @@ class SphinxInventory(object):
         for line in payload.splitlines():
             parts = line.split(' ', 4)
             if len(parts) != 5:
-                self.msg(
+                self.error(
                     'sphinx',
                     'Failed to parse line "%s" for %s' % (line, base_url),
                     )
