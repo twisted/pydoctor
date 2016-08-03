@@ -175,6 +175,11 @@ class _EpydocLinker(object):
             return self._objLink(target, prettyID)
 
         target = self.look_for_intersphinx(fullerID)
+        if not target:
+            # FIXME: https://github.com/twisted/pydoctor/issues/125
+            # expandName is unreliable so in the case fullerID fails, we
+            # try our luck with fullID.
+            target = self.look_for_intersphinx(fullID)
         if target:
             return '<a href="%s"><code>%s</code></a>'%(target, prettyID)
 
