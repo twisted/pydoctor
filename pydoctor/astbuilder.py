@@ -324,7 +324,7 @@ class ModuleVistor(object):
                 defaults.append(ast_pp.pp(default))
             except (KeyboardInterrupt, SystemExit):
                 raise
-            except Exception, e:
+            except Exception as e:
                 self.builder.warning("unparseable default",
                                      "%s: %s %r"%(e.__class__.__name__,
                                                   e, default))
