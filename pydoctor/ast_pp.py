@@ -9,6 +9,8 @@ The code was stolen from exarkun's svn.twistedmatrix.com sandbox:
 U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
 """
 
+from __future__ import print_function
+
 from cStringIO import StringIO
 from compiler import walk
 
@@ -371,5 +373,5 @@ if __name__ == '__main__':
     from compiler import parse
     import sys
     ast = parse(sys.argv[1])
-    print ast
-    print pp(ast)
+    print(ast)
+    print(pp(ast))

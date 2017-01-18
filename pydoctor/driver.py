@@ -1,5 +1,7 @@
 """The command-line parsing and entry point."""
 
+from __future__ import print_function
+
 from pydoctor import model, zopeinterface
 from pydoctor.sphinx import SphinxInventory
 import sys, os, datetime
@@ -9,7 +11,7 @@ BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 def error(msg, *args):
     if args:
         msg = msg%args
-    print >> sys.stderr, msg
+    print(msg, file=sys.stderr)
     sys.exit(1)
 
 def findClassFromDottedName(dottedname, optionname):

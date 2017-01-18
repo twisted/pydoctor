@@ -1,5 +1,7 @@
 """Extremely experimental code for augmenting pydoctor's data by introspection."""
 
+from __future__ import print_function
+
 from pydoctor import model, astbuilder
 import types, sys, os, warnings, inspect
 
@@ -39,18 +41,18 @@ def loadModulesForSystem(system):
             except ImportError, e:
                 errcount += 1
                 if verbosity > 0:
-                    print "could not import", m.fullName(), e
+                    print("could not import", m.fullName(), e)
             except Exception, e:
                 errcount += 1
                 if verbosity > 0:
-                    print "error importing", m.fullName(), e
+                    print("error importing", m.fullName(), e)
             else:
                 result[m] = realMod
 
-            print '\r', i+1-errcount, '/', len(modlist), 'modules imported',
-            print errcount, 'failed',
+            print('\r', i+1-errcount, '/', len(modlist), 'modules imported', end='')
+            print(errcount, 'failed', end='')
             sys.stdout.flush()
-        print
+        print()
     finally:
         sys.path[:] = savepath
         warnings.filters[:] = savefilters
@@ -74,7 +76,7 @@ def methChecker(builder, name, OBJ):
         return
     f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
-        print '**meth**', builder.current, '*************'
+        print('**meth**', builder.current, '*************')
     try:
         argspec = inspect.getargspec(OBJ)
         if argspec[0]:
@@ -93,7 +95,7 @@ def typeChecker(builder, name, OBJ):
         return
     cls = builder.pushClass(OBJ.__name__, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
-        print '**type**', builder.current, '*************'
+        print('**type**', builder.current, '*************')
     try:
         for BASE in OBJ.__bases__:
             baseName = getattr(BASE, '__name__', '?')
@@ -127,7 +129,7 @@ def funcChecker(builder, name, OBJ):
                 return
     f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
-        print '**func**', builder.current, '*************'
+        print('**func**', builder.current, '*************')
     try:
         argspec = inspect.getargspec(OBJ)
         f.argspec = argspec
@@ -145,7 +147,7 @@ def checkDict(builder, aDict):
             o = c.contents[name]
             if hasattr(ob, '__dict__') and not isinstance(ob, types.FunctionType):
                 if builder.system.options.verbosity > 1:
-                    print 'pushing', o
+                    print('pushing', o)
                 builder.push(o)
                 checkDict(builder, ob.__dict__)
                 builder.pop(o)
@@ -156,7 +158,7 @@ def checkDict(builder, aDict):
         checker = _types.get(type(OBJ))
         if checker is not None:
             if builder.system.options.verbosity > 1:
-                print 'checking', name, 'in', c
+                print('checking', name, 'in', c)
             checker(builder, name, OBJ)
 
 def liveCheck(system, builder=None):
@@ -165,7 +167,7 @@ def liveCheck(system, builder=None):
     realMods = loadModulesForSystem(system)
     for m in realMods:
         if builder.system.options.verbosity > 1:
-            print 'checking', m
+            print('checking', m)
         builder.push(m)
         checkDict(builder, realMods[m].__dict__)
         builder.pop(m)

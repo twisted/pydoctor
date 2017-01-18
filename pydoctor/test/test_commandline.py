@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor import driver
 import sys, cStringIO
 
@@ -5,7 +7,7 @@ def geterrtext(*options):
     options = list(options)
     se = sys.stderr
     f = cStringIO.StringIO()
-    print options
+    print(options)
     sys.stderr = f
     try:
         try:
