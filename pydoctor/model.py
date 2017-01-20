@@ -459,7 +459,7 @@ class System(object):
             for system in [self] + self.moresystems + self.subsystems:
                 if name in system.allobjects:
                     return system.allobjects[name]
-            raise KeyError, name
+            raise KeyError(name)
         self.__dict__.update(state)
         for system in [self] + self.moresystems + self.subsystems:
             if 'allobjects' not in system.__dict__:
