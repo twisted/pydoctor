@@ -1,9 +1,10 @@
 from __future__ import print_function
 
-import cStringIO
 import os
 import shutil
 import tempfile
+
+from twisted.python.compat import NativeStringIO
 
 from pydoctor import templatewriter, model
 from pydoctor.templatewriter import pages, writer
@@ -11,7 +12,7 @@ from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
 def flatten(t):
-    io = cStringIO.StringIO()
+    io = NativeStringIO()
     writer.flattenToFile(io, t)
     return io.getvalue()
 
@@ -19,7 +20,7 @@ def flatten(t):
 def getHTMLOf(ob):
     wr = templatewriter.TemplateWriter('')
     wr.system = ob.system
-    f = cStringIO.StringIO()
+    f = NativeStringIO()
     wr.writeDocsForOne(ob, f)
     return f.getvalue()
 

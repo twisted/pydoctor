@@ -11,14 +11,14 @@ U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
 
 from __future__ import print_function
 
-from cStringIO import StringIO
+from twisted.python.compat import NativeStringIO
 from compiler import walk
 
 class SourceWriter(object):
     _i = 0
 
     def __init__(self):
-        self.s = StringIO()
+        self.s = NativeStringIO()
 
     def w(self, s):
         self.s.write(s)

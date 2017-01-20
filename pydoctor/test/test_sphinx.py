@@ -4,14 +4,15 @@ Tests for Sphinx integration.
 from __future__ import print_function
 
 from contextlib import closing
-from StringIO import StringIO
 import zlib
+
+from twisted.python.compat import NativeStringIO
 
 from pydoctor import model
 from pydoctor.sphinx import SphinxInventory
 
 
-class PersistentStringIO(StringIO):
+class PersistentStringIO(NativeStringIO):
     """
     A custom stringIO which keeps content after file is closed.
     """
