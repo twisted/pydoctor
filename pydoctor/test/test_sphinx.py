@@ -23,16 +23,6 @@ class PersistentStringIO(NativeStringIO):
         pass
 
 
-    def getvalue(self):
-        """
-        Retrieve the entire contents of the "file" at any time even after
-        the StringIO object's close() method is called.
-        """
-        if self.buflist:
-            self.buf += ''.join(self.buflist)
-            self.buflist = []
-        return self.buf
-
 
 def make_SphinxInventory(logger=object()):
     """
