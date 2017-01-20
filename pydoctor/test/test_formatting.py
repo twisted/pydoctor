@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor import html, model
 from unittest.case import SkipTest
 

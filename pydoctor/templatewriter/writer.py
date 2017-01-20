@@ -1,5 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
+from __future__ import print_function
+
 from pydoctor.templatewriter.util import link, templatefile
 from pydoctor.templatewriter import DOCTYPE, pages, summary
 from pydoctor import model

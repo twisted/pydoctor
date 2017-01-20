@@ -1,6 +1,8 @@
 """
 Tests for Sphinx integration.
 """
+from __future__ import print_function
+
 from contextlib import closing
 from StringIO import StringIO
 import zlib

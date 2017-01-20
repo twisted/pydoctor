@@ -1,5 +1,7 @@
 """Support for a few things specific to documenting Twisted."""
 
+from __future__ import print_function
+
 from pydoctor import model, ast_pp, zopeinterface
 from compiler import ast
 

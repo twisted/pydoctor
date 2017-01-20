@@ -48,4 +48,3 @@ def test_projectbasedir():
     options, args = driver.parse_args([
             "--project-base-dir", value])
     assert options.projectbasedirectory == value
-

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor.test.test_packages import processPackage
 from pydoctor.liveobjectchecker import liveCheck
 
