@@ -20,8 +20,8 @@ class PersistentStringIO(NativeStringIO):
         """
         Close, but keep the memory buffer and seek position.
         """
-        if not self.closed:
-            self.closed = True
+        pass
+
 
     def getvalue(self):
         """
