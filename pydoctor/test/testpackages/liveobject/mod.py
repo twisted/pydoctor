@@ -9,4 +9,4 @@ m = C().m
 class B:
     pass
 
-exec '''class D(B): pass'''
+exec('''class D(B): pass''')

@@ -267,7 +267,7 @@ def main(args):
         try:
             system.buildtime = datetime.datetime.utcfromtimestamp(
                 int(os.environ['SOURCE_DATE_EPOCH']))
-        except ValueError, e:
+        except ValueError as e:
             error(e)
         except KeyError:
             pass
@@ -276,7 +276,7 @@ def main(args):
             try:
                 system.buildtime = datetime.datetime.strptime(
                     options.buildtime, BUILDTIME_FORMAT)
-            except ValueError, e:
+            except ValueError as e:
                 error(e)
 
         # step 2: add any packages and modules

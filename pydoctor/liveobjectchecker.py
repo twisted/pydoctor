@@ -38,11 +38,11 @@ def loadModulesForSystem(system):
         for i, m in enumerate(modlist):
             try:
                 realMod = __import__(m.fullName(), {}, {}, ['*'])
-            except ImportError, e:
+            except ImportError as e:
                 errcount += 1
                 if verbosity > 0:
                     print("could not import", m.fullName(), e)
-            except Exception, e:
+            except Exception as e:
                 errcount += 1
                 if verbosity > 0:
                     print("error importing", m.fullName(), e)

@@ -46,7 +46,7 @@ def test_function_argspec():
     mod = fromText(src)
     docfunc, = mod.contents.values()
     ns = {}
-    exec src in ns
+    exec(src, ns)
     realf = ns['f']
     inspectargspec = inspect.getargspec(realf)
     assert inspectargspec[:-1] == docfunc.argspec[:-1]
