@@ -28,7 +28,7 @@ def get_parser(formatname):
     try:
         mod = __import__('epydoc.markup.' + formatname,
                          globals(), locals(), ['parse_docstring'])
-    except ImportError, e:
+    except ImportError as e:
         return None, e
     else:
         return mod.parse_docstring, None
@@ -535,7 +535,7 @@ def doc2stan(obj, summary=False, docstring=None):
     doc = inspect.getdoc(crappit)
     try:
         pdoc = parse_docstring(doc, errs)
-    except Exception, e:
+    except Exception as e:
         errs = [e.__class__.__name__ +': ' + str(e)]
     if errs:
         reportErrors(source, errs)
@@ -544,7 +544,7 @@ def doc2stan(obj, summary=False, docstring=None):
     if pdoc is not None:
         try:
             crap = pdoc.to_html(_EpydocLinker(source))
-        except Exception, e:
+        except Exception as e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return (boringDocstring(doc, summary),
                     [e.__class__.__name__ +': ' + str(e)])
