@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage

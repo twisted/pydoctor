@@ -1,5 +1,7 @@
 """Miscellaneous utilities."""
 
+from __future__ import print_function
+
 from pydoctor import model
 
 from twisted.web.template import tags

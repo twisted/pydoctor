@@ -1,6 +1,8 @@
 """
 Unit tests for model.
 """
+from __future__ import print_function
+
 from pydoctor import model
 from pydoctor.driver import parse_args
 import zlib

@@ -1,5 +1,7 @@
 """Support for Zope interfaces."""
 
+from __future__ import print_function
+
 from pydoctor import model, ast_pp, astbuilder
 from compiler import ast
 import re

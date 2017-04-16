@@ -1,11 +1,15 @@
+from __future__ import print_function
+
+from twisted.python.compat import NativeStringIO
+
 from pydoctor import driver
-import sys, cStringIO
+import sys
 
 def geterrtext(*options):
     options = list(options)
     se = sys.stderr
-    f = cStringIO.StringIO()
-    print options
+    f = NativeStringIO()
+    print(options)
     sys.stderr = f
     try:
         try:
@@ -46,4 +50,3 @@ def test_projectbasedir():
     options, args = driver.parse_args([
             "--project-base-dir", value])
     assert options.projectbasedirectory == value
-

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 from io import BytesIO
 
@@ -182,7 +184,8 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
     assert '<code>ext_module</code>' == result
 
     expected = (
-        b"ignore-name:0 invalid ref to 'ext_module' "
-        b"resolved as 'ext_package.ext_module'\n"
+        "ignore-name:0 invalid ref to 'ext_module' "
+        "resolved as 'ext_package.ext_module'\n"
         )
+
     assert expected == stdout.getvalue()

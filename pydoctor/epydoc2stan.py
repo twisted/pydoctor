@@ -2,6 +2,8 @@
 Convert epydoc markup into renderable content.
 """
 
+from __future__ import print_function
+
 import __builtin__
 import exceptions
 import inspect

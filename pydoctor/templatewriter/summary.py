@@ -1,5 +1,7 @@
 """Classes that generate the summary pages."""
 
+from __future__ import print_function
+
 from twisted.web.template import tags
 from twisted.web.template import Element, renderer, TagLoader, XMLFile
 

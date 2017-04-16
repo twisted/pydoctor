@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor import model
 from pydoctor.test.test_astbuilder import fromText
 import pickle

@@ -1,5 +1,7 @@
 """The old HTML generator.  Deprecated, do not use."""
 
+from __future__ import print_function
+
 from pydoctor import model
 from os.path import join as opj
 import os, inspect, shutil
@@ -8,7 +10,7 @@ try:
     from epydoc.markup import epytext
     EPYTEXT = True
 except:
-    print "no epytext found"
+    print("no epytext found")
     EPYTEXT = False
 
 def link(o):
@@ -73,12 +75,12 @@ def doc2html(obj, doc):
         pdoc = epytext.parse_docstring(doc, errs)
         if errs:
             if obj.system.options.verbosity > 0:
-                print obj
+                print(obj)
             if obj.system.options.verbosity > 1:
                 for i, l in enumerate(doc.splitlines()):
-                    print "%4s"%(i+1), l
+                    print("%4s"%(i+1), l)
                 for err in errs:
-                    print err
+                    print(err)
             global errcount
             errcount += len(errs)
             return boringDocstring(doc)
@@ -461,13 +463,13 @@ def main(args):
     syswriter.prepOutputDirectory()
     if options.module:
         obj = docsys.allobjects[options.module]
-        print "WRITING DOCS FOR", obj.fullName()
+        print("WRITING DOCS FOR", obj.fullName())
         syswriter.writeIndividualFiles([obj])
     else:
         syswriter.writeModuleIndex(docsys)
         syswriter.writeIndividualFiles(docsys.rootobjects)
 
-    print errcount, 'epytext errors'
+    print(errcount, 'epytext errors')
 
 if __name__ == '__main__':
     main()

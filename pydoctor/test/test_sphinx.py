@@ -1,15 +1,18 @@
 """
 Tests for Sphinx integration.
 """
+from __future__ import print_function
+
 from contextlib import closing
-from StringIO import StringIO
 import zlib
+
+from twisted.python.compat import NativeStringIO
 
 from pydoctor import model
 from pydoctor.sphinx import SphinxInventory
 
 
-class PersistentStringIO(StringIO):
+class PersistentStringIO(NativeStringIO):
     """
     A custom stringIO which keeps content after file is closed.
     """
@@ -17,18 +20,8 @@ class PersistentStringIO(StringIO):
         """
         Close, but keep the memory buffer and seek position.
         """
-        if not self.closed:
-            self.closed = True
+        pass
 
-    def getvalue(self):
-        """
-        Retrieve the entire contents of the "file" at any time even after
-        the StringIO object's close() method is called.
-        """
-        if self.buflist:
-            self.buf += ''.join(self.buflist)
-            self.buflist = []
-        return self.buf
 
 
 def make_SphinxInventory(logger=object()):

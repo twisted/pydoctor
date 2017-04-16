@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from compiler import ast
 
 from twisted.web.template import Element, renderer, tags, XMLFile

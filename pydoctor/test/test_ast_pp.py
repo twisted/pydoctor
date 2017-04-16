@@ -1,5 +1,6 @@
 # this is not stolen from exarkun's sandbox; he didn't seem to write
 # any tests :)
+from __future__ import print_function
 
 from pydoctor import ast_pp
 from compiler.transformer import parse

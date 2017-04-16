@@ -9,14 +9,16 @@ The code was stolen from exarkun's svn.twistedmatrix.com sandbox:
 U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
 """
 
-from cStringIO import StringIO
+from __future__ import print_function
+
+from twisted.python.compat import NativeStringIO
 from compiler import walk
 
 class SourceWriter(object):
     _i = 0
 
     def __init__(self):
-        self.s = StringIO()
+        self.s = NativeStringIO()
 
     def w(self, s):
         self.s.write(s)
@@ -371,5 +373,5 @@ if __name__ == '__main__':
     from compiler import parse
     import sys
     ast = parse(sys.argv[1])
-    print ast
-    print pp(ast)
+    print(ast)
+    print(pp(ast))

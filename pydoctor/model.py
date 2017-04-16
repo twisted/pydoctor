@@ -6,6 +6,8 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
+from __future__ import print_function
+
 import datetime
 import imp
 import os
@@ -393,11 +395,11 @@ class System(object):
         else:
             i = '%s/%s'%(i,n)
         if self.verbosity(section) == 0 and sys.stdout.isatty():
-            print '\r'+i, msg,
+            print('\r'+i, msg, end='')
             sys.stdout.flush()
             if i == n:
                 self.needsnl = False
-                print
+                print()
             else:
                 self.needsnl = True
 
@@ -409,14 +411,14 @@ class System(object):
                 self.once_msgs.add((section, msg))
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
-                print
-            print msg,
+                print()
+            print(msg, end='')
             if nonl:
                 self.needsnl = True
                 sys.stdout.flush()
             else:
                 self.needsnl = False
-                print
+                print()
 
     def objForFullName(self, fullName):
         for system in [self] + self.moresystems:
@@ -430,7 +432,7 @@ class System(object):
         else:
             fn = '<None>'
         if self.options.verbosity > 0:
-            print fn, type, detail
+            print(fn, type, detail)
         self.warnings.setdefault(type, []).append((fn, detail))
 
     def objectsOfType(self, cls):
@@ -603,7 +605,7 @@ class System(object):
         module = self.ensureModule(module_full_name)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
-        print py_mod
+        print(py_mod)
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):

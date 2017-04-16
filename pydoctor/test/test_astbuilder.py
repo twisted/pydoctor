@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pydoctor import model, astbuilder
 import textwrap, inspect
 
@@ -304,4 +306,3 @@ def test_import_star():
     from a import *
     ''', modname='b', system=mod_a.system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
-
