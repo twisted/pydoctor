@@ -14,7 +14,7 @@ import os
 import posixpath
 import sys
 import types
-import __builtin__
+from six.moves import builtins
 
 from pydoctor.sphinx import SphinxInventory
 
@@ -263,7 +263,7 @@ class Module(CanContainImportsDocumentable):
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
-        elif name in __builtin__.__dict__:
+        elif name in builtins.__dict__:
             return name
         else:
             return name
