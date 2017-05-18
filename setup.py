@@ -40,5 +40,5 @@ setup(
         'Topic :: Documentation',
         'Topic :: Software Development :: Documentation',
     ],
-    install_requires=["Twisted", "epydoc"],
+    install_requires=["Twisted", "epydoc", "six"],
 )
