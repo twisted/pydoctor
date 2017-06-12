@@ -18,7 +18,7 @@ def loadModulesForSystem(system):
         #print sys.path
         warnings.filterwarnings('ignore')
         # this list found by the lovely hack of python -E -c "import sys; print sys.modules.keys()"
-        keeps = ['copy_reg', '__main__', 'site', '__builtin__',
+        keeps = ['copy_reg', '__main__', 'site', '__builtin__', 'builtins',
                  'encodings', 'posixpath', 'encodings.codecs', 'os.path',
                  '_codecs', 'encodings.exceptions', 'stat', 'zipimport',
                  'warnings', 'encodings.types', 'UserDict', 'encodings.ascii',
@@ -140,7 +140,7 @@ def funcChecker(builder, name, OBJ):
 def checkDict(builder, aDict):
     c = builder.current
     for name in aDict:
-        if name in ('__name__', '__doc__', '__file__', '__builtins__', '__module__'):
+        if name in ('__name__', '__doc__', '__file__', '__builtins__', 'builtins', '__module__'):
             continue
         if name in c.contents:
             ob = aDict[name]

@@ -4,7 +4,7 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
-import __builtin__
+from six.moves import builtins
 import exceptions
 import inspect
 import itertools
@@ -61,8 +61,8 @@ def stdlib_doc_link_for_name(name):
                or sub_name in sys.builtin_module_names:
             return STDLIB_URL + sub_name + '.html#' + name
     part0 = parts[0]
-    if part0 in __builtin__.__dict__ and not part0.startswith('__'):
-        bltin = __builtin__.__dict__[part0]
+    if part0 in builtins.__dict__ and not part0.startswith('__'):
+        bltin = builtins.__dict__[part0]
         if part0 in exceptions.__dict__:
             return STDLIB_URL + 'exceptions.html#exceptions.' + name
         elif isinstance(bltin, type):
