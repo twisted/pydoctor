@@ -4,8 +4,9 @@ Support for Sphinx compatibility.
 from __future__ import absolute_import
 from __future__ import print_function
 
+from six.moves.urllib.request import urlopen
+
 import os
-import urllib2
 import zlib
 
 
@@ -132,7 +133,7 @@ class SphinxInventory(object):
         This is a helper for testing.
         """
         try:
-            response = urllib2.urlopen(url)
+            response = urlopen(url)
             return response.read()
         except:
             return None
