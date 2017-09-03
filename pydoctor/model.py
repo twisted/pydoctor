@@ -732,9 +732,9 @@ class System(object):
             self.processModule(mod)
 
 
-    def fetchIntersphinxInventories(self):
+    def fetchIntersphinxInventories(self, cache):
         """
         Download and parse intersphinx inventories based on configuration.
         """
         for url in self.options.intersphinx:
-            self.intersphinx.update(url)
+            self.intersphinx.update(cache, url)
