@@ -40,5 +40,12 @@ setup(
         'Topic :: Documentation',
         'Topic :: Software Development :: Documentation',
     ],
-    install_requires=["Twisted", "epydoc", "six"],
+    install_requires=[
+        "appdirs",
+        "CacheControl[filecache]",
+        "Twisted",
+        "epydoc",
+        "requests",
+        "six",
+    ],
 )

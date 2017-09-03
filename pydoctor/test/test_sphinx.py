@@ -4,12 +4,27 @@ Tests for Sphinx integration.
 from __future__ import print_function
 
 from contextlib import closing
+
+import cachecontrol
+
+import datetime
 import zlib
+
+import io
+from hypothesis import given, strategies as st, settings
 
 from twisted.python.compat import NativeStringIO
 
 from pydoctor import model
-from pydoctor.sphinx import SphinxInventory
+from pydoctor import sphinx
+
+import pytest
+
+import requests
+
+import string
+
+from urllib3 import HTTPResponse
 
 
 class PersistentStringIO(NativeStringIO):
@@ -28,7 +43,7 @@ def make_SphinxInventory(logger=object()):
     """
     Return a SphinxInventory.
     """
-    return SphinxInventory(logger=logger, project_name='project_name')
+    return sphinx.SphinxInventory(logger=logger, project_name='project_name')
 
 
 def make_SphinxInventoryWithLog():
@@ -53,7 +68,7 @@ def test_initialization():
     logger = object()
     name = object()
 
-    sut = SphinxInventory(logger=logger, project_name=name)
+    sut = sphinx.SphinxInventory(logger=logger, project_name=name)
 
     assert logger is sut.info
     assert name is sut.project_name
@@ -69,7 +84,7 @@ def test_generate_empty_functional():
     log = []
     logger = lambda section, message, thresh=0: log.append((
         section, message, thresh))
-    sut = SphinxInventory(logger=logger, project_name=project_name)
+    sut = sphinx.SphinxInventory(logger=logger, project_name=project_name)
     output = PersistentStringIO()
     sut._openFileForWriting = lambda path: closing(output)
 
@@ -307,9 +322,10 @@ def test_update_functional():
 # Version: 2.0
 # The rest of this file is compressed with zlib.
 %s""" % (zlib.compress(payload),)
-    sut._getURL = lambda _: content
 
-    sut.update('http://some.url/api/objects.inv')
+    url = 'http://some.url/api/objects.inv'
+
+    sut.update(sphinx.StubCache({url: content}), url)
 
     assert 'http://some.url/api/module1.html' == sut.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == sut.getLink('other.module2')
@@ -321,7 +337,7 @@ def test_update_bad_url():
     """
     sut, log = make_SphinxInventoryWithLog()
 
-    sut.update('really.bad.url')
+    sut.update(sphinx.StubCache({}), 'really.bad.url')
 
     assert sut._links == {}
     expected_log = [(
@@ -335,9 +351,8 @@ def test_update_fail():
     Log an error when failing to get content from url.
     """
     sut, log = make_SphinxInventoryWithLog()
-    sut._getURL = lambda _: None
 
-    sut.update('http://some.tld/o.inv')
+    sut.update(sphinx.StubCache({}), 'http://some.tld/o.inv')
 
     assert sut._links == {}
     expected_log = [(
@@ -400,3 +415,256 @@ def test_parseInventory_invalid_lines():
         ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
         ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
         ] == log
+
+
+maxAgeAmounts = st.integers() | st.just("\x00")
+maxAgeUnits = st.sampled_from(tuple(sphinx._maxAgeUnits)) | st.just("\x00")
+
+
+class TestParseMaxAge(object):
+    """
+    Tests for L{sphinx.parseMaxAge}
+    """
+
+    @given(
+        amount=maxAgeAmounts,
+        unit=maxAgeUnits,
+    )
+    def test_toTimedelta(self, amount, unit):
+        """
+        A parsed max age dictionary consists of valid arguments to
+        L{datetime.timedelta}, and the constructed L{datetime.timedelta}
+        matches the specification.
+        """
+        maxAge = "{}{}".format(amount, unit)
+        try:
+            parsedMaxAge = sphinx.parseMaxAge(maxAge)
+        except sphinx.InvalidMaxAge:
+            pass
+        else:
+            td = datetime.timedelta(**parsedMaxAge)
+            converter = {
+                's': 1,
+                'm': 60,
+                'h': 60 * 60,
+                'd': 24 * 60 * 60,
+                'w': 7 * 24 * 60 * 60
+            }
+            total_seconds = amount * converter[unit]
+            assert pytest.approx(td.total_seconds()) == total_seconds
+
+
+class ClosingBytesIO(io.BytesIO):
+    """
+    A L{io.BytesIO} instance that closes itself after all its data has
+    been read.  This mimics the behavior of L{HTTPResponse} in the
+    standard library.
+    """
+
+    def read(self, *args, **kwargs):
+        data = super(ClosingBytesIO, self).read(*args, **kwargs)
+        if self.tell() >= len(self.getvalue()):
+            self.close()
+        return data
+
+
+def test_ClosingBytesIO():
+    """
+    L{ClosingBytesIO} closes itself when all its data has been read.
+    """
+    data = b'some data'
+    cbio = ClosingBytesIO(data)
+
+    buffer = [cbio.read(1)]
+
+    assert not cbio.closed
+
+    buffer.append(cbio.read())
+
+    assert cbio.closed
+
+    assert b''.join(buffer) == data
+
+
+class TestIntersphinxCache(object):
+    """
+    Tests for L{sphinx.IntersphinxCache}
+    """
+
+    @pytest.fixture
+    def send_returns(self, monkeypatch):
+        """
+        Return a function that patches
+        L{requests.adapters.HTTPResponse.send} so that it returns the
+        provided L{urllib3.Response}.
+        """
+        def send_returns(response):
+            def send(self, request, **kwargs):
+                return self.build_response(request, response)
+
+            monkeypatch.setattr(
+                requests.adapters.HTTPAdapter,
+                "send",
+                send,
+            )
+
+            return monkeypatch
+        return send_returns
+
+    def test_cache(self, tmpdir, send_returns):
+        """
+        L{IntersphinxCache.get} caches responses to the file system.
+        """
+        url = u"https://cache.example/objects.inv"
+        content = b'content'
+
+        send_returns(
+            HTTPResponse(
+                body=ClosingBytesIO(content),
+                headers={
+                    'date': 'Sun, 06 Nov 1994 08:49:37 GMT',
+                },
+                status=200,
+                preload_content=False,
+                decode_content=False,
+            ),
+        )
+
+        loadsCache = sphinx.IntersphinxCache.fromParameters(
+            sessionFactory=requests.Session,
+            cachePath=str(tmpdir),
+            maxAgeDictionary={"weeks": 1}
+        )
+
+        assert loadsCache.get(url) == content
+
+        # Now the response contains different data that will not be
+        # returned when the cache is enabled.
+        send_returns(
+            HTTPResponse(
+                body=ClosingBytesIO(content * 2),
+                headers={
+                    'date': 'Sun, 06 Nov 1994 08:49:37 GMT',
+                },
+                status=200,
+                preload_content=False,
+                decode_content=False,
+            ),
+
+        )
+
+        assert loadsCache.get(url) == content
+
+        readsCacheFromFileSystem = sphinx.IntersphinxCache.fromParameters(
+            sessionFactory=requests.Session,
+            cachePath=str(tmpdir),
+            maxAgeDictionary={"weeks": 1}
+        )
+
+        assert readsCacheFromFileSystem.get(url) == content
+
+    def test_getRaisesException(self):
+        """
+        L{IntersphinxCache.get} returns L{None} if an exception is
+        raised while C{GET}ing a URL and logs the exception.
+        """
+        loggedExceptions = []
+
+        class _Logger(object):
+
+            @staticmethod
+            def exception(*args, **kwargs):
+                loggedExceptions.append((args, kwargs))
+
+        class _RaisesOnGet(object):
+
+            @staticmethod
+            def get(url):
+                raise Exception()
+
+        cache = sphinx.IntersphinxCache(session=_RaisesOnGet, logger=_Logger)
+
+        assert cache.get(u"some url") is None
+
+        assert len(loggedExceptions)
+
+
+class TestStubCache(object):
+    """
+    Tests for L{sphinx.StubCache}.
+    """
+
+    def test_getFromCache(self):
+        """
+        L{sphinx.StubCache.get} returns its cached content for a URL.
+        """
+        url = u"url"
+        content = b"content"
+
+        cache = sphinx.StubCache({url: content})
+
+        assert cache.get(url) is content
+
+    def test_not_in_cache(self):
+        """
+        L{sphinx.StubCache.get} returns L{None} if it has no cached
+        content for a URL.
+        """
+        cache = sphinx.StubCache({})
+
+        assert cache.get(b"url") is None
+
+
+@given(
+    clearCache=st.booleans(),
+    enableCache=st.booleans(),
+    cacheDirectoryName=st.text(
+        alphabet=set(string.printable) - set('\/:*?"<>|\x0c\x0b\n'),
+        min_size=3,             # Avoid ..
+        max_size=32,            # Avoid upper length on path
+    ),
+    maxAgeAmount=maxAgeAmounts,
+    maxAgeUnit=maxAgeUnits,
+)
+@settings(max_examples=700)
+def test_prepareCache(
+        tmpdir,
+        clearCache,
+        enableCache,
+        cacheDirectoryName,
+        maxAgeAmount,
+        maxAgeUnit,
+):
+    """
+    The cache directory is deleted when C{clearCache} is L{True}; an
+    L{IntersphinxCache} is created with a session on which is mounted
+    L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
+    """
+    cacheDirectory = tmpdir.join("fakecache").ensure(dir=True)
+    for child in cacheDirectory.listdir():
+        child.remove()
+    cacheDirectory.ensure(cacheDirectoryName)
+
+    try:
+        cache = sphinx.prepareCache(
+            clearCache=clearCache,
+            enableCache=enableCache,
+            cachePath=str(cacheDirectory),
+            maxAge="{}{}".format(maxAgeAmount, maxAgeUnit)
+        )
+    except sphinx.InvalidMaxAge:
+        pass
+    else:
+        assert isinstance(cache, sphinx.IntersphinxCache)
+        for scheme in ('https://', 'http://'):
+            hasCacheControl = isinstance(
+                cache._session.adapters[scheme],
+                cachecontrol.CacheControlAdapter,
+            )
+            if enableCache:
+                assert hasCacheControl
+            else:
+                assert not hasCacheControl
+
+    if clearCache:
+        assert not tmpdir.listdir()

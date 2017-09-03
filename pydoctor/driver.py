@@ -3,7 +3,13 @@
 from __future__ import print_function
 
 from pydoctor import model, zopeinterface
-from pydoctor.sphinx import SphinxInventory
+from pydoctor.sphinx import (
+    SphinxInventory,
+    prepareCache,
+    MAX_AGE_HELP,
+    USER_INTERSPHINX_CACHE
+)
+
 import sys, os, datetime
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -164,6 +170,34 @@ def getparser():
             "Use Sphinx objects inventory to generate links to external"
             "documetation. Can be repeated."))
 
+    parser.add_option(
+        '--enable-intersphinx-cache',
+        dest='enable_intersphinx_cache',
+        action='store_true',
+        default=False,
+        help="Enable Intersphinx cache."
+    )
+    parser.add_option(
+        '--intersphinx-cache-path',
+        dest='intersphinx_cache_path',
+        default=USER_INTERSPHINX_CACHE,
+        help="Where to cache intersphinx objects.inv files."
+    )
+    parser.add_option(
+        '--clear-intersphinx-cache',
+        dest='clear_intersphinx_cache',
+        action='store_true',
+        default=False,
+        help=("Clear the Intersphinx cache "
+              "specified by --intersphinx-cache-path."),
+    )
+    parser.add_option(
+        '--intersphinx-cache-max-age',
+        dest='intersphinx_cache_max_age',
+        default='1d',
+        help=MAX_AGE_HELP,
+    )
+
     return parser
 
 def readConfigFile(options):
@@ -207,6 +241,11 @@ def main(args):
     if options.configfile:
         readConfigFile(options)
 
+    cache = prepareCache(clearCache=options.clear_intersphinx_cache,
+                         enableCache=options.enable_intersphinx_cache,
+                         cachePath=options.intersphinx_cache_path,
+                         maxAge=options.intersphinx_cache_max_age)
+
     try:
         # step 1: make/find the system
         if options.systemclass:
@@ -233,7 +272,7 @@ def main(args):
         # Once pickle support is removed, always instantiate System with
         # options and make fetchIntersphinxInventories private in __init__.
         system.options = options
-        system.fetchIntersphinxInventories()
+        system.fetchIntersphinxInventories(cache)
 
         system.urlprefix = ''
         if options.moresystems:
