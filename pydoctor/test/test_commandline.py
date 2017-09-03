@@ -3,7 +3,9 @@ from __future__ import print_function
 from twisted.python.compat import NativeStringIO
 
 from pydoctor import driver
+
 import sys
+
 
 def geterrtext(*options):
     options = list(options)
@@ -50,3 +52,12 @@ def test_projectbasedir():
     options, args = driver.parse_args([
             "--project-base-dir", value])
     assert options.projectbasedirectory == value
+
+
+def test_cache_disabled_by_default():
+    """
+    Intersphinx object caching is disabled by default.
+    """
+    parser = driver.getparser()
+    (options, _) = parser.parse_args([])
+    assert not options.enable_intersphinx_cache
