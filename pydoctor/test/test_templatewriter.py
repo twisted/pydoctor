@@ -10,6 +10,8 @@ from pydoctor import templatewriter, model
 from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
+import pytest
+
 
 def flatten(t):
     io = NativeStringIO()
@@ -88,3 +90,26 @@ def test_hasdocstring():
     assert hasdocstring(system.allobjects['basic.mod.C.f'])
     sub_f = system.allobjects['basic.mod.D.f']
     assert hasdocstring(sub_f) and not sub_f.docstring
+
+
+@pytest.mark.parametrize(
+    'className',
+    ['NewClassThatMultiplyInherits', 'OldClassThatMultiplyInherits'],
+)
+def test_multipleInheritanceNewClass(className):
+    """
+    A class that has multiple bases has all methods in its MRO
+    rendered.
+    """
+    system = processPackage("multipleinheritance")
+
+    cls = next(
+        cls
+        for cls in system.orderedallobjects
+        if cls.name == className
+    )
+
+    html = getHTMLOf(cls)
+
+    assert "methodA" in html
+    assert "methodB" in html

@@ -302,7 +302,7 @@ class ClassPage(CommonPage):
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
-        return [item.fillSlots(
+        return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
                                                sorted(attrs, key=lambda o:-o.privacyClass)))
