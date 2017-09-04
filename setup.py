@@ -10,7 +10,6 @@ from setuptools import setup
 
 setup(
     name='pydoctor',
-    version='16.3.0',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
     url='http://github.com/twisted/pydoctor',
@@ -40,7 +39,10 @@ setup(
         'Topic :: Documentation',
         'Topic :: Software Development :: Documentation',
     ],
+    use_incremental=True,
+    setup_requires=["incremental"],
     install_requires=[
+        "incremental",
         "appdirs",
         "CacheControl[filecache]",
         "Twisted",
