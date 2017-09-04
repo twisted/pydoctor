@@ -1,5 +1,5 @@
 """PyDoctor, an API documentation generator for Python libraries."""
 
-from __future__ import print_function
+from ._version import __version__
 
-version_info = (16, 2, 1, '', 0)
+__all__ = ["__version__"]
