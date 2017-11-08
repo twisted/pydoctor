@@ -9,9 +9,8 @@ from compiler import parse, visitor, ast
 
 def parseFile(path):
     """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
-    f = open(path, "U")
-    src = f.read() + "\n"
-    f.close()
+    with open(path, "U") as f:
+        src = f.read()
     return parse(src)
 
 
