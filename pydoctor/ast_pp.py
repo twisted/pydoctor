@@ -336,11 +336,7 @@ class SourceWriter(object):
         walk(node.expr, self)
 
     def visitAssTuple(self, node):
-        self.w('(')
-        for expr in node.nodes:
-            walk(expr, self)
-            self.w(', ')
-        self.w(')')
+        self.visitTuple(node)
 
     def visitRaise(self, node):
         self.w('raise ')
