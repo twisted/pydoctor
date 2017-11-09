@@ -377,10 +377,3 @@ def pp(ast):
     sw = SourceWriter()
     walk(ast, sw)
     return sw.s.getvalue()
-
-if __name__ == '__main__':
-    from compiler import parse
-    import sys
-    ast = parse(sys.argv[1])
-    print(ast)
-    print(pp(ast))
