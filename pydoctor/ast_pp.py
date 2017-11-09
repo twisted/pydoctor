@@ -339,6 +339,10 @@ class SourceWriter(object):
         self.visitTuple(node)
 
     def visitRaise(self, node):
+        if not node.expr1:
+            self.w('raise')
+            self.nl()
+            return
         self.w('raise ')
         walk(node.expr1, self)
         if node.expr2:
