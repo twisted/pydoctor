@@ -190,7 +190,8 @@ class SourceWriter(object):
             for b in node.bases:
                 walk(b, self)
                 self.w(', ')
-            self.w('):')
+            self.w(')')
+        self.w(':')
         self.indent()
         try:
             if node.doc is not None:
