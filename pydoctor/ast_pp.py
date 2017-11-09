@@ -131,8 +131,14 @@ class SourceWriter(object):
             self.w('>>')
             walk(node.dest, self)
             self.w(', ')
-        for e in node.nodes:
-            walk(e, self)
+
+        nodes = list(node.nodes)
+        if nodes:
+            walk(nodes.pop(0), self)
+            for e in nodes:
+                self.w(', ')
+                walk(e, self)
+
         self.nl()
 
     def visitGetattr(self, node):
