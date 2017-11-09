@@ -196,6 +196,7 @@ class SourceWriter(object):
         try:
             if node.doc is not None:
                 self.w(repr(node.doc))
+                self.nl()
             walk(node.code, self)
         finally:
             self.dedent()
