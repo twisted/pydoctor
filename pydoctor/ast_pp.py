@@ -47,16 +47,7 @@ class SourceWriter(object):
 
 
     def _functionSignature(self, node, fmt):
-        if node.defaults:
-            nargs = len(node.argnames)
-            ndefs = len(node.defaults)
-            noDefaults = node.argnames[:nargs-ndefs]
-            s = ', '.join(node.argnames[:noDefaults])
-            if ndefs < nargs:
-                argdefs = zip(node.argnames[noDefaults:], node.defaults)
-                s = s + ', ' + ', '.join(['='.join(x) for x in argdefs])
-        else:
-            s = ', '.join(node.argnames)
+        s = ', '.join(node.argnames)
         self.w(fmt % (s,))
 
     def visitLambda(self, node):
