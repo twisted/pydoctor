@@ -723,6 +723,8 @@ def assertRoundTrippable(source):
     """
     Assert that source is parsed the same after being printed by
     ast_pp.pp.
+
+    @param source: The source to round-trip.
     """
     raw_tree = parse(source)
     ast_pp_source = ast_pp.pp(raw_tree)
@@ -737,5 +739,9 @@ def assertRoundTrippable(source):
     deadline=None,
 )
 @given(source=moduleDef())
-def test_variations(source):
+def test_modules(source):
+    """
+    The result of parsing and serializing a module with L{ast_pp.pp}
+    is semantically equivalent to the original source.
+    """
     assertRoundTrippable(source)
