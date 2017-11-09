@@ -173,6 +173,8 @@ class SourceWriter(object):
         self.nl()
 
     def visitConst(self, node):
+        if node.value is None:
+            return
         self.w(repr(node.value))
 
     def visitReturn(self, node):
