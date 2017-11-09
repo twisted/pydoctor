@@ -57,6 +57,9 @@ class SourceWriter(object):
     def visitFunction(self, node):
         self._functionSignature(node, 'def %s(%%s):' % node.name)
         self.indent()
+        if node.doc is not None:
+            self.w(repr(node.doc))
+            self.nl()
         try:
             walk(node.code, self)
         finally:
