@@ -37,7 +37,8 @@ class SourceWriter(object):
 
     def visitModule(self, node):
         if node.doc is not None:
-            self.wl(repr(node.doc))
+            self.w(repr(node.doc))
+            self.w("\n")
         walk(node.node, self)
 
     def visitStmt(self, node):
