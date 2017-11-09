@@ -146,26 +146,30 @@ class SourceWriter(object):
         self.w('.')
         self.w(node.attrname)
 
+    def _writeAs(self, mod, as_):
+        self.w(mod)
+        if as_ is not None:
+            self.w(' as ')
+            self.w(as_)
+
     def visitImport(self, node):
         self.w('import ')
-        for (mod, as_) in node.names:
-            self.w(mod)
-            if as_ is not None:
-                self.w(' as ')
-                self.w(as_)
+        names = list(node.names)
+        self._writeAs(*names.pop(0))
+        for (mod, as_) in names:
             self.w(', ')
+            self._writeAs(mod, as_)
         self.nl()
 
     def visitFrom(self, node):
         self.w('from ')
         self.w(node.modname)
         self.w(' import ')
-        for (mod, as_) in node.names:
-            self.w(mod)
-            if as_ is not None:
-                self.w(' as ')
-                self.w(as_)
+        names = list(node.names)
+        self._writeAs(*names.pop(0))
+        for (mod, as_) in names:
             self.w(', ')
+            self._writeAs(mod, as_)
         self.nl()
 
     def visitConst(self, node):
