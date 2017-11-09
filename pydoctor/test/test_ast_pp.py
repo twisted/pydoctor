@@ -206,7 +206,7 @@ def arithmeticOperators():
 
     @return: A strategy that generates L{str}
     """
-    return st.sampled_from(["*", "+", "-", "/", "/", "**", "%"])
+    return st.sampled_from(["*", "+", "-", "**", "%"])
 
 
 def arithmeticExpressions():
