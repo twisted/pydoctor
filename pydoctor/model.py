@@ -623,7 +623,7 @@ class System(object):
         package = self.ensurePackage(package_full_name)
         package.filepath = dirpath
         self.setSourceHref(package)
-        for fname in os.listdir(dirpath):
+        for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
                 initname = os.path.join(fullname, '__init__.py')
