@@ -33,7 +33,7 @@ class TableRow(Element):
 
 
 class ChildTable(Element):
-    loader = XMLFile(util.templatefile('table.html'))
+    loader = XMLFile(util.templatefilepath('table.html'))
     last_id = 0
 
     def __init__(self, docgetter, ob, children):
