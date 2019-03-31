@@ -4,6 +4,7 @@ from __future__ import print_function
 
 from pydoctor import model
 
+from twisted.python.filepath import FilePath
 from twisted.web.template import tags
 
 import os, urllib
@@ -21,8 +22,11 @@ def templatefile(filename):
     pydoctordir = os.path.dirname(os.path.dirname(abspath))
     return os.path.join(pydoctordir, 'templates', filename)
 
+def templatefilepath(filename):
+    return FilePath(templatefile(filename))
+
 def fillSlots(tag, **kw):
-    for k, v in kw.iteritems():
+    for k, v in kw.items():
         tag = tag.fillSlots(k, v)
     return tag
 
