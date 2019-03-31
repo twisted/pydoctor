@@ -1,10 +1,9 @@
 from __future__ import print_function
 
-from twisted.python.compat import NativeStringIO
+import sys
 
 from pydoctor import driver
-
-import sys
+from twisted.python.compat import NativeStringIO
 
 
 def geterrtext(*options):

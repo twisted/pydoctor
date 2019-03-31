@@ -1,8 +1,10 @@
 from __future__ import print_function
 
+import pickle
+
 from pydoctor import model
 from pydoctor.test.test_astbuilder import fromText
-import pickle
+
 
 def test_pickling_system():
     system = model.System()

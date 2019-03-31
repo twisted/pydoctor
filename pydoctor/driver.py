@@ -2,15 +2,13 @@
 
 from __future__ import print_function
 
-from pydoctor import model, zopeinterface
-from pydoctor.sphinx import (
-    SphinxInventory,
-    prepareCache,
-    MAX_AGE_HELP,
-    USER_INTERSPHINX_CACHE
-)
+import datetime
+import os
+import sys
 
-import sys, os, datetime
+from pydoctor import model, zopeinterface
+from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
+                             SphinxInventory, prepareCache)
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 

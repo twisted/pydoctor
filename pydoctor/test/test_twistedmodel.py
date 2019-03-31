@@ -1,7 +1,7 @@
 from __future__ import print_function
 
-from pydoctor.twistedmodel import TwistedSystem
 from pydoctor.model import Class, Module, Package
+from pydoctor.twistedmodel import TwistedSystem
 
 
 def test_include_private():

@@ -2,12 +2,13 @@
 
 from __future__ import print_function
 
+import ast
+import symbol
+import token
+
+import astor
 from pydoctor import model
 
-import ast
-import astor
-
-import symbol, token
 
 class str_with_orig(str):
     """Hack to allow recovery of the literal that gave rise to a docstring in an AST.

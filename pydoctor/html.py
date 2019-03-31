@@ -2,9 +2,12 @@
 
 from __future__ import print_function
 
-from pydoctor import model
+import inspect
+import os
+import shutil
 from os.path import join as opj
-import os, inspect, shutil
+
+from pydoctor import model
 
 try:
     from epydoc.markup import epytext

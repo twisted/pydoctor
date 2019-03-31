@@ -4,13 +4,12 @@ import os
 import shutil
 import tempfile
 
-from twisted.python.compat import NativeStringIO
-
-from pydoctor import templatewriter, model
+import pytest
+from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
-import pytest
+from twisted.python.compat import NativeStringIO
 
 
 def flatten(t):

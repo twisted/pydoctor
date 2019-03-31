@@ -1,7 +1,10 @@
 from __future__ import print_function
 
-from pydoctor import model, astbuilder
-import textwrap, inspect
+import inspect
+import textwrap
+
+from pydoctor import astbuilder, model
+
 
 def fromText(text, modname='<test>', system=None,
              buildercls=None,

@@ -3,28 +3,21 @@ Tests for Sphinx integration.
 """
 from __future__ import print_function
 
+import datetime
+import io
+import string
+import zlib
 from contextlib import closing
 
 import cachecontrol
-
-import datetime
-import zlib
-
-import io
-from hypothesis import given, strategies as st, settings
-
-from twisted.python.compat import NativeStringIO
-
-from pydoctor import model
-from pydoctor import sphinx
-
 import pytest
-
 import requests
-
-import string
-
+from pydoctor import model, sphinx
+from twisted.python.compat import NativeStringIO
 from urllib3 import HTTPResponse
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 
 class PersistentStringIO(NativeStringIO):

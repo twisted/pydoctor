@@ -2,11 +2,12 @@
 
 from __future__ import print_function
 
-from pydoctor import model
+import os
+import urllib
 
+from pydoctor import model
 from twisted.web.template import tags
 
-import os, urllib
 
 def link(o):
     if not o.isVisible:

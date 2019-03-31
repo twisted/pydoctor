@@ -14,9 +14,9 @@ import os
 import posixpath
 import sys
 import types
-from six.moves import builtins
 
 from pydoctor.sphinx import SphinxInventory
+from six.moves import builtins
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.

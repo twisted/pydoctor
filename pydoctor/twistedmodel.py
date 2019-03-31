@@ -2,13 +2,13 @@
 
 from __future__ import print_function
 
-import astor
-
-from pydoctor import model, zopeinterface
 import ast
 
-from twisted.python.versions import Version
+import astor
+from pydoctor import model, zopeinterface
 from twisted.python.deprecate import _getDeprecationWarningString
+from twisted.python.versions import Version
+
 
 class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
 

@@ -3,8 +3,7 @@ from __future__ import print_function
 import sys
 from io import BytesIO
 
-from pydoctor import epydoc2stan
-from pydoctor import model
+from pydoctor import epydoc2stan, model
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 

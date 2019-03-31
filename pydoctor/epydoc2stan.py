@@ -4,7 +4,6 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
-from six.moves import builtins
 import exceptions
 import inspect
 import itertools
@@ -13,10 +12,9 @@ import re
 import sys
 import urllib
 
-from twisted.web.template import Tag, tags, XMLString
-
 from pydoctor import model
-
+from six.moves import builtins
+from twisted.web.template import Tag, XMLString, tags
 
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'

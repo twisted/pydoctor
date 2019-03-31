@@ -2,13 +2,13 @@
 
 from __future__ import print_function
 
-from pydoctor.templatewriter.util import link, templatefile
-from pydoctor.templatewriter import DOCTYPE, pages, summary
+import os
+import shutil
+
 from pydoctor import model
-
+from pydoctor.templatewriter import DOCTYPE, pages, summary
+from pydoctor.templatewriter.util import link, templatefile
 from twisted.web.template import flattenString
-
-import os, shutil
 
 
 def flattenToFile(fobj, page):

@@ -1,13 +1,12 @@
 from __future__ import print_function
 
 import ast
+
 import astor
-
-from twisted.web.template import Element, renderer, tags, XMLFile
-
 from pydoctor import ast_pp
 from pydoctor.templatewriter import util
 from pydoctor.templatewriter.pages import signature
+from twisted.web.template import Element, XMLFile, renderer, tags
 
 
 class FunctionChild(Element):

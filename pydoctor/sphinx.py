@@ -1,28 +1,20 @@
 """
 Support for Sphinx compatibility.
 """
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
+
+import logging
+import os
+import shutil
+import textwrap
+import zlib
 
 import appdirs
 import attr
-
+import requests
 from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
 from cachecontrol.heuristics import ExpiresAfter
-
-import logging
-
-import os
-
-import requests
-
-import shutil
-
-import textwrap
-
-import zlib
-
 
 logger = logging.getLogger(__name__)
 

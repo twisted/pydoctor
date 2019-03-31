@@ -1,7 +1,8 @@
 from __future__ import print_function
 
-from pydoctor.test.test_packages import processPackage
 from pydoctor.liveobjectchecker import liveCheck
+from pydoctor.test.test_packages import processPackage
+
 
 def DONT_test_simple():
     system = processPackage('liveobject')

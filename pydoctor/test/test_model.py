@@ -3,9 +3,10 @@ Unit tests for model.
 """
 from __future__ import print_function
 
+import zlib
+
 from pydoctor import model, sphinx
 from pydoctor.driver import parse_args
-import zlib
 
 
 class FakeOptions(object):

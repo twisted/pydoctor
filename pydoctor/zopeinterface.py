@@ -2,10 +2,11 @@
 
 from __future__ import print_function
 
-import astor
-from pydoctor import model, astbuilder
 import ast
 import re
+
+import astor
+from pydoctor import astbuilder, model
 
 
 class ZopeInterfaceModule(model.Module):

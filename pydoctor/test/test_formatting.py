@@ -1,7 +1,9 @@
 from __future__ import print_function
 
-from pydoctor import html, model
 from unittest.case import SkipTest
+
+from pydoctor import html, model
+
 
 def test_signatures():
     argspec = [['a', 'b', 'c'], None, None, (1,2)]

@@ -2,8 +2,14 @@
 
 from __future__ import print_function
 
-from pydoctor import model, astbuilder
-import types, sys, os, warnings, inspect
+import inspect
+import os
+import sys
+import types
+import warnings
+
+from pydoctor import astbuilder, model
+
 
 def loadModulesForSystem(system):
     """

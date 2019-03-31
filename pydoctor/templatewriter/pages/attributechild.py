@@ -1,8 +1,8 @@
 from __future__ import print_function
 
-from twisted.web.template import Element, renderer, XMLFile
-
 from pydoctor.templatewriter import util
+from twisted.web.template import Element, XMLFile, renderer
+
 
 class AttributeChild(Element):
 
