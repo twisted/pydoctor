@@ -10,53 +10,6 @@ import astor
 from pydoctor import model
 
 
-class str_with_orig(str):
-    """Hack to allow recovery of the literal that gave rise to a docstring in an AST.
-
-    We do this to allow the users to edit the original form of the docstring in the
-    editing server defined in the L{server} module.
-
-    @ivar orig: The literal that gave rise to this constant in the AST.
-    """
-    pass
-
-class MyTransformer(ast.NodeTransformer):
-    """Custom transformer that creates Nodes with L{str_with_orig} instances for docstrings."""
-    def get_docstring(self, node, n=None):
-        """Override C{NodeTransformer.get_docstring} to return a L{str_with_orig} object."""
-        if n is None:
-            n = node[0]
-            node = node[1:]
-        if n == symbol.suite:
-            if len(node) == 1:
-                return self.get_docstring(node[0])
-            for sub in node:
-                if sub[0] == symbol.stmt:
-                    return self.get_docstring(sub)
-            return None
-        if n == symbol.file_input:
-            for sub in node:
-                if sub[0] == symbol.stmt:
-                    return self.get_docstring(sub)
-            return None
-        if n == symbol.atom:
-            if node[0][0] == token.STRING:
-                s = ''
-                for t in node:
-                    s = s + eval(t[1])
-                r = str_with_orig(s)
-                r.orig = ''.join(t[1] for t in node)
-                r.linenumber = node[0][2]
-                return r
-            return None
-        if n == symbol.stmt or n == symbol.simple_stmt \
-           or n == symbol.small_stmt:
-            return self.get_docstring(node[0])
-        if n in transformer._doc_nodes and len(node) == 1:
-            return self.get_docstring(node[0])
-        return None
-
-
 def parseFile(path):
     """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
     f = open(path, "U")
@@ -67,12 +20,10 @@ def parseFile(path):
 
 def parse(buf):
     """Duplicate of L{compiler.parse} that uses L{MyTransformer}."""
-    p = ast.parse(buf)
-    return MyTransformer().visit(p)
+    return ast.parse(buf)
 
 
 def node2dottedname(node):
-    print(node)
     parts = []
     while isinstance(node, ast.Call) and (isinstance(node.func, ast.Name) and node.func.id == "getattr") and isinstance(node.args[1], ast.Str):
         parts.append(node.args[1].s)
@@ -165,7 +116,7 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            print("processing import statement in odd context")
+            self.warning("processing import statement in odd context")
             return
 
         if node.module is None:

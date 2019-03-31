@@ -77,7 +77,6 @@ class ZopeInterfaceFunction(model.Function):
                         yield io2.contents[self.name]
 
 def addInterfaceInfoToModule(module, interfaceargs):
-    print("!!!!!!!!!!!!!!")
     for arg in interfaceargs:
         if not isinstance(arg, tuple):
             fullName = module.expandName(astor.to_source(arg).strip())
@@ -270,7 +269,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for n, o in zip(cls.bases, cls.baseobjects):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
-        print(cls.decorators)
         for ((dn, fn, o), args) in cls.decorators:
             if fn == 'zope.interface.implementer':
                 addInterfaceInfoToClass(cls, args, False)

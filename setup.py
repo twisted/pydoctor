@@ -49,5 +49,6 @@ setup(
         "epydoc",
         "requests",
         "six",
+        "astor",
     ],
 )
