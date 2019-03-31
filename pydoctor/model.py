@@ -491,7 +491,7 @@ class System(object):
 
     def addObject(self, obj):
         """Add C{object} to the system."""
-        if obj.parent:
+        if obj.parent and obj.parent.fullName() != obj.fullName():
             obj.parent.orderedcontents.append(obj)
             obj.parent.contents[obj.name] = obj
         else:
@@ -675,7 +675,8 @@ class System(object):
         self._warning(obj.parent, "duplicate", prev)
         def remove(o):
             del self.allobjects[o.fullName()]
-            for c in o.orderedcontents:
+            oc = list(o.orderedcontents)
+            for c in oc:
                 remove(c)
         remove(prev)
         prev.name = obj.name + ' ' + str(i)

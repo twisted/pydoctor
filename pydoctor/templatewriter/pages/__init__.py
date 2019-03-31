@@ -4,6 +4,9 @@ from __future__ import print_function
 
 from twisted.web.template import tags, Element, renderer, XMLFile
 
+import ast
+import astor
+
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
@@ -38,12 +41,13 @@ def signature(argspec):
     things = []
     for regarg in regargs:
         if isinstance(regarg, list):
-            things.append(_strtup(regarg))
+            things.append(_strtup(regarg.id))
         else:
-            things.append(regarg)
+            things.append(regarg.id)
     if varargname:
         things.append('*%s' % varargname)
-    things += ['%s=%s' % (t[0], t[1]) for t in kwargs]
+
+    things += ['%s=%s' % (t[0].id, astor.to_source(t[1]).strip()) for t in kwargs]
     if varkwname:
         things.append('**%s' % varkwname)
     return ', '.join(things)

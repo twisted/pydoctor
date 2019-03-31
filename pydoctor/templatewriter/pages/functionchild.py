@@ -1,6 +1,7 @@
 from __future__ import print_function
 
-from compiler import ast
+import ast
+import astor
 
 from twisted.web.template import Element, renderer, tags, XMLFile
 
@@ -40,20 +41,15 @@ class FunctionChild(Element):
 
         if self.ob.decorators:
             for dec in self.ob.decorators:
-                if isinstance(dec.asList()[0], ast.Name):
-                    fn = self.ob.expandName(dec.asList()[0].name)
-                    # We don't want to show the deprecated decorator, it shows up
-                    # as an infobox
-                    if fn == "twisted.python.deprecate.deprecated":
-                        break
-                decorators.append(ast_pp.pp(dec))
+                if isinstance(dec, ast.Call):
+                    if isinstance(dec.func, ast.Name):
+                        fn = self.ob.expandName(dec.func.id)
+                        # We don't want to show the deprecated decorator, it shows up
+                        # as an infobox
+                        if fn == "twisted.python.deprecate.deprecated":
+                            break
 
-        if self.ob.kind == "Class Method" \
-               and 'classmethod' not in decorators:
-            decorators.append('classmethod')
-        elif self.ob.kind == "Static Method" \
-                 and 'staticmethod' not in decorators:
-            decorators.append('staticmethod')
+                decorators.append(astor.to_source(dec).strip())
 
         if decorators:
             decorator = [('@' + dec, tags.br()) for dec in decorators]
