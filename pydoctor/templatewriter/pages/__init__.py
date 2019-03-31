@@ -4,7 +4,6 @@ from __future__ import print_function
 
 from twisted.web.template import tags, Element, renderer, XMLFile
 
-import ast
 import astor
 
 from pydoctor import epydoc2stan, model

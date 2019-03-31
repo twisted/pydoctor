@@ -3,8 +3,6 @@
 from __future__ import print_function
 
 import ast
-import symbol
-import token
 
 import astor
 from pydoctor import model
