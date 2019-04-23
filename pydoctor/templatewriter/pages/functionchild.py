@@ -11,7 +11,7 @@ from pydoctor.templatewriter.pages import signature
 
 class FunctionChild(Element):
 
-    loader = XMLFile(util.templatefile('function-child.html'))
+    loader = XMLFile(util.templatefilepath('function-child.html'))
 
     def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter

@@ -30,7 +30,7 @@ class ModuleIndexPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('summary.html'))
+        return XMLFile(util.templatefilepath('summary.html'))
 
     def __init__(self, system):
         self.system = system
@@ -89,7 +89,7 @@ class ClassIndexPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('summary.html'))
+        return XMLFile(util.templatefilepath('summary.html'))
 
     def __init__(self, system):
         self.system = system
@@ -170,7 +170,7 @@ class NameIndexPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('nameIndex.html'))
+        return XMLFile(util.templatefilepath('nameIndex.html'))
 
     def __init__(self, system):
         self.system = system
@@ -204,7 +204,7 @@ class IndexPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('index.html'))
+        return XMLFile(util.templatefilepath('index.html'))
 
     def __init__(self, system):
         self.system = system
@@ -276,7 +276,7 @@ class UndocumentedSummaryPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('summary.html'))
+        return XMLFile(util.templatefilepath('summary.html'))
 
     def __init__(self, system):
         self.system = system
