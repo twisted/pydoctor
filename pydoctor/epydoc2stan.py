@@ -4,7 +4,6 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
-import exceptions
 import inspect
 import itertools
 import os
@@ -12,10 +11,16 @@ import re
 import sys
 
 from pydoctor import model
+from six import text_type
 from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, XMLString, tags
 from pydoctor.epydoc.markup import DocstringLinker
+
+try:
+    import exceptions
+except ImportError:
+    exceptions = builtins
 
 
 STDLIB_DIR = os.path.dirname(os.__file__)
@@ -209,7 +214,7 @@ class FieldDesc(object):
         return body
     def __repr__(self):
         contents = []
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
 
@@ -269,7 +274,7 @@ _class = ''
 for _c in map(chr, range(0, 32)):
     if _c not in _ok_chars:
         _class += _c
-_control_pat = re.compile('[' + _class + ']')
+_control_pat = re.compile(('[' + _class + ']').encode())
 
 
 def html2stan(html):
@@ -277,13 +282,13 @@ def html2stan(html):
     Convert HTML to a Stan structure.
 
     @param html: A HTML string.
-    @type html: L{unicode} or L{bytes}
+    @type html: L{str} or L{bytes}
     """
-    if isinstance(html, unicode):
+    if isinstance(html, text_type):
         html = html.encode('utf8')
 
-    html = _control_pat.sub(lambda m:'\\x%02x' % ord(m.group()), html)
-    html = "<div>" + html + "</div>"
+    html = _control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+    html = b"<div>" + html + b"</div>"
     html = XMLString(html).load()[0].children
     if html and html[-1] == u'\n':
         del html[-1]
@@ -494,7 +499,7 @@ def doc2stan(obj, summary=False, docstring=None):
         text = "Undocumented"
         subdocstrings = {}
         subcounts = {}
-        for subob in origobj.contents.itervalues():
+        for subob in origobj.contents.values():
             k = subob.kind.lower()
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
@@ -551,7 +556,7 @@ def doc2stan(obj, summary=False, docstring=None):
                     [e.__class__.__name__ +': ' + str(e)])
     else:
         crap = ''
-    if isinstance(crap, unicode):
+    if isinstance(crap, text_type):
         crap = crap.encode('utf-8')
     if summary:
         if not crap:

@@ -1,11 +1,6 @@
 #!/usr/bin/python
 import sys
 
-if sys.version_info > (3, 0):
-    raise Exception(("PyDoctor does not yet work on Python 3. Please see "
-                     "https://github.com/twisted/pydoctor/issues/96 for "
-                     "the tracking ticket for work on this."))
-
 from setuptools import find_packages, setup
 
 setup(

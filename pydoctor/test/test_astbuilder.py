@@ -6,6 +6,9 @@ import textwrap
 from pydoctor import astbuilder, model
 
 
+
+from . import py2only
+
 def fromText(text, modname='<test>', system=None,
              buildercls=None,
              systemcls=model.System):
@@ -27,6 +30,7 @@ def fromText(text, modname='<test>', system=None,
 
 def test_simple():
     src = '''
+    """ MOD DOC """
     def f():
         """This is a docstring."""
     '''
@@ -38,6 +42,26 @@ def test_simple():
 
 
 def test_function_argspec():
+    # we don't compare the defaults part of the argspec directly any
+    # more because inspect.getargspec returns the actual objects that
+    # are the defaults where as the ast stuff always gives strings
+    # representing those objects
+    src = textwrap.dedent('''
+    def f(a, b=3, *c, **kw):
+        pass
+    ''')
+    mod = fromText(src)
+    docfunc, = mod.contents.values()
+    ns = {}
+    exec(src, ns)
+    realf = ns['f']
+    inspectargspec = inspect.getargspec(realf)
+    assert inspectargspec[:-1] == docfunc.argspec[:-1]
+    assert docfunc.argspec[-1] == ('3',)
+
+
+@py2only
+def test_function_argspec_with_tuple():
     # we don't compare the defaults part of the argspec directly any
     # more because inspect.getargspec returns the actual objects that
     # are the defaults where as the ast stuff always gives strings

@@ -13,16 +13,15 @@ import cachecontrol
 import pytest
 import requests
 from pydoctor import model, sphinx
-from twisted.python.compat import NativeStringIO
 from urllib3 import HTTPResponse
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
-class PersistentStringIO(NativeStringIO):
+class PersistentBytesIO(io.BytesIO):
     """
-    A custom stringIO which keeps content after file is closed.
+    A custom BytesIO which keeps content after file is closed.
     """
     def close(self):
         """
@@ -78,7 +77,7 @@ def test_generate_empty_functional():
     logger = lambda section, message, thresh=0: log.append((
         section, message, thresh))
     sut = sphinx.SphinxInventory(logger=logger, project_name=project_name)
-    output = PersistentStringIO()
+    output = PersistentBytesIO()
     sut._openFileForWriting = lambda path: closing(output)
 
     sut.generate(subjects=[], basepath='base-path')
@@ -90,7 +89,7 @@ def test_generate_empty_functional():
         )]
     assert expected_log == log
 
-    expected_ouput = """# Sphinx inventory version 2
+    expected_ouput = b"""# Sphinx inventory version 2
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
@@ -114,9 +113,9 @@ def test_generateContent():
     result = sut._generateContent(subjects)
 
     expected_result = (
-        'package1 py:module -1 package1.html -\n'
-        'package2 py:module -1 package2.html -\n'
-        'package2.child1 py:module -1 package2.child1.html -\n'
+        b'package1 py:module -1 package1.html -\n'
+        b'package2 py:module -1 package2.html -\n'
+        b'package2.child1 py:module -1 package2.child1.html -\n'
         )
     assert expected_result == result
 
@@ -225,7 +224,7 @@ def test_getPayload_empty():
     Return empty string.
     """
     sut = make_SphinxInventory()
-    content = """# Sphinx inventory version 2
+    content = b"""# Sphinx inventory version 2
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
@@ -242,11 +241,11 @@ def test_getPayload_content():
     """
     payload = 'first_line\nsecond line'
     sut = make_SphinxInventory()
-    content = """# Ignored line
+    content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
 # commented line.
-%s""" % (zlib.compress(payload),)
+%s""" % (zlib.compress(payload.encode()),)
 
     result = sut._getPayload('http://base.ignore', content)
 
@@ -259,7 +258,7 @@ def test_getPayload_invalid():
     """
     sut, log = make_SphinxInventoryWithLog()
     base_url = 'http://tm.tld'
-    content = """# Project: some-name
+    content = b"""# Project: some-name
 # Version: 2.0
 not-valid-zlib-content"""
 
@@ -305,12 +304,12 @@ def test_update_functional():
     Functional test for updating from an empty inventory.
     """
     payload = (
-        'some.module1 py:module -1 module1.html -\n'
-        'other.module2 py:module 0 module2.html Other description\n'
+        b'some.module1 py:module -1 module1.html -\n'
+        b'other.module2 py:module 0 module2.html Other description\n'
         )
     sut = make_SphinxInventory()
     # Patch URL loader to avoid hitting the system.
-    content = """# Sphinx inventory version 2
+    content = b"""# Sphinx inventory version 2
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.

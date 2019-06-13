@@ -226,7 +226,7 @@ def parse_args(args):
     return options, args
 
 def main(args):
-    from six.moves import cPickle
+    from six.moves import cPickle as pickle
     options, args = parse_args(args)
 
     exitcode = 0
@@ -251,7 +251,7 @@ def main(args):
             systemclass = zopeinterface.ZopeInterfaceSystem
 
         if options.inputpickle:
-            system = cPickle.load(open(options.inputpickle, 'rb'))
+            system = pickle.load(open(options.inputpickle, 'rb'))
             if options.systemclass:
                 if type(system) is not systemclass:
                     cls = type(system)
@@ -272,7 +272,7 @@ def main(args):
             moresystems = []
             for fnamepref in options.moresystems:
                 fname, prefix = fnamepref.split(':', 1)
-                moresystems.append(cPickle.load(open(fname, 'rb')))
+                moresystems.append(pickle.load(open(fname, 'rb')))
                 moresystems[-1].urlprefix = prefix
                 moresystems[-1].options = system.options
                 moresystems[-1].subsystems.append(system)
@@ -357,7 +357,7 @@ def main(args):
             system.msg('', 'saving output pickle to ' + options.outputpickle)
             del system.options # don't persist the options
             f = open(options.outputpickle, 'wb')
-            cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
+            pickle.dump(system, f, pickle.HIGHEST_PROTOCOL)
             f.close()
             system.options = options
 
@@ -407,7 +407,7 @@ def main(args):
                 # save again, with epytextproblems
                 del system.options # don't persist the options
                 f = open(options.outputpickle, 'wb')
-                cPickle.dump(system, f, cPickle.HIGHEST_PROTOCOL)
+                pickle.dump(system, f, pickle.HIGHEST_PROTOCOL)
                 f.close()
                 system.options = options
 
