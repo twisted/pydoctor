@@ -5,6 +5,8 @@ from __future__ import print_function
 from pydoctor import model, astbuilder
 import types, sys, os, warnings, inspect
 
+import six
+
 def loadModulesForSystem(system):
     """
     Return a dictionary mapping model.Modules to real modules.
@@ -72,7 +74,7 @@ def checker(*typs):
 
 @checker(types.MethodType)
 def methChecker(builder, name, OBJ):
-    if OBJ.im_self is None:
+    if six.get_method_self(OBJ) is None:
         return
     f = builder.pushFunction(name, OBJ.__doc__)
     if builder.system.options.verbosity > 0:
@@ -85,7 +87,7 @@ def methChecker(builder, name, OBJ):
     finally:
         builder.popFunction()
 
-@checker(types.TypeType, types.ClassType)
+@checker(type)
 def typeChecker(builder, name, OBJ):
     c = builder.current
     mod = c

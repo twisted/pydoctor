@@ -6,7 +6,7 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import datetime
 import imp
@@ -191,7 +191,7 @@ class Documentable(object):
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
         r = {}
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             if isinstance(v, Documentable):
                 r['$'+k] = v.fullName()
             elif isinstance(v, list) and v:
@@ -208,13 +208,13 @@ class Documentable(object):
                             rr.append(vv.fullName())
                     r['@'+k] = rr
             elif isinstance(v, dict) and v:
-                for vv in v.itervalues():
+                for vv in v.values():
                     if not isinstance(vv, Documentable):
                         r[k] = v
                         break
                 else:
                     rr = {}
-                    for kk, vv in v.iteritems():
+                    for kk, vv in v.items():
                         rr[kk] = vv.fullName()
                     r['!'+k] = rr
             else:
@@ -418,7 +418,7 @@ class System(object):
                 sys.stdout.flush()
             else:
                 self.needsnl = False
-                print()
+                print('')
 
     def objForFullName(self, fullName):
         for system in [self] + self.moresystems:
@@ -468,7 +468,7 @@ class System(object):
                 return
         for system in [self] + self.moresystems + self.subsystems:
             for obj in system.orderedallobjects:
-                for k, v in obj.__dict__.copy().iteritems():
+                for k, v in obj.__dict__.copy().items():
                     if k.startswith('$'):
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = lookup(v)
@@ -483,7 +483,7 @@ class System(object):
                         obj.__dict__[k[1:]] = n
                     elif k.startswith('!'):
                         n = {}
-                        for kk, vv in v.iteritems():
+                        for kk, vv in v.items():
                             n[kk] = lookup(vv)
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
@@ -585,7 +585,7 @@ class System(object):
         return package
 
     def _introspectThing(self, thing, parent, parentMod):
-        for k, v in thing.__dict__.iteritems():
+        for k, v in thing.__dict__.items():
             if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
                 f = self.Function(self, k, v.__doc__, parent)
                 f.parentMod = parentMod
@@ -723,12 +723,12 @@ class System(object):
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
             "modules processed %s warnings"%(
-            sum(len(v) for v in self.warnings.itervalues()),))
+            sum(len(v) for v in self.warnings.values()),))
 
 
     def process(self):
         while self.unprocessed_modules:
-            mod = iter(self.unprocessed_modules).next()
+            mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
 
 

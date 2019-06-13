@@ -123,8 +123,7 @@ def getBetterThanArgspec(argspec):
     backargs.reverse()
     defaults = list(defaults)
     defaults.reverse()
-    kws = zip(backargs, defaults)
-    kws.reverse()
+    kws = list(reversed(list(zip(backargs, defaults))))
     return (args[:-len(kws)], kws)
 
 def _strtup(tup):
@@ -438,7 +437,7 @@ def sibpath(path, sibling):
 
 def main(args):
     from optparse import OptionParser
-    import cPickle
+    from six.moves import cPickle as pickle
     parser = OptionParser()
     parser.add_option('-f', '--file', dest='filename',
                       help="Open this file")
@@ -457,7 +456,7 @@ def main(args):
     if options.output:
         out = options.output
 
-    docsys = cPickle.load(open(fn, 'rb'))
+    docsys = pickle.load(open(fn, 'rb'))
     docsys.options = options
     syswriter = SystemWriter(out)
     syswriter.prepOutputDirectory()

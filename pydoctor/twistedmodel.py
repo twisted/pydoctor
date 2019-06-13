@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 from pydoctor import model, ast_pp, zopeinterface
-from compiler import ast
+import ast
 
 from twisted.python.versions import Version
 from twisted.python.deprecate import _getDeprecationWarningString

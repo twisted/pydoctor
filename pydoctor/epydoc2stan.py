@@ -4,14 +4,19 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
+import six
 from six.moves import builtins
-import exceptions
+from six.moves import urllib
+try:
+    import exceptions
+except ImportError:
+    exceptions = builtins
 import inspect
 import itertools
 import os
 import re
 import sys
-import urllib
+
 
 from twisted.web.template import Tag, tags, XMLString
 
@@ -23,7 +28,7 @@ STDLIB_URL = 'http://docs.python.org/library/'
 
 
 def link(o):
-    return o.system.urlprefix + urllib.quote(o.fullName()+'.html')
+    return o.system.urlprefix + urllib.parse.quote(o.fullName()+'.html')
 
 
 def get_parser(formatname):
@@ -90,7 +95,7 @@ class _EpydocLinker(object):
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
                 p = p.parent
-            linktext = link(p) + '#' + urllib.quote(obj.name)
+            linktext = link(p) + '#' + urllib.parse.quote(obj.name)
         elif obj.documentation_location == model.DocLocation.OWN_PAGE:
             linktext = link(obj)
         else:
@@ -209,7 +214,7 @@ class FieldDesc(object):
         return body
     def __repr__(self):
         contents = []
-        for k, v in self.__dict__.iteritems():
+        for k, v in self.__dict__.items():
             contents.append("%s=%r"%(k, v))
         return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
 
@@ -269,7 +274,7 @@ _class = ''
 for _c in map(chr, range(0, 32)):
     if _c not in _ok_chars:
         _class += _c
-_control_pat = re.compile('[' + _class + ']')
+_control_pat = re.compile(('[' + _class + ']').encode())
 
 
 def html2stan(html):
@@ -277,13 +282,13 @@ def html2stan(html):
     Convert HTML to a Stan structure.
 
     @param html: A HTML string.
-    @type html: L{unicode} or L{bytes}
+    @type html: L{str} or L{bytes}
     """
-    if isinstance(html, unicode):
+    if isinstance(html, six.text_type):
         html = html.encode('utf8')
 
-    html = _control_pat.sub(lambda m:'\\x%02x' % ord(m.group()), html)
-    html = "<div>" + html + "</div>"
+    html = _control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+    html = b"<div>" + html + b"</div>"
     html = XMLString(html).load()[0].children
     if html and html[-1] == u'\n':
         del html[-1]
@@ -495,7 +500,7 @@ def doc2stan(obj, summary=False, docstring=None):
         text = "Undocumented"
         subdocstrings = {}
         subcounts = {}
-        for subob in origobj.contents.itervalues():
+        for subob in origobj.contents.values():
             k = subob.kind.lower()
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
@@ -552,7 +557,7 @@ def doc2stan(obj, summary=False, docstring=None):
                     [e.__class__.__name__ +': ' + str(e)])
     else:
         crap = ''
-    if isinstance(crap, unicode):
+    if isinstance(crap, six.text_type):
         crap = crap.encode('utf-8')
     if summary:
         if not crap:

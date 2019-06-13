@@ -278,7 +278,7 @@ class ClassPage(CommonPage):
 
     def mediumName(self, ob):
         r = [super(ClassPage, self).mediumName(ob)]
-        zipped = zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects)
+        zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
             for i, (n, m, o) in enumerate(zipped):

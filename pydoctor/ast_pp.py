@@ -12,7 +12,10 @@ U{http://twistedmatrix.com/trac/browser/sandbox/exarkun/ast/ast_pp.py}
 from __future__ import print_function
 
 from twisted.python.compat import NativeStringIO
-from compiler import walk
+from pydoctor.compat import walk
+
+import ast
+
 
 class SourceWriter(object):
     _i = 0
@@ -36,14 +39,15 @@ class SourceWriter(object):
         self.nl()
 
     def visitModule(self, node):
-        if node.doc is not None:
-            self.wl(repr(node.doc))
-        walk(node.node, self)
+        doc = ast.get_docstring(node)
+        if doc is not None:
+            self.wl(repr(node))
+        self.visitStmt(node)
+        self.nl()
 
     def visitStmt(self, node):
-        for n in node.getChildren():
+        for n in ast.iter_child_nodes(node):
             walk(n, self)
-
 
     def _functionSignature(self, node, fmt):
         if node.defaults:
@@ -79,8 +83,8 @@ class SourceWriter(object):
     def visitAssName(self, node):
         self.w(node.name)
 
-    def visitCallFunc(self, node):
-        walk(node.node, self)
+    def visitCall(self, node):
+        walk(node.func, self)
         self.w('(')
         for a in node.args[:-1]:
             walk(a, self)
@@ -124,7 +128,7 @@ class SourceWriter(object):
             walk(expr, self)
 
     def visitName(self, node):
-        self.w(node.name)
+        self.w(node.id)
 
     def visitDiscard(self, node):
         walk(node.expr, self)
@@ -140,10 +144,10 @@ class SourceWriter(object):
             walk(e, self)
         self.nl()
 
-    def visitGetattr(self, node):
-        walk(node.expr, self)
+    def visitAttribute(self, node):
+        walk(node.value, self)
         self.w('.')
-        self.w(node.attrname)
+        self.w(node.attr)
 
     def visitImport(self, node):
         self.w('import ')
@@ -186,8 +190,9 @@ class SourceWriter(object):
             self.w('):')
         self.indent()
         try:
-            if node.doc is not None:
-                self.w(repr(node.doc))
+            doc = ast.get_docstring(node)
+            if doc is not None:
+                self.w(repr(node))
             walk(node.code, self)
         finally:
             self.dedent()
@@ -290,16 +295,16 @@ class SourceWriter(object):
 
     def visitTuple(self, node):
         self.w('(')
-        if len(node.nodes) == 0:
+        if len(node.elts) == 0:
             pass
-        elif len(node.nodes) == 1:
-            walk(node.nodes[0], self)
+        elif len(node.elts) == 1:
+            walk(node.elts[0], self)
             self.w(',')
         else:
-            for expr in node.nodes[:-1]:
+            for expr in node.elts[:-1]:
                 walk(expr, self)
                 self.w(', ')
-            walk(node.nodes[-1], self)
+            walk(node.elts[-1], self)
         self.w(')')
 
     def visitTryFinally(self, node):
@@ -322,7 +327,7 @@ class SourceWriter(object):
         walk(node.subs[0], self)
         self.w(']')
 
-    def visitUnarySub(self, node):
+
         self.w('-')
         walk(node.expr, self)
 
@@ -346,16 +351,22 @@ class SourceWriter(object):
 
     def visitDict(self, node):
         self.w('{')
-        for (k, v) in node.items[:-1]:
+        for (k, v) in zip(node.keys[:-1], node.values[:-1]):
             walk(k, self)
             self.w(':')
             walk(v, self)
             self.w(', ')
-        for (k, v) in node.items[-1:]:
+        for (k, v) in zip(node.keys[-1:], node.values[-1:]):
             walk(k, self)
             self.w(':')
             walk(v, self)
         self.w('}')
+
+    def visitStr(self, node):
+        return self.w(repr(node.s))
+
+    def visitNum(self, node):
+        return self.w(str(node.n))
 
     def __str__(self):
         return self.s.getvalue()
@@ -370,8 +381,8 @@ def pp(ast):
     return sw.s.getvalue()
 
 if __name__ == '__main__':
-    from compiler import parse
     import sys
-    ast = parse(sys.argv[1])
+    import ast
+    ast = ast.parse(sys.argv[1])
     print(ast)
     print(pp(ast))

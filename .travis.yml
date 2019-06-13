@@ -8,6 +8,8 @@ matrix:
       env: TOX_ENV=test-pypy
     - python: 2.7
       env: TOX_ENV=test-py27-codecov-travis
+    - python: 3.6
+      env: TOX_ENV=test-py36-codecov-travis
     - python: 2.7
       env: TOX_ENV=twisted-apidoc
 

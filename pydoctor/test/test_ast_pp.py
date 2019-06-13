@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 from pydoctor import ast_pp
-from compiler.transformer import parse
+import ast
 
 # the tests are a little bit fragile -- the result of pp() always ends
 # with a new line, string literals have >1 representation, things like
@@ -15,7 +15,7 @@ from compiler.transformer import parse
 # whole point of the ast_pp module so let's live with the fragility.
 
 def pp_test(source):
-    assert ast_pp.pp(parse(source)) == source
+    assert ast_pp.pp(ast.parse(source)) == source
 
 def test_name():
     pp_test('a\n')
