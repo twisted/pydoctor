@@ -36,7 +36,7 @@ class DocLocation:
     OWN_PAGE = 1
     PARENT_PAGE = 2
     # Nothing uses this yet.  Parameters will one day.
-    #UNDER_PARENT_DOCSTRING = 3
+    # UNDER_PARENT_DOCSTRING = 3
 
 
 class Documentable(object):
@@ -53,15 +53,16 @@ class Documentable(object):
     @ivar sourceHref: ...
     @ivar kind: ...
     """
+
     documentation_location = DocLocation.OWN_PAGE
     sourceHref = None
 
     @property
     def css_class(self):
         """A short, lower case description for use as a CSS class in HTML."""
-        class_ = self.kind.lower().replace(' ', '')
+        class_ = self.kind.lower().replace(" ", "")
         if self.privacyClass == PrivacyClass.PRIVATE:
-            class_ += ' private'
+            class_ += " private"
         return class_
 
     def __init__(self, system, name, docstring, parent=None):
@@ -81,18 +82,21 @@ class Documentable(object):
     def fullName(self):
         parent = self.parent
         if parent is not None:
-            if (parent.parent and isinstance(parent.parent, Package)
+            if (
+                parent.parent
+                and isinstance(parent.parent, Package)
                 and isinstance(parent, Module)
-                and parent.name == '__init__'):
-                prefix = parent.parent.fullName() + '.'
+                and parent.name == "__init__"
+            ):
+                prefix = parent.parent.fullName() + "."
             else:
-                prefix = parent.fullName() + '.'
+                prefix = parent.fullName() + "."
         else:
-            prefix = ''
+            prefix = ""
         return prefix + self.name
 
     def __repr__(self):
-        return "%s %r"%(self.__class__.__name__, self.fullName())
+        return "%s %r" % (self.__class__.__name__, self.fullName())
 
     def docsources(self):
         """Objects that can be considered as a source of documentation.
@@ -102,7 +106,6 @@ class Documentable(object):
         subclass'.
         """
         yield self
-
 
     def reparent(self, new_parent, new_name):
         # this code attempts to preserve "rather a lot" of
@@ -156,15 +159,15 @@ class Documentable(object):
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
         should be "mod1.Local". """
-        parts = name.split('.')
+        parts = name.split(".")
         obj = self
         for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
             obj = self.system.objForFullName(full_name)
             if obj is None:
                 break
-        remaning = parts[i+1:]
-        return '.'.join([full_name] + remaning)
+        remaning = parts[i + 1 :]
+        return ".".join([full_name] + remaning)
 
     def resolveName(self, name):
         """Return the object named by "name" (using Python's lookup rules) in
@@ -185,6 +188,8 @@ class Documentable(object):
 
         This is just a simple helper which defers to self.privacyClass.
         """
+        # if self.options.hide_private:
+        #    return self.privacyClass == PrivacyClass.PUBLIC
         return self.privacyClass != PrivacyClass.HIDDEN
 
     def __getstate__(self):
@@ -193,7 +198,7 @@ class Documentable(object):
         r = {}
         for k, v in self.__dict__.iteritems():
             if isinstance(v, Documentable):
-                r['$'+k] = v.fullName()
+                r["$" + k] = v.fullName()
             elif isinstance(v, list) and v:
                 for vv in v:
                     if vv is not None and not isinstance(vv, Documentable):
@@ -206,7 +211,7 @@ class Documentable(object):
                             rr.append(vv)
                         else:
                             rr.append(vv.fullName())
-                    r['@'+k] = rr
+                    r["@" + k] = rr
             elif isinstance(v, dict) and v:
                 for vv in v.itervalues():
                     if not isinstance(vv, Documentable):
@@ -216,7 +221,7 @@ class Documentable(object):
                     rr = {}
                     for kk, vv in v.iteritems():
                         rr[kk] = vv.fullName()
-                    r['!'+k] = rr
+                    r["!" + k] = rr
             else:
                 r[k] = v
         return r
@@ -224,24 +229,28 @@ class Documentable(object):
 
 class Package(Documentable):
     kind = "Package"
+
     def docsources(self):
-        yield self.contents['__init__']
+        yield self.contents["__init__"]
+
     @property
     def doctarget(self):
-        return self.contents['__init__']
+        return self.contents["__init__"]
+
     @property
     def state(self):
-        return self.contents['__init__'].state
+        return self.contents["__init__"].state
 
     def _localNameToFullName(self, name):
         if name in self.contents:
             o = self.contents[name]
             return o.fullName()
         else:
-            return self.contents['__init__']._localNameToFullName(name)
+            return self.contents["__init__"]._localNameToFullName(name)
 
 
 [UNPROCESSED, PROCESSING, PROCESSED] = range(3)
+
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self):
@@ -253,6 +262,7 @@ class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = UNPROCESSED
     linenumber = 0
+
     def setup(self):
         super(Module, self).setup()
         self.all = None
@@ -271,6 +281,7 @@ class Module(CanContainImportsDocumentable):
 
 class Class(CanContainImportsDocumentable):
     kind = "Class"
+
     def setup(self):
         super(Class, self).setup()
         self.rawbases = []
@@ -284,6 +295,7 @@ class Class(CanContainImportsDocumentable):
                 continue
             for b2 in b.allbases(True):
                 yield b2
+
     def _localNameToFullName(self, name):
         if name in self.contents:
             o = self.contents[name]
@@ -298,10 +310,12 @@ class Function(Documentable):
     documentation_location = DocLocation.PARENT_PAGE
     kind = "Function"
     linenumber = 0
+
     def setup(self):
         super(Function, self).setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
+
     def docsources(self):
         yield self
         if not isinstance(self.parent, Class):
@@ -309,8 +323,10 @@ class Function(Documentable):
         for b in self.parent.allbases(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
+
     def _localNameToFullName(self, name):
         return self.parent._localNameToFullName(name)
+
 
 class Attribute(Documentable):
 
@@ -320,6 +336,7 @@ class Attribute(Documentable):
 
     def _localNameToFullName(self, name):
         return self.parent._localNameToFullName(name)
+
 
 class PrivacyClass:
     """'enum' containing values indicating how private an object should be.
@@ -332,7 +349,6 @@ class PrivacyClass:
     HIDDEN = 0
     PRIVATE = 1
     VISIBLE = 2
-
 
 
 class System(object):
@@ -348,7 +364,7 @@ class System(object):
     Function = Function
     Attribute = Attribute
     # not done here for circularity reasons:
-    #defaultBuilder = astbuilder.ASTBuilder
+    # defaultBuilder = astbuilder.ASTBuilder
     sourcebase = None
 
     def __init__(self, options=None):
@@ -359,18 +375,21 @@ class System(object):
         self.packages = []
         self.moresystems = []
         self.subsystems = []
-        self.urlprefix = ''
+        self.urlprefix = ""
 
         if options:
             self.options = options
         else:
             from pydoctor.driver import parse_args
+
             self.options, _ = parse_args([])
             self.options.verbosity = 3
 
         self.abbrevmapping = {}
-        self.projectname = 'my project'
-        self.epytextproblems = [] # fullNames of objects that failed to epytext properly
+        self.projectname = "my project"
+        self.epytextproblems = (
+            []
+        )  # fullNames of objects that failed to epytext properly
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs = set()
@@ -381,7 +400,9 @@ class System(object):
         # Once pickle support is removed, System should be
         # initialized with project name so that we can reuse intersphinx instance for
         # object.inv generation.
-        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
+        self.intersphinx = SphinxInventory(
+            logger=self.msg, project_name=self.projectname
+        )
 
     def verbosity(self, section=None):
         if isinstance(section, str):
@@ -393,9 +414,9 @@ class System(object):
         if n is None:
             i = str(i)
         else:
-            i = '%s/%s'%(i,n)
+            i = "%s/%s" % (i, n)
         if self.verbosity(section) == 0 and sys.stdout.isatty():
-            print('\r'+i, msg, end='')
+            print("\r" + i, msg, end="")
             sys.stdout.flush()
             if i == n:
                 self.needsnl = False
@@ -403,7 +424,16 @@ class System(object):
             else:
                 self.needsnl = True
 
-    def msg(self, section, msg, thresh=0, topthresh=100, nonl=False, wantsnl=True, once=False):
+    def msg(
+        self,
+        section,
+        msg,
+        thresh=0,
+        topthresh=100,
+        nonl=False,
+        wantsnl=True,
+        once=False,
+    ):
         if once:
             if (section, msg) in self.once_msgs:
                 return
@@ -412,7 +442,7 @@ class System(object):
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
                 print()
-            print(msg, end='')
+            print(msg, end="")
             if nonl:
                 self.needsnl = True
                 sys.stdout.flush()
@@ -430,7 +460,7 @@ class System(object):
         if current is not None:
             fn = current.fullName()
         else:
-            fn = '<None>'
+            fn = "<None>"
         if self.options.verbosity > 0:
             print(fn, type, detail)
         self.warnings.setdefault(type, []).append((fn, detail))
@@ -442,19 +472,24 @@ class System(object):
                 yield o
 
     def privacyClass(self, ob):
-        if ob.name.startswith('_') and \
-               not (ob.name.startswith('__') and ob.name.endswith('__')):
-            return PrivacyClass.PRIVATE
+        if ob.name.startswith("_") and not (
+            ob.name.startswith("__") and ob.name.endswith("__")
+        ):
+            return (
+                PrivacyClass.HIDDEN
+                if self.options.hide_private
+                else PrivacyClass.PRIVATE
+            )
         return PrivacyClass.VISIBLE
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        del d['intersphinx']
+        del d["intersphinx"]
         return d
 
     def __setstate__(self, state):
-        if 'abbrevmapping' not in state:
-            state['abbrevmapping'] = {}
+        if "abbrevmapping" not in state:
+            state["abbrevmapping"] = {}
         # this is so very, very evil.
         # see doc/extreme-pickling-pain.txt for more.
         def lookup(name):
@@ -462,17 +497,18 @@ class System(object):
                 if name in system.allobjects:
                     return system.allobjects[name]
             raise KeyError(name)
+
         self.__dict__.update(state)
         for system in [self] + self.moresystems + self.subsystems:
-            if 'allobjects' not in system.__dict__:
+            if "allobjects" not in system.__dict__:
                 return
         for system in [self] + self.moresystems + self.subsystems:
             for obj in system.orderedallobjects:
                 for k, v in obj.__dict__.copy().iteritems():
-                    if k.startswith('$'):
+                    if k.startswith("$"):
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = lookup(v)
-                    elif k.startswith('@'):
+                    elif k.startswith("@"):
                         n = []
                         for vv in v:
                             if vv is None:
@@ -481,13 +517,15 @@ class System(object):
                                 n.append(lookup(vv))
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
-                    elif k.startswith('!'):
+                    elif k.startswith("!"):
                         n = {}
                         for kk, vv in v.iteritems():
                             n[kk] = lookup(vv)
                         del obj.__dict__[k]
                         obj.__dict__[k[1:]] = n
-        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
+        self.intersphinx = SphinxInventory(
+            logger=self.msg, project_name=self.projectname
+        )
 
     def addObject(self, obj):
         """Add C{object} to the system."""
@@ -529,14 +567,12 @@ class System(object):
 
         projBaseDir = mod.system.options.projectbasedirectory
         if projBaseDir is not None:
-            mod.sourceHref = (
-                self.sourcebase +
-                mod.filepath[len(projBaseDir):])
+            mod.sourceHref = self.sourcebase + mod.filepath[len(projBaseDir) :]
             return
 
         trailing = []
         dir, fname = os.path.split(mod.filepath)
-        while os.path.exists(os.path.join(dir, '.svn')):
+        while os.path.exists(os.path.join(dir, ".svn")):
             dir, dirname = os.path.split(dir)
             trailing.append(dirname)
 
@@ -551,8 +587,11 @@ class System(object):
         mod = self.Module(self, modname, None, parentPackage)
         self.addObject(mod)
         self.progress(
-            "addModule", len(self.orderedallobjects),
-            None, "modules and packages discovered")
+            "addModule",
+            len(self.orderedallobjects),
+            None,
+            "modules and packages discovered",
+        )
         mod.filepath = modpath
         self.unprocessed_modules.add(mod)
         self.module_count += 1
@@ -561,8 +600,8 @@ class System(object):
     def ensureModule(self, module_full_name):
         if module_full_name in self.allobjects:
             return self.allobjects[module_full_name]
-        if '.' in module_full_name:
-            parent_name, module_name = module_full_name.rsplit('.', 1)
+        if "." in module_full_name:
+            parent_name, module_name = module_full_name.rsplit(".", 1)
             parent_package = self.ensurePackage(parent_name)
         else:
             parent_package = None
@@ -574,8 +613,8 @@ class System(object):
     def ensurePackage(self, package_full_name):
         if package_full_name in self.allobjects:
             return self.allobjects[package_full_name]
-        if '.' in package_full_name:
-            parent_name, package_name = package_full_name.rsplit('.', 1)
+        if "." in package_full_name:
+            parent_name, package_name = package_full_name.rsplit(".", 1)
             parent_package = self.ensurePackage(parent_name)
         else:
             parent_package = None
@@ -609,15 +648,13 @@ class System(object):
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
-            raise Exception("package path %r does not exist!"
-                            %(dirpath,))
-        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
-            raise Exception("you must pass a package directory to "
-                            "addPackage")
+            raise Exception("package path %r does not exist!" % (dirpath,))
+        if not os.path.exists(os.path.join(dirpath, "__init__.py")):
+            raise Exception("you must pass a package directory to " "addPackage")
         if parentPackage:
-            prefix = parentPackage.fullName() + '.'
+            prefix = parentPackage.fullName() + "."
         else:
-            prefix = ''
+            prefix = ""
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
@@ -626,35 +663,34 @@ class System(object):
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
-                initname = os.path.join(fullname, '__init__.py')
+                initname = os.path.join(fullname, "__init__.py")
                 if os.path.exists(initname):
                     self.addPackage(fullname, package)
-            elif not fname.startswith('.'):
+            elif not fname.startswith("."):
                 self.addModuleFromPath(package, fullname)
 
     def addModuleFromPath(self, package, path):
         for (suffix, mode, type) in imp.get_suffixes():
             if not path.endswith(suffix):
                 continue
-            module_name = os.path.basename(path[:-len(suffix)])
+            module_name = os.path.basename(path[: -len(suffix)])
             if type == imp.C_EXTENSION:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
-                    module_full_name = "%s.%s" % (
-                        package.fullName(), module_name)
+                    module_full_name = "%s.%s" % (package.fullName(), module_name)
                 else:
                     module_full_name = module_name
                 py_mod = imp.load_module(
-                    module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, type))
+                    module_full_name, open(path, "rb"), path, (suffix, mode, type)
+                )
                 self.introspectModule(py_mod, module_full_name)
             elif type == imp.PY_SOURCE:
                 self.addModule(path, module_name, package)
             break
 
     def handleDuplicate(self, obj):
-        '''This is called when we see two objects with the same
+        """This is called when we see two objects with the same
         .fullName(), for example:
 
         class C:
@@ -666,34 +702,37 @@ class System(object):
                     implementation 2
 
         The default is that the second definition "wins".
-        '''
+        """
         i = 0
         fn = obj.fullName()
-        while (fn + ' ' + str(i)) in self.allobjects:
+        while (fn + " " + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[obj.fullName()]
         self._warning(obj.parent, "duplicate", prev)
+
         def remove(o):
             del self.allobjects[o.fullName()]
             for c in o.orderedcontents:
                 remove(c)
+
         remove(prev)
-        prev.name = obj.name + ' ' + str(i)
+        prev.name = obj.name + " " + str(i)
+
         def readd(o):
             self.allobjects[o.fullName()] = o
             for c in o.orderedcontents:
                 readd(c)
+
         readd(prev)
         self.allobjects[obj.fullName()] = obj
         return obj
-
 
     def getProcessedModule(self, modname):
         mod = self.allobjects.get(modname)
         if mod is None:
             return None
         if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__').parent
+            return self.getProcessedModule(modname + ".__init__").parent
         if not isinstance(mod, Module):
             return None
 
@@ -702,35 +741,33 @@ class System(object):
 
         return mod
 
-
     def processModule(self, mod):
         assert mod.state == UNPROCESSED
         mod.state = PROCESSING
-        if getattr(mod, 'filepath', None) is None:
+        if getattr(mod, "filepath", None) is None:
             return
         builder = self.defaultBuilder(self)
         ast = builder.parseFile(mod.filepath)
         if ast:
             self.processing_modules.append(mod.fullName())
-            self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+            self.msg("processModule", "processing %s" % (self.processing_modules), 1)
             builder.processModuleAST(ast, mod)
             mod.state = PROCESSED
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
         self.progress(
-            'process',
+            "process",
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            "modules processed %s warnings"%(
-            sum(len(v) for v in self.warnings.itervalues()),))
-
+            "modules processed %s warnings"
+            % (sum(len(v) for v in self.warnings.itervalues()),),
+        )
 
     def process(self):
         while self.unprocessed_modules:
             mod = iter(self.unprocessed_modules).next()
             self.processModule(mod)
-
 
     def fetchIntersphinxInventories(self, cache):
         """

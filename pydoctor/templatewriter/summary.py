@@ -8,29 +8,35 @@ from twisted.web.template import Element, renderer, TagLoader, XMLFile
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import util
 
+
 def moduleSummary(modorpack):
-    r = tags.li(util.taglink(modorpack), ' - ', epydoc2stan.doc2stan(modorpack, summary=True)[0])
+    r = tags.li(
+        util.taglink(modorpack), " - ", epydoc2stan.doc2stan(modorpack, summary=True)[0]
+    )
     if not isinstance(modorpack, model.Package):
         return r
-    contents = [m for m in modorpack.orderedcontents
-                if m.isVisible and m.name != '__init__']
+    contents = [
+        m for m in modorpack.orderedcontents if m.isVisible and m.name != "__init__"
+    ]
     if not contents:
         return r
     ul = tags.ul()
-    for m in sorted(contents, key=lambda m:m.fullName()):
-        ul(moduleSummary(m))
+    for m in sorted(contents, key=lambda m: m.fullName()):
+        if m.isVisible:
+            ul(moduleSummary(m))
     return r(ul)
+
 
 def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
 
 class ModuleIndexPage(Element):
-    filename = 'moduleIndex.html'
+    filename = "moduleIndex.html"
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(util.templatefilepath("summary.html"))
 
     def __init__(self, system):
         self.system = system
@@ -47,16 +53,19 @@ class ModuleIndexPage(Element):
     def stuff(self, request, tag):
         r = []
         for o in self.system.rootobjects:
-            r.append(moduleSummary(o))
+            if o.isVisible:
+                r.append(moduleSummary(o))
         return tag.clear()(r)
+
     @renderer
     def heading(self, request, tag):
         return tag().clear()("Module Index")
 
+
 def findRootClasses(system):
     roots = {}
     for cls in system.objectsOfType(model.Class):
-        if ' ' in cls.name or not cls.isVisible:
+        if " " in cls.name or not cls.isVisible:
             continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
@@ -66,7 +75,8 @@ def findRootClasses(system):
                     roots[b.fullName()] = b
         else:
             roots[cls.fullName()] = cls
-    return sorted(roots.items(), key=lambda x:x[0].lower())
+    return sorted(roots.items(), key=lambda x: x[0].lower())
+
 
 def subclassesFrom(hostsystem, cls, anchors):
     r = tags.li()
@@ -74,9 +84,12 @@ def subclassesFrom(hostsystem, cls, anchors):
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(util.taglink(cls), ' - ', epydoc2stan.doc2stan(cls, summary=True)[0])
-    scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
-           and sc.isVisible]
+    r(util.taglink(cls), " - ", epydoc2stan.doc2stan(cls, summary=True)[0])
+    scs = [
+        sc
+        for sc in cls.subclasses
+        if sc.system is hostsystem and " " not in sc.fullName() and sc.isVisible
+    ]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
@@ -84,12 +97,13 @@ def subclassesFrom(hostsystem, cls, anchors):
         r(ul)
     return r
 
+
 class ClassIndexPage(Element):
-    filename = 'classIndex.html'
+    filename = "classIndex.html"
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(util.templatefilepath("summary.html"))
 
     def __init__(self, system):
         self.system = system
@@ -141,8 +155,8 @@ class LetterElement(Element):
             if initial == self.my_letter:
                 letterlinks.append(initial)
             else:
-                letterlinks.append(tags.a(href='#'+initial)(initial))
-            letterlinks.append(' - ')
+                letterlinks.append(tags.a(href="#" + initial)(initial))
+            letterlinks.append(" - ")
         if letterlinks:
             del letterlinks[-1]
         return tag(letterlinks)
@@ -153,10 +167,10 @@ class LetterElement(Element):
         for obj in self.initials[self.my_letter]:
             name2obs.setdefault(obj.name, []).append(obj)
         r = []
-        for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
+        for name in sorted(name2obs, key=lambda x: (x.lower(), x)):
             obs = name2obs[name]
             if len(obs) == 1:
-                r.append(tag.clone()(name, ' - ', util.taglink(obs[0])))
+                r.append(tag.clone()(name, " - ", util.taglink(obs[0])))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
@@ -166,11 +180,11 @@ class LetterElement(Element):
 
 
 class NameIndexPage(Element):
-    filename = 'nameIndex.html'
+    filename = "nameIndex.html"
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('nameIndex.html'))
+        return XMLFile(util.templatefilepath("nameIndex.html"))
 
     def __init__(self, system):
         self.system = system
@@ -200,11 +214,11 @@ class NameIndexPage(Element):
 
 
 class IndexPage(Element):
-    filename = 'index.html'
+    filename = "index.html"
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('index.html'))
+        return XMLFile(util.templatefilepath("index.html"))
 
     def __init__(self, system):
         self.system = system
@@ -212,8 +226,7 @@ class IndexPage(Element):
     @renderer
     def project_link(self, request, tag):
         if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(
-                self.system.projectname)
+            return tags.a(href=self.system.options.projecturl)(self.system.projectname)
         else:
             return self.system.projectname
 
@@ -236,8 +249,8 @@ class IndexPage(Element):
         else:
             root, = self.system.rootobjects
             return tag.clear()(
-                "Start at ", util.taglink(root),
-                ", the root ", root.kind.lower(), ".")
+                "Start at ", util.taglink(root), ", the root ", root.kind.lower(), "."
+            )
 
     @renderer
     def onlyIfMultipleRoots(self, request, tag):
@@ -257,8 +270,8 @@ class IndexPage(Element):
     def rootkind(self, request, tag):
         rootkinds = {}
         for o in self.system.rootobjects:
-            rootkinds[o.kind.lower() + 's']  = 1
-        return tag.clear()('/'.join(sorted(rootkinds)))
+            rootkinds[o.kind.lower() + "s"] = 1
+        return tag.clear()("/".join(sorted(rootkinds)))
 
     @renderer
     def buildtime(self, request, tag):
@@ -271,12 +284,13 @@ def hasdocstring(ob):
             return True
     return False
 
+
 class UndocumentedSummaryPage(Element):
-    filename = 'undoccedSummary.html'
+    filename = "undoccedSummary.html"
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(util.templatefilepath("summary.html"))
 
     def __init__(self, system):
         self.system = system
@@ -295,12 +309,16 @@ class UndocumentedSummaryPage(Element):
 
     @renderer
     def stuff(self, request, tag):
-        undoccedpublic = [o for o in self.system.orderedallobjects
-                          if o.isVisible and not hasdocstring(o)]
-        undoccedpublic.sort(key=lambda o:o.fullName())
+        undoccedpublic = [
+            o
+            for o in self.system.orderedallobjects
+            if o.isVisible and not hasdocstring(o)
+        ]
+        undoccedpublic.sort(key=lambda o: o.fullName())
         for o in undoccedpublic:
             tag(tags.li(o.kind, " - ", util.taglink(o)))
         return tag
+
 
 summarypages = [
     ModuleIndexPage,
@@ -308,4 +326,4 @@ summarypages = [
     IndexPage,
     NameIndexPage,
     UndocumentedSummaryPage,
-    ]
+]

@@ -44,8 +44,8 @@ class SphinxInventory(object):
         """
         Generate Sphinx objects inventory version 2 at `basepath`/objects.inv.
         """
-        path = os.path.join(basepath, 'objects.inv')
-        self.info('sphinx', 'Generating objects inventory at %s' % (path,))
+        path = os.path.join(basepath, "objects.inv")
+        self.info("sphinx", "Generating objects inventory at %s" % (path,))
 
         with self._openFileForWriting(path) as target:
             target.write(self._generateHeader())
@@ -56,7 +56,7 @@ class SphinxInventory(object):
         """
         Helper for testing.
         """
-        return open(path, 'w')
+        return open(path, "w")
 
     def _generateHeader(self):
         """
@@ -67,7 +67,10 @@ class SphinxInventory(object):
 # Project: %s
 # Version: %s
 # The rest of this file is compressed with zlib.
-""" % (self.project_name, '.'.join(version))
+""" % (
+            self.project_name,
+            ".".join(version),
+        )
 
     def _generateContent(self, subjects):
         """
@@ -80,7 +83,7 @@ class SphinxInventory(object):
             content.append(self._generateLine(obj))
             content.append(self._generateContent(obj.orderedcontents))
 
-        return ''.join(content)
+        return "".join(content)
 
     def _generateLine(self, obj):
         """
@@ -98,37 +101,35 @@ class SphinxInventory(object):
         full_name = obj.fullName()
 
         if obj.documentation_location == model.DocLocation.OWN_PAGE:
-            url = obj.fullName() + '.html'
+            url = obj.fullName() + ".html"
         else:
-            url = obj.parent.fullName() + '.html#' + obj.name
+            url = obj.parent.fullName() + ".html#" + obj.name
 
-        display = '-'
+        display = "-"
         if isinstance(obj, (model.Package, model.Module)):
-            domainname = 'module'
+            domainname = "module"
         elif isinstance(obj, model.Class):
-            domainname = 'class'
+            domainname = "class"
         elif isinstance(obj, model.Function):
-            if obj.kind == 'Function':
-                domainname = 'function'
+            if obj.kind == "Function":
+                domainname = "function"
             else:
-                domainname = 'method'
+                domainname = "method"
         elif isinstance(obj, model.Attribute):
-            domainname = 'attribute'
+            domainname = "attribute"
         else:
-            domainname = 'obj'
-            self.error(
-                'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
+            domainname = "obj"
+            self.error("sphinx", "Unknown type %r for %s." % (type(obj), full_name))
 
-        return '%s py:%s -1 %s %s\n' % (full_name, domainname, url, display)
+        return "%s py:%s -1 %s %s\n" % (full_name, domainname, url, display)
 
     def update(self, cache, url):
         """
         Update inventory from URL.
         """
-        parts = url.rsplit('/', 1)
+        parts = url.rsplit("/", 1)
         if len(parts) != 2:
-            self.error(
-                'sphinx', 'Failed to get remote base url for %s' % (url,))
+            self.error("sphinx", "Failed to get remote base url for %s" % (url,))
             return
 
         base_url = parts[0]
@@ -136,8 +137,7 @@ class SphinxInventory(object):
         data = cache.get(url)
 
         if not data:
-            self.error(
-                'sphinx', 'Failed to get object inventory from %s' % (url, ))
+            self.error("sphinx", "Failed to get object inventory from %s" % (url,))
             return
 
         payload = self._getPayload(base_url, data)
@@ -147,23 +147,21 @@ class SphinxInventory(object):
         """
         Parse inventory and return clear text payload without comments.
         """
-        payload = ''
+        payload = ""
         while True:
-            parts = data.split('\n', 1)
+            parts = data.split("\n", 1)
             if len(parts) != 2:
                 payload = data
                 break
-            if not parts[0].startswith('#'):
+            if not parts[0].startswith("#"):
                 payload = data
                 break
             data = parts[1]
         try:
             return zlib.decompress(payload)
         except:
-            self.error(
-                'sphinx',
-                'Failed to uncompress inventory from %s' % (base_url,))
-            return ''
+            self.error("sphinx", "Failed to uncompress inventory from %s" % (base_url,))
+            return ""
 
     def _parseInventory(self, base_url, payload):
         """
@@ -171,12 +169,11 @@ class SphinxInventory(object):
         """
         result = {}
         for line in payload.splitlines():
-            parts = line.split(' ', 4)
+            parts = line.split(" ", 4)
             if len(parts) != 5:
                 self.error(
-                    'sphinx',
-                    'Failed to parse line "%s" for %s' % (line, base_url),
-                    )
+                    "sphinx", 'Failed to parse line "%s" for %s' % (line, base_url)
+                )
                 continue
             result[parts[0]] = (base_url, parts[3])
         return result
@@ -190,10 +187,10 @@ class SphinxInventory(object):
             return None
 
         # For links ending with $, replace it with full name.
-        if relative_link.endswith('$'):
+        if relative_link.endswith("$"):
             relative_link = relative_link[:-1] + name
 
-        return '%s/%s' % (base_url, relative_link)
+        return "%s/%s" % (base_url, relative_link)
 
 
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
@@ -215,6 +212,7 @@ class _Unit(object):
 
     @see: L{parseMaxAge}
     """
+
     name = attr.ib()
     minimum = attr.ib()
     maximum = attr.ib()
@@ -231,8 +229,7 @@ _maxAgeUnits = {
     "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) / 7),
 }
 _maxAgeUnitNames = ", ".join(
-    "{} ({})".format(indicator, unit.name)
-    for indicator, unit in _maxAgeUnits.items()
+    "{} ({})".format(indicator, unit.name) for indicator, unit in _maxAgeUnits.items()
 )
 
 
@@ -240,9 +237,19 @@ MAX_AGE_HELP = textwrap.dedent(
     """
     The maximum age of any entry in the cache.  Of the format
     <int><unit> where <unit> is one of {}.
-    """.format(_maxAgeUnitNames)
+    """.format(
+        _maxAgeUnitNames
+    )
 )
-MAX_AGE_DEFAULT = '1w'
+MAX_AGE_DEFAULT = "1w"
+
+HIDE_PRIVATE_HELP = textwrap.dedent(
+    """
+    Hide private module and classes from indexes.
+    """
+)
+
+HIDE_PRIVATE_HELP_DEFAULT = False
 
 
 class InvalidMaxAge(Exception):
@@ -261,19 +268,20 @@ def parseMaxAge(maxAge):
         unit = _maxAgeUnits[maxAge[-1]]
     except (IndexError, KeyError):
         raise InvalidMaxAge(
-            "Maximum age's units must be one of {}".format(_maxAgeUnitNames))
+            "Maximum age's units must be one of {}".format(_maxAgeUnitNames)
+        )
 
     if not (unit.minimum <= amount < unit.maximum):
         raise InvalidMaxAge(
             "Maximum age in {} must be "
             "greater than or equal to {} "
-            "and less than {}".format(unit.name, unit.minimum, unit.maximum))
+            "and less than {}".format(unit.name, unit.minimum, unit.maximum)
+        )
 
     return {unit.name: amount}
 
 
-parseMaxAge.__doc__ = (
-    """
+parseMaxAge.__doc__ = """
     Parse a string into a maximum age dictionary.
 
     @param maxAge: {}
@@ -285,7 +293,6 @@ parseMaxAge.__doc__ = (
         arguments.
     @rtype: L{dict}
     """
-)
 
 
 @attr.s
@@ -296,6 +303,7 @@ class IntersphinxCache(object):
     @param session: A session that may or may not cache requests.
     @type session: L{requests.Session}
     """
+
     _session = attr.ib()
     _logger = attr.ib(default=logger)
 
@@ -316,9 +324,11 @@ class IntersphinxCache(object):
 
         @see: L{parseMaxAge}
         """
-        session = CacheControl(sessionFactory(),
-                               cache=FileCache(cachePath),
-                               heuristic=ExpiresAfter(**maxAgeDictionary))
+        session = CacheControl(
+            sessionFactory(),
+            cache=FileCache(cachePath),
+            heuristic=ExpiresAfter(**maxAgeDictionary),
+        )
         return cls(session)
 
     def get(self, url):
@@ -335,8 +345,7 @@ class IntersphinxCache(object):
             return self._session.get(url).content
         except Exception:
             self._logger.exception(
-                "Could not retrieve intersphinx object.inv from %s",
-                url
+                "Could not retrieve intersphinx object.inv from %s", url
             )
             return None
 
@@ -349,6 +358,7 @@ class StubCache(object):
     @param cache: A L{dict} mapping URLs to content.
     @type cache: L{dict} of L{str} to L{bytes}
     """
+
     _cache = attr.ib()
 
     def get(self, url):
@@ -366,11 +376,7 @@ class StubCache(object):
 
 
 def prepareCache(
-        clearCache,
-        enableCache,
-        cachePath,
-        maxAge,
-        sessionFactory=requests.Session,
+    clearCache, enableCache, cachePath, maxAge, sessionFactory=requests.Session
 ):
     """
     Prepare an Intersphinx cache.
@@ -398,8 +404,6 @@ def prepareCache(
     if enableCache:
         maxAgeDictionary = parseMaxAge(maxAge)
         return IntersphinxCache.fromParameters(
-            sessionFactory,
-            cachePath,
-            maxAgeDictionary,
+            sessionFactory, cachePath, maxAgeDictionary
         )
     return IntersphinxCache(sessionFactory())
