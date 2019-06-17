@@ -20,11 +20,12 @@ def flatten(t):
 
 
 def getHTMLOf(ob):
-    wr = templatewriter.TemplateWriter('')
+    wr = templatewriter.TemplateWriter("")
     wr.system = ob.system
     f = NativeStringIO()
     wr.writeDocsForOne(ob, f)
     return f.getvalue()
+
 
 def test_simple():
     src = '''
@@ -32,37 +33,42 @@ def test_simple():
         """This is a docstring."""
     '''
     mod = fromText(src)
-    v = getHTMLOf(mod.contents['f'])
-    assert 'This is a docstring' in v
+    v = getHTMLOf(mod.contents["f"])
+    assert "This is a docstring" in v
+
 
 def test_empty_table():
-    mod = fromText('')
+    mod = fromText("")
     t = pages.ChildTable(pages.DocGetter(), mod, [])
     flattened = flatten(t)
-    assert 'The renderer named' not in flattened
+    assert "The renderer named" not in flattened
+
 
 def test_nonempty_table():
-    mod = fromText('def f(): pass')
+    mod = fromText("def f(): pass")
     t = pages.ChildTable(pages.DocGetter(), mod, mod.orderedcontents)
     flattened = flatten(t)
-    assert 'The renderer named' not in flattened
+    assert "The renderer named" not in flattened
+
 
 def test_rest_support():
     system = model.System()
-    system.options.docformat = 'restructuredtext'
+    system.options.docformat = "restructuredtext"
     system.options.verbosity = 4
     src = '''
     def f():
         """This is a docstring for f."""
     '''
     mod = fromText(src, system=system)
-    html = getHTMLOf(mod.contents['f'])
+    html = getHTMLOf(mod.contents["f"])
     assert "<pre>" not in html
+
 
 def test_document_code_in_init_module():
     system = processPackage("codeininit")
-    html = getHTMLOf(system.allobjects['codeininit'])
-    assert 'functionInInit' in html
+    html = getHTMLOf(system.allobjects["codeininit"])
+    assert "functionInInit" in html
+
 
 def test_basic_package():
     system = processPackage("basic")
@@ -78,23 +84,24 @@ def test_basic_package():
         w.writeModuleIndex(system)
         for ob in system.allobjects.itervalues():
             if ob.documentation_location == model.DocLocation.OWN_PAGE:
-                assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
-        assert 'Package docstring' in open(os.path.join(targetdir, 'basic.html')).read()
+                assert os.path.isfile(os.path.join(targetdir, ob.fullName() + ".html"))
+        assert "Package docstring" in open(os.path.join(targetdir, "basic.html")).read()
     finally:
         shutil.rmtree(targetdir)
+
 
 def test_hasdocstring():
     system = processPackage("basic")
     from pydoctor.templatewriter.summary import hasdocstring
-    assert not hasdocstring(system.allobjects['basic._private_mod'])
-    assert hasdocstring(system.allobjects['basic.mod.C.f'])
-    sub_f = system.allobjects['basic.mod.D.f']
+
+    assert not hasdocstring(system.allobjects["basic._private_mod"])
+    assert hasdocstring(system.allobjects["basic.mod.C.f"])
+    sub_f = system.allobjects["basic.mod.D.f"]
     assert hasdocstring(sub_f) and not sub_f.docstring
 
 
 @pytest.mark.parametrize(
-    'className',
-    ['NewClassThatMultiplyInherits', 'OldClassThatMultiplyInherits'],
+    "className", ["NewClassThatMultiplyInherits", "OldClassThatMultiplyInherits"]
 )
 def test_multipleInheritanceNewClass(className):
     """
@@ -103,11 +110,7 @@ def test_multipleInheritanceNewClass(className):
     """
     system = processPackage("multipleinheritance")
 
-    cls = next(
-        cls
-        for cls in system.orderedallobjects
-        if cls.name == className
-    )
+    cls = next(cls for cls in system.orderedallobjects if cls.name == className)
 
     html = getHTMLOf(cls)
 

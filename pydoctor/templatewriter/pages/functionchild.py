@@ -11,7 +11,7 @@ from pydoctor.templatewriter.pages import signature
 
 class FunctionChild(Element):
 
-    loader = XMLFile(util.templatefilepath('function-child.html'))
+    loader = XMLFile(util.templatefilepath("function-child.html"))
 
     def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter
@@ -22,7 +22,7 @@ class FunctionChild(Element):
     def class_(self, request, tag):
         class_ = self.ob.css_class
         if self.ob.parent is not self.ob:
-            class_ = 'base' + class_
+            class_ = "base" + class_
         return class_
 
     @renderer
@@ -48,15 +48,13 @@ class FunctionChild(Element):
                         break
                 decorators.append(ast_pp.pp(dec))
 
-        if self.ob.kind == "Class Method" \
-               and 'classmethod' not in decorators:
-            decorators.append('classmethod')
-        elif self.ob.kind == "Static Method" \
-                 and 'staticmethod' not in decorators:
-            decorators.append('staticmethod')
+        if self.ob.kind == "Class Method" and "classmethod" not in decorators:
+            decorators.append("classmethod")
+        elif self.ob.kind == "Static Method" and "staticmethod" not in decorators:
+            decorators.append("staticmethod")
 
         if decorators:
-            decorator = [('@' + dec, tags.br()) for dec in decorators]
+            decorator = [("@" + dec, tags.br()) for dec in decorators]
         else:
             decorator = ()
 
@@ -64,7 +62,7 @@ class FunctionChild(Element):
 
     @renderer
     def functionName(self, request, tag):
-        return [self.ob.name, '(', signature(self.ob.argspec), '):']
+        return [self.ob.name, "(", signature(self.ob.argspec), "):"]
 
     @renderer
     def sourceLink(self, request, tag):
@@ -84,6 +82,12 @@ class FunctionChild(Element):
     @renderer
     def functionDeprecated(self, request, tag):
         if hasattr(self.ob, "_deprecated_info"):
-            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
+            return (
+                tags.div(
+                    self.ob._deprecated_info,
+                    role="alert",
+                    class_="deprecationNotice alert alert-warning",
+                ),
+            )
         else:
             return ()

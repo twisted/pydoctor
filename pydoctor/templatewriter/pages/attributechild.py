@@ -4,9 +4,10 @@ from twisted.web.template import Element, renderer, XMLFile
 
 from pydoctor.templatewriter import util
 
+
 class AttributeChild(Element):
 
-    loader = XMLFile(util.templatefilepath('attribute-child.html'))
+    loader = XMLFile(util.templatefilepath("attribute-child.html"))
 
     def __init__(self, docgetter, ob):
         self.docgetter = docgetter
@@ -16,7 +17,7 @@ class AttributeChild(Element):
     def class_(self, request, tag):
         class_ = self.ob.css_class
         if self.ob.parent is not self.ob:
-            class_ = 'base' + class_
+            class_ = "base" + class_
         return class_
 
     @renderer

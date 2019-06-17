@@ -8,12 +8,13 @@ from compiler import ast
 from twisted.python.versions import Version
 from twisted.python.deprecate import _getDeprecationWarningString
 
-class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
 
+class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
     def visitCallFunc_twisted_python_util_moduleMovedForSplit(self, funcName, node):
         # XXX this is rather fragile...
-        origModuleName, newModuleName, moduleDesc, \
-                        projectName, projectURL, globDict = node.args
+        origModuleName, newModuleName, moduleDesc, projectName, projectURL, globDict = (
+            node.args
+        )
         moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
         projectName = ast_pp.pp(projectName)[1:-1]
         projectURL = ast_pp.pp(projectURL)[1:-1]
@@ -26,9 +27,11 @@ package, Twisted %(projectName)s. Please see %(projectURL)s.
 This is just a place-holder that imports from the third-party %(projectName)s
 package for backwards compatibility. To use it, you need to install
 that package.
-""" % {'moduleDesc': moduleDesc,
-       'projectName': projectName,
-       'projectURL': projectURL}
+""" % {
+            "moduleDesc": moduleDesc,
+            "projectName": projectName,
+            "projectURL": projectURL,
+        }
         self.builder.current.docstring = modoc
 
     def visitClass(self, node):
@@ -43,7 +46,6 @@ that package.
                 fn = cls.expandName(decorator[0].name)
                 if fn == "twisted.python.deprecate.deprecated":
                     cls._deprecated_info = deprecatedToUsefulText(cls.name, decorator)
-
 
 
 def versionToUsefulText(version):
@@ -66,7 +68,6 @@ def deprecatedToUsefulText(name, deprecated):
 
 
 class TwistedFunction(zopeinterface.ZopeInterfaceFunction):
-
     def docsources(self):
 
         if self.decorators:
@@ -75,7 +76,9 @@ class TwistedFunction(zopeinterface.ZopeInterfaceFunction):
                     decorator = a.asList()
                     fn = self.expandName(decorator[0].name)
                     if fn == "twisted.python.deprecate.deprecated":
-                        self._deprecated_info = deprecatedToUsefulText(self.name, decorator)
+                        self._deprecated_info = deprecatedToUsefulText(
+                            self.name, decorator
+                        )
 
         for x in super(TwistedFunction, self).docsources():
             yield x
@@ -91,16 +94,16 @@ class TwistedSystem(zopeinterface.ZopeInterfaceSystem):
 
     def privacyClass(self, obj):
         o = obj
-        if o.fullName() == 'twisted.test':
+        if o.fullName() == "twisted.test":
             # Match this package exactly, so that proto_helpers
             # below is visible
             return model.PrivacyClass.VISIBLE
         while o:
-            if o.fullName() == 'twisted.words.xish.yappsrt':
+            if o.fullName() == "twisted.words.xish.yappsrt":
                 return model.PrivacyClass.HIDDEN
-            if o.fullName() == 'twisted.test.proto_helpers':
+            if o.fullName() == "twisted.test.proto_helpers":
                 return model.PrivacyClass.VISIBLE
-            if isinstance(o, model.Package) and o.name == 'test':
+            if isinstance(o, model.Package) and o.name == "test":
                 return model.PrivacyClass.HIDDEN
             o = o.parent
         return super(TwistedSystem, self).privacyClass(obj)

@@ -1,8 +1,9 @@
+__all__ = ["InSourceAll"]
 
-__all__ = ['InSourceAll']
 
 class InSourceAll:
     pass
+
 
 class NotInSourceAll:
     pass

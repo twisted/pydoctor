@@ -4,6 +4,7 @@ from pydoctor import model
 from pydoctor.test.test_astbuilder import fromText
 import pickle
 
+
 def test_pickling_system():
     system = model.System()
     fromText("class A: pass", "mod", system)

@@ -7,6 +7,7 @@ from pydoctor import model, ast_pp
 from compiler import visitor, transformer, ast
 import symbol, token
 
+
 class str_with_orig(str):
     """Hack to allow recovery of the literal that gave rise to a docstring in an AST.
 
@@ -15,10 +16,13 @@ class str_with_orig(str):
 
     @ivar orig: The literal that gave rise to this constant in the AST.
     """
+
     pass
+
 
 class MyTransformer(transformer.Transformer):
     """Custom transformer that creates Nodes with L{str_with_orig} instances for docstrings."""
+
     def get_docstring(self, node, n=None):
         """Override C{transformer.Transformer.get_docstring} to return a L{str_with_orig} object."""
         if n is None:
@@ -38,16 +42,15 @@ class MyTransformer(transformer.Transformer):
             return None
         if n == symbol.atom:
             if node[0][0] == token.STRING:
-                s = ''
+                s = ""
                 for t in node:
                     s = s + eval(t[1])
                 r = str_with_orig(s)
-                r.orig = ''.join(t[1] for t in node)
+                r.orig = "".join(t[1] for t in node)
                 r.linenumber = node[0][2]
                 return r
             return None
-        if n == symbol.stmt or n == symbol.simple_stmt \
-           or n == symbol.small_stmt:
+        if n == symbol.stmt or n == symbol.simple_stmt or n == symbol.small_stmt:
             return self.get_docstring(node[0])
         if n in transformer._doc_nodes and len(node) == 1:
             return self.get_docstring(node[0])
@@ -121,7 +124,7 @@ class ModuleVistor(object):
             dotted_name = node2dottedname(node)
             if dotted_name is None:
                 return None
-            dotted_name = '.'.join(dotted_name)
+            dotted_name = ".".join(dotted_name)
             full_name = self.builder.current.expandName(dotted_name)
             obj = self.system.objForFullName(full_name)
             return (dotted_name, full_name, obj)
@@ -142,8 +145,7 @@ class ModuleVistor(object):
         if node.lineno is not None:
             cls.linenumber = node.lineno
         if cls.parentMod.sourceHref:
-            cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
-                             str(cls.linenumber)
+            cls.sourceHref = cls.parentMod.sourceHref + "#L" + str(cls.linenumber)
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
@@ -160,10 +162,10 @@ class ModuleVistor(object):
             assert mod.state in [model.PROCESSING, model.PROCESSED]
             expandName = mod.expandName
         else:
-            expandName = lambda name: modname + '.' + name
+            expandName = lambda name: modname + "." + name
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for fromname, asname in node.names:
-            if fromname == '*':
+            if fromname == "*":
                 if mod is None:
                     self.builder.warning("import * from unknown", modname)
                     return
@@ -172,31 +174,37 @@ class ModuleVistor(object):
                     names = mod.all
                 else:
                     names = mod.contents.keys() + mod._localNameToFullName_map.keys()
-                    names = [k for k in names if not k.startswith('_')]
+                    names = [k for k in names if not k.startswith("_")]
                 for n in names:
                     _localNameToFullName[n] = expandName(n)
                 return
             if asname is None:
                 asname = fromname
-            if isinstance(self.builder.current, model.Module) and \
-                   self.builder.current.all is not None and \
-                   asname in self.builder.current.all and \
-                   modname in self.system.allobjects:
+            if (
+                isinstance(self.builder.current, model.Module)
+                and self.builder.current.all is not None
+                and asname in self.builder.current.all
+                and modname in self.system.allobjects
+            ):
                 mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and \
-                       fromname in mod.contents and \
-                       (mod.all is None or fromname not in mod.all):
+                if (
+                    isinstance(mod, model.Module)
+                    and fromname in mod.contents
+                    and (mod.all is None or fromname not in mod.all)
+                ):
                     self.system.msg(
                         "astbuilder",
                         "moving %r into %r"
-                        % (mod.contents[fromname].fullName(),
-                           self.builder.current.fullName()))
+                        % (
+                            mod.contents[fromname].fullName(),
+                            self.builder.current.fullName(),
+                        ),
+                    )
                     ob = mod.contents[fromname]
                     ob.reparent(self.builder.current, asname)
                     continue
-            if isinstance(
-                self.system.objForFullName(modname), model.Package):
-                self.system.getProcessedModule(modname + '.' + fromname)
+            if isinstance(self.system.objForFullName(modname), model.Package):
+                self.system.getProcessedModule(modname + "." + fromname)
             _localNameToFullName[asname] = expandName(fromname)
 
     def visitImport(self, node):
@@ -225,17 +233,17 @@ class ModuleVistor(object):
             else:
                 expandName = lambda name: name
             if asname is None:
-                asname = fromname.split('.', 1)[0]
+                asname = fromname.split(".", 1)[0]
                 # aaaaargh! python sucks.
-                parts = fullname.split('.')
-                for i, part in enumerate(fullname.split('.')[::-1]):
+                parts = fullname.split(".")
+                for i, part in enumerate(fullname.split(".")[::-1]):
                     if part == asname:
-                        fullname = '.'.join(parts[:len(parts)-i])
+                        fullname = ".".join(parts[: len(parts) - i])
                         _localNameToFullName[asname] = expandName(fullname)
                         break
                 else:
-                    fullname = '.'.join(parts)
-                    _localNameToFullName[asname] = '.'.join(parts)
+                    fullname = ".".join(parts)
+                    _localNameToFullName[asname] = ".".join(parts)
             else:
                 _localNameToFullName[asname] = fullname
 
@@ -254,13 +262,13 @@ class ModuleVistor(object):
             if not isinstance(arg, ast.Name):
                 return
             arg = arg.name
-            if target == arg and func in ['staticmethod', 'classmethod']:
+            if target == arg and func in ["staticmethod", "classmethod"]:
                 target = self.builder.current.contents.get(target)
                 if target and isinstance(target, model.Function):
-                    if target.kind != 'Method':
-                        self.system.msg('ast', 'XXX')
+                    if target.kind != "Method":
+                        self.system.msg("ast", "XXX")
                     else:
-                        target.kind = func.title().replace('m', ' M')
+                        target.kind = func.title().replace("m", " M")
 
     def _handleAliasing(self, target, expr):
         dottedname = node2dottedname(expr)
@@ -275,7 +283,7 @@ class ModuleVistor(object):
         elif dottedname[0] in c.contents:
             base = c.contents[dottedname[0]].fullName()
         if base:
-            c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
+            c._localNameToFullName_map[target] = ".".join([base] + dottedname[1:])
 
     def visitAssign(self, node):
         if len(node.nodes) != 1:
@@ -294,24 +302,25 @@ class ModuleVistor(object):
             isstaticmethod = False
             for d in node.decorators.nodes:
                 if isinstance(d, ast.Name):
-                    if d.name == 'classmethod':
+                    if d.name == "classmethod":
                         isclassmethod = True
-                    elif d.name == 'staticmethod':
+                    elif d.name == "staticmethod":
                         isstaticmethod = True
             if isstaticmethod:
                 if isclassmethod:
                     self.system.msg(
-                        'ast', '%r is both class- and static-method?'%(
-                        func.fullName(),), thresh=-1)
+                        "ast",
+                        "%r is both class- and static-method?" % (func.fullName(),),
+                        thresh=-1,
+                    )
                 else:
-                    func.kind = 'Static Method'
+                    func.kind = "Static Method"
             elif isclassmethod:
-                func.kind = 'Class Method'
+                func.kind = "Class Method"
         if node.lineno is not None:
             func.linenumber = node.lineno
         if func.parentMod.sourceHref:
-            func.sourceHref = func.parentMod.sourceHref + '#L' + \
-                              str(func.linenumber)
+            func.sourceHref = func.parentMod.sourceHref + "#L" + str(func.linenumber)
         # ast.Function has a pretty lame representation of
         # arguments. Let's convert it to a nice concise format
         # somewhat like what inspect.getargspec returns
@@ -328,10 +337,11 @@ class ModuleVistor(object):
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as e:
-                self.builder.warning("unparseable default",
-                                     "%s: %s %r"%(e.__class__.__name__,
-                                                  e, default))
-                defaults.append('???')
+                self.builder.warning(
+                    "unparseable default",
+                    "%s: %s %r" % (e.__class__.__name__, e, default),
+                )
+                defaults.append("???")
         # argh, convert unpacked-arguments from tuples to lists,
         # because that's what getargspec uses and the unit test
         # compares it
@@ -341,8 +351,9 @@ class ModuleVistor(object):
                 argname = list(argname)
             argnames2.append(argname)
         func.argspec = (argnames2, starargname, kwname, tuple(defaults))
-        #self.postpone(func, node.code)
+        # self.postpone(func, node.code)
         self.builder.popFunction()
+
 
 class ASTBuilder(object):
     ModuleVistor = ModuleVistor
@@ -379,32 +390,37 @@ class ASTBuilder(object):
             assert obj.parentMod is None
         # Method-level import to avoid a circular dependency.
         from pydoctor import epydoc2stan
+
         for attrobj in epydoc2stan.extract_fields(obj):
             self.system.addObject(attrobj)
 
     def pop(self, obj):
-        assert self.current is obj, "%r is not %r"%(self.current, obj)
+        assert self.current is obj, "%r is not %r" % (self.current, obj)
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
     def pushClass(self, name, docstring):
         return self._push(self.system.Class, name, docstring)
+
     def popClass(self):
         self._pop(self.system.Class)
 
     def pushModule(self, name, docstring):
         return self._push(self.system.Module, name, docstring)
+
     def popModule(self):
         self._pop(self.system.Module)
 
     def pushFunction(self, name, docstring):
         return self._push(self.system.Function, name, docstring)
+
     def popFunction(self):
         self._pop(self.system.Function)
 
     def pushPackage(self, name, docstring):
         return self._push(self.system.Package, name, docstring)
+
     def popPackage(self):
         self._pop(self.system.Package)
 
@@ -416,11 +432,11 @@ class ASTBuilder(object):
         visitor.walk(ast, self.ModuleVistor(self, mod))
 
     def expandModname(self, modname):
-        if '.' in modname:
-            prefix, suffix = modname.split('.', 1)
-            suffix = '.' + suffix
+        if "." in modname:
+            prefix, suffix = modname.split(".", 1)
+            suffix = "." + suffix
         else:
-            prefix, suffix = modname, ''
+            prefix, suffix = modname, ""
         package = self.current.parentMod.parent
         while package is not None:
             if prefix in package.contents:
@@ -440,25 +456,33 @@ class ASTBuilder(object):
         self.ast_cache[filePath] = ast
         return ast
 
+
 model.System.defaultBuilder = ASTBuilder
+
 
 def findAll(modast, mod):
     """Find and attempt to parse into a list of names the __all__ of a module's AST."""
     for node in modast.node.nodes:
-        if isinstance(node, ast.Assign) and \
-               len(node.nodes) == 1 and \
-               isinstance(node.nodes[0], ast.AssName) and \
-               node.nodes[0].name == '__all__':
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.nodes) == 1
+            and isinstance(node.nodes[0], ast.AssName)
+            and node.nodes[0].name == "__all__"
+        ):
             if mod.all is not None:
-                mod.system.msg('all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
+                mod.system.msg(
+                    "all", "multiple assignments to %s.__all__ ??" % (mod.fullName(),)
+                )
             if not isinstance(node.expr, (ast.List, ast.Tuple)):
-                mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                mod.system.msg("all", "couldn't parse %s.__all__" % (mod.fullName(),))
                 continue
             items = node.expr.nodes
             names = []
             for item in items:
                 if not isinstance(item, ast.Const) or not isinstance(item.value, str):
-                    mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                    mod.system.msg(
+                        "all", "couldn't parse %s.__all__" % (mod.fullName(),)
+                    )
                     continue
                 names.append(item.value)
                 mod.all = names

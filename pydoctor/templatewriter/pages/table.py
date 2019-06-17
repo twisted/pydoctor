@@ -4,8 +4,8 @@ from twisted.web.template import Element, renderer, TagLoader, XMLFile
 
 from pydoctor.templatewriter import util
 
-class TableRow(Element):
 
+class TableRow(Element):
     def __init__(self, loader, docgetter, ob, child):
         Element.__init__(self, loader)
         self.docgetter = docgetter
@@ -16,7 +16,7 @@ class TableRow(Element):
     def class_(self, request, tag):
         class_ = self.child.css_class
         if self.child.parent is not self.ob:
-            class_ = 'base' + class_
+            class_ = "base" + class_
         return class_
 
     @renderer
@@ -33,7 +33,7 @@ class TableRow(Element):
 
 
 class ChildTable(Element):
-    loader = XMLFile(util.templatefilepath('table.html'))
+    loader = XMLFile(util.templatefilepath("table.html"))
     last_id = 0
 
     def __init__(self, docgetter, ob, children):
@@ -46,14 +46,11 @@ class ChildTable(Element):
 
     @renderer
     def id(self, request, tag):
-        return 'id'+str(self._id)
+        return "id" + str(self._id)
 
     @renderer
     def rows(self, request, tag):
         return [
-            TableRow(
-                TagLoader(tag),
-                self.docgetter,
-                self.ob,
-                child)
-            for child in self.children]
+            TableRow(TagLoader(tag), self.docgetter, self.ob, child)
+            for child in self.children
+        ]

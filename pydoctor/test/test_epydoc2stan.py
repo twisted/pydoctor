@@ -10,7 +10,8 @@ from pydoctor.test.test_astbuilder import fromText
 
 
 def test_multiple_types():
-    mod = fromText('''
+    mod = fromText(
+        '''
     def f(a):
         """
         @param a: it\'s a parameter!
@@ -29,14 +30,17 @@ def test_multiple_types():
         @type a: a pink thing!
         @type a: no, blue! aaaargh!
         """
-    ''')
+    '''
+    )
     # basically "assert not fail":
-    epydoc2stan.doc2stan(mod.contents['f'])
-    epydoc2stan.doc2stan(mod.contents['C'])
-    epydoc2stan.doc2stan(mod.contents['D'])
+    epydoc2stan.doc2stan(mod.contents["f"])
+    epydoc2stan.doc2stan(mod.contents["C"])
+    epydoc2stan.doc2stan(mod.contents["D"])
+
 
 def test_summary():
-    mod = fromText('''
+    mod = fromText(
+        '''
     def single_line_summary():
         """
         Lorem Ipsum
@@ -58,20 +62,23 @@ def test_summary():
 
         Lorem Ipsum
         """
-    ''')
+    '''
+    )
+
     def get_summary(func):
         def part_flat(x):
             if isinstance(x, list):
-                return ''.join(map(part_flat, x))
+                return "".join(map(part_flat, x))
             else:
                 return x
+
         return part_flat(
-            epydoc2stan.doc2stan(
-                mod.contents[func],
-                summary=True)[0].children)
-    assert u'Lorem Ipsum' == get_summary('single_line_summary')
-    assert u'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert u'No summary' == get_summary('no_summary')
+            epydoc2stan.doc2stan(mod.contents[func], summary=True)[0].children
+        )
+
+    assert u"Lorem Ipsum" == get_summary("single_line_summary")
+    assert u"Foo Bar Baz" == get_summary("three_lines_summary")
+    assert u"No summary" == get_summary("no_summary")
 
 
 def test_EpydocLinker_look_for_intersphinx_no_link():
@@ -79,10 +86,10 @@ def test_EpydocLinker_look_for_intersphinx_no_link():
     Return None if inventory had no link for our markup.
     """
     system = model.System()
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, "ignore-name", "ignore-docstring")
     sut = epydoc2stan._EpydocLinker(target)
 
-    result = sut.look_for_intersphinx('base.module')
+    result = sut.look_for_intersphinx("base.module")
 
     assert None is result
 
@@ -92,15 +99,15 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     Return the link from inventory based on first package name.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory = SphinxInventory(system.msg, "some-project")
+    inventory._links["base.module.other"] = ("http://tm.tld", "some.html")
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, "ignore-name", "ignore-docstring")
     sut = epydoc2stan._EpydocLinker(target)
 
-    result = sut.look_for_intersphinx('base.module.other')
+    result = sut.look_for_intersphinx("base.module.other")
 
-    assert 'http://tm.tld/some.html' == result
+    assert "http://tm.tld/some.html" == result
 
 
 def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
@@ -110,18 +117,15 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     URL.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
-    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    inventory = SphinxInventory(system.msg, "some-project")
+    inventory._links["base.module.other"] = ("http://tm.tld", "some.html")
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, "ignore-name", "ignore-docstring")
     sut = epydoc2stan._EpydocLinker(target)
 
-    result = sut.translate_identifier_xref(
-        'base.module.other', 'base.module.pretty')
+    result = sut.translate_identifier_xref("base.module.other", "base.module.pretty")
 
-    expected = (
-        '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
-        )
+    expected = '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
     assert expected == result
 
 
@@ -131,25 +135,23 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     on the imports done in the module.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
-    inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
+    inventory = SphinxInventory(system.msg, "some-project")
+    inventory._links["ext_package.ext_module"] = ("http://tm.tld", "some.html")
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, "ignore-name", "ignore-docstring")
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
-    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
-    target.contents['ext_module'] = model.Module(
-        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+    ext_package = model.Module(system, "ext_package", "ignore-docstring")
+    target.contents["ext_module"] = model.Module(
+        system, "ext_module", "ignore-docstring", parent=ext_package
+    )
 
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    result = sut.translate_identifier_xref(
-        'ext_module', 'Pretty Text')
+    result = sut.translate_identifier_xref("ext_module", "Pretty Text")
 
-    expected = (
-        '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
-        )
+    expected = '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
     assert expected == result
 
 
@@ -160,12 +162,13 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
     The message contains the full name under which the reference was resolved.
     """
     system = model.System()
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, "ignore-name", "ignore-docstring")
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
-    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
-    target.contents['ext_module'] = model.Module(
-        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+    ext_package = model.Module(system, "ext_package", "ignore-docstring")
+    target.contents["ext_module"] = model.Module(
+        system, "ext_module", "ignore-docstring", parent=ext_package
+    )
     stdout = BytesIO()
     sut = epydoc2stan._EpydocLinker(target)
 
@@ -176,16 +179,16 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
         sys.stdout = stdout
         # This is called for the L{ext_module} markup.
         result = sut.translate_identifier_xref(
-            fullID='ext_module', prettyID='ext_module')
+            fullID="ext_module", prettyID="ext_module"
+        )
     finally:
         sys.stdout = previousStdout
 
-
-    assert '<code>ext_module</code>' == result
+    assert "<code>ext_module</code>" == result
 
     expected = (
         "ignore-name:0 invalid ref to 'ext_module' "
         "resolved as 'ext_package.ext_module'\n"
-        )
+    )
 
     assert expected == stdout.getvalue()

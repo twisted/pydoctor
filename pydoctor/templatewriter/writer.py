@@ -14,8 +14,10 @@ import os, shutil
 def flattenToFile(fobj, page):
     fobj.write(DOCTYPE)
     err = []
+
     def e(r):
         err.append(r.value)
+
     flattenString(None, page).addCallback(fobj.write).addErrback(e)
     if err:
         raise err[0]
@@ -31,12 +33,16 @@ class TemplateWriter:
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(templatefile('apidocs.css'),
-                        os.path.join(self.base, 'apidocs.css'))
-        shutil.copyfile(templatefile('bootstrap.min.css'),
-                        os.path.join(self.base, 'bootstrap.min.css'))
-        shutil.copyfile(templatefile('pydoctor.js'),
-                        os.path.join(self.base, 'pydoctor.js'))
+        shutil.copyfile(
+            templatefile("apidocs.css"), os.path.join(self.base, "apidocs.css")
+        )
+        shutil.copyfile(
+            templatefile("bootstrap.min.css"),
+            os.path.join(self.base, "bootstrap.min.css"),
+        )
+        shutil.copyfile(
+            templatefile("pydoctor.js"), os.path.join(self.base, "pydoctor.js")
+        )
 
     def writeIndividualFiles(self, obs, functionpages=False):
         self.dry_run = True
@@ -48,14 +54,15 @@ class TemplateWriter:
 
     def writeModuleIndex(self, system):
         import time
+
         for i, pclass in enumerate(summary.summarypages):
-            system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
+            system.msg("html", "starting " + pclass.__name__ + " ...", nonl=True)
             T = time.time()
             page = pclass(system)
-            f = open(os.path.join(self.base, pclass.filename), 'w')
+            f = open(os.path.join(self.base, pclass.filename), "w")
             flattenToFile(f, page)
             f.close()
-            system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+            system.msg("html", "took %fs" % (time.time() - T), wantsnl=False)
 
     def writeDocsFor(self, ob, functionpages):
         if not ob.isVisible:
@@ -65,7 +72,7 @@ class TemplateWriter:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                f = open(os.path.join(self.base, link(ob)), 'w')
+                f = open(os.path.join(self.base, link(ob)), "w")
                 self.writeDocsForOne(ob, f)
                 f.close()
         for o in ob.orderedcontents:
@@ -77,14 +84,16 @@ class TemplateWriter:
         # brrrrrrr!
         d = pages.__dict__
         for c in ob.__class__.__mro__:
-            n = c.__name__ + 'Page'
+            n = c.__name__ + "Page"
             if n in d:
                 pclass = d[n]
                 break
         else:
             pclass = pages.CommonPage
-        self.system.msg('html', str(ob), thresh=1)
+        self.system.msg("html", str(ob), thresh=1)
         page = pclass(ob)
         self.written_pages += 1
-        self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
+        self.system.progress(
+            "html", self.written_pages, self.total_pages, "pages written"
+        )
         flattenToFile(fobj, page)

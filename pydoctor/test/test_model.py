@@ -12,8 +12,8 @@ class FakeOptions(object):
     """
     A fake options object as if it came from that stupid optparse thing.
     """
-    sourcehref = None
 
+    sourcehref = None
 
 
 class FakeDocumentable(object):
@@ -21,9 +21,9 @@ class FakeDocumentable(object):
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
+
     system = None
     sourceHref = None
-
 
 
 def test_setSourceHrefOption():
@@ -94,16 +94,15 @@ def test_fetchIntersphinxInventories_content():
     intersphix.
     """
     options, _ = parse_args([])
-    options.intersphinx = [
-        'http://sphinx/objects.inv',
-        'file:///twisted/index.inv',
-        ]
+    options.intersphinx = ["http://sphinx/objects.inv", "file:///twisted/index.inv"]
     url_content = {
-        'http://sphinx/objects.inv': zlib.compress(
-            'sphinx.module py:module -1 sp.html -'),
-        'file:///twisted/index.inv': zlib.compress(
-            'twisted.package py:module -1 tm.html -'),
-        }
+        "http://sphinx/objects.inv": zlib.compress(
+            "sphinx.module py:module -1 sp.html -"
+        ),
+        "file:///twisted/index.inv": zlib.compress(
+            "twisted.package py:module -1 tm.html -"
+        ),
+    }
     sut = model.System(options=options)
     log = []
     sut.msg = lambda part, msg: log.append((part, msg))
@@ -113,11 +112,5 @@ def test_fetchIntersphinxInventories_content():
     sut.fetchIntersphinxInventories(sphinx.StubCache(url_content))
 
     assert [] == log
-    assert (
-        'http://sphinx/sp.html' ==
-        sut.intersphinx.getLink('sphinx.module')
-        )
-    assert (
-        'file:///twisted/tm.html' ==
-        sut.intersphinx.getLink('twisted.package')
-        )
+    assert "http://sphinx/sp.html" == sut.intersphinx.getLink("sphinx.module")
+    assert "file:///twisted/tm.html" == sut.intersphinx.getLink("twisted.package")
