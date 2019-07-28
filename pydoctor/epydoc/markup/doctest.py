@@ -18,7 +18,7 @@ C{colorize_doctest()}.)
 __docformat__ = 'epytext en'
 
 import re
-from epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
 
 __all__ = ['doctest_to_html', 'doctest_to_latex',
            'DoctestColorizer', 'XMLDoctestColorizer',

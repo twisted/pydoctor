@@ -62,14 +62,14 @@ import os, os.path, sys
 # Unicode:
 import codecs
 # API documentation encoding:
-from epydoc.apidoc import *
+from pydoctor.epydoc.apidoc import *
 # For looking up the docs of builtins:
 import __builtin__, exceptions
-import epydoc.docintrospecter
+import pydoctor.epydoc.docintrospecter
 # Misc utility functions:
-from epydoc.util import *
+from pydoctor.epydoc.util import *
 # Backwards compatibility
-from epydoc.compat import *
+from pydoctor.epydoc.compat import *
 
 ######################################################################
 ## Doc Parser
@@ -210,8 +210,8 @@ def parse_docs(filename=None, name=None, context=None, is_script=False):
     """
     # Always introspect __builtins__ & exceptions (e.g., in case
     # they're used as base classes.)
-    epydoc.docintrospecter.introspect_docs(__builtin__)
-    epydoc.docintrospecter.introspect_docs(exceptions)
+    pydoctor.epydoc.docintrospecter.introspect_docs(__builtin__)
+    pydoctor.epydoc.docintrospecter.introspect_docs(exceptions)
 
     # If our input is a python object name, then delegate to
     # _find().
@@ -1993,7 +1993,7 @@ def lookup_name(identifier, parent_docs):
             return parent_docs[0].variables[identifier]
 
     # Builtins
-    builtins = epydoc.docintrospecter.introspect_docs(__builtin__)
+    builtins = pydoctor.epydoc.docintrospecter.introspect_docs(__builtin__)
     if isinstance(builtins, NamespaceDoc):
         if identifier in builtins.variables:
             return builtins.variables[identifier]

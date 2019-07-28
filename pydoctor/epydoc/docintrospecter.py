@@ -27,19 +27,19 @@ __docformat__ = 'epytext en'
 
 import inspect, re, sys, os.path, imp
 # API documentation encoding:
-from epydoc.apidoc import *
+from pydoctor.epydoc.apidoc import *
 # Type comparisons:
 from types import *
 # Error reporting:
-from epydoc import log
+from pydoctor.epydoc import log
 # Helper functions:
-from epydoc.util import *
+from pydoctor.epydoc.util import *
 # For extracting encoding for docstrings:
-import epydoc.docparser
+import pydoctor.epydoc.docparser
 # Builtin values
 import __builtin__
 # Backwards compatibility
-from epydoc.compat import *
+from pydoctor.epydoc.compat import *
 
 ######################################################################
 ## Caches
@@ -577,7 +577,7 @@ def get_docstring(value, module_name=None):
                 try:
                     module = get_value_from_name(module_name)
                     filename = py_src_filename(module.__file__)
-                    encoding = epydoc.docparser.get_module_encoding(filename)
+                    encoding = pydoctor.epydoc.docparser.get_module_encoding(filename)
                     return unicode(docstring, encoding)
                 except KeyboardInterrupt: raise
                 except Exception: pass

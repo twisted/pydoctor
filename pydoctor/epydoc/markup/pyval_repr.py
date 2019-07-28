@@ -32,13 +32,13 @@ __docformat__ = 'epytext en'
 # __repr__.
 
 import types, re
-import epydoc.apidoc
-from epydoc.util import decode_with_backslashreplace
-from epydoc.util import plaintext_to_html, plaintext_to_latex
-from epydoc.compat import *
+import pydoctor.epydoc.apidoc
+from pydoctor.epydoc.util import decode_with_backslashreplace
+from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.compat import *
 import sre_parse, sre_constants
 
-from epydoc.markup.epytext import Element, ParsedEpytextDocstring
+from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
 def is_re_pattern(pyval):
     return type(pyval).__name__ == 'SRE_Pattern'
@@ -143,7 +143,7 @@ class PyvalColorizer:
         """
         @return: A L{ColorizedPyvalRepr} describing the given pyval.
         """
-        UNKNOWN = epydoc.apidoc.UNKNOWN
+        UNKNOWN = pydoctor.epydoc.apidoc.UNKNOWN
         # Create an object to keep track of the colorization.
         state = _ColorizerState()
         state.linebreakok = self.linebreakok

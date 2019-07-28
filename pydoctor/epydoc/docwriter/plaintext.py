@@ -11,7 +11,7 @@ Plaintext output generation.
 """
 __docformat__ = 'epytext en'
 
-from epydoc.apidoc import *
+from pydoctor.epydoc.apidoc import *
 import re
 
 class PlaintextWriter:

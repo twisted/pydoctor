@@ -107,9 +107,9 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re, string, types, sys, os.path
-from epydoc.markup import *
-from epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
-from epydoc.markup.doctest import doctest_to_html, doctest_to_latex
+from pydoctor.epydoc.markup import *
+from pydoctor.epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.markup.doctest import doctest_to_html, doctest_to_latex
 
 ##################################################
 ## DOM-Like Encoding
@@ -1892,7 +1892,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
                      docindex, context):
         # Generate the graph
         if graph_type == 'classtree':
-            from epydoc.apidoc import ClassDoc
+            from pydoctor.epydoc.apidoc import ClassDoc
             if graph_args:
                 bases = [docindex.find(name, context)
                          for name in graph_args]
@@ -1902,10 +1902,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
                 log.warning("Could not construct class tree: you must "
                             "specify one or more base classes.")
                 return None
-            from epydoc.docwriter.dotgraph import class_tree_graph
+            from pydoctor.epydoc.docwriter.dotgraph import class_tree_graph
             return class_tree_graph(bases, linker, context)
         elif graph_type == 'packagetree':
-            from epydoc.apidoc import ModuleDoc
+            from pydoctor.epydoc.apidoc import ModuleDoc
             if graph_args:
                 packages = [docindex.find(name, context)
                             for name in graph_args]
@@ -1915,12 +1915,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
                 log.warning("Could not construct package tree: you must "
                             "specify one or more root packages.")
                 return None
-            from epydoc.docwriter.dotgraph import package_tree_graph
+            from pydoctor.epydoc.docwriter.dotgraph import package_tree_graph
             return package_tree_graph(packages, linker, context)
         elif graph_type == 'importgraph':
-            from epydoc.apidoc import ModuleDoc
+            from pydoctor.epydoc.apidoc import ModuleDoc
             modules = [d for d in docindex.root if isinstance(d, ModuleDoc)]
-            from epydoc.docwriter.dotgraph import import_graph
+            from pydoctor.epydoc.docwriter.dotgraph import import_graph
             return import_graph(modules, docindex, linker, context)
 
         elif graph_type == 'callgraph':
@@ -1929,7 +1929,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
                 docs = [doc for doc in docs if doc is not None]
             else:
                 docs = [context]
-            from epydoc.docwriter.dotgraph import call_graph
+            from pydoctor.epydoc.docwriter.dotgraph import call_graph
             return call_graph(docs, docindex, linker, context)
         else:
             log.warning("Unknown graph type %s" % graph_type)

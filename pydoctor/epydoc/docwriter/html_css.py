@@ -7,7 +7,7 @@
 #
 
 """
-Predefined CSS stylesheets for the HTML outputter (L{epydoc.docwriter.html}).
+Predefined CSS stylesheets for the HTML outputter (L{pydoctor.epydoc.docwriter.html}).
 
 @type STYLESHEETS: C{dictionary} from C{string} to C{(string, string)}
 @var STYLESHEETS: A dictionary mapping from stylesheet names to CSS

@@ -30,13 +30,13 @@ __docformat__ = 'epytext en'
 ######################################################################
 
 import re, sys
-from epydoc import markup
-from epydoc.markup import epytext
-from epydoc.apidoc import *
-from epydoc.docintrospecter import introspect_docstring_lineno
-from epydoc.util import py_src_filename
-from epydoc import log
-import epydoc.docparser
+from pydoctor.epydoc import markup
+from pydoctor.epydoc.markup import epytext
+from pydoctor.epydoc.apidoc import *
+from pydoctor.epydoc.docintrospecter import introspect_docstring_lineno
+from pydoctor.epydoc.util import py_src_filename
+from pydoctor.epydoc import log
+import pydoctor.epydoc.docparser
 import __builtin__, exceptions
 
 ######################################################################
@@ -316,11 +316,11 @@ def add_metadata_from_var(api_doc, field):
 
         # Try extracting the value from the parse tree.
         elif val_doc.toktree is not UNKNOWN:
-            try: value = [epydoc.docparser.parse_string(val_doc.toktree)]
+            try: value = [pydoctor.epydoc.docparser.parse_string(val_doc.toktree)]
             except KeyboardInterrupt: raise
             except: pass
             if field.multivalue and not value:
-                try: value = epydoc.docparser.parse_string_list(val_doc.toktree)
+                try: value = pydoctor.epydoc.docparser.parse_string_list(val_doc.toktree)
                 except KeyboardInterrupt: raise
                 except: pass
 

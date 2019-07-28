@@ -12,8 +12,8 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from epydoc.markup import *
-from epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.markup import *
+from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
 
 def parse_docstring(docstring, errors, **options):
     """

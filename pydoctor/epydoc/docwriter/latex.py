@@ -16,15 +16,15 @@ __docformat__ = 'epytext en'
 
 import os.path, sys, time, re, textwrap, codecs
 
-from epydoc.apidoc import *
-from epydoc.compat import *
-import epydoc
-from epydoc import log
-from epydoc import markup
-from epydoc.util import plaintext_to_latex
-import epydoc.markup
-from epydoc.docwriter.dotgraph import *
-from epydoc.docwriter.latex_sty import STYLESHEETS
+from pydoctor.epydoc.apidoc import *
+from pydoctor.epydoc.compat import *
+from pydoctor import epydoc
+from pydoctor.epydoc import log
+from pydoctor.epydoc import markup
+from pydoctor.epydoc.util import plaintext_to_latex
+import pydoctor.epydoc.markup
+from pydoctor.epydoc.docwriter.dotgraph import *
+from pydoctor.epydoc.docwriter.latex_sty import STYLESHEETS
 
 class LatexWriter:
     #: Expects (options, epydoc_sty_package)
@@ -281,8 +281,8 @@ class LatexWriter:
 
         # If restructuredtext was used, then we need to extend
         # the prefix to include LatexTranslator.head_prefix.
-        if 'restructuredtext' in epydoc.markup.MARKUP_LANGUAGES_USED:
-            from epydoc.markup import restructuredtext
+        if 'restructuredtext' in pydoctor.epydoc.markup.MARKUP_LANGUAGES_USED:
+            from pydoctor.epydoc.markup import restructuredtext
             rst_head = restructuredtext.latex_head_prefix()
             rst_head = ''.join(rst_head).split('\n')
             for line in rst_head[1:]:

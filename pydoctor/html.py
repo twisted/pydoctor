@@ -7,7 +7,7 @@ from os.path import join as opj
 import os, inspect, shutil
 
 try:
-    from epydoc.markup import epytext
+    from pydoctor.epydoc.markup import epytext
     EPYTEXT = True
 except:
     print("no epytext found")

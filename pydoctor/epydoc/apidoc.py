@@ -39,12 +39,12 @@ __docformat__ = 'epytext en'
 ######################################################################
 
 import types, re, os.path, pickle
-from epydoc import log
-import epydoc
+from pydoctor.epydoc import log
+from pydoctor import epydoc
 import __builtin__
-from epydoc.compat import * # Backwards compatibility
-from epydoc.util import decode_with_backslashreplace, py_src_filename
-import epydoc.markup.pyval_repr
+from pydoctor.epydoc.compat import * # Backwards compatibility
+from pydoctor.epydoc.util import decode_with_backslashreplace, py_src_filename
+import pydoctor.epydoc.markup.pyval_repr
 
 ######################################################################
 # Dotted Names
@@ -343,12 +343,12 @@ class APIDoc(object):
     descr = UNKNOWN
     """@ivar: A description of the documented item, extracted from its
        docstring.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
 
     summary = UNKNOWN
     """@ivar: A summary description of the documented item, extracted from
        its docstring.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
 
     other_docs = UNKNOWN
     """@ivar: A flag indicating if the entire L{docstring} body (except tags
@@ -365,7 +365,7 @@ class APIDoc(object):
     """@ivar: A list of new docstring fields tags that are defined by the
        documented item's docstring.  These new field tags can be used by
        this item or by any item it contains.
-       @type: L{DocstringField <epydoc.docstringparser.DocstringField>}"""
+       @type: L{DocstringField <pydoctor.epydoc.docstringparser.DocstringField>}"""
     #} end of "information extracted from docstrings" group
 
     #{ Source Information
@@ -395,7 +395,7 @@ class APIDoc(object):
     def _debug_setattr(self, attr, val):
         """
         Modify an C{APIDoc}'s attribute.  This is used when
-        L{epydoc.DEBUG} is true, to make sure we don't accidentally
+        L{pydoctor.epydoc.DEBUG} is true, to make sure we don't accidentally
         set any inappropriate attributes on C{APIDoc} objects.
 
         @raise AttributeError: If C{attr} is not a valid attribute for
@@ -611,7 +611,7 @@ class VariableDoc(APIDoc):
     type_descr = UNKNOWN
     """@ivar: A description of the variable's expected type, extracted from
        its docstring.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
     #} end of "information extracted from docstrings" group
 
     #{ Information about Imported Variables
@@ -780,7 +780,7 @@ class ValueDoc(APIDoc):
     """@cvar: The minimum score that a value representation based on
     L{pyval} should have in order to be used instead of L{parse_repr}
     as the canonical representation for this C{ValueDoc}'s value.
-    @see: L{epydoc.markup.pyval_repr}"""
+    @see: L{pydoctor.epydoc.markup.pyval_repr}"""
     #} end of "value representation" group
 
     #{ Context
@@ -863,7 +863,7 @@ class ValueDoc(APIDoc):
         """
         # Use self.__pyval_repr to cache the result.
         if not hasattr(self, '_ValueDoc__pyval_repr'):
-            self.__pyval_repr = epydoc.markup.pyval_repr.colorize_pyval(
+            self.__pyval_repr = pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 self.REPR_LINELEN, self.REPR_MAXLINES, linebreakok=True)
         return self.__pyval_repr
@@ -883,13 +883,13 @@ class ValueDoc(APIDoc):
         """
         # If max_len is specified, then do *not* cache the result.
         if max_len is not None:
-            return epydoc.markup.pyval_repr.colorize_pyval(
+            return pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 max_len, maxlines=1, linebreakok=False)
 
         # Use self.__summary_pyval_repr to cache the result.
         if not hasattr(self, '_ValueDoc__summary_pyval_repr'):
-            self.__summary_pyval_repr = epydoc.markup.pyval_repr.colorize_pyval(
+            self.__summary_pyval_repr = pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 self.SUMMARY_REPR_LINELEN, maxlines=1, linebreakok=False)
         return self.__summary_pyval_repr
@@ -922,7 +922,7 @@ class NamespaceDoc(ValueDoc):
         dictionary contains all names defined by the namespace,
         including imported variables, aliased variables, and variables
         inherited from base classes (once L{inherit_docs()
-        <epydoc.docbuilder.inherit_docs>} has added them).
+        <pydoctor.epydoc.docbuilder.inherit_docs>} has added them).
        @type: C{dict} from C{string} to L{VariableDoc}"""
     sorted_variables = UNKNOWN
     """@ivar: A list of all variables defined by this
@@ -1539,7 +1539,7 @@ class RoutineDoc(ValueDoc):
        arguments.  Each element of this list is a tuple C{(args,
        descr)}, where C{args} is a list of argument names; and
        C{descr} is a L{ParsedDocstring
-       <epydoc.markup.ParsedDocstring>} describing the argument(s)
+       <pydoctor.epydoc.markup.ParsedDocstring>} describing the argument(s)
        specified by C{arg}.
        @type: C{list}"""
     arg_types = UNKNOWN
@@ -1547,20 +1547,20 @@ class RoutineDoc(ValueDoc):
        routine's arguments, encoded as a dictionary mapping from
        argument names to type descriptions.
        @type: C{dict} from C{string} to L{ParsedDocstring
-       <epydoc.markup.ParsedDocstring>}"""
+       <pydoctor.epydoc.markup.ParsedDocstring>}"""
     return_descr = UNKNOWN
     """@ivar: A description of the value returned by this routine.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
     return_type = UNKNOWN
     """@ivar: A description of expected type for the value
        returned by this routine.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
     exception_descrs = UNKNOWN
     """@ivar: A list of descriptions of exceptions
        that the routine might raise.  Each element of this list is a
        tuple C{(exc, descr)}, where C{exc} is a string contianing the
        exception name; and C{descr} is a L{ParsedDocstring
-       <epydoc.markup.ParsedDocstring>} describing the circumstances
+       <pydoctor.epydoc.markup.ParsedDocstring>} describing the circumstances
        under which the exception specified by C{exc} is raised.
        @type: C{list}"""
     #} end of "information extracted from docstrings" group
@@ -1642,7 +1642,7 @@ class PropertyDoc(ValueDoc):
     type_descr = UNKNOWN
     """@ivar: A description of the property's expected type, extracted
        from its docstring.
-       @type: L{ParsedDocstring<epydoc.markup.ParsedDocstring>}"""
+       @type: L{ParsedDocstring<pydoctor.epydoc.markup.ParsedDocstring>}"""
     #} end of "information extracted from docstrings" group
 
     def apidoc_links(self, **filters):
@@ -2205,7 +2205,7 @@ def _pp_apidoc(api_doc, val, doublespace, depth, exclude, include,
     return s + joiner.join(childstr.split('\n'))
 
 def _pp_val(api_doc, val, doublespace, depth, exclude, include, backpointers):
-    from epydoc import markup
+    from pydoctor.epydoc import markup
     if isinstance(val, APIDoc):
         return pp_apidoc(val, doublespace, depth-1, exclude,
                          include, backpointers)

@@ -45,7 +45,7 @@ __docformat__ = 'epytext en'
 # Imports
 import re
 from xml.dom.minidom import *
-from epydoc.markup import *
+from pydoctor.epydoc.markup import *
 
 def parse_docstring(docstring, errors, **options):
     """

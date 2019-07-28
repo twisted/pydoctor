@@ -7,7 +7,7 @@
 #
 
 """
-Default help file for the HTML outputter (L{epydoc.docwriter.html}).
+Default help file for the HTML outputter (L{pydoctor.epydoc.docwriter.html}).
 
 @type HTML_HELP: C{string}
 @var HTML_HELP: The contents of the HTML body for the default

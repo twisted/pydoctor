@@ -67,21 +67,21 @@ import sys, os, time, re, pickle, textwrap, tempfile, shutil
 from glob import glob
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 import optparse
-import epydoc
-from epydoc import log
-from epydoc.util import wordwrap, run_subprocess, RunSubprocessError
-from epydoc.util import plaintext_to_html, TerminalController
-from epydoc.apidoc import UNKNOWN
-from epydoc.compat import *
+from pydoctor import epydoc
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import wordwrap, run_subprocess, RunSubprocessError
+from pydoctor.epydoc.util import plaintext_to_html, TerminalController
+from pydoctor.epydoc.apidoc import UNKNOWN
+from pydoctor.epydoc.compat import *
 import ConfigParser
-from epydoc.docwriter.html_css import STYLESHEETS as CSS_STYLESHEETS
-from epydoc.docwriter.latex_sty import STYLESHEETS as STY_STYLESHEETS
-from epydoc.docwriter.dotgraph import DotGraph
-from epydoc.docwriter.dotgraph import COLOR as GRAPH_COLOR
+from pydoctor.epydoc.docwriter.html_css import STYLESHEETS as CSS_STYLESHEETS
+from pydoctor.epydoc.docwriter.latex_sty import STYLESHEETS as STY_STYLESHEETS
+from pydoctor.epydoc.docwriter.dotgraph import DotGraph
+from pydoctor.epydoc.docwriter.dotgraph import COLOR as GRAPH_COLOR
 
 # This module is only available if Docutils are in the system
 try:
-    from epydoc.docwriter import xlink
+    from pydoctor.epydoc.docwriter import xlink
 except:
     xlink = None
 
@@ -779,7 +779,7 @@ def main(options):
     """
     Perform all actions indicated by the given set of options.
 
-    @return: the L{epydoc.apidoc.DocIndex} object created while
+    @return: the L{pydoctor.epydoc.apidoc.DocIndex} object created while
         running epydoc (or None).
     """
     # Set the debug flag, if '--debug' was specified.
@@ -865,7 +865,7 @@ def main(options):
             log.warning("--include-log requires --html")
 
     # Set the default docformat
-    from epydoc import docstringparser
+    from pydoctor.epydoc import docstringparser
     docstringparser.DEFAULT_DOCFORMAT = options.docformat
 
     # Configure the external API linking
@@ -878,17 +878,17 @@ def main(options):
 
     # Set the dot path
     if options.dotpath:
-        from epydoc.docwriter import dotgraph
+        from pydoctor.epydoc.docwriter import dotgraph
         dotgraph.DOT_COMMAND = options.dotpath
 
     # Set the default graph font & size
     if options.graph_font:
-        from epydoc.docwriter import dotgraph
+        from pydoctor.epydoc.docwriter import dotgraph
         fontname = options.graph_font
         dotgraph.DotGraph.DEFAULT_NODE_DEFAULTS['fontname'] = fontname
         dotgraph.DotGraph.DEFAULT_EDGE_DEFAULTS['fontname'] = fontname
     if options.graph_font_size:
-        from epydoc.docwriter import dotgraph
+        from pydoctor.epydoc.docwriter import dotgraph
         fontsize = options.graph_font_size
         dotgraph.DotGraph.DEFAULT_NODE_DEFAULTS['fontsize'] = fontsize
         dotgraph.DotGraph.DEFAULT_EDGE_DEFAULTS['fontsize'] = fontsize
@@ -907,7 +907,7 @@ def main(options):
         log.end_progress()
     else:
         # Build docs for the named values.
-        from epydoc.docbuilder import build_doc_index
+        from pydoctor.epydoc.docbuilder import build_doc_index
         exclude_parse = '|'.join(options.exclude_parse+options.exclude)
         exclude_introspect = '|'.join(options.exclude_introspect+
                                       options.exclude)
@@ -993,7 +993,7 @@ def main(options):
     return docindex
 
 def write_html(docindex, options):
-    from epydoc.docwriter.html import HTMLWriter
+    from pydoctor.epydoc.docwriter.html import HTMLWriter
     html_writer = HTMLWriter(docindex, **options.__dict__)
     if options.verbose > 0:
         log.start_progress('Writing HTML docs to %r' % options.target['html'])
@@ -1056,7 +1056,7 @@ def write_latex(docindex, options):
                 options.pdfdriver = 'latex'
     log.info('%r pdfdriver selected' % options.pdfdriver)
 
-    from epydoc.docwriter.latex import LatexWriter, show_latex_warnings
+    from pydoctor.epydoc.docwriter.latex import LatexWriter, show_latex_warnings
     latex_writer = LatexWriter(docindex, **options.__dict__)
     try:
         latex_writer.write(latex_target)
@@ -1196,7 +1196,7 @@ def write_latex(docindex, options):
 
 def write_text(docindex, options):
     log.start_progress('Writing output')
-    from epydoc.docwriter.plaintext import PlaintextWriter
+    from pydoctor.epydoc.docwriter.plaintext import PlaintextWriter
     plaintext_writer = PlaintextWriter()
     s = '\n'
     for apidoc in docindex.root:
@@ -1207,14 +1207,14 @@ def write_text(docindex, options):
     sys.stdout.write(s)
 
 def check_docs(docindex, options):
-    from epydoc.checker import DocChecker
+    from pydoctor.epydoc.checker import DocChecker
     DocChecker(docindex).check()
 
 def cli():
     """
     Perform all actions indicated by the options in sys.argv.
 
-    @return: the L{epydoc.apidoc.DocIndex} object created while
+    @return: the L{pydoctor.epydoc.apidoc.DocIndex} object created while
         running epydoc (or None).
     """
     # Parse command-line arguments.

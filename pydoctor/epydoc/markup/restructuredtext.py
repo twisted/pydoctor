@@ -84,13 +84,13 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from epydoc.compat import * # Backwards compatibility
-from epydoc.markup import *
-from epydoc.apidoc import ModuleDoc, ClassDoc
-from epydoc.docwriter.dotgraph import *
-from epydoc.docwriter.xlink import ApiLinkReader
-from epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
-from epydoc.markup.doctest import doctest_to_html, doctest_to_latex, \
+from pydoctor.epydoc.compat import * # Backwards compatibility
+from pydoctor.epydoc.markup import *
+from pydoctor.epydoc.apidoc import ModuleDoc, ClassDoc
+from pydoctor.epydoc.docwriter.dotgraph import *
+from pydoctor.epydoc.docwriter.xlink import ApiLinkReader
+from pydoctor.epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.markup.doctest import doctest_to_html, doctest_to_latex, \
                                   HTMLDoctestColorizer, \
                                   LaTeXDoctestColorizer
 

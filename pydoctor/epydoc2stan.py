@@ -28,7 +28,7 @@ def link(o):
 
 def get_parser(formatname):
     try:
-        mod = __import__('epydoc.markup.' + formatname,
+        mod = __import__('pydoctor.epydoc.markup.' + formatname,
                          globals(), locals(), ['parse_docstring'])
     except ImportError as e:
         return None, e
@@ -291,7 +291,7 @@ def html2stan(html):
 
 
 class Field(object):
-    """Like epydoc.markup.Field, but without the gross accessor
+    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
         self.tag = field.tag()

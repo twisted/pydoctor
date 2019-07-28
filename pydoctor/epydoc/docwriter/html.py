@@ -17,17 +17,16 @@ __docformat__ = 'epytext en'
 import re, os, sys, codecs, sre_constants, pprint, base64
 import urllib
 import __builtin__
-from epydoc.apidoc import *
-import epydoc.docstringparser
+from pydoctor.epydoc.apidoc import *
 import time, epydoc, epydoc.markup, epydoc.markup.epytext
-from epydoc.docwriter.html_colorize import PythonSourceColorizer
-from epydoc.docwriter import html_colorize
-from epydoc.docwriter.html_css import STYLESHEETS
-from epydoc.docwriter.html_help import HTML_HELP
-from epydoc.docwriter.dotgraph import *
-from epydoc import log
-from epydoc.util import plaintext_to_html, is_src_filename
-from epydoc.compat import * # Backwards compatibility
+from pydoctor.epydoc.docwriter.html_colorize import PythonSourceColorizer
+from pydoctor.epydoc.docwriter import html_colorize
+from pydoctor.epydoc.docwriter.html_css import STYLESHEETS
+from pydoctor.epydoc.docwriter.html_help import HTML_HELP
+from pydoctor.epydoc.docwriter.dotgraph import *
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import plaintext_to_html, is_src_filename
+from pydoctor.epydoc.compat import * # Backwards compatibility
 
 ######################################################################
 ## Template Compiler
@@ -235,7 +234,7 @@ class HTMLWriter:
         @keyword css: The CSS stylesheet file.  If C{css} is a file
               name, then the specified file's conents will be used.
               Otherwise, if C{css} is the name of a CSS stylesheet in
-              L{epydoc.docwriter.html_css}, then that stylesheet will
+              L{pydoctor.epydoc.docwriter.html_css}, then that stylesheet will
               be used.  Otherwise, an error is reported.  If no stylesheet
               is specified, then the default stylesheet is used.
         @type help_file: C{string}
@@ -544,7 +543,7 @@ class HTMLWriter:
         ValueDoc.REPR_MAXLINES = self._variable_maxlines
 
         # Use an image for the crarr symbol.
-        from epydoc.markup.epytext import ParsedEpytextDocstring
+        from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
         orig_crarr_html = ParsedEpytextDocstring.SYMBOL_TO_HTML['crarr']
         ParsedEpytextDocstring.SYMBOL_TO_HTML['crarr'] = (
             r'<span class="variable-linewrap">'
@@ -1190,7 +1189,7 @@ class HTMLWriter:
         Write an HTML help file to the given stream.  If
         C{self._helpfile} contains a help file, then use it;
         otherwise, use the default helpfile from
-        L{epydoc.docwriter.html_help}.
+        L{pydoctor.epydoc.docwriter.html_help}.
         """
         # todo: optionally parse .rst etc help files?
 
@@ -1430,7 +1429,7 @@ class HTMLWriter:
         """
         Write the CSS stylesheet in the given directory.  If
         C{cssname} contains a stylesheet file or name (from
-        L{epydoc.docwriter.html_css}), then use that stylesheet;
+        L{pydoctor.epydoc.docwriter.html_css}), then use that stylesheet;
         otherwise, use the default stylesheet.
 
         @rtype: C{None}

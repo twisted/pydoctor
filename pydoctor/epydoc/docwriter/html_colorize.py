@@ -14,9 +14,9 @@ Python source code.
 __docformat__ = 'epytext en'
 
 import re, codecs
-from epydoc import log
-from epydoc.util import py_src_filename
-from epydoc.apidoc import *
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import py_src_filename
+from pydoctor.epydoc.apidoc import *
 import tokenize, token, cgi, keyword
 try: from cStringIO import StringIO
 except: from StringIO import StringIO

@@ -141,8 +141,8 @@ ADs=
 ## MessageIO
 ##/////////////////////////////////////////////////////////////////////////
 
-from epydoc import log
-from epydoc.util import wordwrap
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import wordwrap
 class GUILogger(log.Logger):
     _STAGES = [40, 7, 1, 3, 1, 30, 1, 2, 100]
 
@@ -212,13 +212,13 @@ def document(options, cancel, done):
         controls where the output is written to.
     @type options: C{dictionary}
     """
-    from epydoc.docwriter.html import HTMLWriter
-    from epydoc.docbuilder import build_doc_index
-    import epydoc.docstringparser
+    from pydoctor.epydoc.docwriter.html import HTMLWriter
+    from pydoctor.epydoc.docbuilder import build_doc_index
+    import pydoctor.epydoc.docstringparser
 
     # Set the default docformat.
     docformat = options.get('docformat', 'epytext')
-    epydoc.docstringparser.DEFAULT_DOCFORMAT = docformat
+    pydoctor.epydoc.docstringparser.DEFAULT_DOCFORMAT = docformat
 
     try:
         parse = options['introspect_or_parse'] in ('parse', 'both')
@@ -661,7 +661,7 @@ class EpydocGUI:
                                    **BUTTON_CONFIG)
         self._help_browse.grid(row=row, column=3, sticky='ew', padx=2)
 
-        from epydoc.docwriter.html_css import STYLESHEETS
+        from pydoctor.epydoc.docwriter.html_css import STYLESHEETS
         items = STYLESHEETS.items()
         def _css_sort(css1, css2):
             if css1[0] == 'default': return -1
@@ -811,9 +811,9 @@ class EpydocGUI:
         self._root = None
 
     def add_module(self, name, check=0):
-        from epydoc.util import is_package_dir, is_pyname, is_module_file
-        from epydoc.docintrospecter import get_value_from_name
-        from epydoc.docintrospecter import get_value_from_filename
+        from pydoctor.epydoc.util import is_package_dir, is_pyname, is_module_file
+        from pydoctor.epydoc.docintrospecter import get_value_from_name
+        from pydoctor.epydoc.docintrospecter import get_value_from_filename
 
         if (os.path.isfile(name) or is_package_dir(name) or is_pyname(name)):
             # Check that it's a good module, if requested.
@@ -1004,7 +1004,7 @@ class EpydocGUI:
         self.open(filename)
 
     def open(self, prjfile):
-        from epydoc.docwriter.html_css import STYLESHEETS
+        from pydoctor.epydoc.docwriter.html_css import STYLESHEETS
         self._filename = prjfile
         try:
             opts = load(open(prjfile, 'r'))

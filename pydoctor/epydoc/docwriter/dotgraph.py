@@ -23,10 +23,10 @@ __docformat__ = 'restructuredtext'
 import re
 import sys
 import tempfile
-from epydoc import log
-from epydoc.apidoc import *
-from epydoc.util import *
-from epydoc.compat import * # Backwards compatibility
+from pydoctor.epydoc import log
+from pydoctor.epydoc.apidoc import *
+from pydoctor.epydoc.util import *
+from pydoctor.epydoc.compat import * # Backwards compatibility
 
 #: Should the dot2tex module be used to render dot graphs to latex
 #: (if it's available)?  This is experimental, and not yet working,

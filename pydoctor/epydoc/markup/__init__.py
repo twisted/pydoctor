@@ -21,8 +21,8 @@ C{ParsedDocstring}s support the following operations:
   - Index term extraction (L{index_terms()<ParsedDocstring.index_terms>}.
 
 The L{parse()} function provides a single interface to the
-C{epydoc.markup} package: it takes a docstring and the name of a
-markup language; delegates to the appropriate parser; and returns the
+C{pydoctor.epydoc.markup} package: it takes a docstring and the name of
+a markup language; delegates to the appropriate parser; and returns the
 parsed docstring (along with any errors or warnings that were
 generated).
 
@@ -56,10 +56,10 @@ each error.
 __docformat__ = 'epytext en'
 
 import re, types, sys
-from epydoc import log
-from epydoc.util import plaintext_to_html, plaintext_to_latex
-import epydoc
-from epydoc.compat import *
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor import epydoc
+from pydoctor.epydoc.compat import *
 
 ##################################################
 ## Contents
@@ -78,10 +78,10 @@ from epydoc.compat import *
 ##################################################
 
 _markup_language_registry = {
-    'restructuredtext': 'epydoc.markup.restructuredtext',
-    'epytext': 'epydoc.markup.epytext',
-    'plaintext': 'epydoc.markup.plaintext',
-    'javadoc': 'epydoc.markup.javadoc',
+    'restructuredtext': 'pydoctor.epydoc.markup.restructuredtext',
+    'epytext': 'pydoctor.epydoc.markup.epytext',
+    'plaintext': 'pydoctor.epydoc.markup.plaintext',
+    'javadoc': 'pydoctor.epydoc.markup.javadoc',
     }
 
 def register_markup_language(name, parse_function):
@@ -147,14 +147,14 @@ def parse(docstring, markup='plaintext', errors=None, **options):
     if not re.match(r'\w+', markup):
         _parse_warn('Bad markup language name %r.  Treating '
                     'docstrings as plaintext.' % markup)
-        import epydoc.markup.plaintext as plaintext
+        import pydoctor.epydoc.markup.plaintext as plaintext
         return plaintext.parse_docstring(docstring, errors, **options)
 
     # Is the markup language supported?
     if markup not in _markup_language_registry:
         _parse_warn('Unsupported markup language %r.  Treating '
                     'docstrings as plaintext.' % markup)
-        import epydoc.markup.plaintext as plaintext
+        import pydoctor.epydoc.markup.plaintext as plaintext
         return plaintext.parse_docstring(docstring, errors, **options)
 
     # Get the parse function.
@@ -166,7 +166,7 @@ def parse(docstring, markup='plaintext', errors=None, **options):
         except ImportError, e:
             _parse_warn('Error importing %s for markup language %s: %s' %
                         (parse_docstring, markup, e))
-            import epydoc.markup.plaintext as plaintext
+            import pydoctor.epydoc.markup.plaintext as plaintext
             return plaintext.parse_docstring(docstring, errors, **options)
         _markup_language_registry[markup] = parse_docstring
 
@@ -180,14 +180,14 @@ def parse(docstring, markup='plaintext', errors=None, **options):
         if epydoc.DEBUG: raise
         log.error('Internal error while parsing a docstring: %s; '
                   'treating docstring as plaintext' % e)
-        import epydoc.markup.plaintext as plaintext
+        import pydoctor.epydoc.markup.plaintext as plaintext
         return plaintext.parse_docstring(docstring, errors, **options)
 
     # Check for fatal errors.
     fatal_errors = [e for e in errors if e.is_fatal()]
     if fatal_errors and raise_on_error: raise fatal_errors[0]
     if fatal_errors:
-        import epydoc.markup.plaintext as plaintext
+        import pydoctor.epydoc.markup.plaintext as plaintext
         return plaintext.parse_docstring(docstring, errors, **options)
 
     return parsed_docstring
@@ -609,7 +609,7 @@ def parse_type_of(obj):
     @type obj: any
     """
     # This is a bit hackish; oh well. :)
-    from epydoc.markup.epytext import ParsedEpytextDocstring
+    from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
     from xml.dom.minidom import Document
     doc = Document()
     epytext = doc.createElement('epytext')

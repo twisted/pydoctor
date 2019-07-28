@@ -77,7 +77,7 @@ import re
 import sys
 from optparse import OptionValueError
 
-from epydoc import log
+from pydoctor.epydoc import log
 
 class UrlGenerator:
     """

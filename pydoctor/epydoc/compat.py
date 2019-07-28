@@ -13,7 +13,7 @@ This module provides backwards compatibility by defining several
 functions and classes that were not available in earlier versions of
 Python.  Intented usage:
 
-    >>> from epydoc.compat import *
+    >>> from pydoctor.epydoc.compat import *
 
 Currently, epydoc requires Python 2.3+.
 """

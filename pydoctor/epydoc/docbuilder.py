@@ -12,8 +12,8 @@ objects.  These data structures are created using a series of steps:
 
   1. B{Building docs}: Extract basic information about the objects,
      and objects that are related to them.  This can be done by
-     introspecting the objects' values (with L{epydoc.docintrospecter}; or
-     by parsing their source code (with L{epydoc.docparser}.
+     introspecting the objects' values (with L{pydoctor.epydoc.docintrospecter}; or
+     by parsing their source code (with L{pydoctor.epydoc.docparser}.
 
   2. B{Merging}: Combine the information obtained from introspection &
      parsing each object into a single structure.
@@ -34,7 +34,8 @@ The documentation information for each individual object is
 represented using an L{APIDoc}; and the documentation for a collection
 of objects is represented using a L{DocIndex}.
 
-The main interface to C{epydoc.docbuilder} consists of two functions:
+The main interface to C{pydoctor.epydoc.docbuilder} consists of two
+functions:
 
   - L{build_doc()} -- Builds documentation for a single item, and
     returns it as an L{APIDoc} object.
@@ -68,14 +69,14 @@ __docformat__ = 'epytext en'
 ######################################################################
 
 import sys, os, os.path, __builtin__, imp, re, inspect
-from epydoc.apidoc import *
-from epydoc.docintrospecter import introspect_docs
-from epydoc.docintrospecter import get_value_from_filename, get_value_from_name
-from epydoc.docparser import parse_docs, ParseError
-from epydoc.docstringparser import parse_docstring
-from epydoc import log
-from epydoc.util import *
-from epydoc.compat import * # Backwards compatibility
+from pydoctor.epydoc.apidoc import *
+from pydoctor.epydoc.docintrospecter import introspect_docs
+from pydoctor.epydoc.docintrospecter import get_value_from_filename, get_value_from_name
+from pydoctor.epydoc.docparser import parse_docs, ParseError
+from pydoctor.epydoc.docstringparser import parse_docstring
+from pydoctor.epydoc import log
+from pydoctor.epydoc.util import *
+from pydoctor.epydoc.compat import * # Backwards compatibility
 
 ######################################################################
 ## 1. build_doc()
