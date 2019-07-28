@@ -9,10 +9,8 @@
 """
 Automatic Python reference documentation generator.  Epydoc processes
 Python modules and docstrings to generate formatted API documentation,
-in the form of HTML pages.  Epydoc can be used via a command-line
-interface (`epydoc.cli`) and a graphical interface (`epydoc.gui`).
-Both interfaces let the user specify a set of modules or other objects
-to document, and produce API documentation using the following steps:
+in the form of HTML pages.  Epydoc produces API documentation using
+the following steps:
 
 1. Extract basic information about the specified objects, and objects
    that are related to them (such as the values defined by a module).
@@ -157,7 +155,6 @@ handled by the `markup` package, and output generation is handled by
 the `docwriter` package.  See the submodule list for more
 information about the submodules and subpackages.
 
-:group User Interface: gui, cli
 :group Basic Data Types: apidoc
 :group Documentation Generation: docbuilder, docintrospecter, docparser
 :group Docstring Processing: docstringparser, markup
