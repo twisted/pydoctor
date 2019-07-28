@@ -159,7 +159,6 @@ information about the submodules and subpackages.
 :group Documentation Generation: docbuilder, docintrospecter, docparser
 :group Docstring Processing: docstringparser, markup
 :group Output Generation: docwriter
-:group Completeness Checking: checker
 :group Miscellaneous: log, util, test, compat
 
 :author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__
