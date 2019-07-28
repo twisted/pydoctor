@@ -46,7 +46,6 @@ setup(
         "appdirs",
         "CacheControl[filecache]",
         "Twisted",
-        "epydoc",
         "requests",
         "six",
     ],
