@@ -52,7 +52,6 @@ import re, types, sys
 from pydoctor.epydoc import log
 from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor import epydoc
-from pydoctor.epydoc.compat import *
 
 ##################################################
 ## Contents

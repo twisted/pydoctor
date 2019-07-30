@@ -41,7 +41,6 @@ import types, re, os.path, pickle
 from pydoctor.epydoc import log
 from pydoctor import epydoc
 import __builtin__
-from pydoctor.epydoc.compat import * # Backwards compatibility
 from pydoctor.epydoc.util import decode_with_backslashreplace, py_src_filename
 import pydoctor.epydoc.markup.pyval_repr
 

@@ -27,7 +27,7 @@ information about the submodules and subpackages.
 :group Basic Data Types: apidoc
 :group Docstring Processing: markup
 :group Output Generation: docwriter
-:group Miscellaneous: log, util, test, compat
+:group Miscellaneous: log, util, test
 
 :author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__
 :requires: Python 2.3+

@@ -25,7 +25,6 @@ import tempfile
 from pydoctor.epydoc import log
 from pydoctor.epydoc.apidoc import *
 from pydoctor.epydoc.util import *
-from pydoctor.epydoc.compat import * # Backwards compatibility
 
 #: colors for graphs of APIDocs
 COLOR = dict(
