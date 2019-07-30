@@ -223,7 +223,7 @@ TypeError (but only if epydoc.DEBUG is true):
 
     >>> APIDoc('foo')
     Traceback (most recent call last):
-    TypeError: __init__() takes exactly 1 argument (2 given)
+    TypeError: __init__() takes exactly 1 ...argument (2 given)
     >>> APIDoc(foo='foo')
     Traceback (most recent call last):
     TypeError: APIDoc got unexpected arg 'foo'
