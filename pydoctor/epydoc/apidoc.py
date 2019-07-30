@@ -42,7 +42,7 @@ from pydoctor.epydoc import log
 from pydoctor import epydoc
 import __builtin__
 from pydoctor.epydoc.util import py_src_filename
-import pydoctor.epydoc.markup.pyval_repr
+from pydoctor.epydoc.markup.pyval_repr import colorize_pyval
 
 ######################################################################
 # Dotted Names
@@ -860,7 +860,7 @@ class ValueDoc(APIDoc):
         """
         # Use self.__pyval_repr to cache the result.
         if not hasattr(self, '_ValueDoc__pyval_repr'):
-            self.__pyval_repr = pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
+            self.__pyval_repr = colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 self.REPR_LINELEN, self.REPR_MAXLINES, linebreakok=True)
         return self.__pyval_repr
@@ -880,13 +880,13 @@ class ValueDoc(APIDoc):
         """
         # If max_len is specified, then do *not* cache the result.
         if max_len is not None:
-            return pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
+            return colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 max_len, maxlines=1, linebreakok=False)
 
         # Use self.__summary_pyval_repr to cache the result.
         if not hasattr(self, '_ValueDoc__summary_pyval_repr'):
-            self.__summary_pyval_repr = pydoctor.epydoc.markup.pyval_repr.colorize_pyval(
+            self.__summary_pyval_repr = colorize_pyval(
                 self.pyval, self.parse_repr, self.REPR_MIN_SCORE,
                 self.SUMMARY_REPR_LINELEN, maxlines=1, linebreakok=False)
         return self.__summary_pyval_repr
