@@ -90,8 +90,6 @@ The function should have the following signature:
             list (as L{ParseError} objects).
 """
 
-MARKUP_LANGUAGES_USED = set()
-
 def parse(docstring, markup='plaintext', errors=None, **options):
     """
     Parse the given docstring, and use it to construct a
@@ -150,9 +148,6 @@ def parse(docstring, markup='plaintext', errors=None, **options):
             import pydoctor.epydoc.markup.plaintext as plaintext
             return plaintext.parse_docstring(docstring, errors, **options)
         _markup_language_registry[markup] = parse_docstring
-
-    # Keep track of which markup languages have been used so far.
-    MARKUP_LANGUAGES_USED.add(markup)
 
     # Parse the docstring.
     try: parsed_docstring = parse_docstring(docstring, errors, **options)
@@ -247,17 +242,6 @@ class ParsedDocstring:
         # Default behavior:
         return self, False
 
-    def concatenate(self, other):
-        """
-        @return: A new parsed docstring containing the concatination
-            of this docstring and C{other}.
-        @raise ValueError: If the two parsed docstrings are
-            incompatible.
-        """
-        return ConcatenatedDocstring(self, other)
-
-    def __add__(self, other): return self.concatenate(other)
-
     def to_html(self, docstring_linker, **options):
         """
         Translate this docstring to HTML.
@@ -297,45 +281,6 @@ class ParsedDocstring:
         """
         # Default behavior:
         return []
-
-##################################################
-## Concatenated Docstring
-##################################################
-class ConcatenatedDocstring:
-    def __init__(self, *parsed_docstrings):
-        self._parsed_docstrings = [pds for pds in parsed_docstrings
-                                   if pds is not None]
-
-    def split_fields(self, errors=None):
-        bodies = []
-        fields = []
-        for doc in self._parsed_docstrings:
-            b,f = doc.split_fields()
-            bodies.append(b)
-            fields.extend(f)
-
-        return ConcatenatedDocstring(*bodies), fields
-
-    def summary(self):
-        return self._parsed_docstrings[0].summary()
-
-    def to_html(self, docstring_linker, **options):
-        htmlstring = ''
-        for doc in self._parsed_docstrings:
-            htmlstring += doc.to_html(docstring_linker, **options)
-        return htmlstring
-
-    def to_plaintext(self, docstring_linker, **options):
-        textstring = ''
-        for doc in self._parsed_docstrings:
-            textstring += doc.to_plaintext(docstring_linker, **options)
-        return textstring
-
-    def index_terms(self):
-        terms = []
-        for doc in self._parsed_docstrings:
-            terms += doc.index_terms()
-        return terms
 
 ##################################################
 ## Fields

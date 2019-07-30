@@ -60,61 +60,6 @@ class Logger:
         message.
         """
 
-    def close(self):
-        """
-        Perform any tasks needed to close this logger.  This should
-        be safe to call multiple times.
-        """
-
-    #////////////////////////////////////////////////////////////
-    # Message blocks
-    #////////////////////////////////////////////////////////////
-
-    def start_block(self, header):
-        """
-        Start a new message block.  Any calls to L{info()},
-        L{warning()}, or L{error()} that occur between a call to
-        C{start_block} and a corresponding call to C{end_block} will
-        be grouped together, and displayed with a common header.
-        C{start_block} can be called multiple times (to form nested
-        blocks), but every call to C{start_block} I{must} be balanced
-        by a call to C{end_block}.
-        """
-
-    def end_block(self):
-        """
-        End a warning block.  See L{start_block} for details.
-        """
-
-    #////////////////////////////////////////////////////////////
-    # Progress bar
-    #////////////////////////////////////////////////////////////
-
-    def start_progress(self, header=None):
-        """
-        Begin displaying progress for a new task.  C{header} is a
-        description of the task for which progress is being reported.
-        Each call to C{start_progress} must be followed by a call to
-        C{end_progress} (with no intervening calls to
-        C{start_progress}).
-        """
-
-    def end_progress(self):
-        """
-        Finish off the display of progress for the current task.  See
-        L{start_progress} for more information.
-        """
-
-    def progress(self, percent, message=''):
-        """
-        Update the progress display.
-
-        @param percent: A float from 0.0 to 1.0, indicating how much
-            progress has been made.
-        @param message: A message indicating the most recent action
-            that contributed towards that progress.
-        """
-
 class SimpleLogger(Logger):
     def __init__(self, threshold=WARNING):
         self.threshold = threshold
@@ -138,8 +83,7 @@ def register_logger(logger):
     """
     _loggers.append(logger)
 
-def remove_logger(logger, close_logger=True):
-    if close_logger: logger.close()
+def remove_logger(logger):
     _loggers.remove(logger)
 
 ######################################################################
@@ -172,26 +116,3 @@ def debug(*messages):
     """Display the given debugging message."""
     message = ' '.join(['%s' % (m,) for m in messages])
     for logger in _loggers: logger.log(DEBUG, message)
-
-def start_block(header):
-    for logger in _loggers: logger.start_block(header)
-start_block.__doc__ = Logger.start_block.__doc__
-
-def end_block():
-    for logger in _loggers: logger.end_block()
-end_block.__doc__ = Logger.end_block.__doc__
-
-def start_progress(header=None):
-    for logger in _loggers: logger.start_progress(header)
-start_progress.__doc__ = Logger.start_progress.__doc__
-
-def end_progress():
-    for logger in _loggers: logger.end_progress()
-end_progress.__doc__ = Logger.end_progress.__doc__
-
-def progress(percent, message=''):
-    for logger in _loggers: logger.progress(percent, '%s' % message)
-progress.__doc__ = Logger.progress.__doc__
-
-def close():
-    for logger in _loggers: logger.close()

@@ -1144,6 +1144,9 @@ def _class_tree_graph(graph, classes, mknode, mkedge, linker,
     - ``mkedge(begin, end, edgetype, options)``: Returns a
       `DotGraphEdge`.  ``edgetype`` is one of: subclass,
       truncate-subclass.
+
+    TODO: `uml_class_tree_graph()` was removed, so this function only
+          has one caller left and can therefore be simplified.
     """
     rankdir = options.get('dir', 'TB')
     graph.body += 'rankdir=%s\n' % rankdir
@@ -1243,85 +1246,6 @@ def _get_subclass_depth_map(classes):
     return subclass_depth
 
 
-
-######################################################################
-def uml_class_tree_graph(classes, linker, context=None, **options):
-    """
-    Return a `DotGraph` that graphically displays the class hierarchy
-    for the given class, using UML notation.  Options:
-
-      - exclude: A list of classes that should be excluded
-      - dir: LR|RL|BT requests a left-to-right, right-to-left, or
-        bottom-to- top, drawing.  (corresponds to the dot option
-        'rankdir'
-      - max_subclass_depth: The maximum depth to which subclasses
-        will be drawn.
-      - max_subclasses: A list of ints, specifying how many
-        subclasses should be drawn per class at each level of the
-        graph.  E.g., [5,3,1] means draw up to 5 subclasses for the
-        specified classes; up to 3 subsubclasses for each of those (up
-        to) 5 subclasses; and up to 1 subclass for each of those.
-      - max_attributes
-      - max_operations
-      - show_private_vars
-      - show_magic_vars
-      - link_attributes
-      - show_signature_defaults
-      - max_signature_width
-    """
-    cls2node = {}
-
-    # Draw the basic graph:
-    if isinstance(classes, ClassDoc): classes = [classes]
-    graph = DotGraph('UML class diagram for %s' % name_list(classes, context),
-                     body='ranksep=.2\n;nodesep=.3\n')
-    _class_tree_graph(graph, classes, _uml_mknode, _uml_mkedge,
-                      linker, context, options, cls2node)
-
-    # Turn attributes into links (optional):
-    inheritance_nodes = set(graph.nodes)
-    if options.get('link_attributes', True):
-        for cls in classes:
-            for base in cls.mro():
-                node = cls2node.get(base)
-                if node is None: continue
-                node.link_attributes(graph, cls2node)
-                # Make sure that none of the new attribute edges break
-                # the rank ordering assigned by inheritance.
-                for edge in node.edges:
-                    if edge.end in inheritance_nodes:
-                        edge['constraint'] = 'False'
-
-    return graph
-
-# A callback to make graph nodes:
-def _uml_mknode(cls, nodetype, linker, context, options):
-    if nodetype == 'subclass':
-        return DotGraphUmlClassNode(
-            cls, linker, context, collapsed=True,
-            bgcolor=COLOR['SUBCLASS_BG'], **options)
-    elif nodetype in ('selected', 'superclass', 'undocumented'):
-        if nodetype == 'selected': bgcolor = COLOR['SELECTED_BG']
-        if nodetype == 'superclass': bgcolor = COLOR['BASECLASS_BG']
-        if nodetype == 'undocumented': bgcolor = COLOR['UNDOCUMENTED_BG']
-        return DotGraphUmlClassNode(
-            cls, linker, context, show_inherited_vars=False,
-            collapsed=False, bgcolor=bgcolor, **options)
-    assert 0, 'bad nodetype'
-
-# A callback to make graph edges:
-def _uml_mkedge(start, end, edgetype, options):
-    if edgetype == 'subclass':
-        return DotGraphEdge(
-            start, end, dir='back', arrowtail='empty',
-            headport='body', tailport='body', color=COLOR['INH_LINK'],
-            weight=100, style='bold')
-    if edgetype == 'truncate-subclass':
-        return DotGraphEdge(
-            start, end, dir='back', arrowtail='empty',
-            tailport='body', color=COLOR['INH_LINK'],
-            weight=100, style='bold')
-    assert 0, 'bad edgetype'
 
 ######################################################################
 def import_graph(modules, docindex, linker, context=None, **options):

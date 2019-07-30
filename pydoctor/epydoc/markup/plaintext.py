@@ -63,11 +63,3 @@ class ParsedPlaintextDocstring(ParsedDocstring):
                 other = True
 
             return ParsedPlaintextDocstring(summary, verbatim=0), other
-
-#     def concatenate(self, other):
-#         if not isinstance(other, ParsedPlaintextDocstring):
-#             raise ValueError, 'Could not concatenate docstrings'
-#         text = self._text+other._text
-#         options = self._options.copy()
-#         options.update(other._options)
-#         return ParsedPlaintextDocstring(text, options)

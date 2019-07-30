@@ -176,15 +176,6 @@ class ParsedRstDocstring(ParsedDocstring):
         except docutils.nodes.NodeFound: pass
         return visitor.summary, bool(visitor.other_docs)
 
-#     def concatenate(self, other):
-#         result = self._document.copy()
-#         for child in (self._document.get_children() +
-#                       other._document.get_children()):
-#             visitor = TreeCopyVisitor(self._document)
-#             child.walkabout(visitor)
-#             result.append(visitor.get_tree_copy())
-#         return ParsedRstDocstring(result)
-
     def to_html(self, docstring_linker, directory=None,
                 docindex=None, context=None, **options):
         # Inherit docs
