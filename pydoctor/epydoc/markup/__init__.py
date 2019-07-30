@@ -46,10 +46,6 @@ each error.
 
 @sort: parse, ParsedDocstring, Field, DocstringLinker
 @group Errors and Warnings: ParseError
-@group Utility Functions: parse_type_of
-@var SCRWIDTH: The default width with which text will be wrapped
-      when formatting the output of the parser.
-@type SCRWIDTH: C{int}
 @var _parse_warnings: Used by L{_parse_warn}.
 """
 __docformat__ = 'epytext en'
@@ -69,7 +65,6 @@ from pydoctor.epydoc.compat import *
 # 3. Field class
 # 4. Docstring Linker
 # 5. ParseError exceptions
-# 6. Misc helpers
 #
 
 ##################################################
@@ -82,31 +77,21 @@ _markup_language_registry = {
     'plaintext': 'pydoctor.epydoc.markup.plaintext',
     'javadoc': 'pydoctor.epydoc.markup.javadoc',
     }
+"""
+Maps a case-insensitive markup language name to a function
+that parses that markup language to a L{ParsedDocstring}.
+The function should have the following signature:
 
-def register_markup_language(name, parse_function):
-    """
-    Register a new markup language named C{name}, which can be parsed
-    by the function C{parse_function}.
+        >>> def parse(s, errors):
+        ...     'returns a ParsedDocstring'
 
-    @param name: The name of the markup language.  C{name} should be a
-    simple identifier, such as C{'epytext'} or C{'restructuredtext'}.
-    Markup language names are case insensitive.
-
-    @param parse_function: A function which can be used to parse the
-        markup language, and returns a L{ParsedDocstring}.  It should
-        have the following signature:
-
-            >>> def parse(s, errors):
-            ...     'returns a ParsedDocstring'
-
-        Where:
-            - C{s} is the string to parse.  (C{s} will be a unicode
-              string.)
-            - C{errors} is a list; any errors that are generated
-              during docstring parsing should be appended to this
-              list (as L{ParseError} objects).
-    """
-    _markup_language_registry[name.lower()] = parse_function
+    Where:
+        - C{s} is the string to parse.  (C{s} will be a unicode
+            string.)
+        - C{errors} is a list; any errors that are generated
+            during docstring parsing should be appended to this
+            list (as L{ParseError} objects).
+"""
 
 MARKUP_LANGUAGES_USED = set()
 
@@ -569,41 +554,3 @@ class ParseError(Exception):
         if not isinstance(other, ParseError): return -1000
         return cmp(self._linenum+self._offset,
                    other._linenum+other._offset)
-
-##################################################
-## Misc helpers
-##################################################
-# These are used by multiple markup parsers
-
-def parse_type_of(obj):
-    """
-    @return: A C{ParsedDocstring} that encodes the type of the given
-    object.
-    @rtype: L{ParsedDocstring}
-    @param obj: The object whose type should be returned as DOM document.
-    @type obj: any
-    """
-    # This is a bit hackish; oh well. :)
-    from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-    from xml.dom.minidom import Document
-    doc = Document()
-    epytext = doc.createElement('epytext')
-    para = doc.createElement('para')
-    doc.appendChild(epytext)
-    epytext.appendChild(para)
-
-    if type(obj) is types.InstanceType:
-        link = doc.createElement('link')
-        name = doc.createElement('name')
-        target = doc.createElement('target')
-        para.appendChild(link)
-        link.appendChild(name)
-        link.appendChild(target)
-        name.appendChild(doc.createTextNode(str(obj.__class__.__name__)))
-        target.appendChild(doc.createTextNode(str(obj.__class__)))
-    else:
-        code = doc.createElement('code')
-        para.appendChild(code)
-        code.appendChild(doc.createTextNode(type(obj).__name__))
-    return ParsedEpytextDocstring(doc)
-

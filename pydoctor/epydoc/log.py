@@ -27,7 +27,6 @@ import sys, os
 
 DEBUG = 10
 INFO = 20
-DOCSTRING_WARNING = 25
 WARNING = 30
 ERROR = 40
 FATAL = 40
@@ -166,11 +165,6 @@ def warning(*messages):
     """Display the given warning message."""
     message = ' '.join(['%s' % (m,) for m in messages])
     for logger in _loggers: logger.log(WARNING, message)
-
-def docstring_warning(*messages):
-    """Display the given docstring warning message."""
-    message = ' '.join(['%s' % (m,) for m in messages])
-    for logger in _loggers: logger.log(DOCSTRING_WARNING, message)
 
 def info(*messages):
     """Display the given informational message."""

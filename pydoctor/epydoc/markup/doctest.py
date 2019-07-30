@@ -19,8 +19,7 @@ __docformat__ = 'epytext en'
 import re
 from pydoctor.epydoc.util import plaintext_to_html
 
-__all__ = ['doctest_to_html',
-           'DoctestColorizer', 'XMLDoctestColorizer',  'HTMLDoctestColorizer']
+__all__ = ['doctest_to_html', 'DoctestColorizer', 'HTMLDoctestColorizer']
 
 def doctest_to_html(s):
     """
@@ -256,18 +255,6 @@ class DoctestColorizer:
           - C{other} -- anything else (does *not* include output.)
         """
         raise AssertionError("Abstract method")
-
-class XMLDoctestColorizer(DoctestColorizer):
-    """
-    A subclass of DoctestColorizer that generates XML-like output.
-    This class is mainly intended to be used for testing purposes.
-    """
-    PREFIX = '<colorized>\n'
-    SUFFIX = '</colorized>\n'
-    def markup(self, s, tag):
-        s = s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        if tag == 'other': return s
-        else: return '<%s>%s</%s>' % (tag, s, tag)
 
 class HTMLDoctestColorizer(DoctestColorizer):
     """A subclass of DoctestColorizer that generates HTML output."""

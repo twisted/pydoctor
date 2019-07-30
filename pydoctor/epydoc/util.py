@@ -9,8 +9,7 @@
 """
 Miscellaneous utility functions that are used by multiple modules.
 
-@group Python source types: is_module_file, is_package_dir, is_pyname,
-    py_src_filename
+@group Python source types: py_src_filename
 @group Text processing: wordwrap, decode_with_backslashreplace,
     plaintext_to_html
 """
@@ -23,54 +22,6 @@ import os, os.path, re, sys
 ######################################################################
 
 PY_SRC_EXTENSIONS = ['.py', '.pyw']
-PY_BIN_EXTENSIONS = ['.pyc', '.so', '.pyd']
-
-def is_module_file(path):
-    # Make sure it's a file name.
-    if not isinstance(path, basestring):
-        return False
-    (dir, filename) = os.path.split(path)
-    (basename, extension) = os.path.splitext(filename)
-    return (os.path.isfile(path) and
-            re.match('[a-zA-Z_]\w*$', basename) and
-            extension in PY_SRC_EXTENSIONS+PY_BIN_EXTENSIONS)
-
-def is_src_filename(filename):
-    if not isinstance(filename, basestring): return False
-    if not os.path.exists(filename): return False
-    return os.path.splitext(filename)[1] in PY_SRC_EXTENSIONS
-
-def is_package_dir(dirname):
-    """
-    Return true if the given directory is a valid package directory
-    (i.e., it names a directory that contains a valid __init__ file,
-    and its name is a valid identifier).
-    """
-    # Make sure it's a directory name.
-    if not isinstance(dirname, basestring):
-        return False
-    if not os.path.isdir(dirname):
-        return False
-    dirname = os.path.abspath(dirname)
-    # Make sure it's a valid identifier.  (Special case for
-    # "foo/", where os.path.split -> ("foo", "").)
-    (parent, dir) = os.path.split(dirname)
-    if dir == '': (parent, dir) = os.path.split(parent)
-
-    # The following constraint was removed because of sourceforge
-    # bug #1787028 -- in some cases (eg eggs), it's too strict.
-    #if not re.match('\w+$', dir):
-    #    return False
-
-    for name in os.listdir(dirname):
-        filename = os.path.join(dirname, name)
-        if name.startswith('__init__.') and is_module_file(filename):
-            return True
-    else:
-        return False
-
-def is_pyname(name):
-    return re.match(r"\w+(\.\w+)*$", name)
 
 def py_src_filename(filename):
     basefile, extension = os.path.splitext(filename)
@@ -83,11 +34,6 @@ def py_src_filename(filename):
         else:
             raise ValueError('Could not find a corresponding '
                              'Python source file for %r.' % filename)
-
-def munge_script_name(filename):
-    name = os.path.split(filename)[1]
-    name = re.sub(r'\W', '_', name)
-    return 'script-'+name
 
 ######################################################################
 ## Text Processing
