@@ -112,12 +112,6 @@ def plaintext_to_html(s):
     s = s.replace('<', '&lt;').replace('>', '&gt;')
     return s
 
-class RunSubprocessError(OSError):
-    def __init__(self, cmd, out, err):
-        OSError.__init__(self, '%s failed' % cmd[0])
-        self.out = out
-        self.err = err
-
 def run_subprocess(cmd, data=None):
     """
     Execute the command C{cmd} in a subprocess.
@@ -139,11 +133,11 @@ def run_subprocess(cmd, data=None):
         if pipe.returncode == 0:
             return out, err
         else:
-            raise RunSubprocessError(cmd, out, err)
+            raise OSError('%s failed' % cmd[0])
     else:
         # Assume that there was an error iff anything was written
         # to the child's stderr.
         if err == '':
             return out, err
         else:
-            raise RunSubprocessError(cmd, out, err)
+            raise OSError('%s failed' % cmd[0])
