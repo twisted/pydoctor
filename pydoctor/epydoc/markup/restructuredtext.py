@@ -3,7 +3,6 @@
 # Edward Loper
 #
 # Created [06/28/03 02:52 AM]
-# $Id$
 #
 
 """

@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id$
 
 """
 Miscellaneous utility functions that are used by multiple modules.

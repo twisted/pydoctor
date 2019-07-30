@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id: apidoc.py 1448 2007-02-11 00:05:34Z dvarrazzo $
 
 """
 Syntax highlighter for Python values.  Currently provides special

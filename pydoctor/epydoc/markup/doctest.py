@@ -3,7 +3,6 @@
 # Edward Loper
 #
 # Created [06/28/03 02:52 AM]
-# $Id: restructuredtext.py 1210 2006-04-10 13:25:50Z edloper $
 #
 
 """

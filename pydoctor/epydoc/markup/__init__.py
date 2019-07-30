@@ -4,8 +4,6 @@
 # A python documentation Module
 # Edward Loper
 #
-# $Id$
-#
 
 """
 Markup language support for docstrings.  Each submodule defines a

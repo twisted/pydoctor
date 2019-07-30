@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id$
 
 """
 Functions used to report messages and progress updates to the user.

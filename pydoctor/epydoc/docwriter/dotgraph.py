@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id$
 
 """
 Render Graphviz directed graphs as images.  Below are some examples.

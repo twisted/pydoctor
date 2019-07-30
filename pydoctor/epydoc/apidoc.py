@@ -4,7 +4,6 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-# $Id$
 
 """
 Classes for encoding API documentation about Python programs.
