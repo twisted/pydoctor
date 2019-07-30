@@ -1,0 +1,111 @@
+Regression Testing for restructuredtext
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:RequireModule: docutils
+
+Summary
+=======
+The implementation of the summaization function works as expected.
+
+>>> from pydoctor.epydoc.markup import restructuredtext
+>>> def getsummary(s):
+...     p = restructuredtext.parse_docstring(s, [])
+...     s, o = p.summary()
+...     s = s.to_plaintext(None).strip()
+...     return s, o
+
+#Let's not lose anything!
+
+>>> getsummary("Single line")
+(u'Single line', False)
+
+>>> getsummary("Single line.")
+(u'Single line.', False)
+
+>>> getsummary("""
+... Single line *with* period.
+... """)
+(u'Single line with period.', False)
+
+>>> getsummary("""
+... Single line `with` period.
+...
+... :type: Also with a tag.
+... """)
+(u'Single line with period.', False)
+
+>>> getsummary("""
+... Other lines **with** period.
+... This is attached
+... """)
+(u'Other lines with period.', True)
+
+>>> getsummary("""
+... Other lines *with* period.
+...
+... This is detached
+...
+... :type: Also with a tag.
+... """)
+(u'Other lines with period.', True)
+
+>>> getsummary("""
+... Other lines without period
+... This is attached
+... """)
+(u'Other lines without period\nThis is attached', False)
+
+>>> getsummary("""
+... Other lines without period
+...
+... This is detached
+... """)
+(u'Other lines without period...', True)
+
+>>> getsummary("""
+... Single line *without* period
+...
+... :type: Also with a tag.
+... """)
+(u'Single line without period', False)
+
+>>> getsummary("""
+... This is the first line.
+...
+... :type: Also with a tag.
+...
+... Other stuff after a tag.
+... """)
+(u'This is the first line.', True)
+
+Python code
+===========
+reStructuredText markup defines a ``python`` directive to represent a block
+as colorized Python code.
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """A test module
+...
+... .. python::
+...
+...     # This is some Python code
+...     def foo():
+...         pass
+...
+...     class Foo:
+...         def __init__(self):
+...             pass
+... """, err)
+>>> err
+[]
+>>> print p.to_html(None)
+<p>A test module</p>
+<pre class="py-doctest">
+<span class="py-comment"># This is some Python code</span>
+<span class="py-keyword">def</span> <span class="py-defname">foo</span>():
+    <span class="py-keyword">pass</span>
+<BLANKLINE>
+<span class="py-keyword">class</span> <span class="py-defname">Foo</span>:
+    <span class="py-keyword">def</span> <span class="py-defname">__init__</span>(self):
+        <span class="py-keyword">pass</span></pre>
+<BLANKLINE>
