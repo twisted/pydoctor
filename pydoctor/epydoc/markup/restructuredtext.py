@@ -293,10 +293,11 @@ class _SummaryExtractor(NodeVisitor):
         # Extract the first sentence.
         for child in node:
             if isinstance(child, docutils.nodes.Text):
-                m = self._SUMMARY_RE.match(child.data)
+                text = child.astext()
+                m = self._SUMMARY_RE.match(text)
                 if m:
                     summary_pieces.append(docutils.nodes.Text(m.group(1)))
-                    other = child.data[m.end():]
+                    other = text[m.end():]
                     if other and not other.isspace():
                         self.other_docs = True
                     break
