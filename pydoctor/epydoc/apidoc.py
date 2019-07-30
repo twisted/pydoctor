@@ -37,11 +37,11 @@ __docformat__ = 'epytext en'
 ## Imports
 ######################################################################
 
-import types, re, os.path, pickle
+import types, re, os.path
 from pydoctor.epydoc import log
 from pydoctor import epydoc
 import __builtin__
-from pydoctor.epydoc.util import decode_with_backslashreplace, py_src_filename
+from pydoctor.epydoc.util import py_src_filename
 import pydoctor.epydoc.markup.pyval_repr
 
 ######################################################################
@@ -508,7 +508,6 @@ class APIDoc(object):
 
         # If other was itself already merged with anything,
         # then we need to merge those too.
-        a,b = (self.__mergeset, other.__mergeset)
         mergeset = (self.__mergeset or [self]) + (other.__mergeset or [other])
         other.__dict__.clear()
         for apidoc in mergeset:

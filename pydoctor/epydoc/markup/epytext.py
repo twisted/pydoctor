@@ -105,8 +105,9 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-import re, string, types, sys, os.path
-from pydoctor.epydoc.markup import *
+import re, string
+from pydoctor.epydoc import log
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html
 
@@ -471,7 +472,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
 
     # Create the new list.
     if newlist:
-        if stack[-1].tag is 'fieldlist':
+        if stack[-1].tag == 'fieldlist':
             # The new list item is not a field list item (since this
             # is a new list); but it's indented the same as the field
             # list.  This either means that they forgot to indent the
@@ -724,7 +725,7 @@ def _tokenize_doctest(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [line[min_indent:] for line in lines[start:linenum]]
+    contents = [ln[min_indent:] for ln in lines[start:linenum]]
     contents = '\n'.join(contents)
     tokens.append(Token(Token.DTBLOCK, start, contents, block_indent))
     return linenum
@@ -770,7 +771,7 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [line[block_indent+1:] for line in lines[start:linenum]]
+    contents = [ln[block_indent+1:] for ln in lines[start:linenum]]
     contents = '\n'.join(contents)
     contents = re.sub('(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))
@@ -844,7 +845,7 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
 
     # Add the paragraph token.
     pcontents = ([lines[start][para_start:].strip()] +
-                 [line.strip() for line in lines[start+1:linenum]])
+                 [ln.strip() for ln in lines[start+1:linenum]])
     pcontents = ' '.join(pcontents).strip()
     if pcontents:
         tokens.append(Token(Token.PARA, start, pcontents, para_indent,
@@ -907,7 +908,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
         # Go on to the next line.
         linenum += 1
 
-    contents = [line.strip() for line in lines[start:linenum]]
+    contents = [ln.strip() for ln in lines[start:linenum]]
 
     # Does this token look like a heading?
     if ((len(contents) < 2) or
@@ -1022,7 +1023,6 @@ def _colorize(doc, token, errors, tagName='para'):
     @returntype: C{Element}
     """
     str = token.contents
-    linenum = 0
 
     # Maintain a stack of DOM elements, containing the ancestors of
     # the text currently being analyzed.  New elements are pushed when
@@ -1381,7 +1381,6 @@ def to_plaintext(tree, indent=0, seclevel=0):
     elif tree.tag == 'field':
         numargs = 0
         while tree.children[numargs+1].tag == 'arg': numargs += 1
-        tag = variables[0]
         args = variables[1:1+numargs]
         body = variables[1+numargs:]
         str = (indent)*' '+'@'+variables[0]

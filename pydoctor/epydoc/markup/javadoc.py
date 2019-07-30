@@ -43,8 +43,7 @@ __docformat__ = 'epytext en'
 
 # Imports
 import re
-from xml.dom.minidom import *
-from pydoctor.epydoc.markup import *
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 
 def parse_docstring(docstring, errors, **options):
     """

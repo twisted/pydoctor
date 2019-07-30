@@ -64,16 +64,14 @@ the list.
 __docformat__ = 'epytext en'
 
 # Imports
-import re, os, os.path
-from xml.dom.minidom import *
+import re
 
 from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
-from docutils.nodes import NodeVisitor, Text, SkipChildren
-from docutils.nodes import SkipNode, TreeCopyVisitor
+from docutils.nodes import NodeVisitor, SkipNode
 from docutils.frontend import OptionParser
 from docutils.parsers.rst import directives, roles
 import docutils.nodes
@@ -81,10 +79,13 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from pydoctor.epydoc.markup import *
+from pydoctor.epydoc import log
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, parse
 from pydoctor.epydoc.apidoc import ModuleDoc, ClassDoc
-from pydoctor.epydoc.docwriter.dotgraph import *
-from pydoctor.epydoc.util import wordwrap, plaintext_to_html
+from pydoctor.epydoc.docwriter.dotgraph import (
+    DotGraph, call_graph, class_tree_graph, import_graph, package_tree_graph
+)
+from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html, HTMLDoctestColorizer
 
 #: A dictionary whose keys are the "consolidated fields" that are
@@ -657,9 +658,6 @@ def python_code_directive(name, arguments, options, content, lineno,
     prefer that the output not contain prompts (e.g., to make
     copy/paste easier).
     """
-    required_arguments = 0
-    optional_arguments = 0
-
     text = '\n'.join(content)
     node = docutils.nodes.doctest_block(text, text, codeblock=True)
     return [ node ]

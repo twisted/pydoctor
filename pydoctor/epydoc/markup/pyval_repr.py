@@ -32,8 +32,8 @@ __docformat__ = 'epytext en'
 
 import types, re
 import pydoctor.epydoc.apidoc
+from pydoctor.epydoc import log
 from pydoctor.epydoc.util import decode_with_backslashreplace
-from pydoctor.epydoc.util import plaintext_to_html
 import sre_parse, sre_constants
 
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring

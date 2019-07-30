@@ -19,12 +19,13 @@ Render Graphviz directed graphs as images.  Below are some examples.
 """
 __docformat__ = 'restructuredtext'
 
-import re
-import sys
-import tempfile
+import os.path, re
 from pydoctor.epydoc import log
-from pydoctor.epydoc.apidoc import *
-from pydoctor.epydoc.util import *
+from pydoctor.epydoc.apidoc import (
+    APIDoc, ClassDoc, DottedName, ModuleDoc, NamespaceDoc, RoutineDoc,
+    VariableDoc, UNKNOWN
+)
+from pydoctor.epydoc.util import plaintext_to_html, run_subprocess
 
 #: colors for graphs of APIDocs
 COLOR = dict(
@@ -883,9 +884,9 @@ class DotGraphUmlClassNode(DotGraphNode):
         if not self.collapsed:
             for edge in self.edges:
                 s += '\n' + edge.to_dotfile()
-        if self.same_rank:
-            sr_nodes = ''.join(['node%s; ' % node.id
-                                for node in self.same_rank])
+        #if self.same_rank:
+            #sr_nodes = ''.join(['node%s; ' % node.id
+            #                    for node in self.same_rank])
             # [xx] This can cause dot to crash!  not sure why!
             #s += '{rank=same; node%s; %s}' % (self.id, sr_nodes)
         return s
@@ -1434,7 +1435,7 @@ def get_dot_version():
                 _dot_version = [int(x) for x in m.group(1).split('.')]
             else:
                 _dot_version = (0,)
-        except OSError, e:
+        except OSError:
             log.error('dot executable not found; graphs will not be '
                       'generated.  Adjust your shell\'s path, or use '
                       '--dotpath to specify the path to the dot '
@@ -1495,9 +1496,7 @@ def specialize_valdoc_node(node, val_doc, context, linker):
     except NotImplementedError: url = NOOP_URL
     node['href'] = url
 
-    if (url is None and
-        hasattr(linker, 'docindex') and
-        linker.docindex.find(identifier, self.container) is None):
+    if url is NOOP_URL:
         node['fillcolor'] = COLOR['UNDOCUMENTED_BG']
         node['style'] = 'filled'
 

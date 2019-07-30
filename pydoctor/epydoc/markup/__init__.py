@@ -48,7 +48,7 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-import re, types, sys
+import re
 from pydoctor.epydoc import log
 from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor import epydoc
@@ -144,9 +144,9 @@ def parse(docstring, markup='plaintext', errors=None, **options):
     # If it's a string, then it names a function to import.
     if isinstance(parse_docstring, basestring):
         try: exec('from %s import parse_docstring' % parse_docstring)
-        except ImportError, e:
+        except ImportError, ex:
             _parse_warn('Error importing %s for markup language %s: %s' %
-                        (parse_docstring, markup, e))
+                        (parse_docstring, markup, ex))
             import pydoctor.epydoc.markup.plaintext as plaintext
             return plaintext.parse_docstring(docstring, errors, **options)
         _markup_language_registry[markup] = parse_docstring
@@ -157,10 +157,10 @@ def parse(docstring, markup='plaintext', errors=None, **options):
     # Parse the docstring.
     try: parsed_docstring = parse_docstring(docstring, errors, **options)
     except KeyboardInterrupt: raise
-    except Exception, e:
+    except Exception, ex:
         if epydoc.DEBUG: raise
         log.error('Internal error while parsing a docstring: %s; '
-                  'treating docstring as plaintext' % e)
+                  'treating docstring as plaintext' % ex)
         import pydoctor.epydoc.markup.plaintext as plaintext
         return plaintext.parse_docstring(docstring, errors, **options)
 
