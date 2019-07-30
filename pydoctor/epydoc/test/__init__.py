@@ -8,6 +8,15 @@
 import pydoctor.epydoc
 pydoctor.epydoc.DEBUG = True
 
+
+import logging, sys
 from pydoctor.epydoc import log
-del log._loggers[:]
-log.register_logger(log.SimpleLogger(log.WARNING))
+
+class ImmediateStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        self.stream = sys.stdout
+        logging.StreamHandler.emit(self, record)
+        self.flush()
+
+log.addHandler(ImmediateStreamHandler())
+log.setLevel(logging.WARNING)

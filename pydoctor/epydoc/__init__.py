@@ -81,6 +81,9 @@ __license__ = 'IBM Open Source License'
 DEBUG = False
 """True if debugging is turned on."""
 
+import logging
+log = logging.getLogger(__name__)
+
 # Changes needed for docs:
 #   - document the method for deciding what's public/private
 #   - epytext: fields are defined slightly differently (@group)
