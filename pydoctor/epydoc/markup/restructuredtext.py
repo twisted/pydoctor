@@ -52,7 +52,6 @@ non-default behavior:
     C{document.astext()} to convert the C{ParsedRstDocstring}'s
     document to plaintext.
 
-@todo: Add ParsedRstDocstring.to_latex()
 @var CONSOLIDATED_FIELDS: A dictionary encoding the set of
 'consolidated fields' that can be used.  Each consolidated field is
 marked by a single tag, and contains a single bulleted list, where
@@ -72,7 +71,6 @@ from xml.dom.minidom import *
 from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
-from docutils.writers.latex2e import LaTeXTranslator, Writer as LaTeXWriter
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
 from docutils.nodes import NodeVisitor, Text, SkipChildren
@@ -88,10 +86,8 @@ from pydoctor.epydoc.compat import * # Backwards compatibility
 from pydoctor.epydoc.markup import *
 from pydoctor.epydoc.apidoc import ModuleDoc, ClassDoc
 from pydoctor.epydoc.docwriter.dotgraph import *
-from pydoctor.epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
-from pydoctor.epydoc.markup.doctest import doctest_to_html, doctest_to_latex, \
-                                  HTMLDoctestColorizer, \
-                                  LaTeXDoctestColorizer
+from pydoctor.epydoc.util import wordwrap, plaintext_to_html
+from pydoctor.epydoc.markup.doctest import doctest_to_html, HTMLDoctestColorizer
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -197,14 +193,6 @@ class ParsedRstDocstring(ParsedDocstring):
                                         directory, docindex, context)
         self._document.walkabout(visitor)
         return ''.join(visitor.body)
-
-    def to_latex(self, docstring_linker, directory=None,
-                 docindex=None, context=None, **options):
-        # Inherit docs
-        visitor = _EpydocLaTeXTranslator(self._document, docstring_linker,
-                                         directory, docindex, context)
-        self._document.walkabout(visitor)
-        return ''.join(visitor.body).strip()+'\n'
 
     def to_plaintext(self, docstring_linker, **options):
         # This is should be replaced by something better:
@@ -537,11 +525,6 @@ class _SplitFieldsTranslator(NodeVisitor):
     def unknown_visit(self, node):
         'Ignore all unknown nodes'
 
-def latex_head_prefix():
-    document = new_document('<fake>')
-    translator = _EpydocLaTeXTranslator(document)
-    return translator.head_prefix
-
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 class _EpydocDocumentClass:
@@ -553,70 +536,6 @@ class _EpydocDocumentClass:
             return self.SECTIONS[level-1]
         else:
             return self.SECTIONS[-1]
-
-class _EpydocLaTeXTranslator(LaTeXTranslator):
-    settings = None
-    def __init__(self, document, docstring_linker=None, directory=None,
-                 docindex=None, context=None):
-        # Set the document's settings.
-        if self.settings is None:
-            settings = OptionParser([LaTeXWriter()]).get_default_values()
-            settings.output_encoding = 'utf-8'
-
-            # This forces eg \EpydocUserSection rather than
-            # \EpydocUserSEction*:
-            settings.use_latex_toc = True
-
-            self.__class__.settings = settings
-        document.settings = self.settings
-
-        LaTeXTranslator.__init__(self, document)
-        self._linker = docstring_linker
-        self._directory = directory
-        self._docindex = docindex
-        self._context = context
-
-        # Use custom section names.
-        self.d_class = _EpydocDocumentClass()
-
-    # Handle interpreted text (crossreferences)
-    def visit_title_reference(self, node):
-        m = _TARGET_RE.match(node.astext())
-        if m: text, target = m.groups()
-        else: target = text = node.astext()
-        text = plaintext_to_latex(text)
-        xref = self._linker.translate_identifier_xref(target, text)
-        self.body.append(xref)
-        raise SkipNode()
-
-    def visit_document(self, node): pass
-    def depart_document(self, node): pass
-
-    def visit_dotgraph(self, node):
-        if self._directory is None: raise SkipNode() # [xx] warning?
-
-        # Generate the graph.
-        graph = node.graph(self._docindex, self._context, self._linker)
-        if graph is None: raise SkipNode()
-
-        # Write the graph.
-        self.body.append(graph.to_latex(self._directory))
-        raise SkipNode()
-
-    def visit_doctest_block(self, node):
-        pysrc = node[0].astext()
-        if node.get('codeblock'):
-            self.body.append(LaTeXDoctestColorizer().colorize_codeblock(pysrc))
-        else:
-            self.body.append(doctest_to_latex(pysrc))
-        raise SkipNode()
-
-    def visit_admonition(self, node, name=''):
-        self.body.append('\\begin{reSTadmonition}[%s]\n' %
-                         self.language.labels[name])
-
-    def depart_admonition(self, node=None):
-        self.body.append('\\end{reSTadmonition}\n');
 
 class _EpydocHTMLTranslator(HTMLTranslator):
     settings = None
@@ -641,7 +560,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         m = _TARGET_RE.match(node.astext())
         if m: text, target = m.groups()
         else: target = text = node.astext()
-        text = plaintext_to_latex(text)
+        text = plaintext_to_html(text)
         xref = self._linker.translate_identifier_xref(target, text)
         self.body.append(xref)
         raise SkipNode()

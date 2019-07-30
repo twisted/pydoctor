@@ -13,9 +13,8 @@ parser for a single markup language.  These parsers convert an
 object's docstring to a L{ParsedDocstring}, a standard intermediate
 representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
-  - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>},
-    L{to_html()<ParsedDocstring.to_html>}, and
-    L{to_latex()<ParsedDocstring.to_latex>}).
+  - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>}
+    and L{to_html()<ParsedDocstring.to_html>}.
   - Summarization (L{summary()<ParsedDocstring.summary>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
   - Index term extraction (L{index_terms()<ParsedDocstring.index_terms>}.
@@ -57,7 +56,7 @@ __docformat__ = 'epytext en'
 
 import re, types, sys
 from pydoctor.epydoc import log
-from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor import epydoc
 from pydoctor.epydoc.compat import *
 
@@ -213,8 +212,7 @@ class ParsedDocstring:
     can be used to generate output.  Parsed docstrings are produced by
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
-      - output generation (L{to_plaintext()}, L{to_html()}, and
-        L{to_latex()}).
+      - output generation (L{to_plaintext()} and L{to_html()}.
       - Summarization (L{summary()}).
       - Field extraction (L{split_fields()}).
       - Index term extraction (L{index_terms()}.
@@ -294,22 +292,6 @@ class ParsedDocstring:
         plaintext = plaintext_to_html(self.to_plaintext(docstring_linker))
         return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
 
-    def to_latex(self, docstring_linker, **options):
-        """
-        Translate this docstring to LaTeX.
-
-        @param docstring_linker: A LaTeX translator for crossreference
-            links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
-        @param options: Any extra options for the output.  Unknown
-            options are ignored.
-        @return: A LaTeX fragment that encodes this docstring.
-        @rtype: C{string}
-        """
-        # Default behavior:
-        plaintext = plaintext_to_latex(self.to_plaintext(docstring_linker))
-        return '\\begin{alltt}\n%s\\end{alltt}\n\n' % plaintext
-
     def to_plaintext(self, docstring_linker, **options):
         """
         Translate this docstring to plaintext.
@@ -360,12 +342,6 @@ class ConcatenatedDocstring:
         for doc in self._parsed_docstrings:
             htmlstring += doc.to_html(docstring_linker, **options)
         return htmlstring
-
-    def to_latex(self, docstring_linker, **options):
-        latexstring = ''
-        for doc in self._parsed_docstrings:
-            latexstring += doc.to_latex(docstring_linker, **options)
-        return latexstring
 
     def to_plaintext(self, docstring_linker, **options):
         textstring = ''
@@ -467,8 +443,7 @@ class DocstringLinker:
         @type label: C{string} or C{None}
         @param label: The label that should be used for the identifier,
             if it's different from the name of the identifier.  This
-            should be expressed in the target markup language -- e.g.
-            for latex, "_"s should be escaped.
+            should be expressed in the target markup language.
         @rtype: C{string}
         @return: The translated crossreference link.
         """

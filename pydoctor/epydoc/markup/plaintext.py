@@ -13,7 +13,7 @@ verbatim output, preserving all whitespace.
 __docformat__ = 'epytext en'
 
 from pydoctor.epydoc.markup import *
-from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.util import plaintext_to_html
 
 def parse_docstring(docstring, errors, **options):
     """
@@ -36,12 +36,6 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             return plaintext_to_html(self.to_plaintext(docstring_linker))
         else:
             return ParsedDocstring.to_html(self, docstring_linker, **options)
-
-    def to_latex(self, docstring_linker, **options):
-        if options.get('verbatim', self._verbatim) == 0:
-            return plaintext_to_latex(self.to_plaintext(docstring_linker))
-        else:
-            return ParsedDocstring.to_latex(self, docstring_linker, **options)
 
     def to_plaintext(self, docstring_linker, **options):
         if 'indent' in options:

@@ -34,7 +34,7 @@ __docformat__ = 'epytext en'
 import types, re
 import pydoctor.epydoc.apidoc
 from pydoctor.epydoc.util import decode_with_backslashreplace
-from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor.epydoc.compat import *
 import sre_parse, sre_constants
 

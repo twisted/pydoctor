@@ -166,46 +166,6 @@ def plaintext_to_html(s):
     s = s.replace('<', '&lt;').replace('>', '&gt;')
     return s
 
-def plaintext_to_latex(str, nbsp=0, breakany=0):
-    """
-    @return: A LaTeX string that encodes the given plaintext string.
-    In particular, special characters (such as C{'$'} and C{'_'})
-    are escaped, and tabs are expanded.
-    @rtype: C{string}
-    @param breakany: Insert hyphenation marks, so that LaTeX can
-    break the resulting string at any point.  This is useful for
-    small boxes (e.g., the type box in the variable list table).
-    @param nbsp: Replace every space with a non-breaking space
-    (C{'~'}).
-    """
-    # These get converted to hyphenation points later
-    if breakany: str = re.sub('(.)', '\\1\1', str)
-
-    # These get converted to \textbackslash later.
-    str = str.replace('\\', '\0')
-
-    # Expand tabs
-    str = str.expandtabs()
-
-    # These elements need to be backslashed.
-    str = re.sub(r'([#$&%_\${}])', r'\\\1', str)
-
-    # These elements have special names.
-    str = str.replace('|', '{\\textbar}')
-    str = str.replace('<', '{\\textless}')
-    str = str.replace('>', '{\\textgreater}')
-    str = str.replace('^', '{\\textasciicircum}')
-    str = str.replace('~', '{\\textasciitilde}')
-    str = str.replace('\0', r'{\textbackslash}')
-
-    # replace spaces with non-breaking spaces
-    if nbsp: str = str.replace(' ', '~')
-
-    # Convert \1's to hyphenation points.
-    if breakany: str = str.replace('\1', r'\-')
-
-    return str
-
 class RunSubprocessError(OSError):
     def __init__(self, cmd, out, err):
         OSError.__init__(self, '%s failed' % cmd[0])

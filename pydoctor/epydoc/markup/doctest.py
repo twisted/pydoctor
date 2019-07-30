@@ -7,22 +7,20 @@
 #
 
 """
-Syntax highlighting for doctest blocks.  This module defines two
-functions, L{doctest_to_html()} and L{doctest_to_latex()}, which can
-be used to perform syntax highlighting on doctest blocks.  It also
-defines the more general C{colorize_doctest()}, which could be used to
-do syntac highlighting on doctest blocks with other output formats.
-(Both C{doctest_to_html()} and C{doctest_to_latex()} are defined using
-C{colorize_doctest()}.)
+Syntax highlighting for doctest blocks.  This module defines the
+function L{doctest_to_html()}, which can be used to perform syntax
+highlighting on doctest blocks.  It also defines the more general
+C{colorize_doctest()}, which could be used to do syntax highlighting
+on doctest blocks with other output formats.
+(C{doctest_to_html()} is defined using C{colorize_doctest()}.)
 """
 __docformat__ = 'epytext en'
 
 import re
-from pydoctor.epydoc.util import plaintext_to_html, plaintext_to_latex
+from pydoctor.epydoc.util import plaintext_to_html
 
-__all__ = ['doctest_to_html', 'doctest_to_latex',
-           'DoctestColorizer', 'XMLDoctestColorizer',
-           'HTMLDoctestColorizer', 'LaTeXDoctestColorizer']
+__all__ = ['doctest_to_html',
+           'DoctestColorizer', 'XMLDoctestColorizer',  'HTMLDoctestColorizer']
 
 def doctest_to_html(s):
     """
@@ -43,25 +41,6 @@ def doctest_to_html(s):
         a C{def} or C{class} statement.
     """
     return HTMLDoctestColorizer().colorize_doctest(s)
-
-def doctest_to_latex(s):
-    """
-    Perform syntax highlighting on the given doctest string, and
-    return the resulting LaTeX code.  This code consists of an
-    C{alltt} environment.  Syntax highlighting is performed using
-    the following new latex commands, which must be defined externally:
-      - C{\pysrcprompt} -- the Python PS1 prompt (>>>)
-      - C{\pysrcmore} -- the Python PS2 prompt (...)
-      - C{\pysrckeyword} -- a Python keyword (for, if, etc.)
-      - C{\pysrcbuiltin} -- a Python builtin name (abs, dir, etc.)
-      - C{\pysrcstring} -- a string literal
-      - C{\pysrccomment} -- a comment
-      - C{\pysrcexcept} -- an exception traceback (up to the next >>>)
-      - C{\pysrcoutput} -- the output from a doctest block.
-      - C{\pysrcdefname} -- the name of a function or class defined by
-        a C{def} or C{class} statement.
-    """
-    return LaTeXDoctestColorizer().colorize_doctest(s)
 
 class DoctestColorizer:
     """
@@ -300,16 +279,3 @@ class HTMLDoctestColorizer(DoctestColorizer):
         else:
             return ('<span class="py-%s">%s</span>' %
                     (tag, plaintext_to_html(s)))
-
-class LaTeXDoctestColorizer(DoctestColorizer):
-    """A subclass of DoctestColorizer that generates LaTeX output."""
-    PREFIX = ('\\begin{alltt}')
-    SUFFIX = '\\end{alltt}\n'
-    NEWLINE = '\\\\'
-    def markup(self, s, tag):
-        if tag == 'other':
-            return plaintext_to_latex(s)
-        else:
-            return '\\pysrc%s{%s}' % (tag, plaintext_to_latex(s))
-
-

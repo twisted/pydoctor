@@ -108,8 +108,8 @@ __docformat__ = 'epytext en'
 
 import re, string, types, sys, os.path
 from pydoctor.epydoc.markup import *
-from pydoctor.epydoc.util import wordwrap, plaintext_to_html, plaintext_to_latex
-from pydoctor.epydoc.markup.doctest import doctest_to_html, doctest_to_latex
+from pydoctor.epydoc.util import wordwrap, plaintext_to_html
+from pydoctor.epydoc.markup.doctest import doctest_to_html
 
 ##################################################
 ## DOM-Like Encoding
@@ -1707,65 +1707,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
         '<=': '&le;', '>=': '&ge;',
         }
 
-    SYMBOL_TO_LATEX = {
-        # Symbols
-        '<-': r'\(\leftarrow\)', '->': r'\(\rightarrow\)',
-        '^': r'\(\uparrow\)', 'v': r'\(\downarrow\)',
-
-        # Greek letters (use lower case when upcase not available)
-
-        'alpha': r'\(\alpha\)', 'beta': r'\(\beta\)', 'gamma':
-        r'\(\gamma\)', 'delta': r'\(\delta\)', 'epsilon':
-        r'\(\epsilon\)', 'zeta': r'\(\zeta\)', 'eta': r'\(\eta\)',
-        'theta': r'\(\theta\)', 'iota': r'\(\iota\)', 'kappa':
-        r'\(\kappa\)', 'lambda': r'\(\lambda\)', 'mu': r'\(\mu\)',
-        'nu': r'\(\nu\)', 'xi': r'\(\xi\)', 'omicron': r'\(o\)', 'pi':
-        r'\(\pi\)', 'rho': r'\(\rho\)', 'sigma': r'\(\sigma\)', 'tau':
-        r'\(\tau\)', 'upsilon': r'\(\upsilon\)', 'phi': r'\(\phi\)',
-        'chi': r'\(\chi\)', 'psi': r'\(\psi\)', 'omega':
-        r'\(\omega\)',
-
-        'Alpha': r'\(\alpha\)', 'Beta': r'\(\beta\)', 'Gamma':
-        r'\(\Gamma\)', 'Delta': r'\(\Delta\)', 'Epsilon':
-        r'\(\epsilon\)', 'Zeta': r'\(\zeta\)', 'Eta': r'\(\eta\)',
-        'Theta': r'\(\Theta\)', 'Iota': r'\(\iota\)', 'Kappa':
-        r'\(\kappa\)', 'Lambda': r'\(\Lambda\)', 'Mu': r'\(\mu\)',
-        'Nu': r'\(\nu\)', 'Xi': r'\(\Xi\)', 'Omicron': r'\(o\)', 'Pi':
-        r'\(\Pi\)', 'ho': r'\(\rho\)', 'Sigma': r'\(\Sigma\)', 'Tau':
-        r'\(\tau\)', 'Upsilon': r'\(\Upsilon\)', 'Phi': r'\(\Phi\)',
-        'Chi': r'\(\chi\)', 'Psi': r'\(\Psi\)', 'Omega':
-        r'\(\Omega\)',
-
-        # HTML character entities
-        'larr': r'\(\leftarrow\)', 'rarr': r'\(\rightarrow\)', 'uarr':
-        r'\(\uparrow\)', 'darr': r'\(\downarrow\)', 'harr':
-        r'\(\leftrightarrow\)', 'crarr': r'\(\hookleftarrow\)',
-        'lArr': r'\(\Leftarrow\)', 'rArr': r'\(\Rightarrow\)', 'uArr':
-        r'\(\Uparrow\)', 'dArr': r'\(\Downarrow\)', 'hArr':
-        r'\(\Leftrightarrow\)', 'copy': r'{\textcopyright}',
-        'times': r'\(\times\)', 'forall': r'\(\forall\)', 'exist':
-        r'\(\exists\)', 'part': r'\(\partial\)', 'empty':
-        r'\(\emptyset\)', 'isin': r'\(\in\)', 'notin': r'\(\notin\)',
-        'ni': r'\(\ni\)', 'prod': r'\(\prod\)', 'sum': r'\(\sum\)',
-        'prop': r'\(\propto\)', 'infin': r'\(\infty\)', 'ang':
-        r'\(\angle\)', 'and': r'\(\wedge\)', 'or': r'\(\vee\)', 'cap':
-        r'\(\cap\)', 'cup': r'\(\cup\)', 'int': r'\(\int\)', 'there4':
-        r'\(\therefore\)', 'sim': r'\(\sim\)', 'cong': r'\(\cong\)',
-        'asymp': r'\(\approx\)', 'ne': r'\(\ne\)', 'equiv':
-        r'\(\equiv\)', 'le': r'\(\le\)', 'ge': r'\(\ge\)', 'sub':
-        r'\(\subset\)', 'sup': r'\(\supset\)', 'nsub': r'\(\supset\)',
-        'sube': r'\(\subseteq\)', 'supe': r'\(\supseteq\)', 'oplus':
-        r'\(\oplus\)', 'otimes': r'\(\otimes\)', 'perp': r'\(\perp\)',
-
-        # Alternate (long) names
-        'infinity': r'\(\infty\)', 'integral': r'\(\int\)', 'product':
-        r'\(\prod\)', '<=': r'\(\le\)', '>=': r'\(\ge\)',
-        }
-
     def __init__(self, dom_tree, **options):
         self._tree = dom_tree
         # Caching:
-        self._html = self._latex = self._plaintext = None
+        self._html = self._plaintext = None
         self._terms = None
         # inline option -- mark top-level children as inline.
         if options.get('inline') and self._tree is not None:
@@ -1783,16 +1728,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._html = self._to_html(self._tree, docstring_linker, directory,
                                    docindex, context, indent)
         return self._html
-
-    def to_latex(self, docstring_linker, directory=None, docindex=None,
-                 context=None, **options):
-        if self._latex is not None: return self._latex
-        if self._tree is None: return ''
-        indent = options.get('indent', 0)
-        self._hyperref = options.get('hyperref', 1)
-        self._latex = self._to_latex(self._tree, docstring_linker, directory,
-                                     docindex, context, indent)
-        return self._latex
 
     def to_plaintext(self, docstring_linker, **options):
         # [XX] don't cache -- different options might be used!!
@@ -1933,91 +1868,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return call_graph(docs, docindex, linker, context)
         else:
             log.warning("Unknown graph type %s" % graph_type)
-
-    def _to_latex(self, tree, linker, directory, docindex, context,
-                  indent=0, seclevel=0, breakany=0):
-        if isinstance(tree, basestring):
-            return plaintext_to_latex(tree, breakany=breakany)
-
-        if tree.tag == 'section': seclevel += 1
-
-        # Figure out the child indent level.
-        if tree.tag == 'epytext': cindent = indent
-        else: cindent = indent + 2
-        variables = [self._to_latex(c, linker, directory, docindex,
-                                    context, cindent, seclevel, breakany)
-                    for c in tree.children]
-        childstr = ''.join(variables)
-
-        if tree.tag == 'para':
-            return wordwrap(childstr, indent)+'\n'
-        elif tree.tag == 'code':
-            return '\\texttt{%s}' % childstr
-        elif tree.tag == 'uri':
-            if len(variables) != 2: raise ValueError('Bad URI ')
-            if self._hyperref:
-                # ~ and # should not be escaped in the URI.
-                uri = tree.children[1].children[0]
-                uri = uri.replace('{\\textasciitilde}', '~')
-                uri = uri.replace('\\#', '#')
-                if variables[0] == variables[1]:
-                    return '\\href{%s}{\\textit{%s}}' % (uri, variables[1])
-                else:
-                    return ('%s\\footnote{\\href{%s}{%s}}' %
-                            (variables[0], uri, variables[1]))
-            else:
-                if variables[0] == variables[1]:
-                    return '\\textit{%s}' % variables[1]
-                else:
-                    return '%s\\footnote{%s}' % (variables[0], variables[1])
-        elif tree.tag == 'link':
-            if len(variables) != 2: raise ValueError('Bad Link')
-            return linker.translate_identifier_xref(variables[1], variables[0])
-        elif tree.tag == 'italic':
-            return '\\textit{%s}' % childstr
-        elif tree.tag == 'math':
-            return '\\textit{%s}' % childstr
-        elif tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            return linker.translate_indexterm(ParsedEpytextDocstring(term))
-        elif tree.tag == 'bold':
-            return '\\textbf{%s}' % childstr
-        elif tree.tag == 'li':
-            return indent*' ' + '\\item ' + childstr.lstrip()
-        elif tree.tag == 'heading':
-            sec = ('\\EpydocUser' +
-                   ('%ssection' % ('sub'*(min(seclevel,3)-1))).capitalize())
-            return (' '*(indent-2) + '%s{%s}\n\n' % (sec, childstr.strip()))
-        elif tree.tag == 'doctestblock':
-            return doctest_to_latex(tree.children[0].strip())
-        elif tree.tag == 'literalblock':
-            return '\\begin{alltt}\n%s\\end{alltt}\n\n' % childstr
-        elif tree.tag == 'fieldlist':
-            return indent*' '+'{omitted fieldlist}\n'
-        elif tree.tag == 'olist':
-            return (' '*indent + '\\begin{enumerate}\n\n' +
-                    ' '*indent + '\\setlength{\\parskip}{0.5ex}\n' +
-                    childstr +
-                    ' '*indent + '\\end{enumerate}\n\n')
-        elif tree.tag == 'ulist':
-            return (' '*indent + '\\begin{itemize}\n' +
-                    ' '*indent + '\\setlength{\\parskip}{0.6ex}\n' +
-                    childstr +
-                    ' '*indent + '\\end{itemize}\n\n')
-        elif tree.tag == 'symbol':
-            symbol = tree.children[0]
-            return self.SYMBOL_TO_LATEX.get(symbol, '[%s]' % symbol)
-        elif tree.tag == 'graph':
-            if directory is None: return ''
-            # Generate the graph.
-            graph = self._build_graph(variables[0], variables[1:], linker,
-                                      docindex, context)
-            if not graph: return ''
-            # Write the graph.
-            return graph.to_latex(directory)
-        else:
-            # Assume that anything else can be passed through.
-            return childstr
 
     _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?\.)(\s|$)')
 

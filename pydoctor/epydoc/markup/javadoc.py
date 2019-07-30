@@ -214,8 +214,7 @@ class ParsedJavadocDocstring(ParsedDocstring):
     # Plaintext Output.
     #////////////////////////////////////////////////////////////
 
-    # Inherit docs from ParsedDocstring.  Since we don't define
-    # to_latex, this is used when generating latex output.
+    # Inherit docs from ParsedDocstring.
     def to_plaintext(self, docstring_linker, **options):
         return self._docstring
 

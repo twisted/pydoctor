@@ -28,11 +28,6 @@ from pydoctor.epydoc.apidoc import *
 from pydoctor.epydoc.util import *
 from pydoctor.epydoc.compat import * # Backwards compatibility
 
-#: Should the dot2tex module be used to render dot graphs to latex
-#: (if it's available)?  This is experimental, and not yet working,
-#: so it should be left False for now.
-USE_DOT2TEX = False
-
 #: colors for graphs of APIDocs
 COLOR = dict(
     MODULE_BG = '#d8e8ff',
@@ -84,10 +79,6 @@ class DotGraph(object):
 
     DEFAULT_NODE_DEFAULTS={'fontsize':10, 'fontname': 'Helvetica'}
     DEFAULT_EDGE_DEFAULTS={'fontsize':10, 'fontname': 'Helvetica'}
-
-    DEFAULT_LATEX_SIZE="6.25,8"
-    """The default minimum size in inches (width,height) for graphs
-    when rendering with `to_latex()`"""
 
     DEFAULT_HTML_SIZE="10,20"
     """The default minimum size in inches (width,height) for graphs
@@ -147,68 +138,6 @@ class DotGraph(object):
             while ('%s_%s' % (self.uid, n)) in self._uids: n += 1
             self.uid = '%s_%s' % (self.uid, n)
         self._uids.add(self.uid)
-
-    def to_latex(self, directory, center=True, size=None):
-        """
-        Return the LaTeX code that should be used to display this
-        graph.  Two image files will be written: image_file+'.eps'
-        and image_file+'.pdf'.
-
-        :param size: The maximum size for the generated image, in
-            inches.  In particular, if ``size`` is ``\"w,h\"``, then
-            this will add a line ``size=\"w,h\"`` to the dot graph.
-            Defaults to `DEFAULT_LATEX_SIZE`.
-        :type size: ``str``
-        """
-        eps_file = os.path.join(directory, self.uid+'.eps')
-        pdf_file = os.path.join(directory, self.uid+'.pdf')
-        size = size or self.DEFAULT_LATEX_SIZE
-        # Use dot2tex if requested (and if it's available).
-        # Otherwise, render it to an image file & use \includgraphics.
-        if USE_DOT2TEX and dot2tex is not None:
-            try: return self._to_dot2tex(center, size)
-            except KeyboardInterrupt: raise
-            except:
-                raise
-                log.warning('dot2tex failed; using dot instead')
-
-        # Render the graph in postscript.
-        ps = self._run_dot('-Tps', size=size)
-        # Write the postscript output.
-        psfile = open(eps_file, 'wb')
-        psfile.write('%!PS-Adobe-2.0 EPSF-1.2\n')
-        psfile.write(ps)
-        psfile.close()
-        # Use ps2pdf to generate the pdf output.
-        try: run_subprocess(('ps2pdf', '-dEPSCrop', eps_file, pdf_file))
-        except RunSubprocessError, e:
-            log.warning("Unable to render Graphviz dot graph (%s):\n"
-                            "ps2pdf failed." % self.title)
-            return None
-
-        # Generate the latex code to display the graph.
-        s = '  \\includegraphics{%s}\n' % self.uid
-        if center: s = '\\begin{center}\n%s\\end{center}\n' % s
-        return s
-
-    def _to_dot2tex(self, center=True, size=None):
-        # requires: pgf, latex-xcolor.
-        from dot2tex import dot2tex
-        if 0: # DEBUG
-            import logging
-            log = logging.getLogger("dot2tex")
-            log.setLevel(logging.DEBUG)
-            console = logging.StreamHandler()
-            formatter = logging.Formatter('%(levelname)-8s %(message)s')
-            console.setFormatter(formatter)
-            log.addHandler(console)
-        options = dict(crop=True, autosize=True, figonly=True, debug=True)
-        conv = dot2tex.Dot2PGFConv(options)
-        s = conv.convert(self.to_dotfile(size=size))
-        conv.dopreproc = False
-        s = conv.convert(s)
-        if center: s = '\\begin{center}\n%s\\end{center}\n' % s
-        return s
 
     def to_html(self, directory, center=True, size=None):
         """
