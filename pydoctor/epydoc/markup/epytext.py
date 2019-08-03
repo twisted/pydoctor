@@ -215,7 +215,6 @@ _COLORIZING_TAGS = {
     'L': 'link',       # A Python identifier that should be linked to
     'E': 'escape',     # escapes characters or creates symbols
     'S': 'symbol',
-    'G': 'graph',
     }
 
 # Which tags can use "link syntax" (e.g., U{Python<www.python.org>})?
@@ -316,14 +315,6 @@ def parse(str, errors = None):
                         "epytext string.")
                 errors.append(StructuringError(estr, token.startline))
 
-    # Graphs use inline markup (G{...}) but are really block-level
-    # elements; so "raise" any graphs we generated.  This is a bit of
-    # a hack, but the alternative is to define a new markup for
-    # block-level elements, which I'd rather not do.  (See sourceforge
-    # bug #1673017.)
-    for child in doc.children:
-        _raise_graphs(child, doc)
-
     # If there was an error, then signal it!
     if len([e for e in errors if e.is_fatal()]) > 0:
         if raise_on_error:
@@ -333,33 +324,6 @@ def parse(str, errors = None):
 
     # Return the top-level epytext DOM element.
     return doc
-
-def _raise_graphs(tree, parent):
-    # Recurse to children.
-    have_graph_child = False
-    for elt in tree.children:
-        if isinstance(elt, Element):
-            _raise_graphs(elt, tree)
-            if elt.tag == 'graph': have_graph_child = True
-
-    block = ('section', 'fieldlist', 'field', 'ulist', 'olist', 'li')
-    if have_graph_child and tree.tag not in block:
-        child_index = 0
-        parent_index = parent.children.index(tree)
-        for elt in tree.children:
-            if isinstance(elt, Element) and elt.tag == 'graph':
-                # We found a graph: splice it into the parent.
-                left = tree.children[:child_index]
-                right = tree.children[child_index+1:]
-                parent.children[parent_index:parent_index+1] = [
-                    Element(tree.tag, *left, **tree.attribs),
-                    elt,
-                    Element(tree.tag, *right, **tree.attribs)]
-                child_index = 0
-                parent_index += 2
-                tree = parent.children[parent_index]
-            else:
-                child_index += 1
 
 def _pop_completed_blocks(token, stack, indent_stack):
     """
@@ -1119,10 +1083,6 @@ def _colorize(doc, token, errors, tagName='para'):
             if stack[-1].tag == 'litbrace':
                 stack[-2].children[-1:] = ['{'] + stack[-1].children + ['}']
 
-            # Special handling for graphs:
-            if stack[-1].tag == 'graph':
-                _colorize_graph(doc, stack[-1], token, end, errors)
-
             # Special handling for link-type elements:
             if stack[-1].tag in _LINK_COLORIZING_TAGS:
                 _colorize_link(doc, stack[-1], token, end, errors)
@@ -1142,47 +1102,6 @@ def _colorize(doc, token, errors, tagName='para'):
         errors.append(ColorizingError(estr, token, openbrace_stack[-1]))
 
     return stack[0]
-
-GRAPH_TYPES = ['classtree', 'packagetree', 'importgraph', 'callgraph']
-
-def _colorize_graph(doc, graph, token, end, errors):
-    """
-    Eg::
-      G{classtree}
-      G{classtree x, y, z}
-      G{importgraph}
-    """
-    bad_graph_spec = False
-
-    children = graph.children[:]
-    graph.children = []
-
-    if len(children) != 1 or not isinstance(children[0], basestring):
-        bad_graph_spec = "Bad graph specification"
-    else:
-        pieces = children[0].split(None, 1)
-        graphtype = pieces[0].replace(':','').strip().lower()
-        if graphtype in GRAPH_TYPES:
-            if len(pieces) == 2:
-                if re.match(r'\s*:?\s*([\w\.]+\s*,?\s*)*', pieces[1]):
-                    args = pieces[1].replace(',', ' ').replace(':','').split()
-                else:
-                    bad_graph_spec = "Bad graph arg list"
-            else:
-                args = []
-        else:
-            bad_graph_spec = ("Bad graph type %s -- use one of %s" %
-                              (pieces[0], ', '.join(GRAPH_TYPES)))
-
-    if bad_graph_spec:
-        errors.append(ColorizingError(bad_graph_spec, token, end))
-        graph.children.append('none')
-        graph.children.append('')
-        return
-
-    graph.children.append(graphtype)
-    for arg in args:
-        graph.children.append(arg)
 
 def _colorize_link(doc, link, token, end, errors):
     variables = link.children[:]
@@ -1315,8 +1234,6 @@ def to_epytext(tree, indent=0, seclevel=0):
         return childstr
     elif tree.tag == 'symbol':
         return 'E{%s}' % childstr
-    elif tree.tag == 'graph':
-        return 'G{%s}' % ' '.join(variables)
     else:
         for (tag, name) in _COLORIZING_TAGS.items():
             if name == tree.tag:
@@ -1401,8 +1318,6 @@ def to_plaintext(tree, indent=0, seclevel=0):
         return childstr.replace('\n\n', '\n')+'\n'
     elif tree.tag == 'symbol':
         return '%s' % SYMBOL_TO_PLAINTEXT.get(childstr, childstr)
-    elif tree.tag == 'graph':
-        return '<<%s graph: %s>>' % (variables[0], ', '.join(variables[1:]))
     else:
         # Assume that anything else can be passed through.
         return childstr
@@ -1489,8 +1404,6 @@ def to_debug(tree, indent=4, seclevel=0):
         return childstr
     elif tree.tag == 'symbol':
         return 'E{%s}' % childstr
-    elif tree.tag == 'graph':
-        return 'G{%s}' % ' '.join(variables)
     else:
         for (tag, name) in _COLORIZING_TAGS.items():
             if name == tree.tag:
@@ -1753,63 +1666,8 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'symbol':
             symbol = tree.children[0]
             return self.SYMBOL_TO_HTML.get(symbol, '[%s]' % symbol)
-        elif tree.tag == 'graph':
-            if directory is None: return ''
-            # Generate the graph.
-            graph = self._build_graph(variables[0], variables[1:], linker,
-                                      docindex, context)
-            if not graph: return ''
-            # Write the graph.
-            return graph.to_html(directory)
         else:
             raise ValueError('Unknown epytext DOM element %r' % tree.tag)
-
-    #GRAPH_TYPES = ['classtree', 'packagetree', 'importgraph']
-    def _build_graph(self, graph_type, graph_args, linker,
-                     docindex, context):
-        # Generate the graph
-        if graph_type == 'classtree':
-            from pydoctor.epydoc.apidoc import ClassDoc
-            if graph_args:
-                bases = [docindex.find(name, context)
-                         for name in graph_args]
-            elif isinstance(context, ClassDoc):
-                bases = [context]
-            else:
-                log.warning("Could not construct class tree: you must "
-                            "specify one or more base classes.")
-                return None
-            from pydoctor.epydoc.docwriter.dotgraph import class_tree_graph
-            return class_tree_graph(bases, linker, context)
-        elif graph_type == 'packagetree':
-            from pydoctor.epydoc.apidoc import ModuleDoc
-            if graph_args:
-                packages = [docindex.find(name, context)
-                            for name in graph_args]
-            elif isinstance(context, ModuleDoc):
-                packages = [context]
-            else:
-                log.warning("Could not construct package tree: you must "
-                            "specify one or more root packages.")
-                return None
-            from pydoctor.epydoc.docwriter.dotgraph import package_tree_graph
-            return package_tree_graph(packages, linker, context)
-        elif graph_type == 'importgraph':
-            from pydoctor.epydoc.apidoc import ModuleDoc
-            modules = [d for d in docindex.root if isinstance(d, ModuleDoc)]
-            from pydoctor.epydoc.docwriter.dotgraph import import_graph
-            return import_graph(modules, docindex, linker, context)
-
-        elif graph_type == 'callgraph':
-            if graph_args:
-                docs = [docindex.find(name, context) for name in graph_args]
-                docs = [doc for doc in docs if doc is not None]
-            else:
-                docs = [context]
-            from pydoctor.epydoc.docwriter.dotgraph import call_graph
-            return call_graph(docs, docindex, linker, context)
-        else:
-            log.warning("Unknown graph type %s" % graph_type)
 
     _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?\.)(\s|$)')
 

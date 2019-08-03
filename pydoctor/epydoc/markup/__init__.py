@@ -376,14 +376,6 @@ class DocstringLinker:
         """
         raise NotImplementedError('DocstringLinker.translate_xref()')
 
-    def url_for(self, identifier):
-        """
-        Given an identifier, return a URL pointing at that identifier.
-        This is used to create hyperlinks in dotgraphs.  This method
-        is *optional* -- i.e., it may raise NotImplementedError
-        """
-        raise NotImplementedError('DocstringLinker.url_for()')
-
 
 ##################################################
 ## ParseError exceptions

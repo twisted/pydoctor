@@ -14,8 +14,7 @@ Miscellaneous utility functions that are used by multiple modules.
 """
 __docformat__ = 'epytext en'
 
-import os, os.path, re
-from subprocess import Popen, PIPE
+import os.path, re
 
 ######################################################################
 ## Python Source Types
@@ -111,33 +110,3 @@ def plaintext_to_html(s):
     s = s.replace('&', '&amp;').replace('"', '&quot;')
     s = s.replace('<', '&lt;').replace('>', '&gt;')
     return s
-
-def run_subprocess(cmd, data=None):
-    """
-    Execute the command C{cmd} in a subprocess.
-
-    @param cmd: The command to execute, specified as a list
-        of string.
-    @param data: A string containing data to send to the
-        subprocess.
-    @return: A tuple C{(out, err)}.
-    @raise OSError: If there is any problem executing the
-        command, or if its exitval is not 0.
-    """
-    if isinstance(cmd, basestring):
-        cmd = cmd.split()
-
-    pipe = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    out, err = pipe.communicate(data)
-    if hasattr(pipe, 'returncode'):
-        if pipe.returncode == 0:
-            return out, err
-        else:
-            raise OSError('%s failed' % cmd[0])
-    else:
-        # Assume that there was an error iff anything was written
-        # to the child's stderr.
-        if err == '':
-            return out, err
-        else:
-            raise OSError('%s failed' % cmd[0])

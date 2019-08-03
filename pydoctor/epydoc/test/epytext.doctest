@@ -311,39 +311,3 @@ tests make sure that braces are getting rendered as desired.
 <p>{{{}{}}{}}</p>
 >>> print epytext2html("{{E{lb}E{lb}E{lb}}}")
 <p>{{{{{}}</p>
-
-Graph Raising
-=============
-
->>> epytext._x = True
->>> print testparse("""
-... Para containing G{classtree} graph.
-... """)
-<para>Para containing </para>
-<graph>classtree</graph>
-<para> graph.</para>
-
->>> print testparse("""
-... Para B{I{containing C{G{classtree} graph}} inside nested markup}.
-... """)
-<para>Para <bold><italic>containing <code></code></italic></bold>
-</para>
-<graph>classtree</graph>
-<para><bold><italic><code> graph</code></italic>
- inside nested markup</bold>
-.</para>
-
-Should we strip the 'inline' from the paras in cases like this:?
-
->>> print testparse("""
-... - List item with G{classtree foo} graph.
-... - And with I{nested G{callgraph: zippy} markup} too.
-... """)
-<ulist><li><para inline=True>List item with </para>
-<graph>classtreefoo</graph>
-<para inline=True> graph.</para></li>
-<li><para inline=True>And with <italic>nested </italic>
-</para>
-<graph>callgraphzippy</graph>
-<para inline=True><italic> markup</italic>
- too.</para></li></ulist>

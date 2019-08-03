@@ -12,21 +12,14 @@ pydoctor uses parts of the epydoc source as a library.
 
 Package Organization
 ====================
-The epydoc package contains the following subpackages and modules:
 
-.. packagetree::
-   :style: UML
-
-The user interfaces are provided by the `gui` and `cli` modules.
 The `apidoc` module defines the basic data types used to record
 information about Python objects.  Docstring markup parsing is
-handled by the `markup` package, and output generation is handled by
-the `docwriter` package.  See the submodule list for more
+handled by the `markup` package.  See the submodule list for more
 information about the submodules and subpackages.
 
 :group Basic Data Types: apidoc
 :group Docstring Processing: markup
-:group Output Generation: docwriter
 :group Miscellaneous: log, util, test
 
 :author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__

@@ -1561,9 +1561,6 @@ class RoutineDoc(ValueDoc):
        under which the exception specified by C{exc} is raised.
        @type: C{list}"""
     #} end of "information extracted from docstrings" group
-    callgraph_uid = None
-    """@ivar: L{DotGraph}.uid of the call graph for the function.
-       @type: C{str}"""
 
     def is_detailed(self):
         if super(RoutineDoc, self).is_detailed():
