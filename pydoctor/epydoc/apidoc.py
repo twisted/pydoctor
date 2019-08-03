@@ -37,7 +37,7 @@ __docformat__ = 'epytext en'
 ## Imports
 ######################################################################
 
-import types, re, os.path
+import types, re
 from pydoctor.epydoc import log
 from pydoctor import epydoc
 import __builtin__

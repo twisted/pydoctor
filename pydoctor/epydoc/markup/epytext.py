@@ -106,7 +106,6 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re, string
-from pydoctor.epydoc import log
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html
