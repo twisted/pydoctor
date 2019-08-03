@@ -41,7 +41,6 @@ import types, re, os.path
 from pydoctor.epydoc import log
 from pydoctor import epydoc
 import __builtin__
-from pydoctor.epydoc.util import py_src_filename
 from pydoctor.epydoc.markup.pyval_repr import colorize_pyval
 
 ######################################################################
@@ -193,18 +192,6 @@ class DottedName:
         Return the number of identifiers in this dotted name.
         """
         return len(self._identifiers)
-
-    def container(self):
-        """
-        Return the DottedName formed by removing the last identifier
-        from this dotted name's identifier sequence.  If this dotted
-        name only has one name in its identifier sequence, return
-        C{None} instead.
-        """
-        if len(self._identifiers) == 1:
-            return None
-        else:
-            return DottedName(*self._identifiers[:-1])
 
     def dominates(self, name, strict=False):
         """
@@ -522,54 +509,6 @@ class APIDoc(object):
         # Return self.
         return self
 
-    def apidoc_links(self, **filters):
-        """
-        Return a list of all C{APIDoc}s that are directly linked from
-        this C{APIDoc} (i.e., are contained or pointed to by one or
-        more of this C{APIDoc}'s attributes.)
-
-        Keyword argument C{filters} can be used to selectively exclude
-        certain categories of attribute value.  For example, using
-        C{includes=False} will exclude variables that were imported
-        from other modules; and C{subclasses=False} will exclude
-        subclasses.  The filter categories currently supported by
-        epydoc are:
-          - C{imports}: Imported variables.
-          - C{packages}: Containing packages for modules.
-          - C{submodules}: Contained submodules for packages.
-          - C{bases}: Bases for classes.
-          - C{subclasses}: Subclasses for classes.
-          - C{variables}: All variables.
-          - C{private}: Private variables.
-          - C{overrides}: Points from class variables to the variables
-            they override.  This filter is False by default.
-        """
-        return []
-
-def reachable_valdocs(root, **filters):
-    """
-    Return a list of all C{ValueDoc}s that can be reached, directly or
-    indirectly from the given root list of C{ValueDoc}s.
-
-    @param filters: A set of filters that can be used to prevent
-        C{reachable_valdocs} from following specific link types when
-        looking for C{ValueDoc}s that can be reached from the root
-        set.  See C{APIDoc.apidoc_links} for a more complete
-        description.
-    """
-    apidoc_queue = list(root)
-    val_set = set()
-    var_set = set()
-    while apidoc_queue:
-        api_doc = apidoc_queue.pop()
-        if isinstance(api_doc, ValueDoc):
-            val_set.add(api_doc)
-        else:
-            var_set.add(api_doc)
-        apidoc_queue.extend([v for v in api_doc.apidoc_links(**filters)
-                             if v not in val_set and v not in var_set])
-    return val_set
-
 ######################################################################
 # Variable Documentation Objects
 ######################################################################
@@ -674,18 +613,6 @@ class VariableDoc(APIDoc):
     A read-only property that can be used to get the variable's
     defining module.  This is defined as the defining module
     of the variable's container.""")
-
-    def apidoc_links(self, **filters):
-        # nb: overrides filter is *False* by default.
-        if (filters.get('overrides', False) and
-            (self.overrides not in (None, UNKNOWN))):
-            overrides = [self.overrides]
-        else:
-            overrides = []
-        if self.value in (None, UNKNOWN):
-            return []+overrides
-        else:
-            return [self.value]+overrides
 
     def is_detailed(self):
         pval = super(VariableDoc, self).is_detailed()
@@ -892,9 +819,6 @@ class ValueDoc(APIDoc):
         return self.__summary_pyval_repr
     #} end of "value representation" group
 
-    def apidoc_links(self, **filters):
-        return []
-
 class GenericValueDoc(ValueDoc):
     """
     API documentation about a 'generic' value, i.e., one that does not
@@ -965,25 +889,6 @@ class NamespaceDoc(ValueDoc):
 
     def is_detailed(self):
         return True
-
-    def apidoc_links(self, **filters):
-        variables = filters.get('variables', True)
-        imports = filters.get('imports', True)
-        private = filters.get('private', True)
-        if variables and imports and private:
-            return self.variables.values() # list the common case first.
-        elif not variables:
-            return []
-        elif not imports and not private:
-            return [v for v in self.variables.values() if
-                    v.is_imported != True and v.is_public != False]
-        elif not private:
-            return [v for v in self.variables.values() if
-                    v.is_public != False]
-        elif not imports:
-            return [v for v in self.variables.values() if
-                    v.is_imported != True]
-        assert 0, 'this line should be unreachable'
 
     def init_sorted_variables(self):
         """
@@ -1141,16 +1046,6 @@ class ModuleDoc(NamespaceDoc):
        @type: C{list} of L{DottedName}"""
     #}
 
-    def apidoc_links(self, **filters):
-        val_docs = NamespaceDoc.apidoc_links(self, **filters)
-        if (filters.get('packages', True) and
-            self.package not in (None, UNKNOWN)):
-            val_docs.append(self.package)
-        if (filters.get('submodules', True) and
-            self.submodules not in (None, UNKNOWN)):
-            val_docs += self.submodules
-        return val_docs
-
     def init_submodule_groups(self):
         """
         Initialize the L{submodule_groups} attribute, based on the
@@ -1257,16 +1152,6 @@ class ClassDoc(NamespaceDoc):
     #{ Information about Metaclasses
     metaclass = UNKNOWN
     #}
-
-    def apidoc_links(self, **filters):
-        val_docs = NamespaceDoc.apidoc_links(self, **filters)
-        if (filters.get('bases', True) and
-            self.bases not in (None, UNKNOWN)):
-            val_docs += self.bases
-        if (filters.get('subclasses', True) and
-            self.subclasses not in (None, UNKNOWN)):
-            val_docs += self.subclasses
-        return val_docs
 
     def is_type(self):
         if self.canonical_name == DottedName('type'): return True
@@ -1746,29 +1631,6 @@ class DocIndex:
            in containing namespaces fails.
            @type: C{dict} from C{str} to L{ClassDoc} or C{list}"""
 
-        self.callers = None
-        """A dictionary mapping from C{RoutineDoc}s in this index
-           to lists of C{RoutineDoc}s for the routine's callers.
-           This dictionary is initialized by calling
-           L{read_profiling_info()}.
-           @type: C{list} of L{RoutineDoc}"""
-
-        self.callees = None
-        """A dictionary mapping from C{RoutineDoc}s in this index
-           to lists of C{RoutineDoc}s for the routine's callees.
-           This dictionary is initialized by calling
-           L{read_profiling_info()}.
-           @type: C{list} of L{RoutineDoc}"""
-
-        self._funcid_to_doc = {}
-        """A mapping from C{profile} function ids to corresponding
-           C{APIDoc} objects.  A function id is a tuple of the form
-           C{(filename, lineno, funcname)}.  This is used to update
-           the L{callers} and L{callees} variables."""
-
-        self._container_cache = {}
-        """A cache for the L{container()} method, to increase speed."""
-
         self._get_cache = {}
         """A cache for the L{get_vardoc()} and L{get_valdoc()} methods,
         to increase speed."""
@@ -1973,100 +1835,6 @@ class DocIndex:
                     vals.append(val)
 
         return classes
-
-    #////////////////////////////////////////////////////////////
-    # etc
-    #////////////////////////////////////////////////////////////
-
-    def reachable_valdocs(self, **filters):
-        """
-        Return a list of all C{ValueDoc}s that can be reached,
-        directly or indirectly from this C{DocIndex}'s root set.
-
-        @param filters: A set of filters that can be used to prevent
-            C{reachable_valdocs} from following specific link types
-            when looking for C{ValueDoc}s that can be reached from the
-            root set.  See C{APIDoc.apidoc_links} for a more complete
-            description.
-        """
-        return reachable_valdocs(self.root, **filters)
-
-    def container(self, api_doc):
-        """
-        Return the C{ValueDoc} that contains the given C{APIDoc}, or
-        C{None} if its container is not in the index.
-        """
-        # Check if the result is cached.
-        val = self._container_cache.get(api_doc)
-        if val is not None: return val
-
-        if isinstance(api_doc, GenericValueDoc):
-            self._container_cache[api_doc] = None
-            return None # [xx] unknown.
-        if isinstance(api_doc, VariableDoc):
-            self._container_cache[api_doc] = api_doc.container
-            return api_doc.container
-        if len(api_doc.canonical_name) == 1:
-            self._container_cache[api_doc] = None
-            return None
-        elif isinstance(api_doc, ModuleDoc) and api_doc.package is not UNKNOWN:
-            self._container_cache[api_doc] = api_doc.package
-            return api_doc.package
-        else:
-            parent = self.get_valdoc(api_doc.canonical_name.container())
-            self._container_cache[api_doc] = parent
-            return parent
-
-    #////////////////////////////////////////////////////////////
-    # Profiling information
-    #////////////////////////////////////////////////////////////
-
-    def read_profiling_info(self, profile_stats):
-        """
-        Initialize the L{callers} and L{callees} variables, given a
-        C{Stat} object from the C{pstats} module.
-
-        @warning: This method uses undocumented data structures inside
-            of C{profile_stats}.
-        """
-        if self.callers is None: self.callers = {}
-        if self.callees is None: self.callees = {}
-
-        # The Stat object encodes functions using `funcid`s, or
-        # tuples of (filename, lineno, funcname).  Create a mapping
-        # from these `funcid`s to `RoutineDoc`s.
-        self._update_funcid_to_doc(profile_stats)
-
-        for callee, (cc, nc, tt, ct, callers) in profile_stats.stats.items():
-            callee = self._funcid_to_doc.get(callee)
-            if callee is None: continue
-            for caller in callers:
-                caller = self._funcid_to_doc.get(caller)
-                if caller is None: continue
-                self.callers.setdefault(callee, []).append(caller)
-                self.callees.setdefault(caller, []).append(callee)
-
-    def _update_funcid_to_doc(self, profile_stats):
-        """
-        Update the dictionary mapping from C{pstat.Stat} funciton ids to
-        C{RoutineDoc}s.  C{pstat.Stat} function ids are tuples of
-        C{(filename, lineno, funcname)}.
-        """
-        # Maps (filename, lineno, funcname) -> RoutineDoc
-        for val_doc in self.reachable_valdocs():
-            # We only care about routines.
-            if not isinstance(val_doc, RoutineDoc): continue
-            # Get the filename from the defining module.
-            module = val_doc.defining_module
-            if module is UNKNOWN or module.filename is UNKNOWN: continue
-            # Normalize the filename.
-            filename = os.path.abspath(module.filename)
-            try: filename = py_src_filename(filename)
-            except: pass
-            # Look up the stat_func_id
-            funcid = (filename, val_doc.lineno, val_doc.canonical_name[-1])
-            if funcid in profile_stats.stats:
-                self._funcid_to_doc[funcid] = val_doc
 
 ######################################################################
 ## Pretty Printing

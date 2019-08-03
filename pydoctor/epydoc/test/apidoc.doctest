@@ -134,21 +134,6 @@ Dotted names may be combined with the addition operator:
     >>> name2 + name1 == name3
     False
 
-The container method may be used to construct a new dotted name with the
-last identifier stripped off:
-
-    >>> name1.container()
-    DottedName('foo')
-    >>> name3.container()
-    DottedName('foo', 'bar', 'x', 'y')
-
-If a dotted name has only one identifier, then its container is None:
-
-    >>> print DottedName('baz').container()
-    None
-    >>> print name1.container().container()
-    None
-
 It is an error to create an empty dotted name; or a dotted name that
 contains a string that's not a valid python identifier:
 
@@ -182,8 +167,6 @@ A dotted name can be queried into a context to obtain a reduced version:
     >>> DottedName('foo.bar.baz.qux').contextualize(DottedName('foo.bar'))
     DottedName('baz', 'qux')
     >>> DottedName('foo.bar').contextualize(DottedName('baz'))
-    DottedName('foo', 'bar')
-    >>> DottedName('foo.bar').contextualize(DottedName('foo').container())
     DottedName('foo', 'bar')
     >>> DottedName('foo.bar').contextualize(UNKNOWN)
     DottedName('foo', 'bar')

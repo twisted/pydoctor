@@ -8,31 +8,12 @@
 """
 Miscellaneous utility functions that are used by multiple modules.
 
-@group Python source types: py_src_filename
 @group Text processing: wordwrap, decode_with_backslashreplace,
     plaintext_to_html
 """
 __docformat__ = 'epytext en'
 
-import os.path, re
-
-######################################################################
-## Python Source Types
-######################################################################
-
-PY_SRC_EXTENSIONS = ['.py', '.pyw']
-
-def py_src_filename(filename):
-    basefile, extension = os.path.splitext(filename)
-    if extension in PY_SRC_EXTENSIONS:
-        return filename
-    else:
-        for ext in PY_SRC_EXTENSIONS:
-            if os.path.isfile('%s%s' % (basefile, ext)):
-                return '%s%s' % (basefile, ext)
-        else:
-            raise ValueError('Could not find a corresponding '
-                             'Python source file for %r.' % filename)
+import re
 
 ######################################################################
 ## Text Processing
