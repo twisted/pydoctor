@@ -228,7 +228,7 @@ def parse_args(args):
     return options, args
 
 def main(args):
-    import cPickle
+    from six.moves import cPickle
     options, args = parse_args(args)
 
     exitcode = 0
