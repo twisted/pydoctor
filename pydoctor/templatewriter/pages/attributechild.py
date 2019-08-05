@@ -6,7 +6,7 @@ from twisted.web.template import Element, XMLFile, renderer
 
 class AttributeChild(Element):
 
-    loader = XMLFile(util.templatefile('attribute-child.html'))
+    loader = XMLFile(util.templatefilepath('attribute-child.html'))
 
     def __init__(self, docgetter, ob):
         self.docgetter = docgetter

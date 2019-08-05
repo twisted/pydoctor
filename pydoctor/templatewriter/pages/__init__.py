@@ -65,7 +65,7 @@ class CommonPage(Element):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefile('common.html'))
+        return XMLFile(util.templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()
