@@ -16,6 +16,7 @@ import urllib
 from twisted.web.template import Tag, tags, XMLString
 
 from pydoctor import model
+from pydoctor.epydoc.markup import DocstringLinker
 
 
 STDLIB_DIR = os.path.dirname(os.__file__)
@@ -28,7 +29,7 @@ def link(o):
 
 def get_parser(formatname):
     try:
-        mod = __import__('epydoc.markup.' + formatname,
+        mod = __import__('pydoctor.epydoc.markup.' + formatname,
                          globals(), locals(), ['parse_docstring'])
     except ImportError as e:
         return None, e
@@ -74,7 +75,7 @@ def stdlib_doc_link_for_name(name):
     return None
 
 
-class _EpydocLinker(object):
+class _EpydocLinker(DocstringLinker):
 
     def __init__(self, obj):
         self.obj = obj
@@ -291,7 +292,7 @@ def html2stan(html):
 
 
 class Field(object):
-    """Like epydoc.markup.Field, but without the gross accessor
+    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
         self.tag = field.tag()
