@@ -16,6 +16,7 @@ on doctest blocks with other output formats.
 __docformat__ = 'epytext en'
 
 import re
+from six.moves import builtins
 from pydoctor.epydoc.util import plaintext_to_html
 
 __all__ = ['doctest_to_html', 'DoctestColorizer', 'HTMLDoctestColorizer']
@@ -76,7 +77,7 @@ class DoctestColorizer:
                  "def       finally   in        print     as").split()
 
     #: A list of all Python builtins.
-    _BUILTINS = [_BI for _BI in dir(__builtins__)
+    _BUILTINS = [_BI for _BI in dir(builtins)
                  if not _BI.startswith('__')]
 
     #: A regexp group that matches keywords.
