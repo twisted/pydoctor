@@ -72,7 +72,6 @@ _markup_language_registry = {
     'restructuredtext': 'pydoctor.epydoc.markup.restructuredtext',
     'epytext': 'pydoctor.epydoc.markup.epytext',
     'plaintext': 'pydoctor.epydoc.markup.plaintext',
-    'javadoc': 'pydoctor.epydoc.markup.javadoc',
     }
 """
 Maps a case-insensitive markup language name to a function
