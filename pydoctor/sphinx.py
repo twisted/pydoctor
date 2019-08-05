@@ -228,7 +228,7 @@ _maxAgeUnits = {
     "m": _Unit("minutes", minimum=1, maximum=2 ** 32 - 1),
     "h": _Unit("hours", minimum=1, maximum=2 ** 32 - 1),
     "d": _Unit("days", minimum=1, maximum=999999999 + 1),
-    "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) / 7),
+    "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) // 7),
 }
 _maxAgeUnitNames = ", ".join(
     "{} ({})".format(indicator, unit.name)
