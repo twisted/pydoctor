@@ -430,7 +430,7 @@ def main(args):
     except:
         if options.pdb:
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            pdb.post_mortem(sys.exc_info()[2])
         raise
     return exitcode
 
