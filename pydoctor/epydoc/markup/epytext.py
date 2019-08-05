@@ -1373,7 +1373,7 @@ def to_debug(tree, indent=4, seclevel=0):
         str = re.sub('\0', 'E{lb}', childstr)
         str = re.sub('\1', 'E{rb}', str)
         uline = len(childstr)*_HEADING_CHARS[seclevel-1]
-        return ('SEC'+`seclevel`+'>|'+(indent-8)*' ' + str + '\n' +
+        return ('SEC'+repr(seclevel)+'>|'+(indent-8)*' ' + str + '\n' +
                 '     |'+(indent-8)*' ' + uline + '\n')
     elif tree.tag == 'doctestblock':
         str = re.sub('\0', '{', childstr)
