@@ -47,6 +47,7 @@ each error.
 __docformat__ = 'epytext en'
 
 import re
+import six
 from pydoctor.epydoc import log
 from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor import epydoc
@@ -137,7 +138,7 @@ def parse(docstring, markup='plaintext', errors=None, **options):
     parse_docstring = _markup_language_registry[markup]
 
     # If it's a string, then it names a function to import.
-    if isinstance(parse_docstring, basestring):
+    if isinstance(parse_docstring, six.string_types):
         try: exec('from %s import parse_docstring' % parse_docstring)
         except ImportError as ex:
             _parse_warn('Error importing %s for markup language %s: %s' %

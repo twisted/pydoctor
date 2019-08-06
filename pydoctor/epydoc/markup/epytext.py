@@ -106,6 +106,7 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re, string
+import six
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html
@@ -1048,7 +1049,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], basestring)):
+                    not isinstance(stack[-1].children[0], six.string_types)):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1063,7 +1064,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], basestring)):
+                    not isinstance(stack[-1].children[0], six.string_types)):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1106,7 +1107,7 @@ def _colorize_link(doc, link, token, end, errors):
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
-    if len(variables)==0 or not isinstance(variables[-1], basestring):
+    if len(variables)==0 or not isinstance(variables[-1], six.string_types):
         estr = "Bad %s target." % link.tag
         errors.append(ColorizingError(estr, token, end))
         return
@@ -1177,7 +1178,7 @@ def to_epytext(tree, indent=0, seclevel=0):
     @return: The epytext string corresponding to C{tree}.
     @rtype: C{string}
     """
-    if isinstance(tree, basestring):
+    if isinstance(tree, six.string_types):
         str = re.sub(r'\{', '\0', tree)
         str = re.sub(r'\}', '\1', str)
         return str
@@ -1262,7 +1263,7 @@ def to_plaintext(tree, indent=0, seclevel=0):
     @return: The epytext string corresponding to C{tree}.
     @rtype: C{string}
     """
-    if isinstance(tree, basestring): return tree
+    if isinstance(tree, six.string_types): return tree
 
     if tree.tag == 'section': seclevel += 1
 
@@ -1340,7 +1341,7 @@ def to_debug(tree, indent=4, seclevel=0):
     @return: The epytext string corresponding to C{tree}.
     @rtype: C{string}
     """
-    if isinstance(tree, basestring):
+    if isinstance(tree, six.string_types):
         str = re.sub(r'\{', '\0', tree)
         str = re.sub(r'\}', '\1', str)
         return str
@@ -1596,7 +1597,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
     def _to_html(self, tree, linker, directory, docindex, context,
                  indent=0, seclevel=0):
-        if isinstance(tree, basestring):
+        if isinstance(tree, six.string_types):
             return plaintext_to_html(tree)
 
         if tree.tag == 'epytext': indent -= 2
@@ -1701,7 +1702,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         para = Element('para', inline=True)
         doc.children.append(para)
         for parachild in parachildren:
-            if isinstance(parachild, basestring):
+            if isinstance(parachild, six.string_types):
                 m = self._SUMMARY_RE.match(parachild)
                 if m:
                     para.children.append(m.group(1))
