@@ -37,7 +37,7 @@ def decode_with_backslashreplace(s):
             .encode('ascii', 'backslashreplace')
             .decode('ascii'))
 
-def wordwrap(str, indent=0, right=75):
+def wordwrap(s, indent=0, right=75):
     """
     Word-wrap the given string.  I.e., add newlines to the string such
     that any lines that are longer than C{right} are broken into
@@ -54,12 +54,11 @@ def wordwrap(str, indent=0, right=75):
         sequence before the right margin.
     @type right: C{int}
     """
-    chunks = re.split(r'( +|\n)', str.expandtabs())
     result = [' ' * indent]
     charindex = indent
-    for chunknum, chunk in enumerate(chunks):
-        if (charindex+len(chunk) > right and charindex > 0) or chunk == '\n':
-            result.append('\n' + ' '*indent)
+    for chunk in re.split(r'( +|\n)', s.expandtabs()):
+        if (charindex + len(chunk) > right and charindex > 0) or chunk == '\n':
+            result.append('\n' + ' ' * indent)
             charindex = indent
             if chunk[:1] not in ('\n', ' '):
                 result.append(chunk)
@@ -67,7 +66,7 @@ def wordwrap(str, indent=0, right=75):
         else:
             result.append(chunk)
             charindex += len(chunk)
-    return ''.join(result).rstrip()+'\n'
+    return ''.join(result).rstrip() + '\n'
 
 def plaintext_to_html(s):
     """
