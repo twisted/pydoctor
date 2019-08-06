@@ -1755,22 +1755,3 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return ParsedEpytextDocstring(tree), fields
         else:
             return None, fields
-
-
-    def index_terms(self):
-        if self._terms is None:
-            self._terms = []
-            self._index_terms(self._tree, self._terms)
-        return self._terms
-
-    def _index_terms(self, tree, terms):
-        if tree is None or isinstance(tree, basestring):
-            return
-
-        if tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            terms.append(ParsedEpytextDocstring(term))
-
-        # Look for index items in child nodes.
-        for child in tree.children:
-            self._index_terms(child, terms)

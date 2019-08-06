@@ -15,7 +15,6 @@ C{ParsedDocstring}s support the following operations:
     and L{to_html()<ParsedDocstring.to_html>}.
   - Summarization (L{summary()<ParsedDocstring.summary>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
-  - Index term extraction (L{index_terms()<ParsedDocstring.index_terms>}.
 
 The L{parse()} function provides a single interface to the
 C{pydoctor.epydoc.markup} package: it takes a docstring and the name of
@@ -191,7 +190,6 @@ class ParsedDocstring:
       - output generation (L{to_plaintext()} and L{to_html()}.
       - Summarization (L{summary()}).
       - Field extraction (L{split_fields()}).
-      - Index term extraction (L{index_terms()}.
 
     The output generation methods (C{to_M{format}()}) use a
     L{DocstringLinker} to link the docstring output with the rest
@@ -207,7 +205,6 @@ class ParsedDocstring:
       - C{summary}: Returns C{self} (i.e., the entire docstring).
       - C{split_fields}: Returns C{(self, [])} (i.e., extracts no
         fields).
-      - C{index_terms}: Returns C{[]} (i.e., extracts no index terms).
 
     If and when epydoc adds more output formats, new C{to_I{format}}
     methods will be added to this base class; but they will always
@@ -270,16 +267,6 @@ class ParsedDocstring:
         @rtype: C{string}
         """
         raise NotImplementedError, 'ParsedDocstring.to_plaintext()'
-
-    def index_terms(self):
-        """
-        @return: The list of index terms that are defined in this
-            docstring.  Each of these items will be added to the index
-            page of the documentation.
-        @rtype: C{list} of C{ParsedDocstring}
-        """
-        # Default behavior:
-        return []
 
 ##################################################
 ## Fields
