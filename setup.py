@@ -6,7 +6,7 @@ if sys.version_info > (3, 0):
                      "https://github.com/twisted/pydoctor/issues/96 for "
                      "the tracking ticket for work on this."))
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='pydoctor',
@@ -15,11 +15,7 @@ setup(
     url='http://github.com/twisted/pydoctor',
     description='API doc generator.',
     license='MIT/X11',
-    packages=[
-        'pydoctor',
-        'pydoctor.templatewriter',
-        'pydoctor.templatewriter.pages',
-    ],
+    packages=find_packages(),
     package_data={
         'pydoctor': [
             'templates/*',
