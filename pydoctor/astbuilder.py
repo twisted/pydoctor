@@ -22,6 +22,10 @@ def parse(buf):
 
 
 def node2dottedname(node):
+
+    if isinstance(node, ast.List):
+        return
+
     parts = []
     while isinstance(node, ast.Call) and (isinstance(node.func, ast.Name) and node.func.id == "getattr") and isinstance(node.args[1], ast.Str):
         parts.append(node.args[1].s)
@@ -59,6 +63,7 @@ class ModuleVistor(ast.NodeVisitor):
         rawbases = []
         bases = []
         baseobjects = []
+
         for n in node.bases:
             str_base = astor.to_source(n).strip()
             rawbases.append(str_base)
@@ -252,6 +257,7 @@ class ModuleVistor(ast.NodeVisitor):
         if not isinstance(node.targets[0], ast.Name):
             return
         target = node.targets[0].id
+        print(target, node.value, "!!!!")
         self._handleOldSchoolDecoration(target, node.value)
         self._handleAliasing(target, node.value)
 
