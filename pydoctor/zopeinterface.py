@@ -147,14 +147,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if isinstance(node.func, ast.Name):
             name = node.func.id
         elif isinstance(node.func, ast.Attribute):
-            if isinstance(node.func.value, ast.Name):
-                name = node.func.value.id
-            elif isinstance(node.func.value, ast.Attribute):
-                name = node.func.value.value.id
-            else:
-                raise Exception(node.func.value)
-
-            name = ".".join([name, node.func.attr])
+            name = astor.to_source(node).strip().split("(")[0]
         else:
             raise Exception(node.func)
         return self.builder.current.expandName(name)
@@ -170,8 +163,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return sup()
 
         funcName = self.funcNameFromCall(node.value)
-
-        print("!!!!!!!!!!!!!", funcName)
 
         if isinstance(self.builder.current, model.Module):
             name = node.targets[0].id
@@ -217,10 +208,10 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             pushAttribute(docstring, kind)
 
         if funcName == 'zope.interface.Attribute':
-            args = node.targets
-            if len(args) != 1:
+            args = node.value.args
+            if args is None or len(args) != 1:
                 return sup()
-            pushAttribute(extractStringLiteral(args[0]), "Attribute")
+            pushAttribute(extractStringLiteral(node.value.args[0]), "Attribute")
             return sup()
 
         if schema_prog.match(funcName):
@@ -236,7 +227,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)
         meth = getattr(self, "visit_Call_" + base.replace('.', '_'), None)
-        print(meth)
         if meth is not None:
             meth(base, node)
 
@@ -276,9 +266,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         for base in cls.bases:
             if isinstance(base, ast.Name):
-                bases.append(base.id)
+                bases.append(self.builder.current.expandName(base.id))
             elif isinstance(base, str):
-                bases.append(base)
+                bases.append(self.builder.current.expandName(base))
             else:
                 raise Exception(base)
 
@@ -296,7 +286,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 cls.isschemafield = True
 
         for ((dn, fn, o), args) in cls.decorators:
-            print(dn, fn, o, args)
             if fn == 'zope.interface.implementer':
                 addInterfaceInfoToClass(cls, args, False)
 

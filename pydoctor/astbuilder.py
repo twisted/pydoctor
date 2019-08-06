@@ -22,23 +22,7 @@ def parse(buf):
 
 
 def node2dottedname(node):
-
-    if isinstance(node, ast.List):
-        return
-
-    parts = []
-    while isinstance(node, ast.Call) and (isinstance(node.func, ast.Name) and node.func.id == "getattr") and isinstance(node.args[1], ast.Str):
-        parts.append(node.args[1].s)
-        node = node.func
-    if isinstance(node, ast.Name):
-        parts.append(node.id)
-    elif isinstance(node, ast.Attribute):
-        parts.append(astor.to_source(node).strip())
-    else:
-        return None
-    parts.reverse()
-    return parts
-
+    return astor.to_source(node).strip().split(".")
 
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
@@ -65,7 +49,11 @@ class ModuleVistor(ast.NodeVisitor):
         baseobjects = []
 
         for n in node.bases:
-            str_base = astor.to_source(n).strip()
+            if isinstance(n, ast.Name):
+                str_base = n.id
+            elif isinstance(n, ast.Attribute):
+                str_base = astor.to_source(n).strip()
+
             rawbases.append(str_base)
             full_name = self.builder.current.expandName(str_base)
             bases.append(full_name)
@@ -257,7 +245,6 @@ class ModuleVistor(ast.NodeVisitor):
         if not isinstance(node.targets[0], ast.Name):
             return
         target = node.targets[0].id
-        print(target, node.value, "!!!!")
         self._handleOldSchoolDecoration(target, node.value)
         self._handleAliasing(target, node.value)
 
@@ -291,8 +278,23 @@ class ModuleVistor(ast.NodeVisitor):
             func.sourceHref = func.parentMod.sourceHref + '#L' + \
                               str(func.linenumber)
 
-        func.argspec = (node.args.args, node.args.vararg, node.args.kwarg, node.args.defaults)
-        #self.postpone(func, node.code)
+        args = []
+
+        for arg in node.args.args:
+            if isinstance(arg, (ast.Tuple, ast.List)):
+                args.append([x.id for x in arg.elts])
+            elif isinstance(arg, ast.Name):
+                args.append(arg.id)
+
+        defaults = []
+
+        for default in node.args.defaults:
+            if isinstance(default, ast.Num):
+                defaults.append(str(default.n))
+            else:
+                defaults.append(astor.to_source(default).strip())
+
+        func.argspec = (args, node.args.vararg, node.args.kwarg, tuple(defaults))
         self.builder.popFunction()
 
 class ASTBuilder(object):

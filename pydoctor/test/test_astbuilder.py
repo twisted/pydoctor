@@ -52,7 +52,7 @@ def test_function_argspec():
     exec(src, ns)
     realf = ns['f']
     inspectargspec = inspect.getargspec(realf)
-    assert inspectargspec[:-1] == docfunc.argspec[:-1]
+    assert tuple(inspectargspec[:-1]) == tuple(docfunc.argspec[:-1])
     assert docfunc.argspec[-1] == ('3',)
 
 def test_class():
