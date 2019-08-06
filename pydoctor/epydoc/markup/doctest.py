@@ -13,6 +13,9 @@ C{colorize_doctest()}, which could be used to do syntax highlighting
 on doctest blocks with other output formats.
 (C{doctest_to_html()} is defined using C{colorize_doctest()}.)
 """
+
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 import re
@@ -192,7 +195,7 @@ class DoctestColorizer:
 
     def subfunc(self, match):
         other, text = match.group(1, 2)
-        #print 'M %20r %20r' % (other, text) # <- for debugging
+        #print('M %20r %20r' % (other, text)) # <- for debugging
         if other:
             other = self.NEWLINE.join([self.markup(line, 'other')
                                        for line in other.split('\n')])

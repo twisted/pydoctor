@@ -96,6 +96,8 @@ Description::
 # Note: the symbol list is appended to the docstring automatically,
 # below.
 
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 # Code organization..
@@ -276,7 +278,7 @@ def parse(str, errors = None):
 
     for token in tokens:
         # Uncomment this for debugging:
-        #print ('%s: %s\n%s: %s\n' %
+        #print('%s: %s\n%s: %s\n' %
         #       (''.join(['%-11s' % (t and t.tag) for t in stack]),
         #        token.tag, ''.join(['%-11s' % i for i in indent_stack]),
         #        token.indent))

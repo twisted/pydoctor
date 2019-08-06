@@ -25,7 +25,7 @@ as colorized Python code.
 ... """, err)
 >>> err
 []
->>> print p.to_html(None)
+>>> print(p.to_html(None))
 <p>A test module</p>
 <pre class="py-doctest">
 <span class="py-comment"># This is some Python code</span>
