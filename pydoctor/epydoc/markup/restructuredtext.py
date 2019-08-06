@@ -513,16 +513,6 @@ class _SplitFieldsTranslator(NodeVisitor):
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
-class _EpydocDocumentClass:
-    SECTIONS = ['EpydocUserSection',
-                'EpydocUserSubsection',
-                'EpydocUserSubsubsection']
-    def section(self, level):
-        if level <= len(self.SECTIONS):
-            return self.SECTIONS[level-1]
-        else:
-            return self.SECTIONS[-1]
-
 class _EpydocHTMLTranslator(HTMLTranslator):
     settings = None
     def __init__(self, document, docstring_linker, directory,
