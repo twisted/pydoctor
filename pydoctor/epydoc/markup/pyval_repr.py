@@ -31,7 +31,6 @@ __docformat__ = 'epytext en'
 # __repr__.
 
 import types, re
-import pydoctor.epydoc.apidoc
 from pydoctor.epydoc import log
 from pydoctor.epydoc.util import decode_with_backslashreplace
 import sre_parse, sre_constants
@@ -96,6 +95,24 @@ def colorize_pyval(pyval, parse_repr=None, min_score=None,
     return PyvalColorizer(linelen, maxlines, linebreakok, sort).colorize(
         pyval, parse_repr, min_score)
 
+class _Sentinel:
+    """
+    A unique value that won't compare equal to any other value.  This
+    class is used to create L{UNKNOWN}.
+    """
+    def __init__(self, name):
+        self.name = name
+    def __repr__(self):
+        return '<%s>' % self.name
+    def __nonzero__(self):
+        raise ValueError('Sentinel value <%s> can not be used as a boolean' %
+                         self.name)
+
+UNKNOWN = _Sentinel('UNKNOWN')
+"""A special value used to indicate that a given piece of
+information about an object is unknown.  This is used as the
+default value for all instance variables."""
+
 class PyvalColorizer:
     """
     Syntax highlighter for Python values.
@@ -141,7 +158,6 @@ class PyvalColorizer:
         """
         @return: A L{ColorizedPyvalRepr} describing the given pyval.
         """
-        UNKNOWN = pydoctor.epydoc.apidoc.UNKNOWN
         # Create an object to keep track of the colorization.
         state = _ColorizerState()
         state.linebreakok = self.linebreakok

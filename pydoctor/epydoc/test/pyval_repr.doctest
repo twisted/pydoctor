@@ -11,6 +11,53 @@ Regression Testing for epydoc.markup.pyval_repr
     ...         s = s.encode('ascii', 'xmlcharrefreplace')
     ...     print s
 
+Unknown Value
+=============
+Epydoc defines a special object, epydoc.apidoc.UNKNOWN, which is used
+as the value of attributes when their real value is not (yet) known.
+
+    >>> UNKNOWN
+    <UNKNOWN>
+
+This object only compares equal to itself:
+
+    >>> UNKNOWN == False
+    False
+    >>> UNKNOWN == True
+    False
+    >>> UNKNOWN == 'UNKNOWN'
+    False
+    >>> UNKNOWN == 0
+    False
+    >>> UNKNOWN == []
+    False
+    >>> UNKNOWN == object()
+    False
+    >>> UNKNOWN == UNKNOWN
+    True
+
+If UNKNOWN is used in a context where it is cast to bool, then it will
+raise an exception.  This helps prevent acidentally interpreting an
+UNKNOWN value as true or false:
+
+    >>> if UNKNOWN:
+    ...     print 'ok'
+    Traceback (most recent call last):
+    ValueError: Sentinel value <UNKNOWN> can not be used as a boolean
+
+To test an attribute whose value might be UNKNOWN, you should
+explicitly compare that value to True or False.  E.g.:
+
+    >>> x = UNKNOWN
+    >>> if x is True:
+    ...     print 'we know x is true, and not unknown'
+    >>> if x is not False:
+    ...     print 'x might be true or unknown.'
+    x might be true or unknown.
+    >>> if x in (True, UNKNOWN):
+    ...     print 'x might be true or unknown.'
+    x might be true or unknown.
+
 Simple Types
 ============
 Integers, floats, None, and complex numbers get printed using str,
