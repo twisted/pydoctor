@@ -345,7 +345,6 @@ class FieldHandler(object):
     handle_rtype = handle_returntype
 
     def add_type_info(self, desc_list, field):
-        #print desc_list, field
         if desc_list and desc_list[-1].name == field.arg:
             if desc_list[-1].type is not None:
                 self.redef(field)

@@ -193,7 +193,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 return node.args[0].value
 
         def handleSchemaField(kind):
-            #print node.expr
             descriptions = [arg for arg in node.expr.args if isinstance(arg, ast.Keyword)
                             and arg.name == 'description']
             docstring = None
