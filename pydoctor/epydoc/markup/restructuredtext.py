@@ -44,9 +44,6 @@ non-default behavior:
     L{_SplitFieldsTranslator} to divide the C{ParsedRstDocstring}'s
     document into its main body and its fields.  Special handling
     is done to account for consolidated fields.
-  - L{summary()<ParsedRstDocstring.summary>} uses a
-    L{_SummaryExtractor} to extract the first sentence from
-    the C{ParsedRstDocstring}'s document.
   - L{to_plaintext()<ParsedRstDocstring.to_plaintext>} uses
     C{document.astext()} to convert the C{ParsedRstDocstring}'s
     document to plaintext.
@@ -164,13 +161,6 @@ class ParsedRstDocstring(ParsedDocstring):
         else:
             return None, visitor.fields
 
-    def summary(self):
-        # Inherit docs
-        visitor = _SummaryExtractor(self._document)
-        try: self._document.walk(visitor)
-        except docutils.nodes.NodeFound: pass
-        return visitor.summary, bool(visitor.other_docs)
-
     def to_html(self, docstring_linker, directory=None,
                 docindex=None, context=None, **options):
         # Inherit docs
@@ -249,53 +239,6 @@ class _DocumentPseudoWriter(Writer):
 
     def translate(self):
         self.output = ''
-
-class _SummaryExtractor(NodeVisitor):
-    """
-    A docutils node visitor that extracts the first sentence from
-    the first paragraph in a document.
-    """
-    def __init__(self, document):
-        NodeVisitor.__init__(self, document)
-        self.summary = None
-        self.other_docs = None
-
-    def visit_document(self, node):
-        self.summary = None
-
-    _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?\.)(\s|$)')
-    def visit_paragraph(self, node):
-        if self.summary is not None:
-            # found a paragraph after the first one
-            self.other_docs = True
-            raise docutils.nodes.NodeFound('Found summary')
-
-        summary_pieces = []
-
-        # Extract the first sentence.
-        for child in node:
-            if isinstance(child, docutils.nodes.Text):
-                text = child.astext()
-                m = self._SUMMARY_RE.match(text)
-                if m:
-                    summary_pieces.append(docutils.nodes.Text(m.group(1)))
-                    other = text[m.end():]
-                    if other and not other.isspace():
-                        self.other_docs = True
-                    break
-            summary_pieces.append(child)
-
-        summary_doc = self.document.copy() # shallow copy
-        summary_para = node.copy() # shallow copy
-        summary_doc[:] = [summary_para]
-        summary_para[:] = summary_pieces
-        self.summary = ParsedRstDocstring(summary_doc)
-
-    def visit_field(self, node):
-        raise SkipNode
-
-    def unknown_visit(self, node):
-        'Ignore all unknown nodes'
 
 class _SplitFieldsTranslator(NodeVisitor):
     """

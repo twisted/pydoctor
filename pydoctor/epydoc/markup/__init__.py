@@ -13,7 +13,6 @@ representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
   - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>}
     and L{to_html()<ParsedDocstring.to_html>}.
-  - Summarization (L{summary()<ParsedDocstring.summary>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
 
 The L{parse()} function provides a single interface to the
@@ -188,7 +187,6 @@ class ParsedDocstring:
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
       - output generation (L{to_plaintext()} and L{to_html()}.
-      - Summarization (L{summary()}).
       - Field extraction (L{split_fields()}).
 
     The output generation methods (C{to_M{format}()}) use a
@@ -202,7 +200,6 @@ class ParsedDocstring:
     methods.  The default behavior of each method is described below:
       - C{to_I{format}}: Calls C{to_plaintext}, and uses the string it
         returns to generate verbatim output.
-      - C{summary}: Returns C{self} (i.e., the entire docstring).
       - C{split_fields}: Returns C{(self, [])} (i.e., extracts no
         fields).
 
@@ -226,17 +223,6 @@ class ParsedDocstring:
         """
         # Default behavior:
         return self, []
-
-    def summary(self):
-        """
-        @return: A pair consisting of a short summary of this docstring and a
-            boolean value indicating whether there is further documentation
-            in addition to the summary. Typically, the summary consists of the
-            first sentence of the docstring.
-        @rtype: (L{ParsedDocstring}, C{bool})
-        """
-        # Default behavior:
-        return self, False
 
     def to_html(self, docstring_linker, **options):
         """

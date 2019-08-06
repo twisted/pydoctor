@@ -231,65 +231,6 @@ Item wrap tests:
     ...         for nl2 in ('\n', '\n\n'):
     ...             checkparse(nl1+indent+LI+nl2+indent+LI, TWOLIST)
 
-Summary
-=======
-The implementation of the summarization function works as expected.
-
->>> from pydoctor.epydoc.markup import epytext
->>> def getsummary(s):
-...     p = epytext.parse_docstring(s, [])
-...     s, o = p.summary()
-...     s = s.to_plaintext(None).strip()
-...     return s, o
-
-Let's not lose anything!
-
->>> getsummary("Single line")
-('Single line', False)
-
->>> getsummary("Single line.")
-('Single line.', False)
-
->>> getsummary("""
-... Single line C{with} period.
-... """)
-('Single line with period.', False)
-
->>> getsummary("""
-... Single line C{with }period.
-...
-... @type: Also with a tag.
-... """)
-('Single line with period.', False)
-
->>> getsummary("""
-... Other lines C{with} period.
-... This is attached
-... """)
-('Other lines with period.', True)
-
->>> getsummary("""
-... Other lines C{with} period.
-...
-... This is detached
-...
-... @type: Also with a tag.
-... """)
-('Other lines with period.', True)
-
->>> getsummary("""
-... Other lines without period
-... This is attached
-... """)
-('Other lines without period This is attached', False)
-
->>> getsummary("""
-... Other lines without period
-...
-... This is detached
-... """)
-('Other lines without period...', True)
-
 Literal Braces
 ==============
 SF bug #1562530 reported some trouble with literal braces.  These

@@ -11,8 +11,6 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-import re
-
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.epydoc.util import plaintext_to_html
 
@@ -44,22 +42,3 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             lines = self._text.split('\n')
             return '\n'.join([' '*indent+l for l in lines])+'\n'
         return self._text+'\n'
-
-    _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?(?:\.(\s|$)|[\n][\t ]*[\n]))')
-
-    def summary(self):
-        m = self._SUMMARY_RE.match(self._text)
-        if m:
-            other = self._text[m.end():]
-            return (ParsedPlaintextDocstring(m.group(1), verbatim=0),
-                    other != '' and not other.isspace())
-        else:
-            parts = self._text.strip('\n').split('\n', 1)
-            if len(parts) == 1:
-                summary = parts[0]
-                other = False
-            else:
-                summary = parts[0] + '...'
-                other = True
-
-            return ParsedPlaintextDocstring(summary, verbatim=0), other
