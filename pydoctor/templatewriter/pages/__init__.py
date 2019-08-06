@@ -40,9 +40,9 @@ def signature(argspec):
     things = []
     for regarg in regargs:
         if isinstance(regarg, list):
-            things.append(_strtup(regarg.id))
+            things.append(_strtup(regarg))
         else:
-            things.append(regarg.id)
+            things.append(regarg)
     if varargname:
         things.append('*%s' % varargname)
 
