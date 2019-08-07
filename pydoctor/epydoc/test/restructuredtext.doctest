@@ -45,6 +45,16 @@ newfield "parameters": Parameters
 <BLANKLINE>
 parameters: a b c
 
+>>> parse_and_print(
+... """A test function
+...
+... :exceptions: - `KeyError`: if the key is not found
+...              - `ValueError`: if the value is bad
+... """)
+A test function
+except "KeyError": if the key is not found
+except "ValueError": if the value is bad
+
 Python code
 ===========
 reStructuredText markup defines a ``python`` directive to represent a block

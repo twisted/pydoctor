@@ -355,11 +355,15 @@ class _SplitFieldsTranslator(NodeVisitor):
             # Remove the separating ":", if present
             if (len(fbody[0]) > 0 and
                 isinstance(fbody[0][0], docutils.nodes.Text)):
-                child = fbody[0][0]
-                if child.data[:1] in ':-':
-                    child.data = child.data[1:].lstrip()
-                elif child.data[:2] in (' -', ' :'):
-                    child.data = child.data[2:].lstrip()
+                text = fbody[0][0].astext()
+                if text[:1] in ':-':
+                    fbody[0][0] = docutils.nodes.Text(
+                        text[1:].lstrip(), fbody[0][0].rawsource
+                        )
+                elif text[:2] in (' -', ' :'):
+                    fbody[0][0] = docutils.nodes.Text(
+                        text[2:].lstrip(), fbody[0][0].rawsource
+                        )
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody)
