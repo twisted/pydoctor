@@ -11,8 +11,7 @@ parser for a single markup language.  These parsers convert an
 object's docstring to a L{ParsedDocstring}, a standard intermediate
 representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
-  - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>}
-    and L{to_html()<ParsedDocstring.to_html>}.
+  - output generation (L{to_html()<ParsedDocstring.to_html>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
 
 The L{parse()} function provides a single interface to the
@@ -64,7 +63,7 @@ class ParsedDocstring:
     can be used to generate output.  Parsed docstrings are produced by
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
-      - output generation (L{to_plaintext()} and L{to_html()}.
+      - output generation (L{to_html()}).
       - Field extraction (L{split_fields()}).
 
     The output generation methods (C{to_M{format}()}) use a
@@ -103,20 +102,6 @@ class ParsedDocstring:
         @rtype: C{string}
         """
         raise NotImplementedError('ParsedDocstring.to_html()')
-
-    def to_plaintext(self, docstring_linker, **options):
-        """
-        Translate this docstring to plaintext.
-
-        @param docstring_linker: A plaintext translator for
-            crossreference links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
-        @param options: Any extra options for the output.  Unknown
-            options are ignored.
-        @return: A plaintext fragment that encodes this docstring.
-        @rtype: C{string}
-        """
-        raise NotImplementedError('ParsedDocstring.to_plaintext()')
 
 ##################################################
 ## Fields

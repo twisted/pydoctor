@@ -12,9 +12,9 @@ Regression Testing for restructuredtext
 ...     if body is None:
 ...         print('EMPTY BODY')
 ...     else:
-...         print(body.to_plaintext(None))
+...         print(body.to_html(None))
 ...     for field in fields:
-...         body = field.body().to_plaintext(None)
+...         body = field.body().to_html(None)
 ...         arg = field.arg()
 ...         if arg is None:
 ...             print('%s: %s' % (field.tag(), body))
@@ -41,7 +41,10 @@ parameter "i": integer
 ... """)
 ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contain a bulleted list or definition list.
 A test function
-newfield "parameters": Parameters
+newfield "parameters": <pre class="literalblock">
+Parameters
+<BLANKLINE>
+</pre>
 <BLANKLINE>
 parameters: a b c
 

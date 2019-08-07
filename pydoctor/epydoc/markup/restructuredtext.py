@@ -44,9 +44,6 @@ non-default behavior:
     L{_SplitFieldsTranslator} to divide the C{ParsedRstDocstring}'s
     document into its main body and its fields.  Special handling
     is done to account for consolidated fields.
-  - L{to_plaintext()<ParsedRstDocstring.to_plaintext>} uses
-    C{document.astext()} to convert the C{ParsedRstDocstring}'s
-    document to plaintext.
 
 @var CONSOLIDATED_FIELDS: A dictionary encoding the set of
 'consolidated fields' that can be used.  Each consolidated field is
@@ -167,10 +164,6 @@ class ParsedRstDocstring(ParsedDocstring):
                                         directory, docindex, context)
         self._document.walkabout(visitor)
         return ''.join(visitor.body)
-
-    def to_plaintext(self, docstring_linker, **options):
-        # This is should be replaced by something better:
-        return self._document.astext()
 
     def __repr__(self): return '<ParsedRstDocstring: ...>'
 
