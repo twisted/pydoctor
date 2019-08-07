@@ -244,7 +244,7 @@ def parse(str, errors = None):
         encountered while parsing.
     """
     # Initialize errors list.
-    if errors == None:
+    if errors is None:
         errors = []
         raise_on_error = True
     else:
@@ -336,7 +336,7 @@ def _pop_completed_blocks(token, stack, indent_stack):
     item (i.e., if the next token is a bullet).
     """
     indent = token.indent
-    if indent != None:
+    if indent is not None:
         while (len(stack) > 2):
             pop = False
 
@@ -363,7 +363,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
     # when appropriate.
-    if indent_stack[-1] == None:
+    if indent_stack[-1] is None:
         indent_stack[-1] = para_token.indent
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
@@ -377,7 +377,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
 
 def _add_section(doc, heading_token, stack, indent_stack, errors):
     """Add a new section to the DOM tree, with the given heading."""
-    if indent_stack[-1] == None:
+    if indent_stack[-1] is None:
         indent_stack[-1] = heading_token.indent
     elif indent_stack[-1] != heading_token.indent:
         estr = "Improper heading indentation."
@@ -797,7 +797,7 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
 
         # If this is the second line, set the paragraph indentation, or
         # end the token, as appropriate.
-        if para_indent == None: para_indent = indent
+        if para_indent is None: para_indent = indent
 
         # A change in indentation ends the token
         if indent != para_indent: break
@@ -942,7 +942,7 @@ def _tokenize(str, errors):
             # blocks starting with a bullet are LI start tokens.
             linenum = _tokenize_listart(lines, linenum, indent,
                                         tokens, errors)
-            if tokens[-1].indent != None:
+            if tokens[-1].indent is not None:
                 indent = tokens[-1].indent
         else:
             # Check for mal-formatted field items.
@@ -1008,7 +1008,7 @@ def _colorize(doc, token, errors, tagName='para'):
     start = 0
     while 1:
         match = _BRACE_RE.search(str, start)
-        if match == None: break
+        if match is None: break
         end = match.start()
 
         # Open braces start new colorizing elements.  When preceeded
