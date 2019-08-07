@@ -13,12 +13,10 @@ pydoctor uses parts of the epydoc source as a library.
 Package Organization
 ====================
 
-The `apidoc` module defines the basic data types used to record
-information about Python objects.  Docstring markup parsing is
-handled by the `markup` package.  See the submodule list for more
-information about the submodules and subpackages.
+Docstring markup parsing is handled by the `markup` package.
+See the submodule list for more information about the submodules
+and subpackages.
 
-:group Basic Data Types: apidoc
 :group Docstring Processing: markup
 :group Miscellaneous: log, util, test
 

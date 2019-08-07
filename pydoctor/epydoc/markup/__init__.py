@@ -13,9 +13,7 @@ representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
   - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>}
     and L{to_html()<ParsedDocstring.to_html>}.
-  - Summarization (L{summary()<ParsedDocstring.summary>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
-  - Index term extraction (L{index_terms()<ParsedDocstring.index_terms>}.
 
 The L{parse()} function provides a single interface to the
 C{pydoctor.epydoc.markup} package: it takes a docstring and the name of
@@ -189,9 +187,7 @@ class ParsedDocstring:
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
       - output generation (L{to_plaintext()} and L{to_html()}.
-      - Summarization (L{summary()}).
       - Field extraction (L{split_fields()}).
-      - Index term extraction (L{index_terms()}.
 
     The output generation methods (C{to_M{format}()}) use a
     L{DocstringLinker} to link the docstring output with the rest
@@ -204,10 +200,8 @@ class ParsedDocstring:
     methods.  The default behavior of each method is described below:
       - C{to_I{format}}: Calls C{to_plaintext}, and uses the string it
         returns to generate verbatim output.
-      - C{summary}: Returns C{self} (i.e., the entire docstring).
       - C{split_fields}: Returns C{(self, [])} (i.e., extracts no
         fields).
-      - C{index_terms}: Returns C{[]} (i.e., extracts no index terms).
 
     If and when epydoc adds more output formats, new C{to_I{format}}
     methods will be added to this base class; but they will always
@@ -229,17 +223,6 @@ class ParsedDocstring:
         """
         # Default behavior:
         return self, []
-
-    def summary(self):
-        """
-        @return: A pair consisting of a short summary of this docstring and a
-            boolean value indicating whether there is further documentation
-            in addition to the summary. Typically, the summary consists of the
-            first sentence of the docstring.
-        @rtype: (L{ParsedDocstring}, C{bool})
-        """
-        # Default behavior:
-        return self, False
 
     def to_html(self, docstring_linker, **options):
         """
@@ -270,16 +253,6 @@ class ParsedDocstring:
         @rtype: C{string}
         """
         raise NotImplementedError, 'ParsedDocstring.to_plaintext()'
-
-    def index_terms(self):
-        """
-        @return: The list of index terms that are defined in this
-            docstring.  Each of these items will be added to the index
-            page of the documentation.
-        @rtype: C{list} of C{ParsedDocstring}
-        """
-        # Default behavior:
-        return []
 
 ##################################################
 ## Fields
@@ -387,10 +360,6 @@ class ParseError(Exception):
     @ivar _linenum: The line on which the error occured within the
         docstring.  The linenum of the first line is 0.
     @type _linenum: C{int}
-    @ivar _offset: The line number where the docstring begins.  This
-        offset is added to C{_linenum} when displaying the line number
-        of the error.  Default value: 1.
-    @type _offset: C{int}
     @ivar _descr: A description of the error.
     @type _descr: C{string}
     @ivar _fatal: True if this is a fatal error.
@@ -409,7 +378,6 @@ class ParseError(Exception):
         self._descr = descr
         self._linenum = linenum
         self._fatal = is_fatal
-        self._offset = 1
 
     def is_fatal(self):
         """
@@ -428,19 +396,7 @@ class ParseError(Exception):
         @rtype: C{int} or C{None}
         """
         if self._linenum is None: return None
-        else: return self._offset + self._linenum
-
-    def set_linenum_offset(self, offset):
-        """
-        Set the line number offset for this error.  This offset is the
-        line number where the docstring begins.  This offset is added
-        to C{_linenum} when displaying the line number of the error.
-
-        @param offset: The new line number offset.
-        @type offset: C{int}
-        @rtype: C{None}
-        """
-        self._offset = offset
+        else: return self._linenum + 1
 
     def descr(self):
         return self._descr
@@ -455,7 +411,7 @@ class ParseError(Exception):
         @rtype: C{string}
         """
         if self._linenum is not None:
-            return 'Line %s: %s' % (self._linenum+self._offset, self.descr())
+            return 'Line %d: %s' % (self._linenum + 1, self.descr())
         else:
             return self.descr()
 
@@ -469,9 +425,9 @@ class ParseError(Exception):
         @rtype: C{string}
         """
         if self._linenum is None:
-            return '<ParseError on line %d' % self._offset
+            return '<ParseError on unknown line>'
         else:
-            return '<ParseError on line %d>' % (self._linenum+self._offset)
+            return '<ParseError on line %d>' % (self._linenum + 1)
 
     def __cmp__(self, other):
         """
@@ -485,5 +441,4 @@ class ParseError(Exception):
         @rtype: C{int}
         """
         if not isinstance(other, ParseError): return -1000
-        return cmp(self._linenum+self._offset,
-                   other._linenum+other._offset)
+        return cmp(self._linenum, other._linenum)

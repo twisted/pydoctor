@@ -1594,11 +1594,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
             self._plaintext = to_plaintext(self._tree)
         return self._plaintext
 
-    def _index_term_key(self, tree):
-        str = to_plaintext(tree)
-        str = re.sub(r'\s\s+', '-', str)
-        return "index-"+re.sub("[^a-zA-Z0-9]", "_", str)
-
     def _to_html(self, tree, linker, directory, docindex, context,
                  indent=0, seclevel=0):
         if isinstance(tree, basestring):
@@ -1638,8 +1633,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'indexed':
             term = Element('epytext', *tree.children, **tree.attribs)
             return linker.translate_indexterm(ParsedEpytextDocstring(term))
-            #term_key = self._index_term_key(tree)
-            #return linker.translate_indexterm(childstr, term_key)
         elif tree.tag == 'bold':
             return '<b>%s</b>' % childstr
         elif tree.tag == 'ulist':
@@ -1755,22 +1748,3 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return ParsedEpytextDocstring(tree), fields
         else:
             return None, fields
-
-
-    def index_terms(self):
-        if self._terms is None:
-            self._terms = []
-            self._index_terms(self._tree, self._terms)
-        return self._terms
-
-    def _index_terms(self, tree, terms):
-        if tree is None or isinstance(tree, basestring):
-            return
-
-        if tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            terms.append(ParsedEpytextDocstring(term))
-
-        # Look for index items in child nodes.
-        for child in tree.children:
-            self._index_terms(child, terms)
