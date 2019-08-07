@@ -1348,60 +1348,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
         else:
             raise ValueError('Unknown epytext DOM element %r' % tree.tag)
 
-    _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?\.)(\s|$)')
-
-    def summary(self):
-        if self._tree is None: return self, False
-        tree = self._tree
-        doc = Element('epytext')
-
-        # Find the first paragraph.
-        variables = tree.children
-        while (len(variables) > 0) and (variables[0].tag != 'para'):
-            if variables[0].tag in ('section', 'ulist', 'olist', 'li'):
-                variables = variables[0].children
-            else:
-                variables = variables[1:]
-
-        # Special case: if the docstring contains a single literal block,
-        # then try extracting the summary from it.
-        if (len(variables) == 0 and len(tree.children) == 1 and
-            tree.children[0].tag == 'literalblock'):
-            str = re.split(r'\n\s*(\n|$).*',
-                           tree.children[0].children[0], 1)[0]
-            variables = [Element('para')]
-            variables[0].children.append(str)
-
-        # If we didn't find a paragraph, return an empty epytext.
-        if len(variables) == 0: return ParsedEpytextDocstring(doc), False
-
-        # Is there anything else, excluding tags, after the first variable?
-        long_docs = False
-        for var in variables[1:]:
-            if isinstance(var, Element) and var.tag == 'fieldlist':
-                continue
-            long_docs = True
-            break
-
-        # Extract the first sentence.
-        parachildren = variables[0].children
-        para = Element('para', inline=True)
-        doc.children.append(para)
-        for parachild in parachildren:
-            if isinstance(parachild, six.string_types):
-                m = self._SUMMARY_RE.match(parachild)
-                if m:
-                    para.children.append(m.group(1))
-                    long_docs |= parachild is not parachildren[-1]
-                    if not long_docs:
-                        other = parachild[m.end():]
-                        if other and not other.isspace():
-                            long_docs = True
-                    return ParsedEpytextDocstring(doc), long_docs
-            para.children.append(parachild)
-
-        return ParsedEpytextDocstring(doc), long_docs
-
     def split_fields(self, errors=None):
         if self._tree is None: return (self, ())
         tree = Element(self._tree.tag, *self._tree.children,
