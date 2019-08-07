@@ -251,7 +251,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields = []
-        self._newfields = {}
+        self._newfields = set()
 
     def visit_document(self, node):
         self.fields = []
@@ -285,7 +285,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                             newfield = Field('newfield', tagname.lower(),
                                              ParsedPlaintextDocstring(tagname))
                             self.fields.append(newfield)
-                            self._newfields[tagname.lower()] = 1
+                            self._newfields.add(tagname.lower())
 
         self._add_field(tagname, arg, fbody)
 

@@ -195,9 +195,8 @@ SYMBOLS = [
     'infinity', 'integral', 'product',
     '>=', '<=',
     ]
-# Convert to a dictionary, for quick lookup
-_SYMBOLS = {}
-for symbol in SYMBOLS: _SYMBOLS[symbol] = 1
+# Convert to a set, for quick lookup
+_SYMBOLS = set(SYMBOLS)
 
 # Add symbols to the docstring.
 symblist = '      '
