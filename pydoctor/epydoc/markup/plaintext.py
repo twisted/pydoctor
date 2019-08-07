@@ -30,11 +30,15 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         if text is None: raise ValueError('Bad text value (expected a str)')
         self._text = text
 
+    def split_fields(self, errors=None):
+        return self, []
+
     def to_html(self, docstring_linker, **options):
+        plaintext = plaintext_to_html(self.to_plaintext(docstring_linker))
         if options.get('verbatim', self._verbatim) == 0:
-            return plaintext_to_html(self.to_plaintext(docstring_linker))
+            return plaintext
         else:
-            return ParsedDocstring.to_html(self, docstring_linker, **options)
+            return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
 
     def to_plaintext(self, docstring_linker, **options):
         if 'indent' in options:

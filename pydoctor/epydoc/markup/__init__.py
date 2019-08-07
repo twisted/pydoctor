@@ -45,8 +45,6 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from pydoctor.epydoc.util import plaintext_to_html
-
 ##################################################
 ## Contents
 ##################################################
@@ -73,20 +71,9 @@ class ParsedDocstring:
     L{DocstringLinker} to link the docstring output with the rest
     of the documentation that epydoc generates.
 
-    Subclassing
-    ===========
-    The only method that a subclass is I{required} to implement is
-    L{to_plaintext()}; but it is often useful to override the other
-    methods.  The default behavior of each method is described below:
-      - C{to_I{format}}: Calls C{to_plaintext}, and uses the string it
-        returns to generate verbatim output.
-      - C{split_fields}: Returns C{(self, [])} (i.e., extracts no
-        fields).
-
-    If and when epydoc adds more output formats, new C{to_I{format}}
-    methods will be added to this base class; but they will always
-    be given a default implementation.
+    Subclasses must implement all methods of this class.
     """
+
     def split_fields(self, errors=None):
         """
         Split this docstring into its body and its fields.
@@ -101,8 +88,7 @@ class ParsedDocstring:
             errors will be ignored.
         @type errors: C{list} of L{ParseError}
         """
-        # Default behavior:
-        return self, []
+        raise NotImplementedError('ParsedDocstring.split_fields()')
 
     def to_html(self, docstring_linker, **options):
         """
@@ -116,9 +102,7 @@ class ParsedDocstring:
         @return: An HTML fragment that encodes this docstring.
         @rtype: C{string}
         """
-        # Default behavior:
-        plaintext = plaintext_to_html(self.to_plaintext(docstring_linker))
-        return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
+        raise NotImplementedError('ParsedDocstring.to_html()')
 
     def to_plaintext(self, docstring_linker, **options):
         """
