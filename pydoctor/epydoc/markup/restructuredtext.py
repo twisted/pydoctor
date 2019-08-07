@@ -76,7 +76,8 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, parse
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html, HTMLDoctestColorizer
 
@@ -282,7 +283,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
                             newfield = Field('newfield', tagname.lower(),
-                                             parse(tagname, 'plaintext'))
+                                             ParsedPlaintextDocstring(tagname))
                             self.fields.append(newfield)
                             self._newfields[tagname.lower()] = 1
 

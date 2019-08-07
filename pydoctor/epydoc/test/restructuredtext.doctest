@@ -3,6 +3,47 @@ Regression Testing for restructuredtext
 :RequireModule: docutils
 
 >>> from pydoctor.epydoc.markup import restructuredtext
+>>> def parse_and_print(s):
+...     errors = []
+...     parsed = restructuredtext.parse_docstring(s, errors)
+...     body, fields = parsed.split_fields(errors)
+...     for error in errors:
+...         print('ERROR: %s' % error)
+...     if body is None:
+...         print('EMPTY BODY')
+...     else:
+...         print(body.to_plaintext(None))
+...     for field in fields:
+...         body = field.body().to_plaintext(None)
+...         arg = field.arg()
+...         if arg is None:
+...             print('%s: %s' % (field.tag(), body))
+...         else:
+...             print('%s "%s": %s' % (field.tag(), arg, body))
+
+Fields
+======
+
+>>> parse_and_print(
+... """A test module
+...
+... :Version: 1.0
+... :Parameter i: integer
+... """)
+A test module
+version: 1.0
+parameter "i": integer
+
+>>> parse_and_print(
+... """A test function
+...
+... :Parameters: a b c
+... """)
+ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contain a bulleted list or definition list.
+A test function
+newfield "parameters": Parameters
+<BLANKLINE>
+parameters: a b c
 
 Python code
 ===========
