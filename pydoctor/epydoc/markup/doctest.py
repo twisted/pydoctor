@@ -22,7 +22,7 @@ import re
 from six.moves import builtins
 from pydoctor.epydoc.util import plaintext_to_html
 
-__all__ = ['doctest_to_html', 'DoctestColorizer', 'HTMLDoctestColorizer']
+__all__ = ['doctest_to_html', 'HTMLDoctestColorizer']
 
 def doctest_to_html(s):
     """
@@ -44,28 +44,21 @@ def doctest_to_html(s):
     """
     return HTMLDoctestColorizer().colorize_doctest(s)
 
-class DoctestColorizer:
+class HTMLDoctestColorizer:
     """
-    An abstract base class for performing syntax highlighting on
-    doctest blocks and other bits of Python code.  Subclasses should
-    provide definitions for:
-
-      - The L{markup()} method, which takes a substring and a tag, and
-        returns a colorized version of the substring.
-      - The L{PREFIX} and L{SUFFIX} variables, which will be added
-        to the beginning and end of the strings returned by
-        L{colorize_codeblock} and L{colorize_doctest}.
+    A class for performing syntax highlighting on doctest blocks
+    and other bits of Python code.  Generates HTML output.
     """
 
     #: A string that is added to the beginning of the strings
     #: returned by L{colorize_codeblock} and L{colorize_doctest}.
     #: Typically, this string begins a preformatted area.
-    PREFIX = None
+    PREFIX = '<pre class="py-doctest">\n'
 
     #: A string that is added to the end of the strings
     #: returned by L{colorize_codeblock} and L{colorize_doctest}.
     #: Typically, this string ends a preformatted area.
-    SUFFIX = None
+    SUFFIX = '</pre>\n'
 
     #: The string used to divide lines
     NEWLINE = '\n'
@@ -257,13 +250,6 @@ class DoctestColorizer:
             a C{def} or C{class} statement.
           - C{other} -- anything else (does *not* include output.)
         """
-        raise AssertionError("Abstract method")
-
-class HTMLDoctestColorizer(DoctestColorizer):
-    """A subclass of DoctestColorizer that generates HTML output."""
-    PREFIX = '<pre class="py-doctest">\n'
-    SUFFIX = '</pre>\n'
-    def markup(self, s, tag):
         if tag == 'other':
             return plaintext_to_html(s)
         else:
