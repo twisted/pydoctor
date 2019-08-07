@@ -32,6 +32,6 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     def split_fields(self, errors=None):
         return self, []
 
-    def to_html(self, docstring_linker, **options):
+    def to_html(self, docstring_linker):
         plaintext = plaintext_to_html(self._text + '\n')
         return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext

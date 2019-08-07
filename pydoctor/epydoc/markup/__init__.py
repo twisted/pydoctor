@@ -89,15 +89,13 @@ class ParsedDocstring:
         """
         raise NotImplementedError('ParsedDocstring.split_fields()')
 
-    def to_html(self, docstring_linker, **options):
+    def to_html(self, docstring_linker):
         """
         Translate this docstring to HTML.
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @type docstring_linker: L{DocstringLinker}
-        @param options: Any extra options for the output.  Unknown
-            options are ignored.
         @return: An HTML fragment that encodes this docstring.
         @rtype: C{string}
         """

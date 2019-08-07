@@ -1488,12 +1488,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
         return str(self._tree)
 
     def to_html(self, docstring_linker, directory=None, docindex=None,
-                context=None, **options):
+                context=None):
         if self._html is not None: return self._html
         if self._tree is None: return ''
-        indent = options.get('indent', 0)
         self._html = self._to_html(self._tree, docstring_linker, directory,
-                                   docindex, context, indent)
+                                   docindex, context)
         return self._html
 
     def _to_html(self, tree, linker, directory, docindex, context,

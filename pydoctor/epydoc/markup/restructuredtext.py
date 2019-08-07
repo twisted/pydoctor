@@ -158,7 +158,7 @@ class ParsedRstDocstring(ParsedDocstring):
             return None, visitor.fields
 
     def to_html(self, docstring_linker, directory=None,
-                docindex=None, context=None, **options):
+                docindex=None, context=None):
         # Inherit docs
         visitor = _EpydocHTMLTranslator(self._document, docstring_linker,
                                         directory, docindex, context)
