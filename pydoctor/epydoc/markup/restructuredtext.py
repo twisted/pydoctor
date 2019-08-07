@@ -102,7 +102,7 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring, errors, **options):
+def parse_docstring(docstring, errors):
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -112,8 +112,6 @@ def parse_docstring(docstring, errors, **options):
     @param errors: A list where any errors generated during parsing
         will be stored.
     @type errors: C{list} of L{ParseError}
-    @param options: Extra options.  Unknown options are ignored.
-        Currently, no extra options are defined.
     @rtype: L{ParsedDocstring}
     """
     writer = _DocumentPseudoWriter()

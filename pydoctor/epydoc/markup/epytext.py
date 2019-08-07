@@ -1502,7 +1502,7 @@ def parse_as_para(str):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring, errors, **options):
+def parse_docstring(docstring, errors):
     """
     Parse the given docstring, which is formatted using epytext; and
     return a C{ParsedDocstring} representation of its contents.
@@ -1511,11 +1511,9 @@ def parse_docstring(docstring, errors, **options):
     @param errors: A list where any errors generated during parsing
         will be stored.
     @type errors: C{list} of L{ParseError}
-    @param options: Extra options.  Unknown options are ignored.
-        Currently, no extra options are defined.
     @rtype: L{ParsedDocstring}
     """
-    return ParsedEpytextDocstring(parse(docstring, errors), **options)
+    return ParsedEpytextDocstring(parse(docstring, errors))
 
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_HTML = {
@@ -1563,15 +1561,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
         '<=': '&le;', '>=': '&ge;',
         }
 
-    def __init__(self, dom_tree, **options):
+    def __init__(self, dom_tree):
         self._tree = dom_tree
         # Caching:
         self._html = self._plaintext = None
         self._terms = None
-        # inline option -- mark top-level children as inline.
-        if options.get('inline') and self._tree is not None:
-            for elt in self._tree.children:
-                elt.attribs['inline'] = True
 
     def __str__(self):
         return str(self._tree)

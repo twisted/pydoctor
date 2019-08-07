@@ -14,7 +14,7 @@ __docformat__ = 'epytext en'
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.epydoc.util import plaintext_to_html
 
-def parse_docstring(docstring, errors, **options):
+def parse_docstring(docstring, errors):
     """
     @return: A pair C{(M{d}, M{e})}, where C{M{d}} is a
         C{ParsedDocstring} that encodes the contents of the given
@@ -22,11 +22,10 @@ def parse_docstring(docstring, errors, **options):
         generated while parsing the docstring.
     @rtype: C{L{ParsedPlaintextDocstring}, C{list} of L{ParseError}}
     """
-    return ParsedPlaintextDocstring(docstring, **options)
+    return ParsedPlaintextDocstring(docstring)
 
 class ParsedPlaintextDocstring(ParsedDocstring):
-    def __init__(self, text, **options):
-        self._verbatim = options.get('verbatim', 1)
+    def __init__(self, text):
         if text is None: raise ValueError('Bad text value (expected a str)')
         self._text = text
 
@@ -35,10 +34,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
 
     def to_html(self, docstring_linker, **options):
         plaintext = plaintext_to_html(self.to_plaintext(docstring_linker))
-        if options.get('verbatim', self._verbatim) == 0:
-            return plaintext
-        else:
-            return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
+        return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
 
     def to_plaintext(self, docstring_linker, **options):
         if 'indent' in options:
