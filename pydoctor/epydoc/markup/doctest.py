@@ -13,9 +13,13 @@ C{colorize_doctest()}, which could be used to do syntax highlighting
 on doctest blocks with other output formats.
 (C{doctest_to_html()} is defined using C{colorize_doctest()}.)
 """
+
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 import re
+from six.moves import builtins
 from pydoctor.epydoc.util import plaintext_to_html
 
 __all__ = ['doctest_to_html', 'DoctestColorizer', 'HTMLDoctestColorizer']
@@ -76,7 +80,7 @@ class DoctestColorizer:
                  "def       finally   in        print     as").split()
 
     #: A list of all Python builtins.
-    _BUILTINS = [_BI for _BI in dir(__builtins__)
+    _BUILTINS = [_BI for _BI in dir(builtins)
                  if not _BI.startswith('__')]
 
     #: A regexp group that matches keywords.
@@ -191,7 +195,7 @@ class DoctestColorizer:
 
     def subfunc(self, match):
         other, text = match.group(1, 2)
-        #print 'M %20r %20r' % (other, text) # <- for debugging
+        #print('M %20r %20r' % (other, text)) # <- for debugging
         if other:
             other = self.NEWLINE.join([self.markup(line, 'other')
                                        for line in other.split('\n')])

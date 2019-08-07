@@ -273,7 +273,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                     try:
                         self.handle_consolidated_field(fbody, entry_tag)
                         return
-                    except ValueError, e:
+                    except ValueError as e:
                         estr = 'Unable to split consolidated field '
                         estr += '"%s" - %s' % (tagname, e)
                         self._errors.append(ParseError(estr, node.line,

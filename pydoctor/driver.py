@@ -228,7 +228,7 @@ def parse_args(args):
     return options, args
 
 def main(args):
-    import cPickle
+    from six.moves import cPickle
     options, args = parse_args(args)
 
     exitcode = 0
@@ -430,7 +430,7 @@ def main(args):
     except:
         if options.pdb:
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            pdb.post_mortem(sys.exc_info()[2])
         raise
     return exitcode
 
