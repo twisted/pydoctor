@@ -1202,43 +1202,6 @@ class ColorizingError(ParseError):
                      + '...')
         return ('%s\n\n%s%s\n%s^' % (self._descr, left, right, ' '*len(left)))
 
-##################################################
-## Convenience parsers
-##################################################
-
-def parse_as_literal(str):
-    """
-    Return a DOM document matching the epytext DTD, containing a
-    single literal block.  That literal block will include the
-    contents of the given string.  This method is typically used as a
-    fall-back when the parser fails.
-
-    @param str: The string which should be enclosed in a literal
-        block.
-    @type str: C{string}
-
-    @return: A DOM document containing C{str} in a single literal
-        block.
-    @rtype: C{Element}
-    """
-    return Element('epytext', Element('literalblock', str))
-
-def parse_as_para(str):
-    """
-    Return a DOM document matching the epytext DTD, containing a
-    single paragraph.  That paragraph will include the contents of the
-    given string.  This can be used to wrap some forms of
-    automatically generated information (such as type names) in
-    paragraphs.
-
-    @param str: The string which should be enclosed in a paragraph.
-    @type str: C{string}
-
-    @return: A DOM document containing C{str} in a single paragraph.
-    @rtype: C{Element}
-    """
-    return Element('epytext', Element('para', str))
-
 #################################################################
 ##                    SUPPORT FOR EPYDOC
 #################################################################
