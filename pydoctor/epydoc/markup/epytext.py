@@ -1483,7 +1483,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._tree = dom_tree
         # Caching:
         self._html = None
-        self._terms = None
 
     def __str__(self):
         return str(self._tree)
