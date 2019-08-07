@@ -318,7 +318,7 @@ def parse(str, errors = None):
                 errors.append(StructuringError(estr, token.startline))
 
     # If there was an error, then signal it!
-    if len([e for e in errors if e.is_fatal()]) > 0:
+    if any(e.is_fatal() for e in errors):
         if raise_on_error:
             raise errors[0]
         else:

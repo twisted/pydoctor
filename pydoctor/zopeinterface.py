@@ -258,8 +258,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         cls = self.builder.current.contents[node.name]
         if 'zope.interface.interface.InterfaceClass' in cls.bases:
             cls.isinterfaceclass = True
-        if len([b for b in cls.bases
-                if namesInterface(self.system, b)]) > 0:
+        if any(namesInterface(self.system, b) for b in cls.bases):
             cls.isinterface = True
             cls.kind = "Interface"
             cls.implementedby_directly = []
