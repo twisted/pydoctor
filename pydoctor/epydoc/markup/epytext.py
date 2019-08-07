@@ -246,9 +246,9 @@ def parse(str, errors = None):
     # Initialize errors list.
     if errors == None:
         errors = []
-        raise_on_error = 1
+        raise_on_error = True
     else:
-        raise_on_error = 0
+        raise_on_error = False
 
     # Preprocess the string.
     str = re.sub('\015\012', '\012', str)
@@ -258,7 +258,7 @@ def parse(str, errors = None):
     tokens = _tokenize(str, errors)
 
     # Have we encountered a field yet?
-    encountered_field = 0
+    encountered_field = False
 
     # Create an document to hold the epytext.
     doc = Element('epytext')
@@ -310,8 +310,8 @@ def parse(str, errors = None):
 
         # Check if the DOM element we just added was a field..
         if stack[-1].tag == 'field':
-            encountered_field = 1
-        elif encountered_field == 1:
+            encountered_field = True
+        elif encountered_field:
             if len(stack) <= 3:
                 estr = ("Fields must be the final elements in an "+
                         "epytext string.")
@@ -338,24 +338,24 @@ def _pop_completed_blocks(token, stack, indent_stack):
     indent = token.indent
     if indent != None:
         while (len(stack) > 2):
-            pop = 0
+            pop = False
 
             # Dedent past a block
-            if indent_stack[-1]!=None and indent<indent_stack[-1]: pop=1
-            elif indent_stack[-1]==None and indent<indent_stack[-2]: pop=1
+            if indent_stack[-1]!=None and indent<indent_stack[-1]: pop = True
+            elif indent_stack[-1]==None and indent<indent_stack[-2]: pop = True
 
             # Dedent to a list item, if it is follwed by another list
             # item with the same indentation.
             elif (token.tag == 'bullet' and indent==indent_stack[-2] and
-                  stack[-1].tag in ('li', 'field')): pop=1
+                  stack[-1].tag in ('li', 'field')): pop = True
 
             # End of a list (no more list items available)
             elif (stack[-1].tag in ('ulist', 'olist') and
                   (token.tag != 'bullet' or token.contents[-1] == ':')):
-                pop=1
+                pop = True
 
             # Pop the block, if it's complete.  Otherwise, we're done.
-            if pop == 0: return
+            if not pop: return
             stack.pop()
             indent_stack.pop()
 
@@ -425,16 +425,16 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         raise AssertionError('Bad Bullet: %r' % bullet_token.contents)
 
     # Is this a new list?
-    newlist = 0
+    newlist = False
     if stack[-1].tag != list_type:
-        newlist = 1
+        newlist = True
     elif list_type == 'olist' and stack[-1].tag == 'olist':
         old_listitem = stack[-1].children[-1]
         old_bullet = old_listitem.attribs.get("bullet").split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
         if (new_bullet[:-1] != old_bullet[:-1] or
             int(new_bullet[-1]) != int(old_bullet[-1])+1):
-            newlist = 1
+            newlist = True
 
     # Create the new list.
     if newlist:
@@ -784,7 +784,7 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
 
         # "::" markers end paragraphs.
         if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = 1
+        if line.rstrip()[-2:] == '::': doublecolon = True
 
         # A blank line ends the token
         if indent == len(line): break
@@ -847,7 +847,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     @rtype: C{int}
     """
     linenum = start + 1
-    doublecolon = 0
+    doublecolon = False
     while linenum < len(lines):
         # Find the indentation of this line.
         line = lines[linenum]
@@ -855,7 +855,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
 
         # "::" markers end paragraphs.
         if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = 1
+        if line.rstrip()[-2:] == '::': doublecolon = True
 
         # Blank lines end paragraphs
         if indent == len(line): break
@@ -869,7 +869,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
         # Check for mal-formatted field items.
         if line[indent] == '@':
             estr = "Possible mal-formatted field item."
-            errors.append(TokenizationError(estr, linenum, is_fatal=0))
+            errors.append(TokenizationError(estr, linenum, is_fatal=False))
 
         # Go on to the next line.
         linenum += 1
@@ -880,12 +880,12 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     if ((len(contents) < 2) or
         (contents[1][0] not in _HEADING_CHARS) or
         (abs(len(contents[0])-len(contents[1])) > 5)):
-        looks_like_heading = 0
+        looks_like_heading = False
     else:
-        looks_like_heading = 1
+        looks_like_heading = True
         for char in contents[1]:
             if char != contents[1][0]:
-                looks_like_heading = 0
+                looks_like_heading = False
                 break
 
     if looks_like_heading:
@@ -893,7 +893,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
             estr = ("Possible heading typo: the number of "+
                     "underline characters must match the "+
                     "number of heading characters.")
-            errors.append(TokenizationError(estr, start, is_fatal=0))
+            errors.append(TokenizationError(estr, start, is_fatal=False))
         else:
             level = _HEADING_CHARS.index(contents[1][0])
             tokens.append(Token(Token.HEADING, start,
@@ -948,7 +948,7 @@ def _tokenize(str, errors):
             # Check for mal-formatted field items.
             if line[indent] == '@':
                 estr = "Possible mal-formatted field item."
-                errors.append(TokenizationError(estr, linenum, is_fatal=0))
+                errors.append(TokenizationError(estr, linenum, is_fatal=False))
 
             # anything else is either a paragraph or a heading.
             linenum = _tokenize_para(lines, linenum, indent, tokens, errors)
@@ -1432,7 +1432,7 @@ class ColorizingError(ParseError):
     """
     An error generated while colorizing a paragraph.
     """
-    def __init__(self, descr, token, charnum, is_fatal=1):
+    def __init__(self, descr, token, charnum, is_fatal=True):
         """
         Construct a new colorizing exception.
 

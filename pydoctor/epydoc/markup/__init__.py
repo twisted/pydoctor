@@ -227,16 +227,16 @@ class ParseError(Exception):
     @ivar _descr: A description of the error.
     @type _descr: C{string}
     @ivar _fatal: True if this is a fatal error.
-    @type _fatal: C{boolean}
+    @type _fatal: C{bool}
     """
-    def __init__(self, descr, linenum=None, is_fatal=1):
+    def __init__(self, descr, linenum=None, is_fatal=True):
         """
         @type descr: C{string}
         @param descr: A description of the error.
         @type linenum: C{int}
         @param linenum: The line on which the error occured within
             the docstring.  The linenum of the first line is 0.
-        @type is_fatal: C{boolean}
+        @type is_fatal: C{bool}
         @param is_fatal: True if this is a fatal error.
         """
         self._descr = descr
@@ -248,7 +248,7 @@ class ParseError(Exception):
         @return: true if this is a fatal error.  If an error is fatal,
             then epydoc should ignore the output of the parser, and
             parse the docstring as plaintext.
-        @rtype: C{boolean}
+        @rtype: C{bool}
         """
         return self._fatal
 

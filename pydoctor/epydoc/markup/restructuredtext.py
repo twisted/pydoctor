@@ -204,7 +204,7 @@ class _EpydocReader(StandaloneReader):
 
     def report(self, error):
         try: is_fatal = int(error['level']) > 2
-        except: is_fatal = 1
+        except: is_fatal = True
         try: linenum = int(error['line'])
         except: linenum = None
 
@@ -278,7 +278,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                         estr = 'Unable to split consolidated field '
                         estr += '"%s" - %s' % (tagname, e)
                         self._errors.append(ParseError(estr, node.line,
-                                                       is_fatal=0))
+                                                       is_fatal=False))
 
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
