@@ -44,9 +44,6 @@ non-default behavior:
     L{_SplitFieldsTranslator} to divide the C{ParsedRstDocstring}'s
     document into its main body and its fields.  Special handling
     is done to account for consolidated fields.
-  - L{to_plaintext()<ParsedRstDocstring.to_plaintext>} uses
-    C{document.astext()} to convert the C{ParsedRstDocstring}'s
-    document to plaintext.
 
 @var CONSOLIDATED_FIELDS: A dictionary encoding the set of
 'consolidated fields' that can be used.  Each consolidated field is
@@ -76,7 +73,8 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, parse
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.util import plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html, HTMLDoctestColorizer
 
@@ -101,7 +99,7 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring, errors, **options):
+def parse_docstring(docstring, errors):
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -111,8 +109,6 @@ def parse_docstring(docstring, errors, **options):
     @param errors: A list where any errors generated during parsing
         will be stored.
     @type errors: C{list} of L{ParseError}
-    @param options: Extra options.  Unknown options are ignored.
-        Currently, no extra options are defined.
     @rtype: L{ParsedDocstring}
     """
     writer = _DocumentPseudoWriter()
@@ -162,16 +158,12 @@ class ParsedRstDocstring(ParsedDocstring):
             return None, visitor.fields
 
     def to_html(self, docstring_linker, directory=None,
-                docindex=None, context=None, **options):
+                docindex=None, context=None):
         # Inherit docs
         visitor = _EpydocHTMLTranslator(self._document, docstring_linker,
                                         directory, docindex, context)
         self._document.walkabout(visitor)
         return ''.join(visitor.body)
-
-    def to_plaintext(self, docstring_linker, **options):
-        # This is should be replaced by something better:
-        return self._document.astext()
 
     def __repr__(self): return '<ParsedRstDocstring: ...>'
 
@@ -203,7 +195,7 @@ class _EpydocReader(StandaloneReader):
 
     def report(self, error):
         try: is_fatal = int(error['level']) > 2
-        except: is_fatal = 1
+        except: is_fatal = True
         try: linenum = int(error['line'])
         except: linenum = None
 
@@ -250,7 +242,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields = []
-        self._newfields = {}
+        self._newfields = set()
 
     def visit_document(self, node):
         self.fields = []
@@ -277,14 +269,14 @@ class _SplitFieldsTranslator(NodeVisitor):
                         estr = 'Unable to split consolidated field '
                         estr += '"%s" - %s' % (tagname, e)
                         self._errors.append(ParseError(estr, node.line,
-                                                       is_fatal=0))
+                                                       is_fatal=False))
 
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
                             newfield = Field('newfield', tagname.lower(),
-                                             parse(tagname, 'plaintext'))
+                                             ParsedPlaintextDocstring(tagname))
                             self.fields.append(newfield)
-                            self._newfields[tagname.lower()] = 1
+                            self._newfields.add(tagname.lower())
 
         self._add_field(tagname, arg, fbody)
 
@@ -354,11 +346,15 @@ class _SplitFieldsTranslator(NodeVisitor):
             # Remove the separating ":", if present
             if (len(fbody[0]) > 0 and
                 isinstance(fbody[0][0], docutils.nodes.Text)):
-                child = fbody[0][0]
-                if child.data[:1] in ':-':
-                    child.data = child.data[1:].lstrip()
-                elif child.data[:2] in (' -', ' :'):
-                    child.data = child.data[2:].lstrip()
+                text = fbody[0][0].astext()
+                if text[:1] in ':-':
+                    fbody[0][0] = docutils.nodes.Text(
+                        text[1:].lstrip(), fbody[0][0].rawsource
+                        )
+                elif text[:2] in (' -', ' :'):
+                    fbody[0][0] = docutils.nodes.Text(
+                        text[2:].lstrip(), fbody[0][0].rawsource
+                        )
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody)

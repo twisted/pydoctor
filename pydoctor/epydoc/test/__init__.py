@@ -4,6 +4,3 @@
 # Author: Edward Loper <edloper@loper.org>
 # URL: <http://epydoc.sf.net>
 #
-
-import pydoctor.epydoc
-pydoctor.epydoc.DEBUG = True

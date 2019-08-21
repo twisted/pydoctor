@@ -11,8 +11,7 @@ parser for a single markup language.  These parsers convert an
 object's docstring to a L{ParsedDocstring}, a standard intermediate
 representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
-  - output generation (L{to_plaintext()<ParsedDocstring.to_plaintext>}
-    and L{to_html()<ParsedDocstring.to_html>}.
+  - output generation (L{to_html()<ParsedDocstring.to_html>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
 
 The L{parse()} function provides a single interface to the
@@ -40,143 +39,20 @@ Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
 each error.
 
-@sort: parse, ParsedDocstring, Field, DocstringLinker
+@sort: ParsedDocstring, Field, DocstringLinker
 @group Errors and Warnings: ParseError
-@var _parse_warnings: Used by L{_parse_warn}.
 """
 __docformat__ = 'epytext en'
-
-import re
-import six
-from pydoctor.epydoc import log
-from pydoctor.epydoc.util import plaintext_to_html
-from pydoctor import epydoc
 
 ##################################################
 ## Contents
 ##################################################
 #
-# 1. parse() dispatcher
-# 2. ParsedDocstring abstract base class
-# 3. Field class
-# 4. Docstring Linker
-# 5. ParseError exceptions
+# 1. ParsedDocstring abstract base class
+# 2. Field class
+# 3. Docstring Linker
+# 4. ParseError exceptions
 #
-
-##################################################
-## Dispatcher
-##################################################
-
-_markup_language_registry = {
-    'restructuredtext': 'pydoctor.epydoc.markup.restructuredtext',
-    'epytext': 'pydoctor.epydoc.markup.epytext',
-    'plaintext': 'pydoctor.epydoc.markup.plaintext',
-    }
-"""
-Maps a case-insensitive markup language name to a function
-that parses that markup language to a L{ParsedDocstring}.
-The function should have the following signature:
-
-        >>> def parse(s, errors):
-        ...     'returns a ParsedDocstring'
-
-    Where:
-        - C{s} is the string to parse.  (C{s} will be a unicode
-            string.)
-        - C{errors} is a list; any errors that are generated
-            during docstring parsing should be appended to this
-            list (as L{ParseError} objects).
-"""
-
-def parse(docstring, markup='plaintext', errors=None, **options):
-    """
-    Parse the given docstring, and use it to construct a
-    C{ParsedDocstring}.  If any fatal C{ParseError}s are encountered
-    while parsing the docstring, then the docstring will be rendered
-    as plaintext, instead.
-
-    @type docstring: C{string}
-    @param docstring: The docstring to encode.
-    @type markup: C{string}
-    @param markup: The name of the markup language that is used by
-        the docstring.  If the markup language is not supported, then
-        the docstring will be treated as plaintext.  The markup name
-        is case-insensitive.
-    @param errors: A list where any errors generated during parsing
-        will be stored.  If no list is specified, then fatal errors
-        will generate exceptions, and non-fatal errors will be
-        ignored.
-    @type errors: C{list} of L{ParseError}
-    @rtype: L{ParsedDocstring}
-    @return: A L{ParsedDocstring} that encodes the contents of
-        C{docstring}.
-    @raise ParseError: If C{errors} is C{None} and an error is
-        encountered while parsing.
-    """
-    # Initialize errors list.
-    raise_on_error = (errors is None)
-    if errors == None: errors = []
-
-    # Normalize the markup language name.
-    markup = markup.lower()
-
-    # Is the markup language valid?
-    if not re.match(r'\w+', markup):
-        _parse_warn('Bad markup language name %r.  Treating '
-                    'docstrings as plaintext.' % markup)
-        import pydoctor.epydoc.markup.plaintext as plaintext
-        return plaintext.parse_docstring(docstring, errors, **options)
-
-    # Is the markup language supported?
-    if markup not in _markup_language_registry:
-        _parse_warn('Unsupported markup language %r.  Treating '
-                    'docstrings as plaintext.' % markup)
-        import pydoctor.epydoc.markup.plaintext as plaintext
-        return plaintext.parse_docstring(docstring, errors, **options)
-
-    # Get the parse function.
-    parse_docstring = _markup_language_registry[markup]
-
-    # If it's a string, then it names a function to import.
-    if isinstance(parse_docstring, six.string_types):
-        try: exec('from %s import parse_docstring' % parse_docstring)
-        except ImportError as ex:
-            _parse_warn('Error importing %s for markup language %s: %s' %
-                        (parse_docstring, markup, ex))
-            import pydoctor.epydoc.markup.plaintext as plaintext
-            return plaintext.parse_docstring(docstring, errors, **options)
-        _markup_language_registry[markup] = parse_docstring
-
-    # Parse the docstring.
-    try: parsed_docstring = parse_docstring(docstring, errors, **options)
-    except KeyboardInterrupt: raise
-    except Exception as ex:
-        if epydoc.DEBUG: raise
-        log.error('Internal error while parsing a docstring: %s; '
-                  'treating docstring as plaintext' % ex)
-        import pydoctor.epydoc.markup.plaintext as plaintext
-        return plaintext.parse_docstring(docstring, errors, **options)
-
-    # Check for fatal errors.
-    fatal_errors = [e for e in errors if e.is_fatal()]
-    if fatal_errors and raise_on_error: raise fatal_errors[0]
-    if fatal_errors:
-        import pydoctor.epydoc.markup.plaintext as plaintext
-        return plaintext.parse_docstring(docstring, errors, **options)
-
-    return parsed_docstring
-
-# only issue each warning once:
-_parse_warnings = {}
-def _parse_warn(estr):
-    """
-    Print a warning message.  If the given error has already been
-    printed, then do nothing.
-    """
-    global _parse_warnings
-    if estr in _parse_warnings: return
-    _parse_warnings[estr] = 1
-    log.warning(estr)
 
 ##################################################
 ## ParsedDocstring
@@ -187,27 +63,16 @@ class ParsedDocstring:
     can be used to generate output.  Parsed docstrings are produced by
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
-      - output generation (L{to_plaintext()} and L{to_html()}.
+      - output generation (L{to_html()}).
       - Field extraction (L{split_fields()}).
 
     The output generation methods (C{to_M{format}()}) use a
     L{DocstringLinker} to link the docstring output with the rest
     of the documentation that epydoc generates.
 
-    Subclassing
-    ===========
-    The only method that a subclass is I{required} to implement is
-    L{to_plaintext()}; but it is often useful to override the other
-    methods.  The default behavior of each method is described below:
-      - C{to_I{format}}: Calls C{to_plaintext}, and uses the string it
-        returns to generate verbatim output.
-      - C{split_fields}: Returns C{(self, [])} (i.e., extracts no
-        fields).
-
-    If and when epydoc adds more output formats, new C{to_I{format}}
-    methods will be added to this base class; but they will always
-    be given a default implementation.
+    Subclasses must implement all methods of this class.
     """
+
     def split_fields(self, errors=None):
         """
         Split this docstring into its body and its fields.
@@ -222,38 +87,19 @@ class ParsedDocstring:
             errors will be ignored.
         @type errors: C{list} of L{ParseError}
         """
-        # Default behavior:
-        return self, []
+        raise NotImplementedError('ParsedDocstring.split_fields()')
 
-    def to_html(self, docstring_linker, **options):
+    def to_html(self, docstring_linker):
         """
         Translate this docstring to HTML.
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @type docstring_linker: L{DocstringLinker}
-        @param options: Any extra options for the output.  Unknown
-            options are ignored.
         @return: An HTML fragment that encodes this docstring.
         @rtype: C{string}
         """
-        # Default behavior:
-        plaintext = plaintext_to_html(self.to_plaintext(docstring_linker))
-        return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
-
-    def to_plaintext(self, docstring_linker, **options):
-        """
-        Translate this docstring to plaintext.
-
-        @param docstring_linker: A plaintext translator for
-            crossreference links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
-        @param options: Any extra options for the output.  Unknown
-            options are ignored.
-        @return: A plaintext fragment that encodes this docstring.
-        @rtype: C{string}
-        """
-        raise NotImplementedError('ParsedDocstring.to_plaintext()')
+        raise NotImplementedError('ParsedDocstring.to_html()')
 
 ##################################################
 ## Fields
@@ -364,16 +210,16 @@ class ParseError(Exception):
     @ivar _descr: A description of the error.
     @type _descr: C{string}
     @ivar _fatal: True if this is a fatal error.
-    @type _fatal: C{boolean}
+    @type _fatal: C{bool}
     """
-    def __init__(self, descr, linenum=None, is_fatal=1):
+    def __init__(self, descr, linenum=None, is_fatal=True):
         """
         @type descr: C{string}
         @param descr: A description of the error.
         @type linenum: C{int}
         @param linenum: The line on which the error occured within
             the docstring.  The linenum of the first line is 0.
-        @type is_fatal: C{boolean}
+        @type is_fatal: C{bool}
         @param is_fatal: True if this is a fatal error.
         """
         self._descr = descr
@@ -385,7 +231,7 @@ class ParseError(Exception):
         @return: true if this is a fatal error.  If an error is fatal,
             then epydoc should ignore the output of the parser, and
             parse the docstring as plaintext.
-        @rtype: C{boolean}
+        @rtype: C{bool}
         """
         return self._fatal
 
