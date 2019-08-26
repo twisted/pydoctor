@@ -13,12 +13,16 @@ C{colorize_doctest()}, which could be used to do syntax highlighting
 on doctest blocks with other output formats.
 (C{doctest_to_html()} is defined using C{colorize_doctest()}.)
 """
+
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 import re
+from six.moves import builtins
 from pydoctor.epydoc.util import plaintext_to_html
 
-__all__ = ['doctest_to_html', 'DoctestColorizer', 'HTMLDoctestColorizer']
+__all__ = ['doctest_to_html', 'HTMLDoctestColorizer']
 
 def doctest_to_html(s):
     """
@@ -40,28 +44,21 @@ def doctest_to_html(s):
     """
     return HTMLDoctestColorizer().colorize_doctest(s)
 
-class DoctestColorizer:
+class HTMLDoctestColorizer:
     """
-    An abstract base class for performing syntax highlighting on
-    doctest blocks and other bits of Python code.  Subclasses should
-    provide definitions for:
-
-      - The L{markup()} method, which takes a substring and a tag, and
-        returns a colorized version of the substring.
-      - The L{PREFIX} and L{SUFFIX} variables, which will be added
-        to the beginning and end of the strings returned by
-        L{colorize_codeblock} and L{colorize_doctest}.
+    A class for performing syntax highlighting on doctest blocks
+    and other bits of Python code.  Generates HTML output.
     """
 
     #: A string that is added to the beginning of the strings
     #: returned by L{colorize_codeblock} and L{colorize_doctest}.
     #: Typically, this string begins a preformatted area.
-    PREFIX = None
+    PREFIX = '<pre class="py-doctest">\n'
 
     #: A string that is added to the end of the strings
     #: returned by L{colorize_codeblock} and L{colorize_doctest}.
     #: Typically, this string ends a preformatted area.
-    SUFFIX = None
+    SUFFIX = '</pre>\n'
 
     #: The string used to divide lines
     NEWLINE = '\n'
@@ -76,7 +73,7 @@ class DoctestColorizer:
                  "def       finally   in        print     as").split()
 
     #: A list of all Python builtins.
-    _BUILTINS = [_BI for _BI in dir(__builtins__)
+    _BUILTINS = [_BI for _BI in dir(builtins)
                  if not _BI.startswith('__')]
 
     #: A regexp group that matches keywords.
@@ -191,7 +188,7 @@ class DoctestColorizer:
 
     def subfunc(self, match):
         other, text = match.group(1, 2)
-        #print 'M %20r %20r' % (other, text) # <- for debugging
+        #print('M %20r %20r' % (other, text)) # <- for debugging
         if other:
             other = self.NEWLINE.join([self.markup(line, 'other')
                                        for line in other.split('\n')])
@@ -253,13 +250,6 @@ class DoctestColorizer:
             a C{def} or C{class} statement.
           - C{other} -- anything else (does *not* include output.)
         """
-        raise AssertionError("Abstract method")
-
-class HTMLDoctestColorizer(DoctestColorizer):
-    """A subclass of DoctestColorizer that generates HTML output."""
-    PREFIX = '<pre class="py-doctest">\n'
-    SUFFIX = '</pre>\n'
-    def markup(self, s, tag):
         if tag == 'other':
             return plaintext_to_html(s)
         else:

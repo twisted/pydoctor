@@ -21,7 +21,7 @@ def getBetterThanArgspec(argspec):
     backargs.reverse()
     defaults = list(defaults)
     defaults.reverse()
-    kws = zip(backargs, defaults)
+    kws = list(zip(backargs, defaults))
     kws.reverse()
     return (args[:-len(kws)], kws)
 
@@ -281,7 +281,7 @@ class ClassPage(CommonPage):
 
     def mediumName(self, ob):
         r = [super(ClassPage, self).mediumName(ob)]
-        zipped = zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects)
+        zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
             for i, (n, m, o) in enumerate(zipped):

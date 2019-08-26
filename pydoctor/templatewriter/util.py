@@ -9,11 +9,13 @@ from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import tags
 
+import os
+from six.moves.urllib.parse import quote
 
 def link(o):
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
-    return o.system.urlprefix+urllib.quote(o.fullName()+'.html')
+    return o.system.urlprefix+quote(o.fullName()+'.html')
 
 def srclink(o):
     return o.sourceHref
@@ -40,7 +42,7 @@ def taglink(o, label=None):
         p = o.parent
         if isinstance(p, model.Module) and p.name == '__init__':
             p = p.parent
-        linktext = link(p) + '#' + urllib.quote(o.name)
+        linktext = link(p) + '#' + quote(o.name)
     elif o.documentation_location == model.DocLocation.OWN_PAGE:
         linktext = link(o)
     else:

@@ -4,13 +4,14 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
+from six.moves import builtins
+from six.moves.urllib.parse import quote
 import exceptions
 import inspect
 import itertools
 import os
 import re
 import sys
-import urllib
 
 from pydoctor import model
 from six.moves import builtins
@@ -23,7 +24,7 @@ STDLIB_URL = 'http://docs.python.org/library/'
 
 
 def link(o):
-    return o.system.urlprefix + urllib.quote(o.fullName()+'.html')
+    return o.system.urlprefix + quote(o.fullName()+'.html')
 
 
 def get_parser(formatname):
@@ -90,7 +91,7 @@ class _EpydocLinker(DocstringLinker):
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
                 p = p.parent
-            linktext = link(p) + '#' + urllib.quote(obj.name)
+            linktext = link(p) + '#' + quote(obj.name)
         elif obj.documentation_location == model.DocLocation.OWN_PAGE:
             linktext = link(obj)
         else:
@@ -344,7 +345,6 @@ class FieldHandler(object):
     handle_rtype = handle_returntype
 
     def add_type_info(self, desc_list, field):
-        #print desc_list, field
         if desc_list and desc_list[-1].name == field.arg:
             if desc_list[-1].type is not None:
                 self.redef(field)

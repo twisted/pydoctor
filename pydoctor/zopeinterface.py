@@ -274,7 +274,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if 'zope.interface.interface.InterfaceClass' in bases:
             cls.isinterfaceclass = True
-
+            
         if len([b for b in cls.bases
                 if namesInterface(self.system, b)]) > 0:
             cls.isinterface = True

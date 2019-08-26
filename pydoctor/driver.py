@@ -137,11 +137,6 @@ def getparser():
         help=("Use the specified build time over the current time. "
               "Format: %s" % BUILDTIME_FORMAT))
     parser.add_option(
-        '--livecheck', action='store_true', dest='livecheck',
-        default=False,
-        help=("Import and examine the modules too.  XXX not working "
-              "right now"))
-    parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
         help=("Be noisier.  Can be repeated for more noise."))
@@ -231,7 +226,7 @@ def parse_args(args):
     return options, args
 
 def main(args):
-    import cPickle
+    from six.moves import cPickle
     options, args = parse_args(args)
 
     exitcode = 0
@@ -347,9 +342,6 @@ def main(args):
 
         system.process()
 
-        if system.options.livecheck:
-            error("write this")
-
         if system.options.projectname is None:
             name = '/'.join([ro.name for ro in system.rootobjects])
             system.msg(
@@ -436,7 +428,7 @@ def main(args):
     except:
         if options.pdb:
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            pdb.post_mortem(sys.exc_info()[2])
         raise
     return exitcode
 

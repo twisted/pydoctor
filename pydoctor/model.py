@@ -729,7 +729,7 @@ class System(object):
 
     def process(self):
         while self.unprocessed_modules:
-            mod = iter(self.unprocessed_modules).next()
+            mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
 
 

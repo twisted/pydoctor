@@ -13,14 +13,12 @@ pydoctor uses parts of the epydoc source as a library.
 Package Organization
 ====================
 
-The `apidoc` module defines the basic data types used to record
-information about Python objects.  Docstring markup parsing is
-handled by the `markup` package.  See the submodule list for more
-information about the submodules and subpackages.
+Docstring markup parsing is handled by the `markup` package.
+See the submodule list for more information about the submodules
+and subpackages.
 
-:group Basic Data Types: apidoc
 :group Docstring Processing: markup
-:group Miscellaneous: log, util, test
+:group Miscellaneous: util, test
 
 :author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__
 :requires: Python 2.3+
@@ -69,13 +67,6 @@ __url__ = 'http://epydoc.sourceforge.net'
 
 __license__ = 'IBM Open Source License'
 """The license governing the use and distribution of epydoc"""
-
-# [xx] this should probably be a private variable:
-DEBUG = False
-"""True if debugging is turned on."""
-
-import logging
-log = logging.getLogger(__name__)
 
 # Changes needed for docs:
 #   - document the method for deciding what's public/private

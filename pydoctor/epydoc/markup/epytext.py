@@ -96,6 +96,8 @@ Description::
 # Note: the symbol list is appended to the docstring automatically,
 # below.
 
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 # Code organization..
@@ -106,6 +108,7 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re, string
+import six
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
 from pydoctor.epydoc.markup.doctest import doctest_to_html
@@ -192,9 +195,8 @@ SYMBOLS = [
     'infinity', 'integral', 'product',
     '>=', '<=',
     ]
-# Convert to a dictionary, for quick lookup
-_SYMBOLS = {}
-for symbol in SYMBOLS: _SYMBOLS[symbol] = 1
+# Convert to a set, for quick lookup
+_SYMBOLS = set(SYMBOLS)
 
 # Add symbols to the docstring.
 symblist = '      '
@@ -241,11 +243,11 @@ def parse(str, errors = None):
         encountered while parsing.
     """
     # Initialize errors list.
-    if errors == None:
+    if errors is None:
         errors = []
-        raise_on_error = 1
+        raise_on_error = True
     else:
-        raise_on_error = 0
+        raise_on_error = False
 
     # Preprocess the string.
     str = re.sub('\015\012', '\012', str)
@@ -255,7 +257,7 @@ def parse(str, errors = None):
     tokens = _tokenize(str, errors)
 
     # Have we encountered a field yet?
-    encountered_field = 0
+    encountered_field = False
 
     # Create an document to hold the epytext.
     doc = Element('epytext')
@@ -275,7 +277,7 @@ def parse(str, errors = None):
 
     for token in tokens:
         # Uncomment this for debugging:
-        #print ('%s: %s\n%s: %s\n' %
+        #print('%s: %s\n%s: %s\n' %
         #       (''.join(['%-11s' % (t and t.tag) for t in stack]),
         #        token.tag, ''.join(['%-11s' % i for i in indent_stack]),
         #        token.indent))
@@ -307,15 +309,15 @@ def parse(str, errors = None):
 
         # Check if the DOM element we just added was a field..
         if stack[-1].tag == 'field':
-            encountered_field = 1
-        elif encountered_field == 1:
+            encountered_field = True
+        elif encountered_field:
             if len(stack) <= 3:
                 estr = ("Fields must be the final elements in an "+
                         "epytext string.")
                 errors.append(StructuringError(estr, token.startline))
 
     # If there was an error, then signal it!
-    if len([e for e in errors if e.is_fatal()]) > 0:
+    if any(e.is_fatal() for e in errors):
         if raise_on_error:
             raise errors[0]
         else:
@@ -333,26 +335,26 @@ def _pop_completed_blocks(token, stack, indent_stack):
     item (i.e., if the next token is a bullet).
     """
     indent = token.indent
-    if indent != None:
+    if indent is not None:
         while (len(stack) > 2):
-            pop = 0
+            pop = False
 
             # Dedent past a block
-            if indent_stack[-1]!=None and indent<indent_stack[-1]: pop=1
-            elif indent_stack[-1]==None and indent<indent_stack[-2]: pop=1
+            if indent_stack[-1]!=None and indent<indent_stack[-1]: pop = True
+            elif indent_stack[-1]==None and indent<indent_stack[-2]: pop = True
 
             # Dedent to a list item, if it is follwed by another list
             # item with the same indentation.
             elif (token.tag == 'bullet' and indent==indent_stack[-2] and
-                  stack[-1].tag in ('li', 'field')): pop=1
+                  stack[-1].tag in ('li', 'field')): pop = True
 
             # End of a list (no more list items available)
             elif (stack[-1].tag in ('ulist', 'olist') and
                   (token.tag != 'bullet' or token.contents[-1] == ':')):
-                pop=1
+                pop = True
 
             # Pop the block, if it's complete.  Otherwise, we're done.
-            if pop == 0: return
+            if not pop: return
             stack.pop()
             indent_stack.pop()
 
@@ -360,7 +362,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
     # when appropriate.
-    if indent_stack[-1] == None:
+    if indent_stack[-1] is None:
         indent_stack[-1] = para_token.indent
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
@@ -374,7 +376,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
 
 def _add_section(doc, heading_token, stack, indent_stack, errors):
     """Add a new section to the DOM tree, with the given heading."""
-    if indent_stack[-1] == None:
+    if indent_stack[-1] is None:
         indent_stack[-1] = heading_token.indent
     elif indent_stack[-1] != heading_token.indent:
         estr = "Improper heading indentation."
@@ -422,16 +424,16 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         raise AssertionError('Bad Bullet: %r' % bullet_token.contents)
 
     # Is this a new list?
-    newlist = 0
+    newlist = False
     if stack[-1].tag != list_type:
-        newlist = 1
+        newlist = True
     elif list_type == 'olist' and stack[-1].tag == 'olist':
         old_listitem = stack[-1].children[-1]
         old_bullet = old_listitem.attribs.get("bullet").split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
         if (new_bullet[:-1] != old_bullet[:-1] or
             int(new_bullet[-1]) != int(old_bullet[-1])+1):
-            newlist = 1
+            newlist = True
 
     # Create the new list.
     if newlist:
@@ -781,7 +783,7 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
 
         # "::" markers end paragraphs.
         if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = 1
+        if line.rstrip()[-2:] == '::': doublecolon = True
 
         # A blank line ends the token
         if indent == len(line): break
@@ -794,7 +796,7 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
 
         # If this is the second line, set the paragraph indentation, or
         # end the token, as appropriate.
-        if para_indent == None: para_indent = indent
+        if para_indent is None: para_indent = indent
 
         # A change in indentation ends the token
         if indent != para_indent: break
@@ -844,7 +846,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     @rtype: C{int}
     """
     linenum = start + 1
-    doublecolon = 0
+    doublecolon = False
     while linenum < len(lines):
         # Find the indentation of this line.
         line = lines[linenum]
@@ -852,7 +854,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
 
         # "::" markers end paragraphs.
         if doublecolon: break
-        if line.rstrip()[-2:] == '::': doublecolon = 1
+        if line.rstrip()[-2:] == '::': doublecolon = True
 
         # Blank lines end paragraphs
         if indent == len(line): break
@@ -866,7 +868,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
         # Check for mal-formatted field items.
         if line[indent] == '@':
             estr = "Possible mal-formatted field item."
-            errors.append(TokenizationError(estr, linenum, is_fatal=0))
+            errors.append(TokenizationError(estr, linenum, is_fatal=False))
 
         # Go on to the next line.
         linenum += 1
@@ -877,12 +879,12 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     if ((len(contents) < 2) or
         (contents[1][0] not in _HEADING_CHARS) or
         (abs(len(contents[0])-len(contents[1])) > 5)):
-        looks_like_heading = 0
+        looks_like_heading = False
     else:
-        looks_like_heading = 1
+        looks_like_heading = True
         for char in contents[1]:
             if char != contents[1][0]:
-                looks_like_heading = 0
+                looks_like_heading = False
                 break
 
     if looks_like_heading:
@@ -890,7 +892,7 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
             estr = ("Possible heading typo: the number of "+
                     "underline characters must match the "+
                     "number of heading characters.")
-            errors.append(TokenizationError(estr, start, is_fatal=0))
+            errors.append(TokenizationError(estr, start, is_fatal=False))
         else:
             level = _HEADING_CHARS.index(contents[1][0])
             tokens.append(Token(Token.HEADING, start,
@@ -939,13 +941,13 @@ def _tokenize(str, errors):
             # blocks starting with a bullet are LI start tokens.
             linenum = _tokenize_listart(lines, linenum, indent,
                                         tokens, errors)
-            if tokens[-1].indent != None:
+            if tokens[-1].indent is not None:
                 indent = tokens[-1].indent
         else:
             # Check for mal-formatted field items.
             if line[indent] == '@':
                 estr = "Possible mal-formatted field item."
-                errors.append(TokenizationError(estr, linenum, is_fatal=0))
+                errors.append(TokenizationError(estr, linenum, is_fatal=False))
 
             # anything else is either a paragraph or a heading.
             linenum = _tokenize_para(lines, linenum, indent, tokens, errors)
@@ -1005,7 +1007,7 @@ def _colorize(doc, token, errors, tagName='para'):
     start = 0
     while 1:
         match = _BRACE_RE.search(str, start)
-        if match == None: break
+        if match is None: break
         end = match.start()
 
         # Open braces start new colorizing elements.  When preceeded
@@ -1048,7 +1050,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], basestring)):
+                    not isinstance(stack[-1].children[0], six.string_types)):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1063,7 +1065,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], basestring)):
+                    not isinstance(stack[-1].children[0], six.string_types)):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1106,7 +1108,7 @@ def _colorize_link(doc, link, token, end, errors):
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
-    if len(variables)==0 or not isinstance(variables[-1], basestring):
+    if len(variables)==0 or not isinstance(variables[-1], six.string_types):
         estr = "Bad %s target." % link.tag
         errors.append(ColorizingError(estr, token, end))
         return
@@ -1151,265 +1153,6 @@ def _colorize_link(doc, link, token, end, errors):
     link.children = [name_elt, target_elt]
 
 ##################################################
-## Formatters
-##################################################
-
-def to_epytext(tree, indent=0, seclevel=0):
-    """
-    Convert a DOM document encoding epytext back to an epytext string.
-    This is the inverse operation from L{parse}.  I.e., assuming there
-    are no errors, the following is true:
-        - C{parse(to_epytext(tree)) == tree}
-
-    The inverse is true, except that whitespace, line wrapping, and
-    character escaping may be done differently.
-        - C{to_epytext(parse(str)) == str} (approximately)
-
-    @param tree: A DOM document encoding of an epytext string.
-    @type tree: C{Element}
-    @param indent: The indentation for the string representation of
-        C{tree}.  Each line of the returned string will begin with
-        C{indent} space characters.
-    @type indent: C{int}
-    @param seclevel: The section level that C{tree} appears at.  This
-        is used to generate section headings.
-    @type seclevel: C{int}
-    @return: The epytext string corresponding to C{tree}.
-    @rtype: C{string}
-    """
-    if isinstance(tree, basestring):
-        str = re.sub(r'\{', '\0', tree)
-        str = re.sub(r'\}', '\1', str)
-        return str
-
-    if tree.tag == 'epytext': indent -= 2
-    if tree.tag == 'section': seclevel += 1
-    variables = [to_epytext(c, indent+2, seclevel) for c in tree.children]
-    childstr = ''.join(variables)
-
-    # Clean up for literal blocks (add the double "::" back)
-    childstr = re.sub(':(\s*)\2', '::\\1', childstr)
-
-    if tree.tag == 'para':
-        str = wordwrap(childstr, indent)+'\n'
-        str = re.sub(r'((^|\n)\s*\d+)\.', r'\1E{.}', str)
-        str = re.sub(r'((^|\n)\s*)-', r'\1E{-}', str)
-        str = re.sub(r'((^|\n)\s*)@', r'\1E{@}', str)
-        str = re.sub(r'::(\s*($|\n))', r'E{:}E{:}\1', str)
-        str = re.sub('\0', 'E{lb}', str)
-        str = re.sub('\1', 'E{rb}', str)
-        return str
-    elif tree.tag == 'li':
-        bullet = tree.attribs.get('bullet') or '-'
-        return indent*' '+ bullet + ' ' + childstr.lstrip()
-    elif tree.tag == 'heading':
-        str = re.sub('\0', 'E{lb}',childstr)
-        str = re.sub('\1', 'E{rb}', str)
-        uline = len(childstr)*_HEADING_CHARS[seclevel-1]
-        return (indent-2)*' ' + str + '\n' + (indent-2)*' '+uline+'\n'
-    elif tree.tag == 'doctestblock':
-        str = re.sub('\0', '{', childstr)
-        str = re.sub('\1', '}', str)
-        lines = ['  '+indent*' '+line for line in str.split('\n')]
-        return '\n'.join(lines) + '\n\n'
-    elif tree.tag == 'literalblock':
-        str = re.sub('\0', '{', childstr)
-        str = re.sub('\1', '}', str)
-        lines = [(indent+1)*' '+line for line in str.split('\n')]
-        return '\2' + '\n'.join(lines) + '\n\n'
-    elif tree.tag == 'field':
-        numargs = 0
-        while tree.children[numargs+1].tag == 'arg': numargs += 1
-        tag = variables[0]
-        args = variables[1:1+numargs]
-        body = variables[1+numargs:]
-        str = (indent)*' '+'@'+variables[0]
-        if args: str += '(' + ', '.join(args) + ')'
-        return str + ':\n' + ''.join(body)
-    elif tree.tag == 'target':
-        return '<%s>' % childstr
-    elif tree.tag in ('fieldlist', 'tag', 'arg', 'epytext',
-                          'section', 'olist', 'ulist', 'name'):
-        return childstr
-    elif tree.tag == 'symbol':
-        return 'E{%s}' % childstr
-    else:
-        for (tag, name) in _COLORIZING_TAGS.items():
-            if name == tree.tag:
-                return '%s{%s}' % (tag, childstr)
-    raise ValueError('Unknown DOM element %r' % tree.tag)
-
-SYMBOL_TO_PLAINTEXT = {
-    'crarr': '\\',
-    }
-
-def to_plaintext(tree, indent=0, seclevel=0):
-    """
-    Convert a DOM document encoding epytext to a string representation.
-    This representation is similar to the string generated by
-    C{to_epytext}, but C{to_plaintext} removes inline markup, prints
-    escaped characters in unescaped form, etc.
-
-    @param tree: A DOM document encoding of an epytext string.
-    @type tree: C{Element}
-    @param indent: The indentation for the string representation of
-        C{tree}.  Each line of the returned string will begin with
-        C{indent} space characters.
-    @type indent: C{int}
-    @param seclevel: The section level that C{tree} appears at.  This
-        is used to generate section headings.
-    @type seclevel: C{int}
-    @return: The epytext string corresponding to C{tree}.
-    @rtype: C{string}
-    """
-    if isinstance(tree, basestring): return tree
-
-    if tree.tag == 'section': seclevel += 1
-
-    # Figure out the child indent level.
-    if tree.tag == 'epytext': cindent = indent
-    elif tree.tag == 'li' and tree.attribs.get('bullet'):
-        cindent = indent + 1 + len(tree.attribs.get('bullet'))
-    else:
-        cindent = indent + 2
-    variables = [to_plaintext(c, cindent, seclevel) for c in tree.children]
-    childstr = ''.join(variables)
-
-    if tree.tag == 'para':
-        return wordwrap(childstr, indent)+'\n'
-    elif tree.tag == 'li':
-        # We should be able to use getAttribute here; but there's no
-        # convenient way to test if an element has an attribute..
-        bullet = tree.attribs.get('bullet') or '-'
-        return indent*' ' + bullet + ' ' + childstr.lstrip()
-    elif tree.tag == 'heading':
-        uline = len(childstr)*_HEADING_CHARS[seclevel-1]
-        return ((indent-2)*' ' + childstr + '\n' +
-                (indent-2)*' ' + uline + '\n')
-    elif tree.tag == 'doctestblock':
-        lines = [(indent+2)*' '+line for line in childstr.split('\n')]
-        return '\n'.join(lines) + '\n\n'
-    elif tree.tag == 'literalblock':
-        lines = [(indent+1)*' '+line for line in childstr.split('\n')]
-        return '\n'.join(lines) + '\n\n'
-    elif tree.tag == 'fieldlist':
-        return childstr
-    elif tree.tag == 'field':
-        numargs = 0
-        while tree.children[numargs+1].tag == 'arg': numargs += 1
-        args = variables[1:1+numargs]
-        body = variables[1+numargs:]
-        str = (indent)*' '+'@'+variables[0]
-        if args: str += '(' + ', '.join(args) + ')'
-        return str + ':\n' + ''.join(body)
-    elif tree.tag == 'uri':
-        if len(variables) != 2: raise ValueError('Bad URI ')
-        elif variables[0] == variables[1]: return '<%s>' % variables[1]
-        else: return '%r<%s>' % (variables[0], variables[1])
-    elif tree.tag == 'link':
-        if len(variables) != 2: raise ValueError('Bad Link')
-        return '%s' % variables[0]
-    elif tree.tag in ('olist', 'ulist'):
-        # [xx] always use condensed lists.
-        ## Use a condensed list if each list item is 1 line long.
-        #for child in variables:
-        #    if child.count('\n') > 2: return childstr
-        return childstr.replace('\n\n', '\n')+'\n'
-    elif tree.tag == 'symbol':
-        return '%s' % SYMBOL_TO_PLAINTEXT.get(childstr, childstr)
-    else:
-        # Assume that anything else can be passed through.
-        return childstr
-
-def to_debug(tree, indent=4, seclevel=0):
-    """
-    Convert a DOM document encoding epytext back to an epytext string,
-    annotated with extra debugging information.  This function is
-    similar to L{to_epytext}, but it adds explicit information about
-    where different blocks begin, along the left margin.
-
-    @param tree: A DOM document encoding of an epytext string.
-    @type tree: C{Element}
-    @param indent: The indentation for the string representation of
-        C{tree}.  Each line of the returned string will begin with
-        C{indent} space characters.
-    @type indent: C{int}
-    @param seclevel: The section level that C{tree} appears at.  This
-        is used to generate section headings.
-    @type seclevel: C{int}
-    @return: The epytext string corresponding to C{tree}.
-    @rtype: C{string}
-    """
-    if isinstance(tree, basestring):
-        str = re.sub(r'\{', '\0', tree)
-        str = re.sub(r'\}', '\1', str)
-        return str
-
-    if tree.tag == 'section': seclevel += 1
-    variables = [to_debug(c, indent+2, seclevel) for c in tree.children]
-    childstr = ''.join(variables)
-
-    # Clean up for literal blocks (add the double "::" back)
-    childstr = re.sub(':( *\n     \|\n)\2', '::\\1', childstr)
-
-    if tree.tag == 'para':
-        str = wordwrap(childstr, indent-6, 69)+'\n'
-        str = re.sub(r'((^|\n)\s*\d+)\.', r'\1E{.}', str)
-        str = re.sub(r'((^|\n)\s*)-', r'\1E{-}', str)
-        str = re.sub(r'((^|\n)\s*)@', r'\1E{@}', str)
-        str = re.sub(r'::(\s*($|\n))', r'E{:}E{:}\1', str)
-        str = re.sub('\0', 'E{lb}', str)
-        str = re.sub('\1', 'E{rb}', str)
-        lines = str.rstrip().split('\n')
-        lines[0] = '   P>|' + lines[0]
-        lines[1:] = ['     |'+l for l in lines[1:]]
-        return '\n'.join(lines)+'\n     |\n'
-    elif tree.tag == 'li':
-        bullet = tree.attribs.get('bullet') or '-'
-        return '  LI>|'+ (indent-6)*' '+ bullet + ' ' + childstr[6:].lstrip()
-    elif tree.tag in ('olist', 'ulist'):
-        return 'LIST>|'+(indent-4)*' '+childstr[indent+2:]
-    elif tree.tag == 'heading':
-        str = re.sub('\0', 'E{lb}', childstr)
-        str = re.sub('\1', 'E{rb}', str)
-        uline = len(childstr)*_HEADING_CHARS[seclevel-1]
-        return ('SEC'+`seclevel`+'>|'+(indent-8)*' ' + str + '\n' +
-                '     |'+(indent-8)*' ' + uline + '\n')
-    elif tree.tag == 'doctestblock':
-        str = re.sub('\0', '{', childstr)
-        str = re.sub('\1', '}', str)
-        lines = ['     |'+(indent-4)*' '+line for line in str.split('\n')]
-        lines[0] = 'DTST>'+lines[0][5:]
-        return '\n'.join(lines) + '\n     |\n'
-    elif tree.tag == 'literalblock':
-        str = re.sub('\0', '{', childstr)
-        str = re.sub('\1', '}', str)
-        lines = ['     |'+(indent-5)*' '+line for line in str.split('\n')]
-        lines[0] = ' LIT>'+lines[0][5:]
-        return '\2' + '\n'.join(lines) + '\n     |\n'
-    elif tree.tag == 'field':
-        numargs = 0
-        while tree.children[numargs+1].tag == 'arg': numargs += 1
-        tag = variables[0]
-        args = variables[1:1+numargs]
-        body = variables[1+numargs:]
-        str = ' FLD>|'+(indent-6)*' '+'@'+variables[0]
-        if args: str += '(' + ', '.join(args) + ')'
-        return str + ':\n' + ''.join(body)
-    elif tree.tag == 'target':
-        return '<%s>' % childstr
-    elif tree.tag in ('fieldlist', 'tag', 'arg', 'epytext',
-                          'section', 'olist', 'ulist', 'name'):
-        return childstr
-    elif tree.tag == 'symbol':
-        return 'E{%s}' % childstr
-    else:
-        for (tag, name) in _COLORIZING_TAGS.items():
-            if name == tree.tag:
-                return '%s{%s}' % (tag, childstr)
-    raise ValueError('Unknown DOM element %r' % tree.tag)
-
-##################################################
 ## Parse Errors
 ##################################################
 
@@ -1429,7 +1172,7 @@ class ColorizingError(ParseError):
     """
     An error generated while colorizing a paragraph.
     """
-    def __init__(self, descr, token, charnum, is_fatal=1):
+    def __init__(self, descr, token, charnum, is_fatal=True):
         """
         Construct a new colorizing exception.
 
@@ -1459,48 +1202,11 @@ class ColorizingError(ParseError):
                      + '...')
         return ('%s\n\n%s%s\n%s^' % (self._descr, left, right, ' '*len(left)))
 
-##################################################
-## Convenience parsers
-##################################################
-
-def parse_as_literal(str):
-    """
-    Return a DOM document matching the epytext DTD, containing a
-    single literal block.  That literal block will include the
-    contents of the given string.  This method is typically used as a
-    fall-back when the parser fails.
-
-    @param str: The string which should be enclosed in a literal
-        block.
-    @type str: C{string}
-
-    @return: A DOM document containing C{str} in a single literal
-        block.
-    @rtype: C{Element}
-    """
-    return Element('epytext', Element('literalblock', str))
-
-def parse_as_para(str):
-    """
-    Return a DOM document matching the epytext DTD, containing a
-    single paragraph.  That paragraph will include the contents of the
-    given string.  This can be used to wrap some forms of
-    automatically generated information (such as type names) in
-    paragraphs.
-
-    @param str: The string which should be enclosed in a paragraph.
-    @type str: C{string}
-
-    @return: A DOM document containing C{str} in a single paragraph.
-    @rtype: C{Element}
-    """
-    return Element('epytext', Element('para', str))
-
 #################################################################
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring, errors, **options):
+def parse_docstring(docstring, errors):
     """
     Parse the given docstring, which is formatted using epytext; and
     return a C{ParsedDocstring} representation of its contents.
@@ -1509,11 +1215,9 @@ def parse_docstring(docstring, errors, **options):
     @param errors: A list where any errors generated during parsing
         will be stored.
     @type errors: C{list} of L{ParseError}
-    @param options: Extra options.  Unknown options are ignored.
-        Currently, no extra options are defined.
     @rtype: L{ParsedDocstring}
     """
-    return ParsedEpytextDocstring(parse(docstring, errors), **options)
+    return ParsedEpytextDocstring(parse(docstring, errors))
 
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_HTML = {
@@ -1561,47 +1265,25 @@ class ParsedEpytextDocstring(ParsedDocstring):
         '<=': '&le;', '>=': '&ge;',
         }
 
-    def __init__(self, dom_tree, **options):
+    def __init__(self, dom_tree):
         self._tree = dom_tree
         # Caching:
-        self._html = self._plaintext = None
-        self._terms = None
-        # inline option -- mark top-level children as inline.
-        if options.get('inline') and self._tree is not None:
-            for elt in self._tree.children:
-                elt.attribs['inline'] = True
+        self._html = None
 
     def __str__(self):
         return str(self._tree)
 
     def to_html(self, docstring_linker, directory=None, docindex=None,
-                context=None, **options):
+                context=None):
         if self._html is not None: return self._html
         if self._tree is None: return ''
-        indent = options.get('indent', 0)
         self._html = self._to_html(self._tree, docstring_linker, directory,
-                                   docindex, context, indent)
+                                   docindex, context)
         return self._html
-
-    def to_plaintext(self, docstring_linker, **options):
-        # [XX] don't cache -- different options might be used!!
-        #if self._plaintext is not None: return self._plaintext
-        if self._tree is None: return ''
-        if 'indent' in options:
-            self._plaintext = to_plaintext(self._tree,
-                                           indent=options['indent'])
-        else:
-            self._plaintext = to_plaintext(self._tree)
-        return self._plaintext
-
-    def _index_term_key(self, tree):
-        str = to_plaintext(tree)
-        str = re.sub(r'\s\s+', '-', str)
-        return "index-"+re.sub("[^a-zA-Z0-9]", "_", str)
 
     def _to_html(self, tree, linker, directory, docindex, context,
                  indent=0, seclevel=0):
-        if isinstance(tree, basestring):
+        if isinstance(tree, six.string_types):
             return plaintext_to_html(tree)
 
         if tree.tag == 'epytext': indent -= 2
@@ -1638,8 +1320,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'indexed':
             term = Element('epytext', *tree.children, **tree.attribs)
             return linker.translate_indexterm(ParsedEpytextDocstring(term))
-            #term_key = self._index_term_key(tree)
-            #return linker.translate_indexterm(childstr, term_key)
         elif tree.tag == 'bold':
             return '<b>%s</b>' % childstr
         elif tree.tag == 'ulist':
@@ -1667,60 +1347,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return self.SYMBOL_TO_HTML.get(symbol, '[%s]' % symbol)
         else:
             raise ValueError('Unknown epytext DOM element %r' % tree.tag)
-
-    _SUMMARY_RE = re.compile(r'(\s*[\w\W]*?\.)(\s|$)')
-
-    def summary(self):
-        if self._tree is None: return self, False
-        tree = self._tree
-        doc = Element('epytext')
-
-        # Find the first paragraph.
-        variables = tree.children
-        while (len(variables) > 0) and (variables[0].tag != 'para'):
-            if variables[0].tag in ('section', 'ulist', 'olist', 'li'):
-                variables = variables[0].children
-            else:
-                variables = variables[1:]
-
-        # Special case: if the docstring contains a single literal block,
-        # then try extracting the summary from it.
-        if (len(variables) == 0 and len(tree.children) == 1 and
-            tree.children[0].tag == 'literalblock'):
-            str = re.split(r'\n\s*(\n|$).*',
-                           tree.children[0].children[0], 1)[0]
-            variables = [Element('para')]
-            variables[0].children.append(str)
-
-        # If we didn't find a paragraph, return an empty epytext.
-        if len(variables) == 0: return ParsedEpytextDocstring(doc), False
-
-        # Is there anything else, excluding tags, after the first variable?
-        long_docs = False
-        for var in variables[1:]:
-            if isinstance(var, Element) and var.tag == 'fieldlist':
-                continue
-            long_docs = True
-            break
-
-        # Extract the first sentence.
-        parachildren = variables[0].children
-        para = Element('para', inline=True)
-        doc.children.append(para)
-        for parachild in parachildren:
-            if isinstance(parachild, basestring):
-                m = self._SUMMARY_RE.match(parachild)
-                if m:
-                    para.children.append(m.group(1))
-                    long_docs |= parachild is not parachildren[-1]
-                    if not long_docs:
-                        other = parachild[m.end():]
-                        if other and not other.isspace():
-                            long_docs = True
-                    return ParsedEpytextDocstring(doc), long_docs
-            para.children.append(parachild)
-
-        return ParsedEpytextDocstring(doc), long_docs
 
     def split_fields(self, errors=None):
         if self._tree is None: return (self, ())
@@ -1755,22 +1381,3 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return ParsedEpytextDocstring(tree), fields
         else:
             return None, fields
-
-
-    def index_terms(self):
-        if self._terms is None:
-            self._terms = []
-            self._index_terms(self._tree, self._terms)
-        return self._terms
-
-    def _index_terms(self, tree, terms):
-        if tree is None or isinstance(tree, basestring):
-            return
-
-        if tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            terms.append(ParsedEpytextDocstring(term))
-
-        # Look for index items in child nodes.
-        for child in tree.children:
-            self._index_terms(child, terms)

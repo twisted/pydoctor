@@ -6,7 +6,7 @@ if sys.version_info > (3, 0):
                      "https://github.com/twisted/pydoctor/issues/96 for "
                      "the tracking ticket for work on this."))
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name='pydoctor',

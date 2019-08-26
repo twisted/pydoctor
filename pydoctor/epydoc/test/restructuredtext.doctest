@@ -2,80 +2,61 @@ Regression Testing for restructuredtext
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 :RequireModule: docutils
 
-Summary
-=======
-The implementation of the summaization function works as expected.
-
 >>> from pydoctor.epydoc.markup import restructuredtext
->>> def getsummary(s):
-...     p = restructuredtext.parse_docstring(s, [])
-...     s, o = p.summary()
-...     s = s.to_plaintext(None).strip()
-...     return s, o
+>>> def parse_and_print(s):
+...     errors = []
+...     parsed = restructuredtext.parse_docstring(s, errors)
+...     body, fields = parsed.split_fields(errors)
+...     for error in errors:
+...         print('ERROR: %s' % error)
+...     if body is None:
+...         print('EMPTY BODY')
+...     else:
+...         print(body.to_html(None))
+...     for field in fields:
+...         body = field.body().to_html(None)
+...         arg = field.arg()
+...         if arg is None:
+...             print('%s: %s' % (field.tag(), body))
+...         else:
+...             print('%s "%s": %s' % (field.tag(), arg, body))
 
-#Let's not lose anything!
+Fields
+======
 
->>> getsummary("Single line")
-(u'Single line', False)
-
->>> getsummary("Single line.")
-(u'Single line.', False)
-
->>> getsummary("""
-... Single line *with* period.
-... """)
-(u'Single line with period.', False)
-
->>> getsummary("""
-... Single line `with` period.
+>>> parse_and_print(
+... """A test module
 ...
-... :type: Also with a tag.
+... :Version: 1.0
+... :Parameter i: integer
 ... """)
-(u'Single line with period.', False)
+A test module
+version: 1.0
+parameter "i": integer
 
->>> getsummary("""
-... Other lines **with** period.
-... This is attached
+>>> parse_and_print(
+... """A test function
+...
+... :Parameters: a b c
 ... """)
-(u'Other lines with period.', True)
+ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contain a bulleted list or definition list.
+A test function
+newfield "parameters": <pre class="literalblock">
+Parameters
+<BLANKLINE>
+</pre>
+<BLANKLINE>
+parameters: a b c
 
->>> getsummary("""
-... Other lines *with* period.
+>>> parse_and_print(
+... """A test function
 ...
-... This is detached
-...
-... :type: Also with a tag.
+... :exceptions: - `KeyError`: if the key is not found
+...              - `ValueError`: if the value is bad
 ... """)
-(u'Other lines with period.', True)
-
->>> getsummary("""
-... Other lines without period
-... This is attached
-... """)
-(u'Other lines without period\nThis is attached', False)
-
->>> getsummary("""
-... Other lines without period
-...
-... This is detached
-... """)
-(u'Other lines without period...', True)
-
->>> getsummary("""
-... Single line *without* period
-...
-... :type: Also with a tag.
-... """)
-(u'Single line without period', False)
-
->>> getsummary("""
-... This is the first line.
-...
-... :type: Also with a tag.
-...
-... Other stuff after a tag.
-... """)
-(u'This is the first line.', True)
+A test function
+except "KeyError": if the key is not found
+except "ValueError": if the value is bad
 
 Python code
 ===========
@@ -98,7 +79,7 @@ as colorized Python code.
 ... """, err)
 >>> err
 []
->>> print p.to_html(None)
+>>> print(p.to_html(None))
 <p>A test module</p>
 <pre class="py-doctest">
 <span class="py-comment"># This is some Python code</span>

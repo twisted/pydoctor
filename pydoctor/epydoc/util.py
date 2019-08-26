@@ -8,8 +8,7 @@
 """
 Miscellaneous utility functions that are used by multiple modules.
 
-@group Text processing: wordwrap, decode_with_backslashreplace,
-    plaintext_to_html
+@group Text processing: wordwrap, plaintext_to_html
 """
 __docformat__ = 'epytext en'
 
@@ -19,25 +18,7 @@ import re
 ## Text Processing
 ######################################################################
 
-def decode_with_backslashreplace(s):
-    r"""
-    Convert the given 8-bit string into unicode, treating any
-    character c such that ord(c)<128 as an ascii character, and
-    converting any c such that ord(c)>128 into a backslashed escape
-    sequence.
-
-        >>> decode_with_backslashreplace('abc\xff\xe8')
-        u'abc\\xff\\xe8'
-    """
-    # s.encode('string-escape') is not appropriate here, since it
-    # also adds backslashes to some ascii chars (eg \ and ').
-    assert isinstance(s, str)
-    return (s
-            .decode('latin1')
-            .encode('ascii', 'backslashreplace')
-            .decode('ascii'))
-
-def wordwrap(str, indent=0, right=75, startindex=0, splitchars=''):
+def wordwrap(s, indent=0, right=75):
     """
     Word-wrap the given string.  I.e., add newlines to the string such
     that any lines that are longer than C{right} are broken into
@@ -53,25 +34,12 @@ def wordwrap(str, indent=0, right=75, startindex=0, splitchars=''):
         longer than C{right} will be broken at the first whitespace
         sequence before the right margin.
     @type right: C{int}
-    @param startindex: If specified, then assume that the first line
-        is already preceeded by C{startindex} characters.
-    @type startindex: C{int}
-    @param splitchars: A list of non-whitespace characters which can
-        be used to split a line.  (E.g., use '/\\' to allow path names
-        to be split over multiple lines.)
-    @rtype: C{str}
     """
-    if splitchars:
-        chunks = re.split(r'( +|\n|[^ \n%s]*[%s])' %
-                          (re.escape(splitchars), re.escape(splitchars)),
-                          str.expandtabs())
-    else:
-        chunks = re.split(r'( +|\n)', str.expandtabs())
-    result = [' '*(indent-startindex)]
-    charindex = max(indent, startindex)
-    for chunknum, chunk in enumerate(chunks):
-        if (charindex+len(chunk) > right and charindex > 0) or chunk == '\n':
-            result.append('\n' + ' '*indent)
+    result = [' ' * indent]
+    charindex = indent
+    for chunk in re.split(r'( +|\n)', s.expandtabs()):
+        if (charindex + len(chunk) > right and charindex > 0) or chunk == '\n':
+            result.append('\n' + ' ' * indent)
             charindex = indent
             if chunk[:1] not in ('\n', ' '):
                 result.append(chunk)
@@ -79,7 +47,7 @@ def wordwrap(str, indent=0, right=75, startindex=0, splitchars=''):
         else:
             result.append(chunk)
             charindex += len(chunk)
-    return ''.join(result).rstrip()+'\n'
+    return ''.join(result).rstrip() + '\n'
 
 def plaintext_to_html(s):
     """
