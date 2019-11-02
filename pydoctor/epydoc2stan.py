@@ -4,8 +4,6 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
-from six.moves import builtins
-from six.moves.urllib.parse import quote
 import exceptions
 import inspect
 import itertools
@@ -15,6 +13,7 @@ import sys
 
 from pydoctor import model
 from six.moves import builtins
+from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, XMLString, tags
 from pydoctor.epydoc.markup import DocstringLinker
 

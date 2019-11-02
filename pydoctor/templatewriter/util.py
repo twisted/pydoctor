@@ -3,13 +3,11 @@
 from __future__ import print_function
 
 import os
-import urllib
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import tags
 
-import os
 from six.moves.urllib.parse import quote
 
 def link(o):
