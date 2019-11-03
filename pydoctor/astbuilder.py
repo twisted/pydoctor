@@ -51,7 +51,7 @@ class ModuleVistor(ast.NodeVisitor):
         for n in node.bases:
             if isinstance(n, ast.Name):
                 str_base = n.id
-            elif isinstance(n, ast.Attribute):
+            else:
                 str_base = astor.to_source(n).strip()
 
             rawbases.append(str_base)
