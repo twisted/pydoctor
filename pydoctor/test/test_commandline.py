@@ -38,7 +38,7 @@ def test_no_systemclasses_py2():
     assert 'requires an argument' in err
 
 @py3only
-def test_no_systemclasses_py2():
+def test_no_systemclasses_py3():
     err = geterrtext('--system-class')
     assert 'requires 1 argument' in err
 
