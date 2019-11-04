@@ -7,6 +7,7 @@ import re
 
 import astor
 from pydoctor import astbuilder, model
+from six import text_type
 
 
 class ZopeInterfaceModule(model.Module):
@@ -271,7 +272,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for base in cls.bases:
             if isinstance(base, ast.Name):
                 bases.append(self.builder.current.expandName(base.id))
-            elif isinstance(base, str):
+            elif isinstance(base, text_type):
                 bases.append(self.builder.current.expandName(base))
             else:
                 raise Exception(base)
