@@ -3,9 +3,11 @@
 from __future__ import print_function
 
 import ast
+from itertools import chain
 
 import astor
 from pydoctor import model
+from six import string_types
 
 
 def parseFile(path):
@@ -130,8 +132,12 @@ class ModuleVistor(ast.NodeVisitor):
                 if mod.all is not None:
                     names = mod.all
                 else:
-                    names = mod.contents.keys() + mod._localNameToFullName_map.keys()
-                    names = [k for k in names if not k.startswith('_')]
+                    names = (
+                        k
+                        for k in chain(mod.contents.keys(),
+                                       mod._localNameToFullName_map.keys())
+                        if not k.startswith('_')
+                        )
                 for n in names:
                     _localNameToFullName[n] = expandName(n)
                 return
@@ -285,6 +291,16 @@ class ModuleVistor(ast.NodeVisitor):
                 args.append([x.id for x in arg.elts])
             elif isinstance(arg, ast.Name):
                 args.append(arg.id)
+            else:
+                args.append(arg.arg)
+
+        varargname = node.args.vararg
+        if varargname and not isinstance(varargname, string_types):
+            varargname = varargname.arg
+
+        kwargname = node.args.kwarg
+        if kwargname and not isinstance(kwargname, string_types):
+            kwargname = kwargname.arg
 
         defaults = []
 
@@ -294,7 +310,7 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 defaults.append(astor.to_source(default).strip())
 
-        func.argspec = (args, node.args.vararg, node.args.kwarg, tuple(defaults))
+        func.argspec = (args, varargname, kwargname, tuple(defaults))
         self.builder.popFunction()
 
 class ASTBuilder(object):
