@@ -1,5 +1,5 @@
 """
-Provides PyDoctor version information.
+Provides pydoctor version information.
 """
 
 # This file is auto-generated! Do not edit!
@@ -7,5 +7,5 @@ Provides PyDoctor version information.
 
 from incremental import Version
 
-__version__ = Version('pydoctor', 17, 9, 0)
+__version__ = Version('pydoctor', 19, 11, 0)
 __all__ = ["__version__"]
