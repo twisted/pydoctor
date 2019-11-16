@@ -148,6 +148,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             name = node.func.id
         elif isinstance(node.func, ast.Attribute):
             name = astor.to_source(node).strip().split("(")[0]
+        elif isinstance(node.func, ast.Call):
+            return self.funcNameFromCall(node.func)
         else:
             raise Exception(node.func)
         return self.builder.current.expandName(name)
