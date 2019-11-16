@@ -3,28 +3,27 @@ from __future__ import print_function
 import os
 import shutil
 import tempfile
+from io import BytesIO
 
-from twisted.python.compat import NativeStringIO
-
-from pydoctor import templatewriter, model
+import pytest
+from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
-import pytest
 
 
 def flatten(t):
-    io = NativeStringIO()
+    io = BytesIO()
     writer.flattenToFile(io, t)
-    return io.getvalue()
+    return io.getvalue().decode()
 
 
 def getHTMLOf(ob):
     wr = templatewriter.TemplateWriter('')
     wr.system = ob.system
-    f = NativeStringIO()
+    f = BytesIO()
     wr.writeDocsForOne(ob, f)
-    return f.getvalue()
+    return f.getvalue().decode()
 
 def test_simple():
     src = '''
@@ -76,7 +75,7 @@ def test_basic_package():
         root, = system.rootobjects
         w.writeDocsFor(root, False)
         w.writeModuleIndex(system)
-        for ob in system.allobjects.itervalues():
+        for ob in system.allobjects.values():
             if ob.documentation_location == model.DocLocation.OWN_PAGE:
                 assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
         assert 'Package docstring' in open(os.path.join(targetdir, 'basic.html')).read()

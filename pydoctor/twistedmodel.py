@@ -2,11 +2,13 @@
 
 from __future__ import print_function
 
-from pydoctor import model, ast_pp, zopeinterface
-from compiler import ast
+import ast
 
-from twisted.python.versions import Version
+import astor
+from pydoctor import model, zopeinterface
 from twisted.python.deprecate import _getDeprecationWarningString
+from twisted.python.versions import Version
+
 
 class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
 
@@ -14,9 +16,9 @@ class TwistedModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
         # XXX this is rather fragile...
         origModuleName, newModuleName, moduleDesc, \
                         projectName, projectURL, globDict = node.args
-        moduleDesc = ast_pp.pp(moduleDesc)[1:-1]
-        projectName = ast_pp.pp(projectName)[1:-1]
-        projectURL = ast_pp.pp(projectURL)[1:-1]
+        moduleDesc = astor.to_source(moduleDesc)[1:-1].strip()
+        projectName = astor.to_source(projectName)[1:-1].strip()
+        projectURL = astor.to_source(projectURL)[1:-1].strip()
         modoc = """
 %(moduleDesc)s
 

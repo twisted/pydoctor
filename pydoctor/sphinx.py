@@ -1,28 +1,20 @@
 """
 Support for Sphinx compatibility.
 """
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
+
+import logging
+import os
+import shutil
+import textwrap
+import zlib
 
 import appdirs
 import attr
-
+import requests
 from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
 from cachecontrol.heuristics import ExpiresAfter
-
-import logging
-
-import os
-
-import requests
-
-import shutil
-
-import textwrap
-
-import zlib
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,18 +48,18 @@ class SphinxInventory(object):
         """
         Helper for testing.
         """
-        return open(path, 'w')
+        return open(path, 'wb')
 
     def _generateHeader(self):
         """
         Return header for project  with name.
         """
         version = [str(part) for part in self.version]
-        return """# Sphinx inventory version 2
+        return ("""# Sphinx inventory version 2
 # Project: %s
 # Version: %s
 # The rest of this file is compressed with zlib.
-""" % (self.project_name, '.'.join(version))
+""" % (self.project_name, '.'.join(version))).encode()
 
     def _generateContent(self, subjects):
         """
@@ -77,10 +69,10 @@ class SphinxInventory(object):
         for obj in subjects:
             if not obj.isVisible:
                 continue
-            content.append(self._generateLine(obj))
+            content.append(self._generateLine(obj).encode())
             content.append(self._generateContent(obj.orderedcontents))
 
-        return ''.join(content)
+        return b''.join(content)
 
     def _generateLine(self, obj):
         """
@@ -147,18 +139,18 @@ class SphinxInventory(object):
         """
         Parse inventory and return clear text payload without comments.
         """
-        payload = ''
+        payload = b''
         while True:
-            parts = data.split('\n', 1)
+            parts = data.split(b'\n', 1)
             if len(parts) != 2:
                 payload = data
                 break
-            if not parts[0].startswith('#'):
+            if not parts[0].startswith(b'#'):
                 payload = data
                 break
             data = parts[1]
         try:
-            return zlib.decompress(payload)
+            return zlib.decompress(payload).decode()
         except:
             self.error(
                 'sphinx',

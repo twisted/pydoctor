@@ -3,9 +3,10 @@ Unit tests for model.
 """
 from __future__ import print_function
 
+import zlib
+
 from pydoctor import model, sphinx
 from pydoctor.driver import parse_args
-import zlib
 
 
 class FakeOptions(object):
@@ -100,9 +101,9 @@ def test_fetchIntersphinxInventories_content():
         ]
     url_content = {
         'http://sphinx/objects.inv': zlib.compress(
-            'sphinx.module py:module -1 sp.html -'),
+            b'sphinx.module py:module -1 sp.html -'),
         'file:///twisted/index.inv': zlib.compress(
-            'twisted.package py:module -1 tm.html -'),
+            b'twisted.package py:module -1 tm.html -'),
         }
     sut = model.System(options=options)
     log = []

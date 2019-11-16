@@ -2,13 +2,13 @@
 
 from __future__ import print_function
 
-from pydoctor.templatewriter.util import link, templatefile
-from pydoctor.templatewriter import DOCTYPE, pages, summary
+import os
+import shutil
+
 from pydoctor import model
-
+from pydoctor.templatewriter import DOCTYPE, pages, summary
+from pydoctor.templatewriter.util import link, templatefile
 from twisted.web.template import flattenString
-
-import os, shutil
 
 
 def flattenToFile(fobj, page):
@@ -52,7 +52,7 @@ class TemplateWriter:
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system)
-            f = open(os.path.join(self.base, pclass.filename), 'w')
+            f = open(os.path.join(self.base, pclass.filename), 'wb')
             flattenToFile(f, page)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
@@ -65,7 +65,7 @@ class TemplateWriter:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                f = open(os.path.join(self.base, link(ob)), 'w')
+                f = open(os.path.join(self.base, link(ob)), 'wb')
                 self.writeDocsForOne(ob, f)
                 f.close()
         for o in ob.orderedcontents:

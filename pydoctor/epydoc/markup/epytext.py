@@ -107,7 +107,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-import re, string
+import re
 import six
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
@@ -200,10 +200,10 @@ _SYMBOLS = set(SYMBOLS)
 
 # Add symbols to the docstring.
 symblist = '      '
-symblist += ';\n      '.join([' - C{E{S}{%s}}=S{%s}' % (symbol, symbol)
-                              for symbol in SYMBOLS])
+symblist += ';\n      '.join(' - C{E{S}{%s}}=S{%s}' % (symbol, symbol)
+                             for symbol in SYMBOLS)
 __doc__ = __doc__.replace('<<<SYMBOLS>>>', symblist)
-del symbol, symblist
+del symblist
 
 # Tags for colorizing text.
 _COLORIZING_TAGS = {
@@ -251,7 +251,7 @@ def parse(str, errors = None):
 
     # Preprocess the string.
     str = re.sub('\015\012', '\012', str)
-    str = string.expandtabs(str)
+    str = str.expandtabs()
 
     # Tokenize the input string.
     tokens = _tokenize(str, errors)

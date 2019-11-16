@@ -1,7 +1,13 @@
 from __future__ import print_function
 
-from pydoctor import model, astbuilder
-import textwrap, inspect
+import inspect
+import textwrap
+
+from pydoctor import astbuilder, model
+
+
+
+from . import py2only
 
 def fromText(text, modname='<test>', system=None,
              buildercls=None,
@@ -24,6 +30,7 @@ def fromText(text, modname='<test>', system=None,
 
 def test_simple():
     src = '''
+    """ MOD DOC """
     def f():
         """This is a docstring."""
     '''
@@ -40,7 +47,7 @@ def test_function_argspec():
     # are the defaults where as the ast stuff always gives strings
     # representing those objects
     src = textwrap.dedent('''
-    def f((a,z), b=3, *c, **kw):
+    def f(a, b=3, *c, **kw):
         pass
     ''')
     mod = fromText(src)
@@ -50,6 +57,26 @@ def test_function_argspec():
     realf = ns['f']
     inspectargspec = inspect.getargspec(realf)
     assert inspectargspec[:-1] == docfunc.argspec[:-1]
+    assert docfunc.argspec[-1] == ('3',)
+
+
+@py2only
+def test_function_argspec_with_tuple():
+    # we don't compare the defaults part of the argspec directly any
+    # more because inspect.getargspec returns the actual objects that
+    # are the defaults where as the ast stuff always gives strings
+    # representing those objects
+    src = textwrap.dedent('''
+    def f((a,z), b=3, *c, **kw):
+        pass
+    ''')
+    mod = fromText(src)
+    docfunc, = mod.contents.values()
+    ns = {}
+    exec(src, ns)
+    realf = ns['f']
+    inspectargspec = inspect.getargspec(realf)
+    assert tuple(inspectargspec[:-1]) == tuple(docfunc.argspec[:-1])
     assert docfunc.argspec[-1] == ('3',)
 
 def test_class():

@@ -1,11 +1,11 @@
 from __future__ import print_function
 
-from twisted.python.compat import NativeStringIO
-
-from pydoctor import driver
-
 import sys
 
+from pydoctor import driver
+from twisted.python.compat import NativeStringIO
+
+from . import py2only, py3only
 
 def geterrtext(*options):
     options = list(options)
@@ -32,9 +32,17 @@ def test_cannot_advance_blank_system():
     err = geterrtext('--make-html')
     assert 'forget an --add-package?' in err
 
-def test_invalid_systemclasses():
+@py2only
+def test_no_systemclasses_py2():
     err = geterrtext('--system-class')
     assert 'requires an argument' in err
+
+@py3only
+def test_no_systemclasses_py3():
+    err = geterrtext('--system-class')
+    assert 'requires 1 argument' in err
+
+def test_invalid_systemclasses():
     err = geterrtext('--system-class=notdotted')
     assert 'dotted name' in err
     err = geterrtext('--system-class=no-such-module.System')

@@ -43,7 +43,8 @@ def signature(argspec):
             things.append(regarg)
     if varargname:
         things.append('*%s' % varargname)
-    things += ['%s=%s' % (t[0], t[1]) for t in kwargs]
+
+    things += ['%s=%s' % kwarg for kwarg in kwargs]
     if varkwname:
         things.append('**%s' % varkwname)
     return ', '.join(things)

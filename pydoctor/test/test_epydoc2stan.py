@@ -1,10 +1,9 @@
 from __future__ import print_function
 
 import sys
-from io import BytesIO
+from io import StringIO
 
-from pydoctor import epydoc2stan
-from pydoctor import model
+from pydoctor import epydoc2stan, model
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
@@ -166,7 +165,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
     ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', 'ignore-docstring', parent=ext_package)
-    stdout = BytesIO()
+    stdout = StringIO()
     sut = epydoc2stan._EpydocLinker(target)
 
     try:

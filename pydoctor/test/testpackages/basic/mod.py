@@ -49,5 +49,3 @@ class D(C):
 
 def _private():
     pass
-
-

@@ -9,3 +9,4 @@ dist
 _trial_temp/
 apidocs/
 *.egg-info
+.eggs
