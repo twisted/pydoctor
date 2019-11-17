@@ -9,6 +9,7 @@ import itertools
 import os
 import re
 import sys
+import sysconfig
 
 from pydoctor import model
 from six import text_type
@@ -22,6 +23,7 @@ try:
 except ImportError:
     exceptions = builtins
 
+SO_SUFFIX = sysconfig.get_config_var('EXT_SUFFIX') or ".so"
 
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'
@@ -87,6 +89,7 @@ STDLIB_EXCEPTIONS = [
     "UnicodeError",
     "UnicodeTranslateError",
     "UnicodeWarning",
+    "WindowsError",
     "UserWarning",
     "ValueError",
     "Warning",
@@ -129,7 +132,7 @@ def stdlib_doc_link_for_name(name):
         if sub_name == 'os.path' \
                or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
                or os.path.exists(os.path.join(STDLIB_DIR, filename, '__init__.py')) \
-               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
+               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + SO_SUFFIX) \
                or sub_name in sys.builtin_module_names:
             return STDLIB_URL + sub_name + '.html#' + name
     part0 = parts[0]

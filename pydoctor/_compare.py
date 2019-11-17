@@ -1,5 +1,8 @@
 from lxml.html import document_fromstring, tostring
 import glob
+import traceback
+import re
+import sys
 
 errors = []
 
@@ -11,8 +14,9 @@ def elements_equal(e1, e2):
         errors.append((tostring(e1), tostring(e2)))
         return False
     if e1.tail != e2.tail:
-        errors.append((tostring(e1), tostring(e2)))
-        return False
+        if re.sub("\s+", " ", e1.tail) != re.sub("\s+", " ", e2.tail):
+            errors.append((repr(e1.tail), repr(e2.tail)))
+            return False
     if e1.attrib != e2.attrib:
         errors.append((tostring(e1), tostring(e2)))
         return False
@@ -37,7 +41,12 @@ def main():
         doc2 = document_fromstring(py2)
         doc3 = document_fromstring(py3)
 
-        eq = elements_equal(doc2, doc3)
+        try:
+            eq = elements_equal(doc2, doc3)
+        except Exception as e:
+            print("ERROR DECODING", filename.replace('apidocs/', ''))
+            traceback.print_exc()
+            eq = False
 
         if not eq:
             errored = True
