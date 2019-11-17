@@ -125,6 +125,19 @@ def boringDocstring(doc, summary=False):
 
 
 def stdlib_doc_link_for_name(name):
+
+    # Call out particular things, such as exceptions and unicode
+    if name in STDLIB_EXCEPTIONS:
+        return STDLIB_URL + 'exceptions.html#' + name
+    elif name == "unicode":
+        return STDLIB_URL + 'stdtypes.html#str'
+    elif name == "file":
+        return STDLIB_URL + 'io.html'
+    elif name == "unichr":
+        return STDLIB_PY2_URL + 'functions.html#unichr'
+    elif name == "long":
+        return STDLIB_URL + 'stdtypes.html#int'
+
     parts = name.split('.')
     for i in range(len(parts), 0, -1):
         sub_parts = parts[:i]
@@ -136,14 +149,17 @@ def stdlib_doc_link_for_name(name):
             continue
 
         # These only make sense when made py2 links
-        if sub_name in ['StringIO', 'xmlrpclib', 'cookielib']:
+        if sub_name in ['StringIO', 'cStringIO', 'xmlrpclib', 'cookielib', 'Queue']:
             return STDLIB_PY2_URL + sub_name + '.html#' + name
 
         # cPickle is not real
         if sub_name == "cPickle":
             return STDLIB_URL + 'pickle.html#' + name.replace("cPickle", "pickle")
 
-        if sub_name in ['os.path', 'urllib.parse', 'typing', 'asyncio'] \
+        if sub_name == "exceptions":
+            return STDLIB_URL + 'exceptions.html#' + name
+
+        if sub_name in ['os.path', 'urllib.parse', 'typing', 'asyncio', 'contextvars'] \
                or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
                or os.path.exists(os.path.join(STDLIB_DIR, filename, '__init__.py')) \
                or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + SO_SUFFIX) \
@@ -151,15 +167,6 @@ def stdlib_doc_link_for_name(name):
             return STDLIB_URL + sub_name + '.html#' + name
 
     part0 = parts[0]
-
-    # Call out particular things, such as exceptions and unicode
-    if part0 in STDLIB_EXCEPTIONS:
-        return STDLIB_URL + 'exceptions.html#' + name
-    elif part0 == "unicode":
-        return STDLIB_URL + 'stdtypes.html#str
-    elif part0 == "file":
-        return STDLIB_URL + 'io.html'
-
     if part0 in builtins.__dict__ and not part0.startswith('__'):
         bltin = builtins.__dict__[part0]
         if isinstance(bltin, type):
