@@ -26,6 +26,73 @@ except ImportError:
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'
 
+STDLIB_EXCEPTIONS = [
+    "ArithmeticError",
+    "AssertionError",
+    "AttributeError",
+    "BaseException",
+    "BlockingIOError",
+    "BrokenPipeError",
+    "BufferError",
+    "BytesWarning",
+    "ChildProcessError",
+    "ConnectionAbortedError",
+    "ConnectionError",
+    "ConnectionRefusedError",
+    "ConnectionResetError",
+    "DeprecationWarning",
+    "EOFError",
+    "Exception",
+    "FileExistsError",
+    "FileNotFoundError",
+    "FloatingPointError",
+    "FutureWarning",
+    "GeneratorExit",
+    "ImportError",
+    "ImportWarning",
+    "IndentationError",
+    "IndexError",
+    "InterruptedError",
+    "IsADirectoryError",
+    "KeyboardInterrupt",
+    "KeyError",
+    "LookupError",
+    "MemoryError",
+    "ModuleNotFoundError",
+    "NameError",
+    "NotADirectoryError",
+    "NotImplementedError",
+    "OSError",
+    "OverflowError",
+    "PendingDeprecationWarning",
+    "PermissionError",
+    "ProcessLookupError",
+    "RecursionError",
+    "ReferenceError",
+    "ResourceWarning",
+    "RuntimeError",
+    "RuntimeWarning",
+    "StopAsyncIteration",
+    "StopIteration",
+    "SyntaxError",
+    "SyntaxWarning",
+    "SystemError",
+    "SystemExit",
+    "TabError",
+    "TimeoutError",
+    "TypeError",
+    "UnboundLocalError",
+    "UnicodeDecodeError",
+    "UnicodeEncodeError",
+    "UnicodeError",
+    "UnicodeTranslateError",
+    "UnicodeWarning",
+    "UserWarning",
+    "ValueError",
+    "Warning",
+    "ZeroDivisionError",
+]
+
 
 def link(o):
     return o.system.urlprefix + quote(o.fullName()+'.html')
@@ -68,7 +135,7 @@ def stdlib_doc_link_for_name(name):
     part0 = parts[0]
     if part0 in builtins.__dict__ and not part0.startswith('__'):
         bltin = builtins.__dict__[part0]
-        if part0 in exceptions.__dict__:
+        if part0 in STDLIB_EXCEPTIONS:
             return STDLIB_URL + 'exceptions.html#exceptions.' + name
         elif isinstance(bltin, type):
             return STDLIB_URL + 'stdtypes.html#' + name
