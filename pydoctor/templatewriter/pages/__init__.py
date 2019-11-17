@@ -51,7 +51,7 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2stan(ob, summary=summary)[0]
+        return epydoc2stan.doc2stan(ob, summary=summary)
 
 class CommonPage(Element):
 
