@@ -478,7 +478,7 @@ def doc2stan(obj, summary=False):
         r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
         if getattr(obj, 'parsed_type', None) is not None:
             r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
-        return r, []
+        return r
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
@@ -508,9 +508,9 @@ def doc2stan(obj, summary=False):
                                          plurals.get(k, k+'s')))
                 text += '; ' + ', '.join(u) + " documented"
         if summary:
-            return tags.span(class_="undocumented")(text), []
+            return tags.span(class_="undocumented")(text)
         else:
-            return tags.div(class_="undocumented")(text), []
+            return tags.div(class_="undocumented")(text)
     if summary:
         # Use up to three first non-empty lines of doc string as summary.
         lines = itertools.dropwhile(lambda line: not line.strip(),
@@ -518,7 +518,7 @@ def doc2stan(obj, summary=False):
         lines = itertools.takewhile(lambda line: line.strip(), lines)
         lines = [ line.strip() for line in lines ]
         if len(lines) > 3:
-            return tags.span(class_="undocumented")('No summary'), []
+            return tags.span(class_="undocumented")('No summary')
         else:
             doc = ' '.join(lines)
     parse_docstring, e = get_parser(obj.system.options.docformat)
@@ -526,7 +526,7 @@ def doc2stan(obj, summary=False):
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             obj.system.options.docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
-        return boringDocstring(doc, summary), []
+        return boringDocstring(doc, summary)
     errs = []
     doc = inspect.cleandoc(doc)
     try:
@@ -535,29 +535,28 @@ def doc2stan(obj, summary=False):
         errs = [e.__class__.__name__ +': ' + str(e)]
     if errs:
         reportErrors(source, errs)
-        return boringDocstring(doc, summary), errs
+        return boringDocstring(doc, summary)
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
             crap = pdoc.to_html(_EpydocLinker(source))
         except Exception as e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
-            return (boringDocstring(doc, summary),
-                    [e.__class__.__name__ +': ' + str(e)])
+            return boringDocstring(doc, summary)
     else:
         crap = ''
     if isinstance(crap, text_type):
         crap = crap.encode('utf-8')
     if summary:
         if not crap:
-            return (), []
+            return ()
         stan = html2stan(crap)
         if len(stan) == 1 and isinstance(stan[0], Tag) and stan[0].tagName == 'p':
             stan = stan[0].children
         s = tags.span(stan)
     else:
         if not crap and not fields:
-            return (), []
+            return ()
         stan = html2stan(crap)
         s = tags.div(stan)
         fh = FieldHandler(obj)
@@ -565,7 +564,7 @@ def doc2stan(obj, summary=False):
             fh.handle(Field(field, obj))
         fh.resolve_types()
         s(fh.format())
-    return s, []
+    return s
 
 
 field_name_to_human_name = {

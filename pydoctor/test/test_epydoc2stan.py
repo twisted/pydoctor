@@ -67,7 +67,7 @@ def test_summary():
         return part_flat(
             epydoc2stan.doc2stan(
                 mod.contents[func],
-                summary=True)[0].children)
+                summary=True).children)
     assert u'Lorem Ipsum' == get_summary('single_line_summary')
     assert u'Foo Bar Baz' == get_summary('three_lines_summary')
     assert u'No summary' == get_summary('no_summary')
