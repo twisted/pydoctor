@@ -11,16 +11,12 @@ from six import string_types
 
 
 def parseFile(path):
-    """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
-    f = open(path, "U")
-    src = f.read() + "\n"
-    f.close()
-    return parse(src)
-
-
-def parse(buf):
-    """Duplicate of L{compiler.parse} that uses L{MyTransformer}."""
-    return ast.parse(buf)
+    """
+    Load a file from disk and parse it using L{ast.parse}.
+    """
+    with open(path, "U") as f:
+        src = f.read() + "\n"
+    return ast.parse(src)
 
 
 def node2dottedname(node):

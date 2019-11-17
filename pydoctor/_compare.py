@@ -23,6 +23,7 @@ def elements_equal(e1, e2):
 
 def main():
 
+    errored = False
     files = glob.glob("apidocs/*.html")
 
     for filename in files:
@@ -39,6 +40,7 @@ def main():
         eq = elements_equal(doc2, doc3)
 
         if not eq:
+            errored = True
             print("ERROR IN", filename.replace('apidocs/', ''), ":")
             for err in errors:
                 print("PY2:", err[0])
@@ -46,9 +48,8 @@ def main():
 
         errors.clear()
 
-
-
-    pass
+    if errored:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

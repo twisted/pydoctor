@@ -8,5 +8,6 @@ dist
 *~
 _trial_temp/
 apidocs/
+apidocs*/
 *.egg-info
 .eggs
