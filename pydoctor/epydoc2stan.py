@@ -476,7 +476,7 @@ def reportErrors(obj, errs):
             p(err)
 
 
-def doc2stan(obj, summary=False, docstring=None):
+def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
         r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
@@ -486,15 +486,11 @@ def doc2stan(obj, summary=False, docstring=None):
     origobj = obj
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
-    if docstring is None:
-        doc = None
-        for source in obj.docsources():
-            if source.docstring is not None:
-                doc = source.docstring
-                break
-    else:
-        source = obj
-        doc = docstring
+    doc = None
+    for source in obj.docsources():
+        if source.docstring is not None:
+            doc = source.docstring
+            break
     if doc is None or not doc.strip():
         text = "Undocumented"
         subdocstrings = {}
