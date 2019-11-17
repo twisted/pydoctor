@@ -6,9 +6,9 @@ import ast
 from itertools import chain
 
 import astor
+from astor.code_gen import SourceGenerator
 from pydoctor import model
 from six import string_types
-
 
 def parseFile(path):
     """
@@ -304,7 +304,7 @@ class ModuleVistor(ast.NodeVisitor):
             if isinstance(default, ast.Num):
                 defaults.append(str(default.n))
             else:
-                defaults.append(astor.to_source(default).strip())
+                defaults.append(astor.to_source(default, pretty_string=lambda s, *args, **kwargs: repr(s)).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
         self.builder.popFunction()
