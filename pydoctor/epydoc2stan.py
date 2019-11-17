@@ -44,13 +44,9 @@ def get_parser(formatname):
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
     """
-    # inspect.getdoc requires an object with a __doc__ attribute, not
-    # just a string :-(
     if doc is None or not doc.strip():
         return '<pre class="undocumented">Undocumented</pre>'
-    def crappit(): pass
-    crappit.__doc__ = doc
-    return (tags.pre, tags.tt)[bool(summary)](inspect.getdoc(crappit))
+    return (tags.pre, tags.tt)[bool(summary)](inspect.cleandoc(doc))
 
 
 def stdlib_doc_link_for_name(name):
@@ -532,9 +528,7 @@ def doc2stan(obj, summary=False):
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         return boringDocstring(doc, summary), []
     errs = []
-    def crappit(): pass
-    crappit.__doc__ = doc
-    doc = inspect.getdoc(crappit)
+    doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, errs)
     except Exception as e:
@@ -592,9 +586,7 @@ def extract_fields(obj):
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
         return []
-    def crappit(): pass
-    crappit.__doc__ = doc
-    doc = inspect.getdoc(crappit)
+    doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, [])
     except Exception:
