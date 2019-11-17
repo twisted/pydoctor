@@ -34,19 +34,12 @@ class TableRow(Element):
 
 class ChildTable(Element):
     loader = XMLFile(util.templatefilepath('table.html'))
-    last_id = 0
 
     def __init__(self, docgetter, ob, children):
         self.docgetter = docgetter
         self.system = ob.system
         self.children = children
-        ChildTable.last_id += 1
-        self._id = ChildTable.last_id
         self.ob = ob
-
-    @renderer
-    def id(self, request, tag):
-        return 'id'+str(self._id)
 
     @renderer
     def rows(self, request, tag):

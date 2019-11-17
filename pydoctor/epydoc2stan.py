@@ -27,6 +27,7 @@ SO_SUFFIX = sysconfig.get_config_var('EXT_SUFFIX') or ".so"
 
 STDLIB_DIR = os.path.dirname(os.__file__)
 STDLIB_URL = 'http://docs.python.org/library/'
+STDLIB_PY2_URL = 'https://docs.python.org/2.7/library/'
 
 STDLIB_EXCEPTIONS = [
     "ArithmeticError",
@@ -129,18 +130,39 @@ def stdlib_doc_link_for_name(name):
         sub_parts = parts[:i]
         filename = '/'.join(sub_parts)
         sub_name = '.'.join(sub_parts)
-        if sub_name == 'os.path' \
+
+        # repr should never reference the py2 module
+        if sub_name in ['repr']:
+            continue
+
+        # These only make sense when made py2 links
+        if sub_name in ['StringIO', 'xmlrpclib', 'cookielib']:
+            return STDLIB_PY2_URL + sub_name + '.html#' + name
+
+        # cPickle is not real
+        if sub_name == "cPickle":
+            return STDLIB_URL + 'pickle.html#' + name.replace("cPickle", "pickle")
+
+        if sub_name in ['os.path', 'urllib.parse', 'typing', 'asyncio'] \
                or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
                or os.path.exists(os.path.join(STDLIB_DIR, filename, '__init__.py')) \
                or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + SO_SUFFIX) \
                or sub_name in sys.builtin_module_names:
             return STDLIB_URL + sub_name + '.html#' + name
+
     part0 = parts[0]
+
+    # Call out particular things, such as exceptions and unicode
+    if part0 in STDLIB_EXCEPTIONS:
+        return STDLIB_URL + 'exceptions.html#' + name
+    elif part0 == "unicode":
+        return STDLIB_URL + 'stdtypes.html#str
+    elif part0 == "file":
+        return STDLIB_URL + 'io.html'
+
     if part0 in builtins.__dict__ and not part0.startswith('__'):
         bltin = builtins.__dict__[part0]
-        if part0 in STDLIB_EXCEPTIONS:
-            return STDLIB_URL + 'exceptions.html#exceptions.' + name
-        elif isinstance(bltin, type):
+        if isinstance(bltin, type):
             return STDLIB_URL + 'stdtypes.html#' + name
         elif callable(bltin):
             return STDLIB_URL + 'functions.html#' + name
@@ -236,15 +258,18 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return self._objLink(target, prettyID)
         fullerID = self.obj.expandName(fullID)
+
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
             return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
             if target is not None:
                 return self._objLink(target, prettyID)
             src = src.parent
+
         target = self.look_for_name(fullID, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
             self.obj.system.objectsOfType(model.Package)))
