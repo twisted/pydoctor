@@ -87,7 +87,7 @@ class ParsedDocstring:
             errors will be ignored.
         @type errors: C{list} of L{ParseError}
         """
-        raise NotImplementedError('ParsedDocstring.split_fields()')
+        raise NotImplementedError()
 
     def to_html(self, docstring_linker):
         """
@@ -99,7 +99,7 @@ class ParsedDocstring:
         @return: An HTML fragment that encodes this docstring.
         @rtype: C{string}
         """
-        raise NotImplementedError('ParsedDocstring.to_html()')
+        raise NotImplementedError()
 
 ##################################################
 ## Fields
@@ -175,7 +175,7 @@ class DocstringLinker:
         @rtype: C{string}
         @return: The translated index term.
         """
-        raise NotImplementedError('DocstringLinker.translate_indexterm()')
+        raise NotImplementedError()
 
     def translate_identifier_xref(self, identifier, label=None):
         """
@@ -193,7 +193,7 @@ class DocstringLinker:
         @rtype: C{string}
         @return: The translated crossreference link.
         """
-        raise NotImplementedError('DocstringLinker.translate_xref()')
+        raise NotImplementedError()
 
 
 ##################################################
