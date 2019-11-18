@@ -117,7 +117,8 @@ class ModuleVistor(ast.NodeVisitor):
         modname = self.builder.expandModname(node.module)
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
-            assert mod.state in [model.PROCESSING, model.PROCESSED]
+            assert mod.state in [model.ProcessingState.PROCESSING,
+                                 model.ProcessingState.PROCESSED]
             expandName = mod.expandName
         else:
             expandName = lambda name: modname + '.' + name
@@ -187,7 +188,8 @@ class ModuleVistor(ast.NodeVisitor):
 
             mod = self.system.getProcessedModule(fullname)
             if mod is not None:
-                assert mod.state in [model.PROCESSING, model.PROCESSED]
+                assert mod.state in [model.ProcessingState.PROCESSING,
+                                     model.ProcessingState.PROCESSED]
                 expandName = mod.expandName
             else:
                 expandName = lambda name: name

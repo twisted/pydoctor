@@ -242,7 +242,11 @@ class Package(Documentable):
             return self.contents['__init__']._localNameToFullName(name)
 
 
-[UNPROCESSED, PROCESSING, PROCESSED] = range(3)
+class ProcessingState(Enum):
+    UNPROCESSED = 0
+    PROCESSING = 1
+    PROCESSED = 2
+
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self):
@@ -252,7 +256,7 @@ class CanContainImportsDocumentable(Documentable):
 
 class Module(CanContainImportsDocumentable):
     kind = "Module"
-    state = UNPROCESSED
+    state = ProcessingState.UNPROCESSED
     linenumber = 0
     def setup(self):
         super(Module, self).setup()
@@ -699,15 +703,15 @@ class System(object):
         if not isinstance(mod, Module):
             return None
 
-        if mod.state == UNPROCESSED:
+        if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
         return mod
 
 
     def processModule(self, mod):
-        assert mod.state == UNPROCESSED
-        mod.state = PROCESSING
+        assert mod.state is ProcessingState.UNPROCESSED
+        mod.state = ProcessingState.PROCESSING
         if getattr(mod, 'filepath', None) is None:
             return
         builder = self.defaultBuilder(self)
@@ -716,7 +720,7 @@ class System(object):
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             builder.processModuleAST(ast, mod)
-            mod.state = PROCESSED
+            mod.state = ProcessingState.PROCESSED
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)

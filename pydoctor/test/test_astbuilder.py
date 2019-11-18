@@ -25,7 +25,7 @@ def fromText(text, modname='<test>', system=None,
     builder.processModuleAST(ast, mod)
     mod = _system.allobjects[modname]
     mod.ast = ast
-    mod.state = model.PROCESSED
+    mod.state = model.ProcessingState.PROCESSED
     return mod
 
 def test_simple():
