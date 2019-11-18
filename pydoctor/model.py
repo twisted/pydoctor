@@ -14,6 +14,7 @@ import os
 import posixpath
 import sys
 import types
+from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
 from six.moves import builtins
@@ -32,7 +33,7 @@ from six.moves import builtins
 #   Functions can't contain anything.
 
 
-class DocLocation:
+class DocLocation(Enum):
     OWN_PAGE = 1
     PARENT_PAGE = 2
     # Nothing uses this yet.  Parameters will one day.
