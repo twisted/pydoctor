@@ -61,7 +61,7 @@ class Documentable(object):
     def css_class(self):
         """A short, lower case description for use as a CSS class in HTML."""
         class_ = self.kind.lower().replace(' ', '')
-        if self.privacyClass == PrivacyClass.PRIVATE:
+        if self.privacyClass is PrivacyClass.PRIVATE:
             class_ += ' private'
         return class_
 
@@ -186,7 +186,7 @@ class Documentable(object):
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass != PrivacyClass.HIDDEN
+        return self.privacyClass is not PrivacyClass.HIDDEN
 
     def __getstate__(self):
         # this is so very, very evil.
@@ -326,8 +326,8 @@ class Attribute(Documentable):
     def _localNameToFullName(self, name):
         return self.parent._localNameToFullName(name)
 
-class PrivacyClass:
-    """'enum' containing values indicating how private an object should be.
+class PrivacyClass(Enum):
+    """L{Enum} containing values indicating how private an object should be.
 
     @cvar HIDDEN: Don't show the object at all.
     @cvar PRIVATE: Show, but de-emphasize the object.
