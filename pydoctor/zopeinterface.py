@@ -169,9 +169,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if isinstance(self.builder.current, model.Module):
             name = node.targets[0].id
-            # TODO: Which is correct?
-            args = node.value
-            args = node.value.args
             ob = self.system.objForFullName(funcName)
             if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
                 interface = self.builder.pushClass(name, "...")
