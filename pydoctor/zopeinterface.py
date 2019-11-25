@@ -165,31 +165,19 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             raise Exception(node.func)
         return self.builder.current.expandName(name)
 
-    def visit_Assign(self, node):
-        # i would like pattern matching in python please
-        # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
-        #     ...
-        sup = lambda : super(ZopeInterfaceModuleVisitor, self).visit_Assign(node)
-        if len(node.targets) != 1 or \
-               not isinstance(node.targets[0], ast.Name) or \
-               not isinstance(node.value, ast.Call):
-            return sup()
-
+    def __handleAssignmentInModule(self, node):
         funcName = self.funcNameFromCall(node.value)
-
-        if isinstance(self.builder.current, model.Module):
+        ob = self.system.objForFullName(funcName)
+        if isinstance(ob, model.Class) and ob.isinterfaceclass:
             name = node.targets[0].id
-            ob = self.system.objForFullName(funcName)
-            if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
-                interface = self.builder.pushClass(name, "...")
-                self.builder.system.msg('parsing', 'new interface')
-                interface.isinterface = True
-                interface.implementedby_directly = []
-                interface.linenumber = node.lineno
-                self.builder.popClass()
-            return sup()
-        elif not isinstance(self.builder.current, model.Class):
-            return sup()
+            interface = self.builder.pushClass(name, "...")
+            self.builder.system.msg('parsing', 'new interface')
+            interface.isinterface = True
+            interface.implementedby_directly = []
+            interface.linenumber = node.lineno
+            self.builder.popClass()
+
+    def __handleAssignmentInClass(self, node):
 
         def pushAttribute(docstring, kind):
             attr = self.builder._push(model.Attribute, node.targets[0].id, docstring)
@@ -209,22 +197,29 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 docstring = extractStringLiteral(descriptions[0])
             pushAttribute(docstring, kind)
 
+        funcName = self.funcNameFromCall(node.value)
         if funcName == 'zope.interface.Attribute':
             args = node.value.args
-            if args is None or len(args) != 1:
-                return sup()
-            pushAttribute(extractStringLiteral(node.value.args[0]), "Attribute")
-            return sup()
-
-        if schema_prog.match(funcName):
+            if args is not None and len(args) == 1:
+                pushAttribute(extractStringLiteral(node.value.args[0]), "Attribute")
+        elif schema_prog.match(funcName):
             kind = schema_prog.match(funcName).group(1)
             handleSchemaField(kind)
-            return sup()
+        else:
+            cls = self.builder.system.objForFullName(funcName)
+            if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
+                handleSchemaField(cls.name)
 
-        cls = self.builder.system.objForFullName(funcName)
-        if cls and isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
-            handleSchemaField(cls.name)
-        return sup()
+    def visit_Assign(self, node):
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                                  and isinstance(node.value, ast.Call):
+            scope = self.builder.current
+            if isinstance(scope, model.Module):
+                self.__handleAssignmentInModule(node)
+            elif isinstance(scope, model.Class):
+                self.__handleAssignmentInClass(node)
+
+        super(ZopeInterfaceModuleVisitor, self).visit_Assign(node)
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)
