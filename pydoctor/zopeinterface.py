@@ -165,23 +165,27 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             raise Exception(node.func)
         return self.builder.current.expandName(name)
 
-    def __handleAssignmentInModule(self, node):
-        funcName = self.funcNameFromCall(node.value)
+    def _handleAssignmentInModule(self, target, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInModule(target, expr, lineno)
+
+        if not isinstance(expr, ast.Call):
+            return
+        funcName = self.funcNameFromCall(expr)
         ob = self.system.objForFullName(funcName)
         if isinstance(ob, model.Class) and ob.isinterfaceclass:
-            name = node.targets[0].id
-            interface = self.builder.pushClass(name, "...")
+            interface = self.builder.pushClass(target, "...")
             self.builder.system.msg('parsing', 'new interface')
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.linenumber = node.lineno
+            interface.linenumber = lineno
             self.builder.popClass()
 
-    def __handleAssignmentInClass(self, node):
+    def _handleAssignmentInClass(self, target, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(target, expr, lineno)
 
         def pushAttribute(docstring, kind):
-            attr = self.builder._push(model.Attribute, node.targets[0].id, docstring)
-            attr.linenumber = node.lineno
+            attr = self.builder._push(model.Attribute, target, docstring)
+            attr.linenumber = lineno
             attr.kind = kind
             if attr.parentMod.sourceHref:
                 attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
@@ -189,7 +193,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.builder._pop(model.Attribute)
 
         def handleSchemaField(kind):
-            descriptions = [arg.value for arg in node.value.keywords if arg.arg == 'description']
+            descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
             docstring = None
             if len(descriptions) > 1:
                 self.builder.system.msg('parsing', 'xxx')
@@ -197,11 +201,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 docstring = extractStringLiteral(descriptions[0])
             pushAttribute(docstring, kind)
 
-        funcName = self.funcNameFromCall(node.value)
+        if not isinstance(expr, ast.Call):
+            return
+        funcName = self.funcNameFromCall(expr)
         if funcName == 'zope.interface.Attribute':
-            args = node.value.args
+            args = expr.args
             if args is not None and len(args) == 1:
-                pushAttribute(extractStringLiteral(node.value.args[0]), "Attribute")
+                pushAttribute(extractStringLiteral(expr.args[0]), "Attribute")
         elif schema_prog.match(funcName):
             kind = schema_prog.match(funcName).group(1)
             handleSchemaField(kind)
@@ -209,17 +215,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             cls = self.builder.system.objForFullName(funcName)
             if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
                 handleSchemaField(cls.name)
-
-    def visit_Assign(self, node):
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                                  and isinstance(node.value, ast.Call):
-            scope = self.builder.current
-            if isinstance(scope, model.Module):
-                self.__handleAssignmentInModule(node)
-            elif isinstance(scope, model.Class):
-                self.__handleAssignmentInClass(node)
-
-        super(ZopeInterfaceModuleVisitor, self).visit_Assign(node)
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)

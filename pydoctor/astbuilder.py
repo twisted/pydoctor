@@ -225,47 +225,51 @@ class ModuleVistor(ast.NodeVisitor):
 
 
     def _handleOldSchoolDecoration(self, target, expr):
-        if isinstance(self.builder.current, model.Class):
-            if not isinstance(expr, ast.Call):
-                return
-            func = expr.func
-            if not isinstance(func, ast.Name):
-                return
-            func = func.id
-            args = expr.args
-            if len(args) != 1:
-                return
-            arg, = args
-            if not isinstance(arg, ast.Name):
-                return
-            arg = arg.id
-            if target == arg and func in ['staticmethod', 'classmethod']:
-                target = self.builder.current.contents.get(target)
-                if target and isinstance(target, model.Function):
-                    if target.kind != 'Method':
-                        self.system.msg('ast', 'XXX')
-                    else:
-                        target.kind = func.title().replace('m', ' M')
+        if not isinstance(expr, ast.Call):
+            return
+        func = expr.func
+        if not isinstance(func, ast.Name):
+            return
+        func = func.id
+        args = expr.args
+        if len(args) != 1:
+            return
+        arg, = args
+        if not isinstance(arg, ast.Name):
+            return
+        arg = arg.id
+        if target == arg and func in ['staticmethod', 'classmethod']:
+            target = self.builder.current.contents.get(target)
+            if isinstance(target, model.Function):
+                if target.kind != 'Method':
+                    self.system.msg('ast', 'XXX')
+                else:
+                    target.kind = func.title().replace('m', ' M')
 
     def _handleAliasing(self, target, expr):
         dottedname = node2dottedname(expr)
         if dottedname is None:
-            return
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
             return
         c = self.builder.current
         base = c.expandName(dottedname[0])
         if base:
             c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
 
+    def _handleAssignmentInModule(self, target, expr, lineno):
+        self._handleAliasing(target, expr)
+
+    def _handleAssignmentInClass(self, target, expr, lineno):
+        self._handleOldSchoolDecoration(target, expr)
+        self._handleAliasing(target, expr)
+
     def visit_Assign(self, node):
-        if len(node.targets) != 1:
-            return
-        if not isinstance(node.targets[0], ast.Name):
-            return
-        target = node.targets[0].id
-        self._handleOldSchoolDecoration(target, node.value)
-        self._handleAliasing(target, node.value)
+        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            target = node.targets[0].id
+            scope = self.builder.current
+            if isinstance(scope, model.Module):
+                self._handleAssignmentInModule(target, node.value, node.lineno)
+            elif isinstance(scope, model.Class):
+                self._handleAssignmentInClass(target, node.value, node.lineno)
 
     def visit_FunctionDef(self, node):
         doc = ""
