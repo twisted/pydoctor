@@ -226,17 +226,17 @@ class ModuleVistor(ast.NodeVisitor):
 
     def _handleOldSchoolDecoration(self, target, expr):
         if not isinstance(expr, ast.Call):
-            return
+            return False
         func = expr.func
         if not isinstance(func, ast.Name):
-            return
+            return False
         func = func.id
         args = expr.args
         if len(args) != 1:
-            return
+            return False
         arg, = args
         if not isinstance(arg, ast.Name):
-            return
+            return False
         arg = arg.id
         if target == arg and func in ['staticmethod', 'classmethod']:
             target = self.builder.current.contents.get(target)
@@ -245,6 +245,8 @@ class ModuleVistor(ast.NodeVisitor):
                     self.system.msg('ast', 'XXX')
                 else:
                     target.kind = func.title().replace('m', ' M')
+                    return True
+        return False
 
     def _handleAliasing(self, target, expr):
         dottedname = node2dottedname(expr)
@@ -259,7 +261,6 @@ class ModuleVistor(ast.NodeVisitor):
         self._handleAliasing(target, expr)
 
     def _handleAssignmentInClass(self, target, expr, lineno):
-        self._handleOldSchoolDecoration(target, expr)
         self._handleAliasing(target, expr)
 
     def visit_Assign(self, node):
@@ -269,7 +270,8 @@ class ModuleVistor(ast.NodeVisitor):
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, node.value, node.lineno)
             elif isinstance(scope, model.Class):
-                self._handleAssignmentInClass(target, node.value, node.lineno)
+                if not self._handleOldSchoolDecoration(target, node.value):
+                    self._handleAssignmentInClass(target, node.value, node.lineno)
 
     def visit_FunctionDef(self, node):
         doc = ""
