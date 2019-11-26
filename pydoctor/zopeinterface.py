@@ -138,6 +138,16 @@ def extractAttributeDescription(node):
 def extractSchemaDescription(node):
     pass
 
+def extractStringLiteral(node):
+    if isinstance(node, ast.Str):
+        return node.s
+    elif isinstance(node, ast.Name):
+        return node.id
+    elif isinstance(node, ast.Call):
+        return node.args[0].s
+    else:
+        raise TypeError("cannot extract string from %r" % (node,))
+
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     schema_like_patterns = [
@@ -189,16 +199,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
                                   str(attr.linenumber)
             self.builder._pop(model.Attribute)
-
-        def extractStringLiteral(node):
-            if isinstance(node, ast.Str):
-                return node.s
-            elif isinstance(node, ast.Name):
-                return node.id
-            elif isinstance(node, ast.Call):
-                return node.args[0].s
-            else:
-                raise Exception(node)
 
         def handleSchemaField(kind):
             descriptions = [arg.value for arg in node.value.keywords if arg.arg == 'description']
