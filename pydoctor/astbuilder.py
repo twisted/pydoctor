@@ -46,8 +46,12 @@ class ModuleVistor(ast.NodeVisitor):
         self.module = module
 
     def default(self, node):
+        self.currAttr = None
         for child in node.body:
+            self.newAttr = None
             self.visit(child)
+            self.currAttr = self.newAttr
+        self.newAttr = None
 
     def visit_Module(self, node):
         assert self.module.docstring is None
@@ -264,21 +268,38 @@ class ModuleVistor(ast.NodeVisitor):
         self._handleAliasing(target, expr)
 
     def _handleClassVar(self, target, lineno):
-        self.builder.addAttribute(target, None, 'Class Variable', lineno)
+        attr = self.builder.addAttribute(target, None, 'Class Variable', lineno)
+        self.newAttr = attr
 
     def _handleAssignmentInClass(self, target, expr, lineno):
         if not self._handleAliasing(target, expr):
             self._handleClassVar(target, lineno)
 
-    def visit_Assign(self, node):
-        if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
-            target = node.targets[0].id
+    def _handleAssignment(self, targetNode, expr, lineno):
+        if isinstance(targetNode, ast.Name):
+            target = targetNode.id
             scope = self.builder.current
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, node.value, node.lineno)
+                self._handleAssignmentInModule(target, expr, lineno)
             elif isinstance(scope, model.Class):
-                if not self._handleOldSchoolDecoration(target, node.value):
-                    self._handleAssignmentInClass(target, node.value, node.lineno)
+                if not self._handleOldSchoolDecoration(target, expr):
+                    self._handleAssignmentInClass(target, expr, lineno)
+
+    def visit_Assign(self, node):
+        if len(node.targets) == 1:
+            self._handleAssignment(node.targets[0], node.value, node.lineno)
+
+    def visit_AnnAssign(self, node):
+        self._handleAssignment(node.target, node.value, node.lineno)
+
+    def visit_Expr(self, node):
+        value = node.value
+        if isinstance(value, ast.Str):
+            attr = self.currAttr
+            if attr is not None:
+                attr.docstring = value.s
+
+        self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
         doc = ""
@@ -413,6 +434,7 @@ class ASTBuilder(object):
         if parentMod.sourceHref:
             attr.sourceHref = '%s#L%d' % (parentMod.sourceHref, lineno)
         system.addObject(attr)
+        return attr
 
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)

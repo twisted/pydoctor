@@ -7,7 +7,7 @@ from pydoctor import astbuilder, model
 
 
 
-from . import py2only
+from . import py2only, py3only
 
 def fromText(text, modname='<test>', system=None,
              buildercls=None,
@@ -333,3 +333,56 @@ def test_import_star():
     from a import *
     ''', modname='b', system=mod_a.system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
+
+
+def test_inline_docstring_classvar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        def f(self):
+            pass
+        """not a docstring"""
+
+        a = 1
+        """inline doc for a"""
+
+        """not a docstring"""
+
+        _b = 2
+        """inline doc for _b"""
+
+        None
+        """not a docstring"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['_b', 'a', 'f']
+    f = C.contents['f']
+    assert not f.docstring
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
+
+@py3only
+def test_inline_docstring_annotated_classvar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        a: int
+        """inline doc for a"""
+
+        _b: int = 4
+        """inline doc for _b"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['_b', 'a']
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
