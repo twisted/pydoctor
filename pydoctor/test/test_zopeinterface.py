@@ -116,11 +116,15 @@ def test_multiply_inheriting_interfaces():
 def test_attribute():
     src = '''
     import zope.interface as zi
-    class C:
-        attr = zi.Attribute("docstring")
+    class C(zi.Interface):
+        attr = zi.Attribute("documented attribute")
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['C'].contents) == 1
+    attr = mod.contents['C'].contents['attr']
+    assert attr.kind == 'Attribute'
+    assert attr.name == 'attr'
+    assert attr.docstring == "documented attribute"
 
 def test_interfaceclass():
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
