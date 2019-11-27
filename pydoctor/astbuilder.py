@@ -109,7 +109,8 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.warning("processing import statement in odd context")
+            self.builder.warning("processing import statement in odd context",
+                                 str(self.builder.current))
             return
 
         if node.module is None:
@@ -179,7 +180,8 @@ class ModuleVistor(ast.NodeVisitor):
         part of the statement.
         """
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.warning("processing import statement in odd context")
+            self.builder.warning("processing import statement in odd context",
+                                 str(self.builder.current))
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
