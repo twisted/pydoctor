@@ -396,6 +396,17 @@ class ASTBuilder(object):
     def popPackage(self):
         self._pop(self.system.Package)
 
+    def addAttribute(self, target, docstring, kind, lineno):
+        system = self.system
+        parentMod = self.currentMod
+        attr = model.Attribute(system, target, docstring, self.current)
+        attr.kind = kind
+        attr.parentMod = parentMod
+        attr.linenumber = lineno
+        if parentMod.sourceHref:
+            attr.sourceHref = '%s#L%d' % (parentMod.sourceHref, lineno)
+        system.addObject(attr)
+
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)
 

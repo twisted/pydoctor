@@ -183,15 +183,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     def _handleAssignmentInClass(self, target, expr, lineno):
         super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(target, expr, lineno)
 
-        def pushAttribute(docstring, kind):
-            attr = self.builder._push(model.Attribute, target, docstring)
-            attr.linenumber = lineno
-            attr.kind = kind
-            if attr.parentMod.sourceHref:
-                attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
-                                  str(attr.linenumber)
-            self.builder._pop(model.Attribute)
-
         def handleSchemaField(kind):
             descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
             docstring = None
@@ -199,7 +190,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 self.builder.system.msg('parsing', 'xxx')
             elif len(descriptions) == 1:
                 docstring = extractStringLiteral(descriptions[0])
-            pushAttribute(docstring, kind)
+            self.builder.addAttribute(target, docstring, kind, lineno)
 
         if not isinstance(expr, ast.Call):
             return
@@ -207,7 +198,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if funcName == 'zope.interface.Attribute':
             args = expr.args
             if args is not None and len(args) == 1:
-                pushAttribute(extractStringLiteral(expr.args[0]), "Attribute")
+                docstring = extractStringLiteral(expr.args[0])
+                self.builder.addAttribute(target, docstring, "Attribute", lineno)
         elif schema_prog.match(funcName):
             kind = schema_prog.match(funcName).group(1)
             handleSchemaField(kind)
