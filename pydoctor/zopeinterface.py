@@ -183,30 +183,30 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     def _handleAssignmentInClass(self, target, expr, lineno):
         super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(target, expr, lineno)
 
-        def handleSchemaField(kind):
+        def handleSchemaField():
             descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
-            docstring = None
             if len(descriptions) > 1:
                 self.builder.system.msg('parsing', 'xxx')
             elif len(descriptions) == 1:
-                docstring = extractStringLiteral(descriptions[0])
-            self.builder.addAttribute(target, docstring, kind, lineno)
+                attr.docstring = extractStringLiteral(descriptions[0])
 
         if not isinstance(expr, ast.Call):
             return
+        attr = self.builder.current.contents[target]
         funcName = self.funcNameFromCall(expr)
         if funcName == 'zope.interface.Attribute':
             args = expr.args
             if args is not None and len(args) == 1:
-                docstring = extractStringLiteral(expr.args[0])
-                self.builder.addAttribute(target, docstring, "Attribute", lineno)
+                attr.kind = 'Attribute'
+                attr.docstring = extractStringLiteral(expr.args[0])
         elif schema_prog.match(funcName):
-            kind = schema_prog.match(funcName).group(1)
-            handleSchemaField(kind)
+            attr.kind = schema_prog.match(funcName).group(1)
+            handleSchemaField()
         else:
             cls = self.builder.system.objForFullName(funcName)
             if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
-                handleSchemaField(cls.name)
+                attr.kind = cls.name
+                handleSchemaField()
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)

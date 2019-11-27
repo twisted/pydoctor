@@ -251,17 +251,24 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleAliasing(self, target, expr):
         dottedname = node2dottedname(expr)
         if dottedname is None:
-            return
+            return False
         c = self.builder.current
         base = c.expandName(dottedname[0])
         if base:
             c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
+            return True
+        else:
+            return False
 
     def _handleAssignmentInModule(self, target, expr, lineno):
         self._handleAliasing(target, expr)
 
+    def _handleClassVar(self, target, lineno):
+        self.builder.addAttribute(target, None, 'Class Variable', lineno)
+
     def _handleAssignmentInClass(self, target, expr, lineno):
-        self._handleAliasing(target, expr)
+        if not self._handleAliasing(target, expr):
+            self._handleClassVar(target, lineno)
 
     def visit_Assign(self, node):
         if len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
