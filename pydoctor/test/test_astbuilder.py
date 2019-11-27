@@ -386,3 +386,86 @@ def test_inline_docstring_annotated_classvar():
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
+
+def test_inline_docstring_instancevar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        d = None
+        """inline doc for d"""
+
+        f = None
+        """inline doc for f"""
+
+        def __init__(self):
+            self.a = 1
+            """inline doc for a"""
+
+            """not a docstring"""
+
+            self._b = 2
+            """inline doc for _b"""
+
+            x = -1
+            """not a docstring"""
+
+            self.c = 3
+            """inline doc for c"""
+
+            self.d = 4
+
+            self.e = 5
+        """not a docstring"""
+
+        def set_f(self, value):
+            self.f = value
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == [
+        '__init__', '_b', 'a', 'c', 'd', 'e', 'f', 'set_f'
+        ]
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.kind == 'Instance Variable'
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
+    assert b.kind == 'Instance Variable'
+    c = C.contents['c']
+    assert c.docstring == """inline doc for c"""
+    assert c.privacyClass is model.PrivacyClass.VISIBLE
+    assert c.kind == 'Instance Variable'
+    d = C.contents['d']
+    assert d.docstring == """inline doc for d"""
+    assert d.privacyClass is model.PrivacyClass.VISIBLE
+    assert d.kind == 'Instance Variable'
+    e = C.contents['e']
+    assert not e.docstring
+    f = C.contents['f']
+    assert f.docstring == """inline doc for f"""
+    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.kind == 'Instance Variable'
+
+@py3only
+def test_inline_docstring_annotated_instancevar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        a: int
+
+        def __init__(self):
+            self.a = 1
+            """inline doc for a"""
+
+            self.b: int = 2
+            """inline doc for b"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['__init__', 'a', 'b']
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    b = C.contents['b']
+    assert b.docstring == """inline doc for b"""

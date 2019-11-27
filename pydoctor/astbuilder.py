@@ -271,6 +271,20 @@ class ModuleVistor(ast.NodeVisitor):
         attr = self.builder.addAttribute(target, None, 'Class Variable', lineno)
         self.newAttr = attr
 
+    def _handleInstanceVar(self, target, lineno):
+        func = self.builder.current
+        if not isinstance(func, model.Function):
+            return
+        cls = func.parent
+        if not isinstance(cls, model.Class):
+            return
+        obj = cls.resolveName(target)
+        if obj is None:
+            obj = self.builder.addAttribute(target, None, None, lineno, cls)
+        if isinstance(obj, model.Attribute):
+            obj.kind = 'Instance Variable'
+            self.newAttr = obj
+
     def _handleAssignmentInClass(self, target, expr, lineno):
         if not self._handleAliasing(target, expr):
             self._handleClassVar(target, lineno)
@@ -284,6 +298,10 @@ class ModuleVistor(ast.NodeVisitor):
             elif isinstance(scope, model.Class):
                 if not self._handleOldSchoolDecoration(target, expr):
                     self._handleAssignmentInClass(target, expr, lineno)
+        elif isinstance(targetNode, ast.Attribute):
+            value = targetNode.value
+            if isinstance(value, ast.Name) and value.id == 'self':
+                self._handleInstanceVar(targetNode.attr, lineno)
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
@@ -358,6 +376,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
+        self.default(node)
         self.builder.popFunction()
 
 class ASTBuilder(object):
@@ -424,10 +443,12 @@ class ASTBuilder(object):
     def popPackage(self):
         self._pop(self.system.Package)
 
-    def addAttribute(self, target, docstring, kind, lineno):
+    def addAttribute(self, target, docstring, kind, lineno, parent=None):
+        if parent is None:
+            parent = self.current
         system = self.system
         parentMod = self.currentMod
-        attr = model.Attribute(system, target, docstring, self.current)
+        attr = model.Attribute(system, target, docstring, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         attr.linenumber = lineno
