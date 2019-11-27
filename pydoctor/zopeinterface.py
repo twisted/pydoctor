@@ -162,7 +162,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         elif isinstance(node.func, ast.Call):
             return self.funcNameFromCall(node.func)
         else:
-            raise Exception(node.func)
+            return None
         return self.builder.current.expandName(name)
 
     def _handleAssignmentInModule(self, target, expr, lineno):
@@ -171,6 +171,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if not isinstance(expr, ast.Call):
             return
         funcName = self.funcNameFromCall(expr)
+        if funcName is None:
+            return
         ob = self.system.objForFullName(funcName)
         if isinstance(ob, model.Class) and ob.isinterfaceclass:
             interface = self.builder.pushClass(target, "...")
@@ -194,6 +196,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
         attr = self.builder.current.contents[target]
         funcName = self.funcNameFromCall(expr)
+        if funcName is None:
+            return
         if funcName == 'zope.interface.Attribute':
             args = expr.args
             if args is not None and len(args) == 1:
@@ -210,6 +214,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)
+        if base is None:
+            return
         meth = getattr(self, "visit_Call_" + base.replace('.', '_'), None)
         if meth is not None:
             meth(base, node)
