@@ -87,12 +87,12 @@ class _EpydocLinker(DocstringLinker):
         return de_p(something.to_html(self))
 
     def _objLink(self, obj, prettyID):
-        if obj.documentation_location == model.DocLocation.PARENT_PAGE:
+        if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
                 p = p.parent
             linktext = link(p) + '#' + quote(obj.name)
-        elif obj.documentation_location == model.DocLocation.OWN_PAGE:
+        elif obj.documentation_location is model.DocLocation.OWN_PAGE:
             linktext = link(obj)
         else:
             raise AssertionError(

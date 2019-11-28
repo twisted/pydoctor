@@ -89,7 +89,7 @@ class SphinxInventory(object):
 
         full_name = obj.fullName()
 
-        if obj.documentation_location == model.DocLocation.OWN_PAGE:
+        if obj.documentation_location is model.DocLocation.OWN_PAGE:
             url = obj.fullName() + '.html'
         else:
             url = obj.parent.fullName() + '.html#' + obj.name

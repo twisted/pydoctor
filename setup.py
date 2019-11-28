@@ -40,5 +40,6 @@ setup(
         "requests",
         "six",
         "astor",
+        "enum34;python_version<'3.4'",
     ],
 )
