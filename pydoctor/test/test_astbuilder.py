@@ -335,6 +335,33 @@ def test_import_star():
     assert mod_b.resolveName('f') == mod_a.contents['f']
 
 
+def test_inline_docstring_modulevar():
+    mod = fromText('''
+    """regular module docstring
+
+    @var b: doc for b
+    """
+
+    """not a docstring"""
+
+    a = 1
+    """inline doc for a"""
+
+    b = 2
+
+    def f():
+        pass
+    """not a docstring"""
+    ''', modname='test')
+    assert sorted(mod.contents.keys()) == ['a', 'b', 'f']
+    a = mod.contents['a']
+    assert a.docstring == """inline doc for a"""
+    b = mod.contents['b']
+    assert b.docstring is None
+    assert b.parsed_docstring is not None
+    f = mod.contents['f']
+    assert not f.docstring
+
 def test_inline_docstring_classvar():
     mod = fromText('''
     class C:

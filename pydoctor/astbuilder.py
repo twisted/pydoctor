@@ -264,8 +264,16 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             return False
 
+    def _handleModuleVar(self, target, lineno):
+        obj = self.builder.current.resolveName(target)
+        if obj is None:
+            obj = self.builder.addAttribute(target, None, 'Variable', lineno)
+        if isinstance(obj, model.Attribute):
+            self.newAttr = obj
+
     def _handleAssignmentInModule(self, target, expr, lineno):
-        self._handleAliasing(target, expr)
+        if not self._handleAliasing(target, expr):
+            self._handleModuleVar(target, lineno)
 
     def _handleClassVar(self, target, lineno):
         attr = self.builder.addAttribute(target, None, 'Class Variable', lineno)
