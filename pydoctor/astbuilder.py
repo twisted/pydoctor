@@ -24,7 +24,20 @@ def parse(buf):
 
 
 def node2dottedname(node):
-    return astor.to_source(node).strip().split(".")
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    else:
+        return None
+    if len(parts) == 1 and parts[0] in ('True', 'False', 'None'):
+        # On Python 3, these are NameConstant nodes, but on Python 2
+        # they are Name nodes.
+        return None
+    parts.reverse()
+    return parts
 
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
