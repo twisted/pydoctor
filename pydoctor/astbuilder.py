@@ -241,11 +241,7 @@ class ModuleVistor(ast.NodeVisitor):
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
             return
         c = self.builder.current
-        base = None
-        if dottedname[0] in c._localNameToFullName_map:
-            base = c._localNameToFullName_map[dottedname[0]]
-        elif dottedname[0] in c.contents:
-            base = c.contents[dottedname[0]].fullName()
+        base = c.expandName(dottedname[0])
         if base:
             c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
 
