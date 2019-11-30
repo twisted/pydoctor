@@ -499,6 +499,9 @@ def test_inline_docstring_annotated_instancevar():
 
 def test_variable_scopes():
     mod = fromText('''
+    l = 1
+    """module-level l"""
+
     m = 1
     """module-level m"""
 
@@ -518,18 +521,26 @@ def test_variable_scopes():
         def __init__(self):
             self.a = 1
             """inline doc for a"""
+            self.l = 2
+            """instance l"""
     ''', modname='test')
+    l1 = mod.contents['l']
+    assert l1.kind == 'Variable'
+    assert l1.docstring == """module-level l"""
     m1 = mod.contents['m']
     assert m1.kind == 'Variable'
     assert m1.docstring == """module-level m"""
     C = mod.contents['C']
-    assert sorted(C.contents.keys()) == ['__init__', 'a', 'k', 'm']
+    assert sorted(C.contents.keys()) == ['__init__', 'a', 'k', 'l', 'm']
     a = C.contents['a']
     assert a.kind == 'Instance Variable'
     assert a.docstring == """inline doc for a"""
     k = C.contents['k']
     assert k.kind == 'Instance Variable'
     assert k.parsed_docstring is not None
+    l2 = C.contents['l']
+    assert l2.kind == 'Instance Variable'
+    assert l2.docstring == """instance l"""
     m2 = C.contents['m']
     assert m2.kind == 'Class Variable'
     assert m2.docstring == """class-level m"""

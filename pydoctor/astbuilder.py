@@ -288,7 +288,7 @@ class ModuleVistor(ast.NodeVisitor):
         cls = func.parent
         if not isinstance(cls, model.Class):
             return
-        obj = cls.resolveName(target)
+        obj = cls.contents.get(target)
         if obj is None:
             obj = self.builder.addAttribute(target, None, None, lineno, cls)
         if isinstance(obj, model.Attribute):
