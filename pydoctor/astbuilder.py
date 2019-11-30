@@ -276,8 +276,10 @@ class ModuleVistor(ast.NodeVisitor):
             self._handleModuleVar(target, lineno)
 
     def _handleClassVar(self, target, lineno):
-        attr = self.builder.addAttribute(target, None, 'Class Variable', lineno)
-        self.newAttr = attr
+        obj = self.builder.current.contents.get(target)
+        if not isinstance(obj, model.Attribute):
+            obj = self.builder.addAttribute(target, None, 'Class Variable', lineno)
+        self.newAttr = obj
 
     def _handleInstanceVar(self, target, lineno):
         func = self.builder.current
