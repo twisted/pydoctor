@@ -138,6 +138,16 @@ def extractAttributeDescription(node):
 def extractSchemaDescription(node):
     pass
 
+def extractStringLiteral(node):
+    if isinstance(node, ast.Str):
+        return node.s
+    elif isinstance(node, ast.Name):
+        return node.id
+    elif isinstance(node, ast.Call):
+        return node.args[0].s
+    else:
+        raise TypeError("cannot extract string from %r" % (node,))
+
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     schema_like_patterns = [
@@ -152,85 +162,60 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         elif isinstance(node.func, ast.Call):
             return self.funcNameFromCall(node.func)
         else:
-            raise Exception(node.func)
+            return None
         return self.builder.current.expandName(name)
 
-    def visit_Assign(self, node):
-        # i would like pattern matching in python please
-        # if match(Assign([AssName(?name, _)], CallFunc(?funcName, [Const(?docstring)])), node):
-        #     ...
-        sup = lambda : super(ZopeInterfaceModuleVisitor, self).visit_Assign(node)
-        if len(node.targets) != 1 or \
-               not isinstance(node.targets[0], ast.Name) or \
-               not isinstance(node.value, ast.Call):
-            return sup()
+    def _handleAssignmentInModule(self, target, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInModule(target, expr, lineno)
 
-        funcName = self.funcNameFromCall(node.value)
+        if not isinstance(expr, ast.Call):
+            return
+        funcName = self.funcNameFromCall(expr)
+        if funcName is None:
+            return
+        ob = self.system.objForFullName(funcName)
+        if isinstance(ob, model.Class) and ob.isinterfaceclass:
+            interface = self.builder.pushClass(target, "...")
+            self.builder.system.msg('parsing', 'new interface')
+            interface.isinterface = True
+            interface.implementedby_directly = []
+            interface.linenumber = lineno
+            self.builder.popClass()
 
-        if isinstance(self.builder.current, model.Module):
-            name = node.targets[0].id
-            # TODO: Which is correct?
-            args = node.value
-            args = node.value.args
-            ob = self.system.objForFullName(funcName)
-            if ob is not None and isinstance(ob, model.Class) and ob.isinterfaceclass:
-                interface = self.builder.pushClass(name, "...")
-                self.builder.system.msg('parsing', 'new interface')
-                interface.isinterface = True
-                interface.implementedby_directly = []
-                interface.linenumber = node.lineno
-                self.builder.popClass()
-            return sup()
-        elif not isinstance(self.builder.current, model.Class):
-            return sup()
+    def _handleAssignmentInClass(self, target, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(target, expr, lineno)
 
-        def pushAttribute(docstring, kind):
-            attr = self.builder._push(model.Attribute, node.targets[0].id, docstring)
-            attr.linenumber = node.lineno
-            attr.kind = kind
-            if attr.parentMod.sourceHref:
-                attr.sourceHref = attr.parentMod.sourceHref + '#L' + \
-                                  str(attr.linenumber)
-            self.builder._pop(model.Attribute)
-
-        def extractStringLiteral(node):
-            if isinstance(node, ast.Str):
-                return node.s
-            elif isinstance(node, ast.Name):
-                return node.id
-            elif isinstance(node, ast.Call):
-                return node.args[0].s
-            else:
-                raise Exception(node)
-
-        def handleSchemaField(kind):
-            descriptions = [arg.value for arg in node.value.keywords if arg.arg == 'description']
-            docstring = None
+        def handleSchemaField():
+            descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
             if len(descriptions) > 1:
                 self.builder.system.msg('parsing', 'xxx')
             elif len(descriptions) == 1:
-                docstring = extractStringLiteral(descriptions[0])
-            pushAttribute(docstring, kind)
+                attr.docstring = extractStringLiteral(descriptions[0])
 
+        if not isinstance(expr, ast.Call):
+            return
+        attr = self.builder.current.contents[target]
+        funcName = self.funcNameFromCall(expr)
+        if funcName is None:
+            return
         if funcName == 'zope.interface.Attribute':
-            args = node.value.args
-            if args is None or len(args) != 1:
-                return sup()
-            pushAttribute(extractStringLiteral(node.value.args[0]), "Attribute")
-            return sup()
-
-        if schema_prog.match(funcName):
-            kind = schema_prog.match(funcName).group(1)
-            handleSchemaField(kind)
-            return sup()
-
-        cls = self.builder.system.objForFullName(funcName)
-        if cls and isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
-            handleSchemaField(cls.name)
-        return sup()
+            args = expr.args
+            if args is not None and len(args) == 1:
+                attr.kind = 'Attribute'
+                attr.docstring = extractStringLiteral(expr.args[0])
+        elif schema_prog.match(funcName):
+            attr.kind = schema_prog.match(funcName).group(1)
+            handleSchemaField()
+        else:
+            cls = self.builder.system.objForFullName(funcName)
+            if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
+                attr.kind = cls.name
+                handleSchemaField()
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)
+        if base is None:
+            return
         meth = getattr(self, "visit_Call_" + base.replace('.', '_'), None)
         if meth is not None:
             meth(base, node)

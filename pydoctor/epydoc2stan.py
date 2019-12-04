@@ -600,9 +600,12 @@ def extract_fields(obj):
             types[field.arg()] = field.body()
     for field in fields:
         if field.tag() in ['ivar', 'cvar', 'var']:
-            attrobj = obj.system.Attribute(obj.system, field.arg(), None, obj)
+            arg = field.arg()
+            attrobj = obj.contents.get(arg)
+            if attrobj is None:
+                attrobj = obj.system.Attribute(obj.system, arg, None, obj)
             attrobj.parsed_docstring = field.body()
-            attrobj.parsed_type = types.get(field.arg())
+            attrobj.parsed_type = types.get(arg)
             attrobj.kind = field_name_to_human_name[field.tag()]
             r.append(attrobj)
     return r
