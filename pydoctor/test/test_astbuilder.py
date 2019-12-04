@@ -7,7 +7,7 @@ from pydoctor import astbuilder, model
 
 
 
-from . import py2only
+from . import py2only, py3only
 
 def fromText(text, modname='<test>', system=None,
              buildercls=None,
@@ -333,3 +333,214 @@ def test_import_star():
     from a import *
     ''', modname='b', system=mod_a.system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
+
+
+def test_inline_docstring_modulevar():
+    mod = fromText('''
+    """regular module docstring
+
+    @var b: doc for b
+    """
+
+    """not a docstring"""
+
+    a = 1
+    """inline doc for a"""
+
+    b = 2
+
+    def f():
+        pass
+    """not a docstring"""
+    ''', modname='test')
+    assert sorted(mod.contents.keys()) == ['a', 'b', 'f']
+    a = mod.contents['a']
+    assert a.docstring == """inline doc for a"""
+    b = mod.contents['b']
+    assert b.docstring is None
+    assert b.parsed_docstring is not None
+    f = mod.contents['f']
+    assert not f.docstring
+
+def test_inline_docstring_classvar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        def f(self):
+            pass
+        """not a docstring"""
+
+        a = 1
+        """inline doc for a"""
+
+        """not a docstring"""
+
+        _b = 2
+        """inline doc for _b"""
+
+        None
+        """not a docstring"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['_b', 'a', 'f']
+    f = C.contents['f']
+    assert not f.docstring
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
+
+@py3only
+def test_inline_docstring_annotated_classvar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        a: int
+        """inline doc for a"""
+
+        _b: int = 4
+        """inline doc for _b"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['_b', 'a']
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
+
+def test_inline_docstring_instancevar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        d = None
+        """inline doc for d"""
+
+        f = None
+        """inline doc for f"""
+
+        def __init__(self):
+            self.a = 1
+            """inline doc for a"""
+
+            """not a docstring"""
+
+            self._b = 2
+            """inline doc for _b"""
+
+            x = -1
+            """not a docstring"""
+
+            self.c = 3
+            """inline doc for c"""
+
+            self.d = 4
+
+            self.e = 5
+        """not a docstring"""
+
+        def set_f(self, value):
+            self.f = value
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == [
+        '__init__', '_b', 'a', 'c', 'd', 'e', 'f', 'set_f'
+        ]
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.kind == 'Instance Variable'
+    b = C.contents['_b']
+    assert b.docstring == """inline doc for _b"""
+    assert b.privacyClass is model.PrivacyClass.PRIVATE
+    assert b.kind == 'Instance Variable'
+    c = C.contents['c']
+    assert c.docstring == """inline doc for c"""
+    assert c.privacyClass is model.PrivacyClass.VISIBLE
+    assert c.kind == 'Instance Variable'
+    d = C.contents['d']
+    assert d.docstring == """inline doc for d"""
+    assert d.privacyClass is model.PrivacyClass.VISIBLE
+    assert d.kind == 'Instance Variable'
+    e = C.contents['e']
+    assert not e.docstring
+    f = C.contents['f']
+    assert f.docstring == """inline doc for f"""
+    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.kind == 'Instance Variable'
+
+@py3only
+def test_inline_docstring_annotated_instancevar():
+    mod = fromText('''
+    class C:
+        """regular class docstring"""
+
+        a: int
+
+        def __init__(self):
+            self.a = 1
+            """inline doc for a"""
+
+            self.b: int = 2
+            """inline doc for b"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['__init__', 'a', 'b']
+    a = C.contents['a']
+    assert a.docstring == """inline doc for a"""
+    b = C.contents['b']
+    assert b.docstring == """inline doc for b"""
+
+def test_variable_scopes():
+    mod = fromText('''
+    l = 1
+    """module-level l"""
+
+    m = 1
+    """module-level m"""
+
+    class C:
+        """class docstring
+
+        @ivar k: class level doc for k
+        """
+
+        a = None
+
+        k = 640
+
+        m = 2
+        """class-level m"""
+
+        def __init__(self):
+            self.a = 1
+            """inline doc for a"""
+            self.l = 2
+            """instance l"""
+    ''', modname='test')
+    l1 = mod.contents['l']
+    assert l1.kind == 'Variable'
+    assert l1.docstring == """module-level l"""
+    m1 = mod.contents['m']
+    assert m1.kind == 'Variable'
+    assert m1.docstring == """module-level m"""
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == ['__init__', 'a', 'k', 'l', 'm']
+    a = C.contents['a']
+    assert a.kind == 'Instance Variable'
+    assert a.docstring == """inline doc for a"""
+    k = C.contents['k']
+    assert k.kind == 'Instance Variable'
+    assert k.parsed_docstring is not None
+    l2 = C.contents['l']
+    assert l2.kind == 'Instance Variable'
+    assert l2.docstring == """instance l"""
+    m2 = C.contents['m']
+    assert m2.kind == 'Class Variable'
+    assert m2.docstring == """class-level m"""

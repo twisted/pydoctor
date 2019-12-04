@@ -24,7 +24,20 @@ def parse(buf):
 
 
 def node2dottedname(node):
-    return astor.to_source(node).strip().split(".")
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    else:
+        return None
+    if len(parts) == 1 and parts[0] in ('True', 'False', 'None'):
+        # On Python 3, these are NameConstant nodes, but on Python 2
+        # they are Name nodes.
+        return None
+    parts.reverse()
+    return parts
 
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
@@ -33,8 +46,12 @@ class ModuleVistor(ast.NodeVisitor):
         self.module = module
 
     def default(self, node):
+        self.currAttr = None
         for child in node.body:
+            self.newAttr = None
             self.visit(child)
+            self.currAttr = self.newAttr
+        self.newAttr = None
 
     def visit_Module(self, node):
         assert self.module.docstring is None
@@ -109,7 +126,8 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node):
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.warning("processing import statement in odd context")
+            self.builder.warning("processing import statement in odd context",
+                                 str(self.builder.current))
             return
 
         if node.module is None:
@@ -179,7 +197,8 @@ class ModuleVistor(ast.NodeVisitor):
         part of the statement.
         """
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.warning("processing import statement in odd context")
+            self.builder.warning("processing import statement in odd context",
+                                 str(self.builder.current))
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
@@ -210,51 +229,105 @@ class ModuleVistor(ast.NodeVisitor):
 
 
     def _handleOldSchoolDecoration(self, target, expr):
-        if isinstance(self.builder.current, model.Class):
-            if not isinstance(expr, ast.Call):
-                return
-            func = expr.func
-            if not isinstance(func, ast.Name):
-                return
-            func = func.id
-            args = expr.args
-            if len(args) != 1:
-                return
-            arg, = args
-            if not isinstance(arg, ast.Name):
-                return
-            arg = arg.id
-            if target == arg and func in ['staticmethod', 'classmethod']:
-                target = self.builder.current.contents.get(target)
-                if target and isinstance(target, model.Function):
-                    if target.kind != 'Method':
-                        self.system.msg('ast', 'XXX')
-                    else:
-                        target.kind = func.title().replace('m', ' M')
+        if not isinstance(expr, ast.Call):
+            return False
+        func = expr.func
+        if not isinstance(func, ast.Name):
+            return False
+        func = func.id
+        args = expr.args
+        if len(args) != 1:
+            return False
+        arg, = args
+        if not isinstance(arg, ast.Name):
+            return False
+        arg = arg.id
+        if target == arg and func in ['staticmethod', 'classmethod']:
+            target = self.builder.current.contents.get(target)
+            if isinstance(target, model.Function):
+                if target.kind != 'Method':
+                    self.system.msg('ast', 'XXX')
+                else:
+                    target.kind = func.title().replace('m', ' M')
+                    return True
+        return False
 
     def _handleAliasing(self, target, expr):
         dottedname = node2dottedname(expr)
         if dottedname is None:
-            return
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            return
+            return False
         c = self.builder.current
-        base = None
-        if dottedname[0] in c._localNameToFullName_map:
-            base = c._localNameToFullName_map[dottedname[0]]
-        elif dottedname[0] in c.contents:
-            base = c.contents[dottedname[0]].fullName()
+        base = c.expandName(dottedname[0])
         if base:
             c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
+            return True
+        else:
+            return False
+
+    def _handleModuleVar(self, target, lineno):
+        obj = self.builder.current.resolveName(target)
+        if obj is None:
+            obj = self.builder.addAttribute(target, None, 'Variable', lineno)
+        if isinstance(obj, model.Attribute):
+            self.newAttr = obj
+
+    def _handleAssignmentInModule(self, target, expr, lineno):
+        if not self._handleAliasing(target, expr):
+            self._handleModuleVar(target, lineno)
+
+    def _handleClassVar(self, target, lineno):
+        obj = self.builder.current.contents.get(target)
+        if not isinstance(obj, model.Attribute):
+            obj = self.builder.addAttribute(target, None, 'Class Variable', lineno)
+        self.newAttr = obj
+
+    def _handleInstanceVar(self, target, lineno):
+        func = self.builder.current
+        if not isinstance(func, model.Function):
+            return
+        cls = func.parent
+        if not isinstance(cls, model.Class):
+            return
+        obj = cls.contents.get(target)
+        if obj is None:
+            obj = self.builder.addAttribute(target, None, None, lineno, cls)
+        if isinstance(obj, model.Attribute):
+            obj.kind = 'Instance Variable'
+            self.newAttr = obj
+
+    def _handleAssignmentInClass(self, target, expr, lineno):
+        if not self._handleAliasing(target, expr):
+            self._handleClassVar(target, lineno)
+
+    def _handleAssignment(self, targetNode, expr, lineno):
+        if isinstance(targetNode, ast.Name):
+            target = targetNode.id
+            scope = self.builder.current
+            if isinstance(scope, model.Module):
+                self._handleAssignmentInModule(target, expr, lineno)
+            elif isinstance(scope, model.Class):
+                if not self._handleOldSchoolDecoration(target, expr):
+                    self._handleAssignmentInClass(target, expr, lineno)
+        elif isinstance(targetNode, ast.Attribute):
+            value = targetNode.value
+            if isinstance(value, ast.Name) and value.id == 'self':
+                self._handleInstanceVar(targetNode.attr, lineno)
 
     def visit_Assign(self, node):
-        if len(node.targets) != 1:
-            return
-        if not isinstance(node.targets[0], ast.Name):
-            return
-        target = node.targets[0].id
-        self._handleOldSchoolDecoration(target, node.value)
-        self._handleAliasing(target, node.value)
+        if len(node.targets) == 1:
+            self._handleAssignment(node.targets[0], node.value, node.lineno)
+
+    def visit_AnnAssign(self, node):
+        self._handleAssignment(node.target, node.value, node.lineno)
+
+    def visit_Expr(self, node):
+        value = node.value
+        if isinstance(value, ast.Str):
+            attr = self.currAttr
+            if attr is not None:
+                attr.docstring = value.s
+
+        self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
         doc = ""
@@ -313,6 +386,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
+        self.default(node)
         self.builder.popFunction()
 
 class ASTBuilder(object):
@@ -378,6 +452,20 @@ class ASTBuilder(object):
         return self._push(self.system.Package, name, docstring)
     def popPackage(self):
         self._pop(self.system.Package)
+
+    def addAttribute(self, target, docstring, kind, lineno, parent=None):
+        if parent is None:
+            parent = self.current
+        system = self.system
+        parentMod = self.currentMod
+        attr = model.Attribute(system, target, docstring, parent)
+        attr.kind = kind
+        attr.parentMod = parentMod
+        attr.linenumber = lineno
+        if parentMod.sourceHref:
+            attr.sourceHref = '%s#L%d' % (parentMod.sourceHref, lineno)
+        system.addObject(attr)
+        return attr
 
     def warning(self, type, detail):
         self.system._warning(self.current, type, detail)
