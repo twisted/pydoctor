@@ -11,15 +11,14 @@ from six import string_types
 
 
 def parseFile(path):
-    """Duplicate of L{compiler.parseFile} that uses L{MyTransformer}."""
-    f = open(path, "U")
-    src = f.read() + "\n"
-    f.close()
+    """Parse the contents of a Python source file."""
+    with open(path, 'rb') as f:
+        src = f.read() + b'\n'
     return parse(src)
 
 
 def parse(buf):
-    """Duplicate of L{compiler.parse} that uses L{MyTransformer}."""
+    """Parse the contents of a Unicode or bytes string."""
     return ast.parse(buf)
 
 
