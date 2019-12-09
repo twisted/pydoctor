@@ -329,7 +329,7 @@ class ModuleVistor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        doc = ""
+        doc = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             doc = node.body[0].value.s
         func = self.builder.pushFunction(node.name, doc)

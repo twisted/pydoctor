@@ -27,6 +27,21 @@ def fromText(text, modname='<test>', system=None,
     mod.state = model.ProcessingState.PROCESSED
     return mod
 
+def test_no_docstring():
+    # Inheritance of the docstring of an overridden method depends on
+    # methods with no docstring having None in their 'docstring' field.
+    mod = fromText('''
+    def f():
+        pass
+    class C:
+        def m(self):
+            pass
+    ''', modname='test')
+    f = mod.contents['f']
+    assert f.docstring is None
+    m = mod.contents['C'].contents['m']
+    assert m.docstring is None
+
 def test_simple():
     src = '''
     """ MOD DOC """
