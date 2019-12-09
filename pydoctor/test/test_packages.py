@@ -55,7 +55,7 @@ def test_importingfrompackage():
     system = processPackage("importingfrompackage")
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
-    assert submod.state == model.PROCESSED
+    assert submod.state is model.ProcessingState.PROCESSED
 
 def test_allgames():
     system = processPackage("allgames")

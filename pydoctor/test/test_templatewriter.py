@@ -76,9 +76,10 @@ def test_basic_package():
         w.writeDocsFor(root, False)
         w.writeModuleIndex(system)
         for ob in system.allobjects.values():
-            if ob.documentation_location == model.DocLocation.OWN_PAGE:
+            if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
-        assert 'Package docstring' in open(os.path.join(targetdir, 'basic.html')).read()
+        with open(os.path.join(targetdir, 'basic.html')) as f:
+            assert 'Package docstring' in f.read()
     finally:
         shutil.rmtree(targetdir)
 

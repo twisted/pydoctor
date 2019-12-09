@@ -126,7 +126,7 @@ class CommonPage(Element):
     def children(self):
         return sorted(
             [o for o in self.ob.orderedcontents if o.isVisible],
-            key=lambda o:-o.privacyClass)
+            key=lambda o:-o.privacyClass.value)
 
     def packageInitTable(self):
         return ()
@@ -144,7 +144,7 @@ class CommonPage(Element):
 
     def methods(self):
         return [o for o in self.ob.orderedcontents
-                if o.documentation_location == model.DocLocation.PARENT_PAGE
+                if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
     def childlist(self):
@@ -183,13 +183,13 @@ class PackagePage(CommonPage):
     def children(self):
         return sorted([o for o in self.ob.orderedcontents
                        if o.name != '__init__' and o.isVisible],
-                      key=lambda o2:(-o2.privacyClass, o2.fullName()))
+                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.orderedcontents if o.isVisible],
-            key=lambda o2:(-o2.privacyClass, o2.fullName()))
+            key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
@@ -199,7 +199,7 @@ class PackagePage(CommonPage):
 
     def methods(self):
         return [o for o in self.ob.contents['__init__'].orderedcontents
-                if o.documentation_location == model.DocLocation.PARENT_PAGE
+                if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
 class ModulePage(CommonPage):
@@ -306,7 +306,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass)))
+                                               sorted(attrs, key=lambda o:-o.privacyClass.value)))
                 for b, attrs in baselists]
 
     def baseName(self, data):

@@ -14,6 +14,7 @@ import os
 import posixpath
 import sys
 import types
+from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
 from six.moves import builtins
@@ -32,7 +33,7 @@ from six.moves import builtins
 #   Functions can't contain anything.
 
 
-class DocLocation:
+class DocLocation(Enum):
     OWN_PAGE = 1
     PARENT_PAGE = 2
     # Nothing uses this yet.  Parameters will one day.
@@ -60,7 +61,7 @@ class Documentable(object):
     def css_class(self):
         """A short, lower case description for use as a CSS class in HTML."""
         class_ = self.kind.lower().replace(' ', '')
-        if self.privacyClass == PrivacyClass.PRIVATE:
+        if self.privacyClass is PrivacyClass.PRIVATE:
             class_ += ' private'
         return class_
 
@@ -185,7 +186,7 @@ class Documentable(object):
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass != PrivacyClass.HIDDEN
+        return self.privacyClass is not PrivacyClass.HIDDEN
 
     def __getstate__(self):
         # this is so very, very evil.
@@ -241,7 +242,11 @@ class Package(Documentable):
             return self.contents['__init__']._localNameToFullName(name)
 
 
-[UNPROCESSED, PROCESSING, PROCESSED] = range(3)
+class ProcessingState(Enum):
+    UNPROCESSED = 0
+    PROCESSING = 1
+    PROCESSED = 2
+
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self):
@@ -251,7 +256,7 @@ class CanContainImportsDocumentable(Documentable):
 
 class Module(CanContainImportsDocumentable):
     kind = "Module"
-    state = UNPROCESSED
+    state = ProcessingState.UNPROCESSED
     linenumber = 0
     def setup(self):
         super(Module, self).setup()
@@ -321,8 +326,8 @@ class Attribute(Documentable):
     def _localNameToFullName(self, name):
         return self.parent._localNameToFullName(name)
 
-class PrivacyClass:
-    """'enum' containing values indicating how private an object should be.
+class PrivacyClass(Enum):
+    """L{Enum} containing values indicating how private an object should be.
 
     @cvar HIDDEN: Don't show the object at all.
     @cvar PRIVATE: Show, but de-emphasize the object.
@@ -698,15 +703,15 @@ class System(object):
         if not isinstance(mod, Module):
             return None
 
-        if mod.state == UNPROCESSED:
+        if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
         return mod
 
 
     def processModule(self, mod):
-        assert mod.state == UNPROCESSED
-        mod.state = PROCESSING
+        assert mod.state is ProcessingState.UNPROCESSED
+        mod.state = ProcessingState.PROCESSING
         if getattr(mod, 'filepath', None) is None:
             return
         builder = self.defaultBuilder(self)
@@ -715,7 +720,7 @@ class System(object):
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             builder.processModuleAST(ast, mod)
-            mod.state = PROCESSED
+            mod.state = ProcessingState.PROCESSED
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
