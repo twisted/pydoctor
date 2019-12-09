@@ -6,7 +6,7 @@ import ast
 from itertools import chain
 
 import astor
-from pydoctor import model
+from pydoctor import epydoc2stan, model
 from six import string_types
 
 
@@ -421,8 +421,6 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
-        # Method-level import to avoid a circular dependency.
-        from pydoctor import epydoc2stan
         for attrobj in epydoc2stan.extract_fields(obj):
             self.system.addObject(attrobj)
 
