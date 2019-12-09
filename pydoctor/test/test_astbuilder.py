@@ -27,6 +27,15 @@ def fromText(text, modname='<test>', system=None,
     mod.state = model.ProcessingState.PROCESSED
     return mod
 
+def unwrap(parsed_docstring):
+    epytext = parsed_docstring._tree
+    assert epytext.tag == 'epytext'
+    assert len(epytext.children) == 1
+    para = epytext.children[0]
+    assert para.tag == 'para'
+    assert len(para.children) == 1
+    return para.children[0]
+
 def test_no_docstring():
     # Inheritance of the docstring of an overridden method depends on
     # methods with no docstring having None in their 'docstring' field.
@@ -353,8 +362,7 @@ def test_inline_docstring_modulevar():
     a = mod.contents['a']
     assert a.docstring == """inline doc for a"""
     b = mod.contents['b']
-    assert b.docstring is None
-    assert b.parsed_docstring is not None
+    assert unwrap(b.parsed_docstring) == """doc for b"""
     f = mod.contents['f']
     assert not f.docstring
 
@@ -533,7 +541,7 @@ def test_variable_scopes():
     assert a.docstring == """inline doc for a"""
     k = C.contents['k']
     assert k.kind == 'Instance Variable'
-    assert k.parsed_docstring is not None
+    assert unwrap(k.parsed_docstring) == """class level doc for k"""
     l2 = C.contents['l']
     assert l2.kind == 'Instance Variable'
     assert l2.docstring == """instance l"""
