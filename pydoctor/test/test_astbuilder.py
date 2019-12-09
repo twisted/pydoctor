@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import inspect
 import textwrap
 
 from pydoctor import astbuilder, model
@@ -57,42 +56,24 @@ def test_simple():
 
 
 def test_function_argspec():
-    # we don't compare the defaults part of the argspec directly any
-    # more because inspect.getargspec returns the actual objects that
-    # are the defaults where as the ast stuff always gives strings
-    # representing those objects
     src = textwrap.dedent('''
     def f(a, b=3, *c, **kw):
         pass
     ''')
     mod = fromText(src)
     docfunc, = mod.contents.values()
-    ns = {}
-    exec(src, ns)
-    realf = ns['f']
-    inspectargspec = inspect.getargspec(realf)
-    assert inspectargspec[:-1] == docfunc.argspec[:-1]
-    assert docfunc.argspec[-1] == ('3',)
+    assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
 
 
 @py2only
 def test_function_argspec_with_tuple():
-    # we don't compare the defaults part of the argspec directly any
-    # more because inspect.getargspec returns the actual objects that
-    # are the defaults where as the ast stuff always gives strings
-    # representing those objects
     src = textwrap.dedent('''
     def f((a,z), b=3, *c, **kw):
         pass
     ''')
     mod = fromText(src)
     docfunc, = mod.contents.values()
-    ns = {}
-    exec(src, ns)
-    realf = ns['f']
-    inspectargspec = inspect.getargspec(realf)
-    assert tuple(inspectargspec[:-1]) == tuple(docfunc.argspec[:-1])
-    assert docfunc.argspec[-1] == ('3',)
+    assert docfunc.argspec ==  ([['a', 'z'], 'b'], 'c', 'kw', ('3',))
 
 def test_class():
     src = '''

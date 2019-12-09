@@ -119,10 +119,10 @@ def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
             obj.implementedby_directly.append(cls)
 
 
-schema_prog = re.compile('zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
+schema_prog = re.compile(r'zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
 interface_prog = re.compile(
-    'zope\.schema\.interfaces\.([a-zA-Z_][a-zA-Z0-9_]*)'
-    '|zope\.interface\.Interface')
+    r'zope\.schema\.interfaces\.([a-zA-Z_][a-zA-Z0-9_]*)'
+    r'|zope\.interface\.Interface')
 
 def namesInterface(system, name):
     if interface_prog.match(name):
@@ -151,7 +151,7 @@ def extractStringLiteral(node):
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     schema_like_patterns = [
-        ('zope\.interface\.Attribute', extractAttributeDescription),
+        (r'zope\.interface\.Attribute', extractAttributeDescription),
         ]
 
     def funcNameFromCall(self, node):

@@ -78,7 +78,8 @@ def test_basic_package():
         for ob in system.allobjects.values():
             if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
-        assert 'Package docstring' in open(os.path.join(targetdir, 'basic.html')).read()
+        with open(os.path.join(targetdir, 'basic.html')) as f:
+            assert 'Package docstring' in f.read()
     finally:
         shutil.rmtree(targetdir)
 
