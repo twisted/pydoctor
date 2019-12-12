@@ -77,14 +77,14 @@ class ZopeInterfaceFunction(model.Function):
                     if self.name in io2.contents:
                         yield io2.contents[self.name]
 
-def addInterfaceInfoToModule(module, interfaceargs):
+def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
         if not isinstance(arg, tuple):
-            fullName = module.expandName(astor.to_source(arg).strip())
+            fullName = scope.expandName(astor.to_source(arg).strip())
         else:
             fullName = arg[1]
-        module.implements_directly.append(fullName)
-        obj = module.system.objForFullName(fullName)
+        scope.implements_directly.append(fullName)
+        obj = scope.system.objForFullName(fullName)
         if obj is not None:
             if not obj.isinterface:
                 obj.system.msg(
@@ -94,29 +94,16 @@ def addInterfaceInfoToModule(module, interfaceargs):
                 obj.isinterface = True
                 obj.kind = "Interface"
                 obj.implementedby_directly = []
-            obj.implementedby_directly.append(module)
+            obj.implementedby_directly.append(scope)
+
+def addInterfaceInfoToModule(module, interfaceargs):
+    addInterfaceInfoToScope(module, interfaceargs)
 
 def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
     cls.implementsOnly = implementsOnly
     if implementsOnly:
         cls.implements_directly = []
-    for arg in interfaceargs:
-        if not isinstance(arg, tuple):
-            fullName = cls.expandName(astor.to_source(arg).strip())
-        else:
-            fullName = arg[1]
-        cls.implements_directly.append(fullName)
-        obj = cls.system.objForFullName(fullName)
-        if obj is not None:
-            if not obj.isinterface:
-                obj.system.msg(
-                    'zopeinterface',
-                    'probable interface %r not marked as such'%obj,
-                    thresh=1)
-                obj.isinterface = True
-                obj.kind = "Interface"
-                obj.implementedby_directly = []
-            obj.implementedby_directly.append(cls)
+    addInterfaceInfoToScope(cls, interfaceargs)
 
 
 schema_prog = re.compile(r'zope\.schema\.([a-zA-Z_][a-zA-Z0-9_]*)')
