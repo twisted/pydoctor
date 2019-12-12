@@ -83,9 +83,9 @@ def addInterfaceInfoToScope(scope, interfaceargs):
             fullName = scope.expandName(astor.to_source(arg).strip())
         else:
             fullName = arg[1]
-        scope.implements_directly.append(fullName)
         obj = scope.system.objForFullName(fullName)
-        if obj is not None:
+        if isinstance(obj, ZopeInterfaceClass):
+            scope.implements_directly.append(fullName)
             if not obj.isinterface:
                 obj.system.msg(
                     'zopeinterface',
@@ -95,6 +95,10 @@ def addInterfaceInfoToScope(scope, interfaceargs):
                 obj.kind = "Interface"
                 obj.implementedby_directly = []
             obj.implementedby_directly.append(scope)
+        elif obj is not None:
+            obj.system.msg(
+                'zopeinterface',
+                'probable interface %r not detected as class'%obj)
 
 def addInterfaceInfoToModule(module, interfaceargs):
     addInterfaceInfoToScope(module, interfaceargs)
