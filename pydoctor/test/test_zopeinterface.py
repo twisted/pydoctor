@@ -237,6 +237,34 @@ def test_docsources_includes_baseinterface():
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
+def test_implementer_decoration():
+    src = '''
+    from zope.interface import Interface, implementer
+    class IMyInterface(Interface):
+        def method(self):
+            """documentation"""
+    @implementer(IMyInterface)
+    class Implementation(object):
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    iface = mod.contents['IMyInterface']
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == [iface.fullName()]
+
+def test_implementer_decoration_nonclass():
+    src = '''
+    from zope.interface import implementer
+    var = 0
+    @implementer(var)
+    class Implementation(object):
+        pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == []
+
 def test_docsources_from_moduleprovides():
     src = '''
     from zope import interface
