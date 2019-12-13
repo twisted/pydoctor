@@ -424,7 +424,8 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
-        epydoc2stan.extract_fields(obj)
+        if not isinstance(obj, model.Function):
+            epydoc2stan.extract_fields(obj)
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)

@@ -41,12 +41,23 @@ def get_parser(formatname):
         return mod.parse_docstring, None
 
 
+def get_docstring(obj):
+    for source in obj.docsources():
+        doc = source.docstring
+        if doc is not None:
+            if doc.strip():
+                doc = inspect.cleandoc(doc)
+            else:
+                # Treat empty docstring as undocumented.
+                doc = None
+            return doc, source
+    return None, None
+
+
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
     """
-    if doc is None or not doc.strip():
-        return '<pre class="undocumented">Undocumented</pre>'
-    return (tags.pre, tags.tt)[bool(summary)](inspect.cleandoc(doc))
+    return (tags.tt if summary else tags.pre)(doc)
 
 
 def stdlib_doc_link_for_name(name):
@@ -479,28 +490,21 @@ def doc2stan(obj, summary=False):
         if getattr(obj, 'parsed_type', None) is not None:
             r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
         return r
-    origobj = obj
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    doc = None
-    for source in obj.docsources():
-        if source.docstring is not None:
-            doc = source.docstring
-            break
-    if doc is None or not doc.strip():
+    doc, source = get_docstring(obj)
+    if doc is None:
         text = "Undocumented"
         subdocstrings = {}
         subcounts = {}
-        for subob in origobj.contents.values():
+        for subob in obj.contents.values():
             k = subob.kind.lower()
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
                 subdocstrings[k] = subdocstrings.get(k, 0) + 1
-        if isinstance(origobj, model.Package):
+        if isinstance(obj, model.Package):
             subcounts["module"] -= 1
         if subdocstrings:
             plurals = {'class':'classes'}
-            text = "No %s docstring"%origobj.kind.lower()
+            text = "No %s docstring"%obj.kind.lower()
             if summary:
                 u = []
                 for k in sorted(subcounts):
@@ -528,7 +532,6 @@ def doc2stan(obj, summary=False):
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         return boringDocstring(doc, summary)
     errs = []
-    doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, errs)
     except Exception as e:
@@ -576,17 +579,12 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj):
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    if isinstance(obj, model.Function):
-        return
-    doc = obj.docstring
-    if doc is None or not doc.strip():
+    doc, source = get_docstring(obj)
+    if doc is None:
         return
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
         return
-    doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, [])
     except Exception:
