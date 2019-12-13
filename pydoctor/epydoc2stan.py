@@ -486,10 +486,7 @@ def reportErrors(obj, errs):
 def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
-        if getattr(obj, 'parsed_type', None) is not None:
-            r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
-        return r
+        return html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
     doc, source = get_docstring(obj)
     if doc is None:
         text = "Undocumented"
@@ -569,6 +566,14 @@ def doc2stan(obj, summary=False):
             fh.resolve_types()
             s(fh.format())
     return s
+
+
+def type2stan(obj):
+    parsed_type = getattr(obj, 'parsed_type', None)
+    if parsed_type is None:
+        return None
+    else:
+        return html2stan(parsed_type.to_html(_EpydocLinker(obj)))
 
 
 field_name_to_human_name = {

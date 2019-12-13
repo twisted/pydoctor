@@ -51,7 +51,12 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2stan(ob, summary=summary)
+        doc = epydoc2stan.doc2stan(ob, summary=summary)
+        typ = epydoc2stan.type2stan(ob)
+        if typ is None:
+            return doc
+        else:
+            return [doc, ' (type: ', typ, ')']
 
 class CommonPage(Element):
 
