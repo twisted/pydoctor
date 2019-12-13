@@ -559,11 +559,12 @@ def doc2stan(obj, summary=False):
             return ()
         stan = html2stan(crap)
         s = tags.div(stan)
-        fh = FieldHandler(obj)
-        for field in fields:
-            fh.handle(Field(field, obj))
-        fh.resolve_types()
-        s(fh.format())
+        if fields:
+            fh = FieldHandler(obj)
+            for field in fields:
+                fh.handle(Field(field, obj))
+            fh.resolve_types()
+            s(fh.format())
     return s
 
 
