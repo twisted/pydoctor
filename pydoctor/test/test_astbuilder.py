@@ -548,3 +548,70 @@ def test_variable_scopes():
     m2 = C.contents['m']
     assert m2.kind == 'Class Variable'
     assert m2.docstring == """class-level m"""
+
+def test_variable_types():
+    mod = fromText('''
+    class C:
+        """class docstring
+
+        @cvar a: first
+        @type a: C{str}
+
+        @type b: C{str}
+        @cvar b: second
+
+        @type c: C{str}
+
+        @ivar d: fourth
+        @type d: C{str}
+
+        @type e: C{str}
+        @ivar e: fifth
+
+        @type f: C{str}
+        """
+
+        a = "A"
+
+        b = "B"
+
+        c = "C"
+        """third"""
+
+        def __init__(self):
+
+            self.d = "D"
+
+            self.e = "E"
+
+            self.f = "F"
+            """sixth"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == [
+        '__init__', 'a', 'b', 'c', 'd', 'e', 'f'
+        ]
+    a = C.contents['a']
+    assert unwrap(a.parsed_docstring) == """first"""
+    assert str(unwrap(a.parsed_type)) == '<code>str</code>'
+    assert a.kind == 'Class Variable'
+    b = C.contents['b']
+    assert unwrap(b.parsed_docstring) == """second"""
+    assert str(unwrap(b.parsed_type)) == '<code>str</code>'
+    assert b.kind == 'Class Variable'
+    c = C.contents['c']
+    assert c.docstring == """third"""
+    assert str(unwrap(c.parsed_type)) == '<code>str</code>'
+    assert c.kind == 'Class Variable'
+    d = C.contents['d']
+    assert unwrap(d.parsed_docstring) == """fourth"""
+    assert str(unwrap(d.parsed_type)) == '<code>str</code>'
+    assert d.kind == 'Instance Variable'
+    e = C.contents['e']
+    assert unwrap(e.parsed_docstring) == """fifth"""
+    assert str(unwrap(e.parsed_type)) == '<code>str</code>'
+    assert e.kind == 'Instance Variable'
+    f = C.contents['f']
+    assert f.docstring == """sixth"""
+    assert str(unwrap(f.parsed_type)) == '<code>str</code>'
+    assert f.kind == 'Instance Variable'

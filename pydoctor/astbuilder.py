@@ -266,8 +266,9 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleModuleVar(self, target, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, 'Variable', lineno)
+            obj = self.builder.addAttribute(target, None, None, lineno)
         if isinstance(obj, model.Attribute):
+            obj.kind = 'Variable'
             self.newAttr = obj
 
     def _handleAssignmentInModule(self, target, expr, lineno):
@@ -277,7 +278,9 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleClassVar(self, target, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, 'Class Variable', lineno)
+            obj = self.builder.addAttribute(target, None, None, lineno)
+        if obj.kind is None:
+            obj.kind = 'Class Variable'
         self.newAttr = obj
 
     def _handleInstanceVar(self, target, lineno):
@@ -421,8 +424,7 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
-        for attrobj in epydoc2stan.extract_fields(obj):
-            self.system.addObject(attrobj)
+        epydoc2stan.extract_fields(obj)
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)

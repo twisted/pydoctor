@@ -579,34 +579,30 @@ def extract_fields(obj):
     if isinstance(obj, model.Package):
         obj = obj.contents['__init__']
     if isinstance(obj, model.Function):
-        return []
+        return
     doc = obj.docstring
     if doc is None or not doc.strip():
-        return []
+        return
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
-        return []
+        return
     doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, [])
     except Exception:
-        return []
+        return
     pdoc, fields = pdoc.split_fields()
-    if not fields:
-        return []
-    r = []
-    types = {}
     for field in fields:
-        if field.tag() == 'type':
-            types[field.arg()] = field.body()
-    for field in fields:
-        if field.tag() in ['ivar', 'cvar', 'var']:
+        tag = field.tag()
+        if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             attrobj = obj.contents.get(arg)
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, None, obj)
-            attrobj.parsed_docstring = field.body()
-            attrobj.parsed_type = types.get(arg)
-            attrobj.kind = field_name_to_human_name[field.tag()]
-            r.append(attrobj)
-    return r
+                attrobj.kind = None
+                obj.system.addObject(attrobj)
+            if tag == 'type':
+                attrobj.parsed_type = field.body()
+            else:
+                attrobj.parsed_docstring = field.body()
+                attrobj.kind = field_name_to_human_name[tag]
