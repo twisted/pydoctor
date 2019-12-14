@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import textwrap
 
+import astor
+
 from pydoctor import astbuilder, model
 from pydoctor.epydoc2stan import get_parsed_type
 
@@ -36,6 +38,12 @@ def unwrap(parsed_docstring):
     assert para.tag == 'para'
     assert len(para.children) == 1
     return para.children[0]
+
+def type2str(type_expr):
+    if type_expr is None:
+        return None
+    else:
+        return astor.to_source(type_expr).strip()
 
 def test_no_docstring():
     # Inheritance of the docstring of an overridden method depends on
@@ -684,3 +692,51 @@ def test_annotated_variables():
     m = mod.contents['m']
     assert m.docstring == """module-level"""
     assert str(unwrap(get_parsed_type(m))) == '<code>bytes</code>'
+
+def test_inferred_variable_types():
+    mod = fromText('''
+    class C:
+        a = "A"
+        b = 2
+        c = ['a', 'b', 'c']
+        d = {'a': 1, 'b': 2}
+        e = (True, False, True)
+        f = 1.618
+        g = {2, 7, 1, 8}
+        h = []
+        i = ['r', 2, 'd', 2]
+        j = ((), ((), ()))
+        n = None
+        x = list(range(10))
+        y = [n for n in range(10) if n % 2]
+        def __init__(self):
+            self.s = ['S']
+    m = b'octets'
+    ''', modname='test')
+    C = mod.contents['C']
+    assert type2str(C.contents['a'].annotation) == 'str'
+    assert type2str(C.contents['b'].annotation) == 'int'
+    assert type2str(C.contents['c'].annotation) == 'List[str]'
+    assert type2str(C.contents['d'].annotation) == 'Dict[str, int]'
+    assert type2str(C.contents['e'].annotation) == 'Tuple[bool, ...]'
+    assert type2str(C.contents['f'].annotation) == 'float'
+    # The Python 2.7 implementation of literal_eval() does not support
+    # set literals.
+    assert type2str(C.contents['g'].annotation) in ('Set[int]', None)
+    # Element type is unknown, not uniform or too complex.
+    assert type2str(C.contents['h'].annotation) == 'List'
+    assert type2str(C.contents['i'].annotation) == 'List'
+    assert type2str(C.contents['j'].annotation) == 'Tuple'
+    # It is unlikely that a variable actually will contain only None,
+    # so we should treat this as not be able to infer the type.
+    assert C.contents['n'].annotation is None
+    # These expressions are considered too complex for pydoctor.
+    # Maybe we can use an external type inferrer at some point.
+    assert C.contents['x'].annotation is None
+    assert C.contents['y'].annotation is None
+    # Type inference isn't different for module and instance variables,
+    # so we don't need to re-test everything.
+    assert type2str(C.contents['s'].annotation) == 'List[str]'
+    # On Python 2.7, bytes literals are parsed into ast.Str objects,
+    # so there is no way to tell them apart from ASCII strings.
+    assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')

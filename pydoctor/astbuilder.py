@@ -320,7 +320,8 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
-            self._handleAssignment(node.targets[0], None, node.value, node.lineno)
+            self._handleAssignment(node.targets[0], _infer_type(node.value),
+                                   node.value, node.lineno)
 
     def visit_AnnAssign(self, node):
         annotation = _unstring_annotation(node.annotation)
@@ -402,6 +403,56 @@ class _AnnotationStringParser(ast.NodeTransformer):
         return self.visit(expr.value)
 
 _unstring_annotation = _AnnotationStringParser().visit
+
+
+def _infer_type(expr):
+    """Infer an expression's type.
+    @param expr: The expression's AST.
+    @return: A type annotation, or None if the expression has no obvious type.
+    """
+
+    try:
+        value = ast.literal_eval(expr)
+    except ValueError:
+        return None
+    else:
+        return _annotation_for_value(value)
+
+def _annotation_for_value(value):
+    if value is None:
+        return None
+    name = type(value).__name__
+    if isinstance(value, (dict, list, set, tuple)):
+        name = name.capitalize()
+        ann_elem = _annotation_for_elements(value)
+        if isinstance(value, dict):
+            ann_value = _annotation_for_elements(value.values())
+            if ann_value is None:
+                ann_elem = None
+            elif ann_elem is not None:
+                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
+        if ann_elem is not None:
+            if name == 'Tuple':
+                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
+            return ast.Subscript(value=ast.Name(id=name),
+                                 slice=ast.Index(value=ann_elem))
+    return ast.Name(id=name)
+
+def _annotation_for_elements(sequence):
+    names = set()
+    for elem in sequence:
+        ann = _annotation_for_value(elem)
+        if isinstance(ann, ast.Name):
+            names.add(ann.id)
+        else:
+            # Nested sequences are too complex.
+            return None
+    if len(names) == 1:
+        name = names.pop()
+        return ast.Name(id=name)
+    else:
+        # Empty sequence or no uniform type.
+        return None
 
 
 class ASTBuilder(object):
