@@ -263,27 +263,29 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             return False
 
-    def _handleModuleVar(self, target, lineno):
+    def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
             obj = self.builder.addAttribute(target, None, None, lineno)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
+            obj.annotation = annotation
             self.newAttr = obj
 
-    def _handleAssignmentInModule(self, target, expr, lineno):
+    def _handleAssignmentInModule(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):
-            self._handleModuleVar(target, lineno)
+            self._handleModuleVar(target, annotation, lineno)
 
-    def _handleClassVar(self, target, lineno):
+    def _handleClassVar(self, target, annotation, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
             obj = self.builder.addAttribute(target, None, None, lineno)
         if obj.kind is None:
             obj.kind = 'Class Variable'
+        obj.annotation = annotation
         self.newAttr = obj
 
-    def _handleInstanceVar(self, target, lineno):
+    def _handleInstanceVar(self, target, annotation, lineno):
         func = self.builder.current
         if not isinstance(func, model.Function):
             return
@@ -295,32 +297,34 @@ class ModuleVistor(ast.NodeVisitor):
             obj = self.builder.addAttribute(target, None, None, lineno, cls)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Instance Variable'
+            obj.annotation = annotation
             self.newAttr = obj
 
-    def _handleAssignmentInClass(self, target, expr, lineno):
+    def _handleAssignmentInClass(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):
-            self._handleClassVar(target, lineno)
+            self._handleClassVar(target, annotation, lineno)
 
-    def _handleAssignment(self, targetNode, expr, lineno):
+    def _handleAssignment(self, targetNode, annotation, expr, lineno):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, expr, lineno)
+                self._handleAssignmentInModule(target, annotation, expr, lineno)
             elif isinstance(scope, model.Class):
                 if not self._handleOldSchoolDecoration(target, expr):
-                    self._handleAssignmentInClass(target, expr, lineno)
+                    self._handleAssignmentInClass(target, annotation, expr, lineno)
         elif isinstance(targetNode, ast.Attribute):
             value = targetNode.value
             if isinstance(value, ast.Name) and value.id == 'self':
-                self._handleInstanceVar(targetNode.attr, lineno)
+                self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
-            self._handleAssignment(node.targets[0], node.value, node.lineno)
+            self._handleAssignment(node.targets[0], None, node.value, node.lineno)
 
     def visit_AnnAssign(self, node):
-        self._handleAssignment(node.target, node.value, node.lineno)
+        annotation = _unstring_annotation(node.annotation)
+        self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
     def visit_Expr(self, node):
         value = node.value
@@ -390,6 +394,15 @@ class ModuleVistor(ast.NodeVisitor):
         func.argspec = (args, varargname, kwargname, tuple(defaults))
         self.default(node)
         self.builder.popFunction()
+
+
+class _AnnotationStringParser(ast.NodeTransformer):
+    def visit_Str(self, node):
+        expr, = ast.parse(node.s).body
+        return self.visit(expr.value)
+
+_unstring_annotation = _AnnotationStringParser().visit
+
 
 class ASTBuilder(object):
     ModuleVistor = ModuleVistor

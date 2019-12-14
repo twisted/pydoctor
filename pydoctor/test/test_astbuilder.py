@@ -3,6 +3,7 @@ from __future__ import print_function
 import textwrap
 
 from pydoctor import astbuilder, model
+from pydoctor.epydoc2stan import get_parsed_type
 
 
 
@@ -615,3 +616,71 @@ def test_variable_types():
     assert f.docstring == """sixth"""
     assert str(unwrap(f.parsed_type)) == '<code>str</code>'
     assert f.kind == 'Instance Variable'
+
+@py3only
+def test_annotated_variables():
+    mod = fromText('''
+    class C:
+        """class docstring
+
+        @cvar a: first
+        @type a: string
+
+        @type b: string
+        @cvar b: second
+        """
+
+        a: str = "A"
+
+        b: str
+
+        c: str = "C"
+        """third"""
+
+        d: str
+        """fourth"""
+
+        e: List['C']
+        """fifth"""
+
+        f: 'List[C]'
+        """sixth"""
+
+        g: 'List["C"]'
+        """seventh"""
+
+        def __init__(self):
+            self.s: List[str] = []
+            """instance"""
+
+    m: bytes = b"M"
+    """module-level"""
+    ''', modname='test')
+    C = mod.contents['C']
+    a = C.contents['a']
+    assert unwrap(a.parsed_docstring) == """first"""
+    assert str(unwrap(get_parsed_type(a))) == 'string'
+    b = C.contents['b']
+    assert unwrap(b.parsed_docstring) == """second"""
+    assert str(unwrap(get_parsed_type(b))) == 'string'
+    c = C.contents['c']
+    assert c.docstring == """third"""
+    assert str(unwrap(get_parsed_type(c))) == '<code>str</code>'
+    d = C.contents['d']
+    assert d.docstring == """fourth"""
+    assert str(unwrap(get_parsed_type(d))) == '<code>str</code>'
+    e = C.contents['e']
+    assert e.docstring == """fifth"""
+    assert str(unwrap(get_parsed_type(e))) == '<code>List[C]</code>'
+    f = C.contents['f']
+    assert f.docstring == """sixth"""
+    assert str(unwrap(get_parsed_type(f))) == '<code>List[C]</code>'
+    g = C.contents['g']
+    assert g.docstring == """seventh"""
+    assert str(unwrap(get_parsed_type(g))) == '<code>List[C]</code>'
+    s = C.contents['s']
+    assert s.docstring == """instance"""
+    assert str(unwrap(get_parsed_type(s))) == '<code>List[str]</code>'
+    m = mod.contents['m']
+    assert m.docstring == """module-level"""
+    assert str(unwrap(get_parsed_type(m))) == '<code>bytes</code>'

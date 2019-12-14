@@ -4,6 +4,8 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
+import astor
+
 import inspect
 import itertools
 import os
@@ -16,6 +18,7 @@ from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, XMLString, tags
 from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
 try:
     import exceptions
@@ -569,11 +572,30 @@ def doc2stan(obj, summary=False):
 
 
 def type2stan(obj):
-    parsed_type = getattr(obj, 'parsed_type', None)
+    parsed_type = get_parsed_type(obj)
     if parsed_type is None:
         return None
     else:
         return html2stan(parsed_type.to_html(_EpydocLinker(obj)))
+
+def get_parsed_type(obj):
+    parsed_type = getattr(obj, 'parsed_type', None)
+    if parsed_type is not None:
+        return parsed_type
+
+    annotation = getattr(obj, 'annotation', None)
+    if annotation is not None:
+        src = astor.to_source(annotation).strip()
+        return ParsedEpytextDocstring(
+            Element('epytext',
+                Element('para',
+                    Element('code', src),
+                    inline=True
+                    )
+                )
+            )
+
+    return None
 
 
 field_name_to_human_name = {

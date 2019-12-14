@@ -156,8 +156,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return None
         return self.builder.current.expandName(name)
 
-    def _handleAssignmentInModule(self, target, expr, lineno):
-        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInModule(target, expr, lineno)
+    def _handleAssignmentInModule(self, target, annotation, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInModule(
+                target, annotation, expr, lineno)
 
         if not isinstance(expr, ast.Call):
             return
@@ -173,8 +174,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             interface.linenumber = lineno
             self.builder.popClass()
 
-    def _handleAssignmentInClass(self, target, expr, lineno):
-        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(target, expr, lineno)
+    def _handleAssignmentInClass(self, target, annotation, expr, lineno):
+        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(
+                target, annotation, expr, lineno)
 
         def handleSchemaField():
             descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
