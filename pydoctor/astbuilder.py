@@ -38,6 +38,18 @@ def node2dottedname(node):
     parts.reverse()
     return parts
 
+
+def node2fullname(expr, ctx):
+    dottedname = node2dottedname(expr)
+    if dottedname is None:
+        return None
+    base = ctx.expandName(dottedname[0])
+    if base:
+        return '.'.join([base] + dottedname[1:])
+    else:
+        return None
+
+
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
         self.builder = builder
@@ -252,16 +264,12 @@ class ModuleVistor(ast.NodeVisitor):
         return False
 
     def _handleAliasing(self, target, expr):
-        dottedname = node2dottedname(expr)
-        if dottedname is None:
+        ctx = self.builder.current
+        full_name = node2fullname(expr, ctx)
+        if full_name is None:
             return False
-        c = self.builder.current
-        base = c.expandName(dottedname[0])
-        if base:
-            c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
-            return True
-        else:
-            return False
+        ctx._localNameToFullName_map[target] = full_name
+        return True
 
     def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
@@ -320,8 +328,11 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
-            self._handleAssignment(node.targets[0], _infer_type(node.value),
-                                   node.value, node.lineno)
+            expr = node.value
+            annotation = _annotation_from_attrib(expr, self.builder.current)
+            if annotation is None:
+                annotation = _infer_type(expr)
+            self._handleAssignment(node.targets[0], annotation, expr, node.lineno)
 
     def visit_AnnAssign(self, node):
         annotation = _unstring_annotation(node.annotation)
@@ -395,6 +406,25 @@ class ModuleVistor(ast.NodeVisitor):
         func.argspec = (args, varargname, kwargname, tuple(defaults))
         self.default(node)
         self.builder.popFunction()
+
+
+def _annotation_from_attrib(expr, ctx):
+    """Get the type of an C{attr.ib} definition.
+    @param expr: The expression's AST.
+    @param ctx: The context in which this expression is evaluated.
+    @return: A type annotation, or None if the expression is not
+             an C{attr.ib} definition or contains no type information.
+    """
+    if isinstance(expr, ast.Call) \
+            and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
+        keywords = {kw.arg: kw.value for kw in expr.keywords}
+        typ = keywords.get('type')
+        if typ is not None:
+            return _unstring_annotation(typ)
+        default = keywords.get('default')
+        if default is not None:
+            return _infer_type(default)
+    return None
 
 
 class _AnnotationStringParser(ast.NodeTransformer):

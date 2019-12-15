@@ -740,3 +740,19 @@ def test_inferred_variable_types():
     # On Python 2.7, bytes literals are parsed into ast.Str objects,
     # so there is no way to tell them apart from ASCII strings.
     assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
+
+def test_type_from_attrib():
+    mod = fromText('''
+    import attr
+    from attr import attrib
+    class C:
+        a = attr.ib(type=int)
+        b = attrib(type=int)
+        c = attr.ib(type='C')
+        d = attr.ib(default=True)
+    ''', modname='test')
+    C = mod.contents['C']
+    assert type2str(C.contents['a'].annotation) == 'int'
+    assert type2str(C.contents['b'].annotation) == 'int'
+    assert type2str(C.contents['c'].annotation) == 'C'
+    assert type2str(C.contents['d'].annotation) == 'bool'
