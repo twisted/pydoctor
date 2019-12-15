@@ -621,6 +621,10 @@ def extract_fields(obj):
         tag = field.tag()
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
+            if arg is None:
+                obj.system.msg('epydoc2stan', '%s: Missing field name in @%s'
+                               % (obj.fullName(), tag))
+                continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, None, obj)
