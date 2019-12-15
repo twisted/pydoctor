@@ -91,6 +91,16 @@ def test_hasdocstring():
     sub_f = system.allobjects['basic.mod.D.f']
     assert hasdocstring(sub_f) and not sub_f.docstring
 
+def test_missing_variable():
+    mod = fromText('''
+    """Module docstring.
+
+    @type thisVariableDoesNotExist: Type for non-existent variable.
+    """
+    ''')
+    html = getHTMLOf(mod)
+    assert 'thisVariableDoesNotExist' not in html
+
 
 @pytest.mark.parametrize(
     'className',
