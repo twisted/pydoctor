@@ -4,6 +4,8 @@ Convert epydoc markup into renderable content.
 
 from __future__ import print_function
 
+import astor
+
 import inspect
 import itertools
 import os
@@ -16,6 +18,7 @@ from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, XMLString, tags
 from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
 try:
     import exceptions
@@ -41,12 +44,23 @@ def get_parser(formatname):
         return mod.parse_docstring, None
 
 
+def get_docstring(obj):
+    for source in obj.docsources():
+        doc = source.docstring
+        if doc is not None:
+            if doc.strip():
+                doc = inspect.cleandoc(doc)
+            else:
+                # Treat empty docstring as undocumented.
+                doc = None
+            return doc, source
+    return None, None
+
+
 def boringDocstring(doc, summary=False):
     """Generate an HTML representation of a docstring in a really boring way.
     """
-    if doc is None or not doc.strip():
-        return '<pre class="undocumented">Undocumented</pre>'
-    return (tags.pre, tags.tt)[bool(summary)](inspect.cleandoc(doc))
+    return (tags.tt if summary else tags.pre)(doc)
 
 
 def stdlib_doc_link_for_name(name):
@@ -475,32 +489,22 @@ def reportErrors(obj, errs):
 def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        r = html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
-        if getattr(obj, 'parsed_type', None) is not None:
-            r = [r, ' (type: ', html2stan(obj.parsed_type.to_html(_EpydocLinker(obj))), ')']
-        return r
-    origobj = obj
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    doc = None
-    for source in obj.docsources():
-        if source.docstring is not None:
-            doc = source.docstring
-            break
-    if doc is None or not doc.strip():
+        return html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
+    doc, source = get_docstring(obj)
+    if doc is None:
         text = "Undocumented"
         subdocstrings = {}
         subcounts = {}
-        for subob in origobj.contents.values():
+        for subob in obj.contents.values():
             k = subob.kind.lower()
             subcounts[k] = subcounts.get(k, 0) + 1
             if subob.docstring is not None:
                 subdocstrings[k] = subdocstrings.get(k, 0) + 1
-        if isinstance(origobj, model.Package):
+        if isinstance(obj, model.Package):
             subcounts["module"] -= 1
         if subdocstrings:
             plurals = {'class':'classes'}
-            text = "No %s docstring"%origobj.kind.lower()
+            text = "No %s docstring"%obj.kind.lower()
             if summary:
                 u = []
                 for k in sorted(subcounts):
@@ -528,7 +532,6 @@ def doc2stan(obj, summary=False):
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         return boringDocstring(doc, summary)
     errs = []
-    doc = inspect.cleandoc(doc)
     try:
         pdoc = parse_docstring(doc, errs)
     except Exception as e:
@@ -559,12 +562,40 @@ def doc2stan(obj, summary=False):
             return ()
         stan = html2stan(crap)
         s = tags.div(stan)
-        fh = FieldHandler(obj)
-        for field in fields:
-            fh.handle(Field(field, obj))
-        fh.resolve_types()
-        s(fh.format())
+        if fields:
+            fh = FieldHandler(obj)
+            for field in fields:
+                fh.handle(Field(field, obj))
+            fh.resolve_types()
+            s(fh.format())
     return s
+
+
+def type2stan(obj):
+    parsed_type = get_parsed_type(obj)
+    if parsed_type is None:
+        return None
+    else:
+        return html2stan(parsed_type.to_html(_EpydocLinker(obj)))
+
+def get_parsed_type(obj):
+    parsed_type = getattr(obj, 'parsed_type', None)
+    if parsed_type is not None:
+        return parsed_type
+
+    annotation = getattr(obj, 'annotation', None)
+    if annotation is not None:
+        src = astor.to_source(annotation).strip()
+        return ParsedEpytextDocstring(
+            Element('epytext',
+                Element('para',
+                    Element('code', src),
+                    inline=True
+                    )
+                )
+            )
+
+    return None
 
 
 field_name_to_human_name = {
@@ -575,37 +606,32 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj):
-    if isinstance(obj, model.Package):
-        obj = obj.contents['__init__']
-    if isinstance(obj, model.Function):
-        return []
-    doc = obj.docstring
-    if doc is None or not doc.strip():
-        return []
+    doc, source = get_docstring(obj)
+    if doc is None:
+        return
     parse_docstring, e = get_parser(obj.system.options.docformat)
     if not parse_docstring:
-        return []
-    doc = inspect.cleandoc(doc)
+        return
     try:
         pdoc = parse_docstring(doc, [])
     except Exception:
-        return []
+        return
     pdoc, fields = pdoc.split_fields()
-    if not fields:
-        return []
-    r = []
-    types = {}
     for field in fields:
-        if field.tag() == 'type':
-            types[field.arg()] = field.body()
-    for field in fields:
-        if field.tag() in ['ivar', 'cvar', 'var']:
+        tag = field.tag()
+        if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
+            if arg is None:
+                obj.system.msg('epydoc2stan', '%s: Missing field name in @%s'
+                               % (obj.fullName(), tag))
+                continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, None, obj)
-            attrobj.parsed_docstring = field.body()
-            attrobj.parsed_type = types.get(arg)
-            attrobj.kind = field_name_to_human_name[field.tag()]
-            r.append(attrobj)
-    return r
+                attrobj.kind = None
+                obj.system.addObject(attrobj)
+            if tag == 'type':
+                attrobj.parsed_type = field.body()
+            else:
+                attrobj.parsed_docstring = field.body()
+                attrobj.kind = field_name_to_human_name[tag]

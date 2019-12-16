@@ -6,7 +6,7 @@ import ast
 from itertools import chain
 
 import astor
-from pydoctor import model
+from pydoctor import epydoc2stan, model
 from six import string_types
 
 
@@ -37,6 +37,18 @@ def node2dottedname(node):
         return None
     parts.reverse()
     return parts
+
+
+def node2fullname(expr, ctx):
+    dottedname = node2dottedname(expr)
+    if dottedname is None:
+        return None
+    base = ctx.expandName(dottedname[0])
+    if base:
+        return '.'.join([base] + dottedname[1:])
+    else:
+        return None
+
 
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
@@ -252,35 +264,36 @@ class ModuleVistor(ast.NodeVisitor):
         return False
 
     def _handleAliasing(self, target, expr):
-        dottedname = node2dottedname(expr)
-        if dottedname is None:
+        ctx = self.builder.current
+        full_name = node2fullname(expr, ctx)
+        if full_name is None:
             return False
-        c = self.builder.current
-        base = c.expandName(dottedname[0])
-        if base:
-            c._localNameToFullName_map[target] = '.'.join([base] + dottedname[1:])
-            return True
-        else:
-            return False
+        ctx._localNameToFullName_map[target] = full_name
+        return True
 
-    def _handleModuleVar(self, target, lineno):
+    def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, 'Variable', lineno)
+            obj = self.builder.addAttribute(target, None, None, lineno)
         if isinstance(obj, model.Attribute):
+            obj.kind = 'Variable'
+            obj.annotation = annotation
             self.newAttr = obj
 
-    def _handleAssignmentInModule(self, target, expr, lineno):
+    def _handleAssignmentInModule(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):
-            self._handleModuleVar(target, lineno)
+            self._handleModuleVar(target, annotation, lineno)
 
-    def _handleClassVar(self, target, lineno):
+    def _handleClassVar(self, target, annotation, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, 'Class Variable', lineno)
+            obj = self.builder.addAttribute(target, None, None, lineno)
+        if obj.kind is None:
+            obj.kind = 'Class Variable'
+        obj.annotation = annotation
         self.newAttr = obj
 
-    def _handleInstanceVar(self, target, lineno):
+    def _handleInstanceVar(self, target, annotation, lineno):
         func = self.builder.current
         if not isinstance(func, model.Function):
             return
@@ -292,32 +305,38 @@ class ModuleVistor(ast.NodeVisitor):
             obj = self.builder.addAttribute(target, None, None, lineno, cls)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Instance Variable'
+            obj.annotation = annotation
             self.newAttr = obj
 
-    def _handleAssignmentInClass(self, target, expr, lineno):
+    def _handleAssignmentInClass(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):
-            self._handleClassVar(target, lineno)
+            self._handleClassVar(target, annotation, lineno)
 
-    def _handleAssignment(self, targetNode, expr, lineno):
+    def _handleAssignment(self, targetNode, annotation, expr, lineno):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
             if isinstance(scope, model.Module):
-                self._handleAssignmentInModule(target, expr, lineno)
+                self._handleAssignmentInModule(target, annotation, expr, lineno)
             elif isinstance(scope, model.Class):
                 if not self._handleOldSchoolDecoration(target, expr):
-                    self._handleAssignmentInClass(target, expr, lineno)
+                    self._handleAssignmentInClass(target, annotation, expr, lineno)
         elif isinstance(targetNode, ast.Attribute):
             value = targetNode.value
             if isinstance(value, ast.Name) and value.id == 'self':
-                self._handleInstanceVar(targetNode.attr, lineno)
+                self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
     def visit_Assign(self, node):
         if len(node.targets) == 1:
-            self._handleAssignment(node.targets[0], node.value, node.lineno)
+            expr = node.value
+            annotation = _annotation_from_attrib(expr, self.builder.current)
+            if annotation is None:
+                annotation = _infer_type(expr)
+            self._handleAssignment(node.targets[0], annotation, expr, node.lineno)
 
     def visit_AnnAssign(self, node):
-        self._handleAssignment(node.target, node.value, node.lineno)
+        annotation = _unstring_annotation(node.annotation)
+        self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
     def visit_Expr(self, node):
         value = node.value
@@ -388,6 +407,84 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popFunction()
 
+
+def _annotation_from_attrib(expr, ctx):
+    """Get the type of an C{attr.ib} definition.
+    @param expr: The expression's AST.
+    @param ctx: The context in which this expression is evaluated.
+    @return: A type annotation, or None if the expression is not
+             an C{attr.ib} definition or contains no type information.
+    """
+    if isinstance(expr, ast.Call) \
+            and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
+        keywords = {kw.arg: kw.value for kw in expr.keywords}
+        typ = keywords.get('type')
+        if typ is not None:
+            return _unstring_annotation(typ)
+        default = keywords.get('default')
+        if default is not None:
+            return _infer_type(default)
+    return None
+
+
+class _AnnotationStringParser(ast.NodeTransformer):
+    def visit_Str(self, node):
+        expr, = ast.parse(node.s).body
+        return self.visit(expr.value)
+
+_unstring_annotation = _AnnotationStringParser().visit
+
+
+def _infer_type(expr):
+    """Infer an expression's type.
+    @param expr: The expression's AST.
+    @return: A type annotation, or None if the expression has no obvious type.
+    """
+
+    try:
+        value = ast.literal_eval(expr)
+    except ValueError:
+        return None
+    else:
+        return _annotation_for_value(value)
+
+def _annotation_for_value(value):
+    if value is None:
+        return None
+    name = type(value).__name__
+    if isinstance(value, (dict, list, set, tuple)):
+        name = name.capitalize()
+        ann_elem = _annotation_for_elements(value)
+        if isinstance(value, dict):
+            ann_value = _annotation_for_elements(value.values())
+            if ann_value is None:
+                ann_elem = None
+            elif ann_elem is not None:
+                ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
+        if ann_elem is not None:
+            if name == 'Tuple':
+                ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
+            return ast.Subscript(value=ast.Name(id=name),
+                                 slice=ast.Index(value=ann_elem))
+    return ast.Name(id=name)
+
+def _annotation_for_elements(sequence):
+    names = set()
+    for elem in sequence:
+        ann = _annotation_for_value(elem)
+        if isinstance(ann, ast.Name):
+            names.add(ann.id)
+        else:
+            # Nested sequences are too complex.
+            return None
+    if len(names) == 1:
+        name = names.pop()
+        return ast.Name(id=name)
+    else:
+        # Empty sequence or no uniform type.
+        return None
+
+
 class ASTBuilder(object):
     ModuleVistor = ModuleVistor
 
@@ -421,10 +518,8 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
-        # Method-level import to avoid a circular dependency.
-        from pydoctor import epydoc2stan
-        for attrobj in epydoc2stan.extract_fields(obj):
-            self.system.addObject(attrobj)
+        if not isinstance(obj, model.Function):
+            epydoc2stan.extract_fields(obj)
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)

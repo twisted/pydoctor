@@ -2,7 +2,10 @@ from __future__ import print_function
 
 import textwrap
 
+import astor
+
 from pydoctor import astbuilder, model
+from pydoctor.epydoc2stan import get_parsed_type
 
 
 
@@ -26,6 +29,21 @@ def fromText(text, modname='<test>', system=None,
     mod.ast = ast
     mod.state = model.ProcessingState.PROCESSED
     return mod
+
+def unwrap(parsed_docstring):
+    epytext = parsed_docstring._tree
+    assert epytext.tag == 'epytext'
+    assert len(epytext.children) == 1
+    para = epytext.children[0]
+    assert para.tag == 'para'
+    assert len(para.children) == 1
+    return para.children[0]
+
+def type2str(type_expr):
+    if type_expr is None:
+        return None
+    else:
+        return astor.to_source(type_expr).strip()
 
 def test_no_docstring():
     # Inheritance of the docstring of an overridden method depends on
@@ -353,8 +371,7 @@ def test_inline_docstring_modulevar():
     a = mod.contents['a']
     assert a.docstring == """inline doc for a"""
     b = mod.contents['b']
-    assert b.docstring is None
-    assert b.parsed_docstring is not None
+    assert unwrap(b.parsed_docstring) == """doc for b"""
     f = mod.contents['f']
     assert not f.docstring
 
@@ -533,10 +550,209 @@ def test_variable_scopes():
     assert a.docstring == """inline doc for a"""
     k = C.contents['k']
     assert k.kind == 'Instance Variable'
-    assert k.parsed_docstring is not None
+    assert unwrap(k.parsed_docstring) == """class level doc for k"""
     l2 = C.contents['l']
     assert l2.kind == 'Instance Variable'
     assert l2.docstring == """instance l"""
     m2 = C.contents['m']
     assert m2.kind == 'Class Variable'
     assert m2.docstring == """class-level m"""
+
+def test_variable_types():
+    mod = fromText('''
+    class C:
+        """class docstring
+
+        @cvar a: first
+        @type a: C{str}
+
+        @type b: C{str}
+        @cvar b: second
+
+        @type c: C{str}
+
+        @ivar d: fourth
+        @type d: C{str}
+
+        @type e: C{str}
+        @ivar e: fifth
+
+        @type f: C{str}
+        """
+
+        a = "A"
+
+        b = "B"
+
+        c = "C"
+        """third"""
+
+        def __init__(self):
+
+            self.d = "D"
+
+            self.e = "E"
+
+            self.f = "F"
+            """sixth"""
+    ''', modname='test')
+    C = mod.contents['C']
+    assert sorted(C.contents.keys()) == [
+        '__init__', 'a', 'b', 'c', 'd', 'e', 'f'
+        ]
+    a = C.contents['a']
+    assert unwrap(a.parsed_docstring) == """first"""
+    assert str(unwrap(a.parsed_type)) == '<code>str</code>'
+    assert a.kind == 'Class Variable'
+    b = C.contents['b']
+    assert unwrap(b.parsed_docstring) == """second"""
+    assert str(unwrap(b.parsed_type)) == '<code>str</code>'
+    assert b.kind == 'Class Variable'
+    c = C.contents['c']
+    assert c.docstring == """third"""
+    assert str(unwrap(c.parsed_type)) == '<code>str</code>'
+    assert c.kind == 'Class Variable'
+    d = C.contents['d']
+    assert unwrap(d.parsed_docstring) == """fourth"""
+    assert str(unwrap(d.parsed_type)) == '<code>str</code>'
+    assert d.kind == 'Instance Variable'
+    e = C.contents['e']
+    assert unwrap(e.parsed_docstring) == """fifth"""
+    assert str(unwrap(e.parsed_type)) == '<code>str</code>'
+    assert e.kind == 'Instance Variable'
+    f = C.contents['f']
+    assert f.docstring == """sixth"""
+    assert str(unwrap(f.parsed_type)) == '<code>str</code>'
+    assert f.kind == 'Instance Variable'
+
+@py3only
+def test_annotated_variables():
+    mod = fromText('''
+    class C:
+        """class docstring
+
+        @cvar a: first
+        @type a: string
+
+        @type b: string
+        @cvar b: second
+        """
+
+        a: str = "A"
+
+        b: str
+
+        c: str = "C"
+        """third"""
+
+        d: str
+        """fourth"""
+
+        e: List['C']
+        """fifth"""
+
+        f: 'List[C]'
+        """sixth"""
+
+        g: 'List["C"]'
+        """seventh"""
+
+        def __init__(self):
+            self.s: List[str] = []
+            """instance"""
+
+    m: bytes = b"M"
+    """module-level"""
+    ''', modname='test')
+    C = mod.contents['C']
+    a = C.contents['a']
+    assert unwrap(a.parsed_docstring) == """first"""
+    assert str(unwrap(get_parsed_type(a))) == 'string'
+    b = C.contents['b']
+    assert unwrap(b.parsed_docstring) == """second"""
+    assert str(unwrap(get_parsed_type(b))) == 'string'
+    c = C.contents['c']
+    assert c.docstring == """third"""
+    assert str(unwrap(get_parsed_type(c))) == '<code>str</code>'
+    d = C.contents['d']
+    assert d.docstring == """fourth"""
+    assert str(unwrap(get_parsed_type(d))) == '<code>str</code>'
+    e = C.contents['e']
+    assert e.docstring == """fifth"""
+    assert str(unwrap(get_parsed_type(e))) == '<code>List[C]</code>'
+    f = C.contents['f']
+    assert f.docstring == """sixth"""
+    assert str(unwrap(get_parsed_type(f))) == '<code>List[C]</code>'
+    g = C.contents['g']
+    assert g.docstring == """seventh"""
+    assert str(unwrap(get_parsed_type(g))) == '<code>List[C]</code>'
+    s = C.contents['s']
+    assert s.docstring == """instance"""
+    assert str(unwrap(get_parsed_type(s))) == '<code>List[str]</code>'
+    m = mod.contents['m']
+    assert m.docstring == """module-level"""
+    assert str(unwrap(get_parsed_type(m))) == '<code>bytes</code>'
+
+def test_inferred_variable_types():
+    mod = fromText('''
+    class C:
+        a = "A"
+        b = 2
+        c = ['a', 'b', 'c']
+        d = {'a': 1, 'b': 2}
+        e = (True, False, True)
+        f = 1.618
+        g = {2, 7, 1, 8}
+        h = []
+        i = ['r', 2, 'd', 2]
+        j = ((), ((), ()))
+        n = None
+        x = list(range(10))
+        y = [n for n in range(10) if n % 2]
+        def __init__(self):
+            self.s = ['S']
+    m = b'octets'
+    ''', modname='test')
+    C = mod.contents['C']
+    assert type2str(C.contents['a'].annotation) == 'str'
+    assert type2str(C.contents['b'].annotation) == 'int'
+    assert type2str(C.contents['c'].annotation) == 'List[str]'
+    assert type2str(C.contents['d'].annotation) == 'Dict[str, int]'
+    assert type2str(C.contents['e'].annotation) == 'Tuple[bool, ...]'
+    assert type2str(C.contents['f'].annotation) == 'float'
+    # The Python 2.7 implementation of literal_eval() does not support
+    # set literals.
+    assert type2str(C.contents['g'].annotation) in ('Set[int]', None)
+    # Element type is unknown, not uniform or too complex.
+    assert type2str(C.contents['h'].annotation) == 'List'
+    assert type2str(C.contents['i'].annotation) == 'List'
+    assert type2str(C.contents['j'].annotation) == 'Tuple'
+    # It is unlikely that a variable actually will contain only None,
+    # so we should treat this as not be able to infer the type.
+    assert C.contents['n'].annotation is None
+    # These expressions are considered too complex for pydoctor.
+    # Maybe we can use an external type inferrer at some point.
+    assert C.contents['x'].annotation is None
+    assert C.contents['y'].annotation is None
+    # Type inference isn't different for module and instance variables,
+    # so we don't need to re-test everything.
+    assert type2str(C.contents['s'].annotation) == 'List[str]'
+    # On Python 2.7, bytes literals are parsed into ast.Str objects,
+    # so there is no way to tell them apart from ASCII strings.
+    assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
+
+def test_type_from_attrib():
+    mod = fromText('''
+    import attr
+    from attr import attrib
+    class C:
+        a = attr.ib(type=int)
+        b = attrib(type=int)
+        c = attr.ib(type='C')
+        d = attr.ib(default=True)
+    ''', modname='test')
+    C = mod.contents['C']
+    assert type2str(C.contents['a'].annotation) == 'int'
+    assert type2str(C.contents['b'].annotation) == 'int'
+    assert type2str(C.contents['c'].annotation) == 'C'
+    assert type2str(C.contents['d'].annotation) == 'bool'

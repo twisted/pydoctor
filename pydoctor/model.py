@@ -447,6 +447,8 @@ class System(object):
                 yield o
 
     def privacyClass(self, ob):
+        if ob.kind is None:
+            return PrivacyClass.HIDDEN
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
             return PrivacyClass.PRIVATE

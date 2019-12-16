@@ -51,7 +51,12 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        return epydoc2stan.doc2stan(ob, summary=summary)
+        doc = epydoc2stan.doc2stan(ob, summary=summary)
+        typ = epydoc2stan.type2stan(ob)
+        if typ is None:
+            return doc
+        else:
+            return [doc, ' (type: ', typ, ')']
 
 class CommonPage(Element):
 
@@ -227,7 +232,8 @@ def unmasked_attrs(baselist):
     maybe_masking = set()
     for b in baselist[1:]:
         maybe_masking.update(set([o.name for o in b.orderedcontents]))
-    return [o for o in baselist[0].orderedcontents if o.name not in maybe_masking]
+    return [o for o in baselist[0].orderedcontents
+            if o.isVisible and o.name not in maybe_masking]
 
 
 def assembleList(system, label, lst, idbase):

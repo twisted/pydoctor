@@ -28,11 +28,17 @@ def test_multiple_types():
         @type a: a pink thing!
         @type a: no, blue! aaaargh!
         """
+    class E(object):
+        """
+        @cvar: missing name
+        @type: name still missing
+        """
     ''')
     # basically "assert not fail":
     epydoc2stan.doc2stan(mod.contents['f'])
     epydoc2stan.doc2stan(mod.contents['C'])
     epydoc2stan.doc2stan(mod.contents['D'])
+    epydoc2stan.doc2stan(mod.contents['E'])
 
 def test_summary():
     mod = fromText('''
