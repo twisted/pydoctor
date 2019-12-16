@@ -630,9 +630,9 @@ class Token:
 # Construct regular expressions for recognizing bullets.  These are
 # global so they don't have to be reconstructed each time we tokenize
 # a docstring.
-_ULIST_BULLET = '[-]( +|$)'
-_OLIST_BULLET = '(\d+[.])+( +|$)'
-_FIELD_BULLET = '@\w+( [^{}:\n]+)?:'
+_ULIST_BULLET = r'[-]( +|$)'
+_OLIST_BULLET = r'(\d+[.])+( +|$)'
+_FIELD_BULLET = r'@\w+( [^{}:\n]+)?:'
 _BULLET_RE = re.compile(_ULIST_BULLET + '|' +
                         _OLIST_BULLET + '|' +
                         _FIELD_BULLET)
@@ -738,7 +738,7 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
     # Add the token, and return the linenum after the token ends.
     contents = [ln[block_indent+1:] for ln in lines[start:linenum]]
     contents = '\n'.join(contents)
-    contents = re.sub('(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
+    contents = re.sub(r'(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))
     return linenum
 
@@ -966,8 +966,8 @@ def _tokenize(str, errors):
 ##################################################
 
 # Assorted regular expressions used for colorizing.
-_BRACE_RE = re.compile('{|}')
-_TARGET_RE = re.compile('^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+_BRACE_RE = re.compile(r'{|}')
+_TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 def _colorize(doc, token, errors, tagName='para'):
     """

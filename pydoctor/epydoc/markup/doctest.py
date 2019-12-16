@@ -222,7 +222,7 @@ class HTMLDoctestColorizer:
                     pieces.append('')
             return other + self.NEWLINE.join(pieces)
         elif match.group('DEFINE'):
-            m = re.match('(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)', text)
+            m = re.match(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)', text)
             return other + (self.markup(m.group('def'), 'keyword') +
                         self.markup(m.group('space'), 'other') +
                         self.markup(m.group('name'), 'defname'))
