@@ -1273,16 +1273,13 @@ class ParsedEpytextDocstring(ParsedDocstring):
     def __str__(self):
         return str(self._tree)
 
-    def to_html(self, docstring_linker, directory=None, docindex=None,
-                context=None):
+    def to_html(self, docstring_linker):
         if self._html is not None: return self._html
         if self._tree is None: return ''
-        self._html = self._to_html(self._tree, docstring_linker, directory,
-                                   docindex, context)
+        self._html = self._to_html(self._tree, docstring_linker)
         return self._html
 
-    def _to_html(self, tree, linker, directory, docindex, context,
-                 indent=0, seclevel=0):
+    def _to_html(self, tree, linker, indent=0, seclevel=0):
         if isinstance(tree, six.string_types):
             return plaintext_to_html(tree)
 
@@ -1290,8 +1287,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if tree.tag == 'section': seclevel += 1
 
         # Process the variables first.
-        variables = [self._to_html(c, linker, directory, docindex, context,
-                                   indent+2, seclevel)
+        variables = [self._to_html(c, linker, indent+2, seclevel)
                     for c in tree.children]
 
         # Construct the HTML string for the variables.

@@ -157,11 +157,9 @@ class ParsedRstDocstring(ParsedDocstring):
         else:
             return None, visitor.fields
 
-    def to_html(self, docstring_linker, directory=None,
-                docindex=None, context=None):
+    def to_html(self, docstring_linker):
         # Inherit docs
-        visitor = _EpydocHTMLTranslator(self._document, docstring_linker,
-                                        directory, docindex, context)
+        visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
         self._document.walkabout(visitor)
         return ''.join(visitor.body)
 
@@ -400,12 +398,8 @@ _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 class _EpydocHTMLTranslator(HTMLTranslator):
     settings = None
-    def __init__(self, document, docstring_linker, directory,
-                 docindex, context):
+    def __init__(self, document, docstring_linker):
         self._linker = docstring_linker
-        self._directory = directory
-        self._docindex = docindex
-        self._context = context
 
         # Set the document's settings.
         if self.settings is None:
