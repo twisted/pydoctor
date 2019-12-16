@@ -23,11 +23,8 @@ generated).
 The C{ParsedDocstring} output generation methods (C{to_M{format}()})
 use a L{DocstringLinker} to link the docstring output with the rest of
 the documentation that epydoc generates.  C{DocstringLinker}s are
-currently responsible for translating two kinds of crossreference:
-  - index terms (L{translate_indexterm()
-    <DocstringLinker.translate_indexterm>}).
-  - identifier crossreferences (L{translate_identifier_xref()
-    <DocstringLinker.translate_identifier_xref>}).
+responsible for translating identifier crossreferences
+(L{translate_identifier_xref() <DocstringLinker.translate_identifier_xref>}).
 
 A parsed docstring's fields can be extracted using the
 L{ParsedDocstring.split_fields()} method.  This method divides a
@@ -165,17 +162,6 @@ class DocstringLinker:
     C{ParsedDocstring.to_html} expects a C{DocstringLinker} that
     converts crossreference links to HTML.
     """
-    def translate_indexterm(self, indexterm):
-        """
-        Translate an index term to the appropriate output format.  The
-        output will typically include a crossreference anchor.
-
-        @type indexterm: L{ParsedDocstring}
-        @param indexterm: The index term to translate.
-        @rtype: C{string}
-        @return: The translated index term.
-        """
-        raise NotImplementedError()
 
     def translate_identifier_xref(self, identifier, label=None):
         """

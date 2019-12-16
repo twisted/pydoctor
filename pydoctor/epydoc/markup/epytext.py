@@ -10,40 +10,40 @@ Parser for epytext strings.  Epytext is a lightweight markup whose
 primary intended application is Python documentation strings.  This
 parser converts Epytext strings to a simple DOM-like representation
 (encoded as a tree of L{Element} objects and strings).  Epytext
-strings can contain the following X{structural blocks}:
+strings can contain the following I{structural blocks}:
 
-    - X{epytext}: The top-level element of the DOM tree.
-    - X{para}: A paragraph of text.  Paragraphs contain no newlines,
+    - C{epytext}: The top-level element of the DOM tree.
+    - C{para}: A paragraph of text.  Paragraphs contain no newlines,
       and all spaces are soft.
-    - X{section}: A section or subsection.
-    - X{field}: A tagged field.  These fields provide information
+    - C{section}: A section or subsection.
+    - C{field}: A tagged field.  These fields provide information
       about specific aspects of a Python object, such as the
       description of a function's parameter, or the author of a
       module.
-    - X{literalblock}: A block of literal text.  This text should be
+    - C{literalblock}: A block of literal text.  This text should be
       displayed as it would be displayed in plaintext.  The
       parser removes the appropriate amount of leading whitespace
       from each line in the literal block.
-    - X{doctestblock}: A block containing sample python code,
+    - C{doctestblock}: A block containing sample python code,
       formatted according to the specifications of the C{doctest}
       module.
-    - X{ulist}: An unordered list.
-    - X{olist}: An ordered list.
-    - X{li}: A list item.  This tag is used both for unordered list
+    - C{ulist}: An unordered list.
+    - C{olist}: An ordered list.
+    - C{li}: A list item.  This tag is used both for unordered list
       items and for ordered list items.
 
-Additionally, the following X{inline regions} may be used within
+Additionally, the following I{inline regions} may be used within
 C{para} blocks:
 
-    - X{code}:   Source code and identifiers.
-    - X{math}:   Mathematical expressions.
-    - X{index}:  A term which should be included in an index, if one
+    - C{code}:   Source code and identifiers.
+    - C{math}:   Mathematical expressions.
+    - C{index}:  A term which should be included in an index, if one
                  is generated.
-    - X{italic}: Italicized text.
-    - X{bold}:   Bold-faced text.
-    - X{uri}:    A Universal Resource Indicator (URI) or Universal
+    - C{italic}: Italicized text.
+    - C{bold}:   Bold-faced text.
+    - C{uri}:    A Universal Resource Indicator (URI) or Universal
                  Resource Locator (URL)
-    - X{link}:   A Python identifier which should be hyperlinked to
+    - C{link}:   A Python identifier which should be hyperlinked to
                  the named object's documentation, when possible.
 
 The returned DOM tree will conform to the the following Document Type
@@ -209,7 +209,6 @@ del symblist
 _COLORIZING_TAGS = {
     'C': 'code',
     'M': 'math',
-    'X': 'indexed',
     'I': 'italic',
     'B': 'bold',
     'U': 'uri',
@@ -1313,9 +1312,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return '<i>%s</i>' % childstr
         elif tree.tag == 'math':
             return '<i class="math">%s</i>' % childstr
-        elif tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            return linker.translate_indexterm(ParsedEpytextDocstring(term))
         elif tree.tag == 'bold':
             return '<b>%s</b>' % childstr
         elif tree.tag == 'ulist':

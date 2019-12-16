@@ -94,12 +94,6 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj):
         self.obj = obj
 
-    def translate_indexterm(self, something):
-        # X{foobar} is meant to put foobar in an index page (like, a
-        # proper end-of-the-book index). Should we support that? There
-        # are like 2 uses in Twisted.
-        return de_p(something.to_html(self))
-
     def _objLink(self, obj, prettyID):
         if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
@@ -454,14 +448,6 @@ class FieldHandler(object):
             r.append(format_desc_list(label, fieldlist, label))
 
         return tags.table(class_='fieldTable')(r)
-
-
-def de_p(s):
-    if s.startswith('<p>') and s.endswith('</p>\n'):
-        s = s[3:-5] # argh reST
-    if s.endswith('\n'):
-        s = s[:-1]
-    return s
 
 
 def reportErrors(obj, errs):

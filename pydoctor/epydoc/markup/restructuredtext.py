@@ -67,7 +67,7 @@ from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
 from docutils.nodes import NodeVisitor, SkipNode
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import directives, roles
+from docutils.parsers.rst import directives
 import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.transforms
@@ -367,7 +367,6 @@ class _SplitFieldsTranslator(NodeVisitor):
         for item in items:
             n += 1
             if (item.tagname != 'definition_list_item' or len(item) < 2 or
-                item[0].tagname != 'term' or
                 item[-1].tagname != 'definition'):
                 raise ValueError('bad definition list (bad child %d).' % n)
             if len(item) > 3:
@@ -480,17 +479,6 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             self.body.append(doctest_to_html(pysrc))
         raise SkipNode()
 
-    def visit_emphasis(self, node):
-        # Generate a corrent index term anchor
-        if 'term' in node.get('classes') and node.children:
-            doc = self.document.copy()
-            doc[:] = [node.children[0].copy()]
-            self.body.append(
-                self._linker.translate_indexterm(ParsedRstDocstring(doc)))
-            raise SkipNode()
-
-        HTMLTranslator.visit_emphasis(self, node)
-
 def python_code_directive(name, arguments, options, content, lineno,
                           content_offset, block_text, state, state_machine):
     """
@@ -510,14 +498,3 @@ python_code_directive.arguments = (0, 0, 0)
 python_code_directive.content = True
 
 directives.register_directive('python', python_code_directive)
-
-def term_role(name, rawtext, text, lineno, inliner,
-            options={}, content=[]):
-
-    text = docutils.utils.unescape(text)
-    node = docutils.nodes.emphasis(rawtext, text, **options)
-    node.attributes['classes'].append('term')
-
-    return [node], []
-
-roles.register_local_role('term', term_role)
