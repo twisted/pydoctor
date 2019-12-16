@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import astor
 
+from importlib import import_module
 import inspect
 import itertools
 import os
@@ -35,8 +36,7 @@ def link(o):
 def get_parser(obj):
     formatname = obj.system.options.docformat
     try:
-        mod = __import__('pydoctor.epydoc.markup.' + formatname,
-                         globals(), locals(), ['parse_docstring'])
+        mod = import_module('pydoctor.epydoc.markup.' + formatname)
     except ImportError as e:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             formatname, e.__class__.__name__, e)
