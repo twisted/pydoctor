@@ -41,6 +41,11 @@ each error.
 """
 __docformat__ = 'epytext en'
 
+import re
+
+from six import text_type
+from twisted.web.template import XMLString
+
 ##################################################
 ## Contents
 ##################################################
@@ -97,6 +102,24 @@ class ParsedDocstring:
         @rtype: C{string}
         """
         raise NotImplementedError()
+
+    _control_pat = re.compile((
+        '[' + ''.join(
+        ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
+        ) + ']'
+        ).encode())
+
+    def to_stan(self, docstring_linker):
+        html = self.to_html(docstring_linker)
+        if isinstance(html, text_type):
+            html = html.encode('utf8')
+
+        html = self._control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+        html = b"<div>" + html + b"</div>"
+        stan = XMLString(html).load()[0].children
+        if stan and stan[-1] == u'\n':
+            del stan[-1]
+        return stan
 
 ##################################################
 ## Fields

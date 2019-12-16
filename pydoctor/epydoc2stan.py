@@ -9,14 +9,12 @@ import astor
 import inspect
 import itertools
 import os
-import re
 import sys
 
 from pydoctor import model
-from six import text_type
 from six.moves import builtins
 from six.moves.urllib.parse import quote
-from twisted.web.template import Tag, XMLString, tags
+from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
@@ -273,39 +271,13 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
-_ok_chars = '\r\n\t\f'
-_class = ''
-for _c in map(chr, range(0, 32)):
-    if _c not in _ok_chars:
-        _class += _c
-_control_pat = re.compile(('[' + _class + ']').encode())
-
-
-def html2stan(html):
-    """
-    Convert HTML to a Stan structure.
-
-    @param html: A HTML string.
-    @type html: L{str} or L{bytes}
-    """
-    if isinstance(html, text_type):
-        html = html.encode('utf8')
-
-    html = _control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    html = b"<div>" + html + b"</div>"
-    html = XMLString(html).load()[0].children
-    if html and html[-1] == u'\n':
-        del html[-1]
-    return html
-
-
 class Field(object):
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
-        self.body = html2stan(field.body().to_html(_EpydocLinker(obj)))
+        self.body = field.body().to_stan(_EpydocLinker(obj))
 
     def __repr__(self):
         r = repr(self.body)
@@ -475,7 +447,7 @@ def reportErrors(obj, errs):
 def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        return html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
+        return obj.parsed_docstring.to_stan(_EpydocLinker(obj))
     doc, source = get_docstring(obj)
     if doc is None:
         text = "Undocumented"
@@ -528,25 +500,21 @@ def doc2stan(obj, summary=False):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = pdoc.to_html(_EpydocLinker(source))
+            stan = pdoc.to_stan(_EpydocLinker(source))
         except Exception as e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return boringDocstring(doc, summary)
     else:
-        crap = ''
-    if isinstance(crap, text_type):
-        crap = crap.encode('utf-8')
+        stan = ()
     if summary:
-        if not crap:
+        if not stan:
             return ()
-        stan = html2stan(crap)
         if len(stan) == 1 and isinstance(stan[0], Tag) and stan[0].tagName == 'p':
             stan = stan[0].children
         s = tags.span(stan)
     else:
-        if not crap and not fields:
+        if not stan and not fields:
             return ()
-        stan = html2stan(crap)
         s = tags.div(stan)
         if fields:
             fh = FieldHandler(obj)
@@ -562,7 +530,7 @@ def type2stan(obj):
     if parsed_type is None:
         return None
     else:
-        return html2stan(parsed_type.to_html(_EpydocLinker(obj)))
+        return parsed_type.to_stan(_EpydocLinker(obj))
 
 def get_parsed_type(obj):
     parsed_type = getattr(obj, 'parsed_type', None)
