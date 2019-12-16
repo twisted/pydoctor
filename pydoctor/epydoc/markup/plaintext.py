@@ -16,11 +16,14 @@ from pydoctor.epydoc.util import plaintext_to_html
 
 def parse_docstring(docstring, errors):
     """
-    @return: A pair C{(M{d}, M{e})}, where C{M{d}} is a
-        C{ParsedDocstring} that encodes the contents of the given
-        plaintext docstring; and C{M{e}} is a list of errors that were
-        generated while parsing the docstring.
-    @rtype: C{L{ParsedPlaintextDocstring}, C{list} of L{ParseError}}
+    Parse the given docstring, which is formatted as plain text; and
+    return a C{ParsedDocstring} representation of its contents.
+    @param docstring: The docstring to parse
+    @type docstring: C{string}
+    @param errors: A list where any errors generated during parsing
+        will be stored.
+    @type errors: C{list} of L{ParseError}
+    @rtype: L{ParsedDocstring}
     """
     return ParsedPlaintextDocstring(docstring)
 

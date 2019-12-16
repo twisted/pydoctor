@@ -162,7 +162,7 @@ class DocstringLinker:
     C{ParsedDocstring}.  C{DocstringLinker} is used by
     C{ParsedDocstring} to convert these crossreference links into
     appropriate output formats.  For example,
-    C{DocstringLinker.to_html} expects a C{DocstringLinker} that
+    C{ParsedDocstring.to_html} expects a C{DocstringLinker} that
     converts crossreference links to HTML.
     """
     def translate_indexterm(self, indexterm):
