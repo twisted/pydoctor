@@ -32,14 +32,18 @@ def link(o):
     return quote(o.fullName()+'.html')
 
 
-def get_parser(formatname):
+def get_parser(obj):
+    formatname = obj.system.options.docformat
     try:
         mod = __import__('pydoctor.epydoc.markup.' + formatname,
                          globals(), locals(), ['parse_docstring'])
     except ImportError as e:
-        return None, e
+        msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
+            formatname, e.__class__.__name__, e)
+        obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
+        return None
     else:
-        return mod.parse_docstring, None
+        return mod.parse_docstring
 
 
 def get_docstring(obj):
@@ -483,11 +487,8 @@ def doc2stan(obj, summary=False):
             return tags.span(class_="undocumented")('No summary')
         else:
             doc = ' '.join(lines)
-    parse_docstring, e = get_parser(obj.system.options.docformat)
-    if not parse_docstring:
-        msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
-            obj.system.options.docformat, e.__class__.__name__, e)
-        obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
+    parse_docstring = get_parser(obj)
+    if parse_docstring is None:
         return boringDocstring(doc, summary)
     errs = []
     try:
@@ -560,8 +561,8 @@ def extract_fields(obj):
     doc, source = get_docstring(obj)
     if doc is None:
         return
-    parse_docstring, e = get_parser(obj.system.options.docformat)
-    if not parse_docstring:
+    parse_docstring = get_parser(obj)
+    if parse_docstring is None:
         return
     try:
         pdoc = parse_docstring(doc, [])
