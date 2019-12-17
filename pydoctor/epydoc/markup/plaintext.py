@@ -11,8 +11,9 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
+from twisted.web.template import tags
+
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.epydoc.util import plaintext_to_html
 
 def parse_docstring(docstring, errors):
     """
@@ -35,6 +36,5 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     def split_fields(self, errors=None):
         return self, []
 
-    def to_html(self, docstring_linker):
-        plaintext = plaintext_to_html(self._text + '\n')
-        return '<pre class="literalblock">\n%s\n</pre>\n' % plaintext
+    def to_stan(self, docstring_linker):
+        return tags.pre(class_='literalblock')('\n', self._text, '\n')

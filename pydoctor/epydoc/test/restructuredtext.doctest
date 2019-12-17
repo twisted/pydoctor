@@ -44,7 +44,6 @@ ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contai
 A test function
 newfield "parameters": <pre class="literalblock">
 Parameters
-<BLANKLINE>
 </pre>
 parameters: a b c
 
