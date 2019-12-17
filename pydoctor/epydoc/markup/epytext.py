@@ -111,7 +111,7 @@ import re
 import six
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.util import wordwrap, plaintext_to_html
-from pydoctor.epydoc.markup.doctest import doctest_to_html
+from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
 ## DOM-Like Encoding
@@ -1328,7 +1328,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'literalblock':
             return '<pre class="literalblock">\n%s\n</pre>\n' % childstr
         elif tree.tag == 'doctestblock':
-            return doctest_to_html(tree.children[0].strip())
+            return colorize_doctest(tree.children[0].strip())
         elif tree.tag == 'fieldlist':
             raise AssertionError("There should not be any field lists left")
         elif tree.tag in ('epytext', 'section', 'tag', 'arg',
