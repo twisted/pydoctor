@@ -1298,11 +1298,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             else:
                 return '<p>%s</p>' % childstr
         elif tree.tag == 'code':
-            style = tree.attribs.get('style')
-            if style:
-                return '<code class="%s">%s</code>' % (style, childstr)
-            else:
-                return '<code>%s</code>' % childstr
+            return '<code>%s</code>' % childstr
         elif tree.tag == 'uri':
             return '<a href="%s" target="_top">%s</a>' % (variables[1], variables[0])
         elif tree.tag == 'link':
