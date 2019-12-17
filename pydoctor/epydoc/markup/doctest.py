@@ -14,6 +14,7 @@ from __future__ import print_function
 __docformat__ = 'epytext en'
 
 import re
+import sys
 from six.moves import builtins
 from pydoctor.epydoc.util import plaintext_to_html
 
@@ -32,14 +33,21 @@ SUFFIX = '</pre>\n'
 #: The string used to divide lines
 NEWLINE = '\n'
 
-#: A list of the names of all Python keywords.  ('as' is included
-#: even though it is technically not a keyword.)
-_KEYWORDS = ("and       del       for       is        raise"
-             "assert    elif      from      lambda    return"
-             "break     else      global    not       try"
-             "class     except    if        or        while"
-             "continue  exec      import    pass      yield"
-             "def       finally   in        print     as").split()
+#: A list of the names of all Python keywords.
+_KEYWORDS = [
+    'and', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del',
+    'elif', 'else', 'except', 'finally', 'for', 'from', 'global',
+    'if', 'import', 'in', 'is', 'lambda', 'not', 'or', 'pass',
+    'raise', 'return', 'try', 'while', 'with', 'yield'
+    ]
+if sys.version_info.major == 2:
+    # These became builtins in Python 3.
+    _KEYWORDS += ['exec', 'print']
+else:
+    _KEYWORDS += ['async', 'await', 'nonlocal']
+    # These are technically keywords since Python 3,
+    # but we don't want to colorize them as such:
+    #_KEYWORDS += ['None', 'True', 'False']
 
 #: A list of all Python builtins.
 _BUILTINS = [_BI for _BI in dir(builtins) if not _BI.startswith('__')]
