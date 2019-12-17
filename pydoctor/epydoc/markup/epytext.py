@@ -110,7 +110,7 @@ __docformat__ = 'epytext en'
 import re
 import six
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
-from pydoctor.epydoc.util import wordwrap, plaintext_to_html, flatten
+from pydoctor.epydoc.util import plaintext_to_html, flatten
 from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
@@ -1278,15 +1278,14 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._html = self._to_html(self._tree, docstring_linker)
         return self._html
 
-    def _to_html(self, tree, linker, indent=0, seclevel=0):
+    def _to_html(self, tree, linker, seclevel=0):
         if isinstance(tree, six.string_types):
             return plaintext_to_html(tree)
 
-        if tree.tag == 'epytext': indent -= 2
         if tree.tag == 'section': seclevel += 1
 
         # Process the variables first.
-        variables = [self._to_html(c, linker, indent+2, seclevel)
+        variables = [self._to_html(c, linker, seclevel)
                     for c in tree.children]
 
         # Construct the HTML string for the variables.
@@ -1294,9 +1293,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
-            return wordwrap(
-                (tree.attribs.get('inline') and '%s' or '<p>%s</p>') % childstr,
-                indent)
+            if tree.attribs.get('inline'):
+                return childstr
+            else:
+                return '<p>%s</p>' % childstr
         elif tree.tag == 'code':
             style = tree.attribs.get('style')
             if style:
@@ -1304,8 +1304,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             else:
                 return '<code>%s</code>' % childstr
         elif tree.tag == 'uri':
-            return ('<a href="%s" target="_top">%s</a>' %
-                    (variables[1], variables[0]))
+            return '<a href="%s" target="_top">%s</a>' % (variables[1], variables[0])
         elif tree.tag == 'link':
             return linker.translate_identifier_xref(variables[1], variables[0])
         elif tree.tag == 'italic':
@@ -1315,24 +1314,21 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'bold':
             return '<b>%s</b>' % childstr
         elif tree.tag == 'ulist':
-            return '%s<ul>\n%s%s</ul>\n' % (indent*' ', childstr, indent*' ')
+            return '<ul>\n%s</ul>\n' % childstr
         elif tree.tag == 'olist':
             start = tree.attribs.get('start') or ''
-            return ('%s<ol start="%s">\n%s%s</ol>\n' %
-                    (indent*' ', start, childstr, indent*' '))
+            return '<ol start="%s">\n%s</ol>\n' % (start, childstr)
         elif tree.tag == 'li':
-            return indent*' '+'<li>\n%s%s</li>\n' % (childstr, indent*' ')
+            return '<li>\n%s</li>\n' % childstr
         elif tree.tag == 'heading':
-            return ('%s<h%s class="heading">%s</h%s>\n' %
-                    ((indent-2)*' ', seclevel, childstr, seclevel))
+            return '<h%s class="heading">%s</h%s>\n' % (seclevel, childstr, seclevel)
         elif tree.tag == 'literalblock':
             return '<pre class="literalblock">\n%s\n</pre>\n' % childstr
         elif tree.tag == 'doctestblock':
             return flatten(colorize_doctest(tree.children[0].strip()))
         elif tree.tag == 'fieldlist':
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('epytext', 'section', 'tag', 'arg',
-                              'name', 'target', 'html'):
+        elif tree.tag in ('epytext', 'section', 'tag', 'arg', 'name', 'target', 'html'):
             return childstr
         elif tree.tag == 'symbol':
             symbol = tree.children[0]
