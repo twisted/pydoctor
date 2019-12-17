@@ -14,6 +14,8 @@ __docformat__ = 'epytext en'
 
 import re
 
+from twisted.web.template import flattenString
+
 ######################################################################
 ## Text Processing
 ######################################################################
@@ -59,3 +61,12 @@ def plaintext_to_html(s):
     s = s.replace('&', '&amp;').replace('"', '&quot;')
     s = s.replace('<', '&lt;').replace('>', '&gt;')
     return s
+
+def flatten(stan):
+    ret = []
+    err = []
+    flattenString(None, stan).addCallback(ret.append).addErrback(err.append)
+    if err:
+        raise err[0].value
+    else:
+        return ret[0].decode()

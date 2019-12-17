@@ -75,7 +75,7 @@ import docutils.utils
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.util import plaintext_to_html
+from pydoctor.epydoc.util import plaintext_to_html, flatten
 from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
@@ -474,9 +474,9 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     def visit_doctest_block(self, node):
         pysrc = node[0].astext()
         if node.get('codeblock'):
-            self.body.append(colorize_codeblock(pysrc))
+            self.body.append(flatten(colorize_codeblock(pysrc)))
         else:
-            self.body.append(colorize_doctest(pysrc))
+            self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
 
 def python_code_directive(name, arguments, options, content, lineno,

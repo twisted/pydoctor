@@ -9,29 +9,14 @@
 Syntax highlighting for blocks of Python code.
 """
 
-from __future__ import print_function
-
 __docformat__ = 'epytext en'
 
 import re
 import sys
 from six.moves import builtins
-from pydoctor.epydoc.util import plaintext_to_html
+from twisted.web.template import tags
 
 __all__ = ['colorize_codeblock', 'colorize_doctest']
-
-#: A string that is added to the beginning of the strings
-#: returned by L{colorize_codeblock} and L{colorize_doctest}.
-#: Typically, this string begins a preformatted area.
-PREFIX = '<pre class="py-doctest">\n'
-
-#: A string that is added to the end of the strings
-#: returned by L{colorize_codeblock} and L{colorize_doctest}.
-#: Typically, this string ends a preformatted area.
-SUFFIX = '</pre>\n'
-
-#: The string used to divide lines
-NEWLINE = '\n'
 
 #: A list of the names of all Python keywords.
 _KEYWORDS = [
@@ -76,6 +61,9 @@ _PROMPT2_GRP = r'^[ \t]*\.\.\.(?:[ \t]|$)'
 #: A regexp group that matches function and class definitions.
 _DEFINE_GRP = r'\b(?:def|class)[ \t]+\w+'
 
+#: A regexp that decomposes function definitions.
+DEFINE_FUNC_RE = re.compile(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)')
+
 #: A regexp that matches Python prompts
 PROMPT_RE = re.compile('(%s|%s)' % (_PROMPT1_GRP, _PROMPT2_GRP),
                        re.MULTILINE | re.DOTALL)
@@ -94,11 +82,15 @@ DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')
 #: A regexp that matches all of the regions of a doctest block
 #: that should be colored.
 DOCTEST_RE = re.compile(
-    r'(.*?)((?P<STRING>%s)|(?P<COMMENT>%s)|(?P<DEFINE>%s)|'
-          r'(?P<KEYWORD>%s)|(?P<BUILTIN>%s)|'
-          r'(?P<PROMPT1>%s)|(?P<PROMPT2>%s)|(?P<EOS>\Z))' % (
-    _STRING_GRP, _COMMENT_GRP, _DEFINE_GRP, _KEYWORD_GRP, _BUILTIN_GRP,
-    _PROMPT1_GRP, _PROMPT2_GRP), re.MULTILINE | re.DOTALL)
+    '('
+        r'(?P<STRING>%s)|(?P<COMMENT>%s)|(?P<DEFINE>%s)|'
+        r'(?P<KEYWORD>%s)|(?P<BUILTIN>%s)|'
+        r'(?P<PROMPT1>%s)|(?P<PROMPT2>%s)|(?P<EOS>\Z)'
+    ')' % (
+        _STRING_GRP, _COMMENT_GRP, _DEFINE_GRP, _KEYWORD_GRP, _BUILTIN_GRP,
+        _PROMPT1_GRP, _PROMPT2_GRP
+        ),
+    re.MULTILINE | re.DOTALL)
 
 #: This regular expression is used to find doctest examples in a
 #: string.  This is copied from the standard Python doctest.py
@@ -134,8 +126,8 @@ def colorize_codeblock(s):
       - C{py-defname} -- the name of a function or class defined by
         a C{def} or C{class} statement.
     """
-    body = DOCTEST_RE.sub(subfunc, s)
-    return PREFIX + body + SUFFIX
+
+    return tags.pre('\n', *colorize_codeblock_body(s), class_='py-doctest')
 
 def colorize_doctest(s):
     """
@@ -149,95 +141,73 @@ def colorize_doctest(s):
       - C{py-more} -- the Python PS2 prompt (...)
       - the CSS classes output by L{colorize_codeblock}
     """
-    output = []
-    charno = 0
-    for m in DOCTEST_EXAMPLE_RE.finditer(s):
+
+    return tags.pre('\n', *colorize_doctest_body(s), class_='py-doctest')
+
+def colorize_doctest_body(s):
+    idx = 0
+    for match in DOCTEST_EXAMPLE_RE.finditer(s):
         # Parse the doctest example:
-        pysrc, want = m.group('source', 'want')
+        pysrc, want = match.group('source', 'want')
         # Pre-example text:
-        output.append(NEWLINE.join(s[charno:m.start()].split('\n')))
+        yield s[idx:match.start()]
         # Example source code:
-        output.append(DOCTEST_RE.sub(subfunc, pysrc))
+        for stan in colorize_codeblock_body(pysrc):
+            yield stan
         # Example output:
         if want:
-            if EXCEPT_RE.match(want):
-                output += NEWLINE.join([markup(line, 'except')
-                                        for line in want.split('\n')])
-            else:
-                output += NEWLINE.join([markup(line, 'output')
-                                        for line in want.split('\n')])
-        # Update charno
-        charno = m.end()
+            style = 'py-except' if EXCEPT_RE.match(want) else 'py-output'
+            for line in want.rstrip().split('\n'):
+                yield tags.span(line, class_=style)
+                yield '\n'
+        idx = match.end()
     # Add any remaining post-example text.
-    output.append(NEWLINE.join(s[charno:].split('\n')))
+    yield s[idx:]
 
-    return PREFIX + ''.join(output) + SUFFIX
+def colorize_codeblock_body(s):
+    idx = 0
+    for match in DOCTEST_RE.finditer(s):
+        start = match.start()
+        if idx < start:
+            yield s[idx:start]
+        for stan in subfunc(match):
+            yield stan
+        idx = match.end()
+    # DOCTEST_RE matches end-of-string.
+    assert idx == len(s)
 
 def subfunc(match):
-    other, text = match.group(1, 2)
-    #print('M %20r %20r' % (other, text)) # <- for debugging
-    if other:
-        other = NEWLINE.join([markup(line, 'other')
-                              for line in other.split('\n')])
-
+    text = match.group(1)
     if match.group('PROMPT1'):
-        return other + markup(text, 'prompt')
+        yield tags.span(text, class_='py-prompt')
     elif match.group('PROMPT2'):
-        return other + markup(text, 'more')
+        yield tags.span(text, class_='py-more')
     elif match.group('KEYWORD'):
-        return other + markup(text, 'keyword')
+        yield tags.span(text, class_='py-keyword')
     elif match.group('BUILTIN'):
-        return other + markup(text, 'builtin')
+        yield tags.span(text, class_='py-builtin')
     elif match.group('COMMENT'):
-        return other + markup(text, 'comment')
-    elif match.group('STRING') and '\n' not in text:
-        return other + markup(text, 'string')
+        yield tags.span(text, class_='py-comment')
     elif match.group('STRING'):
-        # It's a multiline string; colorize the string & prompt
-        # portion of each line.
-        pieces = []
-        for line in text.split('\n'):
-            if PROMPT2_RE.match(line):
-                if len(line) > 4:
-                    pieces.append(markup(line[:4], 'more') +
-                                  markup(line[4:], 'string'))
-                else:
-                    pieces.append(markup(line[:4], 'more'))
-            elif line:
-                pieces.append(markup(line, 'string'))
-            else:
-                pieces.append('')
-        return other + NEWLINE.join(pieces)
+        idx = 0
+        while True:
+            nxt = text.find('\n', idx)
+            line = text[idx:] if nxt == -1 else text[idx:nxt]
+            m = PROMPT2_RE.match(line)
+            if m:
+                prompt_end = m.end()
+                yield tags.span(line[:prompt_end], class_='py-more')
+                line = line[prompt_end:]
+            if line:
+                yield tags.span(line, class_='py-string')
+            if nxt == -1:
+                break
+            yield '\n'
+            idx = nxt + 1
     elif match.group('DEFINE'):
-        m = re.match(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)', text)
-        return other + (markup(m.group('def'), 'keyword') +
-                        markup(m.group('space'), 'other') +
-                        markup(m.group('name'), 'defname'))
-    elif match.group('EOS') is not None:
-        return other
-    else:
-        assert 0, 'Unexpected match!'
-
-def markup(s, tag):
-    """
-    Apply syntax highlighting to a single substring from a doctest
-    block.  C{s} is the substring, and C{tag} is the tag that
-    should be applied to the substring.  C{tag} will be one of the
-    following strings:
-
-        - C{prompt} -- the Python PS1 prompt (>>>)
-        - C{more} -- the Python PS2 prompt (...)
-        - C{keyword} -- a Python keyword (for, if, etc.)
-        - C{builtin} -- a Python builtin name (abs, dir, etc.)
-        - C{string} -- a string literal
-        - C{comment} -- a comment
-        - C{except} -- an exception traceback (up to the next >>>)
-        - C{output} -- the output from a doctest block.
-        - C{defname} -- the name of a function or class defined by
-        a C{def} or C{class} statement.
-        - C{other} -- anything else (does *not* include output.)
-    """
-    if tag == 'other':
-        return plaintext_to_html(s)
-    else:
-        return '<span class="py-%s">%s</span>' % (tag, plaintext_to_html(s))
+        m = DEFINE_FUNC_RE.match(text)
+        yield tags.span(m.group('def'), class_='py-keyword')
+        yield m.group('space')
+        yield tags.span(m.group('name'), class_='py-defname')
+    elif match.group('EOS') is None:
+        raise AssertionError('Unexpected match')
