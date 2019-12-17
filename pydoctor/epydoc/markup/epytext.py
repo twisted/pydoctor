@@ -735,7 +735,7 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [ln[block_indent+1:] for ln in lines[start:linenum]]
+    contents = [ln[block_indent:] for ln in lines[start:linenum]]
     contents = '\n'.join(contents)
     contents = re.sub(r'(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))

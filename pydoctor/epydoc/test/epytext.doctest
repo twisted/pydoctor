@@ -211,7 +211,7 @@ Basic list tests:
     >>> LI6 = ("  - This is a list item with a literal block::\n" +
     ...        "    hello\n      there")
     >>> LI6LIST = ('<ulist><li><para inline=True>This is a list item with a literal '+
-    ...            'block:</para><literalblock> hello\n   there'+
+    ...            'block:</para><literalblock>  hello\n    there'+
     ...            '</literalblock></li></ulist>')
     >>> checkparse(LI6, LI6LIST)
     >>> checkparse('%s\n%s' % (P1, LI6), PARA+LI6LIST)
