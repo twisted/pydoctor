@@ -7,6 +7,8 @@ from pydoctor import epydoc2stan, model
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
+from . import flatten
+
 
 def test_multiple_types():
     mod = fromText('''
@@ -127,7 +129,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     expected = (
         '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
         )
-    assert expected == result
+    assert expected == flatten(result)
 
 
 def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
@@ -155,7 +157,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     expected = (
         '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
         )
-    assert expected == result
+    assert expected == flatten(result)
 
 
 def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
@@ -186,7 +188,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
         sys.stdout = previousStdout
 
 
-    assert '<code>ext_module</code>' == result
+    assert '<code>ext_module</code>' == flatten(result)
 
     expected = (
         "ignore-name:0 invalid ref to 'ext_module' "

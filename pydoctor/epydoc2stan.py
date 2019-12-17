@@ -103,7 +103,7 @@ class _EpydocLinker(DocstringLinker):
         else:
             raise AssertionError(
                 "Unknown documentation_location: %s" % obj.documentation_location)
-        return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+        return tags.a(tags.code(prettyID), href=linktext)
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -170,7 +170,7 @@ class _EpydocLinker(DocstringLinker):
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
-            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            return tags.a(tags.code(prettyID), href=linktext)
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
@@ -190,14 +190,14 @@ class _EpydocLinker(DocstringLinker):
             # try our luck with fullID.
             target = self.look_for_intersphinx(fullID)
         if target:
-            return '<a href="%s"><code>%s</code></a>'%(target, prettyID)
+            return tags.a(tags.code(prettyID), href=target)
         if fullID != fullerID:
             self.obj.system.msg(
                 "translate_identifier_xref", "%s:%s invalid ref to '%s' "
                 "resolved as '%s'" % (
                     self.obj.fullName(), self.obj.linenumber, fullID, fullerID),
                 thresh=-1)
-        return '<code>%s</code>'%(prettyID,)
+        return tags.code(prettyID)
 
 
 class FieldDesc(object):

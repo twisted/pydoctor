@@ -75,7 +75,7 @@ import docutils.utils
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.util import plaintext_to_html, flatten
+from pydoctor.epydoc.util import flatten
 from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
@@ -414,9 +414,8 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         m = _TARGET_RE.match(node.astext())
         if m: text, target = m.groups()
         else: target = text = node.astext()
-        text = plaintext_to_html(text)
         xref = self._linker.translate_identifier_xref(target, text)
-        self.body.append(xref)
+        self.body.append(flatten(xref))
         raise SkipNode()
 
     def should_be_compact_paragraph(self, node):

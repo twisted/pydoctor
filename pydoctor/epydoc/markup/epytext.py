@@ -1306,7 +1306,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'uri':
             return '<a href="%s" target="_top">%s</a>' % (variables[1], variables[0])
         elif tree.tag == 'link':
-            return linker.translate_identifier_xref(variables[1], variables[0])
+            # TODO: Arguments were already escaped by plaintext_to_html()
+            #       and will be escaped again by Stan.
+            return flatten(linker.translate_identifier_xref(variables[1], variables[0]))
         elif tree.tag == 'italic':
             return '<i>%s</i>' % childstr
         elif tree.tag == 'math':
