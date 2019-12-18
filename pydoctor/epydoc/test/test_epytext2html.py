@@ -10,8 +10,8 @@ To work around this, expected output should contain at most
 one attribute per tag.
 """
 
+from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
-from pydoctor.test import flatten
 
 
 def epytext2html(s):

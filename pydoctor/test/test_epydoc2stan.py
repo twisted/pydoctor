@@ -4,10 +4,9 @@ import sys
 from io import StringIO
 
 from pydoctor import epydoc2stan, model
+from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
-
-from . import flatten
 
 
 def test_multiple_types():

@@ -2,8 +2,7 @@ Regression Testing for restructuredtext
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 :RequireModule: docutils
 
->>> from pydoctor.epydoc.markup import restructuredtext
->>> from pydoctor.test import flatten
+>>> from pydoctor.epydoc.markup import flatten, restructuredtext
 >>> def parse_and_print(s):
 ...     errors = []
 ...     parsed = restructuredtext.parse_docstring(s, errors)

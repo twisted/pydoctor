@@ -236,7 +236,7 @@ Literal Braces
 SF bug #1562530 reported some trouble with literal braces.  These
 tests make sure that braces are getting rendered as desired.
 
->>> from pydoctor.test import flatten
+>>> from pydoctor.epydoc.markup import flatten
 >>> def epytext2html(s):
 ...     errs = []
 ...     v = flatten(epytext.parse_docstring(s, errs).to_stan(None))

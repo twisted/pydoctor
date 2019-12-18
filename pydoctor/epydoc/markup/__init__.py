@@ -11,7 +11,7 @@ parser for a single markup language.  These parsers convert an
 object's docstring to a L{ParsedDocstring}, a standard intermediate
 representation that can be used to generate output.
 C{ParsedDocstring}s support the following operations:
-  - output generation (L{to_html()<ParsedDocstring.to_html>}).
+  - output generation (L{to_stan()<ParsedDocstring.to_stan>}).
   - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
 
 The L{parse()} function provides a single interface to the
@@ -44,7 +44,7 @@ __docformat__ = 'epytext en'
 import re
 
 from six import text_type
-from twisted.web.template import XMLString
+from twisted.web.template import XMLString, flattenString
 
 ##################################################
 ## Contents
@@ -65,14 +65,17 @@ class ParsedDocstring:
     can be used to generate output.  Parsed docstrings are produced by
     markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
     C{ParsedDocstring}s support several kinds of operation:
-      - output generation (L{to_html()}).
+      - output generation (L{to_stan()}).
       - Field extraction (L{split_fields()}).
 
     The output generation methods (C{to_M{format}()}) use a
     L{DocstringLinker} to link the docstring output with the rest
     of the documentation that epydoc generates.
 
-    Subclasses must implement all methods of this class.
+    Subclasses must implement L{split_fields()} and either L{to_stan()}
+    or L{_to_html()}.  Implementing L{to_stan()} is more efficient, but
+    might require more effort when using a library that produces HTML
+    output as strings.
     """
 
     def split_fields(self, errors=None):
@@ -91,35 +94,62 @@ class ParsedDocstring:
         """
         raise NotImplementedError()
 
-    def to_html(self, docstring_linker):
-        """
-        Translate this docstring to HTML.
-
-        @param docstring_linker: An HTML translator for crossreference
-            links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
-        @return: An HTML fragment that encodes this docstring.
-        @rtype: C{string}
-        """
-        raise NotImplementedError()
-
-    _control_pat = re.compile((
+    __RE_CONTROL = re.compile((
         '[' + ''.join(
         ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
         ) + ']'
         ).encode())
 
     def to_stan(self, docstring_linker):
-        html = self.to_html(docstring_linker)
+        """
+        Translate this docstring to a Stan tree.
+
+        The default implementation calls L{_to_html()} and parses the HTML
+        string into a tree.
+
+        @param docstring_linker: An HTML translator for crossreference
+            links into and out of the docstring.
+        @type docstring_linker: L{DocstringLinker}
+        @return: The docstring presented as a tree.
+        """
+        html = self._to_html(docstring_linker)
         if isinstance(html, text_type):
             html = html.encode('utf8')
 
-        html = self._control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+        html = self.__RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
         html = b"<div>" + html + b"</div>"
         stan = XMLString(html).load()[0].children
         if stan and stan[-1] == u'\n':
             del stan[-1]
         return stan
+
+    def _to_html(self, docstring_linker):
+        """
+        Translate this docstring to HTML.
+
+        @param docstring_linker: An HTML translator for crossreference
+            links into and out of the docstring.
+        @type docstring_linker: L{DocstringLinker}
+        @return: An HTML string representation of this docstring.
+        @rtype: C{string}
+        """
+        raise AssertionError('You must override either to_stan() or _to_html()')
+
+def flatten(stan):
+    """
+    Convert a document fragment from a Stan tree to HTML.
+
+    @param stan: Document fragment to flatten.
+    @return: An HTML string representation of the C{stan} tree.
+    @rtype: C{str}
+    """
+    ret = []
+    err = []
+    flattenString(None, stan).addCallback(ret.append).addErrback(err.append)
+    if err:
+        raise err[0].value
+    else:
+        return ret[0].decode()
 
 ##################################################
 ## Fields
@@ -182,7 +212,7 @@ class DocstringLinker:
     C{ParsedDocstring}.  C{DocstringLinker} is used by
     C{ParsedDocstring} to convert these crossreference links into
     appropriate output formats.  For example,
-    C{ParsedDocstring.to_html} expects a C{DocstringLinker} that
+    C{ParsedDocstring.to_stan} expects a C{DocstringLinker} that
     converts crossreference links to HTML.
     """
 

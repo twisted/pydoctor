@@ -37,7 +37,7 @@ C{ParsedRstDocstring}s support all of the methods defined by
 C{ParsedDocstring}; but only the following four methods have
 non-default behavior:
 
-  - L{to_html()<ParsedRstDocstring.to_html>} uses an
+  - L{_to_html()<ParsedRstDocstring._to_html>} uses an
     L{_EpydocHTMLTranslator} to translate the C{ParsedRstDocstring}'s
     document into an HTML segment.
   - L{split_fields()<ParsedRstDocstring.split_fields>} uses a
@@ -73,9 +73,8 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.util import flatten
 from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
@@ -157,7 +156,7 @@ class ParsedRstDocstring(ParsedDocstring):
         else:
             return None, visitor.fields
 
-    def to_html(self, docstring_linker):
+    def _to_html(self, docstring_linker):
         # Inherit docs
         visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
         self._document.walkabout(visitor)
