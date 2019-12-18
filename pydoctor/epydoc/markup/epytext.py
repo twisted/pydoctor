@@ -109,8 +109,8 @@ __docformat__ = 'epytext en'
 
 import re
 import six
+from twisted.web.template import CharRef, tags
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
-from pydoctor.epydoc.util import plaintext_to_html, flatten
 from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
@@ -1219,118 +1219,120 @@ def parse_docstring(docstring, errors):
     return ParsedEpytextDocstring(parse(docstring, errors))
 
 class ParsedEpytextDocstring(ParsedDocstring):
-    SYMBOL_TO_HTML = {
+    SYMBOL_TO_CODEPOINT = {
         # Symbols
-        '<-': '&larr;', '->': '&rarr;', '^': '&uarr;', 'v': '&darr;',
+        '<-': 8592, '->': 8594, '^': 8593, 'v': 8595,
 
         # Greek letters
-        'alpha': '&alpha;', 'beta': '&beta;', 'gamma': '&gamma;',
-        'delta': '&delta;', 'epsilon': '&epsilon;', 'zeta': '&zeta;',
-        'eta': '&eta;', 'theta': '&theta;', 'iota': '&iota;',
-        'kappa': '&kappa;', 'lambda': '&lambda;', 'mu': '&mu;',
-        'nu': '&nu;', 'xi': '&xi;', 'omicron': '&omicron;',
-        'pi': '&pi;', 'rho': '&rho;', 'sigma': '&sigma;',
-        'tau': '&tau;', 'upsilon': '&upsilon;', 'phi': '&phi;',
-        'chi': '&chi;', 'psi': '&psi;', 'omega': '&omega;',
-        'Alpha': '&Alpha;', 'Beta': '&Beta;', 'Gamma': '&Gamma;',
-        'Delta': '&Delta;', 'Epsilon': '&Epsilon;', 'Zeta': '&Zeta;',
-        'Eta': '&Eta;', 'Theta': '&Theta;', 'Iota': '&Iota;',
-        'Kappa': '&Kappa;', 'Lambda': '&Lambda;', 'Mu': '&Mu;',
-        'Nu': '&Nu;', 'Xi': '&Xi;', 'Omicron': '&Omicron;',
-        'Pi': '&Pi;', 'Rho': '&Rho;', 'Sigma': '&Sigma;',
-        'Tau': '&Tau;', 'Upsilon': '&Upsilon;', 'Phi': '&Phi;',
-        'Chi': '&Chi;', 'Psi': '&Psi;', 'Omega': '&Omega;',
+        'alpha': 945, 'beta': 946, 'gamma': 947,
+        'delta': 948, 'epsilon': 949, 'zeta': 950,
+        'eta': 951, 'theta': 952, 'iota': 953,
+        'kappa': 954, 'lambda': 955, 'mu': 956,
+        'nu': 957, 'xi': 958, 'omicron': 959,
+        'pi': 960, 'rho': 961, 'sigma': 963,
+        'tau': 964, 'upsilon': 965, 'phi': 966,
+        'chi': 967, 'psi': 968, 'omega': 969,
+        'Alpha': 913, 'Beta': 914, 'Gamma': 915,
+        'Delta': 916, 'Epsilon': 917, 'Zeta': 918,
+        'Eta': 919, 'Theta': 920, 'Iota': 921,
+        'Kappa': 922, 'Lambda': 923, 'Mu': 924,
+        'Nu': 925, 'Xi': 926, 'Omicron': 927,
+        'Pi': 928, 'Rho': 929, 'Sigma': 931,
+        'Tau': 932, 'Upsilon': 933, 'Phi': 934,
+        'Chi': 935, 'Psi': 936, 'Omega': 937,
 
         # HTML character entities
-        'larr': '&larr;', 'rarr': '&rarr;', 'uarr': '&uarr;',
-        'darr': '&darr;', 'harr': '&harr;', 'crarr': '&crarr;',
-        'lArr': '&lArr;', 'rArr': '&rArr;', 'uArr': '&uArr;',
-        'dArr': '&dArr;', 'hArr': '&hArr;',
-        'copy': '&copy;', 'times': '&times;', 'forall': '&forall;',
-        'exist': '&exist;', 'part': '&part;',
-        'empty': '&empty;', 'isin': '&isin;', 'notin': '&notin;',
-        'ni': '&ni;', 'prod': '&prod;', 'sum': '&sum;',
-        'prop': '&prop;', 'infin': '&infin;', 'ang': '&ang;',
-        'and': '&and;', 'or': '&or;', 'cap': '&cap;', 'cup': '&cup;',
-        'int': '&int;', 'there4': '&there4;', 'sim': '&sim;',
-        'cong': '&cong;', 'asymp': '&asymp;', 'ne': '&ne;',
-        'equiv': '&equiv;', 'le': '&le;', 'ge': '&ge;',
-        'sub': '&sub;', 'sup': '&sup;', 'nsub': '&nsub;',
-        'sube': '&sube;', 'supe': '&supe;', 'oplus': '&oplus;',
-        'otimes': '&otimes;', 'perp': '&perp;',
+        'larr': 8592, 'rarr': 8594, 'uarr': 8593,
+        'darr': 8595, 'harr': 8596, 'crarr': 8629,
+        'lArr': 8656, 'rArr': 8658, 'uArr': 8657,
+        'dArr': 8659, 'hArr': 8660,
+        'copy': 169, 'times': 215, 'forall': 8704,
+        'exist': 8707, 'part': 8706,
+        'empty': 8709, 'isin': 8712, 'notin': 8713,
+        'ni': 8715, 'prod': 8719, 'sum': 8721,
+        'prop': 8733, 'infin': 8734, 'ang': 8736,
+        'and': 8743, 'or': 8744, 'cap': 8745, 'cup': 8746,
+        'int': 8747, 'there4': 8756, 'sim': 8764,
+        'cong': 8773, 'asymp': 8776, 'ne': 8800,
+        'equiv': 8801, 'le': 8804, 'ge': 8805,
+        'sub': 8834, 'sup': 8835, 'nsub': 8836,
+        'sube': 8838, 'supe': 8839, 'oplus': 8853,
+        'otimes': 8855, 'perp': 8869,
 
         # Alternate (long) names
-        'infinity': '&infin;', 'integral': '&int;', 'product': '&prod;',
-        '<=': '&le;', '>=': '&ge;',
+        'infinity': 8734, 'integral': 8747, 'product': 8719,
+        '<=': 8804, '>=': 8805,
         }
 
     def __init__(self, dom_tree):
         self._tree = dom_tree
         # Caching:
-        self._html = None
+        self._stan = None
 
     def __str__(self):
         return str(self._tree)
 
-    def to_html(self, docstring_linker):
-        if self._html is not None: return self._html
-        if self._tree is None: return ''
-        self._html = self._to_html(self._tree, docstring_linker)
-        return self._html
+    def to_stan(self, docstring_linker):
+        if self._stan is not None:
+            return self._stan
+        if self._tree is None:
+            self._stan = ()
+        else:
+            self._stan = self._to_stan(self._tree, docstring_linker)
+        return self._stan
 
-    def _to_html(self, tree, linker, seclevel=0):
+    def _to_stan(self, tree, linker, seclevel=0):
         if isinstance(tree, six.string_types):
-            return plaintext_to_html(tree)
+            return tree
 
-        if tree.tag == 'section': seclevel += 1
+        if tree.tag == 'section':
+            seclevel += 1
 
         # Process the variables first.
-        variables = [self._to_html(c, linker, seclevel)
-                    for c in tree.children]
-
-        # Construct the HTML string for the variables.
-        childstr = ''.join(variables)
+        variables = [self._to_stan(c, linker, seclevel) for c in tree.children]
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
             if tree.attribs.get('inline'):
-                return childstr
+                return variables
             else:
-                return '<p>%s</p>' % childstr
+                return tags.p(variables)
         elif tree.tag == 'code':
-            return '<code>%s</code>' % childstr
+            return tags.code(variables)
         elif tree.tag == 'uri':
-            return '<a href="%s" target="_top">%s</a>' % (variables[1], variables[0])
+            return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
-            # TODO: Arguments were already escaped by plaintext_to_html()
-            #       and will be escaped again by Stan.
-            return flatten(linker.translate_identifier_xref(variables[1], variables[0]))
+            fullID, = variables[1]
+            return linker.translate_identifier_xref(fullID, variables[0])
         elif tree.tag == 'italic':
-            return '<i>%s</i>' % childstr
+            return tags.i(variables)
         elif tree.tag == 'math':
-            return '<i class="math">%s</i>' % childstr
+            return tags.i(variables, class_='math')
         elif tree.tag == 'bold':
-            return '<b>%s</b>' % childstr
+            return tags.b(variables)
         elif tree.tag == 'ulist':
-            return '<ul>\n%s</ul>\n' % childstr
+            return tags.ul(variables)
         elif tree.tag == 'olist':
-            start = tree.attribs.get('start') or ''
-            return '<ol start="%s">\n%s</ol>\n' % (start, childstr)
+            stan = tags.ol(variables)
+            start = tree.attribs.get('start', '1')
+            if start != '1':
+                stan(start=start)
+            return stan
         elif tree.tag == 'li':
-            return '<li>\n%s</li>\n' % childstr
+            return tags.li(variables)
         elif tree.tag == 'heading':
-            return '<h%s class="heading">%s</h%s>\n' % (seclevel, childstr, seclevel)
+            return getattr(tags, 'h%d' % seclevel)(variables)
         elif tree.tag == 'literalblock':
-            return '<pre class="literalblock">\n%s\n</pre>\n' % childstr
+            return tags.pre('\n', variables, '\n', class_='literalblock')
         elif tree.tag == 'doctestblock':
-            return flatten(colorize_doctest(tree.children[0].strip()))
+            return colorize_doctest(tree.children[0].strip())
         elif tree.tag == 'fieldlist':
             raise AssertionError("There should not be any field lists left")
         elif tree.tag in ('epytext', 'section', 'tag', 'arg', 'name', 'target', 'html'):
-            return childstr
+            return variables
         elif tree.tag == 'symbol':
             symbol = tree.children[0]
-            return self.SYMBOL_TO_HTML.get(symbol, '[%s]' % symbol)
+            return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
             raise ValueError('Unknown epytext DOM element %r' % tree.tag)
 
