@@ -1296,34 +1296,35 @@ class ParsedEpytextDocstring(ParsedDocstring):
             if tree.attribs.get('inline'):
                 return variables
             else:
-                return tags.p(variables)
+                return tags.p(*variables)
         elif tree.tag == 'code':
-            return tags.code(variables)
+            return tags.code(*variables)
         elif tree.tag == 'uri':
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
             fullID, = variables[1]
             return linker.translate_identifier_xref(fullID, variables[0])
         elif tree.tag == 'italic':
-            return tags.i(variables)
+            return tags.i(*variables)
         elif tree.tag == 'math':
-            return tags.i(variables, class_='math')
+            return tags.i(*variables, class_='math')
         elif tree.tag == 'bold':
-            return tags.b(variables)
+            return tags.b(*variables)
         elif tree.tag == 'ulist':
-            return tags.ul(variables)
+            return tags.ul(*variables)
         elif tree.tag == 'olist':
-            stan = tags.ol(variables)
+            stan = tags.ol(*variables)
             start = tree.attribs.get('start', '1')
             if start != '1':
                 stan(start=start)
             return stan
         elif tree.tag == 'li':
-            return tags.li(variables)
+            return tags.li(*variables)
         elif tree.tag == 'heading':
-            return getattr(tags, 'h%d' % seclevel)(variables)
+            return getattr(tags, 'h%d' % seclevel)(*variables)
         elif tree.tag == 'literalblock':
-            return tags.pre('\n', variables, '\n', class_='literalblock')
+            variables.append('\n')
+            return tags.pre('\n', *variables, class_='literalblock')
         elif tree.tag == 'doctestblock':
             return colorize_doctest(tree.children[0].strip())
         elif tree.tag == 'fieldlist':
