@@ -66,15 +66,9 @@ def test_summary():
         """
     ''')
     def get_summary(func):
-        def part_flat(x):
-            if isinstance(x, list):
-                return ''.join(map(part_flat, x))
-            else:
-                return x
-        return part_flat(
-            epydoc2stan.doc2stan(
-                mod.contents[func],
-                summary=True).children)
+        stan = epydoc2stan.doc2stan(mod.contents[func], summary=True)
+        assert stan.tagName == 'span', stan
+        return flatten(stan.children)
     assert u'Lorem Ipsum' == get_summary('single_line_summary')
     assert u'Foo Bar Baz' == get_summary('three_lines_summary')
     assert u'No summary' == get_summary('no_summary')

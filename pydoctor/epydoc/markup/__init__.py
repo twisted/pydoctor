@@ -117,10 +117,9 @@ class ParsedDocstring:
             html = html.encode('utf8')
 
         html = self.__RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-        html = b"<div>" + html + b"</div>"
-        stan = XMLString(html).load()[0].children
-        if stan and stan[-1] == u'\n':
-            del stan[-1]
+        stan = XMLString(b'<div>%s</div>' % html).load()[0]
+        assert stan.tagName == 'div'
+        stan.tagName = ''
         return stan
 
     def _to_html(self, docstring_linker):

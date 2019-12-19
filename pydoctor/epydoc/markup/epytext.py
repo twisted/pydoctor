@@ -109,7 +109,7 @@ __docformat__ = 'epytext en'
 
 import re
 import six
-from twisted.web.template import CharRef, tags
+from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.doctest import colorize_doctest
 
@@ -1276,7 +1276,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if self._stan is not None:
             return self._stan
         if self._tree is None:
-            self._stan = ()
+            self._stan = Tag('')
         else:
             self._stan = self._to_stan(self._tree, docstring_linker)
         return self._stan
@@ -1302,8 +1302,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'uri':
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
-            fullID, = variables[1]
-            return linker.translate_identifier_xref(fullID, variables[0])
+            return linker.translate_identifier_xref(variables[1], variables[0])
+        elif tree.tag == 'target':
+            value, = variables
+            return value
         elif tree.tag == 'italic':
             return tags.i(*variables)
         elif tree.tag == 'math':
@@ -1327,10 +1329,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return tags.pre('\n', *variables, class_='literalblock')
         elif tree.tag == 'doctestblock':
             return colorize_doctest(tree.children[0].strip())
-        elif tree.tag == 'fieldlist':
+        elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('epytext', 'section', 'tag', 'arg', 'name', 'target', 'html'):
-            return variables
+        elif tree.tag in ('epytext', 'section', 'name'):
+            return Tag('')(*variables)
         elif tree.tag == 'symbol':
             symbol = tree.children[0]
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])

@@ -14,7 +14,7 @@ import sys
 from pydoctor import model
 from six.moves import builtins
 from six.moves.urllib.parse import quote
-from twisted.web.template import Tag, tags
+from twisted.web.template import tags
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
@@ -504,18 +504,15 @@ def doc2stan(obj, summary=False):
         except Exception as e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return boringDocstring(doc, summary)
+        content = [stan] if stan.tagName else stan.children
     else:
-        stan = ()
+        content = []
     if summary:
-        if not stan:
-            return ()
-        if len(stan) == 1 and isinstance(stan[0], Tag) and stan[0].tagName == 'p':
-            stan = stan[0].children
-        s = tags.span(stan)
+        if content and content[0].tagName == 'p':
+            content = content[0].children
+        s = tags.span(*content)
     else:
-        if not stan and not fields:
-            return ()
-        s = tags.div(stan)
+        s = tags.div(*content)
         if fields:
             fh = FieldHandler(obj)
             for field in fields:
