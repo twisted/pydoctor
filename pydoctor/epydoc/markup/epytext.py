@@ -1337,7 +1337,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             symbol = tree.children[0]
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
-            raise ValueError('Unknown epytext DOM element %r' % tree.tag)
+            raise AssertionError("Unknown epytext DOM element %r" % tree.tag)
 
     def split_fields(self, errors=None):
         if self._tree is None: return (self, ())
