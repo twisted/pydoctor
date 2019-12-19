@@ -161,7 +161,7 @@ class Element:
 
 # The possible heading underline characters, listed in order of
 # heading depth.
-_HEADING_CHARS = "=-~"
+_HEADING_CHARS = '=-~'
 
 # Escape codes.  These should be needed very rarely.
 _ESCAPES = {'lb':'{', 'rb': '}'}
@@ -383,7 +383,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
 
     # Check for errors.
     for tok in stack[2:]:
-        if tok.tag != "section":
+        if tok.tag != 'section':
             estr = "Headings must occur at the top level."
             errors.append(StructuringError(estr, heading_token.startline))
             break
@@ -400,7 +400,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
     head = _colorize(doc, heading_token, errors, 'heading')
 
     # Add the section's and heading's DOM elements.
-    sec = Element("section")
+    sec = Element('section')
     stack[-1].children.append(sec)
     stack.append(sec)
     sec.children.append(head)
@@ -428,7 +428,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         newlist = True
     elif list_type == 'olist' and stack[-1].tag == 'olist':
         old_listitem = stack[-1].children[-1]
-        old_bullet = old_listitem.attribs.get("bullet").split('.')[:-1]
+        old_bullet = old_listitem.attribs.get('bullet').split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
         if (new_bullet[:-1] != old_bullet[:-1] or
             int(new_bullet[-1]) != int(old_bullet[-1])+1):
@@ -461,7 +461,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         if list_type == 'fieldlist':
             # Fieldlist should be at the top-level.
             for tok in stack[2:]:
-                if tok.tag != "section":
+                if tok.tag != 'section':
                     estr = "Fields must be at the top level."
                     errors.append(
                         StructuringError(estr, bullet_token.startline))
@@ -477,27 +477,27 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         if list_type == 'olist':
             start = bullet_token.contents.split('.')[:-1]
             if start != '1':
-                lst.attribs["start"] = start[-1]
+                lst.attribs['start'] = start[-1]
 
-    # Fields are treated somewhat specially: A "fieldlist"
+    # Fields are treated somewhat specially: A 'fieldlist'
     # node is created to make the parsing simpler, but fields
-    # are adjoined directly into the "epytext" node, not into
-    # the "fieldlist" node.
+    # are adjoined directly into the 'epytext' node, not into
+    # the 'fieldlist' node.
     if list_type == 'fieldlist':
-        li = Element("field")
+        li = Element('field')
         token_words = bullet_token.contents[1:-1].split(None, 1)
-        tag_elt = Element("tag")
+        tag_elt = Element('tag')
         tag_elt.children.append(token_words[0])
         li.children.append(tag_elt)
 
         if len(token_words) > 1:
-            arg_elt = Element("arg")
+            arg_elt = Element('arg')
             arg_elt.children.append(token_words[1])
             li.children.append(arg_elt)
     else:
-        li = Element("li")
+        li = Element('li')
         if list_type == 'olist':
-            li.attribs["bullet"] = bullet_token.contents
+            li.attribs['bullet'] = bullet_token.contents
 
     # Add the bullet.
     stack[-1].children.append(li)
@@ -574,11 +574,11 @@ class Token:
         function syntactically the same as list items.
     """
     # The possible token types.
-    PARA = "para"
-    LBLOCK = "literalblock"
-    DTBLOCK = "doctestblock"
-    HEADING = "heading"
-    BULLET = "bullet"
+    PARA = 'para'
+    LBLOCK = 'literalblock'
+    DTBLOCK = 'doctestblock'
+    HEADING = 'heading'
+    BULLET = 'bullet'
 
     def __init__(self, tag, startline, contents, indent, level=None,
                  inline=False):
