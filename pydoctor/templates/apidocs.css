@@ -55,6 +55,11 @@ ul ul ul ul ul ul ul {
     border-left-color: #039be5;
 }
 
+.pre {
+    white-space: pre;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+}
+
 .undocumented {
     font-style: italic;
     color: #9e9e9e;

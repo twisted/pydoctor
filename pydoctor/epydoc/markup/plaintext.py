@@ -37,4 +37,4 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         return self, []
 
     def to_stan(self, docstring_linker):
-        return tags.pre(class_='literalblock')('\n', self._text, '\n')
+        return tags.p(self._text, class_='pre')

@@ -41,9 +41,7 @@ parameter "i": integer
 ... """)
 ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contain a bulleted list or definition list.
 A test function
-newfield "parameters": <pre class="literalblock">
-Parameters
-</pre>
+newfield "parameters": <p class="pre">Parameters</p>
 parameters: a b c
 
 >>> parse_and_print(
