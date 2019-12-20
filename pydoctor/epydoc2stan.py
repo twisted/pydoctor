@@ -18,6 +18,7 @@ from six.moves.urllib.parse import quote
 from twisted.web.template import tags
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
+import pydoctor.epydoc.markup.plaintext
 
 try:
     import exceptions
@@ -41,9 +42,8 @@ def get_parser(obj):
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             formatname, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
-        return None
-    else:
-        return mod.parse_docstring
+        mod = pydoctor.epydoc.markup.plaintext
+    return mod.parse_docstring
 
 
 def get_docstring(obj):
@@ -57,12 +57,6 @@ def get_docstring(obj):
                 doc = None
             return doc, source
     return None, None
-
-
-def boringDocstring(doc, summary=False):
-    """Generate an HTML representation of a docstring in a really boring way.
-    """
-    return (tags.tt if summary else tags.pre)(doc)
 
 
 def stdlib_doc_link_for_name(name):
@@ -487,27 +481,32 @@ def doc2stan(obj, summary=False):
             return tags.span(class_="undocumented")('No summary')
         else:
             doc = ' '.join(lines)
+
     parse_docstring = get_parser(obj)
-    if parse_docstring is None:
-        return boringDocstring(doc, summary)
     errs = []
     try:
         pdoc = parse_docstring(doc, errs)
     except Exception as e:
-        errs = [e.__class__.__name__ +': ' + str(e)]
-    if errs:
-        reportErrors(source, errs)
-        return boringDocstring(doc, summary)
-    pdoc, fields = pdoc.split_fields()
-    if pdoc is not None:
+        errs.append('%s: %s' % (e.__class__.__name__, e))
+        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+    try:
+        pdoc, fields = pdoc.split_fields()
+    except Exception as e:
+        errs.append('%s: %s' % (e.__class__.__name__, e))
+        fields = ()
+    if pdoc is None:
+        content = []
+    else:
         try:
             stan = pdoc.to_stan(_EpydocLinker(source))
         except Exception as e:
-            reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
-            return boringDocstring(doc, summary)
+            errs.append('%s: %s' % (e.__class__.__name__, e))
+            pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+            stan = pdoc.to_stan(_EpydocLinker(source))
         content = [stan] if stan.tagName else stan.children
-    else:
-        content = []
+    if errs:
+        reportErrors(source, errs)
+
     if summary:
         if content and content[0].tagName == 'p':
             content = content[0].children
@@ -562,8 +561,6 @@ def extract_fields(obj):
     if doc is None:
         return
     parse_docstring = get_parser(obj)
-    if parse_docstring is None:
-        return
     try:
         pdoc = parse_docstring(doc, [])
     except Exception:
