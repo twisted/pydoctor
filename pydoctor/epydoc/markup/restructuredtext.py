@@ -37,7 +37,7 @@ C{ParsedRstDocstring}s support all of the methods defined by
 C{ParsedDocstring}; but only the following four methods have
 non-default behavior:
 
-  - L{_to_html()<ParsedRstDocstring._to_html>} uses an
+  - L{to_stan()<ParsedRstDocstring.to_stan>} uses an
     L{_EpydocHTMLTranslator} to translate the C{ParsedRstDocstring}'s
     document into an HTML segment.
   - L{split_fields()<ParsedRstDocstring.split_fields>} uses a
@@ -73,7 +73,9 @@ import docutils.transforms.frontmatter
 import docutils.transforms
 import docutils.utils
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, flatten
+from pydoctor.epydoc.markup import (
+    Field, ParseError, ParsedDocstring, flatten, html2stan
+)
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
@@ -156,11 +158,11 @@ class ParsedRstDocstring(ParsedDocstring):
         else:
             return None, visitor.fields
 
-    def _to_html(self, docstring_linker):
+    def to_stan(self, docstring_linker):
         # Inherit docs
         visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
         self._document.walkabout(visitor)
-        return ''.join(visitor.body)
+        return html2stan(''.join(visitor.body))
 
     def __repr__(self): return '<ParsedRstDocstring: ...>'
 

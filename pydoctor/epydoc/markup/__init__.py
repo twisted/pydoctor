@@ -72,10 +72,7 @@ class ParsedDocstring:
     L{DocstringLinker} to link the docstring output with the rest
     of the documentation that epydoc generates.
 
-    Subclasses must implement L{split_fields()} and either L{to_stan()}
-    or L{_to_html()}.  Implementing L{to_stan()} is more efficient, but
-    might require more effort when using a library that produces HTML
-    output as strings.
+    Subclasses must implement L{split_fields()} and L{to_stan()}.
     """
 
     def split_fields(self, errors=None):
@@ -94,45 +91,43 @@ class ParsedDocstring:
         """
         raise NotImplementedError()
 
-    __RE_CONTROL = re.compile((
-        '[' + ''.join(
-        ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
-        ) + ']'
-        ).encode())
-
     def to_stan(self, docstring_linker):
         """
         Translate this docstring to a Stan tree.
 
-        The default implementation calls L{_to_html()} and parses the HTML
-        string into a tree.
+        Implementations are encouraged to generate Stan output directly
+        if possible, but if that is not feasible, L{html2stan()} can be
+        used instead.
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @type docstring_linker: L{DocstringLinker}
         @return: The docstring presented as a tree.
         """
-        html = self._to_html(docstring_linker)
-        if isinstance(html, text_type):
-            html = html.encode('utf8')
+        raise NotImplementedError()
 
-        html = self.__RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-        stan = XMLString(b'<div>%s</div>' % html).load()[0]
-        assert stan.tagName == 'div'
-        stan.tagName = ''
-        return stan
+_RE_CONTROL = re.compile((
+    '[' + ''.join(
+    ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
+    ) + ']'
+    ).encode())
 
-    def _to_html(self, docstring_linker):
-        """
-        Translate this docstring to HTML.
+def html2stan(html):
+    """
+    Convert an HTML string to a Stan tree.
 
-        @param docstring_linker: An HTML translator for crossreference
-            links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
-        @return: An HTML string representation of this docstring.
-        @rtype: C{string}
-        """
-        raise AssertionError('You must override either to_stan() or _to_html()')
+    @param html: An HTML fragment; multiple roots are allowed.
+    @type html: C{string}
+    @return: The fragment as a tree with a transparent root node.
+    """
+    if isinstance(html, text_type):
+        html = html.encode('utf8')
+
+    html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
+    stan = XMLString(b'<div>%s</div>' % html).load()[0]
+    assert stan.tagName == 'div'
+    stan.tagName = ''
+    return stan
 
 def flatten(stan):
     """
