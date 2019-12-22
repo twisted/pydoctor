@@ -236,11 +236,7 @@ def main(args):
         else:
             systemclass = zopeinterface.ZopeInterfaceSystem
 
-        system = systemclass()
-
-        # Once pickle support is removed, always instantiate System with
-        # options and make fetchIntersphinxInventories private in __init__.
-        system.options = options
+        system = systemclass(options)
         system.fetchIntersphinxInventories(cache)
 
         system.sourcebase = options.htmlsourcebase

@@ -346,9 +346,6 @@ class System(object):
         self.module_count = 0
         self.processing_modules = []
         self.buildtime = datetime.datetime.now()
-        # Once pickle support is removed, System should be
-        # initialized with project name so that we can reuse intersphinx instance for
-        # object.inv generation.
         self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
 
     def verbosity(self, section=None):
