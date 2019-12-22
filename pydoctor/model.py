@@ -390,10 +390,7 @@ class System(object):
                 print('')
 
     def objForFullName(self, fullName):
-        for system in [self]:
-            if fullName in system.allobjects:
-                return system.allobjects[fullName]
-        return None
+        return self.allobjects.get(fullName)
 
     def _warning(self, current, type, detail):
         if current is not None:
