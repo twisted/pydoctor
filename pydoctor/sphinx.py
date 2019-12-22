@@ -59,7 +59,7 @@ class SphinxInventory(object):
 # Project: %s
 # Version: %s
 # The rest of this file is compressed with zlib.
-""" % (self.project_name, '.'.join(version))).encode()
+""" % (self.project_name, '.'.join(version))).encode('utf-8')
 
     def _generateContent(self, subjects):
         """
@@ -69,7 +69,7 @@ class SphinxInventory(object):
         for obj in subjects:
             if not obj.isVisible:
                 continue
-            content.append(self._generateLine(obj).encode())
+            content.append(self._generateLine(obj).encode('utf-8'))
             content.append(self._generateContent(obj.orderedcontents))
 
         return b''.join(content)
