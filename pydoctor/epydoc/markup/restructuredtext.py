@@ -70,7 +70,6 @@ from docutils.frontend import OptionParser
 from docutils.parsers.rst import directives, roles
 import docutils.nodes
 import docutils.transforms.frontmatter
-import docutils.transforms
 import docutils.utils
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
@@ -141,11 +140,8 @@ class ParsedRstDocstring(ParsedDocstring):
         """
         self._document = document
 
-        # The default document reporter and transformer are not
-        # pickle-able; so replace them with stubs that are.
         document.reporter = OptimizedReporter(
             document.reporter.source, 'SEVERE', 'SEVERE', '')
-        document.transformer = docutils.transforms.Transformer(document)
 
     def split_fields(self, errors=None):
         # Inherit docs
