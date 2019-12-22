@@ -150,11 +150,18 @@ class SphinxInventory(object):
                 break
             data = parts[1]
         try:
-            return zlib.decompress(payload).decode()
-        except:
+            decompressed = zlib.decompress(payload)
+        except zlib.error:
             self.error(
                 'sphinx',
                 'Failed to uncompress inventory from %s' % (base_url,))
+            return ''
+        try:
+            return decompressed.decode()
+        except UnicodeError:
+            self.error(
+                'sphinx',
+                'Failed to decode inventory from %s' % (base_url,))
             return ''
 
     def _parseInventory(self, base_url, payload):

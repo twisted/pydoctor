@@ -252,7 +252,7 @@ def test_getPayload_content():
     assert payload == result
 
 
-def test_getPayload_invalid():
+def test_getPayload_invalid_uncompress():
     """
     Return empty string and log an error when failing to uncompress data.
     """
@@ -267,6 +267,25 @@ not-valid-zlib-content"""
     assert '' == result
     assert [(
         'sphinx', 'Failed to uncompress inventory from http://tm.tld', -1,
+        )] == log
+
+
+def test_getPayload_invalid_decode():
+    """
+    Return empty string and log an error when failing to uncompress data.
+    """
+    payload = b'\x80'
+    sut, log = make_SphinxInventoryWithLog()
+    base_url = 'http://tm.tld'
+    content = b"""# Project: some-name
+# Version: 2.0
+%s""" % (zlib.compress(payload),)
+
+    result = sut._getPayload(base_url, content)
+
+    assert '' == result
+    assert [(
+        'sphinx', 'Failed to decode inventory from http://tm.tld', -1,
         )] == log
 
 
