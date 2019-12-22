@@ -243,7 +243,6 @@ def main(args):
         system.options = options
         system.fetchIntersphinxInventories(cache)
 
-        system.urlprefix = ''
         system.sourcebase = options.htmlsourcebase
 
         if options.abbrevmapping:

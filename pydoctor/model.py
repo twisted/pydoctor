@@ -328,7 +328,6 @@ class System(object):
         self.rootobjects = []
         self.warnings = {}
         self.packages = []
-        self.urlprefix = ''
 
         if options:
             self.options = options
