@@ -42,19 +42,6 @@ def getparser():
         help=("Use config from this file (any command line"
               "options override settings from the file)."))
     parser.add_option(
-        '-p', '--input-pickle', dest='inputpickle',
-        help=("Load the system from this pickle file (default: "
-              "none, a blank system is created)."))
-    parser.add_option(
-        '-o', '--output-pickle', dest='outputpickle',
-        help=("Save the system to this pickle file (default: "
-              "none, the system is not saved by default)."))
-    parser.add_option(
-        '--extra-system', action='append', dest='moresystems',
-        metavar='SYS:URLPREFIX', default=[],
-        help=("Look for objects in this system to.  Links to these "
-              "objects will have URLPREFIX prepended to them."))
-    parser.add_option(
         '--system-class', dest='systemclass',
         help=("A dotted name of the class to use to make a system."))
     parser.add_option(
@@ -226,7 +213,6 @@ def parse_args(args):
     return options, args
 
 def main(args):
-    from six.moves import cPickle as pickle
     options, args = parse_args(args)
 
     exitcode = 0
@@ -250,17 +236,7 @@ def main(args):
         else:
             systemclass = zopeinterface.ZopeInterfaceSystem
 
-        if options.inputpickle:
-            system = pickle.load(open(options.inputpickle, 'rb'))
-            if options.systemclass:
-                if type(system) is not systemclass:
-                    cls = type(system)
-                    msg = ("loaded pickle has class %s.%s, differing "
-                           "from explicitly requested %s")
-                    error(msg, cls.__module__, cls.__name__,
-                          options.systemclass)
-        else:
-            system = systemclass()
+        system = systemclass()
 
         # Once pickle support is removed, always instantiate System with
         # options and make fetchIntersphinxInventories private in __init__.
@@ -268,15 +244,6 @@ def main(args):
         system.fetchIntersphinxInventories(cache)
 
         system.urlprefix = ''
-        if options.moresystems:
-            moresystems = []
-            for fnamepref in options.moresystems:
-                fname, prefix = fnamepref.split(':', 1)
-                moresystems.append(pickle.load(open(fname, 'rb')))
-                moresystems[-1].urlprefix = prefix
-                moresystems[-1].options = system.options
-                moresystems[-1].subsystems.append(system)
-            system.moresystems = moresystems
         system.sourcebase = options.htmlsourcebase
 
         if options.abbrevmapping:
@@ -288,8 +255,7 @@ def main(args):
         args = list(args) + options.modules + options.packages
 
         if options.makehtml == MAKE_HTML_DEFAULT:
-            if not options.outputpickle and not options.testing \
-                   and not options.makeintersphinx:
+            if not options.testing and not options.makeintersphinx:
                 options.makehtml = True
             else:
                 options.makehtml = False
@@ -351,17 +317,7 @@ def main(args):
         else:
             system.projectname = system.options.projectname
 
-        # step 4: save the system, if desired
-
-        if options.outputpickle:
-            system.msg('', 'saving output pickle to ' + options.outputpickle)
-            del system.options # don't persist the options
-            f = open(options.outputpickle, 'wb')
-            pickle.dump(system, f, pickle.HIGHEST_PROTOCOL)
-            f.close()
-            system.options = options
-
-        # step 5: make html, if desired
+        # step 4: make html, if desired
 
         if options.makehtml:
             options.makeintersphinx = True
@@ -401,15 +357,6 @@ def main(args):
                 exitcode = 2
                 for fn in system.epytextproblems:
                     p('    '+fn)
-            if options.outputpickle:
-                system.msg(
-                    '', 'saving output pickle to ' + options.outputpickle)
-                # save again, with epytextproblems
-                del system.options # don't persist the options
-                f = open(options.outputpickle, 'wb')
-                pickle.dump(system, f, pickle.HIGHEST_PROTOCOL)
-                f.close()
-                system.options = options
 
         if options.makeintersphinx:
             if not options.makehtml:

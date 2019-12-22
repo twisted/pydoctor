@@ -188,40 +188,6 @@ class Documentable(object):
         """
         return self.privacyClass is not PrivacyClass.HIDDEN
 
-    def __getstate__(self):
-        # this is so very, very evil.
-        # see doc/extreme-pickling-pain.txt for more.
-        r = {}
-        for k, v in self.__dict__.items():
-            if isinstance(v, Documentable):
-                r['$'+k] = v.fullName()
-            elif isinstance(v, list) and v:
-                for vv in v:
-                    if vv is not None and not isinstance(vv, Documentable):
-                        r[k] = v
-                        break
-                else:
-                    rr = []
-                    for vv in v:
-                        if vv is None:
-                            rr.append(vv)
-                        else:
-                            rr.append(vv.fullName())
-                    r['@'+k] = rr
-            elif isinstance(v, dict) and v:
-                for vv in v.values():
-                    if not isinstance(vv, Documentable):
-                        r[k] = v
-                        break
-                else:
-                    rr = {}
-                    for kk, vv in v.items():
-                        rr[kk] = vv.fullName()
-                    r['!'+k] = rr
-            else:
-                r[k] = v
-        return r
-
 
 class Package(Documentable):
     kind = "Package"
@@ -362,8 +328,6 @@ class System(object):
         self.rootobjects = []
         self.warnings = {}
         self.packages = []
-        self.moresystems = []
-        self.subsystems = []
         self.urlprefix = ''
 
         if options:
@@ -426,7 +390,7 @@ class System(object):
                 print('')
 
     def objForFullName(self, fullName):
-        for system in [self] + self.moresystems:
+        for system in [self]:
             if fullName in system.allobjects:
                 return system.allobjects[fullName]
         return None
@@ -453,48 +417,6 @@ class System(object):
                not (ob.name.startswith('__') and ob.name.endswith('__')):
             return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
-
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d['intersphinx']
-        return d
-
-    def __setstate__(self, state):
-        if 'abbrevmapping' not in state:
-            state['abbrevmapping'] = {}
-        # this is so very, very evil.
-        # see doc/extreme-pickling-pain.txt for more.
-        def lookup(name):
-            for system in [self] + self.moresystems + self.subsystems:
-                if name in system.allobjects:
-                    return system.allobjects[name]
-            raise KeyError(name)
-        self.__dict__.update(state)
-        for system in [self] + self.moresystems + self.subsystems:
-            if 'allobjects' not in system.__dict__:
-                return
-        for system in [self] + self.moresystems + self.subsystems:
-            for obj in system.orderedallobjects:
-                for k, v in obj.__dict__.copy().items():
-                    if k.startswith('$'):
-                        del obj.__dict__[k]
-                        obj.__dict__[k[1:]] = lookup(v)
-                    elif k.startswith('@'):
-                        n = []
-                        for vv in v:
-                            if vv is None:
-                                n.append(None)
-                            else:
-                                n.append(lookup(vv))
-                        del obj.__dict__[k]
-                        obj.__dict__[k[1:]] = n
-                    elif k.startswith('!'):
-                        n = {}
-                        for kk, vv in v.items():
-                            n[kk] = lookup(vv)
-                        del obj.__dict__[k]
-                        obj.__dict__[k[1:]] = n
-        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
 
     def addObject(self, obj):
         """Add C{object} to the system."""

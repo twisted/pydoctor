@@ -3,7 +3,6 @@ from __future__ import print_function
 import os
 
 from pydoctor import model
-from pydoctor.test import test_astbuilder
 
 testpackages = os.path.join(os.path.dirname(__file__), 'testpackages')
 
@@ -38,18 +37,6 @@ def test_nestedconfusion():
     A = system.allobjects['nestedconfusion.mod.nestedconfusion.A']
     C = system.allobjects['nestedconfusion.mod.C']
     assert A.baseobjects[0] is C
-
-def test_moresystems():
-    system = processPackage("basic")
-    system2 = model.System()
-    system2.moresystems.append(system)
-    mod = test_astbuilder.fromText("""
-    from basic import mod
-    class E(mod.C):
-        pass
-    """, system=system2)
-    E = mod.contents["E"]
-    assert E.baseobjects[0] is not None
 
 def test_importingfrompackage():
     system = processPackage("importingfrompackage")
