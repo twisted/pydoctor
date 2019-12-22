@@ -8,7 +8,7 @@ import sys
 
 from pydoctor import model, zopeinterface
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
-                             SphinxInventory, prepareCache)
+                             SphinxInventoryWriter, prepareCache)
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -357,7 +357,7 @@ def main(args):
             if not options.makehtml:
                 subjects = system.rootobjects
             # Generate Sphinx inventory.
-            sphinx_inventory = SphinxInventory(
+            sphinx_inventory = SphinxInventoryWriter(
                 logger=system.msg,
                 project_name=system.projectname,
                 )

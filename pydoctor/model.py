@@ -346,7 +346,7 @@ class System(object):
         self.module_count = 0
         self.processing_modules = []
         self.buildtime = datetime.datetime.now()
-        self.intersphinx = SphinxInventory(logger=self.msg, project_name=self.projectname)
+        self.intersphinx = SphinxInventory(logger=self.msg)
 
     def verbosity(self, section=None):
         if isinstance(section, str):
