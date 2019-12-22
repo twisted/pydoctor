@@ -157,7 +157,7 @@ class SphinxInventory(object):
                 'Failed to uncompress inventory from %s' % (base_url,))
             return ''
         try:
-            return decompressed.decode()
+            return decompressed.decode('utf-8')
         except UnicodeError:
             self.error(
                 'sphinx',

@@ -239,13 +239,13 @@ def test_getPayload_content():
     """
     Return content as string.
     """
-    payload = 'first_line\nsecond line'
+    payload = u"first_line\nsecond line\nit's a snake: \U0001F40D"
     sut = make_SphinxInventory()
     content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
 # commented line.
-%s""" % (zlib.compress(payload.encode()),)
+%s""" % (zlib.compress(payload.encode('utf-8')),)
 
     result = sut._getPayload('http://base.ignore', content)
 
