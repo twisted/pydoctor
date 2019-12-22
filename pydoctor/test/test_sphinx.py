@@ -630,7 +630,7 @@ class TestStubCache(object):
     clearCache=st.booleans(),
     enableCache=st.booleans(),
     cacheDirectoryName=st.text(
-        alphabet=sorted(set(string.printable) - set('\/:*?"<>|\x0c\x0b\n')),
+        alphabet=sorted(set(string.printable) - set('\\/:*?"<>|\x0c\x0b\n')),
         min_size=3,             # Avoid ..
         max_size=32,            # Avoid upper length on path
     ),
