@@ -448,29 +448,7 @@ def doc2stan(obj, summary=False):
         return obj.parsed_docstring.to_stan(_EpydocLinker(obj))
     doc, source = get_docstring(obj)
     if doc is None:
-        text = "Undocumented"
-        subdocstrings = {}
-        subcounts = {}
-        for subob in obj.contents.values():
-            k = subob.kind.lower()
-            subcounts[k] = subcounts.get(k, 0) + 1
-            if subob.docstring is not None:
-                subdocstrings[k] = subdocstrings.get(k, 0) + 1
-        if isinstance(obj, model.Package):
-            subcounts["module"] -= 1
-        if subdocstrings:
-            plurals = {'class':'classes'}
-            text = "No %s docstring"%obj.kind.lower()
-            if summary:
-                u = []
-                for k in sorted(subcounts):
-                    u.append("%s/%s %s"%(subdocstrings.get(k, 0), subcounts[k],
-                                         plurals.get(k, k+'s')))
-                text += '; ' + ', '.join(u) + " documented"
-        if summary:
-            return tags.span(class_="undocumented")(text)
-        else:
-            return tags.div(class_="undocumented")(text)
+        return format_undocumented(obj, summary)
     if summary:
         # Use up to three first non-empty lines of doc string as summary.
         lines = itertools.dropwhile(lambda line: not line.strip(),
@@ -515,6 +493,33 @@ def doc2stan(obj, summary=False):
             fh.resolve_types()
             s(fh.format())
     return s
+
+
+def format_undocumented(obj, summary):
+    """Generate an HTML representation for an object lacking a docstring."""
+    text = "Undocumented"
+    subdocstrings = {}
+    subcounts = {}
+    for subob in obj.contents.values():
+        k = subob.kind.lower()
+        subcounts[k] = subcounts.get(k, 0) + 1
+        if subob.docstring is not None:
+            subdocstrings[k] = subdocstrings.get(k, 0) + 1
+    if isinstance(obj, model.Package):
+        subcounts["module"] -= 1
+    if subdocstrings:
+        plurals = {'class': 'classes'}
+        text = "No %s docstring" % obj.kind.lower()
+        if summary:
+            u = []
+            for k in sorted(subcounts):
+                u.append("%s/%s %s" % (subdocstrings.get(k, 0), subcounts[k],
+                                       plurals.get(k, k + 's')))
+            text += '; ' + ', '.join(u) + " documented"
+    if summary:
+        return tags.span(class_="undocumented")(text)
+    else:
+        return tags.div(class_="undocumented")(text)
 
 
 def type2stan(obj):
