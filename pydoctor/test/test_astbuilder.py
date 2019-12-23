@@ -21,7 +21,7 @@ def fromText(text, modname='<test>', system=None,
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
-    mod = builder._push(_system.Module, modname, None)
+    mod = builder._push(_system.Module, modname, None, None)
     builder._pop(_system.Module)
     ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, mod)

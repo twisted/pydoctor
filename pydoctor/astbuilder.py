@@ -96,7 +96,7 @@ class ModuleVistor(ast.NodeVisitor):
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             doc = node.body[0].value.s
 
-        cls = self.builder.pushClass(node.name, doc)
+        cls = self.builder.pushClass(node.name, doc, node.lineno)
         cls.decorators = []
         cls.rawbases = rawbases
         cls.bases = bases
@@ -124,11 +124,6 @@ class ModuleVistor(ast.NodeVisitor):
                 cls.decorators.append((base, args))
         cls.raw_decorators = node.decorator_list if node.decorator_list else []
 
-        if node.lineno is not None:
-            cls.linenumber = node.lineno
-        if cls.parentMod.sourceHref:
-            cls.sourceHref = cls.parentMod.sourceHref + '#L' + \
-                             str(cls.linenumber)
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
@@ -351,7 +346,7 @@ class ModuleVistor(ast.NodeVisitor):
         doc = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             doc = node.body[0].value.s
-        func = self.builder.pushFunction(node.name, doc)
+        func = self.builder.pushFunction(node.name, doc, node.lineno)
         func.decorators = node.decorator_list
         if isinstance(func.parent, model.Class) and node.decorator_list:
             isclassmethod = False
@@ -371,11 +366,6 @@ class ModuleVistor(ast.NodeVisitor):
                     func.kind = 'Static Method'
             elif isclassmethod:
                 func.kind = 'Class Method'
-        if node.lineno is not None:
-            func.linenumber = node.lineno
-        if func.parentMod.sourceHref:
-            func.sourceHref = func.parentMod.sourceHref + '#L' + \
-                              str(func.linenumber)
 
         args = []
 
@@ -495,10 +485,18 @@ class ASTBuilder(object):
         self._stack = []
         self.ast_cache = {}
 
-    def _push(self, cls, name, docstring):
+    def _push(self, cls, name, docstring, lineno):
         obj = cls(self.system, name, docstring, self.current)
+        obj.linenumber = lineno
         self.system.addObject(obj)
         self.push(obj)
+
+        parentMod = obj.parentMod
+        if parentMod is not None:
+            sourceHref = parentMod.sourceHref
+            if sourceHref is not None:
+                obj.sourceHref = sourceHref + '#L' + str(lineno)
+
         return obj
 
     def _pop(self, cls):
@@ -527,13 +525,13 @@ class ASTBuilder(object):
         if isinstance(obj, model.Module):
             self.currentMod = None
 
-    def pushClass(self, name, docstring):
-        return self._push(self.system.Class, name, docstring)
+    def pushClass(self, name, docstring, lineno):
+        return self._push(self.system.Class, name, docstring, lineno)
     def popClass(self):
         self._pop(self.system.Class)
 
-    def pushFunction(self, name, docstring):
-        return self._push(self.system.Function, name, docstring)
+    def pushFunction(self, name, docstring, lineno):
+        return self._push(self.system.Function, name, docstring, lineno)
     def popFunction(self):
         self._pop(self.system.Function)
 
