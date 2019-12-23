@@ -16,8 +16,7 @@ from pydoctor import model
 from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import DocstringLinker
-from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 
 try:
@@ -566,18 +565,20 @@ def get_parsed_type(obj):
 
     annotation = getattr(obj, 'annotation', None)
     if annotation is not None:
-        src = astor.to_source(annotation).strip()
-        return ParsedEpytextDocstring(
-            Element('epytext',
-                Element('para',
-                    Element('code', src),
-                    inline=True
-                    )
-                ),
-            ()
-            )
+        return AnnotationDocstring(annotation)
 
     return None
+
+
+class AnnotationDocstring(ParsedDocstring):
+
+    def __init__(self, annotation):
+        ParsedDocstring.__init__(self, ())
+        self.annotation = annotation
+
+    def to_stan(self, docstring_linker):
+        src = astor.to_source(self.annotation).strip()
+        return tags.code(src)
 
 
 field_name_to_human_name = {
