@@ -6,14 +6,13 @@ Regression Testing for restructuredtext
 >>> def parse_and_print(s):
 ...     errors = []
 ...     parsed = restructuredtext.parse_docstring(s, errors)
-...     body, fields = parsed.split_fields(errors)
 ...     for error in errors:
 ...         print('ERROR: %s' % error)
-...     if body is None:
+...     if parsed is None:
 ...         print('EMPTY BODY')
 ...     else:
-...         print(flatten(body.to_stan(None)))
-...     for field in fields:
+...         print(flatten(parsed.to_stan(None)))
+...     for field in parsed.fields:
 ...         body = flatten(field.body().to_stan(None))
 ...         arg = field.arg()
 ...         if arg is None:

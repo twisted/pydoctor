@@ -488,22 +488,17 @@ def doc2stan(obj, summary=False):
         pdoc = parse_docstring(doc, errs)
     except Exception as e:
         errs.append('%s: %s' % (e.__class__.__name__, e))
+        pdoc = None
+    if pdoc is None:
         pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+    fields = pdoc.fields
     try:
-        pdoc, fields = pdoc.split_fields()
+        stan = pdoc.to_stan(_EpydocLinker(source))
     except Exception as e:
         errs.append('%s: %s' % (e.__class__.__name__, e))
-        fields = ()
-    if pdoc is None:
-        content = []
-    else:
-        try:
-            stan = pdoc.to_stan(_EpydocLinker(source))
-        except Exception as e:
-            errs.append('%s: %s' % (e.__class__.__name__, e))
-            pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-            stan = pdoc.to_stan(_EpydocLinker(source))
-        content = [stan] if stan.tagName else stan.children
+        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+        stan = pdoc.to_stan(_EpydocLinker(source))
+    content = [stan] if stan.tagName else stan.children
     if errs:
         reportErrors(source, errs)
 
@@ -543,7 +538,8 @@ def get_parsed_type(obj):
                     Element('code', src),
                     inline=True
                     )
-                )
+                ),
+            ()
             )
 
     return None
@@ -565,8 +561,7 @@ def extract_fields(obj):
         pdoc = parse_docstring(doc, [])
     except Exception:
         return
-    pdoc, fields = pdoc.split_fields()
-    for field in fields:
+    for field in pdoc.fields:
         tag = field.tag()
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
