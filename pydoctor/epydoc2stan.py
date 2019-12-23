@@ -15,7 +15,7 @@ import sys
 from pydoctor import model
 from six.moves import builtins
 from six.moves.urllib.parse import quote
-from twisted.web.template import tags
+from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 import pydoctor.epydoc.markup.plaintext
@@ -426,7 +426,11 @@ def reportErrors(obj, errs):
             linenumber = '??'
             descr = err
         else:
-            linenumber = obj.linenumber + err.linenum()
+            obj_linenum = getattr(obj, 'linenumber', None)
+            if obj_linenum is None:
+                linenumber = '??'
+            else:
+                linenumber = str(obj_linenum + err.linenum())
             descr = err._descr
         obj.system.msg(
             'epydoc2stan2',
@@ -442,14 +446,30 @@ def reportErrors(obj, errs):
             p(err)
 
 
+def parse_docstring(obj, doc, source):
+    """Parse a docstring.
+    @rtype: L{ParsedDocstring}
+    """
+
+    parser = get_parser(obj)
+    errs = []
+    try:
+        pdoc = parser(doc, errs)
+    except Exception as e:
+        errs.append('%s: %s' % (e.__class__.__name__, e))
+        pdoc = None
+    if pdoc is None:
+        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+    if errs:
+        reportErrors(source, errs)
+    return pdoc
+
+
 def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
-    if getattr(obj, 'parsed_docstring', None) is not None:
-        return obj.parsed_docstring.to_stan(_EpydocLinker(obj))
+
     doc, source = get_docstring(obj)
-    if doc is None:
-        return format_undocumented(obj, summary)
-    if summary:
+    if summary and doc is not None:
         # Use up to three first non-empty lines of doc string as summary.
         lines = itertools.dropwhile(lambda line: not line.strip(),
                                     doc.split('\n'))
@@ -460,31 +480,41 @@ def doc2stan(obj, summary=False):
         else:
             doc = ' '.join(lines)
 
-    parse_docstring = get_parser(obj)
-    errs = []
-    try:
-        pdoc = parse_docstring(doc, errs)
-    except Exception as e:
-        errs.append('%s: %s' % (e.__class__.__name__, e))
+    # Use cached version if possible.
+    if summary and not isinstance(obj, model.Attribute):
         pdoc = None
+    else:
+        pdoc = getattr(obj, 'parsed_docstring', None)
+
     if pdoc is None:
-        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-    fields = pdoc.fields
+        if doc is None:
+            return format_undocumented(obj, summary)
+        pdoc = parse_docstring(obj, doc, source)
+        if not summary:
+            obj.parsed_docstring = pdoc
+    elif source is None:
+        # A split field is documented by its parent.
+        source = obj.parent
+
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))
     except Exception as e:
-        errs.append('%s: %s' % (e.__class__.__name__, e))
-        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-        stan = pdoc.to_stan(_EpydocLinker(source))
-    content = [stan] if stan.tagName else stan.children
-    if errs:
+        errs = ['%s: %s' % (e.__class__.__name__, e)]
+        if doc is None:
+            stan = tags.p(class_="undocumented")('Broken description')
+        else:
+            pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+            stan = pdoc_plain.to_stan(_EpydocLinker(source))
         reportErrors(source, errs)
 
+    content = [stan] if stan.tagName else stan.children
     if summary:
-        if content and content[0].tagName == 'p':
+        if content and isinstance(content[0], Tag) \
+                   and content[0].tagName == 'p':
             content = content[0].children
         s = tags.span(*content)
     else:
+        fields = pdoc.fields
         s = tags.div(*content)
         if fields:
             fh = FieldHandler(obj)
@@ -561,11 +591,10 @@ def extract_fields(obj):
     doc, source = get_docstring(obj)
     if doc is None:
         return
-    parse_docstring = get_parser(obj)
-    try:
-        pdoc = parse_docstring(doc, [])
-    except Exception:
-        return
+
+    pdoc = parse_docstring(obj, doc, source)
+    obj.parsed_docstring = pdoc
+
     for field in pdoc.fields:
         tag = field.tag()
         if tag in ['ivar', 'cvar', 'var', 'type']:
