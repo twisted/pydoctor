@@ -532,20 +532,10 @@ class ASTBuilder(object):
     def popClass(self):
         self._pop(self.system.Class)
 
-    def pushModule(self, name, docstring):
-        return self._push(self.system.Module, name, docstring)
-    def popModule(self):
-        self._pop(self.system.Module)
-
     def pushFunction(self, name, docstring):
         return self._push(self.system.Function, name, docstring)
     def popFunction(self):
         self._pop(self.system.Function)
-
-    def pushPackage(self, name, docstring):
-        return self._push(self.system.Package, name, docstring)
-    def popPackage(self):
-        self._pop(self.system.Package)
 
     def addAttribute(self, target, docstring, kind, lineno, parent=None):
         if parent is None:
