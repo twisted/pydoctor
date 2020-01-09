@@ -239,20 +239,20 @@ def test_getPayload_content():
     """
     Return content as string.
     """
-    payload = 'first_line\nsecond line'
+    payload = u"first_line\nsecond line\nit's a snake: \U0001F40D"
     sut = make_SphinxInventory()
     content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
 # commented line.
-%s""" % (zlib.compress(payload.encode()),)
+%s""" % (zlib.compress(payload.encode('utf-8')),)
 
     result = sut._getPayload('http://base.ignore', content)
 
     assert payload == result
 
 
-def test_getPayload_invalid():
+def test_getPayload_invalid_uncompress():
     """
     Return empty string and log an error when failing to uncompress data.
     """
@@ -267,6 +267,25 @@ not-valid-zlib-content"""
     assert '' == result
     assert [(
         'sphinx', 'Failed to uncompress inventory from http://tm.tld', -1,
+        )] == log
+
+
+def test_getPayload_invalid_decode():
+    """
+    Return empty string and log an error when failing to uncompress data.
+    """
+    payload = b'\x80'
+    sut, log = make_SphinxInventoryWithLog()
+    base_url = 'http://tm.tld'
+    content = b"""# Project: some-name
+# Version: 2.0
+%s""" % (zlib.compress(payload),)
+
+    result = sut._getPayload(base_url, content)
+
+    assert '' == result
+    assert [(
+        'sphinx', 'Failed to decode inventory from http://tm.tld', -1,
         )] == log
 
 
@@ -611,7 +630,7 @@ class TestStubCache(object):
     clearCache=st.booleans(),
     enableCache=st.booleans(),
     cacheDirectoryName=st.text(
-        alphabet=sorted(set(string.printable) - set('\/:*?"<>|\x0c\x0b\n')),
+        alphabet=sorted(set(string.printable) - set('\\/:*?"<>|\x0c\x0b\n')),
         min_size=3,             # Avoid ..
         max_size=32,            # Avoid upper length on path
     ),
