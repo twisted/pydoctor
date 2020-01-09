@@ -13,7 +13,7 @@ from six.moves.urllib.parse import quote
 def link(o):
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
-    return o.system.urlprefix+quote(o.fullName()+'.html')
+    return quote(o.fullName()+'.html')
 
 def srclink(o):
     return o.sourceHref
