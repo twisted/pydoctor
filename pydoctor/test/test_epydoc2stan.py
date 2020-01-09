@@ -92,7 +92,7 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     Return the link from inventory based on first package name.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
+    inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name', 'ignore-docstring')
@@ -110,7 +110,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     URL.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
+    inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name', 'ignore-docstring')
@@ -131,7 +131,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     on the imports done in the module.
     """
     system = model.System()
-    inventory = SphinxInventory(system.msg, 'some-project')
+    inventory = SphinxInventory(system.msg)
     inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name', 'ignore-docstring')

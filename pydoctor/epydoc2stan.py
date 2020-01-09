@@ -29,7 +29,7 @@ STDLIB_URL = 'http://docs.python.org/library/'
 
 
 def link(o):
-    return o.system.urlprefix + quote(o.fullName()+'.html')
+    return quote(o.fullName()+'.html')
 
 
 def get_parser(formatname):

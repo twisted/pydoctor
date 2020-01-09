@@ -31,14 +31,7 @@ class PersistentBytesIO(io.BytesIO):
 
 
 
-def make_SphinxInventory(logger=object()):
-    """
-    Return a SphinxInventory.
-    """
-    return sphinx.SphinxInventory(logger=logger, project_name='project_name')
-
-
-def make_SphinxInventoryWithLog():
+def make_SphinxInventoryWithLog(factory=sphinx.SphinxInventory):
     """
     Return a SphinxInventory with patched log.
     """
@@ -49,18 +42,18 @@ def make_SphinxInventoryWithLog():
         """
         log.append((section, msg, thresh))
 
-    inventory = make_SphinxInventory(logger=msg)
+    inventory = factory(logger=msg)
     return (inventory, log)
 
 
-def test_initialization():
+def test_writer_initialization():
     """
     Is initialized with logger and project name.
     """
     logger = object()
     name = object()
 
-    sut = sphinx.SphinxInventory(logger=logger, project_name=name)
+    sut = sphinx.SphinxInventoryWriter(logger=logger, project_name=name)
 
     assert logger is sut.info
     assert name is sut.project_name
@@ -76,7 +69,7 @@ def test_generate_empty_functional():
     log = []
     logger = lambda section, message, thresh=0: log.append((
         section, message, thresh))
-    sut = sphinx.SphinxInventory(logger=logger, project_name=project_name)
+    sut = sphinx.SphinxInventoryWriter(logger=logger, project_name=project_name)
     output = PersistentBytesIO()
     sut._openFileForWriting = lambda path: closing(output)
 
@@ -102,7 +95,8 @@ def test_generateContent():
     """
     Return a string with inventory for all  targeted objects, recursive.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
     system = model.System()
     root1 = model.Package(system, 'package1', 'docstring1')
     root2 = model.Package(system, 'package2', 'docstring2')
@@ -124,7 +118,8 @@ def test_generateLine_package():
     """
     Check inventory for package.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
 
     result = sut._generateLine(
         model.Package('ignore-system', 'package1', 'ignore-docstring'))
@@ -136,7 +131,8 @@ def test_generateLine_module():
     """
     Check inventory for module.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
 
     result = sut._generateLine(
         model.Module('ignore-system', 'module1', 'ignore-docstring'))
@@ -148,7 +144,8 @@ def test_generateLine_class():
     """
     Check inventory for class.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
 
     result = sut._generateLine(
         model.Class('ignore-system', 'class1', 'ignore-docstring'))
@@ -162,7 +159,8 @@ def test_generateLine_function():
 
     Functions are inside a module.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
     parent = model.Module('ignore-system', 'module1', 'docstring')
 
     result = sut._generateLine(
@@ -177,7 +175,8 @@ def test_generateLine_method():
 
     Methods are functions inside a class.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
     parent = model.Class('ignore-system', 'class1', 'docstring')
 
     result = sut._generateLine(
@@ -190,7 +189,8 @@ def test_generateLine_attribute():
     """
     Check inventory for attributes.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventoryWriter(logger=object(),
+                                       project_name='project_name')
     parent = model.Class('ignore-system', 'class1', 'docstring')
 
     result = sut._generateLine(
@@ -210,7 +210,10 @@ def test_generateLine_unknown():
     When object type is uknown a message is logged and is handled as
     generic object.
     """
-    sut, log = make_SphinxInventoryWithLog()
+    sut, log = make_SphinxInventoryWithLog(
+        lambda **kwargs: sphinx.SphinxInventoryWriter(
+                                    project_name='project_name', **kwargs)
+        )
 
     result = sut._generateLine(
         UnknownType('ignore-system', 'unknown1', 'ignore-docstring'))
@@ -223,7 +226,7 @@ def test_getPayload_empty():
     """
     Return empty string.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
     content = b"""# Sphinx inventory version 2
 # Project: some-name
 # Version: 2.0
@@ -240,7 +243,7 @@ def test_getPayload_content():
     Return content as string.
     """
     payload = u"first_line\nsecond line\nit's a snake: \U0001F40D"
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
     content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
@@ -293,7 +296,7 @@ def test_getLink_not_found():
     """
     Return None if link does not exists.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
 
     assert None is sut.getLink('no.such.name')
 
@@ -302,7 +305,7 @@ def test_getLink_found():
     """
     Return the link from internal state.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
     sut._links['some.name'] = ('http://base.tld', 'some/url.php')
 
     assert 'http://base.tld/some/url.php' == sut.getLink('some.name')
@@ -312,7 +315,7 @@ def test_getLink_self_anchor():
     """
     Return the link with anchor as target name when link end with $.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
     sut._links['some.name'] = ('http://base.tld', 'some/url.php#$')
 
     assert 'http://base.tld/some/url.php#some.name' == sut.getLink('some.name')
@@ -326,7 +329,7 @@ def test_update_functional():
         b'some.module1 py:module -1 module1.html -\n'
         b'other.module2 py:module 0 module2.html Other description\n'
         )
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
     # Patch URL loader to avoid hitting the system.
     content = b"""# Sphinx inventory version 2
 # Project: some-name
@@ -378,7 +381,7 @@ def test_parseInventory_empty():
     """
     Return empty dict for empty input.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
 
     result = sut._parseInventory('http://base.tld', '')
 
@@ -389,7 +392,7 @@ def test_parseInventory_single_line():
     """
     Return a dict with a single member.
     """
-    sut = make_SphinxInventory()
+    sut = sphinx.SphinxInventory(logger=object())
 
     result = sut._parseInventory(
         'http://base.tld', 'some.attr py:attr -1 some.html De scription')
