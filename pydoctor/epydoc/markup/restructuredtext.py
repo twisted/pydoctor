@@ -57,11 +57,11 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
+from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     Field, ParseError, ParsedDocstring, flatten, html2stan
 )
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc

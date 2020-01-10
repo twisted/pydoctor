@@ -110,8 +110,8 @@ __docformat__ = 'epytext en'
 import re
 import six
 from twisted.web.template import CharRef, Tag, tags
+from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
-from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
 ## DOM-Like Encoding
