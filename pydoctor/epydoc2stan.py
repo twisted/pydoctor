@@ -487,7 +487,10 @@ def doc2stan(obj, summary=False):
 
     if pdoc is None:
         if doc is None:
-            return format_undocumented(obj, summary)
+            if summary:
+                return format_undocumented(obj)
+            else:
+                return tags.div(class_='undocumented')("Undocumented")
         pdoc = parse_docstring(obj, doc, source)
         if not summary:
             obj.parsed_docstring = pdoc
@@ -524,9 +527,8 @@ def doc2stan(obj, summary=False):
     return s
 
 
-def format_undocumented(obj, summary):
+def format_undocumented(obj):
     """Generate an HTML representation for an object lacking a docstring."""
-    text = "Undocumented"
     subdocstrings = {}
     subcounts = {}
     for subob in obj.contents.values():
@@ -535,20 +537,20 @@ def format_undocumented(obj, summary):
         if subob.docstring is not None:
             subdocstrings[k] = subdocstrings.get(k, 0) + 1
     if isinstance(obj, model.Package):
-        subcounts["module"] -= 1
+        subcounts['module'] -= 1
     if subdocstrings:
         plurals = {'class': 'classes'}
-        text = "No %s docstring" % obj.kind.lower()
-        if summary:
-            u = []
-            for k in sorted(subcounts):
-                u.append("%s/%s %s" % (subdocstrings.get(k, 0), subcounts[k],
-                                       plurals.get(k, k + 's')))
-            text += '; ' + ', '.join(u) + " documented"
-    if summary:
-        return tags.span(class_="undocumented")(text)
+        text = "No %s docstring; %s documented" % (
+            obj.kind.lower(),
+            ', '.join(
+                "%s/%s %s" % (subdocstrings.get(k, 0), subcounts[k],
+                              plurals.get(k, k + 's'))
+                for k in sorted(subcounts)
+                )
+            )
     else:
-        return tags.div(class_="undocumented")(text)
+        text = "Undocumented"
+    return tags.span(class_='undocumented')(text)
 
 
 def type2stan(obj):
