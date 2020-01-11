@@ -36,10 +36,10 @@ def test_multiple_types():
         """
     ''')
     # basically "assert not fail":
-    epydoc2stan.doc2stan(mod.contents['f'])
-    epydoc2stan.doc2stan(mod.contents['C'])
-    epydoc2stan.doc2stan(mod.contents['D'])
-    epydoc2stan.doc2stan(mod.contents['E'])
+    epydoc2stan.format_docstring(mod.contents['f'])
+    epydoc2stan.format_docstring(mod.contents['C'])
+    epydoc2stan.format_docstring(mod.contents['D'])
+    epydoc2stan.format_docstring(mod.contents['E'])
 
 def test_summary():
     mod = fromText('''
@@ -66,7 +66,7 @@ def test_summary():
         """
     ''')
     def get_summary(func):
-        stan = epydoc2stan.doc2stan(mod.contents[func], summary=True)
+        stan = epydoc2stan.format_summary(mod.contents[func])
         assert stan.tagName == 'span', stan
         return flatten(stan.children)
     assert u'Lorem Ipsum' == get_summary('single_line_summary')

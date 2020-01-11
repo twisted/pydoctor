@@ -51,7 +51,10 @@ def signature(argspec):
 
 class DocGetter(object):
     def get(self, ob, summary=False):
-        doc = epydoc2stan.doc2stan(ob, summary=summary)
+        if summary:
+            doc = epydoc2stan.format_summary(ob)
+        else:
+            doc = epydoc2stan.format_docstring(ob)
         typ = epydoc2stan.type2stan(ob)
         if typ is None:
             return doc

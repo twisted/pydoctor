@@ -464,36 +464,19 @@ def parse_docstring(obj, doc, source):
     return pdoc
 
 
-def doc2stan(obj, summary=False):
+def format_docstring(obj):
     """Generate an HTML representation of a docstring"""
 
     doc, source = get_docstring(obj)
-    if summary and doc is not None:
-        # Use up to three first non-empty lines of doc string as summary.
-        lines = itertools.dropwhile(lambda line: not line.strip(),
-                                    doc.split('\n'))
-        lines = itertools.takewhile(lambda line: line.strip(), lines)
-        lines = [ line.strip() for line in lines ]
-        if len(lines) > 3:
-            return tags.span(class_="undocumented")('No summary')
-        else:
-            doc = ' '.join(lines)
 
-    # Use cached version if possible.
-    if summary and not isinstance(obj, model.Attribute):
-        pdoc = None
-    else:
-        pdoc = getattr(obj, 'parsed_docstring', None)
+    # Use cached or split version if possible.
+    pdoc = getattr(obj, 'parsed_docstring', None)
 
     if pdoc is None:
         if doc is None:
-            if summary:
-                return format_undocumented(obj)
-            else:
-                return tags.div(class_='undocumented')("Undocumented")
+            return tags.div(class_='undocumented')("Undocumented")
         pdoc = parse_docstring(obj, doc, source)
-        if not summary:
-            obj.parsed_docstring = pdoc
+        obj.parsed_docstring = pdoc
     elif source is None:
         # A split field is documented by its parent.
         source = obj.parent
@@ -510,21 +493,51 @@ def doc2stan(obj, summary=False):
         reportErrors(source, errs)
 
     content = [stan] if stan.tagName else stan.children
-    if summary:
-        if content and isinstance(content[0], Tag) \
-                   and content[0].tagName == 'p':
-            content = content[0].children
-        s = tags.span(*content)
-    else:
-        fields = pdoc.fields
-        s = tags.div(*content)
-        if fields:
-            fh = FieldHandler(obj)
-            for field in fields:
-                fh.handle(Field(field, obj))
-            fh.resolve_types()
-            s(fh.format())
+    fields = pdoc.fields
+    s = tags.div(*content)
+    if fields:
+        fh = FieldHandler(obj)
+        for field in fields:
+            fh.handle(Field(field, obj))
+        fh.resolve_types()
+        s(fh.format())
     return s
+
+
+def format_summary(obj):
+    """Generate an shortened HTML representation of a docstring."""
+
+    doc, source = get_docstring(obj)
+    if doc is None:
+        # Attributes can be documented as fields in their parent's docstring.
+        if isinstance(obj, model.Attribute):
+            pdoc = getattr(obj, 'parsed_docstring', None)
+        else:
+            pdoc = None
+        if pdoc is None:
+            return format_undocumented(obj)
+        source = obj.parent
+    else:
+        # Use up to three first non-empty lines of doc string as summary.
+        lines = itertools.dropwhile(lambda line: not line.strip(),
+                                    doc.split('\n'))
+        lines = itertools.takewhile(lambda line: line.strip(), lines)
+        lines = [ line.strip() for line in lines ]
+        if len(lines) > 3:
+            return tags.span(class_='undocumented')("No summary")
+        pdoc = parse_docstring(obj, ' '.join(lines), source)
+
+    try:
+        stan = pdoc.to_stan(_EpydocLinker(source))
+    except Exception:
+        # This problem will likely be reported by the full docstring as well,
+        # so don't spam the log.
+        return tags.span(class_='undocumented')("Broken description")
+
+    content = [stan] if stan.tagName else stan.children
+    if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
+        content = content[0].children
+    return tags.span(*content)
 
 
 def format_undocumented(obj):
