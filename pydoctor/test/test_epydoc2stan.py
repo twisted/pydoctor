@@ -4,6 +4,7 @@ import sys
 from io import StringIO
 
 from pydoctor import epydoc2stan, model
+from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
@@ -65,15 +66,9 @@ def test_summary():
         """
     ''')
     def get_summary(func):
-        def part_flat(x):
-            if isinstance(x, list):
-                return ''.join(map(part_flat, x))
-            else:
-                return x
-        return part_flat(
-            epydoc2stan.doc2stan(
-                mod.contents[func],
-                summary=True).children)
+        stan = epydoc2stan.doc2stan(mod.contents[func], summary=True)
+        assert stan.tagName == 'span', stan
+        return flatten(stan.children)
     assert u'Lorem Ipsum' == get_summary('single_line_summary')
     assert u'Foo Bar Baz' == get_summary('three_lines_summary')
     assert u'No summary' == get_summary('no_summary')
@@ -127,7 +122,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     expected = (
         '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
         )
-    assert expected == result
+    assert expected == flatten(result)
 
 
 def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
@@ -155,7 +150,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     expected = (
         '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
         )
-    assert expected == result
+    assert expected == flatten(result)
 
 
 def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
@@ -186,7 +181,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
         sys.stdout = previousStdout
 
 
-    assert '<code>ext_module</code>' == result
+    assert '<code>ext_module</code>' == flatten(result)
 
     expected = (
         "ignore-name:0 invalid ref to 'ext_module' "

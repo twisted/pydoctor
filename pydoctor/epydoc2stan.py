@@ -9,14 +9,12 @@ import astor
 import inspect
 import itertools
 import os
-import re
 import sys
 
 from pydoctor import model
-from six import text_type
 from six.moves import builtins
 from six.moves.urllib.parse import quote
-from twisted.web.template import Tag, XMLString, tags
+from twisted.web.template import tags
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
@@ -94,12 +92,6 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj):
         self.obj = obj
 
-    def translate_indexterm(self, something):
-        # X{foobar} is meant to put foobar in an index page (like, a
-        # proper end-of-the-book index). Should we support that? There
-        # are like 2 uses in Twisted.
-        return de_p(something.to_html(self))
-
     def _objLink(self, obj, prettyID):
         if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
@@ -111,7 +103,7 @@ class _EpydocLinker(DocstringLinker):
         else:
             raise AssertionError(
                 "Unknown documentation_location: %s" % obj.documentation_location)
-        return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+        return tags.a(tags.code(prettyID), href=linktext)
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -178,7 +170,7 @@ class _EpydocLinker(DocstringLinker):
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
-            return '<a href="%s"><code>%s</code></a>'%(linktext, prettyID)
+            return tags.a(tags.code(prettyID), href=linktext)
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
@@ -198,14 +190,14 @@ class _EpydocLinker(DocstringLinker):
             # try our luck with fullID.
             target = self.look_for_intersphinx(fullID)
         if target:
-            return '<a href="%s"><code>%s</code></a>'%(target, prettyID)
+            return tags.a(tags.code(prettyID), href=target)
         if fullID != fullerID:
             self.obj.system.msg(
                 "translate_identifier_xref", "%s:%s invalid ref to '%s' "
                 "resolved as '%s'" % (
                     self.obj.fullName(), self.obj.linenumber, fullID, fullerID),
                 thresh=-1)
-        return '<code>%s</code>'%(prettyID,)
+        return tags.code(prettyID)
 
 
 class FieldDesc(object):
@@ -279,39 +271,13 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
-_ok_chars = '\r\n\t\f'
-_class = ''
-for _c in map(chr, range(0, 32)):
-    if _c not in _ok_chars:
-        _class += _c
-_control_pat = re.compile(('[' + _class + ']').encode())
-
-
-def html2stan(html):
-    """
-    Convert HTML to a Stan structure.
-
-    @param html: A HTML string.
-    @type html: L{str} or L{bytes}
-    """
-    if isinstance(html, text_type):
-        html = html.encode('utf8')
-
-    html = _control_pat.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    html = b"<div>" + html + b"</div>"
-    html = XMLString(html).load()[0].children
-    if html and html[-1] == u'\n':
-        del html[-1]
-    return html
-
-
 class Field(object):
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
-        self.body = html2stan(field.body().to_html(_EpydocLinker(obj)))
+        self.body = field.body().to_stan(_EpydocLinker(obj))
 
     def __repr__(self):
         r = repr(self.body)
@@ -456,14 +422,6 @@ class FieldHandler(object):
         return tags.table(class_='fieldTable')(r)
 
 
-def de_p(s):
-    if s.startswith('<p>') and s.endswith('</p>\n'):
-        s = s[3:-5] # argh reST
-    if s.endswith('\n'):
-        s = s[:-1]
-    return s
-
-
 def reportErrors(obj, errs):
     for err in errs:
         if isinstance(err, str):
@@ -489,7 +447,7 @@ def reportErrors(obj, errs):
 def doc2stan(obj, summary=False):
     """Generate an HTML representation of a docstring"""
     if getattr(obj, 'parsed_docstring', None) is not None:
-        return html2stan(obj.parsed_docstring.to_html(_EpydocLinker(obj)))
+        return obj.parsed_docstring.to_stan(_EpydocLinker(obj))
     doc, source = get_docstring(obj)
     if doc is None:
         text = "Undocumented"
@@ -542,26 +500,19 @@ def doc2stan(obj, summary=False):
     pdoc, fields = pdoc.split_fields()
     if pdoc is not None:
         try:
-            crap = pdoc.to_html(_EpydocLinker(source))
+            stan = pdoc.to_stan(_EpydocLinker(source))
         except Exception as e:
             reportErrors(source, [e.__class__.__name__ +': ' + str(e)])
             return boringDocstring(doc, summary)
+        content = [stan] if stan.tagName else stan.children
     else:
-        crap = ''
-    if isinstance(crap, text_type):
-        crap = crap.encode('utf-8')
+        content = []
     if summary:
-        if not crap:
-            return ()
-        stan = html2stan(crap)
-        if len(stan) == 1 and isinstance(stan[0], Tag) and stan[0].tagName == 'p':
-            stan = stan[0].children
-        s = tags.span(stan)
+        if content and content[0].tagName == 'p':
+            content = content[0].children
+        s = tags.span(*content)
     else:
-        if not crap and not fields:
-            return ()
-        stan = html2stan(crap)
-        s = tags.div(stan)
+        s = tags.div(*content)
         if fields:
             fh = FieldHandler(obj)
             for field in fields:
@@ -576,7 +527,7 @@ def type2stan(obj):
     if parsed_type is None:
         return None
     else:
-        return html2stan(parsed_type.to_html(_EpydocLinker(obj)))
+        return parsed_type.to_stan(_EpydocLinker(obj))
 
 def get_parsed_type(obj):
     parsed_type = getattr(obj, 'parsed_type', None)

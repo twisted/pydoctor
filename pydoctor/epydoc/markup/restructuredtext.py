@@ -37,7 +37,7 @@ C{ParsedRstDocstring}s support all of the methods defined by
 C{ParsedDocstring}; but only the following four methods have
 non-default behavior:
 
-  - L{to_html()<ParsedRstDocstring.to_html>} uses an
+  - L{to_stan()<ParsedRstDocstring.to_stan>} uses an
     L{_EpydocHTMLTranslator} to translate the C{ParsedRstDocstring}'s
     document into an HTML segment.
   - L{split_fields()<ParsedRstDocstring.split_fields>} uses a
@@ -67,15 +67,16 @@ from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
 from docutils.nodes import NodeVisitor, SkipNode
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import directives, roles
+from docutils.parsers.rst import directives
 import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import (
+    Field, ParseError, ParsedDocstring, flatten, html2stan
+)
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.util import plaintext_to_html
-from pydoctor.epydoc.markup.doctest import doctest_to_html, HTMLDoctestColorizer
+from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -153,13 +154,11 @@ class ParsedRstDocstring(ParsedDocstring):
         else:
             return None, visitor.fields
 
-    def to_html(self, docstring_linker, directory=None,
-                docindex=None, context=None):
+    def to_stan(self, docstring_linker):
         # Inherit docs
-        visitor = _EpydocHTMLTranslator(self._document, docstring_linker,
-                                        directory, docindex, context)
+        visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
         self._document.walkabout(visitor)
-        return ''.join(visitor.body)
+        return html2stan(''.join(visitor.body))
 
     def __repr__(self): return '<ParsedRstDocstring: ...>'
 
@@ -365,7 +364,6 @@ class _SplitFieldsTranslator(NodeVisitor):
         for item in items:
             n += 1
             if (item.tagname != 'definition_list_item' or len(item) < 2 or
-                item[0].tagname != 'term' or
                 item[-1].tagname != 'definition'):
                 raise ValueError('bad definition list (bad child %d).' % n)
             if len(item) > 3:
@@ -396,12 +394,8 @@ _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 class _EpydocHTMLTranslator(HTMLTranslator):
     settings = None
-    def __init__(self, document, docstring_linker, directory,
-                 docindex, context):
+    def __init__(self, document, docstring_linker):
         self._linker = docstring_linker
-        self._directory = directory
-        self._docindex = docindex
-        self._context = context
 
         # Set the document's settings.
         if self.settings is None:
@@ -417,9 +411,8 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         m = _TARGET_RE.match(node.astext())
         if m: text, target = m.groups()
         else: target = text = node.astext()
-        text = plaintext_to_html(text)
         xref = self._linker.translate_identifier_xref(target, text)
-        self.body.append(xref)
+        self.body.append(flatten(xref))
         raise SkipNode()
 
     def should_be_compact_paragraph(self, node):
@@ -477,21 +470,10 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     def visit_doctest_block(self, node):
         pysrc = node[0].astext()
         if node.get('codeblock'):
-            self.body.append(HTMLDoctestColorizer().colorize_codeblock(pysrc))
+            self.body.append(flatten(colorize_codeblock(pysrc)))
         else:
-            self.body.append(doctest_to_html(pysrc))
+            self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
-
-    def visit_emphasis(self, node):
-        # Generate a corrent index term anchor
-        if 'term' in node.get('classes') and node.children:
-            doc = self.document.copy()
-            doc[:] = [node.children[0].copy()]
-            self.body.append(
-                self._linker.translate_indexterm(ParsedRstDocstring(doc)))
-            raise SkipNode()
-
-        HTMLTranslator.visit_emphasis(self, node)
 
 def python_code_directive(name, arguments, options, content, lineno,
                           content_offset, block_text, state, state_machine):
@@ -512,14 +494,3 @@ python_code_directive.arguments = (0, 0, 0)
 python_code_directive.content = True
 
 directives.register_directive('python', python_code_directive)
-
-def term_role(name, rawtext, text, lineno, inliner,
-            options={}, content=[]):
-
-    text = docutils.utils.unescape(text)
-    node = docutils.nodes.emphasis(rawtext, text, **options)
-    node.attributes['classes'].append('term')
-
-    return [node], []
-
-roles.register_local_role('term', term_role)

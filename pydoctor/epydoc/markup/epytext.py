@@ -10,40 +10,40 @@ Parser for epytext strings.  Epytext is a lightweight markup whose
 primary intended application is Python documentation strings.  This
 parser converts Epytext strings to a simple DOM-like representation
 (encoded as a tree of L{Element} objects and strings).  Epytext
-strings can contain the following X{structural blocks}:
+strings can contain the following I{structural blocks}:
 
-    - X{epytext}: The top-level element of the DOM tree.
-    - X{para}: A paragraph of text.  Paragraphs contain no newlines,
+    - C{epytext}: The top-level element of the DOM tree.
+    - C{para}: A paragraph of text.  Paragraphs contain no newlines,
       and all spaces are soft.
-    - X{section}: A section or subsection.
-    - X{field}: A tagged field.  These fields provide information
+    - C{section}: A section or subsection.
+    - C{field}: A tagged field.  These fields provide information
       about specific aspects of a Python object, such as the
       description of a function's parameter, or the author of a
       module.
-    - X{literalblock}: A block of literal text.  This text should be
+    - C{literalblock}: A block of literal text.  This text should be
       displayed as it would be displayed in plaintext.  The
       parser removes the appropriate amount of leading whitespace
       from each line in the literal block.
-    - X{doctestblock}: A block containing sample python code,
+    - C{doctestblock}: A block containing sample python code,
       formatted according to the specifications of the C{doctest}
       module.
-    - X{ulist}: An unordered list.
-    - X{olist}: An ordered list.
-    - X{li}: A list item.  This tag is used both for unordered list
+    - C{ulist}: An unordered list.
+    - C{olist}: An ordered list.
+    - C{li}: A list item.  This tag is used both for unordered list
       items and for ordered list items.
 
-Additionally, the following X{inline regions} may be used within
+Additionally, the following I{inline regions} may be used within
 C{para} blocks:
 
-    - X{code}:   Source code and identifiers.
-    - X{math}:   Mathematical expressions.
-    - X{index}:  A term which should be included in an index, if one
+    - C{code}:   Source code and identifiers.
+    - C{math}:   Mathematical expressions.
+    - C{index}:  A term which should be included in an index, if one
                  is generated.
-    - X{italic}: Italicized text.
-    - X{bold}:   Bold-faced text.
-    - X{uri}:    A Universal Resource Indicator (URI) or Universal
+    - C{italic}: Italicized text.
+    - C{bold}:   Bold-faced text.
+    - C{uri}:    A Universal Resource Indicator (URI) or Universal
                  Resource Locator (URL)
-    - X{link}:   A Python identifier which should be hyperlinked to
+    - C{link}:   A Python identifier which should be hyperlinked to
                  the named object's documentation, when possible.
 
 The returned DOM tree will conform to the the following Document Type
@@ -109,9 +109,9 @@ __docformat__ = 'epytext en'
 
 import re
 import six
+from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
-from pydoctor.epydoc.util import wordwrap, plaintext_to_html
-from pydoctor.epydoc.markup.doctest import doctest_to_html
+from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
 ## DOM-Like Encoding
@@ -161,7 +161,7 @@ class Element:
 
 # The possible heading underline characters, listed in order of
 # heading depth.
-_HEADING_CHARS = "=-~"
+_HEADING_CHARS = '=-~'
 
 # Escape codes.  These should be needed very rarely.
 _ESCAPES = {'lb':'{', 'rb': '}'}
@@ -209,7 +209,6 @@ del symblist
 _COLORIZING_TAGS = {
     'C': 'code',
     'M': 'math',
-    'X': 'indexed',
     'I': 'italic',
     'B': 'bold',
     'U': 'uri',
@@ -384,7 +383,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
 
     # Check for errors.
     for tok in stack[2:]:
-        if tok.tag != "section":
+        if tok.tag != 'section':
             estr = "Headings must occur at the top level."
             errors.append(StructuringError(estr, heading_token.startline))
             break
@@ -401,7 +400,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
     head = _colorize(doc, heading_token, errors, 'heading')
 
     # Add the section's and heading's DOM elements.
-    sec = Element("section")
+    sec = Element('section')
     stack[-1].children.append(sec)
     stack.append(sec)
     sec.children.append(head)
@@ -429,7 +428,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         newlist = True
     elif list_type == 'olist' and stack[-1].tag == 'olist':
         old_listitem = stack[-1].children[-1]
-        old_bullet = old_listitem.attribs.get("bullet").split('.')[:-1]
+        old_bullet = old_listitem.attribs.get('bullet').split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
         if (new_bullet[:-1] != old_bullet[:-1] or
             int(new_bullet[-1]) != int(old_bullet[-1])+1):
@@ -462,7 +461,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         if list_type == 'fieldlist':
             # Fieldlist should be at the top-level.
             for tok in stack[2:]:
-                if tok.tag != "section":
+                if tok.tag != 'section':
                     estr = "Fields must be at the top level."
                     errors.append(
                         StructuringError(estr, bullet_token.startline))
@@ -478,27 +477,27 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
         if list_type == 'olist':
             start = bullet_token.contents.split('.')[:-1]
             if start != '1':
-                lst.attribs["start"] = start[-1]
+                lst.attribs['start'] = start[-1]
 
-    # Fields are treated somewhat specially: A "fieldlist"
+    # Fields are treated somewhat specially: A 'fieldlist'
     # node is created to make the parsing simpler, but fields
-    # are adjoined directly into the "epytext" node, not into
-    # the "fieldlist" node.
+    # are adjoined directly into the 'epytext' node, not into
+    # the 'fieldlist' node.
     if list_type == 'fieldlist':
-        li = Element("field")
+        li = Element('field')
         token_words = bullet_token.contents[1:-1].split(None, 1)
-        tag_elt = Element("tag")
+        tag_elt = Element('tag')
         tag_elt.children.append(token_words[0])
         li.children.append(tag_elt)
 
         if len(token_words) > 1:
-            arg_elt = Element("arg")
+            arg_elt = Element('arg')
             arg_elt.children.append(token_words[1])
             li.children.append(arg_elt)
     else:
-        li = Element("li")
+        li = Element('li')
         if list_type == 'olist':
-            li.attribs["bullet"] = bullet_token.contents
+            li.attribs['bullet'] = bullet_token.contents
 
     # Add the bullet.
     stack[-1].children.append(li)
@@ -575,11 +574,11 @@ class Token:
         function syntactically the same as list items.
     """
     # The possible token types.
-    PARA = "para"
-    LBLOCK = "literalblock"
-    DTBLOCK = "doctestblock"
-    HEADING = "heading"
-    BULLET = "bullet"
+    PARA = 'para'
+    LBLOCK = 'literalblock'
+    DTBLOCK = 'doctestblock'
+    HEADING = 'heading'
+    BULLET = 'bullet'
 
     def __init__(self, tag, startline, contents, indent, level=None,
                  inline=False):
@@ -630,9 +629,9 @@ class Token:
 # Construct regular expressions for recognizing bullets.  These are
 # global so they don't have to be reconstructed each time we tokenize
 # a docstring.
-_ULIST_BULLET = '[-]( +|$)'
-_OLIST_BULLET = '(\d+[.])+( +|$)'
-_FIELD_BULLET = '@\w+( [^{}:\n]+)?:'
+_ULIST_BULLET = r'[-]( +|$)'
+_OLIST_BULLET = r'(\d+[.])+( +|$)'
+_FIELD_BULLET = r'@\w+( [^{}:\n]+)?:'
 _BULLET_RE = re.compile(_ULIST_BULLET + '|' +
                         _OLIST_BULLET + '|' +
                         _FIELD_BULLET)
@@ -736,9 +735,9 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [ln[block_indent+1:] for ln in lines[start:linenum]]
+    contents = [ln[block_indent:] for ln in lines[start:linenum]]
     contents = '\n'.join(contents)
-    contents = re.sub('(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
+    contents = re.sub(r'(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))
     return linenum
 
@@ -966,8 +965,8 @@ def _tokenize(str, errors):
 ##################################################
 
 # Assorted regular expressions used for colorizing.
-_BRACE_RE = re.compile('{|}')
-_TARGET_RE = re.compile('^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+_BRACE_RE = re.compile(r'{|}')
+_TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 def _colorize(doc, token, errors, tagName='para'):
     """
@@ -1220,133 +1219,125 @@ def parse_docstring(docstring, errors):
     return ParsedEpytextDocstring(parse(docstring, errors))
 
 class ParsedEpytextDocstring(ParsedDocstring):
-    SYMBOL_TO_HTML = {
+    SYMBOL_TO_CODEPOINT = {
         # Symbols
-        '<-': '&larr;', '->': '&rarr;', '^': '&uarr;', 'v': '&darr;',
+        '<-': 8592, '->': 8594, '^': 8593, 'v': 8595,
 
         # Greek letters
-        'alpha': '&alpha;', 'beta': '&beta;', 'gamma': '&gamma;',
-        'delta': '&delta;', 'epsilon': '&epsilon;', 'zeta': '&zeta;',
-        'eta': '&eta;', 'theta': '&theta;', 'iota': '&iota;',
-        'kappa': '&kappa;', 'lambda': '&lambda;', 'mu': '&mu;',
-        'nu': '&nu;', 'xi': '&xi;', 'omicron': '&omicron;',
-        'pi': '&pi;', 'rho': '&rho;', 'sigma': '&sigma;',
-        'tau': '&tau;', 'upsilon': '&upsilon;', 'phi': '&phi;',
-        'chi': '&chi;', 'psi': '&psi;', 'omega': '&omega;',
-        'Alpha': '&Alpha;', 'Beta': '&Beta;', 'Gamma': '&Gamma;',
-        'Delta': '&Delta;', 'Epsilon': '&Epsilon;', 'Zeta': '&Zeta;',
-        'Eta': '&Eta;', 'Theta': '&Theta;', 'Iota': '&Iota;',
-        'Kappa': '&Kappa;', 'Lambda': '&Lambda;', 'Mu': '&Mu;',
-        'Nu': '&Nu;', 'Xi': '&Xi;', 'Omicron': '&Omicron;',
-        'Pi': '&Pi;', 'Rho': '&Rho;', 'Sigma': '&Sigma;',
-        'Tau': '&Tau;', 'Upsilon': '&Upsilon;', 'Phi': '&Phi;',
-        'Chi': '&Chi;', 'Psi': '&Psi;', 'Omega': '&Omega;',
+        'alpha': 945, 'beta': 946, 'gamma': 947,
+        'delta': 948, 'epsilon': 949, 'zeta': 950,
+        'eta': 951, 'theta': 952, 'iota': 953,
+        'kappa': 954, 'lambda': 955, 'mu': 956,
+        'nu': 957, 'xi': 958, 'omicron': 959,
+        'pi': 960, 'rho': 961, 'sigma': 963,
+        'tau': 964, 'upsilon': 965, 'phi': 966,
+        'chi': 967, 'psi': 968, 'omega': 969,
+        'Alpha': 913, 'Beta': 914, 'Gamma': 915,
+        'Delta': 916, 'Epsilon': 917, 'Zeta': 918,
+        'Eta': 919, 'Theta': 920, 'Iota': 921,
+        'Kappa': 922, 'Lambda': 923, 'Mu': 924,
+        'Nu': 925, 'Xi': 926, 'Omicron': 927,
+        'Pi': 928, 'Rho': 929, 'Sigma': 931,
+        'Tau': 932, 'Upsilon': 933, 'Phi': 934,
+        'Chi': 935, 'Psi': 936, 'Omega': 937,
 
         # HTML character entities
-        'larr': '&larr;', 'rarr': '&rarr;', 'uarr': '&uarr;',
-        'darr': '&darr;', 'harr': '&harr;', 'crarr': '&crarr;',
-        'lArr': '&lArr;', 'rArr': '&rArr;', 'uArr': '&uArr;',
-        'dArr': '&dArr;', 'hArr': '&hArr;',
-        'copy': '&copy;', 'times': '&times;', 'forall': '&forall;',
-        'exist': '&exist;', 'part': '&part;',
-        'empty': '&empty;', 'isin': '&isin;', 'notin': '&notin;',
-        'ni': '&ni;', 'prod': '&prod;', 'sum': '&sum;',
-        'prop': '&prop;', 'infin': '&infin;', 'ang': '&ang;',
-        'and': '&and;', 'or': '&or;', 'cap': '&cap;', 'cup': '&cup;',
-        'int': '&int;', 'there4': '&there4;', 'sim': '&sim;',
-        'cong': '&cong;', 'asymp': '&asymp;', 'ne': '&ne;',
-        'equiv': '&equiv;', 'le': '&le;', 'ge': '&ge;',
-        'sub': '&sub;', 'sup': '&sup;', 'nsub': '&nsub;',
-        'sube': '&sube;', 'supe': '&supe;', 'oplus': '&oplus;',
-        'otimes': '&otimes;', 'perp': '&perp;',
+        'larr': 8592, 'rarr': 8594, 'uarr': 8593,
+        'darr': 8595, 'harr': 8596, 'crarr': 8629,
+        'lArr': 8656, 'rArr': 8658, 'uArr': 8657,
+        'dArr': 8659, 'hArr': 8660,
+        'copy': 169, 'times': 215, 'forall': 8704,
+        'exist': 8707, 'part': 8706,
+        'empty': 8709, 'isin': 8712, 'notin': 8713,
+        'ni': 8715, 'prod': 8719, 'sum': 8721,
+        'prop': 8733, 'infin': 8734, 'ang': 8736,
+        'and': 8743, 'or': 8744, 'cap': 8745, 'cup': 8746,
+        'int': 8747, 'there4': 8756, 'sim': 8764,
+        'cong': 8773, 'asymp': 8776, 'ne': 8800,
+        'equiv': 8801, 'le': 8804, 'ge': 8805,
+        'sub': 8834, 'sup': 8835, 'nsub': 8836,
+        'sube': 8838, 'supe': 8839, 'oplus': 8853,
+        'otimes': 8855, 'perp': 8869,
 
         # Alternate (long) names
-        'infinity': '&infin;', 'integral': '&int;', 'product': '&prod;',
-        '<=': '&le;', '>=': '&ge;',
+        'infinity': 8734, 'integral': 8747, 'product': 8719,
+        '<=': 8804, '>=': 8805,
         }
 
     def __init__(self, dom_tree):
         self._tree = dom_tree
         # Caching:
-        self._html = None
+        self._stan = None
 
     def __str__(self):
         return str(self._tree)
 
-    def to_html(self, docstring_linker, directory=None, docindex=None,
-                context=None):
-        if self._html is not None: return self._html
-        if self._tree is None: return ''
-        self._html = self._to_html(self._tree, docstring_linker, directory,
-                                   docindex, context)
-        return self._html
+    def to_stan(self, docstring_linker):
+        if self._stan is not None:
+            return self._stan
+        if self._tree is None:
+            self._stan = Tag('')
+        else:
+            self._stan = self._to_stan(self._tree, docstring_linker)
+        return self._stan
 
-    def _to_html(self, tree, linker, directory, docindex, context,
-                 indent=0, seclevel=0):
+    def _to_stan(self, tree, linker, seclevel=0):
         if isinstance(tree, six.string_types):
-            return plaintext_to_html(tree)
+            return tree
 
-        if tree.tag == 'epytext': indent -= 2
-        if tree.tag == 'section': seclevel += 1
+        if tree.tag == 'section':
+            seclevel += 1
 
         # Process the variables first.
-        variables = [self._to_html(c, linker, directory, docindex, context,
-                                   indent+2, seclevel)
-                    for c in tree.children]
-
-        # Construct the HTML string for the variables.
-        childstr = ''.join(variables)
+        variables = [self._to_stan(c, linker, seclevel) for c in tree.children]
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
-            return wordwrap(
-                (tree.attribs.get('inline') and '%s' or '<p>%s</p>') % childstr,
-                indent)
-        elif tree.tag == 'code':
-            style = tree.attribs.get('style')
-            if style:
-                return '<code class="%s">%s</code>' % (style, childstr)
+            if tree.attribs.get('inline'):
+                return variables
             else:
-                return '<code>%s</code>' % childstr
+                return tags.p(*variables)
+        elif tree.tag == 'code':
+            return tags.code(*variables)
         elif tree.tag == 'uri':
-            return ('<a href="%s" target="_top">%s</a>' %
-                    (variables[1], variables[0]))
+            return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
             return linker.translate_identifier_xref(variables[1], variables[0])
+        elif tree.tag == 'target':
+            value, = variables
+            return value
         elif tree.tag == 'italic':
-            return '<i>%s</i>' % childstr
+            return tags.i(*variables)
         elif tree.tag == 'math':
-            return '<i class="math">%s</i>' % childstr
-        elif tree.tag == 'indexed':
-            term = Element('epytext', *tree.children, **tree.attribs)
-            return linker.translate_indexterm(ParsedEpytextDocstring(term))
+            return tags.i(*variables, class_='math')
         elif tree.tag == 'bold':
-            return '<b>%s</b>' % childstr
+            return tags.b(*variables)
         elif tree.tag == 'ulist':
-            return '%s<ul>\n%s%s</ul>\n' % (indent*' ', childstr, indent*' ')
+            return tags.ul(*variables)
         elif tree.tag == 'olist':
-            start = tree.attribs.get('start') or ''
-            return ('%s<ol start="%s">\n%s%s</ol>\n' %
-                    (indent*' ', start, childstr, indent*' '))
+            stan = tags.ol(*variables)
+            start = tree.attribs.get('start', '1')
+            if start != '1':
+                stan(start=start)
+            return stan
         elif tree.tag == 'li':
-            return indent*' '+'<li>\n%s%s</li>\n' % (childstr, indent*' ')
+            return tags.li(*variables)
         elif tree.tag == 'heading':
-            return ('%s<h%s class="heading">%s</h%s>\n' %
-                    ((indent-2)*' ', seclevel, childstr, seclevel))
+            return getattr(tags, 'h%d' % seclevel)(*variables)
         elif tree.tag == 'literalblock':
-            return '<pre class="literalblock">\n%s\n</pre>\n' % childstr
+            variables.append('\n')
+            return tags.pre('\n', *variables, class_='literalblock')
         elif tree.tag == 'doctestblock':
-            return doctest_to_html(tree.children[0].strip())
-        elif tree.tag == 'fieldlist':
+            return colorize_doctest(tree.children[0].strip())
+        elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('epytext', 'section', 'tag', 'arg',
-                              'name', 'target', 'html'):
-            return childstr
+        elif tree.tag in ('epytext', 'section', 'name'):
+            return Tag('')(*variables)
         elif tree.tag == 'symbol':
             symbol = tree.children[0]
-            return self.SYMBOL_TO_HTML.get(symbol, '[%s]' % symbol)
+            return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
-            raise ValueError('Unknown epytext DOM element %r' % tree.tag)
+            raise AssertionError("Unknown epytext DOM element %r" % tree.tag)
 
     def split_fields(self, errors=None):
         if self._tree is None: return (self, ())

@@ -2,7 +2,7 @@ Regression Testing for restructuredtext
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 :RequireModule: docutils
 
->>> from pydoctor.epydoc.markup import restructuredtext
+>>> from pydoctor.epydoc.markup import flatten, restructuredtext
 >>> def parse_and_print(s):
 ...     errors = []
 ...     parsed = restructuredtext.parse_docstring(s, errors)
@@ -12,9 +12,9 @@ Regression Testing for restructuredtext
 ...     if body is None:
 ...         print('EMPTY BODY')
 ...     else:
-...         print(body.to_html(None))
+...         print(flatten(body.to_stan(None)))
 ...     for field in fields:
-...         body = field.body().to_html(None)
+...         body = flatten(field.body().to_stan(None))
 ...         arg = field.arg()
 ...         if arg is None:
 ...             print('%s: %s' % (field.tag(), body))
@@ -43,9 +43,7 @@ ERROR: Line 4: Unable to split consolidated field "Parameters" - does not contai
 A test function
 newfield "parameters": <pre class="literalblock">
 Parameters
-<BLANKLINE>
 </pre>
-<BLANKLINE>
 parameters: a b c
 
 >>> parse_and_print(
@@ -79,7 +77,7 @@ as colorized Python code.
 ... """, err)
 >>> err
 []
->>> print(p.to_html(None))
+>>> print(flatten(p.to_stan(None)))
 <p>A test module</p>
 <pre class="py-doctest">
 <span class="py-comment"># This is some Python code</span>
@@ -89,4 +87,3 @@ as colorized Python code.
 <span class="py-keyword">class</span> <span class="py-defname">Foo</span>:
     <span class="py-keyword">def</span> <span class="py-defname">__init__</span>(self):
         <span class="py-keyword">pass</span></pre>
-<BLANKLINE>
