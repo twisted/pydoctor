@@ -5,7 +5,7 @@ from epydoc 2.1.  They could use some serious updating, when I get the
 time, esp. given that it's so much easier to write tests with doctest
 than it was with unittest.
 
-    >>> from pydoctor.epydoc.test.test_epytext import parse
+    >>> from pydoctor.test.epydoc.test_epytext import parse
     >>> import re
     >>> def testparse(s):
     ...     out = parse(s)
