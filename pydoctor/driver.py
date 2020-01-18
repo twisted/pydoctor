@@ -239,7 +239,11 @@ def main(args):
         system = systemclass(options)
         system.fetchIntersphinxInventories(cache)
 
-        system.sourcebase = options.htmlsourcebase
+        if options.htmlsourcebase:
+            if options.projectbasedirectory is None:
+                error("you must specify --project-base-dir "
+                      "when using --html-viewsource-base")
+            system.sourcebase = options.htmlsourcebase
 
         if options.abbrevmapping:
             for thing in options.abbrevmapping.split(','):
