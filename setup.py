@@ -1,6 +1,3 @@
-#!/usr/bin/python
-import sys
-
 from setuptools import find_packages, setup
 
 setup(
@@ -16,15 +13,17 @@ setup(
             'templates/*',
         ],
     },
-    scripts=[
-        'bin/pydoctor',
-    ],
+    entry_points={
+        'console_scripts': [
+            'pydoctor = pydoctor.driver:main'
+        ]
+    },
     classifiers=[
         'Development Status :: 6 - Mature',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2 :: Only',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Documentation',
