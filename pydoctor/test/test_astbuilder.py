@@ -121,7 +121,7 @@ def test_class_with_base():
     '''
     mod = fromText(src)
     assert len(mod.contents) == 2
-    clsC, clsD = mod.orderedcontents
+    clsC, clsD = mod.contents.values()
     assert clsC.fullName() == '<test>.C'
     assert clsC.docstring == None
     assert len(clsC.contents) == 1

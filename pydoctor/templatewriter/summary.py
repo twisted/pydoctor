@@ -11,7 +11,7 @@ def moduleSummary(modorpack):
     r = tags.li(util.taglink(modorpack), ' - ', epydoc2stan.doc2stan(modorpack, summary=True))
     if not isinstance(modorpack, model.Package):
         return r
-    contents = [m for m in modorpack.orderedcontents
+    contents = [m for m in modorpack.contents.values()
                 if m.isVisible and m.name != '__init__']
     if not contents:
         return r

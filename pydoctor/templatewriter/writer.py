@@ -68,7 +68,7 @@ class TemplateWriter:
                 f = open(os.path.join(self.base, link(ob)), 'wb')
                 self.writeDocsForOne(ob, f)
                 f.close()
-        for o in ob.orderedcontents:
+        for o in ob.contents.values():
             self.writeDocsFor(o, functionpages)
 
     def writeDocsForOne(self, ob, fobj):
