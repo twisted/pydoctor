@@ -212,7 +212,7 @@ def parse_args(args):
     options.verbosity -= options.quietness
     return options, args
 
-def main(args):
+def main(args=sys.argv[1:]):
     options, args = parse_args(args)
 
     exitcode = 0
@@ -373,6 +373,3 @@ def main(args):
             pdb.post_mortem(sys.exc_info()[2])
         raise
     return exitcode
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
