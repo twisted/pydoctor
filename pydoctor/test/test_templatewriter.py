@@ -42,7 +42,7 @@ def test_empty_table():
 
 def test_nonempty_table():
     mod = fromText('def f(): pass')
-    t = pages.ChildTable(pages.DocGetter(), mod, mod.orderedcontents)
+    t = pages.ChildTable(pages.DocGetter(), mod, mod.contents.values())
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 

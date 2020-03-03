@@ -13,6 +13,7 @@ import imp
 import os
 import sys
 import types
+from collections import OrderedDict
 from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
@@ -75,8 +76,7 @@ class Documentable(object):
             self.doctarget = self
 
     def setup(self):
-        self.contents = {}
-        self.orderedcontents = []
+        self.contents = OrderedDict()
 
     def fullName(self):
         parent = self.parent
@@ -116,20 +116,18 @@ class Documentable(object):
         self.name = new_name
         self._handle_reparenting_post()
         del old_parent.contents[old_name]
-        old_parent.orderedcontents.remove(self)
         old_parent._localNameToFullName_map[old_name] = self.fullName()
         new_parent.contents[new_name] = self
-        new_parent.orderedcontents.append(self)
         self._handle_reparenting_post()
 
     def _handle_reparenting_pre(self):
         del self.system.allobjects[self.fullName()]
-        for o in self.orderedcontents:
+        for o in self.contents.values():
             o._handle_reparenting_pre()
 
     def _handle_reparenting_post(self):
         self.system.allobjects[self.fullName()] = self
-        for o in self.orderedcontents:
+        for o in self.contents.values():
             o._handle_reparenting_post()
 
     def _localNameToFullName(self, name):
@@ -413,7 +411,6 @@ class System(object):
     def addObject(self, obj):
         """Add C{object} to the system."""
         if obj.parent and obj.parent.fullName() != obj.fullName():
-            obj.parent.orderedcontents.append(obj)
             obj.parent.contents[obj.name] = obj
         else:
             self.rootobjects.append(obj)
@@ -580,14 +577,14 @@ class System(object):
         self._warning(obj.parent, "duplicate", prev)
         def remove(o):
             del self.allobjects[o.fullName()]
-            oc = list(o.orderedcontents)
+            oc = list(o.contents.values())
             for c in oc:
                 remove(c)
         remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o):
             self.allobjects[o.fullName()] = o
-            for c in o.orderedcontents:
+            for c in o.contents.values():
                 readd(c)
         readd(prev)
         self.allobjects[obj.fullName()] = obj

@@ -133,7 +133,7 @@ class CommonPage(Element):
 
     def children(self):
         return sorted(
-            [o for o in self.ob.orderedcontents if o.isVisible],
+            [o for o in self.ob.contents.values() if o.isVisible],
             key=lambda o:-o.privacyClass.value)
 
     def packageInitTable(self):
@@ -151,7 +151,7 @@ class CommonPage(Element):
             return ()
 
     def methods(self):
-        return [o for o in self.ob.orderedcontents
+        return [o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
@@ -189,14 +189,14 @@ class CommonPage(Element):
 
 class PackagePage(CommonPage):
     def children(self):
-        return sorted([o for o in self.ob.orderedcontents
+        return sorted([o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible],
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
         children = sorted(
-            [o for o in init.orderedcontents if o.isVisible],
+            [o for o in init.contents.values() if o.isVisible],
             key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
@@ -206,7 +206,7 @@ class PackagePage(CommonPage):
             return ()
 
     def methods(self):
-        return [o for o in self.ob.contents['__init__'].orderedcontents
+        return [o for o in self.ob.contents['__init__'].contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
@@ -234,8 +234,8 @@ def nested_bases(b):
 def unmasked_attrs(baselist):
     maybe_masking = set()
     for b in baselist[1:]:
-        maybe_masking.update(set([o.name for o in b.orderedcontents]))
-    return [o for o in baselist[0].orderedcontents
+        maybe_masking.update(set([o.name for o in b.contents.values()]))
+    return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
 

@@ -164,7 +164,7 @@ class SphinxInventoryWriter(object):
             if not obj.isVisible:
                 continue
             content.append(self._generateLine(obj).encode('utf-8'))
-            content.append(self._generateContent(obj.orderedcontents))
+            content.append(self._generateContent(obj.contents.values()))
 
         return b''.join(content)
 
