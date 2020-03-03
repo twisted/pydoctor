@@ -6,7 +6,7 @@ import datetime
 import os
 import sys
 
-from pydoctor import model, zopeinterface
+from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -36,7 +36,7 @@ MAKE_HTML_DEFAULT = object()
 
 def getparser():
     from optparse import OptionParser
-    parser = OptionParser()
+    parser = OptionParser(version=__version__.public())
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
