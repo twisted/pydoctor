@@ -11,7 +11,6 @@ from __future__ import print_function, unicode_literals
 import datetime
 import imp
 import os
-import posixpath
 import sys
 import types
 from collections import OrderedDict
@@ -444,27 +443,11 @@ class System(object):
     def setSourceHref(self, mod):
         if self.sourcebase is None:
             mod.sourceHref = None
-            return
-
-        projBaseDir = mod.system.options.projectbasedirectory
-        if projBaseDir is not None:
+        else:
+            projBaseDir = mod.system.options.projectbasedirectory
             mod.sourceHref = (
                 self.sourcebase +
                 mod.filepath[len(projBaseDir):])
-            return
-
-        trailing = []
-        dir, fname = os.path.split(mod.filepath)
-        while os.path.exists(os.path.join(dir, '.svn')):
-            dir, dirname = os.path.split(dir)
-            trailing.append(dirname)
-
-        # now trailing[-1] would be 'Divmod' in the above example
-        del trailing[-1]
-        trailing.reverse()
-        trailing.append(fname)
-
-        mod.sourceHref = posixpath.join(mod.system.sourcebase, *trailing)
 
     def addModule(self, modpath, modname, parentPackage=None):
         mod = self.Module(self, modname, None, parentPackage)

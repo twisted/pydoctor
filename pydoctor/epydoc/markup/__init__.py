@@ -10,27 +10,22 @@ Markup language support for docstrings.  Each submodule defines a
 parser for a single markup language.  These parsers convert an
 object's docstring to a L{ParsedDocstring}, a standard intermediate
 representation that can be used to generate output.
-C{ParsedDocstring}s support the following operations:
-  - output generation (L{to_stan()<ParsedDocstring.to_stan>}).
-  - Field extraction (L{split_fields()<ParsedDocstring.split_fields>}).
 
-The L{parse()} function provides a single interface to the
-C{pydoctor.epydoc.markup} package: it takes a docstring and the name of
-a markup language; delegates to the appropriate parser; and returns the
-parsed docstring (along with any errors or warnings that were
-generated).
+A C{ParsedDocstring} is used for output generation
+(L{to_stan()<ParsedDocstring.to_stan>}).
+It also stores the fields that were extracted from the docstring
+during parsing (L{fields<ParsedDocstring.fields>}).
 
-The C{ParsedDocstring} output generation methods (C{to_M{format}()})
-use a L{DocstringLinker} to link the docstring output with the rest of
+The C{parse_docstring()} functions in the format modules take a docstring,
+parse it and return a format-specific subclass of C{ParsedDocstring}.
+A docstring's fields are separated from the body during parsing.
+
+The C{ParsedDocstring} output generation method
+(L{to_stan()<ParsedDocstring.to_stan>}) uses a
+L{DocstringLinker} to link the docstring output with the rest of
 the documentation that epydoc generates.  C{DocstringLinker}s are
 responsible for translating identifier crossreferences
 (L{translate_identifier_xref() <DocstringLinker.translate_identifier_xref>}).
-
-A parsed docstring's fields can be extracted using the
-L{ParsedDocstring.split_fields()} method.  This method divides a
-docstring into its main body and a list of L{Field}s, each of which
-encodes a single field.  The field's bodies are encoded as
-C{ParsedDocstring}s.
 
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
@@ -63,33 +58,18 @@ class ParsedDocstring:
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
-    markup parsers (such as L{epytext.parse} or L{javadoc.parse}).
-    C{ParsedDocstring}s support several kinds of operation:
-      - output generation (L{to_stan()}).
-      - Field extraction (L{split_fields()}).
+    markup parsers such as L{pydoctor.epydoc.epytext.parse_docstring()}
+    or L{pydoctor.epydoc.restructuredtext.parse_docstring()}.
 
-    The output generation methods (C{to_M{format}()}) use a
-    L{DocstringLinker} to link the docstring output with the rest
-    of the documentation that epydoc generates.
-
-    Subclasses must implement L{split_fields()} and L{to_stan()}.
+    Subclasses must implement L{to_stan()}.
     """
 
-    def split_fields(self, errors=None):
+    def __init__(self, fields):
+        self.fields = fields
         """
-        Split this docstring into its body and its fields.
-
-        @return: A tuple C{(M{body}, M{fields})}, where C{M{body}} is
-            the main body of this docstring, and C{M{fields}} is a list
-            of its fields.  If the resulting body is empty, return
-            C{None} for the body.
-        @rtype: C{(L{ParsedDocstring}, list of L{Field})}
-        @param errors: A list where any errors generated during
-            splitting will be stored.  If no list is specified, then
-            errors will be ignored.
-        @type errors: C{list} of L{ParseError}
+        A list of L{Field}s, each of which encodes a single field.
+        The field's bodies are encoded as C{ParsedDocstring}s.
         """
-        raise NotImplementedError()
 
     def to_stan(self, docstring_linker):
         """

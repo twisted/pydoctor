@@ -1,5 +1,5 @@
+from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import flatten
-from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 
 def test_colorize_codeblock():

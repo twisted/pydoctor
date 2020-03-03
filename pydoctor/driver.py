@@ -6,7 +6,7 @@ import datetime
 import os
 import sys
 
-from pydoctor import model, zopeinterface
+from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -36,7 +36,7 @@ MAKE_HTML_DEFAULT = object()
 
 def getparser():
     from optparse import OptionParser
-    parser = OptionParser()
+    parser = OptionParser(version=__version__.public())
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
@@ -212,7 +212,7 @@ def parse_args(args):
     options.verbosity -= options.quietness
     return options, args
 
-def main(args):
+def main(args=sys.argv[1:]):
     options, args = parse_args(args)
 
     exitcode = 0
@@ -239,7 +239,11 @@ def main(args):
         system = systemclass(options)
         system.fetchIntersphinxInventories(cache)
 
-        system.sourcebase = options.htmlsourcebase
+        if options.htmlsourcebase:
+            if options.projectbasedirectory is None:
+                error("you must specify --project-base-dir "
+                      "when using --html-viewsource-base")
+            system.sourcebase = options.htmlsourcebase
 
         if options.abbrevmapping:
             for thing in options.abbrevmapping.split(','):
@@ -373,6 +377,3 @@ def main(args):
             pdb.post_mortem(sys.exc_info()[2])
         raise
     return exitcode
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))

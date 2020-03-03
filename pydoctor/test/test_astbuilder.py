@@ -5,6 +5,7 @@ import textwrap
 import astor
 
 from pydoctor import astbuilder, model
+from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc2stan import get_parsed_type
 
 
@@ -21,8 +22,8 @@ def fromText(text, modname='<test>', system=None,
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
-    mod = builder.pushModule(modname, None)
-    builder.popModule()
+    mod = builder._push(_system.Module, modname, None, None)
+    builder._pop(_system.Module)
     ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, mod)
     mod = _system.allobjects[modname]
@@ -38,6 +39,9 @@ def unwrap(parsed_docstring):
     assert para.tag == 'para'
     assert len(para.children) == 1
     return para.children[0]
+
+def to_html(parsed_docstring):
+    return flatten(parsed_docstring.to_stan(None))
 
 def type2str(type_expr):
     if type_expr is None:
@@ -602,27 +606,27 @@ def test_variable_types():
         ]
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert str(unwrap(a.parsed_type)) == '<code>str</code>'
+    assert to_html(a.parsed_type) == '<code>str</code>'
     assert a.kind == 'Class Variable'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert str(unwrap(b.parsed_type)) == '<code>str</code>'
+    assert to_html(b.parsed_type) == '<code>str</code>'
     assert b.kind == 'Class Variable'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert str(unwrap(c.parsed_type)) == '<code>str</code>'
+    assert to_html(c.parsed_type) == '<code>str</code>'
     assert c.kind == 'Class Variable'
     d = C.contents['d']
     assert unwrap(d.parsed_docstring) == """fourth"""
-    assert str(unwrap(d.parsed_type)) == '<code>str</code>'
+    assert to_html(d.parsed_type) == '<code>str</code>'
     assert d.kind == 'Instance Variable'
     e = C.contents['e']
     assert unwrap(e.parsed_docstring) == """fifth"""
-    assert str(unwrap(e.parsed_type)) == '<code>str</code>'
+    assert to_html(e.parsed_type) == '<code>str</code>'
     assert e.kind == 'Instance Variable'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert str(unwrap(f.parsed_type)) == '<code>str</code>'
+    assert to_html(f.parsed_type) == '<code>str</code>'
     assert f.kind == 'Instance Variable'
 
 @py3only
@@ -667,31 +671,31 @@ def test_annotated_variables():
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert str(unwrap(get_parsed_type(a))) == 'string'
+    assert to_html(get_parsed_type(a)) == 'string'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert str(unwrap(get_parsed_type(b))) == 'string'
+    assert to_html(get_parsed_type(b)) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert str(unwrap(get_parsed_type(c))) == '<code>str</code>'
+    assert to_html(get_parsed_type(c)) == '<code>str</code>'
     d = C.contents['d']
     assert d.docstring == """fourth"""
-    assert str(unwrap(get_parsed_type(d))) == '<code>str</code>'
+    assert to_html(get_parsed_type(d)) == '<code>str</code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert str(unwrap(get_parsed_type(e))) == '<code>List[C]</code>'
+    assert to_html(get_parsed_type(e)) == '<code>List[C]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert str(unwrap(get_parsed_type(f))) == '<code>List[C]</code>'
+    assert to_html(get_parsed_type(f)) == '<code>List[C]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert str(unwrap(get_parsed_type(g))) == '<code>List[C]</code>'
+    assert to_html(get_parsed_type(g)) == '<code>List[C]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert str(unwrap(get_parsed_type(s))) == '<code>List[str]</code>'
+    assert to_html(get_parsed_type(s)) == '<code>List[str]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
-    assert str(unwrap(get_parsed_type(m))) == '<code>bytes</code>'
+    assert to_html(get_parsed_type(m)) == '<code>bytes</code>'
 
 def test_inferred_variable_types():
     mod = fromText('''

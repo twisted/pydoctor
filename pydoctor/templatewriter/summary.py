@@ -8,7 +8,10 @@ from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
 
 def moduleSummary(modorpack):
-    r = tags.li(util.taglink(modorpack), ' - ', epydoc2stan.doc2stan(modorpack, summary=True))
+    r = tags.li(
+        util.taglink(modorpack), ' - ',
+        epydoc2stan.format_summary(modorpack)
+        )
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.contents.values()
@@ -73,7 +76,7 @@ def subclassesFrom(hostsystem, cls, anchors):
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(util.taglink(cls), ' - ', epydoc2stan.doc2stan(cls, summary=True))
+    r(util.taglink(cls), ' - ', epydoc2stan.format_summary(cls))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
