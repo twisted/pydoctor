@@ -487,16 +487,9 @@ class ASTBuilder(object):
 
     def _push(self, cls, name, docstring, lineno):
         obj = cls(self.system, name, docstring, self.current)
-        obj.linenumber = lineno
         self.system.addObject(obj)
         self.push(obj)
-
-        parentMod = obj.parentMod
-        if parentMod is not None:
-            sourceHref = parentMod.sourceHref
-            if sourceHref is not None:
-                obj.sourceHref = sourceHref + '#L' + str(lineno)
-
+        obj.setLineNumber(lineno)
         return obj
 
     def _pop(self, cls):
@@ -543,9 +536,7 @@ class ASTBuilder(object):
         attr = system.Attribute(system, target, docstring, parent)
         attr.kind = kind
         attr.parentMod = parentMod
-        attr.linenumber = lineno
-        if parentMod.sourceHref:
-            attr.sourceHref = '%s#L%d' % (parentMod.sourceHref, lineno)
+        attr.setLineNumber(lineno)
         system.addObject(attr)
         return attr
 

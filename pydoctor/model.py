@@ -55,6 +55,7 @@ class Documentable(object):
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
+    linenumber = 0
     sourceHref = None
 
     @property
@@ -77,6 +78,15 @@ class Documentable(object):
 
     def setup(self):
         self.contents = OrderedDict()
+
+    def setLineNumber(self, lineno):
+        if not self.linenumber:
+            self.linenumber = lineno
+            parentMod = self.parentMod
+            if parentMod is not None:
+                parentSourceHref = parentMod.sourceHref
+                if parentSourceHref:
+                    self.sourceHref = '%s#L%d' % (parentSourceHref, lineno)
 
     def fullName(self):
         parent = self.parent
@@ -220,7 +230,7 @@ class CanContainImportsDocumentable(Documentable):
 class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = ProcessingState.UNPROCESSED
-    linenumber = 0
+
     def setup(self):
         super(Module, self).setup()
         self.all = None
@@ -264,7 +274,6 @@ class Class(CanContainImportsDocumentable):
 
 class Inheritable(Documentable):
     documentation_location = DocLocation.PARENT_PAGE
-    linenumber = 0
 
     def docsources(self):
         yield self
