@@ -110,8 +110,8 @@ __docformat__ = 'epytext en'
 import re
 import six
 from twisted.web.template import CharRef, Tag, tags
+from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
-from pydoctor.epydoc.markup.doctest import colorize_doctest
 
 ##################################################
 ## DOM-Like Encoding
@@ -1216,7 +1216,37 @@ def parse_docstring(docstring, errors):
     @type errors: C{list} of L{ParseError}
     @rtype: L{ParsedDocstring}
     """
-    return ParsedEpytextDocstring(parse(docstring, errors))
+    tree = parse(docstring, errors)
+    if tree is None:
+        return ParsedEpytextDocstring(None, ())
+
+    fields = []
+    if tree.children and tree.children[-1].tag == 'fieldlist':
+        # Take field list out of the document tree.
+        field_list = tree.children.pop()
+
+        for field in field_list.children:
+            # Get the tag
+            tag = field.children[0].children[0].lower()
+            del field.children[0]
+
+            # Get the argument.
+            if field.children and field.children[0].tag == 'arg':
+                arg = field.children[0].children[0]
+                del field.children[0]
+            else:
+                arg = None
+
+            # Process the field.
+            field.tag = 'epytext'
+            fields.append(Field(tag, arg, ParsedEpytextDocstring(field, ())))
+
+    # Save the remaining docstring as the description.
+    if tree.children and tree.children[0].children:
+        return ParsedEpytextDocstring(tree, fields)
+    else:
+        return ParsedEpytextDocstring(None, fields)
+
 
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {
@@ -1264,8 +1294,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
         '<=': 8804, '>=': 8805,
         }
 
-    def __init__(self, dom_tree):
-        self._tree = dom_tree
+    def __init__(self, body, fields):
+        ParsedDocstring.__init__(self, fields)
+        self._tree = body
         # Caching:
         self._stan = None
 
@@ -1338,37 +1369,3 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
             raise AssertionError("Unknown epytext DOM element %r" % tree.tag)
-
-    def split_fields(self, errors=None):
-        if self._tree is None: return (self, ())
-        tree = Element(self._tree.tag, *self._tree.children,
-                       **self._tree.attribs)
-        fields = []
-
-        if (tree.children and
-            tree.children[-1].tag == 'fieldlist' and
-            tree.children[-1].children):
-            field_nodes = tree.children[-1].children
-            del tree.children[-1]
-
-            for field in field_nodes:
-                # Get the tag
-                tag = field.children[0].children[0].lower()
-                del field.children[0]
-
-                # Get the argument.
-                if field.children and field.children[0].tag == 'arg':
-                    arg = field.children[0].children[0]
-                    del field.children[0]
-                else:
-                    arg = None
-
-                # Process the field.
-                field.tag = 'epytext'
-                fields.append(Field(tag, arg, ParsedEpytextDocstring(field)))
-
-        # Save the remaining docstring as the description..
-        if tree.children and tree.children[0].children:
-            return ParsedEpytextDocstring(tree), fields
-        else:
-            return None, fields

@@ -30,21 +30,6 @@ helpers:
     C{docutils.writers.html4css1.Writer}, since those settings will
     be used when we actually write the docstring to html.
 
-Using C{ParsedRstDocstring}s
-============================
-
-C{ParsedRstDocstring}s support all of the methods defined by
-C{ParsedDocstring}; but only the following four methods have
-non-default behavior:
-
-  - L{to_stan()<ParsedRstDocstring.to_stan>} uses an
-    L{_EpydocHTMLTranslator} to translate the C{ParsedRstDocstring}'s
-    document into an HTML segment.
-  - L{split_fields()<ParsedRstDocstring.split_fields>} uses a
-    L{_SplitFieldsTranslator} to divide the C{ParsedRstDocstring}'s
-    document into its main body and its fields.  Special handling
-    is done to account for consolidated fields.
-
 @var CONSOLIDATED_FIELDS: A dictionary encoding the set of
 'consolidated fields' that can be used.  Each consolidated field is
 marked by a single tag, and contains a single bulleted list, where
@@ -72,11 +57,11 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
+from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     Field, ParseError, ParsedDocstring, flatten, html2stan
 )
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.epydoc.markup.doctest import colorize_codeblock, colorize_doctest
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -117,7 +102,12 @@ def parse_docstring(docstring, errors):
                    settings_overrides={'report_level':10000,
                                        'halt_level':10000,
                                        'warning_stream':None})
-    return ParsedRstDocstring(writer.document)
+
+    document = writer.document
+    visitor = _SplitFieldsTranslator(document, errors)
+    document.walk(visitor)
+
+    return ParsedRstDocstring(document, visitor.fields)
 
 class OptimizedReporter(docutils.utils.Reporter):
     """A reporter that ignores all debug messages.  This is used to
@@ -135,7 +125,7 @@ class ParsedRstDocstring(ParsedDocstring):
         docstring.
     @type _document: C{docutils.nodes.document}
     """
-    def __init__(self, document):
+    def __init__(self, document, fields):
         """
         @type document: C{docutils.nodes.document}
         """
@@ -144,15 +134,7 @@ class ParsedRstDocstring(ParsedDocstring):
         document.reporter = OptimizedReporter(
             document.reporter.source, 'SEVERE', 'SEVERE', '')
 
-    def split_fields(self, errors=None):
-        # Inherit docs
-        if errors is None: errors = []
-        visitor = _SplitFieldsTranslator(self._document, errors)
-        self._document.walk(visitor)
-        if len(self._document.children) > 0:
-            return self, visitor.fields
-        else:
-            return None, visitor.fields
+        ParsedDocstring.__init__(self, fields)
 
     def to_stan(self, docstring_linker):
         # Inherit docs
@@ -278,7 +260,7 @@ class _SplitFieldsTranslator(NodeVisitor):
     def _add_field(self, tagname, arg, fbody):
         field_doc = self.document.copy()
         for child in fbody: field_doc.append(child)
-        field_pdoc = ParsedRstDocstring(field_doc)
+        field_pdoc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_pdoc))
 
     def visit_field_list(self, node):

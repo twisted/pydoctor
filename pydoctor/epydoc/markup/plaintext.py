@@ -29,12 +29,10 @@ def parse_docstring(docstring, errors):
     return ParsedPlaintextDocstring(docstring)
 
 class ParsedPlaintextDocstring(ParsedDocstring):
+
     def __init__(self, text):
-        if text is None: raise ValueError('Bad text value (expected a str)')
+        ParsedDocstring.__init__(self, ())
         self._text = text
 
-    def split_fields(self, errors=None):
-        return self, []
-
     def to_stan(self, docstring_linker):
-        return tags.pre(class_='literalblock')('\n', self._text, '\n')
+        return tags.p(self._text, class_='pre')
