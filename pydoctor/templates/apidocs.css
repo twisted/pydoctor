@@ -118,11 +118,11 @@ tr.module {
     background-color: #fff8e1;
 }
 
-tr.class {
+tr.class, tr.classvariable, tr.baseclassvariable {
     background-color: #fffde7;
 }
 
-tr.instancevariable, tr.variable, tr.baseclassvariable, tr.attribute {
+tr.instancevariable, tr.baseinstancevariable, tr.variable, tr.attribute {
     background-color: #f3e5f5;
 }
 
