@@ -123,12 +123,6 @@ def namesInterface(system, name):
         return False
     return obj.isinterface
 
-def extractAttributeDescription(node):
-    pass
-
-def extractSchemaDescription(node):
-    pass
-
 def extractStringLiteral(node):
     if isinstance(node, ast.Str):
         return node.s
@@ -140,10 +134,6 @@ def extractStringLiteral(node):
         raise TypeError("cannot extract string from %r" % (node,))
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
-
-    schema_like_patterns = [
-        (r'zope\.interface\.Attribute', extractAttributeDescription),
-        ]
 
     def funcNameFromCall(self, node):
         if isinstance(node.func, ast.Name):
