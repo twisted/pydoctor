@@ -259,6 +259,8 @@ class ModuleVistor(ast.NodeVisitor):
         return False
 
     def _handleAliasing(self, target, expr):
+        if target in self.builder.current.contents:
+            return False
         ctx = self.builder.current
         full_name = node2fullname(expr, ctx)
         if full_name is None:

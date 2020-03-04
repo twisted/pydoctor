@@ -251,6 +251,28 @@ def test_aliasing_recursion():
     mod = fromText(src, 'mod', system)
     assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
+def test_documented_no_alias():
+    """A variable that is documented should not be considered an alias."""
+    # TODO: We should also verify this for inline docstrings, but the code
+    #       currently doesn't support that. We should perhaps store aliases
+    #       as Documentables as well, so we can change their 'kind' when
+    #       an inline docstring follows the assignment.
+    mod = fromText('''
+    class SimpleClient:
+        pass
+    class Processor:
+        """
+        @ivar clientFactory: Callable that returns a client.
+        """
+        clientFactory = SimpleClient
+    ''')
+    P = mod.contents['Processor']
+    f = P.contents['clientFactory']
+    assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
+    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.kind == 'Instance Variable'
+    assert f.linenumber
+
 def test_subclasses():
     src = '''
     class A:
