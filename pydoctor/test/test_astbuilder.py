@@ -582,6 +582,8 @@ def test_variable_types():
         @ivar e: fifth
 
         @type f: string
+
+        @type g: string
         """
 
         a = "A"
@@ -599,10 +601,13 @@ def test_variable_types():
 
             self.f = "F"
             """sixth"""
+
+            self.g = g = "G"
+            """seventh"""
     ''', modname='test')
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
-        '__init__', 'a', 'b', 'c', 'd', 'e', 'f'
+        '__init__', 'a', 'b', 'c', 'd', 'e', 'f', 'g'
         ]
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
@@ -628,6 +633,10 @@ def test_variable_types():
     assert f.docstring == """sixth"""
     assert str(unwrap(f.parsed_type)) == 'string'
     assert f.kind == 'Instance Variable'
+    g = C.contents['g']
+    assert g.docstring == """seventh"""
+    assert str(unwrap(g.parsed_type)) == 'string'
+    assert g.kind == 'Instance Variable'
 
 @py3only
 def test_annotated_variables():
@@ -715,6 +724,7 @@ def test_inferred_variable_types():
         y = [n for n in range(10) if n % 2]
         def __init__(self):
             self.s = ['S']
+            self.t = t = 'T'
     m = b'octets'
     ''', modname='test')
     C = mod.contents['C']
@@ -741,6 +751,8 @@ def test_inferred_variable_types():
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
     assert type2str(C.contents['s'].annotation) == 'List[str]'
+    # Check that type is inferred on assignments with multiple targets.
+    assert type2str(C.contents['t'].annotation) == 'str'
     # On Python 2.7, bytes literals are parsed into ast.Str objects,
     # so there is no way to tell them apart from ASCII strings.
     assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')

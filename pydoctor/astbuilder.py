@@ -325,12 +325,13 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
     def visit_Assign(self, node):
-        if len(node.targets) == 1:
-            expr = node.value
-            annotation = _annotation_from_attrib(expr, self.builder.current)
-            if annotation is None:
-                annotation = _infer_type(expr)
-            self._handleAssignment(node.targets[0], annotation, expr, node.lineno)
+        lineno = node.lineno
+        expr = node.value
+        annotation = _annotation_from_attrib(expr, self.builder.current)
+        if annotation is None:
+            annotation = _infer_type(expr)
+        for target in node.targets:
+            self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node):
         annotation = _unstring_annotation(node.annotation)
