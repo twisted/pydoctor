@@ -269,10 +269,11 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None, lineno)
+            obj = self.builder.addAttribute(target, None, None)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
             obj.annotation = annotation
+            obj.setLineNumber(lineno)
             self.newAttr = obj
 
     def _handleAssignmentInModule(self, target, annotation, expr, lineno):
@@ -282,10 +283,11 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleClassVar(self, target, annotation, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, None, lineno)
+            obj = self.builder.addAttribute(target, None, None)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
+        obj.setLineNumber(lineno)
         self.newAttr = obj
 
     def _handleInstanceVar(self, target, annotation, lineno):
@@ -297,10 +299,11 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj = cls.contents.get(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None, lineno, cls)
+            obj = self.builder.addAttribute(target, None, None, cls)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Instance Variable'
             obj.annotation = annotation
+            obj.setLineNumber(lineno)
             self.newAttr = obj
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
@@ -528,7 +531,7 @@ class ASTBuilder(object):
     def popFunction(self):
         self._pop(self.system.Function)
 
-    def addAttribute(self, target, docstring, kind, lineno, parent=None):
+    def addAttribute(self, target, docstring, kind, parent=None):
         if parent is None:
             parent = self.current
         system = self.system
@@ -536,7 +539,6 @@ class ASTBuilder(object):
         attr = system.Attribute(system, target, docstring, parent)
         attr.kind = kind
         attr.parentMod = parentMod
-        attr.setLineNumber(lineno)
         system.addObject(attr)
         return attr
 

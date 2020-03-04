@@ -623,6 +623,7 @@ def extract_fields(obj):
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, None, obj)
                 attrobj.kind = None
+                attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
