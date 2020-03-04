@@ -772,3 +772,9 @@ def test_type_from_attrib():
     assert type2str(C.contents['b'].annotation) == 'int'
     assert type2str(C.contents['c'].annotation) == 'C'
     assert type2str(C.contents['d'].annotation) == 'bool'
+
+def test_detupling_assignment():
+    mod = fromText('''
+    a, b, c = range(3)
+    ''', modname='test')
+    assert sorted(mod.contents.keys()) == ['a', 'b', 'c']

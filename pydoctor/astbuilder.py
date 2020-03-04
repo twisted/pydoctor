@@ -331,7 +331,13 @@ class ModuleVistor(ast.NodeVisitor):
         if annotation is None:
             annotation = _infer_type(expr)
         for target in node.targets:
-            self._handleAssignment(target, annotation, expr, lineno)
+            if isinstance(target, ast.Tuple):
+                for elem in target.elts:
+                    # Note: We skip type and aliasing analysis for this case,
+                    #       but we do record line numbers.
+                    self._handleAssignment(elem, None, None, lineno)
+            else:
+                self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node):
         annotation = _unstring_annotation(node.annotation)
