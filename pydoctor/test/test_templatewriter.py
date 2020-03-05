@@ -115,7 +115,7 @@ def test_multipleInheritanceNewClass(className):
 
     cls = next(
         cls
-        for cls in system.orderedallobjects
+        for cls in system.allobjects.values()
         if cls.name == className
     )
 
