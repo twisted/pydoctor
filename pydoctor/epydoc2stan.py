@@ -274,14 +274,15 @@ class Field(object):
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
+        self.lineno = field.lineno
         self.body = field.body().to_stan(_EpydocLinker(obj))
 
     def __repr__(self):
         r = repr(self.body)
         if len(r) > 25:
             r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %s>"%(self.__class__.__name__,
-                             self.tag, self.arg, r)
+        return "<%s %r %r %s %d>"%(self.__class__.__name__,
+                             self.tag, self.arg, self.lineno, r)
 
 class FieldHandler(object):
     def __init__(self, obj):
@@ -625,6 +626,14 @@ def extract_fields(obj):
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
+            # Note: This is only an approximation of the line number: it is
+            #       correct assuming the docstring starts on the first line
+            #       of the class/function and does not contain explicit
+            #       newlines ('\n') or joined lines ('\' at end of line).
+            #       The AST (as of Python 3.7) does not contain sufficient
+            #       detail to match a position within the docstring to an
+            #       exact position in the source.
+            attrobj.setLineNumber(obj.linenumber + 1 + field.lineno)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:

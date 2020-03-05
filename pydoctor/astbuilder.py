@@ -69,7 +69,7 @@ class ModuleVistor(ast.NodeVisitor):
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.docstring = node.body[0].value.s
-        self.builder.push(self.module)
+        self.builder.push(self.module, 0)
         self.default(node)
         self.builder.pop(self.module)
 
@@ -500,15 +500,14 @@ class ASTBuilder(object):
     def _push(self, cls, name, docstring, lineno):
         obj = cls(self.system, name, docstring, self.current)
         self.system.addObject(obj)
-        self.push(obj)
-        obj.setLineNumber(lineno)
+        self.push(obj, lineno)
         return obj
 
     def _pop(self, cls):
         assert isinstance(self.current, cls)
         self.pop(self.current)
 
-    def push(self, obj):
+    def push(self, obj, lineno):
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -521,6 +520,8 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
+        if lineno:
+            obj.setLineNumber(lineno)
         if not isinstance(obj, model.Function):
             epydoc2stan.extract_fields(obj)
 

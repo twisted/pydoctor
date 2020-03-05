@@ -251,17 +251,18 @@ class _SplitFieldsTranslator(NodeVisitor):
                         # Use a @newfield to let it be displayed as-is.
                         if tagname.lower() not in self._newfields:
                             newfield = Field('newfield', tagname.lower(),
-                                             ParsedPlaintextDocstring(tagname))
+                                             ParsedPlaintextDocstring(tagname),
+                                             node.line - 1)
                             self.fields.append(newfield)
                             self._newfields.add(tagname.lower())
 
-        self._add_field(tagname, arg, fbody)
+        self._add_field(tagname, arg, fbody, node.line)
 
-    def _add_field(self, tagname, arg, fbody):
+    def _add_field(self, tagname, arg, fbody, lineno):
         field_doc = self.document.copy()
         for child in fbody: field_doc.append(child)
         field_pdoc = ParsedRstDocstring(field_doc, ())
-        self.fields.append(Field(tagname, arg, field_pdoc))
+        self.fields.append(Field(tagname, arg, field_pdoc, lineno - 1))
 
     def visit_field_list(self, node):
         # Remove the field list from the tree.  The visitor will still walk
@@ -334,7 +335,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                         )
 
             # Wrap the field body, and add a new field
-            self._add_field(tagname, arg, fbody)
+            self._add_field(tagname, arg, fbody, fbody[0].line)
 
     def handle_consolidated_definition_list(self, items, tagname):
         # Check the list contents.
@@ -362,12 +363,13 @@ class _SplitFieldsTranslator(NodeVisitor):
         for item in items:
             # The basic field.
             arg = item[0][0].astext()
+            lineno = item[0].line
             fbody = item[-1]
-            self._add_field(tagname, arg, fbody)
+            self._add_field(tagname, arg, fbody, lineno)
             # If there's a classifier, treat it as a type.
             if len(item) == 3:
                 type_descr = item[1]
-                self._add_field('type', arg, type_descr)
+                self._add_field('type', arg, type_descr, lineno)
 
     def unknown_visit(self, node):
         'Ignore all unknown nodes'
