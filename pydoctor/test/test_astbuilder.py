@@ -514,6 +514,39 @@ def test_inline_docstring_annotated_instancevar():
     b = C.contents['b']
     assert b.docstring == """inline doc for b"""
 
+def test_docstring_assignment():
+    mod = fromText('''
+    def fun():
+        pass
+
+    class CLS:
+
+        def method1():
+            """Temp docstring."""
+            pass
+
+        def method2():
+            pass
+
+        method1.__doc__ = "Updated docstring #1"
+
+    fun.__doc__ = "Happy Happy Joy Joy"
+    CLS.__doc__ = "Clears the screen"
+    CLS.method2.__doc__ = "Updated docstring #2"
+    ''')
+    fun = mod.contents['fun']
+    assert fun.kind == 'Function'
+    assert fun.docstring == """Happy Happy Joy Joy"""
+    CLS = mod.contents['CLS']
+    assert CLS.kind == 'Class'
+    assert CLS.docstring == """Clears the screen"""
+    method1 = CLS.contents['method1']
+    assert method1.kind == 'Method'
+    assert method1.docstring == "Updated docstring #1"
+    method2 = CLS.contents['method2']
+    assert method2.kind == 'Method'
+    assert method2.docstring == "Updated docstring #2"
+
 def test_variable_scopes():
     mod = fromText('''
     l = 1
