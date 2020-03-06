@@ -329,10 +329,11 @@ class ModuleVistor(ast.NodeVisitor):
         try:
             docstring = ast.literal_eval(expr)
         except ValueError:
-            warn("Unable to figure out value for __doc__ assignment")
+            warn("Unable to figure out value for __doc__ assignment, "
+                 "maybe too complex")
             return
         if not isinstance(docstring, string_types):
-            warn("Ignoring value assigned to __doc__: not a simple string")
+            warn("Ignoring value assigned to __doc__: not a string")
             return
 
         if obj is not None:
