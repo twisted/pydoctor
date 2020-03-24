@@ -335,8 +335,6 @@ def main(args=sys.argv[1:]):
             writer.system = system
             writer.prepOutputDirectory()
 
-            system.epytextproblems = []
-
             if options.htmlsubjects:
                 subjects = []
                 for fn in options.htmlsubjects:
