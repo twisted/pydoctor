@@ -540,7 +540,7 @@ class ASTBuilder(object):
             parent = self.current
         system = self.system
         parentMod = self.currentMod
-        attr = model.Attribute(system, target, docstring, parent)
+        attr = system.Attribute(system, target, docstring, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         attr.linenumber = lineno
