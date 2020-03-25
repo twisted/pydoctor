@@ -8,9 +8,10 @@ class AttributeChild(Element):
 
     loader = XMLFile(util.templatefilepath('attribute-child.html'))
 
-    def __init__(self, docgetter, ob):
+    def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter
         self.ob = ob
+        self._functionExtras = functionExtras
 
     @renderer
     def class_(self, request, tag):
@@ -30,6 +31,10 @@ class AttributeChild(Element):
     @renderer
     def attribute(self, request, tag):
         return self.ob.name
+
+    @renderer
+    def functionExtras(self, request, tag):
+        return self._functionExtras
 
     @renderer
     def functionBody(self, request, tag):

@@ -262,14 +262,10 @@ class Class(CanContainImportsDocumentable):
             return self.parent._localNameToFullName(name)
 
 
-class Function(Documentable):
+class Inheritable(Documentable):
     documentation_location = DocLocation.PARENT_PAGE
-    kind = "Function"
     linenumber = 0
-    def setup(self):
-        super(Function, self).setup()
-        if isinstance(self.parent, Class):
-            self.kind = "Method"
+
     def docsources(self):
         yield self
         if not isinstance(self.parent, Class):
@@ -277,17 +273,21 @@ class Function(Documentable):
         for b in self.parent.allbases(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
+
     def _localNameToFullName(self, name):
         return self.parent._localNameToFullName(name)
 
-class Attribute(Documentable):
+class Function(Inheritable):
+    kind = "Function"
 
-    linenumber = 0
+    def setup(self):
+        super(Function, self).setup()
+        if isinstance(self.parent, Class):
+            self.kind = "Method"
+
+class Attribute(Inheritable):
     kind = "Attribute"
-    documentation_location = DocLocation.PARENT_PAGE
 
-    def _localNameToFullName(self, name):
-        return self.parent._localNameToFullName(name)
 
 class PrivacyClass(Enum):
     """L{Enum} containing values indicating how private an object should be.

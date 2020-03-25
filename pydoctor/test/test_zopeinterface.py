@@ -237,6 +237,20 @@ def test_docsources_includes_baseinterface():
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
+def test_docsources_interface_attribute():
+    src = '''
+    from zope import interface
+    class IInterface(interface.Interface):
+        attr = interface.Attribute("""documentation""")
+    @interface.implementer(IInterface)
+    class Implementation:
+        attr = True
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    iattr = mod.contents['IInterface'].contents['attr']
+    attr = mod.contents['Implementation'].contents['attr']
+    assert iattr in list(attr.docsources())
+
 def test_implementer_decoration():
     src = '''
     from zope.interface import Interface, implementer

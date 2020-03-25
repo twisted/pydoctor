@@ -7,6 +7,7 @@ import zlib
 
 from pydoctor import model, sphinx
 from pydoctor.driver import parse_args
+from pydoctor.test.test_astbuilder import fromText
 
 
 class FakeOptions(object):
@@ -122,3 +123,17 @@ def test_fetchIntersphinxInventories_content():
         'file:///twisted/tm.html' ==
         sut.intersphinx.getLink('twisted.package')
         )
+
+
+def test_docsources_class_attribute():
+    src = '''
+    class Base:
+        attr = False
+        """documentation"""
+    class Sub(Base):
+        attr = True
+    '''
+    mod = fromText(src)
+    base_attr = mod.contents['Base'].contents['attr']
+    sub_attr = mod.contents['Sub'].contents['attr']
+    assert base_attr in list(sub_attr.docsources())
