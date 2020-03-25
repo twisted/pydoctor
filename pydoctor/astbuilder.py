@@ -67,9 +67,10 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Module(self, node):
         assert self.module.docstring is None
 
+        self.builder.push(self.module, 0)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.docstring = node.body[0].value.s
-        self.builder.push(self.module, 0)
+            epydoc2stan.extract_fields(self.module)
         self.default(node)
         self.builder.pop(self.module)
 
@@ -92,15 +93,15 @@ class ModuleVistor(ast.NodeVisitor):
                 baseobj = None
             baseobjects.append(baseobj)
 
-        doc = None
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            doc = node.body[0].value.s
-
-        cls = self.builder.pushClass(node.name, doc, node.lineno)
+        cls = self.builder.pushClass(node.name, node.lineno)
         cls.decorators = []
         cls.rawbases = rawbases
         cls.bases = bases
         cls.baseobjects = baseobjects
+
+        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
+            cls.docstring = node.body[0].value.s
+            epydoc2stan.extract_fields(cls)
 
         def node2data(node):
             dotted_name = node2dottedname(node)
@@ -392,10 +393,9 @@ class ModuleVistor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        doc = None
+        func = self.builder.pushFunction(node.name, node.lineno)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            doc = node.body[0].value.s
-        func = self.builder.pushFunction(node.name, doc, node.lineno)
+            func.docstring = node.body[0].value.s
         func.decorators = node.decorator_list
         if isinstance(func.parent, model.Class) and node.decorator_list:
             isclassmethod = False
@@ -534,8 +534,8 @@ class ASTBuilder(object):
         self._stack = []
         self.ast_cache = {}
 
-    def _push(self, cls, name, docstring, lineno):
-        obj = cls(self.system, name, docstring, self.current)
+    def _push(self, cls, name, lineno):
+        obj = cls(self.system, name, None, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
         return obj
@@ -559,8 +559,6 @@ class ASTBuilder(object):
             assert obj.parentMod is None
         if lineno:
             obj.setLineNumber(lineno)
-        if not isinstance(obj, model.Function):
-            epydoc2stan.extract_fields(obj)
 
     def pop(self, obj):
         assert self.current is obj, "%r is not %r"%(self.current, obj)
@@ -568,13 +566,13 @@ class ASTBuilder(object):
         if isinstance(obj, model.Module):
             self.currentMod = None
 
-    def pushClass(self, name, docstring, lineno):
-        return self._push(self.system.Class, name, docstring, lineno)
+    def pushClass(self, name, lineno):
+        return self._push(self.system.Class, name, lineno)
     def popClass(self):
         self._pop(self.system.Class)
 
-    def pushFunction(self, name, docstring, lineno):
-        return self._push(self.system.Function, name, docstring, lineno)
+    def pushFunction(self, name, lineno):
+        return self._push(self.system.Function, name, lineno)
     def popFunction(self):
         self._pop(self.system.Function)
 
