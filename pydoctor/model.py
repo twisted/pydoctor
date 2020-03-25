@@ -320,8 +320,7 @@ class System(object):
     sourcebase = None
 
     def __init__(self, options=None):
-        self.allobjects = {}
-        self.orderedallobjects = []
+        self.allobjects = OrderedDict()
         self.rootobjects = []
         self.warnings = {}
         self.packages = []
@@ -396,7 +395,7 @@ class System(object):
 
     def objectsOfType(self, cls):
         """Iterate over all instances of C{cls} present in the system. """
-        for o in self.orderedallobjects:
+        for o in self.allobjects.values():
             if isinstance(o, cls):
                 yield o
 
@@ -410,15 +409,15 @@ class System(object):
 
     def addObject(self, obj):
         """Add C{object} to the system."""
-        if obj.parent and obj.parent.fullName() != obj.fullName():
+        fullName = obj.fullName()
+        if obj.parent and obj.parent.fullName() != fullName:
             obj.parent.contents[obj.name] = obj
         else:
             self.rootobjects.append(obj)
-        self.orderedallobjects.append(obj)
-        if obj.fullName() in self.allobjects:
+        if fullName in self.allobjects:
             self.handleDuplicate(obj)
         else:
-            self.allobjects[obj.fullName()] = obj
+            self.allobjects[fullName] = obj
 
     # if we assume:
     #
@@ -453,7 +452,7 @@ class System(object):
         mod = self.Module(self, modname, None, parentPackage)
         self.addObject(mod)
         self.progress(
-            "addModule", len(self.orderedallobjects),
+            "addModule", len(self.allobjects),
             None, "modules and packages discovered")
         mod.filepath = modpath
         self.unprocessed_modules.add(mod)
@@ -570,10 +569,10 @@ class System(object):
         The default is that the second definition "wins".
         '''
         i = 0
-        fn = obj.fullName()
-        while (fn + ' ' + str(i)) in self.allobjects:
+        fullName = obj.fullName()
+        while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
-        prev = self.allobjects[obj.fullName()]
+        prev = self.allobjects[fullName]
         self._warning(obj.parent, "duplicate", prev)
         def remove(o):
             del self.allobjects[o.fullName()]
@@ -587,8 +586,7 @@ class System(object):
             for c in o.contents.values():
                 readd(c)
         readd(prev)
-        self.allobjects[obj.fullName()] = obj
-        return obj
+        self.allobjects[fullName] = obj
 
 
     def getProcessedModule(self, modname):

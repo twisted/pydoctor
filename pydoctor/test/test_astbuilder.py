@@ -568,20 +568,20 @@ def test_variable_types():
         """class docstring
 
         @cvar a: first
-        @type a: C{str}
+        @type a: string
 
-        @type b: C{str}
+        @type b: string
         @cvar b: second
 
-        @type c: C{str}
+        @type c: string
 
         @ivar d: fourth
-        @type d: C{str}
+        @type d: string
 
-        @type e: C{str}
+        @type e: string
         @ivar e: fifth
 
-        @type f: C{str}
+        @type f: string
         """
 
         a = "A"
@@ -606,27 +606,27 @@ def test_variable_types():
         ]
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert to_html(a.parsed_type) == '<code>str</code>'
+    assert str(unwrap(a.parsed_type)) == 'string'
     assert a.kind == 'Class Variable'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert to_html(b.parsed_type) == '<code>str</code>'
+    assert str(unwrap(b.parsed_type)) == 'string'
     assert b.kind == 'Class Variable'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert to_html(c.parsed_type) == '<code>str</code>'
+    assert str(unwrap(c.parsed_type)) == 'string'
     assert c.kind == 'Class Variable'
     d = C.contents['d']
     assert unwrap(d.parsed_docstring) == """fourth"""
-    assert to_html(d.parsed_type) == '<code>str</code>'
+    assert str(unwrap(d.parsed_type)) == 'string'
     assert d.kind == 'Instance Variable'
     e = C.contents['e']
     assert unwrap(e.parsed_docstring) == """fifth"""
-    assert to_html(e.parsed_type) == '<code>str</code>'
+    assert str(unwrap(e.parsed_type)) == 'string'
     assert e.kind == 'Instance Variable'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert to_html(f.parsed_type) == '<code>str</code>'
+    assert str(unwrap(f.parsed_type)) == 'string'
     assert f.kind == 'Instance Variable'
 
 @py3only
