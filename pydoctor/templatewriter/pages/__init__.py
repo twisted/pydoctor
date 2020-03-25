@@ -163,7 +163,7 @@ class CommonPage(Element):
             if isinstance(c, model.Function):
                 r.append(FunctionChild(self.docgetter, c, self.functionExtras(c)))
             else:
-                r.append(AttributeChild(self.docgetter, c))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c)))
         return r
 
     def functionExtras(self, data):

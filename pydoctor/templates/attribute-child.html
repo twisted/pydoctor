@@ -8,8 +8,13 @@
   </a>
   <div class="functionHeader">
     <t:transparent t:render="attribute">attribute</t:transparent> =
+    <a class="functionSourceLink" t:render="sourceLink">
+      <t:attr name="href"><t:slot name="sourceHref" /></t:attr>
+      (source)
+    </a>
   </div>
   <div class="functionBody">
+    <t:transparent t:render="functionExtras" />
     <t:transparent t:render="functionBody">
       Docstring.
     </t:transparent>

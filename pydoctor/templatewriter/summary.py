@@ -177,7 +177,7 @@ class NameIndexPage(Element):
     def __init__(self, system):
         self.system = system
         self.initials = {}
-        for ob in self.system.orderedallobjects:
+        for ob in self.system.allobjects.values():
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
 
@@ -297,7 +297,7 @@ class UndocumentedSummaryPage(Element):
 
     @renderer
     def stuff(self, request, tag):
-        undoccedpublic = [o for o in self.system.orderedallobjects
+        undoccedpublic = [o for o in self.system.allobjects.values()
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:

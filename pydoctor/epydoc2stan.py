@@ -49,13 +49,25 @@ def get_docstring(obj):
     for source in obj.docsources():
         doc = source.docstring
         if doc is not None:
-            if doc.strip():
-                doc = inspect.cleandoc(doc)
+            # Note: We approximate the line number: it is correct
+            #       if the docstring starts on the first line of the
+            #       class/function and does not contain explicit
+            #       newlines ('\n') or joined lines ('\' at end of line).
+            #       The AST (as of Python 3.7) does not contain sufficient
+            #       detail to match a position within the docstring to
+            #       an exact position in the source.
+            lineno = obj.linenumber + 1
+            # Leading blank lines are stripped by cleandoc(), so we must
+            # return the line number of the first non-blank line.
+            for ch in doc:
+                if ch == '\n':
+                    lineno += 1
+                elif not ch.isspace():
+                    return inspect.cleandoc(doc), source, lineno
             else:
                 # Treat empty docstring as undocumented.
-                doc = None
-            return doc, source
-    return None, None
+                return None, source, None
+    return None, None, None
 
 
 def stdlib_doc_link_for_name(name):
@@ -274,14 +286,15 @@ class Field(object):
     def __init__(self, field, obj):
         self.tag = field.tag()
         self.arg = field.arg()
+        self.lineno = field.lineno
         self.body = field.body().to_stan(_EpydocLinker(obj))
 
     def __repr__(self):
         r = repr(self.body)
         if len(r) > 25:
             r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %s>"%(self.__class__.__name__,
-                             self.tag, self.arg, r)
+        return "<%s %r %r %s %d>"%(self.__class__.__name__,
+                             self.tag, self.arg, self.lineno, r)
 
 class FieldHandler(object):
     def __init__(self, obj):
@@ -467,7 +480,7 @@ def parse_docstring(obj, doc, source):
 def format_docstring(obj):
     """Generate an HTML representation of a docstring"""
 
-    doc, source = get_docstring(obj)
+    doc, source, lineno = get_docstring(obj)
 
     # Use cached or split version if possible.
     pdoc = getattr(obj, 'parsed_docstring', None)
@@ -507,7 +520,7 @@ def format_docstring(obj):
 def format_summary(obj):
     """Generate an shortened HTML representation of a docstring."""
 
-    doc, source = get_docstring(obj)
+    doc, source, lineno = get_docstring(obj)
     if doc is None:
         # Attributes can be documented as fields in their parent's docstring.
         if isinstance(obj, model.Attribute):
@@ -604,7 +617,7 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj):
-    doc, source = get_docstring(obj)
+    doc, source, lineno = get_docstring(obj)
     if doc is None:
         return
 
@@ -623,7 +636,9 @@ def extract_fields(obj):
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, None, obj)
                 attrobj.kind = None
+                attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
+            attrobj.setLineNumber(lineno + field.lineno)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:

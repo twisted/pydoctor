@@ -64,18 +64,30 @@ class ZopeInterfaceClass(model.Class):
         return r
 
 
+def _inheritedDocsources(obj):
+    if not isinstance(obj.parent, (model.Class, model.Module)):
+        return
+    name = obj.name
+    for interface in obj.parent.allImplementedInterfaces:
+        io = obj.system.objForFullName(interface)
+        if io is not None:
+            for io2 in io.allbases(include_self=True):
+                if name in io2.contents:
+                    yield io2.contents[name]
+
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):
         for source in super(ZopeInterfaceFunction, self).docsources():
             yield source
-        if not isinstance(self.parent, (model.Class, model.Module)):
-            return
-        for interface in self.parent.allImplementedInterfaces:
-            io = self.system.objForFullName(interface)
-            if io is not None:
-                for io2 in io.allbases(include_self=True):
-                    if self.name in io2.contents:
-                        yield io2.contents[self.name]
+        for source in _inheritedDocsources(self):
+            yield source
+
+class ZopeInterfaceAttribute(model.Attribute):
+    def docsources(self):
+        for source in super(ZopeInterfaceAttribute, self).docsources():
+            yield source
+        for source in _inheritedDocsources(self):
+            yield source
 
 def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
@@ -123,12 +135,6 @@ def namesInterface(system, name):
         return False
     return obj.isinterface
 
-def extractAttributeDescription(node):
-    pass
-
-def extractSchemaDescription(node):
-    pass
-
 def extractStringLiteral(node):
     if isinstance(node, ast.Str):
         return node.s
@@ -140,10 +146,6 @@ def extractStringLiteral(node):
         raise TypeError("cannot extract string from %r" % (node,))
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
-
-    schema_like_patterns = [
-        (r'zope\.interface\.Attribute', extractAttributeDescription),
-        ]
 
     def funcNameFromCall(self, node):
         if isinstance(node.func, ast.Name):
@@ -171,7 +173,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.builder.system.msg('parsing', 'new interface')
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.linenumber = lineno
             self.builder.popClass()
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
@@ -281,4 +282,5 @@ class ZopeInterfaceSystem(model.System):
     Module = ZopeInterfaceModule
     Class = ZopeInterfaceClass
     Function = ZopeInterfaceFunction
+    Attribute = ZopeInterfaceAttribute
     defaultBuilder = ZopeInterfaceASTBuilder

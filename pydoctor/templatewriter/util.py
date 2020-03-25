@@ -26,11 +26,6 @@ def templatefile(filename):
 def templatefilepath(filename):
     return FilePath(templatefile(filename))
 
-def fillSlots(tag, **kw):
-    for k, v in kw.items():
-        tag = tag.fillSlots(k, v)
-    return tag
-
 def taglink(o, label=None):
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
