@@ -346,13 +346,13 @@ def main(args=sys.argv[1:]):
                 writer.writeModuleIndex(system)
                 subjects = system.rootobjects
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
-            if system.epytextproblems:
+            if system.docstring_syntax_errors:
                 def p(msg):
                     system.msg(('epytext', 'epytext-summary'), msg, thresh=-1, topthresh=1)
-                p("these %s objects' docstrings are not proper epytext:"
-                  %(len(system.epytextproblems),))
+                p("these %s objects' docstrings contain syntax errors:"
+                  %(len(system.docstring_syntax_errors),))
                 exitcode = 2
-                for fn in system.epytextproblems:
+                for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
 
         if options.makeintersphinx:

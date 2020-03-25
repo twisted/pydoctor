@@ -447,8 +447,8 @@ def reportErrors(obj, errs):
         obj.system.msg(
             'epydoc2stan2',
             '%s:%s epytext error %r' % (obj.fullName(), linenumber, descr))
-    if errs and obj.fullName() not in obj.system.epytextproblems:
-        obj.system.epytextproblems.append(obj.fullName())
+    if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
+        obj.system.docstring_syntax_errors.add(obj.fullName())
         obj.system.msg('epydoc2stan',
                        'epytext error in %s'%(obj,), thresh=1)
         p = lambda m:obj.system.msg('epydoc2stan', m, thresh=2)

@@ -343,7 +343,10 @@ class System(object):
 
         self.abbrevmapping = {}
         self.projectname = 'my project'
-        self.epytextproblems = [] # fullNames of objects that failed to epytext properly
+
+        self.docstring_syntax_errors = set()
+        """FullNames of objects for which the docstring failed to parse."""
+
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs = set()
