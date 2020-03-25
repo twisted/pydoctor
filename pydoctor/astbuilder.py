@@ -272,7 +272,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None)
+            obj = self.builder.addAttribute(target, None)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
             obj.annotation = annotation
@@ -286,7 +286,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleClassVar(self, target, annotation, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, None)
+            obj = self.builder.addAttribute(target, None)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
@@ -302,7 +302,7 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj = cls.contents.get(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None, cls)
+            obj = self.builder.addAttribute(target, None, cls)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Instance Variable'
             obj.annotation = annotation
@@ -535,7 +535,7 @@ class ASTBuilder(object):
         self.ast_cache = {}
 
     def _push(self, cls, name, lineno):
-        obj = cls(self.system, name, None, self.current)
+        obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
         return obj
@@ -576,12 +576,12 @@ class ASTBuilder(object):
     def popFunction(self):
         self._pop(self.system.Function)
 
-    def addAttribute(self, target, docstring, kind, parent=None):
+    def addAttribute(self, target, kind, parent=None):
         if parent is None:
             parent = self.current
         system = self.system
         parentMod = self.currentMod
-        attr = system.Attribute(system, target, docstring, parent)
+        attr = system.Attribute(system, target, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)

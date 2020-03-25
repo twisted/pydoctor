@@ -79,7 +79,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link():
     Return None if inventory had no link for our markup.
     """
     system = model.System()
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
     result = sut.look_for_intersphinx('base.module')
@@ -95,7 +95,7 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
     result = sut.look_for_intersphinx('base.module.other')
@@ -113,7 +113,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
     result = sut.translate_identifier_xref(
@@ -134,12 +134,12 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     inventory = SphinxInventory(system.msg)
     inventory._links['ext_package.ext_module'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, 'ignore-name')
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
-    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
+    ext_package = model.Module(system, 'ext_package')
     target.contents['ext_module'] = model.Module(
-        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+        system, 'ext_module', parent=ext_package)
 
     sut = epydoc2stan._EpydocLinker(target)
 
@@ -160,12 +160,12 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found():
     The message contains the full name under which the reference was resolved.
     """
     system = model.System()
-    target = model.Module(system, 'ignore-name', 'ignore-docstring')
+    target = model.Module(system, 'ignore-name')
     # Here we set up the target module as it would have this import.
     # from ext_package import ext_module
-    ext_package = model.Module(system, 'ext_package', 'ignore-docstring')
+    ext_package = model.Module(system, 'ext_package')
     target.contents['ext_module'] = model.Module(
-        system, 'ext_module', 'ignore-docstring', parent=ext_package)
+        system, 'ext_module', parent=ext_package)
     stdout = StringIO()
     sut = epydoc2stan._EpydocLinker(target)
 

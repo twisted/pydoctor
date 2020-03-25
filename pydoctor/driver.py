@@ -283,9 +283,9 @@ def main(args=sys.argv[1:]):
             if options.prependedpackage:
                 for m in options.prependedpackage.split('.'):
                     prependedpackage = system.Package(
-                        system, m, None, prependedpackage)
+                        system, m, prependedpackage)
                     system.addObject(prependedpackage)
-                    initmodule = system.Module(system, '__init__', None, prependedpackage)
+                    initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
             for path in args:
                 path = os.path.abspath(path)

@@ -634,7 +634,7 @@ def extract_fields(obj):
                 continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
-                attrobj = obj.system.Attribute(obj.system, arg, None, obj)
+                attrobj = obj.system.Attribute(obj.system, arg, obj)
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)

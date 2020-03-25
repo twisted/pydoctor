@@ -55,6 +55,7 @@ class Documentable(object):
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
+    docstring = None
     linenumber = 0
     sourceHref = None
 
@@ -66,10 +67,9 @@ class Documentable(object):
             class_ += ' private'
         return class_
 
-    def __init__(self, system, name, docstring, parent=None):
+    def __init__(self, system, name, parent=None):
         self.system = system
         self.name = name
-        self.docstring = docstring
         self.parent = parent
         self.parentMod = None
         self.setup()
@@ -461,7 +461,7 @@ class System(object):
                 mod.filepath[len(projBaseDir):])
 
     def addModule(self, modpath, modname, parentPackage=None):
-        mod = self.Module(self, modname, None, parentPackage)
+        mod = self.Module(self, modname, parentPackage)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
@@ -480,7 +480,7 @@ class System(object):
         else:
             parent_package = None
             module_name = module_full_name
-        module = self.Module(self, module_name, None, parent_package)
+        module = self.Module(self, module_name, parent_package)
         self.addObject(module)
         return module
 
@@ -493,24 +493,26 @@ class System(object):
         else:
             parent_package = None
             package_name = package_full_name
-        package = self.Package(self, package_name, None, parent_package)
+        package = self.Package(self, package_name, parent_package)
         self.addObject(package)
         return package
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
             if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
-                f = self.Function(self, k, v.__doc__, parent)
+                f = self.Function(self, k, parent)
                 f.parentMod = parentMod
+                f.docstring = v.__doc__
                 f.decorators = None
                 f.argspec = ((), None, None, ())
                 self.addObject(f)
             elif isinstance(v, type):
-                c = self.Class(self, k, v.__doc__, parent)
+                c = self.Class(self, k, parent)
                 c.bases = []
                 c.baseobjects = []
                 c.rawbases = []
                 c.parentMod = parentMod
+                c.docstring = v.__doc__
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
