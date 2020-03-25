@@ -33,6 +33,13 @@ class AttributeChild(Element):
         return self.ob.name
 
     @renderer
+    def sourceLink(self, request, tag):
+        if self.ob.sourceHref:
+            return tag.fillSlots(sourceHref=self.ob.sourceHref)
+        else:
+            return ()
+
+    @renderer
     def functionExtras(self, request, tag):
         return self._functionExtras
 

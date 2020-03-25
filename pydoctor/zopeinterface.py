@@ -173,7 +173,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.builder.system.msg('parsing', 'new interface')
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.linenumber = lineno
             self.builder.popClass()
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):

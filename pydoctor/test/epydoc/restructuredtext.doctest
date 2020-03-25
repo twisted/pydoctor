@@ -53,6 +53,25 @@ A test function
 except "KeyError": if the key is not found
 except "ValueError": if the value is bad
 
+>>> parse_and_print(
+... """
+... Return the maximum speed for a fox.
+...
+... :Parameters:
+...   size
+...     The size of the fox (in meters)
+...   weight : float
+...     The weight of the fox (in stones)
+...   age : int
+...     The age of the fox (in years)
+... """)
+Return the maximum speed for a fox.
+param "size": The size of the fox (in meters)
+param "weight": The weight of the fox (in stones)
+type "weight": float
+param "age": The age of the fox (in years)
+type "age": int
+
 Python code
 ===========
 reStructuredText markup defines a ``python`` directive to represent a block

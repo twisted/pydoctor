@@ -69,7 +69,7 @@ class ModuleVistor(ast.NodeVisitor):
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.docstring = node.body[0].value.s
-        self.builder.push(self.module)
+        self.builder.push(self.module, 0)
         self.default(node)
         self.builder.pop(self.module)
 
@@ -259,6 +259,8 @@ class ModuleVistor(ast.NodeVisitor):
         return False
 
     def _handleAliasing(self, target, expr):
+        if target in self.builder.current.contents:
+            return False
         ctx = self.builder.current
         full_name = node2fullname(expr, ctx)
         if full_name is None:
@@ -269,10 +271,11 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleModuleVar(self, target, annotation, lineno):
         obj = self.builder.current.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None, lineno)
+            obj = self.builder.addAttribute(target, None, None)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
             obj.annotation = annotation
+            obj.setLineNumber(lineno)
             self.newAttr = obj
 
     def _handleAssignmentInModule(self, target, annotation, expr, lineno):
@@ -282,10 +285,11 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleClassVar(self, target, annotation, lineno):
         obj = self.builder.current.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, None, lineno)
+            obj = self.builder.addAttribute(target, None, None)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
+        obj.setLineNumber(lineno)
         self.newAttr = obj
 
     def _handleInstanceVar(self, target, annotation, lineno):
@@ -297,10 +301,11 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj = cls.contents.get(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, None, lineno, cls)
+            obj = self.builder.addAttribute(target, None, None, cls)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Instance Variable'
             obj.annotation = annotation
+            obj.setLineNumber(lineno)
             self.newAttr = obj
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
@@ -322,12 +327,19 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
     def visit_Assign(self, node):
-        if len(node.targets) == 1:
-            expr = node.value
-            annotation = _annotation_from_attrib(expr, self.builder.current)
-            if annotation is None:
-                annotation = _infer_type(expr)
-            self._handleAssignment(node.targets[0], annotation, expr, node.lineno)
+        lineno = node.lineno
+        expr = node.value
+        annotation = _annotation_from_attrib(expr, self.builder.current)
+        if annotation is None:
+            annotation = _infer_type(expr)
+        for target in node.targets:
+            if isinstance(target, ast.Tuple):
+                for elem in target.elts:
+                    # Note: We skip type and aliasing analysis for this case,
+                    #       but we do record line numbers.
+                    self._handleAssignment(elem, None, None, lineno)
+            else:
+                self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node):
         annotation = _unstring_annotation(node.annotation)
@@ -487,23 +499,15 @@ class ASTBuilder(object):
 
     def _push(self, cls, name, docstring, lineno):
         obj = cls(self.system, name, docstring, self.current)
-        obj.linenumber = lineno
         self.system.addObject(obj)
-        self.push(obj)
-
-        parentMod = obj.parentMod
-        if parentMod is not None:
-            sourceHref = parentMod.sourceHref
-            if sourceHref is not None:
-                obj.sourceHref = sourceHref + '#L' + str(lineno)
-
+        self.push(obj, lineno)
         return obj
 
     def _pop(self, cls):
         assert isinstance(self.current, cls)
         self.pop(self.current)
 
-    def push(self, obj):
+    def push(self, obj, lineno):
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -516,6 +520,8 @@ class ASTBuilder(object):
                 obj.parentMod = self.currentMod
         else:
             assert obj.parentMod is None
+        if lineno:
+            obj.setLineNumber(lineno)
         if not isinstance(obj, model.Function):
             epydoc2stan.extract_fields(obj)
 
@@ -535,7 +541,7 @@ class ASTBuilder(object):
     def popFunction(self):
         self._pop(self.system.Function)
 
-    def addAttribute(self, target, docstring, kind, lineno, parent=None):
+    def addAttribute(self, target, docstring, kind, parent=None):
         if parent is None:
             parent = self.current
         system = self.system
@@ -543,9 +549,6 @@ class ASTBuilder(object):
         attr = system.Attribute(system, target, docstring, parent)
         attr.kind = kind
         attr.parentMod = parentMod
-        attr.linenumber = lineno
-        if parentMod.sourceHref:
-            attr.sourceHref = '%s#L%d' % (parentMod.sourceHref, lineno)
         system.addObject(attr)
         return attr
 
