@@ -91,6 +91,8 @@ class ZopeInterfaceAttribute(model.Attribute):
 
 def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
+        # If you do implementer(*()), the argument ends up being None, which we
+        # should skip
         if arg is None:
             continue
 
