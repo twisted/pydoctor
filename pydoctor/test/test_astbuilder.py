@@ -251,6 +251,28 @@ def test_aliasing_recursion():
     mod = fromText(src, 'mod', system)
     assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
+def test_documented_no_alias():
+    """A variable that is documented should not be considered an alias."""
+    # TODO: We should also verify this for inline docstrings, but the code
+    #       currently doesn't support that. We should perhaps store aliases
+    #       as Documentables as well, so we can change their 'kind' when
+    #       an inline docstring follows the assignment.
+    mod = fromText('''
+    class SimpleClient:
+        pass
+    class Processor:
+        """
+        @ivar clientFactory: Callable that returns a client.
+        """
+        clientFactory = SimpleClient
+    ''')
+    P = mod.contents['Processor']
+    f = P.contents['clientFactory']
+    assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
+    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.kind == 'Instance Variable'
+    assert f.linenumber
+
 def test_subclasses():
     src = '''
     class A:
@@ -568,20 +590,22 @@ def test_variable_types():
         """class docstring
 
         @cvar a: first
-        @type a: C{str}
+        @type a: string
 
-        @type b: C{str}
+        @type b: string
         @cvar b: second
 
-        @type c: C{str}
+        @type c: string
 
         @ivar d: fourth
-        @type d: C{str}
+        @type d: string
 
-        @type e: C{str}
+        @type e: string
         @ivar e: fifth
 
-        @type f: C{str}
+        @type f: string
+
+        @type g: string
         """
 
         a = "A"
@@ -599,35 +623,42 @@ def test_variable_types():
 
             self.f = "F"
             """sixth"""
+
+            self.g = g = "G"
+            """seventh"""
     ''', modname='test')
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
-        '__init__', 'a', 'b', 'c', 'd', 'e', 'f'
+        '__init__', 'a', 'b', 'c', 'd', 'e', 'f', 'g'
         ]
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert to_html(a.parsed_type) == '<code>str</code>'
+    assert str(unwrap(a.parsed_type)) == 'string'
     assert a.kind == 'Class Variable'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert to_html(b.parsed_type) == '<code>str</code>'
+    assert str(unwrap(b.parsed_type)) == 'string'
     assert b.kind == 'Class Variable'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert to_html(c.parsed_type) == '<code>str</code>'
+    assert str(unwrap(c.parsed_type)) == 'string'
     assert c.kind == 'Class Variable'
     d = C.contents['d']
     assert unwrap(d.parsed_docstring) == """fourth"""
-    assert to_html(d.parsed_type) == '<code>str</code>'
+    assert str(unwrap(d.parsed_type)) == 'string'
     assert d.kind == 'Instance Variable'
     e = C.contents['e']
     assert unwrap(e.parsed_docstring) == """fifth"""
-    assert to_html(e.parsed_type) == '<code>str</code>'
+    assert str(unwrap(e.parsed_type)) == 'string'
     assert e.kind == 'Instance Variable'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert to_html(f.parsed_type) == '<code>str</code>'
+    assert str(unwrap(f.parsed_type)) == 'string'
     assert f.kind == 'Instance Variable'
+    g = C.contents['g']
+    assert g.docstring == """seventh"""
+    assert str(unwrap(g.parsed_type)) == 'string'
+    assert g.kind == 'Instance Variable'
 
 @py3only
 def test_annotated_variables():
@@ -715,6 +746,7 @@ def test_inferred_variable_types():
         y = [n for n in range(10) if n % 2]
         def __init__(self):
             self.s = ['S']
+            self.t = t = 'T'
     m = b'octets'
     ''', modname='test')
     C = mod.contents['C']
@@ -741,6 +773,8 @@ def test_inferred_variable_types():
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
     assert type2str(C.contents['s'].annotation) == 'List[str]'
+    # Check that type is inferred on assignments with multiple targets.
+    assert type2str(C.contents['t'].annotation) == 'str'
     # On Python 2.7, bytes literals are parsed into ast.Str objects,
     # so there is no way to tell them apart from ASCII strings.
     assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
@@ -760,3 +794,9 @@ def test_type_from_attrib():
     assert type2str(C.contents['b'].annotation) == 'int'
     assert type2str(C.contents['c'].annotation) == 'C'
     assert type2str(C.contents['d'].annotation) == 'bool'
+
+def test_detupling_assignment():
+    mod = fromText('''
+    a, b, c = range(3)
+    ''', modname='test')
+    assert sorted(mod.contents.keys()) == ['a', 'b', 'c']

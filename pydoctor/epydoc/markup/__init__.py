@@ -143,11 +143,12 @@ class Field:
     Tags are automatically downcased and stripped; and arguments are
     automatically stripped.
     """
-    def __init__(self, tag, arg, body):
+    def __init__(self, tag, arg, body, lineno):
         self._tag = tag.lower().strip()
         if arg is None: self._arg = None
         else: self._arg = arg.strip()
         self._body = body
+        self.lineno = lineno
 
     def tag(self):
         """

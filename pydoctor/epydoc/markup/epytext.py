@@ -484,7 +484,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
     # are adjoined directly into the 'epytext' node, not into
     # the 'fieldlist' node.
     if list_type == 'fieldlist':
-        li = Element('field')
+        li = Element('field', lineno=str(bullet_token.startline))
         token_words = bullet_token.contents[1:-1].split(None, 1)
         tag_elt = Element('tag')
         tag_elt.children.append(token_words[0])
@@ -1239,7 +1239,9 @@ def parse_docstring(docstring, errors):
 
             # Process the field.
             field.tag = 'epytext'
-            fields.append(Field(tag, arg, ParsedEpytextDocstring(field, ())))
+            fieldDoc = ParsedEpytextDocstring(field, ())
+            lineno = int(field.attribs['lineno'])
+            fields.append(Field(tag, arg, fieldDoc, lineno))
 
     # Save the remaining docstring as the description.
     if tree.children and tree.children[0].children:

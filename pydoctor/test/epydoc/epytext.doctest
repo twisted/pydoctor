@@ -34,14 +34,14 @@ Make sure that unindented fields are allowed:
     ...
     ...     @foo: This is a field."""))
     <para>This is a paragraph.</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='3'><tag>foo</tag>
     <para inline=True>This is a field.</para></field></fieldlist>
 
     >>> print(testparse("""
     ...     This is a paragraph.
     ...     @foo: This is a field."""))
     <para>This is a paragraph.</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='2'><tag>foo</tag>
     <para inline=True>This is a field.</para></field></fieldlist>
 
     >>> print(testparse("""
@@ -49,23 +49,23 @@ Make sure that unindented fields are allowed:
     ...       @foo: This is a field.
     ...         Hello."""))
     <para>This is a paragraph.</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='2'><tag>foo</tag>
     <para inline=True>This is a field. Hello.</para></field>
     </fieldlist>
 
     >>> print(testparse("""Paragraph\n@foo: field"""))
     <para>Paragraph</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='1'><tag>foo</tag>
     <para inline=True>field</para></field></fieldlist>
 
     >>> print(testparse("""Paragraph\n\n@foo: field"""))
     <para>Paragraph</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='2'><tag>foo</tag>
     <para inline=True>field</para></field></fieldlist>
 
     >>> print(testparse("""\nParagraph\n@foo: field"""))
     <para>Paragraph</para>
-    <fieldlist><field><tag>foo</tag>
+    <fieldlist><field lineno='2'><tag>foo</tag>
     <para inline=True>field</para></field></fieldlist>
 
 Make sure thta unindented lists are not allowed:
