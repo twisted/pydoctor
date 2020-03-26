@@ -91,6 +91,11 @@ class ZopeInterfaceAttribute(model.Attribute):
 
 def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
+        # If you do implementer(*()), the argument ends up being None, which we
+        # should skip
+        if arg is None:
+            continue
+
         if not isinstance(arg, tuple):
             fullName = scope.expandName(astor.to_source(arg).strip())
         else:
@@ -258,7 +263,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if 'zope.interface.interface.InterfaceClass' in bases:
             cls.isinterfaceclass = True
-            
+
         if len([b for b in cls.bases
                 if namesInterface(self.system, b)]) > 0:
             cls.isinterface = True

@@ -301,3 +301,24 @@ def test_interfaceallgames():
     system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceallgames.interface']
     assert [o.fullName() for o in mod.contents['IAnInterface'].allImplementations] == ['interfaceallgames.implementation.Implementation']
+
+def test_implementer_with_none():
+    """
+    If the implementer call contains a split out empty list, don't fail on
+    attempting to process it.
+    """
+    src = '''
+    from zope.interface import Interface, implementer
+    extra_interfaces = ()
+    class IMyInterface(Interface):
+        def method(self):
+            """documentation"""
+    @implementer(IMyInterface, *extra_interfaces)
+    class Implementation(object):
+        def method(self):
+            pass
+    '''
+    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    iface = mod.contents['IMyInterface']
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == [iface.fullName()]
