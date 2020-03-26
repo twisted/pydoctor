@@ -13,6 +13,8 @@ import os
 import sys
 
 from pydoctor import model
+from pydoctor.epydoc.markup import ParseError
+from six import string_types
 from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
@@ -433,29 +435,28 @@ class FieldHandler(object):
 
 
 def reportErrors(obj, errs):
-    for err in errs:
-        if isinstance(err, str):
-            linenumber = '??'
-            descr = err
-        else:
-            obj_linenum = getattr(obj, 'linenumber', None)
-            if obj_linenum is None:
-                linenumber = '??'
-            else:
-                linenumber = str(obj_linenum + err.linenum())
-            descr = err._descr
-        obj.system.msg(
-            'epydoc2stan2',
-            '%s:%s epytext error %r' % (obj.fullName(), linenumber, descr))
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
-        obj.system.msg('epydoc2stan',
-                       'epytext error in %s'%(obj,), thresh=1)
-        p = lambda m:obj.system.msg('epydoc2stan', m, thresh=2)
-        for i, l in enumerate(obj.docstring.splitlines()):
-            p("%4s"%(i+1)+' '+l)
+
+        moduleDesc = None
+        if obj.parentMod is not None:
+            moduleDesc = getattr(obj.parentMod, 'filepath', None)
+        if moduleDesc is None:
+            moduleDesc = obj.fullName()
+
         for err in errs:
-            p(err)
+            linenumber = obj.linenumber
+            if isinstance(err, string_types):
+                descr = err
+            elif isinstance(err, ParseError):
+                linenumber += err.linenum()
+                descr = err.descr()
+            else:
+                raise TypeError(type(err).__name__)
+
+            obj.system.msg(
+                'docstring',
+                '%s:%s: bad docstring: %s' % (moduleDesc, linenumber, descr))
 
 
 def parse_docstring(obj, doc, source):
