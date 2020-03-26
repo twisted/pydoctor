@@ -312,6 +312,41 @@ class ModuleVistor(ast.NodeVisitor):
         if not self._handleAliasing(target, expr):
             self._handleClassVar(target, annotation, lineno)
 
+    def _handleDocstringUpdate(self, targetNode, expr, lineno):
+        def warn(msg):
+            self.system.msg('ast', "%s:%d: %s" % (
+                    getattr(self.builder.currentMod, 'filepath', '<unknown>'),
+                    lineno, msg))
+
+        # Figure out target object.
+        full_name = node2fullname(targetNode, self.builder.current)
+        if full_name is None:
+            warn("Unable to figure out target for __doc__ assignment")
+            # Don't return yet: we might have to warn about the value too.
+            obj = None
+        else:
+            obj = self.system.objForFullName(full_name)
+            if obj is None:
+                warn("Unable to figure out target for __doc__ assignment: "
+                     "computed full name not found: " + full_name)
+
+        # Determine docstring value.
+        try:
+            docstring = ast.literal_eval(expr)
+        except ValueError:
+            warn("Unable to figure out value for __doc__ assignment, "
+                 "maybe too complex")
+            return
+        if not isinstance(docstring, string_types):
+            warn("Ignoring value assigned to __doc__: not a string")
+            return
+
+        if obj is not None:
+            obj.docstring = docstring
+            # TODO: It might be better to not perform docstring parsing until
+            #       we have the final docstrings for all objects.
+            obj.parsed_docstring = None
+
     def _handleAssignment(self, targetNode, annotation, expr, lineno):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
@@ -323,7 +358,9 @@ class ModuleVistor(ast.NodeVisitor):
                     self._handleAssignmentInClass(target, annotation, expr, lineno)
         elif isinstance(targetNode, ast.Attribute):
             value = targetNode.value
-            if isinstance(value, ast.Name) and value.id == 'self':
+            if targetNode.attr == '__doc__':
+                self._handleDocstringUpdate(value, expr, lineno)
+            elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
     def visit_Assign(self, node):

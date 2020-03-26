@@ -536,6 +536,57 @@ def test_inline_docstring_annotated_instancevar():
     b = C.contents['b']
     assert b.docstring == """inline doc for b"""
 
+def test_docstring_assignment(capsys):
+    mod = fromText('''
+    def fun():
+        pass
+
+    class CLS:
+
+        def method1():
+            """Temp docstring."""
+            pass
+
+        def method2():
+            pass
+
+        method1.__doc__ = "Updated docstring #1"
+
+    fun.__doc__ = "Happy Happy Joy Joy"
+    CLS.__doc__ = "Clears the screen"
+    CLS.method2.__doc__ = "Updated docstring #2"
+
+    None.__doc__ = "Free lunch!"
+    real.__doc__ = "Second breakfast"
+    fun.__doc__ = codecs.encode('Pnrfne fnynq', 'rot13')
+    CLS.method1.__doc__ = 4
+    ''')
+    fun = mod.contents['fun']
+    assert fun.kind == 'Function'
+    assert fun.docstring == """Happy Happy Joy Joy"""
+    CLS = mod.contents['CLS']
+    assert CLS.kind == 'Class'
+    assert CLS.docstring == """Clears the screen"""
+    method1 = CLS.contents['method1']
+    assert method1.kind == 'Method'
+    assert method1.docstring == "Updated docstring #1"
+    method2 = CLS.contents['method2']
+    assert method2.kind == 'Method'
+    assert method2.docstring == "Updated docstring #2"
+    captured = capsys.readouterr()
+    lines = captured.out.split('\n')
+    assert len(lines) > 0 and lines[0] == \
+        "<unknown>:20: Unable to figure out target for __doc__ assignment"
+    assert len(lines) > 1 and lines[1] == \
+        "<unknown>:21: Unable to figure out target for __doc__ assignment: " \
+        "computed full name not found: real"
+    assert len(lines) > 2 and lines[2] == \
+        "<unknown>:22: Unable to figure out value for __doc__ assignment, " \
+        "maybe too complex"
+    assert len(lines) > 3 and lines[3] == \
+        "<unknown>:23: Ignoring value assigned to __doc__: not a string"
+    assert len(lines) == 5 and lines[-1] == ''
+
 def test_variable_scopes():
     mod = fromText('''
     l = 1
