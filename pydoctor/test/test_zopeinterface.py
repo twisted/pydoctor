@@ -113,18 +113,25 @@ def test_multiply_inheriting_interfaces():
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['Both'].allImplementedInterfaces) == 2
 
-def test_attribute():
+def test_attribute(capsys):
     src = '''
     import zope.interface as zi
     class C(zi.Interface):
         attr = zi.Attribute("documented attribute")
+        bad_attr = zi.Attribute(0)
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    assert len(mod.contents['C'].contents) == 1
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
     assert attr.kind == 'Attribute'
     assert attr.name == 'attr'
     assert attr.docstring == "documented attribute"
+    bad_attr = mod.contents['C'].contents['bad_attr']
+    assert bad_attr.kind == 'Attribute'
+    assert bad_attr.name == 'bad_attr'
+    assert bad_attr.docstring is None
+    captured = capsys.readouterr().out
+    assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
 def test_interfaceclass():
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)

@@ -195,10 +195,15 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if funcName is None:
             return
         if funcName == 'zope.interface.Attribute':
+            attr.kind = 'Attribute'
             args = expr.args
-            if args is not None and len(args) == 1:
-                attr.kind = 'Attribute'
-                attr.docstring = extractStringLiteral(expr.args[0])
+            if len(args) == 1 and isinstance(args[0], ast.Str):
+                attr.docstring = args[0].s
+            else:
+                attr.report(
+                    'definition of attribute "%s" should have docstring '
+                    'as its sole argument' % attr.name,
+                    section='zopeinterface')
         elif schema_prog.match(funcName):
             attr.kind = schema_prog.match(funcName).group(1)
             handleSchemaField()
