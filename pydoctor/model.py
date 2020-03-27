@@ -195,6 +195,31 @@ class Documentable(object):
         """
         return self.privacyClass is not PrivacyClass.HIDDEN
 
+    @property
+    def module(self):
+        """This object's L{Module}.
+
+        For modules, this returns the object itself, otherwise
+        the module containing the object is returned.
+        """
+        parentMod = self.parentMod
+        assert parentMod is not None
+        return parentMod
+
+    def report(self, descr, section='parsing', lineno_offset=0):
+        """Log an error or warning about this documentable object."""
+
+        linenumber = self.linenumber
+        if linenumber:
+            linenumber += lineno_offset
+        else:
+            linenumber = '???'
+
+        self.system.msg(
+            section,
+            '%s:%s: %s' % (self.module.description, linenumber, descr),
+            thresh=-1)
+
 
 class Package(Documentable):
     kind = "Package"
@@ -202,6 +227,9 @@ class Package(Documentable):
         yield self.contents['__init__']
     @property
     def doctarget(self):
+        return self.contents['__init__']
+    @property
+    def module(self):
         return self.contents['__init__']
     @property
     def state(self):
@@ -245,6 +273,21 @@ class Module(CanContainImportsDocumentable):
             return name
         else:
             return name
+
+    @property
+    def module(self):
+        return self
+
+    @property
+    def description(self):
+        """A string describing this module to the user.
+
+        If this module's code was read from a file, this returns
+        its file path. In other cases, such as during unit testing,
+        the module's full name is returned.
+        """
+        filepath = getattr(self, 'filepath', None)
+        return self.fullName() if filepath is None else filepath
 
 
 class Class(CanContainImportsDocumentable):

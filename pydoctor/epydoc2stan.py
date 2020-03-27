@@ -438,25 +438,21 @@ def reportErrors(obj, errs):
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
 
-        moduleDesc = None
-        if obj.parentMod is not None:
-            moduleDesc = getattr(obj.parentMod, 'filepath', None)
-        if moduleDesc is None:
-            moduleDesc = obj.fullName()
-
         for err in errs:
-            linenumber = obj.linenumber
+            lineno_offset = 0
             if isinstance(err, string_types):
                 descr = err
             elif isinstance(err, ParseError):
-                linenumber += err.linenum()
                 descr = err.descr()
+                lineno_offset = err.linenum()
             else:
                 raise TypeError(type(err).__name__)
 
-            obj.system.msg(
-                'docstring',
-                '%s:%s: bad docstring: %s' % (moduleDesc, linenumber, descr))
+            obj.report(
+                'bad docstring: ' + descr,
+                lineno_offset=lineno_offset,
+                section='docstring'
+                )
 
 
 def parse_docstring(obj, doc, source):
