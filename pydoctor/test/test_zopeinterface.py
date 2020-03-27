@@ -148,16 +148,26 @@ def test_warnerproofing():
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert mod.contents['IMyInterface'].isinterface
 
-def test_zopeschema():
+def test_zopeschema(capsys):
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
         text = schema.TextLine(description="fun in a bun")
+        undoc = schema.Bool()
+        bad = schema.ASCII(description=False)
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert text.kind == "TextLine"
+    undoc = mod.contents['IMyInterface'].contents['undoc']
+    assert undoc.docstring is None
+    assert undoc.kind == "Bool"
+    bad = mod.contents['IMyInterface'].contents['bad']
+    assert bad.docstring is None
+    assert bad.kind == "ASCII"
+    captured = capsys.readouterr().out
+    assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
 def test_aliasing_in_class():
     src = '''

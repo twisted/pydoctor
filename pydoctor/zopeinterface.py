@@ -139,12 +139,6 @@ def namesInterface(system, name):
         return False
     return obj.isinterface
 
-def extractStringLiteral(node):
-    if isinstance(node, ast.Str):
-        return node.s
-    else:
-        raise TypeError("cannot extract string from %r" % (node,))
-
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def funcNameFromCall(self, node):
@@ -182,11 +176,14 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 target, annotation, expr, lineno)
 
         def handleSchemaField():
-            descriptions = [arg.value for arg in expr.keywords if arg.arg == 'description']
-            if len(descriptions) > 1:
-                self.builder.system.msg('parsing', 'xxx')
-            elif len(descriptions) == 1:
-                attr.docstring = extractStringLiteral(descriptions[0])
+            keywords = {arg.arg: arg.value for arg in expr.keywords}
+            descrNode = keywords.get('description')
+            if isinstance(descrNode, ast.Str):
+                attr.docstring = descrNode.s
+            elif descrNode is not None:
+                attr.report(
+                    'description of field "%s" is not a string literal'
+                    % attr.name, section='zopeinterface')
 
         if not isinstance(expr, ast.Call):
             return
