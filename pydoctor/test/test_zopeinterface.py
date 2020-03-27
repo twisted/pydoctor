@@ -322,3 +322,20 @@ def test_implementer_with_none():
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
+
+def test_implementer_nonclass(capsys):
+    """
+    Check rejection of non-class arguments passed to @implementer.
+    """
+    src = '''
+    from zope.interface import Interface, implementer
+    var = 'not a class'
+    @implementer(var)
+    class Implementation(object):
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == []
+    captured = capsys.readouterr().out
+    assert captured == "mod:4: probable interface mod.var not detected as a class\n"

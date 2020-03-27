@@ -113,9 +113,9 @@ def addInterfaceInfoToScope(scope, interfaceargs):
                 obj.implementedby_directly = []
             obj.implementedby_directly.append(scope)
         elif obj is not None:
-            obj.system.msg(
-                'zopeinterface',
-                'probable interface %r not detected as class'%obj)
+            scope.report(
+                'probable interface %s not detected as a class' % fullName,
+                section='zopeinterface')
 
 def addInterfaceInfoToModule(module, interfaceargs):
     addInterfaceInfoToScope(module, interfaceargs)
