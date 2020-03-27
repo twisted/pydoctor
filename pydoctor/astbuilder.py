@@ -408,9 +408,8 @@ class ModuleVistor(ast.NodeVisitor):
                         isstaticmethod = True
             if isstaticmethod:
                 if isclassmethod:
-                    self.system.msg(
-                        'ast', '%r is both class- and static-method?'%(
-                        func.fullName(),), thresh=-1)
+                    func.report('%s is both classmethod and staticmethod' % (
+                                func.fullName(),))
                 else:
                     func.kind = 'Static Method'
             elif isclassmethod:

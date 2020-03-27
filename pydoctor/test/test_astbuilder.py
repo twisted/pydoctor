@@ -365,6 +365,33 @@ def test_classdecorator_with_args():
       C.decorators
 
 
+def test_methoddecorator(capsys):
+    mod = fromText('''
+    class C:
+        def method_undecorated():
+            pass
+
+        @staticmethod
+        def method_static():
+            pass
+
+        @classmethod
+        def method_class(cls):
+            pass
+
+        @staticmethod
+        @classmethod
+        def method_both():
+            pass
+    ''', modname='mod')
+    C = mod.contents['C']
+    assert C.contents['method_undecorated'].kind == 'Method'
+    assert C.contents['method_static'].kind == 'Static Method'
+    assert C.contents['method_class'].kind == 'Class Method'
+    captured = capsys.readouterr().out
+    assert captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
+
+
 def test_import_star():
     mod_a = fromText('''
     def f(): pass
