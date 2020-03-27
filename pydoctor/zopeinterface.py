@@ -142,10 +142,6 @@ def namesInterface(system, name):
 def extractStringLiteral(node):
     if isinstance(node, ast.Str):
         return node.s
-    elif isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Call):
-        return node.args[0].s
     else:
         raise TypeError("cannot extract string from %r" % (node,))
 

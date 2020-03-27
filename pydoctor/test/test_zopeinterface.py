@@ -152,22 +152,6 @@ def test_zopeschema():
     assert text.docstring == 'fun in a bun'
     assert text.kind == "TextLine"
 
-def test_with_underscore():
-    src = '''
-    from zope import schema, interface
-    class IMyInterface(interface.Interface):
-        attribute = interface.Attribute(_("fun in a bun"))
-        text = schema.TextLine(description=_("fun in a bap"))
-    '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    text = mod.contents['IMyInterface'].contents['attribute']
-    assert text.docstring == 'fun in a bun'
-    assert text.kind == "Attribute"
-
-    text = mod.contents['IMyInterface'].contents['text']
-    assert text.docstring == 'fun in a bap'
-    assert text.kind == "TextLine"
-
 def test_aliasing_in_class():
     src = '''
     from zope import interface
