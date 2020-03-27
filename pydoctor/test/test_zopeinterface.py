@@ -339,3 +339,25 @@ def test_implementer_nonclass(capsys):
     assert impl.implements_directly == []
     captured = capsys.readouterr().out
     assert captured == "mod:4: probable interface mod.var not detected as a class\n"
+
+def test_implementer_plainclass(capsys):
+    """
+    Check patching of non-interface classes passed to @implementer.
+    """
+    src = '''
+    from zope.interface import Interface, implementer
+    class C(object):
+        pass
+    @implementer(C)
+    class Implementation(object):
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    C = mod.contents['C']
+    impl = mod.contents['Implementation']
+    assert C.isinterface
+    assert C.kind == "Interface"
+    assert C.implementedby_directly == [impl]
+    assert impl.implements_directly == ['mod.C']
+    captured = capsys.readouterr().out
+    assert captured == "mod:5: probable interface mod.C not marked as such\n"

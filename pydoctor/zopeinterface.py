@@ -104,10 +104,9 @@ def addInterfaceInfoToScope(scope, interfaceargs):
         if isinstance(obj, ZopeInterfaceClass):
             scope.implements_directly.append(fullName)
             if not obj.isinterface:
-                obj.system.msg(
-                    'zopeinterface',
-                    'probable interface %r not marked as such'%obj,
-                    thresh=1)
+                scope.report(
+                    'probable interface %s not marked as such' % fullName,
+                    section='zopeinterface')
                 obj.isinterface = True
                 obj.kind = "Interface"
                 obj.implementedby_directly = []
