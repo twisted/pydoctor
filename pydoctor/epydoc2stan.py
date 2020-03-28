@@ -7,7 +7,6 @@ from __future__ import print_function
 import astor
 
 from importlib import import_module
-import inspect
 import itertools
 import os
 import sys
@@ -50,26 +49,12 @@ def get_parser(obj):
 def get_docstring(obj):
     for source in obj.docsources():
         doc = source.docstring
+        if doc:
+            return doc, source
         if doc is not None:
-            # Note: We approximate the line number: it is correct
-            #       if the docstring starts on the first line of the
-            #       class/function and does not contain explicit
-            #       newlines ('\n') or joined lines ('\' at end of line).
-            #       The AST (as of Python 3.7) does not contain sufficient
-            #       detail to match a position within the docstring to
-            #       an exact position in the source.
-            lineno = obj.linenumber + 1
-            # Leading blank lines are stripped by cleandoc(), so we must
-            # return the line number of the first non-blank line.
-            for ch in doc:
-                if ch == '\n':
-                    lineno += 1
-                elif not ch.isspace():
-                    return inspect.cleandoc(doc), source, lineno
-            else:
-                # Treat empty docstring as undocumented.
-                return None, source, None
-    return None, None, None
+            # Treat empty docstring as undocumented.
+            return None, source
+    return None, None
 
 
 def stdlib_doc_link_for_name(name):
@@ -444,7 +429,7 @@ def reportErrors(obj, errs):
                 descr = err
             elif isinstance(err, ParseError):
                 descr = err.descr()
-                lineno_offset = err.linenum()
+                lineno_offset = err.linenum() - 1
             else:
                 raise TypeError(type(err).__name__)
 
@@ -477,7 +462,7 @@ def parse_docstring(obj, doc, source):
 def format_docstring(obj):
     """Generate an HTML representation of a docstring"""
 
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
     pdoc = getattr(obj, 'parsed_docstring', None)
@@ -517,7 +502,7 @@ def format_docstring(obj):
 def format_summary(obj):
     """Generate an shortened HTML representation of a docstring."""
 
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
     if doc is None:
         # Attributes can be documented as fields in their parent's docstring.
         if isinstance(obj, model.Attribute):
@@ -614,7 +599,7 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj):
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
     if doc is None:
         return
 
@@ -635,7 +620,7 @@ def extract_fields(obj):
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(lineno + field.lineno)
+            attrobj.setLineNumber(source.docstring_lineno + field.lineno)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:

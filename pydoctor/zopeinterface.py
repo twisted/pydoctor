@@ -178,7 +178,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
             if isinstance(descrNode, ast.Str):
-                attr.docstring = descrNode.s
+                attr.setDocstring(descrNode)
             elif descrNode is not None:
                 attr.report(
                     'description of field "%s" is not a string literal'
@@ -194,7 +194,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             attr.kind = 'Attribute'
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
-                attr.docstring = args[0].s
+                attr.setDocstring(args[0])
             else:
                 attr.report(
                     'definition of attribute "%s" should have docstring '

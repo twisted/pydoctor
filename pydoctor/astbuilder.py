@@ -69,7 +69,7 @@ class ModuleVistor(ast.NodeVisitor):
 
         self.builder.push(self.module, 0)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            self.module.docstring = node.body[0].value.s
+            self.module.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(self.module)
         self.default(node)
         self.builder.pop(self.module)
@@ -100,7 +100,7 @@ class ModuleVistor(ast.NodeVisitor):
         cls.baseobjects = baseobjects
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            cls.docstring = node.body[0].value.s
+            cls.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(cls)
 
         def node2data(node):
@@ -388,14 +388,14 @@ class ModuleVistor(ast.NodeVisitor):
         if isinstance(value, ast.Str):
             attr = self.currAttr
             if attr is not None:
-                attr.docstring = value.s
+                attr.setDocstring(value)
 
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
         func = self.builder.pushFunction(node.name, node.lineno)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            func.docstring = node.body[0].value.s
+            func.setDocstring(node.body[0].value)
         func.decorators = node.decorator_list
         if isinstance(func.parent, model.Class) and node.decorator_list:
             isclassmethod = False

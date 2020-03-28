@@ -10,6 +10,7 @@ from __future__ import print_function, unicode_literals
 
 import datetime
 import imp
+import inspect
 import os
 import sys
 import types
@@ -56,6 +57,7 @@ class Documentable(object):
     """
     documentation_location = DocLocation.OWN_PAGE
     docstring = None
+    docstring_lineno = 0
     linenumber = 0
     sourceHref = None
 
@@ -78,6 +80,27 @@ class Documentable(object):
 
     def setup(self):
         self.contents = OrderedDict()
+
+    def setDocstring(self, node):
+        doc = node.s
+        # Note: We approximate the line number: it is correct
+        #       if the docstring does not contain explicit
+        #       newlines ('\n') or joined lines ('\' at end of line).
+        #       The AST (as of Python 3.7) does not contain sufficient
+        #       detail to match a position within the docstring to
+        #       an exact position in the source.
+        lineno = node.lineno - doc.count('\n')
+
+        # Leading blank lines are stripped by cleandoc(), so we must
+        # return the line number of the first non-blank line.
+        for ch in doc:
+            if ch == '\n':
+                lineno += 1
+            elif not ch.isspace():
+                break
+
+        self.docstring = inspect.cleandoc(doc)
+        self.docstring_lineno = lineno
 
     def setLineNumber(self, lineno):
         if not self.linenumber:
@@ -209,7 +232,10 @@ class Documentable(object):
     def report(self, descr, section='parsing', lineno_offset=0):
         """Log an error or warning about this documentable object."""
 
-        linenumber = self.linenumber
+        if section == 'docstring':
+            linenumber = self.docstring_lineno
+        else:
+            linenumber = self.linenumber
         if linenumber:
             linenumber += lineno_offset
         else:
