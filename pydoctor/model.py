@@ -542,7 +542,8 @@ class System(object):
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
-            if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
+            if isinstance(v, (types.BuiltinFunctionType,
+                              types.FunctionType)):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -563,7 +564,6 @@ class System(object):
         module = self.ensureModule(module_full_name)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
-        print(py_mod)
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):

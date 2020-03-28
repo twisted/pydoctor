@@ -3,6 +3,7 @@ Unit tests for model.
 """
 from __future__ import print_function
 
+import sys
 import zlib
 
 from pydoctor import model, sphinx
@@ -137,3 +138,23 @@ def test_docsources_class_attribute():
     base_attr = mod.contents['Base'].contents['attr']
     sub_attr = mod.contents['Sub'].contents['attr']
     assert base_attr in list(sub_attr.docsources())
+
+
+class Dummy(object):
+    def crash(self):
+        """Mmm"""
+
+def test_introspection():
+    """Find docstrings from this test using introspection."""
+    system = model.System()
+    py_mod = sys.modules[__name__]
+    system.introspectModule(py_mod, __name__)
+
+    module = system.objForFullName(__name__)
+    assert module.docstring == __doc__
+
+    func = module.contents['test_introspection']
+    assert func.docstring == "Find docstrings from this test using introspection."
+
+    method = system.objForFullName(__name__ + '.Dummy.crash')
+    assert method.docstring == "Mmm"
