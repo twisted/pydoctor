@@ -163,13 +163,12 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
         ob = self.system.objForFullName(funcName)
         if isinstance(ob, model.Class) and ob.isinterfaceclass:
+            # TODO: Process 'bases' and '__doc__' arguments.
             interface = self.builder.pushClass(target, lineno)
-            # TODO: Why not leave the docstring as None instead?
-            interface.docstring = "..."
-            self.builder.system.msg('parsing', 'new interface')
             interface.isinterface = True
             interface.implementedby_directly = []
             self.builder.popClass()
+            self.newAttr = interface
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
         super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(

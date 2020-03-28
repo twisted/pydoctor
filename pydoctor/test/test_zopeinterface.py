@@ -136,6 +136,8 @@ def test_attribute(capsys):
 def test_interfaceclass():
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
+    assert mod.contents['MyInterface'].isinterface
+    assert mod.contents['MyInterface'].docstring == "This is my interface."
     assert mod.contents['AnInterface'].isinterface
 
 def test_warnerproofing():
