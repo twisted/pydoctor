@@ -113,11 +113,11 @@ class _EpydocLinker(DocstringLinker):
         if len(potential_targets) == 1:
             return potential_targets[0]
         elif len(potential_targets) > 1:
-            self.obj.system.msg(
-                "translate_identifier_xref", "%s:%s ambiguous ref to %s, could be %s" % (
-                    self.obj.fullName(), self.obj.linenumber, name,
-            ', '.join([ob.fullName() for ob in potential_targets])),
-                thresh=-1)
+            self.obj.report(
+                "ambiguous ref to %s, could be %s" % (
+                    name,
+                    ', '.join(ob.fullName() for ob in potential_targets)),
+                section='translate_identifier_xref')
         return None
 
     def look_for_intersphinx(self, name):
@@ -188,11 +188,9 @@ class _EpydocLinker(DocstringLinker):
         if target:
             return tags.a(tags.code(prettyID), href=target)
         if fullID != fullerID:
-            self.obj.system.msg(
-                "translate_identifier_xref", "%s:%s invalid ref to '%s' "
-                "resolved as '%s'" % (
-                    self.obj.fullName(), self.obj.linenumber, fullID, fullerID),
-                thresh=-1)
+            self.obj.report(
+                "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
+                section='translate_identifier_xref')
         return tags.code(prettyID)
 
 

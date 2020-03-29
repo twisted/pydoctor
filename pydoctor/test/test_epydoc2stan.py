@@ -174,7 +174,7 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found(capsy
 
     captured = capsys.readouterr().out
     expected = (
-        "ignore-name:0 invalid ref to 'ext_module' "
+        "ignore-name:???: invalid ref to 'ext_module' "
         "resolved as 'ext_package.ext_module'\n"
         )
     assert expected == captured
