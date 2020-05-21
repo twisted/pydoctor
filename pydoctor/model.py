@@ -10,6 +10,7 @@ from __future__ import print_function, unicode_literals
 
 import datetime
 import imp
+import inspect
 import os
 import sys
 import types
@@ -55,6 +56,8 @@ class Documentable(object):
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
+    docstring = None
+    docstring_lineno = 0
     linenumber = 0
     sourceHref = None
 
@@ -66,10 +69,9 @@ class Documentable(object):
             class_ += ' private'
         return class_
 
-    def __init__(self, system, name, docstring, parent=None):
+    def __init__(self, system, name, parent=None):
         self.system = system
         self.name = name
-        self.docstring = docstring
         self.parent = parent
         self.parentMod = None
         self.setup()
@@ -78,6 +80,27 @@ class Documentable(object):
 
     def setup(self):
         self.contents = OrderedDict()
+
+    def setDocstring(self, node):
+        doc = node.s
+        # Note: We approximate the line number: it is correct
+        #       if the docstring does not contain explicit
+        #       newlines ('\n') or joined lines ('\' at end of line).
+        #       The AST (as of Python 3.7) does not contain sufficient
+        #       detail to match a position within the docstring to
+        #       an exact position in the source.
+        lineno = node.lineno - doc.count('\n')
+
+        # Leading blank lines are stripped by cleandoc(), so we must
+        # return the line number of the first non-blank line.
+        for ch in doc:
+            if ch == '\n':
+                lineno += 1
+            elif not ch.isspace():
+                break
+
+        self.docstring = inspect.cleandoc(doc)
+        self.docstring_lineno = lineno
 
     def setLineNumber(self, lineno):
         if not self.linenumber:
@@ -195,6 +218,34 @@ class Documentable(object):
         """
         return self.privacyClass is not PrivacyClass.HIDDEN
 
+    @property
+    def module(self):
+        """This object's L{Module}.
+
+        For modules, this returns the object itself, otherwise
+        the module containing the object is returned.
+        """
+        parentMod = self.parentMod
+        assert parentMod is not None
+        return parentMod
+
+    def report(self, descr, section='parsing', lineno_offset=0):
+        """Log an error or warning about this documentable object."""
+
+        if section == 'docstring':
+            linenumber = self.docstring_lineno
+        else:
+            linenumber = self.linenumber
+        if linenumber:
+            linenumber += lineno_offset
+        else:
+            linenumber = '???'
+
+        self.system.msg(
+            section,
+            '%s:%s: %s' % (self.module.description, linenumber, descr),
+            thresh=-1)
+
 
 class Package(Documentable):
     kind = "Package"
@@ -202,6 +253,9 @@ class Package(Documentable):
         yield self.contents['__init__']
     @property
     def doctarget(self):
+        return self.contents['__init__']
+    @property
+    def module(self):
         return self.contents['__init__']
     @property
     def state(self):
@@ -245,6 +299,21 @@ class Module(CanContainImportsDocumentable):
             return name
         else:
             return name
+
+    @property
+    def module(self):
+        return self
+
+    @property
+    def description(self):
+        """A string describing this module to the user.
+
+        If this module's code was read from a file, this returns
+        its file path. In other cases, such as during unit testing,
+        the module's full name is returned.
+        """
+        filepath = getattr(self, 'filepath', None)
+        return self.fullName() if filepath is None else filepath
 
 
 class Class(CanContainImportsDocumentable):
@@ -343,7 +412,10 @@ class System(object):
 
         self.abbrevmapping = {}
         self.projectname = 'my project'
-        self.epytextproblems = [] # fullNames of objects that failed to epytext properly
+
+        self.docstring_syntax_errors = set()
+        """FullNames of objects for which the docstring failed to parse."""
+
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs = set()
@@ -458,7 +530,7 @@ class System(object):
                 mod.filepath[len(projBaseDir):])
 
     def addModule(self, modpath, modname, parentPackage=None):
-        mod = self.Module(self, modname, None, parentPackage)
+        mod = self.Module(self, modname, parentPackage)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
@@ -477,7 +549,7 @@ class System(object):
         else:
             parent_package = None
             module_name = module_full_name
-        module = self.Module(self, module_name, None, parent_package)
+        module = self.Module(self, module_name, parent_package)
         self.addObject(module)
         return module
 
@@ -490,24 +562,27 @@ class System(object):
         else:
             parent_package = None
             package_name = package_full_name
-        package = self.Package(self, package_name, None, parent_package)
+        package = self.Package(self, package_name, parent_package)
         self.addObject(package)
         return package
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
-            if isinstance(v, (types.BuiltinFunctionType, type(dict.keys))):
-                f = self.Function(self, k, v.__doc__, parent)
+            if isinstance(v, (types.BuiltinFunctionType,
+                              types.FunctionType)):
+                f = self.Function(self, k, parent)
                 f.parentMod = parentMod
+                f.docstring = v.__doc__
                 f.decorators = None
                 f.argspec = ((), None, None, ())
                 self.addObject(f)
             elif isinstance(v, type):
-                c = self.Class(self, k, v.__doc__, parent)
+                c = self.Class(self, k, parent)
                 c.bases = []
                 c.baseobjects = []
                 c.rawbases = []
                 c.parentMod = parentMod
+                c.docstring = v.__doc__
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
@@ -515,7 +590,6 @@ class System(object):
         module = self.ensureModule(module_full_name)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
-        print(py_mod)
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):

@@ -98,9 +98,9 @@ def test_generateContent():
     sut = sphinx.SphinxInventoryWriter(logger=object(),
                                        project_name='project_name')
     system = model.System()
-    root1 = model.Package(system, 'package1', 'docstring1')
-    root2 = model.Package(system, 'package2', 'docstring2')
-    child1 = model.Package(system, 'child1', 'docstring3', parent=root2)
+    root1 = model.Package(system, 'package1')
+    root2 = model.Package(system, 'package2')
+    child1 = model.Package(system, 'child1', parent=root2)
     system.addObject(child1)
     subjects = [root1, root2]
 
@@ -122,7 +122,7 @@ def test_generateLine_package():
                                        project_name='project_name')
 
     result = sut._generateLine(
-        model.Package('ignore-system', 'package1', 'ignore-docstring'))
+        model.Package('ignore-system', 'package1'))
 
     assert 'package1 py:module -1 package1.html -\n' == result
 
@@ -135,7 +135,7 @@ def test_generateLine_module():
                                        project_name='project_name')
 
     result = sut._generateLine(
-        model.Module('ignore-system', 'module1', 'ignore-docstring'))
+        model.Module('ignore-system', 'module1'))
 
     assert 'module1 py:module -1 module1.html -\n' == result
 
@@ -148,7 +148,7 @@ def test_generateLine_class():
                                        project_name='project_name')
 
     result = sut._generateLine(
-        model.Class('ignore-system', 'class1', 'ignore-docstring'))
+        model.Class('ignore-system', 'class1'))
 
     assert 'class1 py:class -1 class1.html -\n' == result
 
@@ -161,10 +161,10 @@ def test_generateLine_function():
     """
     sut = sphinx.SphinxInventoryWriter(logger=object(),
                                        project_name='project_name')
-    parent = model.Module('ignore-system', 'module1', 'docstring')
+    parent = model.Module('ignore-system', 'module1')
 
     result = sut._generateLine(
-        model.Function('ignore-system', 'func1', 'ignore-docstring', parent))
+        model.Function('ignore-system', 'func1', parent))
 
     assert 'module1.func1 py:function -1 module1.html#func1 -\n' == result
 
@@ -177,10 +177,10 @@ def test_generateLine_method():
     """
     sut = sphinx.SphinxInventoryWriter(logger=object(),
                                        project_name='project_name')
-    parent = model.Class('ignore-system', 'class1', 'docstring')
+    parent = model.Class('ignore-system', 'class1')
 
     result = sut._generateLine(
-        model.Function('ignore-system', 'meth1', 'ignore-docstring', parent))
+        model.Function('ignore-system', 'meth1', parent))
 
     assert 'class1.meth1 py:method -1 class1.html#meth1 -\n' == result
 
@@ -191,10 +191,10 @@ def test_generateLine_attribute():
     """
     sut = sphinx.SphinxInventoryWriter(logger=object(),
                                        project_name='project_name')
-    parent = model.Class('ignore-system', 'class1', 'docstring')
+    parent = model.Class('ignore-system', 'class1')
 
     result = sut._generateLine(
-        model.Attribute('ignore-system', 'attr1', 'ignore-docstring', parent))
+        model.Attribute('ignore-system', 'attr1', parent))
 
     assert 'class1.attr1 py:attribute -1 class1.html#attr1 -\n' == result
 
@@ -216,7 +216,7 @@ def test_generateLine_unknown():
         )
 
     result = sut._generateLine(
-        UnknownType('ignore-system', 'unknown1', 'ignore-docstring'))
+        UnknownType('ignore-system', 'unknown1'))
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
 

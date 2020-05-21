@@ -22,7 +22,7 @@ def fromText(text, modname='<test>', system=None,
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
-    mod = builder._push(_system.Module, modname, None, None)
+    mod = builder._push(_system.Module, modname, None)
     builder._pop(_system.Module)
     ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, mod)
@@ -363,6 +363,33 @@ def test_classdecorator_with_args():
     C = mod.contents['C']
     assert C.decorators == [(('cd', 'test.cd', cd), [('A', 'test.A', A)])], \
       C.decorators
+
+
+def test_methoddecorator(capsys):
+    mod = fromText('''
+    class C:
+        def method_undecorated():
+            pass
+
+        @staticmethod
+        def method_static():
+            pass
+
+        @classmethod
+        def method_class(cls):
+            pass
+
+        @staticmethod
+        @classmethod
+        def method_both():
+            pass
+    ''', modname='mod')
+    C = mod.contents['C']
+    assert C.contents['method_undecorated'].kind == 'Method'
+    assert C.contents['method_static'].kind == 'Static Method'
+    assert C.contents['method_class'].kind == 'Class Method'
+    captured = capsys.readouterr().out
+    assert captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
 
 
 def test_import_star():

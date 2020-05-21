@@ -7,12 +7,13 @@ from __future__ import print_function
 import astor
 
 from importlib import import_module
-import inspect
 import itertools
 import os
 import sys
 
 from pydoctor import model
+from pydoctor.epydoc.markup import ParseError
+from six import string_types
 from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
@@ -48,26 +49,12 @@ def get_parser(obj):
 def get_docstring(obj):
     for source in obj.docsources():
         doc = source.docstring
+        if doc:
+            return doc, source
         if doc is not None:
-            # Note: We approximate the line number: it is correct
-            #       if the docstring starts on the first line of the
-            #       class/function and does not contain explicit
-            #       newlines ('\n') or joined lines ('\' at end of line).
-            #       The AST (as of Python 3.7) does not contain sufficient
-            #       detail to match a position within the docstring to
-            #       an exact position in the source.
-            lineno = obj.linenumber + 1
-            # Leading blank lines are stripped by cleandoc(), so we must
-            # return the line number of the first non-blank line.
-            for ch in doc:
-                if ch == '\n':
-                    lineno += 1
-                elif not ch.isspace():
-                    return inspect.cleandoc(doc), source, lineno
-            else:
-                # Treat empty docstring as undocumented.
-                return None, source, None
-    return None, None, None
+            # Treat empty docstring as undocumented.
+            return None, source
+    return None, None
 
 
 def stdlib_doc_link_for_name(name):
@@ -126,11 +113,11 @@ class _EpydocLinker(DocstringLinker):
         if len(potential_targets) == 1:
             return potential_targets[0]
         elif len(potential_targets) > 1:
-            self.obj.system.msg(
-                "translate_identifier_xref", "%s:%s ambiguous ref to %s, could be %s" % (
-                    self.obj.fullName(), self.obj.linenumber, name,
-            ', '.join([ob.fullName() for ob in potential_targets])),
-                thresh=-1)
+            self.obj.report(
+                "ambiguous ref to %s, could be %s" % (
+                    name,
+                    ', '.join(ob.fullName() for ob in potential_targets)),
+                section='translate_identifier_xref')
         return None
 
     def look_for_intersphinx(self, name):
@@ -201,11 +188,9 @@ class _EpydocLinker(DocstringLinker):
         if target:
             return tags.a(tags.code(prettyID), href=target)
         if fullID != fullerID:
-            self.obj.system.msg(
-                "translate_identifier_xref", "%s:%s invalid ref to '%s' "
-                "resolved as '%s'" % (
-                    self.obj.fullName(), self.obj.linenumber, fullID, fullerID),
-                thresh=-1)
+            self.obj.report(
+                "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
+                section='translate_identifier_xref')
         return tags.code(prettyID)
 
 
@@ -433,29 +418,24 @@ class FieldHandler(object):
 
 
 def reportErrors(obj, errs):
-    for err in errs:
-        if isinstance(err, str):
-            linenumber = '??'
-            descr = err
-        else:
-            obj_linenum = getattr(obj, 'linenumber', None)
-            if obj_linenum is None:
-                linenumber = '??'
-            else:
-                linenumber = str(obj_linenum + err.linenum())
-            descr = err._descr
-        obj.system.msg(
-            'epydoc2stan2',
-            '%s:%s epytext error %r' % (obj.fullName(), linenumber, descr))
-    if errs and obj.fullName() not in obj.system.epytextproblems:
-        obj.system.epytextproblems.append(obj.fullName())
-        obj.system.msg('epydoc2stan',
-                       'epytext error in %s'%(obj,), thresh=1)
-        p = lambda m:obj.system.msg('epydoc2stan', m, thresh=2)
-        for i, l in enumerate(obj.docstring.splitlines()):
-            p("%4s"%(i+1)+' '+l)
+    if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
+        obj.system.docstring_syntax_errors.add(obj.fullName())
+
         for err in errs:
-            p(err)
+            lineno_offset = 0
+            if isinstance(err, string_types):
+                descr = err
+            elif isinstance(err, ParseError):
+                descr = err.descr()
+                lineno_offset = err.linenum() - 1
+            else:
+                raise TypeError(type(err).__name__)
+
+            obj.report(
+                'bad docstring: ' + descr,
+                lineno_offset=lineno_offset,
+                section='docstring'
+                )
 
 
 def parse_docstring(obj, doc, source):
@@ -480,7 +460,7 @@ def parse_docstring(obj, doc, source):
 def format_docstring(obj):
     """Generate an HTML representation of a docstring"""
 
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
     pdoc = getattr(obj, 'parsed_docstring', None)
@@ -520,7 +500,7 @@ def format_docstring(obj):
 def format_summary(obj):
     """Generate an shortened HTML representation of a docstring."""
 
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
     if doc is None:
         # Attributes can be documented as fields in their parent's docstring.
         if isinstance(obj, model.Attribute):
@@ -617,7 +597,7 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj):
-    doc, source, lineno = get_docstring(obj)
+    doc, source = get_docstring(obj)
     if doc is None:
         return
 
@@ -634,11 +614,11 @@ def extract_fields(obj):
                 continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
-                attrobj = obj.system.Attribute(obj.system, arg, None, obj)
+                attrobj = obj.system.Attribute(obj.system, arg, obj)
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(lineno + field.lineno)
+            attrobj.setLineNumber(source.docstring_lineno + field.lineno)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:

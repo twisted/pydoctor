@@ -113,22 +113,31 @@ def test_multiply_inheriting_interfaces():
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['Both'].allImplementedInterfaces) == 2
 
-def test_attribute():
+def test_attribute(capsys):
     src = '''
     import zope.interface as zi
     class C(zi.Interface):
         attr = zi.Attribute("documented attribute")
+        bad_attr = zi.Attribute(0)
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    assert len(mod.contents['C'].contents) == 1
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
     assert attr.kind == 'Attribute'
     assert attr.name == 'attr'
     assert attr.docstring == "documented attribute"
+    bad_attr = mod.contents['C'].contents['bad_attr']
+    assert bad_attr.kind == 'Attribute'
+    assert bad_attr.name == 'bad_attr'
+    assert bad_attr.docstring is None
+    captured = capsys.readouterr().out
+    assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
 def test_interfaceclass():
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
+    assert mod.contents['MyInterface'].isinterface
+    assert mod.contents['MyInterface'].docstring == "This is my interface."
     assert mod.contents['AnInterface'].isinterface
 
 def test_warnerproofing():
@@ -141,32 +150,26 @@ def test_warnerproofing():
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert mod.contents['IMyInterface'].isinterface
 
-def test_zopeschema():
+def test_zopeschema(capsys):
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
         text = schema.TextLine(description="fun in a bun")
+        undoc = schema.Bool()
+        bad = schema.ASCII(description=False)
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert text.kind == "TextLine"
-
-def test_with_underscore():
-    src = '''
-    from zope import schema, interface
-    class IMyInterface(interface.Interface):
-        attribute = interface.Attribute(_("fun in a bun"))
-        text = schema.TextLine(description=_("fun in a bap"))
-    '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    text = mod.contents['IMyInterface'].contents['attribute']
-    assert text.docstring == 'fun in a bun'
-    assert text.kind == "Attribute"
-
-    text = mod.contents['IMyInterface'].contents['text']
-    assert text.docstring == 'fun in a bap'
-    assert text.kind == "TextLine"
+    undoc = mod.contents['IMyInterface'].contents['undoc']
+    assert undoc.docstring is None
+    assert undoc.kind == "Bool"
+    bad = mod.contents['IMyInterface'].contents['bad']
+    assert bad.docstring is None
+    assert bad.kind == "ASCII"
+    captured = capsys.readouterr().out
+    assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
 def test_aliasing_in_class():
     src = '''
@@ -322,3 +325,42 @@ def test_implementer_with_none():
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
+
+def test_implementer_nonclass(capsys):
+    """
+    Check rejection of non-class arguments passed to @implementer.
+    """
+    src = '''
+    from zope.interface import Interface, implementer
+    var = 'not a class'
+    @implementer(var)
+    class Implementation(object):
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == []
+    captured = capsys.readouterr().out
+    assert captured == "mod:4: probable interface mod.var not detected as a class\n"
+
+def test_implementer_plainclass(capsys):
+    """
+    Check patching of non-interface classes passed to @implementer.
+    """
+    src = '''
+    from zope.interface import Interface, implementer
+    class C(object):
+        pass
+    @implementer(C)
+    class Implementation(object):
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    C = mod.contents['C']
+    impl = mod.contents['Implementation']
+    assert C.isinterface
+    assert C.kind == "Interface"
+    assert C.implementedby_directly == [impl]
+    assert impl.implements_directly == ['mod.C']
+    captured = capsys.readouterr().out
+    assert captured == "mod:5: probable interface mod.C not marked as such\n"
