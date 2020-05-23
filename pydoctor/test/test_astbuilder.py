@@ -918,3 +918,21 @@ def test_detupling_assignment(systemcls):
     a, b, c = range(3)
     ''', modname='test', systemcls=systemcls)
     assert sorted(mod.contents.keys()) == ['a', 'b', 'c']
+
+@systemcls_param
+def test_ignore_function_contents(systemcls):
+    mod = fromText('''
+    def outer():
+        """Outer function."""
+
+        class Clazz:
+            """Inner class."""
+
+        def func():
+            """Inner function."""
+
+        var = 1
+        """Local variable."""
+    ''', systemcls=systemcls)
+    outer = mod.contents['outer']
+    assert not outer.contents
