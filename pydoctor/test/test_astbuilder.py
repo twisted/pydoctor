@@ -7,10 +7,16 @@ import astor
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc2stan import get_parsed_type
-
-
+from pydoctor.twistedmodel import TwistedSystem
+from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import py2only, py3only
+import pytest
+
+
+systemcls_param = pytest.mark.parametrize(
+    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem)
+    )
 
 def fromText(text, modname='<test>', system=None,
              buildercls=None,
@@ -49,7 +55,8 @@ def type2str(type_expr):
     else:
         return astor.to_source(type_expr).strip()
 
-def test_no_docstring():
+@systemcls_param
+def test_no_docstring(systemcls):
     # Inheritance of the docstring of an overridden method depends on
     # methods with no docstring having None in their 'docstring' field.
     mod = fromText('''
@@ -58,52 +65,56 @@ def test_no_docstring():
     class C:
         def m(self):
             pass
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     f = mod.contents['f']
     assert f.docstring is None
     m = mod.contents['C'].contents['m']
     assert m.docstring is None
 
-def test_simple():
+@systemcls_param
+def test_simple(systemcls):
     src = '''
     """ MOD DOC """
     def f():
         """This is a docstring."""
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert len(mod.contents) == 1
     func, = mod.contents.values()
     assert func.fullName() == '<test>.f'
     assert func.docstring == """This is a docstring."""
 
 
-def test_function_argspec():
+@systemcls_param
+def test_function_argspec(systemcls):
     src = textwrap.dedent('''
     def f(a, b=3, *c, **kw):
         pass
     ''')
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
 
 
 @py2only
-def test_function_argspec_with_tuple():
+@systemcls_param
+def test_function_argspec_with_tuple(systemcls):
     src = textwrap.dedent('''
     def f((a,z), b=3, *c, **kw):
         pass
     ''')
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert docfunc.argspec ==  ([['a', 'z'], 'b'], 'c', 'kw', ('3',))
 
-def test_class():
+@systemcls_param
+def test_class(systemcls):
     src = '''
     class C:
         def f():
             """This is a docstring."""
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert len(mod.contents) == 1
     cls, = mod.contents.values()
     assert cls.fullName() == '<test>.C'
@@ -114,7 +125,8 @@ def test_class():
     assert func.docstring == """This is a docstring."""
 
 
-def test_class_with_base():
+@systemcls_param
+def test_class_with_base(systemcls):
     src = '''
     class C:
         def f():
@@ -123,7 +135,7 @@ def test_class_with_base():
         def f():
             """This is a docstring."""
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert len(mod.contents) == 2
     clsC, clsD = mod.contents.values()
     assert clsC.fullName() == '<test>.C'
@@ -138,18 +150,20 @@ def test_class_with_base():
     base, = clsD.bases
     assert base == '<test>.C'
 
-def test_follow_renaming():
+@systemcls_param
+def test_follow_renaming(systemcls):
     src = '''
     class C: pass
     D = C
     class E(D): pass
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     E = mod.contents['E']
     assert E.baseobjects == [C], E.baseobjects
 
-def test_class_with_base_from_module():
+@systemcls_param
+def test_class_with_base_from_module(systemcls):
     src = '''
     from X.Y import A
     from Z import B as C
@@ -157,7 +171,7 @@ def test_class_with_base_from_module():
         def f():
             """This is a docstring."""
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert len(mod.contents) == 1
     clsD, = mod.contents.values()
 
@@ -177,7 +191,7 @@ def test_class_with_base_from_module():
         def f():
             """This is a docstring."""
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert len(mod.contents) == 1
     clsD, = mod.contents.values()
 
@@ -191,7 +205,8 @@ def test_class_with_base_from_module():
     assert base2 == 'X.B.C', base2
     assert base3 == 'Y.Z.C', base3
 
-def test_aliasing():
+@systemcls_param
+def test_aliasing(systemcls):
     def addsrc(system):
         src_a = '''
         class A:
@@ -209,11 +224,12 @@ def test_aliasing():
         fromText(src_b, 'b', system)
         fromText(src_c, 'c', system)
 
-    system = model.System()
+    system = systemcls()
     addsrc(system)
     assert system.allobjects['c.C'].bases == ['a.A']
 
-def test_more_aliasing():
+@systemcls_param
+def test_more_aliasing(systemcls):
     def addsrc(system):
         src_a = '''
         class A:
@@ -235,12 +251,13 @@ def test_more_aliasing():
         fromText(src_c, 'c', system)
         fromText(src_d, 'd', system)
 
-    system = model.System()
+    system = systemcls()
     addsrc(system)
     assert system.allobjects['d.D'].bases == ['a.A']
 
-def test_aliasing_recursion():
-    system = model.System()
+@systemcls_param
+def test_aliasing_recursion(systemcls):
+    system = systemcls()
     src = '''
     class C:
         pass
@@ -251,7 +268,8 @@ def test_aliasing_recursion():
     mod = fromText(src, 'mod', system)
     assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
-def test_documented_no_alias():
+@systemcls_param
+def test_documented_no_alias(systemcls):
     """A variable that is documented should not be considered an alias."""
     # TODO: We should also verify this for inline docstrings, but the code
     #       currently doesn't support that. We should perhaps store aliases
@@ -265,7 +283,7 @@ def test_documented_no_alias():
         @ivar clientFactory: Callable that returns a client.
         """
         clientFactory = SimpleClient
-    ''')
+    ''', systemcls=systemcls)
     P = mod.contents['Processor']
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
@@ -273,28 +291,31 @@ def test_documented_no_alias():
     assert f.kind == 'Instance Variable'
     assert f.linenumber
 
-def test_subclasses():
+@systemcls_param
+def test_subclasses(systemcls):
     src = '''
     class A:
         pass
     class B(A):
         pass
     '''
-    system = fromText(src).system
+    system = fromText(src, systemcls=systemcls).system
     assert (system.allobjects['<test>.A'].subclasses ==
             [system.allobjects['<test>.B']])
 
-def test_inherit_names():
+@systemcls_param
+def test_inherit_names(systemcls):
     src = '''
     class A:
         pass
     class A(A):
         pass
     '''
-    mod = fromText(src)
+    mod = fromText(src, systemcls=systemcls)
     assert [b.name for b in mod.contents['A'].allbases()] == ['A 0']
 
-def test_nested_class_inheriting_from_same_module():
+@systemcls_param
+def test_nested_class_inheriting_from_same_module(systemcls):
     src = '''
     class A:
         pass
@@ -302,62 +323,67 @@ def test_nested_class_inheriting_from_same_module():
         class C(A):
             pass
     '''
-    fromText(src)
+    fromText(src, systemcls=systemcls)
 
-def test_all_recognition():
+@systemcls_param
+def test_all_recognition(systemcls):
     mod = fromText('''
     def f():
         pass
     __all__ = ['f']
-    ''')
+    ''', systemcls=systemcls)
     astbuilder.findAll(mod.ast, mod)
     assert mod.all == ['f']
 
-def test_all_in_class_non_recognition():
+@systemcls_param
+def test_all_in_class_non_recognition(systemcls):
     mod = fromText('''
     class C:
         __all__ = ['f']
-    ''')
+    ''', systemcls=systemcls)
     astbuilder.findAll(mod.ast, mod)
     assert mod.all is None
 
-def test_classmethod():
+@systemcls_param
+def test_classmethod(systemcls):
     mod = fromText('''
     class C:
         @classmethod
         def f(klass):
             pass
-    ''')
+    ''', systemcls=systemcls)
     assert mod.contents['C'].contents['f'].kind == 'Class Method'
     mod = fromText('''
     class C:
         def f(klass):
             pass
         f = classmethod(f)
-    ''')
+    ''', systemcls=systemcls)
     assert mod.contents['C'].contents['f'].kind == 'Class Method'
 
-def test_classdecorator():
+@systemcls_param
+def test_classdecorator(systemcls):
     mod = fromText('''
     def cd(cls):
         pass
     @cd
     class C:
         pass
-    ''', modname='mod')
+    ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
     assert C.decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
       C.decorators
 
 
-def test_classdecorator_with_args():
+@systemcls_param
+def test_classdecorator_with_args(systemcls):
     mod = fromText('''
     def cd(): pass
     class A: pass
     @cd(A)
     class C:
         pass
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     cd = mod.contents['cd']
     A = mod.contents['A']
     C = mod.contents['C']
@@ -365,7 +391,8 @@ def test_classdecorator_with_args():
       C.decorators
 
 
-def test_methoddecorator(capsys):
+@systemcls_param
+def test_methoddecorator(systemcls, capsys):
     mod = fromText('''
     class C:
         def method_undecorated():
@@ -383,7 +410,7 @@ def test_methoddecorator(capsys):
         @classmethod
         def method_both():
             pass
-    ''', modname='mod')
+    ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
     assert C.contents['method_undecorated'].kind == 'Method'
     assert C.contents['method_static'].kind == 'Static Method'
@@ -392,17 +419,19 @@ def test_methoddecorator(capsys):
     assert captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
 
 
-def test_import_star():
+@systemcls_param
+def test_import_star(systemcls):
     mod_a = fromText('''
     def f(): pass
-    ''', modname='a')
+    ''', modname='a', systemcls=systemcls)
     mod_b = fromText('''
     from a import *
     ''', modname='b', system=mod_a.system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
 
 
-def test_inline_docstring_modulevar():
+@systemcls_param
+def test_inline_docstring_modulevar(systemcls):
     mod = fromText('''
     """regular module docstring
 
@@ -419,7 +448,7 @@ def test_inline_docstring_modulevar():
     def f():
         pass
     """not a docstring"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     assert sorted(mod.contents.keys()) == ['a', 'b', 'f']
     a = mod.contents['a']
     assert a.docstring == """inline doc for a"""
@@ -428,7 +457,8 @@ def test_inline_docstring_modulevar():
     f = mod.contents['f']
     assert not f.docstring
 
-def test_inline_docstring_classvar():
+@systemcls_param
+def test_inline_docstring_classvar(systemcls):
     mod = fromText('''
     class C:
         """regular class docstring"""
@@ -447,7 +477,7 @@ def test_inline_docstring_classvar():
 
         None
         """not a docstring"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == ['_b', 'a', 'f']
     f = C.contents['f']
@@ -460,7 +490,8 @@ def test_inline_docstring_classvar():
     assert b.privacyClass is model.PrivacyClass.PRIVATE
 
 @py3only
-def test_inline_docstring_annotated_classvar():
+@systemcls_param
+def test_inline_docstring_annotated_classvar(systemcls):
     mod = fromText('''
     class C:
         """regular class docstring"""
@@ -470,7 +501,7 @@ def test_inline_docstring_annotated_classvar():
 
         _b: int = 4
         """inline doc for _b"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == ['_b', 'a']
     a = C.contents['a']
@@ -480,7 +511,8 @@ def test_inline_docstring_annotated_classvar():
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
 
-def test_inline_docstring_instancevar():
+@systemcls_param
+def test_inline_docstring_instancevar(systemcls):
     mod = fromText('''
     class C:
         """regular class docstring"""
@@ -513,7 +545,7 @@ def test_inline_docstring_instancevar():
 
         def set_f(self, value):
             self.f = value
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
         '__init__', '_b', 'a', 'c', 'd', 'e', 'f', 'set_f'
@@ -542,7 +574,8 @@ def test_inline_docstring_instancevar():
     assert f.kind == 'Instance Variable'
 
 @py3only
-def test_inline_docstring_annotated_instancevar():
+@systemcls_param
+def test_inline_docstring_annotated_instancevar(systemcls):
     mod = fromText('''
     class C:
         """regular class docstring"""
@@ -555,7 +588,7 @@ def test_inline_docstring_annotated_instancevar():
 
             self.b: int = 2
             """inline doc for b"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == ['__init__', 'a', 'b']
     a = C.contents['a']
@@ -563,7 +596,8 @@ def test_inline_docstring_annotated_instancevar():
     b = C.contents['b']
     assert b.docstring == """inline doc for b"""
 
-def test_docstring_assignment(capsys):
+@systemcls_param
+def test_docstring_assignment(systemcls, capsys):
     mod = fromText('''
     def fun():
         pass
@@ -587,7 +621,7 @@ def test_docstring_assignment(capsys):
     real.__doc__ = "Second breakfast"
     fun.__doc__ = codecs.encode('Pnrfne fnynq', 'rot13')
     CLS.method1.__doc__ = 4
-    ''')
+    ''', systemcls=systemcls)
     fun = mod.contents['fun']
     assert fun.kind == 'Function'
     assert fun.docstring == """Happy Happy Joy Joy"""
@@ -614,7 +648,8 @@ def test_docstring_assignment(capsys):
         "<unknown>:23: Ignoring value assigned to __doc__: not a string"
     assert len(lines) == 5 and lines[-1] == ''
 
-def test_variable_scopes():
+@systemcls_param
+def test_variable_scopes(systemcls):
     mod = fromText('''
     l = 1
     """module-level l"""
@@ -640,7 +675,7 @@ def test_variable_scopes():
             """inline doc for a"""
             self.l = 2
             """instance l"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     l1 = mod.contents['l']
     assert l1.kind == 'Variable'
     assert l1.docstring == """module-level l"""
@@ -662,7 +697,8 @@ def test_variable_scopes():
     assert m2.kind == 'Class Variable'
     assert m2.docstring == """class-level m"""
 
-def test_variable_types():
+@systemcls_param
+def test_variable_types(systemcls):
     mod = fromText('''
     class C:
         """class docstring
@@ -704,7 +740,7 @@ def test_variable_types():
 
             self.g = g = "G"
             """seventh"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == [
         '__init__', 'a', 'b', 'c', 'd', 'e', 'f', 'g'
@@ -739,7 +775,8 @@ def test_variable_types():
     assert g.kind == 'Instance Variable'
 
 @py3only
-def test_annotated_variables():
+@systemcls_param
+def test_annotated_variables(systemcls):
     mod = fromText('''
     class C:
         """class docstring
@@ -776,7 +813,7 @@ def test_annotated_variables():
 
     m: bytes = b"M"
     """module-level"""
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
@@ -806,7 +843,8 @@ def test_annotated_variables():
     assert m.docstring == """module-level"""
     assert to_html(get_parsed_type(m)) == '<code>bytes</code>'
 
-def test_inferred_variable_types():
+@systemcls_param
+def test_inferred_variable_types(systemcls):
     mod = fromText('''
     class C:
         a = "A"
@@ -826,7 +864,7 @@ def test_inferred_variable_types():
             self.s = ['S']
             self.t = t = 'T'
     m = b'octets'
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert type2str(C.contents['a'].annotation) == 'str'
     assert type2str(C.contents['b'].annotation) == 'int'
@@ -857,7 +895,8 @@ def test_inferred_variable_types():
     # so there is no way to tell them apart from ASCII strings.
     assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
 
-def test_type_from_attrib():
+@systemcls_param
+def test_type_from_attrib(systemcls):
     mod = fromText('''
     import attr
     from attr import attrib
@@ -866,15 +905,16 @@ def test_type_from_attrib():
         b = attrib(type=int)
         c = attr.ib(type='C')
         d = attr.ib(default=True)
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert type2str(C.contents['a'].annotation) == 'int'
     assert type2str(C.contents['b'].annotation) == 'int'
     assert type2str(C.contents['c'].annotation) == 'C'
     assert type2str(C.contents['d'].annotation) == 'bool'
 
-def test_detupling_assignment():
+@systemcls_param
+def test_detupling_assignment(systemcls):
     mod = fromText('''
     a, b, c = range(3)
-    ''', modname='test')
+    ''', modname='test', systemcls=systemcls)
     assert sorted(mod.contents.keys()) == ['a', 'b', 'c']
