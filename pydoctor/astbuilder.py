@@ -93,7 +93,11 @@ class ModuleVistor(ast.NodeVisitor):
                 baseobj = None
             baseobjects.append(baseobj)
 
-        cls = self.builder.pushClass(node.name, node.lineno)
+        lineno = node.lineno
+        if node.decorator_list:
+            lineno = node.decorator_list[0].lineno
+
+        cls = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
         cls.bases = bases
@@ -393,7 +397,11 @@ class ModuleVistor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        func = self.builder.pushFunction(node.name, node.lineno)
+        lineno = node.lineno
+        if node.decorator_list:
+            lineno = node.decorator_list[0].lineno
+
+        func = self.builder.pushFunction(node.name, lineno)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             func.setDocstring(node.body[0].value)
         func.decorators = node.decorator_list
