@@ -222,29 +222,8 @@ class ModuleVistor(ast.NodeVisitor):
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
-            fromname, asname = al.name, al.asname
-            fullname = self.builder.expandModname(fromname)
-
-            mod = self.system.getProcessedModule(fullname)
-            if mod is not None:
-                assert mod.state in [model.ProcessingState.PROCESSING,
-                                     model.ProcessingState.PROCESSED]
-                expandName = mod.expandName
-            else:
-                expandName = lambda name: name
-            if asname is None:
-                asname = fromname.split('.', 1)[0]
-                # aaaaargh! python sucks.
-                parts = fullname.split('.')
-                for i, part in enumerate(fullname.split('.')[::-1]):
-                    if part == asname:
-                        fullname = '.'.join(parts[:len(parts)-i])
-                        _localNameToFullName[asname] = expandName(fullname)
-                        break
-                else:
-                    fullname = '.'.join(parts)
-                    _localNameToFullName[asname] = '.'.join(parts)
-            else:
+            fullname, asname = al.name, al.asname
+            if asname is not None:
                 _localNameToFullName[asname] = fullname
 
 
