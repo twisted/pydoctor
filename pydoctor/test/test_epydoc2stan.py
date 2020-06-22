@@ -114,7 +114,7 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     assert 'http://tm.tld/some.html' == result
 
 
-def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id():
     """
     Returns the link from Sphinx inventory based on a cross reference
     ID specified in absolute dotted path and with a custom pretty text for the
@@ -127,16 +127,12 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_absolute_id():
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
-    result = sut.translate_identifier_xref(
-        'base.module.other', 'base.module.pretty')
+    url = sut.resolve_identifier_xref('base.module.other')
 
-    expected = (
-        '<a href="http://tm.tld/some.html"><code>base.module.pretty</code></a>'
-        )
-    assert expected == flatten(result)
+    assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id():
     """
     Return the link from inventory using short names, by resolving them based
     on the imports done in the module.
@@ -155,16 +151,12 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_relative_id():
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    result = sut.translate_identifier_xref(
-        'ext_module', 'Pretty Text')
+    url = sut.resolve_identifier_xref('ext_module')
 
-    expected = (
-        '<a href="http://tm.tld/some.html"><code>Pretty Text</code></a>'
-        )
-    assert expected == flatten(result)
+    assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found(capsys):
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys):
     """
     A message is sent to stdout when no link could be found for the reference,
     while returning the reference name without an A link tag.
@@ -182,9 +174,8 @@ def test_EpydocLinker_translate_identifier_xref_intersphinx_link_not_found(capsy
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module} markup.
-    result = sut.translate_identifier_xref(
-        fullID='ext_module', prettyID='ext_module')
-    assert '<code>ext_module</code>' == flatten(result)
+    url = sut.resolve_identifier_xref('ext_module')
+    assert None is url
 
     captured = capsys.readouterr().out
     expected = (

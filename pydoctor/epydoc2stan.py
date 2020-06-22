@@ -88,18 +88,17 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj):
         self.obj = obj
 
-    def _objLink(self, obj, prettyID):
+    def _objLink(self, obj):
         if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
                 p = p.parent
-            linktext = link(p) + '#' + quote(obj.name)
+            return link(p) + '#' + quote(obj.name)
         elif obj.documentation_location is model.DocLocation.OWN_PAGE:
-            linktext = link(obj)
+            return link(obj)
         else:
             raise AssertionError(
                 "Unknown documentation_location: %s" % obj.documentation_location)
-        return tags.a(tags.code(prettyID), href=linktext)
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -117,7 +116,7 @@ class _EpydocLinker(DocstringLinker):
                 "ambiguous ref to %s, could be %s" % (
                     name,
                     ', '.join(ob.fullName() for ob in potential_targets)),
-                section='translate_identifier_xref')
+                section='resolve_identifier_xref')
         return None
 
     def look_for_intersphinx(self, name):
@@ -128,7 +127,7 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def translate_identifier_xref(self, fullID, prettyID):
+    def resolve_identifier_xref(self, fullID):
         """Figure out what ``L{fullID}`` should link to.
 
         There is a lot of DWIM here.  The order goes:
@@ -158,26 +157,26 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = src.resolveName(fullID)
             if target is not None:
-                return self._objLink(target, prettyID)
+                return self._objLink(target)
             src = src.parent
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
-            return self._objLink(target, prettyID)
+            return self._objLink(target)
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
-            return tags.a(tags.code(prettyID), href=linktext)
+            return linktext
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
             if target is not None:
-                return self._objLink(target, prettyID)
+                return self._objLink(target)
             src = src.parent
         target = self.look_for_name(fullID, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
             self.obj.system.objectsOfType(model.Package)))
         if target is not None:
-            return self._objLink(target, prettyID)
+            return self._objLink(target)
 
         target = self.look_for_intersphinx(fullerID)
         if not target:
@@ -186,12 +185,12 @@ class _EpydocLinker(DocstringLinker):
             # try our luck with fullID.
             target = self.look_for_intersphinx(fullID)
         if target:
-            return tags.a(tags.code(prettyID), href=target)
+            return target
         if fullID != fullerID:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
-                section='translate_identifier_xref')
-        return tags.code(prettyID)
+                section='resolve_identifier_xref')
+        return None
 
 
 class FieldDesc(object):

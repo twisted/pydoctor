@@ -1335,7 +1335,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'uri':
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
-            return linker.translate_identifier_xref(variables[1], variables[0])
+            label = tags.code(variables[0])
+            url = linker.resolve_identifier_xref(variables[1])
+            return label if url is None else tags.a(label, href=url)
         elif tree.tag == 'target':
             value, = variables
             return value

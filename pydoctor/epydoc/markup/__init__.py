@@ -24,8 +24,8 @@ The C{ParsedDocstring} output generation method
 (L{to_stan()<ParsedDocstring.to_stan>}) uses a
 L{DocstringLinker} to link the docstring output with the rest of
 the documentation that epydoc generates.  C{DocstringLinker}s are
-responsible for translating identifier crossreferences
-(L{translate_identifier_xref() <DocstringLinker.translate_identifier_xref>}).
+responsible for resolving identifier crossreferences
+(L{resolve_identifier_xref() <DocstringLinker.resolve_identifier_xref>}).
 
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
@@ -183,29 +183,21 @@ class Field:
 ##################################################
 class DocstringLinker:
     """
-    A translator for crossreference links into and out of a
-    C{ParsedDocstring}.  C{DocstringLinker} is used by
-    C{ParsedDocstring} to convert these crossreference links into
-    appropriate output formats.  For example,
-    C{ParsedDocstring.to_stan} expects a C{DocstringLinker} that
-    converts crossreference links to HTML.
+    A resolver for crossreference links out of a C{ParsedDocstring}.
+    C{DocstringLinker} is used by C{ParsedDocstring} to look up the
+    target URL for crossreference links.
     """
 
-    def translate_identifier_xref(self, identifier, label=None):
+    def resolve_identifier_xref(self, identifier):
         """
-        Translate a crossreference link to a Python identifier to the
-        appropriate output format.  The output will typically include
-        a reference or pointer to the crossreference target.
+        Resolve a crossreference link to a Python identifier.
 
         @type identifier: C{string}
         @param identifier: The name of the Python identifier that
             should be linked to.
-        @type label: C{string} or C{None}
-        @param label: The label that should be used for the identifier,
-            if it's different from the name of the identifier.  This
-            should be expressed in the target markup language.
-        @rtype: C{string}
-        @return: The translated crossreference link.
+        @rtype: C{string} or C{None}
+        @return: The URL of the target, or None if the identifier
+            could not be resolved.
         """
         raise NotImplementedError()
 
