@@ -17,7 +17,6 @@ def processPackage(packname, systemcls=model.System):
 def test_relative_import():
     system = processPackage("relativeimporttest")
     cls = system.allobjects['relativeimporttest.mod1.C']
-    assert len(system.warnings['relative import']) > 0
     assert cls.bases == ['relativeimporttest.mod2.B']
 
 def test_package_docstring():

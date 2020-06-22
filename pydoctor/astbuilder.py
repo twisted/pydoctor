@@ -655,7 +655,6 @@ class ASTBuilder(object):
         package = self.current.parentMod.parent
         while package is not None:
             if prefix in package.contents:
-                self.warning("relative import", modname)
                 return package.contents[prefix].fullName() + suffix
             package = package.parent
         return modname
