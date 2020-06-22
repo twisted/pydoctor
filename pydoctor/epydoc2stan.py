@@ -128,50 +128,43 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def resolve_identifier_xref(self, fullID):
-        """Figure out what ``L{fullID}`` should link to.
+        # There is a lot of DWIM here.
 
-        There is a lot of DWIM here.  The order goes:
-
-          1. Check if fullID refers to an object by Python name resolution in
-             our context.
-
-          2. Walk up the object tree and see if fullID refers to an object by
-             Python name resolution in each context.
-
-          3. Check if fullID is the fullName of an object.
-
-          4. Check to see if fullID names a builtin or standard library
-             module.
-
-          4. Walk up the object tree again and see if fullID refers to an
-             object in an "uncle" object.  (So if p.m1 has a class C, the
-             docstring for p.m2 can say L{C} to refer to the class in m1).  If
-             at any level fullID refers to more than one object, complain.
-
-          5. Examine every module and package in the system and see if fullID
-             names an object in each one.  Again, if more than one object is
-             found, complain.
-
-        """
+        # Check if fullID refers to an object by Python name resolution
+        # in our context. Walk up the object tree and see if fullID refers
+        # to an object by Python name resolution in each context.
         src = self.obj
         while src is not None:
             target = src.resolveName(fullID)
             if target is not None:
                 return self._objLink(target)
             src = src.parent
+
+        # Check if fullID is the fullName of an object.
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
             return self._objLink(target)
+
+        # Check to see if fullID names a builtin or standard library module.
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
             return linktext
+
+        # Walk up the object tree again and see if fullID refers to an
+        # object in an "uncle" object.  (So if p.m1 has a class C, the
+        # docstring for p.m2 can say L{C} to refer to the class in m1).
+        # If at any level fullID refers to more than one object, complain.
         src = self.obj
         while src is not None:
             target = self.look_for_name(fullID, src.contents.values())
             if target is not None:
                 return self._objLink(target)
             src = src.parent
+
+        # Examine every module and package in the system and see if fullID
+        # names an object in each one.  Again, if more than one object is
+        # found, complain.
         target = self.look_for_name(fullID, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
             self.obj.system.objectsOfType(model.Package)))
