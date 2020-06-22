@@ -150,9 +150,22 @@ class ModuleVistor(ast.NodeVisitor):
                                  str(self.builder.current))
             return
 
-        if node.module is None:
+        modname = node.module
+        if modname is None:
             return
-        modname = self.builder.expandModname(node.module)
+
+        if node.level:
+            # Relative import.
+            parentMod = self.builder.current.parentMod
+            for _ in range(node.level):
+                if parentMod is None:
+                    self.builder.warning("relative import level too high",
+                                         str(node.level))
+                    return
+                parentMod = parentMod.parent
+            if parentMod is not None:
+                modname = parentMod.fullName() + '.' + modname
+
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
             assert mod.state in [model.ProcessingState.PROCESSING,
@@ -624,19 +637,6 @@ class ASTBuilder(object):
         findAll(ast, mod)
 
         self.ModuleVistor(self, mod).visit(ast)
-
-    def expandModname(self, modname):
-        if '.' in modname:
-            prefix, suffix = modname.split('.', 1)
-            suffix = '.' + suffix
-        else:
-            prefix, suffix = modname, ''
-        package = self.current.parentMod.parent
-        while package is not None:
-            if prefix in package.contents:
-                return package.contents[prefix].fullName() + suffix
-            package = package.parent
-        return modname
 
     def parseFile(self, filePath):
         if filePath in self.ast_cache:

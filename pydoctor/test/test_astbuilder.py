@@ -164,6 +164,15 @@ def test_follow_renaming(systemcls):
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
+def test_relative_import_past_root(systemcls, capsys):
+    src = '''
+    from ..X import A
+    '''
+    fromText(src, modname='mod')
+    captured = capsys.readouterr().out
+    assert "relative import level too high" in captured
+
+@systemcls_param
 def test_class_with_base_from_module(systemcls):
     src = '''
     from X.Y import A
