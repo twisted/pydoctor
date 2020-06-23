@@ -312,6 +312,7 @@ def test_all_recognition():
     ''')
     astbuilder.findAll(mod.ast, mod)
     assert mod.all == ['f']
+    assert '__all__' not in mod.contents
 
 def test_all_in_class_non_recognition():
     mod = fromText('''
