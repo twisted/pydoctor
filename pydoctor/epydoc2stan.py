@@ -199,7 +199,11 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return self._objLink(target)
 
-        if fullID != fullerID:
+        if fullID == fullerID:
+            self.obj.report(
+                "invalid ref to '%s' not resolved" % (fullID,),
+                section='resolve_identifier_xref')
+        else:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
                 section='resolve_identifier_xref')
