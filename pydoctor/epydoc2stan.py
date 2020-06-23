@@ -26,7 +26,20 @@ except ImportError:
     exceptions = builtins
 
 
-STDLIB_DIR = os.path.dirname(os.__file__)
+def _find_stdlib_dir():
+    """Find the standard library location for the currently running
+    Python interpreter.
+    """
+
+    # When running in a virtualenv, when some (but not all) modules
+    # may be symlinked. We want the actual installation location of
+    # the standard library, not the location of the virtualenv.
+    os_mod_path = os.__file__
+    if os_mod_path.endswith('.pyc') or os_mod_path.endswith('.pyo'):
+        os_mod_path = os_mod_path[:-1]
+    return os.path.dirname(os.path.realpath(os_mod_path))
+
+STDLIB_DIR = _find_stdlib_dir()
 STDLIB_URL = 'http://docs.python.org/library/'
 
 
