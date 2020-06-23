@@ -40,7 +40,7 @@ def _find_stdlib_dir():
     return os.path.dirname(os.path.realpath(os_mod_path))
 
 STDLIB_DIR = _find_stdlib_dir()
-STDLIB_URL = 'http://docs.python.org/library/'
+STDLIB_URL = 'https://docs.python.org/3/library/'
 
 
 def link(o):
