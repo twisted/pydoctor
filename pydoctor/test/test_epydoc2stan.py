@@ -183,3 +183,20 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys)
         "resolved as 'ext_package.ext_module'\n"
         )
     assert expected == captured
+
+
+def test_EpydocLinker_resolve_identifier_xref_order(capsys):
+    """
+    Check that the best match is picked when there are multiple candidates.
+    """
+
+    mod = fromText('''
+    class C:
+        socket = None
+    ''')
+    linker = epydoc2stan._EpydocLinker(mod)
+
+    url = linker.resolve_identifier_xref('socket.socket')
+
+    assert epydoc2stan.STDLIB_URL + 'socket.html#socket.socket' == url
+    assert not capsys.readouterr().out

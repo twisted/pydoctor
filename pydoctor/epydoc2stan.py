@@ -141,17 +141,9 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def resolve_identifier_xref(self, fullID):
-        # There is a lot of DWIM here.
 
-        # Check if fullID refers to an object by Python name resolution
-        # in our context. Walk up the object tree and see if fullID refers
-        # to an object by Python name resolution in each context.
-        src = self.obj
-        while src is not None:
-            target = src.resolveName(fullID)
-            if target is not None:
-                return self._objLink(target)
-            src = src.parent
+        # There is a lot of DWIM here. Look for a global match first,
+        # to reduce the chance of a false positive.
 
         # Check if fullID is the fullName of an object.
         target = self.obj.system.objForFullName(fullID)
@@ -163,6 +155,29 @@ class _EpydocLinker(DocstringLinker):
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
             return linktext
+
+        # Check if the fullID exists in an intersphinx inventory.
+        target = self.look_for_intersphinx(fullerID)
+        if not target:
+            # FIXME: https://github.com/twisted/pydoctor/issues/125
+            # expandName is unreliable so in the case fullerID fails, we
+            # try our luck with fullID.
+            target = self.look_for_intersphinx(fullID)
+        if target:
+            return target
+
+        # Since there was no global match, go look for the name in the
+        # context where it was used.
+
+        # Check if fullID refers to an object by Python name resolution
+        # in our context. Walk up the object tree and see if fullID refers
+        # to an object by Python name resolution in each context.
+        src = self.obj
+        while src is not None:
+            target = src.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target)
+            src = src.parent
 
         # Walk up the object tree again and see if fullID refers to an
         # object in an "uncle" object.  (So if p.m1 has a class C, the
@@ -184,14 +199,6 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return self._objLink(target)
 
-        target = self.look_for_intersphinx(fullerID)
-        if not target:
-            # FIXME: https://github.com/twisted/pydoctor/issues/125
-            # expandName is unreliable so in the case fullerID fails, we
-            # try our luck with fullID.
-            target = self.look_for_intersphinx(fullID)
-        if target:
-            return target
         if fullID != fullerID:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
