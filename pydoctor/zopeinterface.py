@@ -247,7 +247,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def visit_ClassDef(self, node):
         super(ZopeInterfaceModuleVisitor, self).visit_ClassDef(node)
-        cls = self.builder.current.contents[node.name]
+        cls = self.builder.current.contents.get(node.name)
+        if cls is None:
+            return
 
         bases = []
 

@@ -75,6 +75,11 @@ class ModuleVistor(ast.NodeVisitor):
         self.builder.pop(self.module)
 
     def visit_ClassDef(self, node):
+        # Ignore classes within functions.
+        parent = self.builder.current
+        if isinstance(parent, model.Function):
+            return
+
         rawbases = []
         bases = []
         baseobjects = []
@@ -86,7 +91,7 @@ class ModuleVistor(ast.NodeVisitor):
                 str_base = astor.to_source(n).strip()
 
             rawbases.append(str_base)
-            full_name = self.builder.current.expandName(str_base)
+            full_name = parent.expandName(str_base)
             bases.append(full_name)
             baseobj = self.system.objForFullName(full_name)
             if not isinstance(baseobj, model.Class):
@@ -402,6 +407,10 @@ class ModuleVistor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        # Ignore inner functions.
+        if isinstance(self.builder.current, model.Function):
+            return
+
         lineno = node.lineno
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
