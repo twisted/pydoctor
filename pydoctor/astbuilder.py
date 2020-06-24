@@ -274,6 +274,11 @@ class ModuleVistor(ast.NodeVisitor):
         return True
 
     def _handleModuleVar(self, target, annotation, lineno):
+        if target == '__all__':
+            # This is metadata, not a variable that needs to be documented.
+            # It is handled by findAll(), which operates on the AST and
+            # therefore doesn't need an Attribute instance.
+            return
         obj = self.builder.current.resolveName(target)
         if obj is None:
             obj = self.builder.addAttribute(target, None)
