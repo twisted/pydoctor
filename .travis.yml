@@ -9,11 +9,11 @@ matrix:
     - python: 2.7
       env: TOX_ENV=test-py27-codecov-travis
     - python: 3.6
-      env: TOX_ENV=test-py36-codecov-travis
+      env: TOX_ENV=test-py36
     - python: 3.7
       env: TOX_ENV=test-py37
     - python: 3.8
-      env: TOX_ENV=test-py38
+      env: TOX_ENV=test-py38-codecov-travis
     - python: 2.7
       env: TOX_ENV=twisted-apidoc
 
