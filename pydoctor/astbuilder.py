@@ -513,6 +513,19 @@ class ModuleVistor(ast.NodeVisitor):
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
+
+    # For Python >= 3.8:
+
+    def visit_Constant(self, node):
+        value = node.value
+        if isinstance(value, str):
+            expr, = ast.parse(value).body
+            return self.visit(expr.value)
+        else:
+            return self.generic_visit(node)
+
+    # For Python < 3.8:
+
     def visit_Str(self, node):
         expr, = ast.parse(node.s).body
         return self.visit(expr.value)
