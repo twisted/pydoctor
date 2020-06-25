@@ -10,7 +10,7 @@ from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.twistedmodel import TwistedSystem
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import py2only, py3only
+from . import py2only, py3only, typecomment
 import pytest
 
 
@@ -843,6 +843,17 @@ def test_annotated_variables(systemcls):
     m = mod.contents['m']
     assert m.docstring == """module-level"""
     assert to_html(get_parsed_type(m)) == '<code>bytes</code>'
+
+@typecomment
+@systemcls_param
+def test_type_comment(systemcls, capsys):
+    mod = fromText('''
+    d = {} # type: Dict[str, int]
+    i = [] # type: ignore[misc]
+    ''', systemcls=systemcls)
+    assert type2str(mod.contents['d'].annotation) == 'Dict[str, int]'
+    assert type2str(mod.contents['i'].annotation) == 'List'
+    assert not capsys.readouterr().out
 
 @py3only
 @systemcls_param

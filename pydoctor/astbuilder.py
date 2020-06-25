@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import ast
+import sys
 from itertools import chain
 
 import astor
@@ -16,10 +17,13 @@ def parseFile(path):
         src = f.read() + b'\n'
     return parse(src)
 
+_parse_kwargs = {}
+if sys.version_info >= (3,8):
+    _parse_kwargs['type_comments'] = True
 
 def parse(buf):
     """Parse the contents of a Unicode or bytes string."""
-    return ast.parse(buf)
+    return ast.parse(buf, **_parse_kwargs)
 
 
 def node2dottedname(node):
@@ -382,6 +386,11 @@ class ModuleVistor(ast.NodeVisitor):
         lineno = node.lineno
         expr = node.value
         annotation = self._annotation_from_attrib(expr, self.builder.current)
+        if annotation is None:
+            type_comment = getattr(node, 'type_comment', None)
+            if type_comment is not None:
+                annotation = self._unstring_annotation(ast.Str(type_comment,
+                                                               lineno=lineno))
         if annotation is None:
             annotation = _infer_type(expr)
         for target in node.targets:
