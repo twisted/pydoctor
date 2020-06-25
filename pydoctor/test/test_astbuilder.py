@@ -844,6 +844,15 @@ def test_annotated_variables(systemcls):
     assert m.docstring == """module-level"""
     assert to_html(get_parsed_type(m)) == '<code>bytes</code>'
 
+@py3only
+@systemcls_param
+def test_bad_string_annotation(systemcls, capsys):
+    mod = fromText('''
+    x: "["
+    ''', modname='test', systemcls=systemcls)
+    assert mod.contents['x'].annotation is None
+    assert "syntax error in annotation" in capsys.readouterr().out
+
 @systemcls_param
 def test_inferred_variable_types(systemcls):
     mod = fromText('''

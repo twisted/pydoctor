@@ -381,7 +381,7 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Assign(self, node):
         lineno = node.lineno
         expr = node.value
-        annotation = _annotation_from_attrib(expr, self.builder.current)
+        annotation = self._annotation_from_attrib(expr, self.builder.current)
         if annotation is None:
             annotation = _infer_type(expr)
         for target in node.targets:
@@ -394,7 +394,7 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node):
-        annotation = _unstring_annotation(node.annotation)
+        annotation = self._unstring_annotation(node.annotation)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
     def visit_Expr(self, node):
@@ -467,33 +467,46 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popFunction()
 
+    def _annotation_from_attrib(self, expr, ctx):
+        """Get the type of an C{attr.ib} definition.
+        @param expr: The expression's AST.
+        @param ctx: The context in which this expression is evaluated.
+        @return: A type annotation, or None if the expression is not
+                 an C{attr.ib} definition or contains no type information.
+        """
+        if isinstance(expr, ast.Call) \
+                and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
+            keywords = {kw.arg: kw.value for kw in expr.keywords}
+            typ = keywords.get('type')
+            if typ is not None:
+                return self._unstring_annotation(typ)
+            default = keywords.get('default')
+            if default is not None:
+                return _infer_type(default)
+        return None
 
-def _annotation_from_attrib(expr, ctx):
-    """Get the type of an C{attr.ib} definition.
-    @param expr: The expression's AST.
-    @param ctx: The context in which this expression is evaluated.
-    @return: A type annotation, or None if the expression is not
-             an C{attr.ib} definition or contains no type information.
-    """
-    if isinstance(expr, ast.Call) \
-            and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
-        keywords = {kw.arg: kw.value for kw in expr.keywords}
-        typ = keywords.get('type')
-        if typ is not None:
-            return _unstring_annotation(typ)
-        default = keywords.get('default')
-        if default is not None:
-            return _infer_type(default)
-    return None
+    def _unstring_annotation(self, node):
+        """Replace all strings in the given expression by parsed versions.
+        Returns the resulting node, or None if parsing failed.
+        """
+        try:
+            return _AnnotationStringParser().visit(node)
+        except SyntaxError as ex:
+            builder = self.builder
+            builder.system.msg(
+                'parsing',
+                '%s:%s: %s' % (
+                    builder.currentMod.description,
+                    node.lineno,
+                    'syntax error in annotation: %s' % ex),
+                thresh=-1)
+            return None
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
     def visit_Str(self, node):
         expr, = ast.parse(node.s).body
         return self.visit(expr.value)
-
-_unstring_annotation = _AnnotationStringParser().visit
-
 
 def _infer_type(expr):
     """Infer an expression's type.
