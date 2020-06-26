@@ -12,6 +12,7 @@ import datetime
 import imp
 import inspect
 import os
+import platform
 import sys
 import types
 from collections import OrderedDict
@@ -32,6 +33,13 @@ from six.moves import builtins
 #   Classes can contain Functions (in this case they get called Methods) and
 #       Classes
 #   Functions can't contain anything.
+
+
+_string_lineno_is_end = sys.version_info < (3,8) \
+                    and platform.python_implementation() != 'PyPy'
+"""True iff the 'lineno' attribute of an AST string node points to the last
+line in the string, rather than the first line.
+"""
 
 
 class DocLocation(Enum):
@@ -83,13 +91,13 @@ class Documentable(object):
 
     def setDocstring(self, node):
         doc = node.s
-        # Note: We approximate the line number: it is correct
-        #       if the docstring does not contain explicit
-        #       newlines ('\n') or joined lines ('\' at end of line).
-        #       The AST (as of Python 3.7) does not contain sufficient
-        #       detail to match a position within the docstring to
-        #       an exact position in the source.
-        lineno = node.lineno - doc.count('\n')
+        lineno = node.lineno
+        if _string_lineno_is_end:
+            # In older CPython versions, the AST only tells us the end line
+            # number and we must approximate the start line number.
+            # This approximation is correct if the docstring does not contain
+            # explicit newlines ('\n') or joined lines ('\' at end of line).
+            lineno -= doc.count('\n')
 
         # Leading blank lines are stripped by cleandoc(), so we must
         # return the line number of the first non-blank line.
