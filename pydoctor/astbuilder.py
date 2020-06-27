@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import ast
+import sys
 from itertools import chain
 
 import astor
@@ -16,10 +17,13 @@ def parseFile(path):
         src = f.read() + b'\n'
     return parse(src)
 
+_parse_kwargs = {}
+if sys.version_info >= (3,8):
+    _parse_kwargs['type_comments'] = True
 
 def parse(buf):
     """Parse the contents of a Unicode or bytes string."""
-    return ast.parse(buf)
+    return ast.parse(buf, **_parse_kwargs)
 
 
 def node2dottedname(node):
@@ -381,7 +385,12 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Assign(self, node):
         lineno = node.lineno
         expr = node.value
-        annotation = _annotation_from_attrib(expr, self.builder.current)
+        annotation = self._annotation_from_attrib(expr, self.builder.current)
+        if annotation is None:
+            type_comment = getattr(node, 'type_comment', None)
+            if type_comment is not None:
+                annotation = self._unstring_annotation(ast.Str(type_comment,
+                                                               lineno=lineno))
         if annotation is None:
             annotation = _infer_type(expr)
         for target in node.targets:
@@ -394,7 +403,7 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleAssignment(target, annotation, expr, lineno)
 
     def visit_AnnAssign(self, node):
-        annotation = _unstring_annotation(node.annotation)
+        annotation = self._unstring_annotation(node.annotation)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
     def visit_Expr(self, node):
@@ -467,33 +476,54 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popFunction()
 
+    def _annotation_from_attrib(self, expr, ctx):
+        """Get the type of an C{attr.ib} definition.
+        @param expr: The expression's AST.
+        @param ctx: The context in which this expression is evaluated.
+        @return: A type annotation, or None if the expression is not
+                 an C{attr.ib} definition or contains no type information.
+        """
+        if isinstance(expr, ast.Call) \
+                and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
+            keywords = {kw.arg: kw.value for kw in expr.keywords}
+            typ = keywords.get('type')
+            if typ is not None:
+                return self._unstring_annotation(typ)
+            default = keywords.get('default')
+            if default is not None:
+                return _infer_type(default)
+        return None
 
-def _annotation_from_attrib(expr, ctx):
-    """Get the type of an C{attr.ib} definition.
-    @param expr: The expression's AST.
-    @param ctx: The context in which this expression is evaluated.
-    @return: A type annotation, or None if the expression is not
-             an C{attr.ib} definition or contains no type information.
-    """
-    if isinstance(expr, ast.Call) \
-            and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
-        keywords = {kw.arg: kw.value for kw in expr.keywords}
-        typ = keywords.get('type')
-        if typ is not None:
-            return _unstring_annotation(typ)
-        default = keywords.get('default')
-        if default is not None:
-            return _infer_type(default)
-    return None
+    def _unstring_annotation(self, node):
+        """Replace all strings in the given expression by parsed versions.
+        Returns the resulting node, or None if parsing failed.
+        """
+        try:
+            return _AnnotationStringParser().visit(node)
+        except SyntaxError as ex:
+            self.builder.currentMod.report(
+                    'syntax error in annotation: %s' % (ex,),
+                    lineno_offset=node.lineno)
+            return None
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
+
+    # For Python >= 3.8:
+
+    def visit_Constant(self, node):
+        value = node.value
+        if isinstance(value, str):
+            expr, = ast.parse(value).body
+            return self.visit(expr.value)
+        else:
+            return self.generic_visit(node)
+
+    # For Python < 3.8:
+
     def visit_Str(self, node):
         expr, = ast.parse(node.s).body
         return self.visit(expr.value)
-
-_unstring_annotation = _AnnotationStringParser().visit
-
 
 def _infer_type(expr):
     """Infer an expression's type.
