@@ -246,6 +246,8 @@ class Documentable(object):
             linenumber = self.linenumber
         if linenumber:
             linenumber += lineno_offset
+        elif lineno_offset and self.module is self:
+            linenumber = lineno_offset
         else:
             linenumber = '???'
 
