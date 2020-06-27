@@ -853,6 +853,8 @@ def test_type_comment(systemcls, capsys):
     i = [] # type: ignore[misc]
     ''', systemcls=systemcls)
     assert type2str(mod.contents['d'].annotation) == 'Dict[str, int]'
+    # We don't use ignore comments for anything at the moment,
+    # but do verify that their presence doesn't break things.
     assert type2str(mod.contents['i'].annotation) == 'List'
     assert not capsys.readouterr().out
 

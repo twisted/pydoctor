@@ -501,14 +501,9 @@ class ModuleVistor(ast.NodeVisitor):
         try:
             return _AnnotationStringParser().visit(node)
         except SyntaxError as ex:
-            builder = self.builder
-            builder.system.msg(
-                'parsing',
-                '%s:%s: %s' % (
-                    builder.currentMod.description,
-                    node.lineno,
-                    'syntax error in annotation: %s' % ex),
-                thresh=-1)
+            self.builder.currentMod.report(
+                    'syntax error in annotation: %s' % (ex,),
+                    lineno_offset=node.lineno)
             return None
 
 
