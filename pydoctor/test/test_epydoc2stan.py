@@ -71,6 +71,20 @@ def test_summary():
     assert u'No summary' == get_summary('no_summary')
 
 
+def test_missing_field_name(capsys):
+    fromText('''
+    """
+    A test module.
+
+    @ivar: Mystery variable.
+    @type: str
+    """
+    ''', modname='test')
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Missing field name in @ivar\n" \
+                       "test:6: Missing field name in @type\n"
+
+
 def test_EpydocLinker_look_for_intersphinx_no_link():
     """
     Return None if inventory had no link for our markup.
