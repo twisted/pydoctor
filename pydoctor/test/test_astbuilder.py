@@ -4,10 +4,11 @@ import textwrap
 
 import astor
 
+from twisted.python._pydoctor import TwistedSystem
+
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc2stan import get_parsed_type
-from pydoctor.twistedmodel import TwistedSystem
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import py2only, py3only
