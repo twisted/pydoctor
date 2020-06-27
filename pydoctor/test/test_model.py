@@ -140,6 +140,22 @@ def test_docsources_class_attribute():
     assert base_attr in list(sub_attr.docsources())
 
 
+def test_docstring_lineno():
+    src = '''
+    def f():
+        """
+        This is a long docstring.
+
+        Somewhat long, anyway.
+        This should be enough.
+        """
+    '''
+    mod = fromText(src)
+    func = mod.contents['f']
+    assert func.linenumber == 2
+    assert func.docstring_lineno == 4 # first non-blank line
+
+
 class Dummy(object):
     def crash(self):
         """Mmm"""

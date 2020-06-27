@@ -14,7 +14,7 @@ matrix:
       env: TOX_ENV=test-py37
     - python: 3.8
       env: TOX_ENV=test-py38-codecov-travis
-    - python: 2.7
+    - python: 3.8
       env: TOX_ENV=twisted-apidoc
 
   allow_failures:
