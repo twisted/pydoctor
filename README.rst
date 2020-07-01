@@ -112,6 +112,8 @@ pydoctor 20.7.0
 * Undocumented attributes are now included in the output
 * Attribute docstrings: a module, class or instance variable can be documented by a following it up with a docstring
 * Improved error reporting: more errors are reported, error messages include file name and line number
+* Dropped support for implicit relative imports
+* Explicit relative imports (using ``from``) no longer cause warnings
 
 This will be the last release to support Python 2.7 and 3.5.
 

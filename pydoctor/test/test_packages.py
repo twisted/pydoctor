@@ -14,15 +14,14 @@ def processPackage(packname, systemcls=model.System):
     system.process()
     return system
 
-def test_local_import():
-    system = processPackage("localimporttest")
-    cls = system.allobjects['localimporttest.mod1.C']
-    assert len(system.warnings['local import']) > 0
-    assert cls.bases == ['localimporttest.mod2.B']
+def test_relative_import():
+    system = processPackage("relativeimporttest")
+    cls = system.allobjects['relativeimporttest.mod1.C']
+    assert cls.bases == ['relativeimporttest.mod2.B']
 
 def test_package_docstring():
-    system = processPackage("localimporttest")
-    assert (system.allobjects['localimporttest.__init__'].docstring ==
+    system = processPackage("relativeimporttest")
+    assert (system.allobjects['relativeimporttest.__init__'].docstring ==
             "DOCSTRING")
 
 def test_modnamedafterbuiltin():
