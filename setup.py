@@ -1,4 +1,13 @@
+from itertools import takewhile
+from os.path import abspath, dirname, join as joinpath
 from setuptools import find_packages, setup
+
+
+top_dir = abspath(dirname(__file__))
+with open(joinpath(top_dir, 'README.rst'), encoding='utf-8') as f:
+    long_description = ''.join(
+        takewhile(lambda line: not line.startswith('.. description-end'), f)
+        )
 
 setup(
     name='pydoctor',
@@ -8,6 +17,8 @@ setup(
     maintainer_email='maarten@boxingbeetle.com',
     url='http://github.com/twisted/pydoctor',
     description='API doc generator.',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
     license='MIT/X11',
     packages=find_packages(),
     package_data={

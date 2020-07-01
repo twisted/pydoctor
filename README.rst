@@ -22,17 +22,6 @@ versa.
 
 The default HTML generator requires Twisted.
 
-There are some more notes in the doc/ subdirectory.
-
-
-Tox development environment
----------------------------
-
-Since Python 3 is not yet supported, you the case in which your default
-tox runs with Python 3, call the tox as::
-
-    python2 -m tox -e pyflakes
-
 
 Sphinx Integration
 ------------------
@@ -67,6 +56,18 @@ It can link to external API documentation using Sphinx objects inventory using
 the following cumulative configuration option::
 
     --intersphinx=http://sphinx-doc.org/objects.inv
+
+
+.. description-end
+
+
+Tox development environment
+---------------------------
+
+Since Python 3 is not yet supported, you the case in which your default
+tox runs with Python 3, call the tox as::
+
+    python2 -m tox -e pyflakes
 
 
 Releasing a new package
