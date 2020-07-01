@@ -46,7 +46,7 @@ following mapping:
 * methods -> py:meth:
 * attributes -> py:attr:
 
-Configure Sphinx intersphinx extension:
+Configure Sphinx intersphinx extension::
 
     intersphinx_mapping = {
         'pydoctor': ('http://domain.tld/api', None),
