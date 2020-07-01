@@ -1,4 +1,5 @@
   Copyright 2006-2008 Michael Hudson <mwh@python.net>
+  Copyright 2006-2020 Various contributors (see Git history)
 
                        All Rights Reserved
 
