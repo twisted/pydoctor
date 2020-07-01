@@ -1,10 +1,11 @@
 from itertools import takewhile
 from os.path import abspath, dirname, join as joinpath
 from setuptools import find_packages, setup
+import io
 
 
 top_dir = abspath(dirname(__file__))
-with open(joinpath(top_dir, 'README.rst'), encoding='utf-8') as f:
+with io.open(joinpath(top_dir, 'README.rst'), encoding='utf-8') as f:
     long_description = ''.join(
         takewhile(lambda line: not line.startswith('.. description-end'), f)
         )
