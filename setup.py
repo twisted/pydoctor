@@ -1,12 +1,30 @@
+from itertools import takewhile
+from os.path import abspath, dirname, join as joinpath
 from setuptools import find_packages, setup
+import io
+
+
+top_dir = abspath(dirname(__file__))
+with io.open(joinpath(top_dir, 'README.rst'), encoding='utf-8') as f:
+    long_description = ''.join(
+        takewhile(lambda line: not line.startswith('.. description-end'), f)
+        )
 
 setup(
     name='pydoctor',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
-    url='http://github.com/twisted/pydoctor',
+    maintainer='Maarten ter Huurne',
+    maintainer_email='maarten@boxingbeetle.com',
     description='API doc generator.',
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
     license='MIT/X11',
+    url='https://github.com/twisted/pydoctor',
+    project_urls={
+        'Issue Tracker': 'https://github.com/twisted/pydoctor/issues',
+        'Repository': 'https://github.com/twisted/pydoctor',
+    },
     packages=find_packages(),
     package_data={
         'pydoctor': [
@@ -22,8 +40,13 @@ setup(
         'Development Status :: 6 - Mature',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Documentation',
