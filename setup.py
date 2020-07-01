@@ -15,11 +15,15 @@ setup(
     author_email='micahel@gmail.com',
     maintainer='Maarten ter Huurne',
     maintainer_email='maarten@boxingbeetle.com',
-    url='http://github.com/twisted/pydoctor',
     description='API doc generator.',
     long_description=long_description,
     long_description_content_type='text/x-rst',
     license='MIT/X11',
+    url='http://github.com/twisted/pydoctor',
+    project_urls={
+        'Issue Tracker': 'https://github.com/twisted/pydoctor/issues',
+        'Repository': 'https://github.com/twisted/pydoctor',
+    },
     packages=find_packages(),
     package_data={
         'pydoctor': [
@@ -35,6 +39,7 @@ setup(
         'Development Status :: 6 - Mature',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
