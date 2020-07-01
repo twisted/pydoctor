@@ -38,16 +38,16 @@ Markup
 
 pydoctor currently supports the following markup languages in docstrings:
 
-    `epytext`__ (default)
-        The markup language of epydoc.
-        Simple and compact.
+`epytext`__ (default)
+    The markup language of epydoc.
+    Simple and compact.
 
-    `reStructuredText`__
-        The markup language used by Sphinx.
-        More expressive than epytext, but also slighly more complex and verbose.
+`reStructuredText`__
+    The markup language used by Sphinx.
+    More expressive than epytext, but also slighly more complex and verbose.
 
-    plain text
-        Text without any markup.
+plain text
+    Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
 __ https://docutils.sourceforge.io/rst.html
