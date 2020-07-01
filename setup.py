@@ -4,6 +4,8 @@ setup(
     name='pydoctor',
     author='Michael Hudson-Doyle',
     author_email='micahel@gmail.com',
+    maintainer='Maarten ter Huurne',
+    maintainer_email='maarten@boxingbeetle.com',
     url='http://github.com/twisted/pydoctor',
     description='API doc generator.',
     license='MIT/X11',
