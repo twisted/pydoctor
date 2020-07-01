@@ -20,7 +20,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     license='MIT/X11',
-    url='http://github.com/twisted/pydoctor',
+    url='https://github.com/twisted/pydoctor',
     project_urls={
         'Issue Tracker': 'https://github.com/twisted/pydoctor/issues',
         'Repository': 'https://github.com/twisted/pydoctor',
