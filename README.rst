@@ -114,8 +114,9 @@ pydoctor 20.7.0
 * Improved error reporting: more errors are reported, error messages include file name and line number
 * Dropped support for implicit relative imports
 * Explicit relative imports (using ``from``) no longer cause warnings
+* Dropped support for index terms in epytext (``X{}``); this was never supported in any meaningful capacity, but now the tag is gone
 
-This will be the last release to support Python 2.7 and 3.5.
+This will be the last release to support Python 2.7 and 3.5: future releases will require Python 3.6 or later.
 
 .. description-end
 
