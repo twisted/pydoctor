@@ -41,9 +41,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
@@ -54,6 +52,7 @@ setup(
     ],
     use_incremental=True,
     setup_requires=["incremental"],
+    python_requires='>=3.6',
     install_requires=[
         "incremental",
         "appdirs",
@@ -62,6 +61,5 @@ setup(
         "requests",
         "six",
         "astor",
-        "enum34;python_version<'3.4'",
     ],
 )
