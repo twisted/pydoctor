@@ -57,6 +57,7 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
+from twisted.web.template import tags
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     Field, ParseError, ParsedDocstring, flatten, html2stan
@@ -395,7 +396,13 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         m = _TARGET_RE.match(node.astext())
         if m: text, target = m.groups()
         else: target = text = node.astext()
-        xref = self._linker.translate_identifier_xref(target, text)
+        label = tags.code(text)
+        try:
+            url = self._linker.resolve_identifier_xref(target)
+        except LookupError:
+            xref = label
+        else:
+            xref = tags.a(label, href=url)
         self.body.append(flatten(xref))
         raise SkipNode()
 

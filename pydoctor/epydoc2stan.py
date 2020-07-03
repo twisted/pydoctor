@@ -26,8 +26,21 @@ except ImportError:
     exceptions = builtins
 
 
-STDLIB_DIR = os.path.dirname(os.__file__)
-STDLIB_URL = 'http://docs.python.org/library/'
+def _find_stdlib_dir():
+    """Find the standard library location for the currently running
+    Python interpreter.
+    """
+
+    # When running in a virtualenv, when some (but not all) modules
+    # may be symlinked. We want the actual installation location of
+    # the standard library, not the location of the virtualenv.
+    os_mod_path = os.__file__
+    if os_mod_path.endswith('.pyc') or os_mod_path.endswith('.pyo'):
+        os_mod_path = os_mod_path[:-1]
+    return os.path.dirname(os.path.realpath(os_mod_path))
+
+STDLIB_DIR = _find_stdlib_dir()
+STDLIB_URL = 'https://docs.python.org/3/library/'
 
 
 def link(o):
@@ -88,18 +101,17 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj):
         self.obj = obj
 
-    def _objLink(self, obj, prettyID):
+    def _objLink(self, obj):
         if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
                 p = p.parent
-            linktext = link(p) + '#' + quote(obj.name)
+            return link(p) + '#' + quote(obj.name)
         elif obj.documentation_location is model.DocLocation.OWN_PAGE:
-            linktext = link(obj)
+            return link(obj)
         else:
             raise AssertionError(
                 "Unknown documentation_location: %s" % obj.documentation_location)
-        return tags.a(tags.code(prettyID), href=linktext)
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -117,7 +129,7 @@ class _EpydocLinker(DocstringLinker):
                 "ambiguous ref to %s, could be %s" % (
                     name,
                     ', '.join(ob.fullName() for ob in potential_targets)),
-                section='translate_identifier_xref')
+                section='resolve_identifier_xref')
         return None
 
     def look_for_intersphinx(self, name):
@@ -128,57 +140,23 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def translate_identifier_xref(self, fullID, prettyID):
-        """Figure out what ``L{fullID}`` should link to.
+    def resolve_identifier_xref(self, fullID):
 
-        There is a lot of DWIM here.  The order goes:
+        # There is a lot of DWIM here. Look for a global match first,
+        # to reduce the chance of a false positive.
 
-          1. Check if fullID refers to an object by Python name resolution in
-             our context.
-
-          2. Walk up the object tree and see if fullID refers to an object by
-             Python name resolution in each context.
-
-          3. Check if fullID is the fullName of an object.
-
-          4. Check to see if fullID names a builtin or standard library
-             module.
-
-          4. Walk up the object tree again and see if fullID refers to an
-             object in an "uncle" object.  (So if p.m1 has a class C, the
-             docstring for p.m2 can say L{C} to refer to the class in m1).  If
-             at any level fullID refers to more than one object, complain.
-
-          5. Examine every module and package in the system and see if fullID
-             names an object in each one.  Again, if more than one object is
-             found, complain.
-
-        """
-        src = self.obj
-        while src is not None:
-            target = src.resolveName(fullID)
-            if target is not None:
-                return self._objLink(target, prettyID)
-            src = src.parent
+        # Check if fullID is the fullName of an object.
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
-            return self._objLink(target, prettyID)
+            return self._objLink(target)
+
+        # Check to see if fullID names a builtin or standard library module.
         fullerID = self.obj.expandName(fullID)
         linktext = stdlib_doc_link_for_name(fullerID)
         if linktext is not None:
-            return tags.a(tags.code(prettyID), href=linktext)
-        src = self.obj
-        while src is not None:
-            target = self.look_for_name(fullID, src.contents.values())
-            if target is not None:
-                return self._objLink(target, prettyID)
-            src = src.parent
-        target = self.look_for_name(fullID, itertools.chain(
-            self.obj.system.objectsOfType(model.Module),
-            self.obj.system.objectsOfType(model.Package)))
-        if target is not None:
-            return self._objLink(target, prettyID)
+            return linktext
 
+        # Check if the fullID exists in an intersphinx inventory.
         target = self.look_for_intersphinx(fullerID)
         if not target:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
@@ -186,12 +164,50 @@ class _EpydocLinker(DocstringLinker):
             # try our luck with fullID.
             target = self.look_for_intersphinx(fullID)
         if target:
-            return tags.a(tags.code(prettyID), href=target)
-        if fullID != fullerID:
+            return target
+
+        # Since there was no global match, go look for the name in the
+        # context where it was used.
+
+        # Check if fullID refers to an object by Python name resolution
+        # in our context. Walk up the object tree and see if fullID refers
+        # to an object by Python name resolution in each context.
+        src = self.obj
+        while src is not None:
+            target = src.resolveName(fullID)
+            if target is not None:
+                return self._objLink(target)
+            src = src.parent
+
+        # Walk up the object tree again and see if fullID refers to an
+        # object in an "uncle" object.  (So if p.m1 has a class C, the
+        # docstring for p.m2 can say L{C} to refer to the class in m1).
+        # If at any level fullID refers to more than one object, complain.
+        src = self.obj
+        while src is not None:
+            target = self.look_for_name(fullID, src.contents.values())
+            if target is not None:
+                return self._objLink(target)
+            src = src.parent
+
+        # Examine every module and package in the system and see if fullID
+        # names an object in each one.  Again, if more than one object is
+        # found, complain.
+        target = self.look_for_name(fullID, itertools.chain(
+            self.obj.system.objectsOfType(model.Module),
+            self.obj.system.objectsOfType(model.Package)))
+        if target is not None:
+            return self._objLink(target)
+
+        if fullID == fullerID:
+            self.obj.report(
+                "invalid ref to '%s' not resolved" % (fullID,),
+                section='resolve_identifier_xref')
+        else:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
-                section='translate_identifier_xref')
-        return tags.code(prettyID)
+                section='resolve_identifier_xref')
+        raise LookupError(fullID)
 
 
 class FieldDesc(object):
