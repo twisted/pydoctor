@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+from pytest import raises
+
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
@@ -174,8 +176,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys)
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module} markup.
-    url = sut.resolve_identifier_xref('ext_module')
-    assert None is url
+    with raises(LookupError):
+        sut.resolve_identifier_xref('ext_module')
 
     captured = capsys.readouterr().out
     expected = (

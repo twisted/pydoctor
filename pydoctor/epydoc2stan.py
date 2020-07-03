@@ -207,7 +207,7 @@ class _EpydocLinker(DocstringLinker):
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
                 section='resolve_identifier_xref')
-        return None
+        raise LookupError(fullID)
 
 
 class FieldDesc(object):

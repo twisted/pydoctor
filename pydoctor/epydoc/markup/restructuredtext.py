@@ -396,9 +396,13 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         m = _TARGET_RE.match(node.astext())
         if m: text, target = m.groups()
         else: target = text = node.astext()
-        url = self._linker.resolve_identifier_xref(target)
         label = tags.code(text)
-        xref = label if url is None else tags.a(label, href=url)
+        try:
+            url = self._linker.resolve_identifier_xref(target)
+        except LookupError:
+            xref = label
+        else:
+            xref = tags.a(label, href=url)
         self.body.append(flatten(xref))
         raise SkipNode()
 

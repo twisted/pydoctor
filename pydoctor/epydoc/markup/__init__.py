@@ -195,9 +195,9 @@ class DocstringLinker:
         @type identifier: C{string}
         @param identifier: The name of the Python identifier that
             should be linked to.
-        @rtype: C{string} or C{None}
-        @return: The URL of the target, or None if the identifier
-            could not be resolved.
+        @rtype: C{string}
+        @return: The URL of the target
+        @raise LookupError: If C{identifier} could not be resolved.
         """
         raise NotImplementedError()
 

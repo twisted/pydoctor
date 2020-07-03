@@ -1336,8 +1336,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
             label = tags.code(variables[0])
-            url = linker.resolve_identifier_xref(variables[1])
-            return label if url is None else tags.a(label, href=url)
+            try:
+                url = linker.resolve_identifier_xref(variables[1])
+            except LookupError:
+                return label
+            else:
+                return tags.a(label, href=url)
         elif tree.tag == 'target':
             value, = variables
             return value
