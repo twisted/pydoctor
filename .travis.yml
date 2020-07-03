@@ -38,8 +38,6 @@ deploy:
   # twistedchecker-robot is associated with adi.roiban email address from
   # Gmail. It uses a random password which was not recorded in plain text.
   user: twistedchecker-robot
-  password:
-    secure: D8Jlbsm8sN1Nz11SgFI7HRxjx0/gLDl66RB101nrhP4Bs4tzK2s9duu7P6nGRIupX5r5czRpSyhPrPQjci3UhcxZf5OTTCd5pamGBd7dv32Usr2aXWhvIfulX+i7jtbOBiWQT7JhxjSjlvyZLW0kka3eClQaD+D4iI64zaBn7y0=
   on:
     tags: true
     # All branches is still required.
