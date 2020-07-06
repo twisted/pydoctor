@@ -294,7 +294,7 @@ class Field(object):
         r = repr(self.body)
         if len(r) > 25:
             r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %s %d>"%(self.__class__.__name__,
+        return "<%s %r %r %d %s>"%(self.__class__.__name__,
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler(object):
