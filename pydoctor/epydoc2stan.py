@@ -389,10 +389,11 @@ class FieldHandler(object):
         self.sinces.append(field)
 
     def handleUnknownField(self, field):
-        self.obj.system.msg(
-            'epydoc2stan',
-            'found unknown field on %r: %r'%(self.obj.fullName(), field),
-            thresh=-1)
+        self.obj.report(
+            'unknown field "%s"' % field.tag,
+            lineno_offset=field.lineno,
+            section='docstring'
+            )
         self.add_info(self.unknowns, field)
 
     def handle(self, field):
