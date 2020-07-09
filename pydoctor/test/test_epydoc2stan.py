@@ -1,5 +1,7 @@
 from pytest import raises
 
+from twisted.web.template import flattenString
+
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
@@ -37,6 +39,32 @@ def test_multiple_types():
     epydoc2stan.format_docstring(mod.contents['C'])
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
+
+def test_annotation():
+    annotation_mod = fromText('''
+    def f(a: List[str]) -> bool:
+        """
+        @param a: an arg, a the best of args
+        @return: the best that we can do
+        """
+    ''')
+    classic_mod = fromText('''
+    def f(a):
+        """
+        @param a: an arg, a the best of args
+        @type a: List[str]
+        @return: the best that we can do
+        @rtype: bool
+        """
+    ''')
+    def format(docstring):
+        stan = epydoc2stan.format_docstring(docstring)
+        stuff = []
+        flattenString(None, stan).addCallback(stuff.append)
+        return stuff[0].decode('ascii').replace('><', '>\n<')
+    annotation_fmt = format(annotation_mod.contents['f'])
+    classic_fmt = format(classic_mod.contents['f'])
+    assert annotation_fmt == classic_fmt
 
 def test_summary():
     mod = fromText('''
