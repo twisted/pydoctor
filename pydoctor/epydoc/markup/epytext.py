@@ -142,14 +142,14 @@ class Element:
         notation.
         @bug: Doesn't escape '<' or '&' or '>'.
         """
-        attribs = ''.join([' %s=%r' % t for t in self.attribs.items()])
+        attribs = ''.join(' %s=%r' % t for t in self.attribs.items())
         return ('<%s%s>' % (self.tag, attribs) +
-                ''.join([str(child) for child in self.children]) +
+                ''.join(str(child) for child in self.children) +
                 '</%s>' % self.tag)
 
     def __repr__(self):
-        attribs = ''.join([', %s=%r' % t for t in self.attribs.items()])
-        args = ''.join([', %r' % c for c in self.children])
+        attribs = ''.join(', %s=%r' % t for t in self.attribs.items())
+        args = ''.join(', %r' % c for c in self.children)
         return 'Element(%s%s%s)' % (self.tag, args, attribs)
 
 ##################################################
@@ -274,8 +274,8 @@ def parse(text, errors = None):
     for token in tokens:
         # Uncomment this for debugging:
         #print('%s: %s\n%s: %s\n' %
-        #       (''.join(['%-11s' % (t and t.tag) for t in stack]),
-        #        token.tag, ''.join(['%-11s' % i for i in indent_stack]),
+        #       (''.join('%-11s' % (t and t.tag) for t in stack),
+        #        token.tag, ''.join('%-11s' % i for i in indent_stack),
         #        token.indent))
 
         # Pop any completed blocks off the stack.

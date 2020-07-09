@@ -177,8 +177,8 @@ class _EpydocReader(StandaloneReader):
         try: linenum = int(error['line'])
         except: linenum = None
 
-        msg = ''.join([c.astext().encode(self._encoding, self._error_handler)
-                       for c in error])
+        msg = ''.join(c.astext().encode(self._encoding, self._error_handler)
+                      for c in error)
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 

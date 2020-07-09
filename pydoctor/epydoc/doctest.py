@@ -39,11 +39,10 @@ else:
 _BUILTINS = [_BI for _BI in dir(builtins) if not _BI.startswith('__')]
 
 #: A regexp group that matches keywords.
-_KEYWORD_GRP = '|'.join([r'\b%s\b' % _KW for _KW in _KEYWORDS])
+_KEYWORD_GRP = '|'.join(r'\b%s\b' % _KW for _KW in _KEYWORDS)
 
 #: A regexp group that matches Python builtins.
-_BUILTIN_GRP = (r'(?<!\.)(?:%s)' % '|'.join([r'\b%s\b' % _BI
-                                             for _BI in _BUILTINS]))
+_BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(r'\b%s\b' % _BI for _BI in _BUILTINS)
 
 #: A regexp group that matches Python strings.
 _STRING_GRP = '|'.join(

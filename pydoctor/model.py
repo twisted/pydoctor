@@ -434,7 +434,8 @@ class System:
     def verbosity(self, section=None):
         if isinstance(section, str):
             section = (section,)
-        delta = max([self.options.verbosity_details.get(sect, 0) for sect in section])
+        delta = max(self.options.verbosity_details.get(sect, 0)
+                    for sect in section)
         return self.options.verbosity + delta
 
     def progress(self, section, i, n, msg):

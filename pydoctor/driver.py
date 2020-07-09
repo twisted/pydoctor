@@ -306,7 +306,7 @@ def main(args=sys.argv[1:]):
         system.process()
 
         if system.options.projectname is None:
-            name = '/'.join([ro.name for ro in system.rootobjects])
+            name = '/'.join(ro.name for ro in system.rootobjects)
             system.msg(
                 'warning',
                 'WARNING: guessing '+name+' for project name', thresh=-1)

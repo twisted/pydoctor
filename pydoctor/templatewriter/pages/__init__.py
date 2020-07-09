@@ -187,8 +187,8 @@ class CommonPage(Element):
 
 class PackagePage(CommonPage):
     def children(self):
-        return sorted([o for o in self.ob.contents.values()
-                       if o.name != '__init__' and o.isVisible],
+        return sorted((o for o in self.ob.contents.values()
+                       if o.name != '__init__' and o.isVisible),
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
@@ -229,9 +229,11 @@ def nested_bases(b):
     return r
 
 def unmasked_attrs(baselist):
-    maybe_masking = set()
-    for b in baselist[1:]:
-        maybe_masking.update(set([o.name for o in b.contents.values()]))
+    maybe_masking = {
+        o.name
+        for b in baselist[1:]
+        for o in b.contents.values()
+        }
     return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
@@ -352,7 +354,9 @@ class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
         r = [super().extras()]
         if self.ob.isinterface:
-            namelist = sorted([o.fullName() for o in self.ob.implementedby_directly], key=lambda x:x.lower())
+            namelist = sorted(
+                    (o.fullName() for o in self.ob.implementedby_directly),
+                    key=lambda x:x.lower())
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
