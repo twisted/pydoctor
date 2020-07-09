@@ -11,9 +11,10 @@ Syntax highlighting for blocks of Python code.
 
 __docformat__ = 'epytext en'
 
+import builtins
 import re
 import sys
-from six.moves import builtins
+
 from twisted.web.template import tags
 
 __all__ = ['colorize_codeblock', 'colorize_doctest']

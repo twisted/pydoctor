@@ -8,6 +8,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 from __future__ import print_function, unicode_literals
 
+import builtins
 import datetime
 import imp
 import inspect
@@ -19,7 +20,6 @@ from collections import OrderedDict
 from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
-from six.moves import builtins
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.

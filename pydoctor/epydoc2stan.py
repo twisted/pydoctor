@@ -7,14 +7,14 @@ from __future__ import print_function
 import astor
 
 from importlib import import_module
+from urllib.parse import quote
+import builtins
 import itertools
 import os
 import sys
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
-from six.moves import builtins
-from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext

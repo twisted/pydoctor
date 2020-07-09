@@ -2,13 +2,12 @@
 
 from __future__ import print_function
 
+from urllib.parse import quote
 import os
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import tags
-
-from six.moves.urllib.parse import quote
 
 def link(o):
     if not o.isVisible:
