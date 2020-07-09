@@ -59,7 +59,6 @@ setup(
         "CacheControl[filecache]",
         "Twisted",
         "requests",
-        "six",
         "astor",
     ],
 )
