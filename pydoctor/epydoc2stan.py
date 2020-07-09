@@ -416,16 +416,10 @@ class FieldHandler:
                         ('Note', 'Notes', self.notes)):
             r.append(format_field_list(self.obj, s, l, p))
         unknowns = {}
-        unknownsinorder = []
         for fieldinfo in self.unknowns:
-            tag = fieldinfo.kind
-            if tag in unknowns:
-                unknowns[tag].append(fieldinfo)
-            else:
-                unknowns[tag] = [fieldinfo]
-                unknownsinorder.append(unknowns[tag])
-        for fieldlist in unknownsinorder:
-            label = "Unknown Field: " + fieldlist[0].kind
+            unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
+        for kind, fieldlist in unknowns.items():
+            label = f"Unknown Field: {kind}"
             r.append(format_desc_list(label, fieldlist, label))
 
         return tags.table(class_='fieldTable')(r)

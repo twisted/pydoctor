@@ -14,7 +14,6 @@ import os
 import platform
 import sys
 import types
-from collections import OrderedDict
 from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
@@ -85,7 +84,7 @@ class Documentable:
             self.doctarget = self
 
     def setup(self):
-        self.contents = OrderedDict()
+        self.contents = {}
 
     def setDocstring(self, node):
         doc = node.s
@@ -404,7 +403,7 @@ class System:
     sourcebase = None
 
     def __init__(self, options=None):
-        self.allobjects = OrderedDict()
+        self.allobjects = {}
         self.rootobjects = []
         self.warnings = {}
         self.packages = []
