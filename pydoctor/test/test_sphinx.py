@@ -241,7 +241,7 @@ def test_getPayload_content():
     """
     Return content as string.
     """
-    payload = u"first_line\nsecond line\nit's a snake: \U0001F40D"
+    payload = "first_line\nsecond line\nit's a snake: \U0001F40D"
     sut = sphinx.SphinxInventory(logger=object())
     content = b"""# Ignored line
 # Project: some-name
@@ -528,7 +528,7 @@ class TestIntersphinxCache:
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
-        url = u"https://cache.example/objects.inv"
+        url = "https://cache.example/objects.inv"
         content = b'content'
 
         send_returns(
@@ -597,7 +597,7 @@ class TestIntersphinxCache:
 
         cache = sphinx.IntersphinxCache(session=_RaisesOnGet, logger=_Logger)
 
-        assert cache.get(u"some url") is None
+        assert cache.get("some url") is None
 
         assert len(loggedExceptions)
 
@@ -611,7 +611,7 @@ class TestStubCache:
         """
         L{sphinx.StubCache.get} returns its cached content for a URL.
         """
-        url = u"url"
+        url = "url"
         content = b"content"
 
         cache = sphinx.StubCache({url: content})

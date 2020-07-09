@@ -66,9 +66,9 @@ def test_summary():
         stan = epydoc2stan.format_summary(mod.contents[func])
         assert stan.tagName == 'span', stan
         return flatten(stan.children)
-    assert u'Lorem Ipsum' == get_summary('single_line_summary')
-    assert u'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert u'No summary' == get_summary('no_summary')
+    assert 'Lorem Ipsum' == get_summary('single_line_summary')
+    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
+    assert 'No summary' == get_summary('no_summary')
 
 
 def test_missing_field_name(capsys):
