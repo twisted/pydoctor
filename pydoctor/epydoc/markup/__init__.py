@@ -38,7 +38,6 @@ __docformat__ = 'epytext en'
 
 import re
 
-from six import text_type
 from twisted.web.template import XMLString, flattenString
 
 ##################################################
@@ -100,7 +99,7 @@ def html2stan(html):
     @type html: C{string}
     @return: The fragment as a tree with a transparent root node.
     """
-    if isinstance(html, text_type):
+    if isinstance(html, str):
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)

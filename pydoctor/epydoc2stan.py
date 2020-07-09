@@ -13,7 +13,6 @@ import sys
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
-from six import string_types
 from six.moves import builtins
 from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
@@ -439,7 +438,7 @@ def reportErrors(obj, errs):
 
         for err in errs:
             lineno_offset = 0
-            if isinstance(err, string_types):
+            if isinstance(err, str):
                 descr = err
             elif isinstance(err, ParseError):
                 descr = err.descr()

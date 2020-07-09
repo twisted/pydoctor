@@ -108,7 +108,6 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re
-import six
 from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
@@ -1049,7 +1048,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], six.string_types)):
+                    not isinstance(stack[-1].children[0], str)):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1064,7 +1063,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], six.string_types)):
+                    not isinstance(stack[-1].children[0], str)):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1107,7 +1106,7 @@ def _colorize_link(doc, link, token, end, errors):
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
-    if len(variables)==0 or not isinstance(variables[-1], six.string_types):
+    if len(variables)==0 or not isinstance(variables[-1], str):
         estr = "Bad %s target." % link.tag
         errors.append(ColorizingError(estr, token, end))
         return
@@ -1315,7 +1314,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         return self._stan
 
     def _to_stan(self, tree, linker, seclevel=0):
-        if isinstance(tree, six.string_types):
+        if isinstance(tree, str):
             return tree
 
         if tree.tag == 'section':

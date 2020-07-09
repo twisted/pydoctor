@@ -8,7 +8,6 @@ from itertools import chain
 
 import astor
 from pydoctor import epydoc2stan, model
-from six import string_types
 
 
 def parseFile(path):
@@ -348,7 +347,7 @@ class ModuleVistor(ast.NodeVisitor):
             warn("Unable to figure out value for __doc__ assignment, "
                  "maybe too complex")
             return
-        if not isinstance(docstring, string_types):
+        if not isinstance(docstring, str):
             warn("Ignoring value assigned to __doc__: not a string")
             return
 
@@ -449,11 +448,11 @@ class ModuleVistor(ast.NodeVisitor):
                 args.append(arg.arg)
 
         varargname = node.args.vararg
-        if varargname and not isinstance(varargname, string_types):
+        if varargname and not isinstance(varargname, str):
             varargname = varargname.arg
 
         kwargname = node.args.kwarg
-        if kwargname and not isinstance(kwargname, string_types):
+        if kwargname and not isinstance(kwargname, str):
             kwargname = kwargname.arg
 
         defaults = []
