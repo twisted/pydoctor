@@ -5,7 +5,6 @@ import sys
 from pydoctor import driver
 from twisted.python.compat import NativeStringIO
 
-from . import py3only
 
 def geterrtext(*options):
     options = list(options)
@@ -32,7 +31,6 @@ def test_cannot_advance_blank_system():
     err = geterrtext('--make-html')
     assert 'forget an --add-package?' in err
 
-@py3only
 def test_no_systemclasses_py3():
     err = geterrtext('--system-class')
     assert 'requires 1 argument' in err
