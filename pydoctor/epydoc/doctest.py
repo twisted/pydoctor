@@ -153,8 +153,7 @@ def colorize_doctest_body(s):
         # Pre-example text:
         yield s[idx:match.start()]
         # Example source code:
-        for stan in colorize_codeblock_body(pysrc):
-            yield stan
+        yield from colorize_codeblock_body(pysrc)
         # Example output:
         if want:
             style = 'py-except' if EXCEPT_RE.match(want) else 'py-output'
@@ -171,8 +170,7 @@ def colorize_codeblock_body(s):
         start = match.start()
         if idx < start:
             yield s[idx:start]
-        for stan in subfunc(match):
-            yield stan
+        yield from subfunc(match)
         idx = match.end()
     # DOCTEST_RE matches end-of-string.
     assert idx == len(s)

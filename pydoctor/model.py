@@ -335,10 +335,8 @@ class Class(CanContainImportsDocumentable):
         if include_self:
             yield self
         for b in self.baseobjects:
-            if b is None:
-                continue
-            for b2 in b.allbases(True):
-                yield b2
+            if b is not None:
+                yield from b.allbases(True)
     def _localNameToFullName(self, name):
         if name in self.contents:
             o = self.contents[name]

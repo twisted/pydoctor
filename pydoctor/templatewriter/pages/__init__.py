@@ -217,8 +217,7 @@ def overriding_subclasses(c, name, firstcall=True):
     else:
         for sc in c.subclasses:
             if sc.isVisible:
-                for sc2 in overriding_subclasses(sc, name, False):
-                    yield sc2
+                yield from overriding_subclasses(sc, name, False)
 
 def nested_bases(b):
     r = [(b,)]

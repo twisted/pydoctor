@@ -74,17 +74,13 @@ def _inheritedDocsources(obj):
 
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):
-        for source in super(ZopeInterfaceFunction, self).docsources():
-            yield source
-        for source in _inheritedDocsources(self):
-            yield source
+        yield from super(ZopeInterfaceFunction, self).docsources()
+        yield from _inheritedDocsources(self)
 
 class ZopeInterfaceAttribute(model.Attribute):
     def docsources(self):
-        for source in super(ZopeInterfaceAttribute, self).docsources():
-            yield source
-        for source in _inheritedDocsources(self):
-            yield source
+        yield from super(ZopeInterfaceAttribute, self).docsources()
+        yield from _inheritedDocsources(self)
 
 def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
