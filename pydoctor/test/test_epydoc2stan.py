@@ -16,19 +16,19 @@ def test_multiple_types():
         @type a: a pink thing!
         @type a: no, blue! aaaargh!
         """
-    class C(object):
+    class C:
         """
         @ivar a: it\'s an instance var
         @type a: a pink thing!
         @type a: no, blue! aaaargh!
         """
-    class D(object):
+    class D:
         """
         @cvar a: it\'s an instance var
         @type a: a pink thing!
         @type a: no, blue! aaaargh!
         """
-    class E(object):
+    class E:
         """
         @cvar: missing name
         @type: name still missing

@@ -435,7 +435,7 @@ maxAgeAmounts = st.integers() | st.just("\x00")
 maxAgeUnits = st.sampled_from(tuple(sphinx._maxAgeUnits)) | st.just("\x00")
 
 
-class TestParseMaxAge(object):
+class TestParseMaxAge:
     """
     Tests for L{sphinx.parseMaxAge}
     """
@@ -500,7 +500,7 @@ def test_ClosingBytesIO():
     assert b''.join(buffer) == data
 
 
-class TestIntersphinxCache(object):
+class TestIntersphinxCache:
     """
     Tests for L{sphinx.IntersphinxCache}
     """
@@ -584,13 +584,13 @@ class TestIntersphinxCache(object):
         """
         loggedExceptions = []
 
-        class _Logger(object):
+        class _Logger:
 
             @staticmethod
             def exception(*args, **kwargs):
                 loggedExceptions.append((args, kwargs))
 
-        class _RaisesOnGet(object):
+        class _RaisesOnGet:
 
             @staticmethod
             def get(url):
@@ -603,7 +603,7 @@ class TestIntersphinxCache(object):
         assert len(loggedExceptions)
 
 
-class TestStubCache(object):
+class TestStubCache:
     """
     Tests for L{sphinx.StubCache}.
     """

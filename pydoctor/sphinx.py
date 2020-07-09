@@ -19,7 +19,7 @@ from cachecontrol.heuristics import ExpiresAfter
 logger = logging.getLogger(__name__)
 
 
-class SphinxInventory(object):
+class SphinxInventory:
     """
     Sphinx inventory handler.
     """
@@ -114,7 +114,7 @@ class SphinxInventory(object):
         return '%s/%s' % (base_url, relative_link)
 
 
-class SphinxInventoryWriter(object):
+class SphinxInventoryWriter:
     """
     Sphinx inventory handler.
     """
@@ -212,7 +212,7 @@ USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
 
 
 @attr.s
-class _Unit(object):
+class _Unit:
     """
     A unit of time for maximum age parsing.
 
@@ -301,7 +301,7 @@ parseMaxAge.__doc__ = (
 
 
 @attr.s
-class IntersphinxCache(object):
+class IntersphinxCache:
     """
     An Intersphinx cache.
 
@@ -354,7 +354,7 @@ class IntersphinxCache(object):
 
 
 @attr.s
-class StubCache(object):
+class StubCache:
     """
     A stub cache.
 

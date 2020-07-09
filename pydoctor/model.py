@@ -49,7 +49,7 @@ class DocLocation(Enum):
     #UNDER_PARENT_DOCSTRING = 3
 
 
-class Documentable(object):
+class Documentable:
     """An object that can be documented.
 
     The interface is a bit ridiculously wide.
@@ -182,7 +182,7 @@ class Documentable(object):
         mod1.py::
 
             from external_location import External
-            class Local(object):
+            class Local:
                 pass
 
         mod2.py::
@@ -391,7 +391,7 @@ class PrivacyClass(Enum):
 
 
 
-class System(object):
+class System:
     """A collection of related documentable objects.
 
     PyDoctor documents collections of objects, often the contents of a

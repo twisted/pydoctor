@@ -567,7 +567,7 @@ def _annotation_for_elements(sequence):
         return None
 
 
-class ASTBuilder(object):
+class ASTBuilder:
     ModuleVistor = ModuleVistor
 
     def __init__(self, system):

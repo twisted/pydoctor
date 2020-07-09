@@ -261,7 +261,7 @@ def test_implementer_decoration():
         def method(self):
             """documentation"""
     @implementer(IMyInterface)
-    class Implementation(object):
+    class Implementation:
         def method(self):
             pass
     '''
@@ -275,7 +275,7 @@ def test_implementer_decoration_nonclass():
     from zope.interface import implementer
     var = 0
     @implementer(var)
-    class Implementation(object):
+    class Implementation:
         pass
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
@@ -317,7 +317,7 @@ def test_implementer_with_none():
         def method(self):
             """documentation"""
     @implementer(IMyInterface, *extra_interfaces)
-    class Implementation(object):
+    class Implementation:
         def method(self):
             pass
     '''
@@ -334,7 +334,7 @@ def test_implementer_nonclass(capsys):
     from zope.interface import Interface, implementer
     var = 'not a class'
     @implementer(var)
-    class Implementation(object):
+    class Implementation:
         pass
     '''
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
@@ -349,10 +349,10 @@ def test_implementer_plainclass(capsys):
     """
     src = '''
     from zope.interface import Interface, implementer
-    class C(object):
+    class C:
         pass
     @implementer(C)
-    class Implementation(object):
+    class Implementation:
         pass
     '''
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)

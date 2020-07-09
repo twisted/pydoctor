@@ -11,7 +11,7 @@ from pydoctor.driver import parse_args
 from pydoctor.test.test_astbuilder import fromText
 
 
-class FakeOptions(object):
+class FakeOptions:
     """
     A fake options object as if it came from that stupid optparse thing.
     """
@@ -19,7 +19,7 @@ class FakeOptions(object):
 
 
 
-class FakeDocumentable(object):
+class FakeDocumentable:
     """
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
@@ -156,7 +156,7 @@ def test_docstring_lineno():
     assert func.docstring_lineno == 4 # first non-blank line
 
 
-class Dummy(object):
+class Dummy:
     def crash(self):
         """Mmm"""
 

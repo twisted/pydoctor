@@ -49,7 +49,7 @@ def signature(argspec):
         things.append('**%s' % varkwname)
     return ', '.join(things)
 
-class DocGetter(object):
+class DocGetter:
     def get(self, ob, summary=False):
         if summary:
             return epydoc2stan.format_summary(ob)

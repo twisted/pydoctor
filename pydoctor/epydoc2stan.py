@@ -210,7 +210,7 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(fullID)
 
 
-class FieldDesc(object):
+class FieldDesc:
     def __init__(self):
         self.kind = None
         self.name = None
@@ -281,7 +281,7 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
-class Field(object):
+class Field:
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
@@ -297,7 +297,7 @@ class Field(object):
         return "<%s %r %r %s %d>"%(self.__class__.__name__,
                              self.tag, self.arg, self.lineno, r)
 
-class FieldHandler(object):
+class FieldHandler:
     def __init__(self, obj):
         self.obj = obj
 
