@@ -475,7 +475,7 @@ class ClosingBytesIO(io.BytesIO):
     """
 
     def read(self, *args, **kwargs):
-        data = super(ClosingBytesIO, self).read(*args, **kwargs)
+        data = super().read(*args, **kwargs)
         if self.tell() >= len(self.getvalue()):
             self.close()
         return data

@@ -285,7 +285,7 @@ class ProcessingState(Enum):
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self):
-        super(CanContainImportsDocumentable, self).setup()
+        super().setup()
         self._localNameToFullName_map = {}
 
 
@@ -294,7 +294,7 @@ class Module(CanContainImportsDocumentable):
     state = ProcessingState.UNPROCESSED
 
     def setup(self):
-        super(Module, self).setup()
+        super().setup()
         self.all = None
 
     def _localNameToFullName(self, name):
@@ -327,7 +327,7 @@ class Module(CanContainImportsDocumentable):
 class Class(CanContainImportsDocumentable):
     kind = "Class"
     def setup(self):
-        super(Class, self).setup()
+        super().setup()
         self.rawbases = []
         self.subclasses = []
 
@@ -365,7 +365,7 @@ class Function(Inheritable):
     kind = "Function"
 
     def setup(self):
-        super(Function, self).setup()
+        super().setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
 

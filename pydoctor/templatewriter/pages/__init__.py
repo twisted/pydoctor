@@ -273,7 +273,7 @@ class ClassPage(CommonPage):
         self.overridenInCount = 0
 
     def extras(self):
-        r = super(ClassPage, self).extras()
+        r = super().extras()
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
@@ -284,7 +284,7 @@ class ClassPage(CommonPage):
         return r
 
     def mediumName(self, ob):
-        r = [super(ClassPage, self).mediumName(ob)]
+        r = [super().mediumName(ob)]
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
@@ -350,7 +350,7 @@ class ClassPage(CommonPage):
 
 class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
-        r = [super(ZopeInterfaceClassPage, self).extras()]
+        r = [super().extras()]
         if self.ob.isinterface:
             namelist = sorted([o.fullName() for o in self.ob.implementedby_directly], key=lambda x:x.lower())
             label = 'Known implementations: '
@@ -378,11 +378,9 @@ class ZopeInterfaceClassPage(ClassPage):
         r = []
         if imeth:
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
-        r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
+        r.extend(super().functionExtras(data))
         return r
 
 class FunctionPage(CommonPage):
     def mediumName(self, ob):
-        return [
-            super(FunctionPage, self).mediumName(ob), '(',
-            signature(self.ob.argspec), ')']
+        return [super().mediumName(ob), '(', signature(self.ob.argspec), ')']
