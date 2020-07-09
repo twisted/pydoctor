@@ -11,7 +11,7 @@ from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import py2only, py3only, typecomment
+from . import py3only, typecomment
 import pytest
 
 
@@ -96,17 +96,6 @@ def test_function_argspec(systemcls):
     docfunc, = mod.contents.values()
     assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
 
-
-@py2only
-@systemcls_param
-def test_function_argspec_with_tuple(systemcls):
-    src = textwrap.dedent('''
-    def f((a,z), b=3, *c, **kw):
-        pass
-    ''')
-    mod = fromText(src, systemcls=systemcls)
-    docfunc, = mod.contents.values()
-    assert docfunc.argspec ==  ([['a', 'z'], 'b'], 'c', 'kw', ('3',))
 
 @systemcls_param
 def test_class(systemcls):

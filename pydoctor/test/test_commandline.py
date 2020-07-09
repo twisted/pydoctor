@@ -5,7 +5,7 @@ import sys
 from pydoctor import driver
 from twisted.python.compat import NativeStringIO
 
-from . import py2only, py3only
+from . import py3only
 
 def geterrtext(*options):
     options = list(options)
@@ -31,11 +31,6 @@ def test_invalid_option():
 def test_cannot_advance_blank_system():
     err = geterrtext('--make-html')
     assert 'forget an --add-package?' in err
-
-@py2only
-def test_no_systemclasses_py2():
-    err = geterrtext('--system-class')
-    assert 'requires an argument' in err
 
 @py3only
 def test_no_systemclasses_py3():
