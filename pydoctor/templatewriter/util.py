@@ -1,7 +1,5 @@
 """Miscellaneous utilities."""
 
-from __future__ import print_function
-
 from urllib.parse import quote
 import os
 

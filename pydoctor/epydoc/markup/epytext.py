@@ -96,8 +96,6 @@ Description::
 # Note: the symbol list is appended to the docstring automatically,
 # below.
 
-from __future__ import print_function
-
 __docformat__ = 'epytext en'
 
 # Code organization..

@@ -1,7 +1,5 @@
 """The command-line parsing and entry point."""
 
-from __future__ import print_function
-
 import datetime
 import os
 import sys

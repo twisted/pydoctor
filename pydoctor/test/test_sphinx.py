@@ -1,7 +1,6 @@
 """
 Tests for Sphinx integration.
 """
-from __future__ import print_function
 
 import datetime
 import io

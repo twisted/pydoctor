@@ -2,8 +2,6 @@
 Convert epydoc markup into renderable content.
 """
 
-from __future__ import print_function
-
 import astor
 
 from importlib import import_module

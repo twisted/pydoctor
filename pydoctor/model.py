@@ -6,8 +6,6 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
-from __future__ import print_function, unicode_literals
-
 import builtins
 import datetime
 import imp

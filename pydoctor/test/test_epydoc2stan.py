@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from pytest import raises
 
 from pydoctor import epydoc2stan, model

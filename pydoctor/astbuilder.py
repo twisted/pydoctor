@@ -1,7 +1,5 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
-from __future__ import print_function
-
 import ast
 import sys
 from itertools import chain

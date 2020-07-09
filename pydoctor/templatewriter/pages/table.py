@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer
 

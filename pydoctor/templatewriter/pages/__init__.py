@@ -1,7 +1,5 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from __future__ import print_function
-
 from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
