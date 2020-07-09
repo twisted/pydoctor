@@ -108,7 +108,7 @@ class _EpydocLinker(DocstringLinker):
             return link(obj)
         else:
             raise AssertionError(
-                "Unknown documentation_location: %s" % obj.documentation_location)
+                f"Unknown documentation_location: {obj.documentation_location}")
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -222,10 +222,11 @@ class FieldDesc:
             body = body, ' (type: ', self.type, ')'
         return body
     def __repr__(self):
-        contents = []
-        for k, v in self.__dict__.items():
-            contents.append("%s=%r"%(k, v))
-        return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
+        contents = ', '.join(
+            f"{k}={v!r}"
+            for k, v in self.__dict__.items()
+            )
+        return f"<{self.__class__.__name__}({contents})>"
 
 
 def format_desc_list(singular, descs, plural=None):
@@ -461,7 +462,7 @@ def parse_docstring(obj, doc, source):
     try:
         pdoc = parser(doc, errs)
     except Exception as e:
-        errs.append('%s: %s' % (e.__class__.__name__, e))
+        errs.append(f'{e.__class__.__name__}: {e}')
         pdoc = None
     if pdoc is None:
         pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
@@ -490,7 +491,7 @@ def format_docstring(obj):
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))
     except Exception as e:
-        errs = ['%s: %s' % (e.__class__.__name__, e)]
+        errs = [f'{e.__class__.__name__}: {e}']
         if doc is None:
             stan = tags.p(class_="undocumented")('Broken description')
         else:
@@ -559,13 +560,14 @@ def format_undocumented(obj):
         subcounts['module'] -= 1
     if subdocstrings:
         plurals = {'class': 'classes'}
-        text = "No %s docstring; %s documented" % (
-            obj.kind.lower(),
+        text = (
+            "No ", obj.kind.lower(), " docstring; "
             ', '.join(
-                "%s/%s %s" % (subdocstrings.get(k, 0), subcounts[k],
-                              plurals.get(k, k + 's'))
+                f"{subdocstrings.get(k, 0)}/{subcounts[k]} "
+                f"{plurals.get(k, k + 's')}"
                 for k in sorted(subcounts)
-                )
+                ),
+            " documented"
             )
     else:
         text = "Undocumented"

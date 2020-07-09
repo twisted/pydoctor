@@ -37,7 +37,7 @@ def taglink(o, label=None):
         linktext = link(o)
     else:
         raise AssertionError(
-            "Unknown documentation_location: %s" % o.documentation_location)
+            f"Unknown documentation_location: {o.documentation_location}")
     # Create a link to the object, with a "data-type" attribute which says what
     # kind of object it is (class, etc). This helps doc2dash figure out what it
     # is.

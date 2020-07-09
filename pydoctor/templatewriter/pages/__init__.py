@@ -40,11 +40,12 @@ def signature(argspec):
         else:
             things.append(regarg)
     if varargname:
-        things.append('*%s' % varargname)
+        things.append(f'*{varargname}')
 
-    things += ['%s=%s' % kwarg for kwarg in kwargs]
+    for k, v in kwargs:
+        things.append(f'{k}={v}')
     if varkwname:
-        things.append('**%s' % varkwname)
+        things.append(f'**{varkwname}')
     return ', '.join(things)
 
 class DocGetter:

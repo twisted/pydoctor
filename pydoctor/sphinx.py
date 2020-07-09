@@ -110,7 +110,7 @@ class SphinxInventory:
         if relative_link.endswith('$'):
             relative_link = relative_link[:-1] + name
 
-        return '%s/%s' % (base_url, relative_link)
+        return f'{base_url}/{relative_link}'
 
 
 class SphinxInventoryWriter:
@@ -147,12 +147,11 @@ class SphinxInventoryWriter:
         """
         Return header for project  with name.
         """
-        version = [str(part) for part in self.version]
-        return ("""# Sphinx inventory version 2
-# Project: %s
-# Version: %s
+        return f"""# Sphinx inventory version 2
+# Project: {self.project_name}
+# Version: {'.'.join(str(part) for part in self.version)}
 # The rest of this file is compressed with zlib.
-""" % (self.project_name, '.'.join(version))).encode('utf-8')
+""".encode('utf-8')
 
     def _generateContent(self, subjects):
         """
@@ -204,7 +203,7 @@ class SphinxInventoryWriter:
             self.error(
                 'sphinx', "Unknown type %r for %s." % (type(obj), full_name,))
 
-        return '%s py:%s -1 %s %s\n' % (full_name, domainname, url, display)
+        return f'{full_name} py:{domainname} -1 {url} {display}\n'
 
 
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
@@ -242,16 +241,16 @@ _maxAgeUnits = {
     "w": _Unit("weeks", minimum=1, maximum=(999999999 + 1) // 7),
 }
 _maxAgeUnitNames = ", ".join(
-    "{} ({})".format(indicator, unit.name)
+    f"{indicator} ({unit.name})"
     for indicator, unit in _maxAgeUnits.items()
 )
 
 
 MAX_AGE_HELP = textwrap.dedent(
-    """
+    f"""
     The maximum age of any entry in the cache.  Of the format
-    <int><unit> where <unit> is one of {}.
-    """.format(_maxAgeUnitNames)
+    <int><unit> where <unit> is one of {_maxAgeUnitNames}.
+    """
 )
 MAX_AGE_DEFAULT = '1w'
 
@@ -272,13 +271,13 @@ def parseMaxAge(maxAge):
         unit = _maxAgeUnits[maxAge[-1]]
     except (IndexError, KeyError):
         raise InvalidMaxAge(
-            "Maximum age's units must be one of {}".format(_maxAgeUnitNames))
+            f"Maximum age's units must be one of {_maxAgeUnitNames}")
 
     if not (unit.minimum <= amount < unit.maximum):
         raise InvalidMaxAge(
-            "Maximum age in {} must be "
-            "greater than or equal to {} "
-            "and less than {}".format(unit.name, unit.minimum, unit.maximum))
+            f"Maximum age in {unit.name} must be "
+            f"greater than or equal to {unit.minimum} "
+            f"and less than {unit.maximum}")
 
     return {unit.name: amount}
 

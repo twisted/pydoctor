@@ -39,10 +39,10 @@ else:
 _BUILTINS = [_BI for _BI in dir(builtins) if not _BI.startswith('__')]
 
 #: A regexp group that matches keywords.
-_KEYWORD_GRP = '|'.join(r'\b%s\b' % _KW for _KW in _KEYWORDS)
+_KEYWORD_GRP = '|'.join(rf'\b{_KW}\b' for _KW in _KEYWORDS)
 
 #: A regexp group that matches Python builtins.
-_BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(r'\b%s\b' % _BI for _BI in _BUILTINS)
+_BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(rf'\b{_BI}\b' for _BI in _BUILTINS)
 
 #: A regexp group that matches Python strings.
 _STRING_GRP = '|'.join(
@@ -65,11 +65,11 @@ _DEFINE_GRP = r'\b(?:def|class)[ \t]+\w+'
 DEFINE_FUNC_RE = re.compile(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)')
 
 #: A regexp that matches Python prompts
-PROMPT_RE = re.compile('(%s|%s)' % (_PROMPT1_GRP, _PROMPT2_GRP),
+PROMPT_RE = re.compile(f'({_PROMPT1_GRP}|{_PROMPT2_GRP})',
                        re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches Python "..." prompts.
-PROMPT2_RE = re.compile('(%s)' % _PROMPT2_GRP,
+PROMPT2_RE = re.compile(f'({_PROMPT2_GRP})',
                         re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches doctest exception blocks.
@@ -83,13 +83,11 @@ DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')
 #: that should be colored.
 DOCTEST_RE = re.compile(
     '('
-        r'(?P<STRING>%s)|(?P<COMMENT>%s)|(?P<DEFINE>%s)|'
-        r'(?P<KEYWORD>%s)|(?P<BUILTIN>%s)|'
-        r'(?P<PROMPT1>%s)|(?P<PROMPT2>%s)|(?P<EOS>\Z)'
-    ')' % (
-        _STRING_GRP, _COMMENT_GRP, _DEFINE_GRP, _KEYWORD_GRP, _BUILTIN_GRP,
-        _PROMPT1_GRP, _PROMPT2_GRP
-        ),
+        rf'(?P<STRING>{_STRING_GRP})|(?P<COMMENT>{_COMMENT_GRP})|'
+        rf'(?P<DEFINE>{_DEFINE_GRP})|'
+        rf'(?P<KEYWORD>{_KEYWORD_GRP})|(?P<BUILTIN>{_BUILTIN_GRP})|'
+        rf'(?P<PROMPT1>{_PROMPT1_GRP})|(?P<PROMPT2>{_PROMPT2_GRP})|(?P<EOS>\Z)'
+    ')',
     re.MULTILINE | re.DOTALL)
 
 #: This regular expression is used to find doctest examples in a

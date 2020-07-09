@@ -115,7 +115,7 @@ class Documentable:
             if parentMod is not None:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
-                    self.sourceHref = '%s#L%d' % (parentSourceHref, lineno)
+                    self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
 
     def fullName(self):
         parent = self.parent
@@ -131,7 +131,7 @@ class Documentable:
         return prefix + self.name
 
     def __repr__(self):
-        return "%s %r"%(self.__class__.__name__, self.fullName())
+        return f"{self.__class__.__name__} {self.fullName()!r}"
 
     def docsources(self):
         """Objects that can be considered as a source of documentation.
@@ -251,7 +251,7 @@ class Documentable:
 
         self.system.msg(
             section,
-            '%s:%s: %s' % (self.module.description, linenumber, descr),
+            f'{self.module.description}:{linenumber}: {descr}',
             thresh=-1)
 
 
@@ -442,7 +442,7 @@ class System:
         if n is None:
             i = str(i)
         else:
-            i = '%s/%s'%(i,n)
+            i = f'{i}/{n}'
         if self.verbosity(section) == 0 and sys.stdout.isatty():
             print('\r'+i, msg, end='')
             sys.stdout.flush()
@@ -600,8 +600,7 @@ class System:
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
-            raise Exception("package path %r does not exist!"
-                            %(dirpath,))
+            raise Exception(f"package path {dirpath!r} does not exist!")
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
                             "addPackage")
@@ -632,8 +631,7 @@ class System:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
-                    module_full_name = "%s.%s" % (
-                        package.fullName(), module_name)
+                    module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
                 py_mod = imp.load_module(
@@ -709,12 +707,12 @@ class System:
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
+        num_warnings = sum(len(v) for v in self.warnings.values())
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            "modules processed %s warnings"%(
-            sum(len(v) for v in self.warnings.values()),))
+            f"modules processed {num_warnings} warnings")
 
 
     def process(self):

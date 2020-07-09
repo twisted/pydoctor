@@ -428,8 +428,8 @@ class ModuleVistor(ast.NodeVisitor):
                         isstaticmethod = True
             if isstaticmethod:
                 if isclassmethod:
-                    func.report('%s is both classmethod and staticmethod' % (
-                                func.fullName(),))
+                    func.report(f'{func.fullName()} is both classmethod '
+                                f'and staticmethod')
                 else:
                     func.kind = 'Static Method'
             elif isclassmethod:
@@ -491,7 +491,7 @@ class ModuleVistor(ast.NodeVisitor):
             return _AnnotationStringParser().visit(node)
         except SyntaxError as ex:
             self.builder.currentMod.report(
-                    'syntax error in annotation: %s' % (ex,),
+                    f'syntax error in annotation: {ex}',
                     lineno_offset=node.lineno)
             return None
 
@@ -601,7 +601,7 @@ class ASTBuilder:
             obj.setLineNumber(lineno)
 
     def pop(self, obj):
-        assert self.current is obj, "%r is not %r"%(self.current, obj)
+        assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None

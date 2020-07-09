@@ -142,15 +142,14 @@ class Element:
         notation.
         @bug: Doesn't escape '<' or '&' or '>'.
         """
-        attribs = ''.join(' %s=%r' % t for t in self.attribs.items())
-        return ('<%s%s>' % (self.tag, attribs) +
-                ''.join(str(child) for child in self.children) +
-                '</%s>' % self.tag)
+        attribs = ''.join(f' {k}={v!r}' for k, v in self.attribs.items())
+        content = ''.join(str(child) for child in self.children)
+        return f'<{self.tag}{attribs}>{content}</{self.tag}>'
 
     def __repr__(self):
-        attribs = ''.join(', %s=%r' % t for t in self.attribs.items())
-        args = ''.join(', %r' % c for c in self.children)
-        return 'Element(%s%s%s)' % (self.tag, args, attribs)
+        attribs = ''.join(f', {k}={v!r}' for k, v in self.attribs.items())
+        args = ''.join(f', {c!r}' for c in self.children)
+        return f'Element({self.tag}{args}{attribs})'
 
 ##################################################
 ## Constants
@@ -301,7 +300,7 @@ def parse(text, errors = None):
         elif token.tag == Token.BULLET:
             _add_list(doc, token, stack, indent_stack, errors)
         else:
-            assert 0, 'Unknown token type: '+token.tag
+            raise AssertionError(f"Unknown token type: {token.tag}")
 
         # Check if the DOM element we just added was a field..
         if stack[-1].tag == 'field':
@@ -417,7 +416,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
     elif bullet_token.contents[-1] == ':':
         list_type = 'fieldlist'
     else:
-        raise AssertionError('Bad Bullet: %r' % bullet_token.contents)
+        raise AssertionError(f'Bad Bullet: {bullet_token.contents!r}')
 
     # Is this a new list?
     newlist = False
@@ -612,7 +611,7 @@ class Token:
             C{Token}s have formal representaitons of the form::
                 <Token: para at line 12>
         """
-        return '<Token: %s at line %s>' % (self.tag, self.startline)
+        return f'<Token: {self.tag} at line {self.startline}>'
 
     def to_dom(self, doc):
         """
@@ -1105,7 +1104,7 @@ def _colorize_link(doc, link, token, end, errors):
 
     # If the last child isn't text, we know it's bad.
     if len(variables)==0 or not isinstance(variables[-1], str):
-        estr = "Bad %s target." % link.tag
+        estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
         return
 
@@ -1118,7 +1117,7 @@ def _colorize_link(doc, link, token, end, errors):
     elif len(variables) == 1:
         target = variables[0]
     else:
-        estr = "Bad %s target." % link.tag
+        estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
         return
 
@@ -1196,7 +1195,7 @@ class ColorizingError(ParseError):
         else:
             right = (self.token.contents[self.charnum:self.charnum+RANGE]
                      + '...')
-        return ('%s\n\n%s%s\n%s^' % (self._descr, left, right, ' '*len(left)))
+        return f"{self._descr}\n\n{left}{right}\n{' '*len(left)}^"
 
 #################################################################
 ##                    SUPPORT FOR EPYDOC
@@ -1359,7 +1358,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'li':
             return tags.li(*variables)
         elif tree.tag == 'heading':
-            return getattr(tags, 'h%d' % seclevel)(*variables)
+            return getattr(tags, f'h{seclevel:d}')(*variables)
         elif tree.tag == 'literalblock':
             variables.append('\n')
             return tags.pre('\n', *variables, class_='literalblock')
@@ -1373,4 +1372,4 @@ class ParsedEpytextDocstring(ParsedDocstring):
             symbol = tree.children[0]
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
-            raise AssertionError("Unknown epytext DOM element %r" % tree.tag)
+            raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

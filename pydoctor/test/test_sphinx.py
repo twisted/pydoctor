@@ -247,7 +247,7 @@ def test_getPayload_content():
 # Project: some-name
 # Version: 2.0
 # commented line.
-%s""" % (zlib.compress(payload.encode('utf-8')),)
+""" + zlib.compress(payload.encode('utf-8'))
 
     result = sut._getPayload('http://base.ignore', content)
 
@@ -281,7 +281,7 @@ def test_getPayload_invalid_decode():
     base_url = 'http://tm.tld'
     content = b"""# Project: some-name
 # Version: 2.0
-%s""" % (zlib.compress(payload),)
+""" + zlib.compress(payload)
 
     result = sut._getPayload(base_url, content)
 
@@ -334,7 +334,7 @@ def test_update_functional():
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
-%s""" % (zlib.compress(payload),)
+""" + zlib.compress(payload)
 
     url = 'http://some.url/api/objects.inv'
 
@@ -449,7 +449,7 @@ class TestParseMaxAge:
         L{datetime.timedelta}, and the constructed L{datetime.timedelta}
         matches the specification.
         """
-        maxAge = "{}{}".format(amount, unit)
+        maxAge = f"{amount}{unit}"
         try:
             parsedMaxAge = sphinx.parseMaxAge(maxAge)
         except sphinx.InvalidMaxAge:
@@ -663,7 +663,7 @@ def test_prepareCache(
             clearCache=clearCache,
             enableCache=enableCache,
             cachePath=str(cacheDirectory),
-            maxAge="{}{}".format(maxAgeAmount, maxAgeUnit)
+            maxAge=f"{maxAgeAmount}{maxAgeUnit}"
         )
     except sphinx.InvalidMaxAge:
         pass
