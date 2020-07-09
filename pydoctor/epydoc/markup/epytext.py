@@ -224,13 +224,13 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-def parse(str, errors = None):
+def parse(text, errors = None):
     """
     Return a DOM tree encoding the contents of an epytext string.  Any
     errors generated during parsing will be stored in C{errors}.
 
-    @param str: The epytext string to parse.
-    @type str: C{string}
+    @param text: The epytext string to parse.
+    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then fatal errors
         will generate exceptions, and non-fatal errors will be
@@ -249,11 +249,11 @@ def parse(str, errors = None):
         raise_on_error = False
 
     # Preprocess the string.
-    str = re.sub('\015\012', '\012', str)
-    str = str.expandtabs()
+    text = re.sub('\015\012', '\012', text)
+    text = text.expandtabs()
 
     # Tokenize the input string.
-    tokens = _tokenize(str, errors)
+    tokens = _tokenize(text, errors)
 
     # Have we encountered a field yet?
     encountered_field = False
@@ -903,13 +903,13 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     tokens.append(Token(Token.PARA, start, contents, para_indent))
     return linenum
 
-def _tokenize(str, errors):
+def _tokenize(text, errors):
     """
     Split a given formatted docstring into an ordered list of
     C{Token}s, according to the epytext markup rules.
 
-    @param str: The epytext string
-    @type str: C{string}
+    @param text: The epytext string
+    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then errors will
         generate exceptions.
@@ -918,7 +918,7 @@ def _tokenize(str, errors):
     @rtype: C{list} of L{Token}
     """
     tokens = []
-    lines = str.split('\n')
+    lines = text.split('\n')
 
     # Scan through the lines, determining what @type of token we're
     # dealing with, and tokenizing it, as appropriate.
@@ -986,7 +986,7 @@ def _colorize(doc, token, errors, tagName='para'):
     @return: a DOM C{Element} encoding the given paragraph.
     @returntype: C{Element}
     """
-    str = token.contents
+    text = token.contents
 
     # Maintain a stack of DOM elements, containing the ancestors of
     # the text currently being analyzed.  New elements are pushed when
@@ -1005,7 +1005,7 @@ def _colorize(doc, token, errors, tagName='para'):
     # to the next open or close brace.
     start = 0
     while 1:
-        match = _BRACE_RE.search(str, start)
+        match = _BRACE_RE.search(text, start)
         if match is None: break
         end = match.start()
 
@@ -1016,19 +1016,19 @@ def _colorize(doc, token, errors, tagName='para'):
         # and convert them to literal braces once we find the matching
         # close-brace.
         if match.group() == '{':
-            if (end>0) and 'A' <= str[end-1] <= 'Z':
+            if (end>0) and 'A' <= text[end-1] <= 'Z':
                 if (end-1) > start:
-                    stack[-1].children.append(str[start:end-1])
-                if str[end-1] not in _COLORIZING_TAGS:
+                    stack[-1].children.append(text[start:end-1])
+                if text[end-1] not in _COLORIZING_TAGS:
                     estr = "Unknown inline markup tag."
                     errors.append(ColorizingError(estr, token, end-1))
                     stack.append(Element('unknown'))
                 else:
-                    tag = _COLORIZING_TAGS[str[end-1]]
+                    tag = _COLORIZING_TAGS[text[end-1]]
                     stack.append(Element(tag))
             else:
                 if end > start:
-                    stack[-1].children.append(str[start:end])
+                    stack[-1].children.append(text[start:end])
                 stack.append(Element('litbrace'))
             openbrace_stack.append(end)
             stack[-2].children.append(stack[-1])
@@ -1044,7 +1044,7 @@ def _colorize(doc, token, errors, tagName='para'):
 
             # Add any remaining text.
             if end > start:
-                stack[-1].children.append(str[start:end])
+                stack[-1].children.append(text[start:end])
 
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
@@ -1094,8 +1094,8 @@ def _colorize(doc, token, errors, tagName='para'):
         start = end+1
 
     # Add any final text.
-    if start < len(str):
-        stack[-1].children.append(str[start:])
+    if start < len(text):
+        stack[-1].children.append(text[start:])
 
     if len(stack) != 1:
         estr = "Unbalanced '{'."

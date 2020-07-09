@@ -630,8 +630,8 @@ class ASTBuilder:
         system.addObject(attr)
         return attr
 
-    def warning(self, type, detail):
-        self.system._warning(self.current, type, detail)
+    def warning(self, message, detail):
+        self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, ast, mod):
         findAll(ast, mod)

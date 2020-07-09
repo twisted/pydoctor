@@ -475,14 +475,14 @@ class System:
     def objForFullName(self, fullName):
         return self.allobjects.get(fullName)
 
-    def _warning(self, current, type, detail):
+    def _warning(self, current, message, detail):
         if current is not None:
             fn = current.fullName()
         else:
             fn = '<None>'
         if self.options.verbosity > 0:
-            print(fn, type, detail)
-        self.warnings.setdefault(type, []).append((fn, detail))
+            print(fn, message, detail)
+        self.warnings.setdefault(message, []).append((fn, detail))
 
     def objectsOfType(self, cls):
         """Iterate over all instances of C{cls} present in the system. """
@@ -627,11 +627,11 @@ class System:
                 self.addModuleFromPath(package, fullname)
 
     def addModuleFromPath(self, package, path):
-        for (suffix, mode, type) in imp.get_suffixes():
+        for (suffix, mode, impl) in imp.get_suffixes():
             if not path.endswith(suffix):
                 continue
             module_name = os.path.basename(path[:-len(suffix)])
-            if type == imp.C_EXTENSION:
+            if impl == imp.C_EXTENSION:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
@@ -641,9 +641,9 @@ class System:
                     module_full_name = module_name
                 py_mod = imp.load_module(
                     module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, type))
+                    (suffix, mode, impl))
                 self.introspectModule(py_mod, module_full_name)
-            elif type == imp.PY_SOURCE:
+            elif impl == imp.PY_SOURCE:
                 self.addModule(path, module_name, package)
             break
 
