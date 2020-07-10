@@ -20,11 +20,6 @@ from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 
-try:
-    import exceptions
-except ImportError:
-    exceptions = builtins
-
 
 def _find_stdlib_dir():
     """Find the standard library location for the currently running
@@ -85,10 +80,11 @@ def stdlib_doc_link_for_name(name):
     part0 = parts[0]
     if part0 in builtins.__dict__ and not part0.startswith('__'):
         bltin = builtins.__dict__[part0]
-        if part0 in exceptions.__dict__:
-            return STDLIB_URL + 'exceptions.html#exceptions.' + name
-        elif isinstance(bltin, type):
-            return STDLIB_URL + 'stdtypes.html#' + name
+        if isinstance(bltin, type):
+            if issubclass(bltin, BaseException):
+                return STDLIB_URL + 'exceptions.html#' + name
+            else:
+                return STDLIB_URL + 'stdtypes.html#' + name
         elif callable(bltin):
             return STDLIB_URL + 'functions.html#' + name
         else:
