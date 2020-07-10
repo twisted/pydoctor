@@ -11,6 +11,8 @@ matrix:
     - python: 3.8
       env: TOX_ENV=test-py38-codecov-travis
     - python: 3.8
+      env: TOX_ENV=mypy
+    - python: 3.8
       env: TOX_ENV=twisted-apidoc
     - python: pypy3
       env: TOX_ENV=test-pypy3
