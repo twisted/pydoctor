@@ -51,6 +51,28 @@ def node2fullname(expr, ctx):
         return None
 
 
+def _get_all_annotations(func_ast):
+    def _get_all_args(func_ast):
+        base_args = func_ast.args
+        yield from base_args.posonlyargs
+        yield from base_args.args
+        varargs = base_args.vararg
+        if varargs:
+            yield varargs
+        yield from base_args.kwonlyargs
+        kwargs = base_args.kwarg
+        if kwargs:
+            yield kwargs
+    def _get_all_ast_annotations(func_ast):
+        for arg in _get_all_args(func_ast):
+            yield arg.arg, arg.annotation
+        returns = func_ast.returns
+        if returns:
+            yield 'return', returns
+    return {name: astor.to_source(value).strip() if value is not None else value
+            for name, value in _get_all_ast_annotations(func_ast)}
+
+
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
         self.builder = builder
@@ -462,6 +484,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
+        func.annotations = _get_all_annotations(node)
         self.default(node)
         self.builder.popFunction()
 
