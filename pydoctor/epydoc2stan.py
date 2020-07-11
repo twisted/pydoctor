@@ -292,10 +292,12 @@ class Field:
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler:
-    def __init__(self, obj):
+    def __init__(self, obj, annotations=None):
         self.obj = obj
 
         self.types = {}
+        if annotations is not None:
+            self.types.update(annotations)
 
         self.parameter_descs = []
         self.return_desc = None
@@ -398,6 +400,12 @@ class FieldHandler:
         for pd in self.parameter_descs:
             if pd.name in self.types:
                 pd.type = self.types[pd.name]
+        if 'return' not in self.types:
+             return
+        if not self.return_desc:
+            self.return_desc = FieldDesc()
+        if not self.return_desc.type:
+            self.return_desc.type = self.types['return']
 
     def format(self):
         r = []
@@ -451,7 +459,7 @@ def parse_docstring(obj, doc, source):
     parser = get_parser(obj)
     errs = []
     try:
-        pdoc = parser(doc, errs, advice=source.annotations)
+        pdoc = parser(doc, errs)
     except Exception as e:
         errs.append(f'{e.__class__.__name__}: {e}')
         pdoc = None
@@ -494,7 +502,7 @@ def format_docstring(obj):
     fields = pdoc.fields
     s = tags.div(*content)
     if fields:
-        fh = FieldHandler(obj)
+        fh = FieldHandler(obj, source.annotations)
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
