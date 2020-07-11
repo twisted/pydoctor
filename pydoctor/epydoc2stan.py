@@ -451,7 +451,7 @@ def parse_docstring(obj, doc, source):
     parser = get_parser(obj)
     errs = []
     try:
-        pdoc = parser(doc, errs)
+        pdoc = parser(doc, errs, advice=source.annotations)
     except Exception as e:
         errs.append(f'{e.__class__.__name__}: {e}')
         pdoc = None
