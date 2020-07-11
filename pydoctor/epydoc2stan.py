@@ -502,7 +502,7 @@ def format_docstring(obj):
     fields = pdoc.fields
     s = tags.div(*content)
     if fields:
-        fh = FieldHandler(obj, source.annotations)
+        fh = FieldHandler(obj, getattr(source, 'annotations', None))
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
