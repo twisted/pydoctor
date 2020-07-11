@@ -54,7 +54,11 @@ def node2fullname(expr, ctx):
 def _get_all_annotations(func_ast):
     def _get_all_args(func_ast):
         base_args = func_ast.args
-        yield from base_args.posonlyargs
+        # New on Python 3.8 -- handle absence gracefully
+        try:
+            yield from base_args.posonlyargs
+        except AttributeError:
+            pass
         yield from base_args.args
         varargs = base_args.vararg
         if varargs:
