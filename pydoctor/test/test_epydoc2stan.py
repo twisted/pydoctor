@@ -66,7 +66,7 @@ def test_func_arg_and_ret_annotation():
     classic_fmt = format(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_and_ret_annotation():
+def test_func_arg_and_ret_annotation_with_override():
     annotation_mod = fromText('''
     def f(a: List[str], b: List[str]) -> bool:
         """
