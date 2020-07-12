@@ -1,14 +1,11 @@
 """Miscellaneous utilities."""
 
-from __future__ import print_function
-
+from urllib.parse import quote
 import os
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import tags
-
-from six.moves.urllib.parse import quote
 
 def link(o):
     if not o.isVisible:
@@ -40,7 +37,7 @@ def taglink(o, label=None):
         linktext = link(o)
     else:
         raise AssertionError(
-            "Unknown documentation_location: %s" % o.documentation_location)
+            f"Unknown documentation_location: {o.documentation_location}")
     # Create a link to the object, with a "data-type" attribute which says what
     # kind of object it is (class, etc). This helps doc2dash figure out what it
     # is.

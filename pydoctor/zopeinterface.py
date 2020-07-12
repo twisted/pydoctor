@@ -1,18 +1,15 @@
 """Support for Zope interfaces."""
 
-from __future__ import print_function
-
 import ast
 import re
 
 import astor
 from pydoctor import astbuilder, model
-from six import text_type
 
 
 class ZopeInterfaceModule(model.Module):
     def setup(self):
-        super(ZopeInterfaceModule, self).setup()
+        super().setup()
         self.implements_directly = [] # [name of interface]
 
     @property
@@ -29,7 +26,7 @@ class ZopeInterfaceClass(model.Class):
     implementsOnly = False
     implementedby_directly = None # [objects], when isinterface == True
     def setup(self):
-        super(ZopeInterfaceClass, self).setup()
+        super().setup()
         self.implements_directly = [] # [name of interface]
 
     @property
@@ -77,17 +74,13 @@ def _inheritedDocsources(obj):
 
 class ZopeInterfaceFunction(model.Function):
     def docsources(self):
-        for source in super(ZopeInterfaceFunction, self).docsources():
-            yield source
-        for source in _inheritedDocsources(self):
-            yield source
+        yield from super().docsources()
+        yield from _inheritedDocsources(self)
 
 class ZopeInterfaceAttribute(model.Attribute):
     def docsources(self):
-        for source in super(ZopeInterfaceAttribute, self).docsources():
-            yield source
-        for source in _inheritedDocsources(self):
-            yield source
+        yield from super().docsources()
+        yield from _inheritedDocsources(self)
 
 def addInterfaceInfoToScope(scope, interfaceargs):
     for arg in interfaceargs:
@@ -153,7 +146,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         return self.builder.current.expandName(name)
 
     def _handleAssignmentInModule(self, target, annotation, expr, lineno):
-        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInModule(
+        super()._handleAssignmentInModule(
                 target, annotation, expr, lineno)
 
         if not isinstance(expr, ast.Call):
@@ -171,7 +164,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.newAttr = interface
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
-        super(ZopeInterfaceModuleVisitor, self)._handleAssignmentInClass(
+        super()._handleAssignmentInClass(
                 target, annotation, expr, lineno)
 
         def handleSchemaField():
@@ -246,7 +239,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
     visit_Call_zope_interface_classImplementsOnly = visit_Call_zope_interface_classImplements
 
     def visit_ClassDef(self, node):
-        super(ZopeInterfaceModuleVisitor, self).visit_ClassDef(node)
+        super().visit_ClassDef(node)
         cls = self.builder.current.contents.get(node.name)
         if cls is None:
             return
@@ -256,7 +249,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         for base in cls.bases:
             if isinstance(base, ast.Name):
                 bases.append(self.builder.current.expandName(base.id))
-            elif isinstance(base, text_type):
+            elif isinstance(base, str):
                 bases.append(self.builder.current.expandName(base))
             else:
                 raise Exception(base)

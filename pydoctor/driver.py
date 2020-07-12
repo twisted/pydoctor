@@ -1,7 +1,5 @@
 """The command-line parsing and entry point."""
 
-from __future__ import print_function
-
 import datetime
 import os
 import sys
@@ -182,7 +180,7 @@ def getparser():
 
 def readConfigFile(options):
     # this is all a bit horrible.  rethink, then rewrite!
-    for i, line in enumerate(open(options.configfile, 'rU')):
+    for i, line in enumerate(open(options.configfile)):
         line = line.strip()
         if not line or line.startswith('#'):
             continue
@@ -308,7 +306,7 @@ def main(args=sys.argv[1:]):
         system.process()
 
         if system.options.projectname is None:
-            name = '/'.join([ro.name for ro in system.rootobjects])
+            name = '/'.join(ro.name for ro in system.rootobjects)
             system.msg(
                 'warning',
                 'WARNING: guessing '+name+' for project name', thresh=-1)

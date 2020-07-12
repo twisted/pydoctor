@@ -1,7 +1,5 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from __future__ import print_function
-
 from twisted.web.template import tags, Element, renderer, XMLFile
 
 from pydoctor import epydoc2stan, model
@@ -42,14 +40,15 @@ def signature(argspec):
         else:
             things.append(regarg)
     if varargname:
-        things.append('*%s' % varargname)
+        things.append(f'*{varargname}')
 
-    things += ['%s=%s' % kwarg for kwarg in kwargs]
+    for k, v in kwargs:
+        things.append(f'{k}={v}')
     if varkwname:
-        things.append('**%s' % varkwname)
+        things.append(f'**{varkwname}')
     return ', '.join(things)
 
-class DocGetter(object):
+class DocGetter:
     def get(self, ob, summary=False):
         if summary:
             return epydoc2stan.format_summary(ob)
@@ -189,8 +188,8 @@ class CommonPage(Element):
 
 class PackagePage(CommonPage):
     def children(self):
-        return sorted([o for o in self.ob.contents.values()
-                       if o.name != '__init__' and o.isVisible],
+        return sorted((o for o in self.ob.contents.values()
+                       if o.name != '__init__' and o.isVisible),
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
@@ -219,8 +218,7 @@ def overriding_subclasses(c, name, firstcall=True):
     else:
         for sc in c.subclasses:
             if sc.isVisible:
-                for sc2 in overriding_subclasses(sc, name, False):
-                    yield sc2
+                yield from overriding_subclasses(sc, name, False)
 
 def nested_bases(b):
     r = [(b,)]
@@ -232,9 +230,11 @@ def nested_bases(b):
     return r
 
 def unmasked_attrs(baselist):
-    maybe_masking = set()
-    for b in baselist[1:]:
-        maybe_masking.update(set([o.name for o in b.contents.values()]))
+    maybe_masking = {
+        o.name
+        for b in baselist[1:]
+        for o in b.contents.values()
+        }
     return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
@@ -276,7 +276,7 @@ class ClassPage(CommonPage):
         self.overridenInCount = 0
 
     def extras(self):
-        r = super(ClassPage, self).extras()
+        r = super().extras()
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
@@ -287,7 +287,7 @@ class ClassPage(CommonPage):
         return r
 
     def mediumName(self, ob):
-        r = [super(ClassPage, self).mediumName(ob)]
+        r = [super().mediumName(ob)]
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
@@ -353,9 +353,11 @@ class ClassPage(CommonPage):
 
 class ZopeInterfaceClassPage(ClassPage):
     def extras(self):
-        r = [super(ZopeInterfaceClassPage, self).extras()]
+        r = [super().extras()]
         if self.ob.isinterface:
-            namelist = sorted([o.fullName() for o in self.ob.implementedby_directly], key=lambda x:x.lower())
+            namelist = sorted(
+                    (o.fullName() for o in self.ob.implementedby_directly),
+                    key=lambda x:x.lower())
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
@@ -381,11 +383,9 @@ class ZopeInterfaceClassPage(ClassPage):
         r = []
         if imeth:
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
-        r.extend(super(ZopeInterfaceClassPage, self).functionExtras(data))
+        r.extend(super().functionExtras(data))
         return r
 
 class FunctionPage(CommonPage):
     def mediumName(self, ob):
-        return [
-            super(FunctionPage, self).mediumName(ob), '(',
-            signature(self.ob.argspec), ')']
+        return [super().mediumName(ob), '(', signature(self.ob.argspec), ')']

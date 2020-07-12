@@ -2,20 +2,17 @@
 Convert epydoc markup into renderable content.
 """
 
-from __future__ import print_function
-
 import astor
 
 from importlib import import_module
+from urllib.parse import quote
+import builtins
 import itertools
 import os
 import sys
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
-from six import string_types
-from six.moves import builtins
-from six.moves.urllib.parse import quote
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
@@ -111,7 +108,7 @@ class _EpydocLinker(DocstringLinker):
             return link(obj)
         else:
             raise AssertionError(
-                "Unknown documentation_location: %s" % obj.documentation_location)
+                f"Unknown documentation_location: {obj.documentation_location}")
 
     def look_for_name(self, name, candidates):
         part0 = name.split('.')[0]
@@ -210,7 +207,7 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(fullID)
 
 
-class FieldDesc(object):
+class FieldDesc:
     def __init__(self):
         self.kind = None
         self.name = None
@@ -225,10 +222,11 @@ class FieldDesc(object):
             body = body, ' (type: ', self.type, ')'
         return body
     def __repr__(self):
-        contents = []
-        for k, v in self.__dict__.items():
-            contents.append("%s=%r"%(k, v))
-        return "<%s(%s)>"%(self.__class__.__name__, ', '.join(contents))
+        contents = ', '.join(
+            f"{k}={v!r}"
+            for k, v in self.__dict__.items()
+            )
+        return f"<{self.__class__.__name__}({contents})>"
 
 
 def format_desc_list(singular, descs, plural=None):
@@ -281,7 +279,7 @@ def format_field_list(obj, singular, fields, plural=None):
     return rows
 
 
-class Field(object):
+class Field:
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
     def __init__(self, field, obj):
@@ -297,7 +295,7 @@ class Field(object):
         return "<%s %r %r %d %s>"%(self.__class__.__name__,
                              self.tag, self.arg, self.lineno, r)
 
-class FieldHandler(object):
+class FieldHandler:
     def __init__(self, obj):
         self.obj = obj
 
@@ -419,16 +417,10 @@ class FieldHandler(object):
                         ('Note', 'Notes', self.notes)):
             r.append(format_field_list(self.obj, s, l, p))
         unknowns = {}
-        unknownsinorder = []
         for fieldinfo in self.unknowns:
-            tag = fieldinfo.kind
-            if tag in unknowns:
-                unknowns[tag].append(fieldinfo)
-            else:
-                unknowns[tag] = [fieldinfo]
-                unknownsinorder.append(unknowns[tag])
-        for fieldlist in unknownsinorder:
-            label = "Unknown Field: " + fieldlist[0].kind
+            unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
+        for kind, fieldlist in unknowns.items():
+            label = f"Unknown Field: {kind}"
             r.append(format_desc_list(label, fieldlist, label))
 
         return tags.table(class_='fieldTable')(r)
@@ -440,7 +432,7 @@ def reportErrors(obj, errs):
 
         for err in errs:
             lineno_offset = 0
-            if isinstance(err, string_types):
+            if isinstance(err, str):
                 descr = err
             elif isinstance(err, ParseError):
                 descr = err.descr()
@@ -465,7 +457,7 @@ def parse_docstring(obj, doc, source):
     try:
         pdoc = parser(doc, errs)
     except Exception as e:
-        errs.append('%s: %s' % (e.__class__.__name__, e))
+        errs.append(f'{e.__class__.__name__}: {e}')
         pdoc = None
     if pdoc is None:
         pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
@@ -494,7 +486,7 @@ def format_docstring(obj):
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))
     except Exception as e:
-        errs = ['%s: %s' % (e.__class__.__name__, e)]
+        errs = [f'{e.__class__.__name__}: {e}']
         if doc is None:
             stan = tags.p(class_="undocumented")('Broken description')
         else:
@@ -563,13 +555,14 @@ def format_undocumented(obj):
         subcounts['module'] -= 1
     if subdocstrings:
         plurals = {'class': 'classes'}
-        text = "No %s docstring; %s documented" % (
-            obj.kind.lower(),
+        text = (
+            "No ", obj.kind.lower(), " docstring; "
             ', '.join(
-                "%s/%s %s" % (subdocstrings.get(k, 0), subcounts[k],
-                              plurals.get(k, k + 's'))
+                f"{subdocstrings.get(k, 0)}/{subcounts[k]} "
+                f"{plurals.get(k, k + 's')}"
                 for k in sorted(subcounts)
-                )
+                ),
+            " documented"
             )
     else:
         text = "Undocumented"

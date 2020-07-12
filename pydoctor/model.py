@@ -6,8 +6,7 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
-from __future__ import print_function, unicode_literals
-
+import builtins
 import datetime
 import imp
 import inspect
@@ -15,11 +14,9 @@ import os
 import platform
 import sys
 import types
-from collections import OrderedDict
 from enum import Enum
 
 from pydoctor.sphinx import SphinxInventory
-from six.moves import builtins
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -49,7 +46,7 @@ class DocLocation(Enum):
     #UNDER_PARENT_DOCSTRING = 3
 
 
-class Documentable(object):
+class Documentable:
     """An object that can be documented.
 
     The interface is a bit ridiculously wide.
@@ -87,7 +84,7 @@ class Documentable(object):
             self.doctarget = self
 
     def setup(self):
-        self.contents = OrderedDict()
+        self.contents = {}
 
     def setDocstring(self, node):
         doc = node.s
@@ -117,7 +114,7 @@ class Documentable(object):
             if parentMod is not None:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
-                    self.sourceHref = '%s#L%d' % (parentSourceHref, lineno)
+                    self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
 
     def fullName(self):
         parent = self.parent
@@ -133,7 +130,7 @@ class Documentable(object):
         return prefix + self.name
 
     def __repr__(self):
-        return "%s %r"%(self.__class__.__name__, self.fullName())
+        return f"{self.__class__.__name__} {self.fullName()!r}"
 
     def docsources(self):
         """Objects that can be considered as a source of documentation.
@@ -182,7 +179,7 @@ class Documentable(object):
         mod1.py::
 
             from external_location import External
-            class Local(object):
+            class Local:
                 pass
 
         mod2.py::
@@ -253,7 +250,7 @@ class Documentable(object):
 
         self.system.msg(
             section,
-            '%s:%s: %s' % (self.module.description, linenumber, descr),
+            f'{self.module.description}:{linenumber}: {descr}',
             thresh=-1)
 
 
@@ -287,7 +284,7 @@ class ProcessingState(Enum):
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self):
-        super(CanContainImportsDocumentable, self).setup()
+        super().setup()
         self._localNameToFullName_map = {}
 
 
@@ -296,7 +293,7 @@ class Module(CanContainImportsDocumentable):
     state = ProcessingState.UNPROCESSED
 
     def setup(self):
-        super(Module, self).setup()
+        super().setup()
         self.all = None
 
     def _localNameToFullName(self, name):
@@ -329,7 +326,7 @@ class Module(CanContainImportsDocumentable):
 class Class(CanContainImportsDocumentable):
     kind = "Class"
     def setup(self):
-        super(Class, self).setup()
+        super().setup()
         self.rawbases = []
         self.subclasses = []
 
@@ -337,10 +334,8 @@ class Class(CanContainImportsDocumentable):
         if include_self:
             yield self
         for b in self.baseobjects:
-            if b is None:
-                continue
-            for b2 in b.allbases(True):
-                yield b2
+            if b is not None:
+                yield from b.allbases(True)
     def _localNameToFullName(self, name):
         if name in self.contents:
             o = self.contents[name]
@@ -369,7 +364,7 @@ class Function(Inheritable):
     kind = "Function"
 
     def setup(self):
-        super(Function, self).setup()
+        super().setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
 
@@ -391,7 +386,7 @@ class PrivacyClass(Enum):
 
 
 
-class System(object):
+class System:
     """A collection of related documentable objects.
 
     PyDoctor documents collections of objects, often the contents of a
@@ -408,7 +403,7 @@ class System(object):
     sourcebase = None
 
     def __init__(self, options=None):
-        self.allobjects = OrderedDict()
+        self.allobjects = {}
         self.rootobjects = []
         self.warnings = {}
         self.packages = []
@@ -438,14 +433,15 @@ class System(object):
     def verbosity(self, section=None):
         if isinstance(section, str):
             section = (section,)
-        delta = max([self.options.verbosity_details.get(sect, 0) for sect in section])
+        delta = max(self.options.verbosity_details.get(sect, 0)
+                    for sect in section)
         return self.options.verbosity + delta
 
     def progress(self, section, i, n, msg):
         if n is None:
             i = str(i)
         else:
-            i = '%s/%s'%(i,n)
+            i = f'{i}/{n}'
         if self.verbosity(section) == 0 and sys.stdout.isatty():
             print('\r'+i, msg, end='')
             sys.stdout.flush()
@@ -475,14 +471,14 @@ class System(object):
     def objForFullName(self, fullName):
         return self.allobjects.get(fullName)
 
-    def _warning(self, current, type, detail):
+    def _warning(self, current, message, detail):
         if current is not None:
             fn = current.fullName()
         else:
             fn = '<None>'
         if self.options.verbosity > 0:
-            print(fn, type, detail)
-        self.warnings.setdefault(type, []).append((fn, detail))
+            print(fn, message, detail)
+        self.warnings.setdefault(message, []).append((fn, detail))
 
     def objectsOfType(self, cls):
         """Iterate over all instances of C{cls} present in the system. """
@@ -603,8 +599,7 @@ class System(object):
 
     def addPackage(self, dirpath, parentPackage=None):
         if not os.path.exists(dirpath):
-            raise Exception("package path %r does not exist!"
-                            %(dirpath,))
+            raise Exception(f"package path {dirpath!r} does not exist!")
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
             raise Exception("you must pass a package directory to "
                             "addPackage")
@@ -627,23 +622,22 @@ class System(object):
                 self.addModuleFromPath(package, fullname)
 
     def addModuleFromPath(self, package, path):
-        for (suffix, mode, type) in imp.get_suffixes():
+        for (suffix, mode, impl) in imp.get_suffixes():
             if not path.endswith(suffix):
                 continue
             module_name = os.path.basename(path[:-len(suffix)])
-            if type == imp.C_EXTENSION:
+            if impl == imp.C_EXTENSION:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
-                    module_full_name = "%s.%s" % (
-                        package.fullName(), module_name)
+                    module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
                 py_mod = imp.load_module(
                     module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, type))
+                    (suffix, mode, impl))
                 self.introspectModule(py_mod, module_full_name)
-            elif type == imp.PY_SOURCE:
+            elif impl == imp.PY_SOURCE:
                 self.addModule(path, module_name, package)
             break
 
@@ -712,12 +706,12 @@ class System(object):
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
+        num_warnings = sum(len(v) for v in self.warnings.values())
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            "modules processed %s warnings"%(
-            sum(len(v) for v in self.warnings.values()),))
+            f"modules processed {num_warnings} warnings")
 
 
     def process(self):

@@ -38,7 +38,6 @@ __docformat__ = 'epytext en'
 
 import re
 
-from six import text_type
 from twisted.web.template import XMLString, flattenString
 
 ##################################################
@@ -100,7 +99,7 @@ def html2stan(html):
     @type html: C{string}
     @return: The fragment as a tree with a transparent root node.
     """
-    if isinstance(html, text_type):
+    if isinstance(html, str):
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
@@ -174,9 +173,9 @@ class Field:
 
     def __repr__(self):
         if self._arg is None:
-            return '<Field @%s: ...>' % self._tag
+            return f'<Field @{self._tag}: ...>'
         else:
-            return '<Field @%s %s: ...>' % (self._tag, self._arg)
+            return f'<Field @{self._tag} {self._arg}: ...>'
 
 ##################################################
 ## Docstring Linker (resolves crossreferences)
@@ -264,7 +263,7 @@ class ParseError(Exception):
         @rtype: C{string}
         """
         if self._linenum is not None:
-            return 'Line %d: %s' % (self._linenum + 1, self.descr())
+            return f'Line {self._linenum + 1:d}: {self.descr()}'
         else:
             return self.descr()
 
@@ -280,4 +279,4 @@ class ParseError(Exception):
         if self._linenum is None:
             return '<ParseError on unknown line>'
         else:
-            return '<ParseError on line %d>' % (self._linenum + 1)
+            return f'<ParseError on line {self._linenum + 1:d}>'

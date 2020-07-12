@@ -177,8 +177,8 @@ class _EpydocReader(StandaloneReader):
         try: linenum = int(error['line'])
         except: linenum = None
 
-        msg = ''.join([c.astext().encode(self._encoding, self._error_handler)
-                       for c in error])
+        msg = ''.join(c.astext().encode(self._encoding, self._error_handler)
+                      for c in error)
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
@@ -245,7 +245,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                         return
                     except ValueError as e:
                         estr = 'Unable to split consolidated field '
-                        estr += '"%s" - %s' % (tagname, e)
+                        estr += f'"{tagname}" - {e}'
                         self._errors.append(ParseError(estr, node.line,
                                                        is_fatal=False))
 
@@ -439,12 +439,12 @@ class _EpydocHTMLTranslator(HTMLTranslator):
                 # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
                 if key.lower() in ('class', 'id', 'name'):
-                    attr_dict[key] = 'rst-%s' % val
+                    attr_dict[key] = f'rst-{val}'
                 elif key.lower() in ('classes', 'ids', 'names'):
-                    attr_dict[key] = ['rst-%s' % cls for cls in val]
+                    attr_dict[key] = [f'rst-{cls}' for cls in val]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
-                        attr_dict[key] = '#rst-%s' % attr_dict[key][1:]
+                        attr_dict[key] = f'#rst-{attr_dict[key][1:]}'
                     else:
                         # If it's an external link, open it in a new
                         # page.

@@ -31,22 +31,22 @@ def test_basic_list():
     for p in (P1, P2):
         for li1 in (LI1, LI2, LI3, LI4):
             assert parse(li1) == ONELIST
-            assert parse('%s\n%s' % (p, li1)) == PARA+ONELIST
-            assert parse('%s\n%s' % (li1, p)) == ONELIST+PARA
-            assert parse('%s\n%s\n%s' % (p, li1, p)) == PARA+ONELIST+PARA
+            assert parse(f'{p}\n{li1}') == PARA+ONELIST
+            assert parse(f'{li1}\n{p}') == ONELIST+PARA
+            assert parse(f'{p}\n{li1}\n{p}') == PARA+ONELIST+PARA
 
             for li2 in (LI1, LI2, LI3, LI4):
-                assert parse('%s\n%s' % (li1, li2)) == TWOLIST
-                assert parse('%s\n%s\n%s' % (p, li1, li2)) == PARA+TWOLIST
-                assert parse('%s\n%s\n%s' % (li1, li2, p)) == TWOLIST+PARA
-                assert parse('%s\n%s\n%s\n%s' % (p, li1, li2, p)) == PARA+TWOLIST+PARA
+                assert parse(f'{li1}\n{li2}') == TWOLIST
+                assert parse(f'{p}\n{li1}\n{li2}') == PARA+TWOLIST
+                assert parse(f'{li1}\n{li2}\n{p}') == TWOLIST+PARA
+                assert parse(f'{p}\n{li1}\n{li2}\n{p}') == PARA+TWOLIST+PARA
 
     LI5 = "  - This is a list item.\n\n    It contains two paragraphs."
     LI5LIST = ('<ulist><li><para inline=True>This is a list item.</para>'
                '<para>It contains two paragraphs.</para></li></ulist>')
     assert parse(LI5) == LI5LIST
-    assert parse('%s\n%s' % (P1, LI5)) == PARA+LI5LIST
-    assert parse('%s\n%s\n%s' % (P2, LI5, P1)) == PARA+LI5LIST+PARA
+    assert parse(f'{P1}\n{LI5}') == PARA+LI5LIST
+    assert parse(f'{P2}\n{LI5}\n{P1}') == PARA+LI5LIST+PARA
 
     LI6 = ("  - This is a list item with a literal block::\n"
            "    hello\n      there")
@@ -54,8 +54,8 @@ def test_basic_list():
                'block:</para><literalblock>  hello\n    there'
                '</literalblock></li></ulist>')
     assert parse(LI6) == LI6LIST
-    assert parse('%s\n%s' % (P1, LI6)) == PARA+LI6LIST
-    assert parse('%s\n%s\n%s' % (P2, LI6, P1)) == PARA+LI6LIST+PARA
+    assert parse(f'{P1}\n{LI6}') == PARA+LI6LIST
+    assert parse(f'{P2}\n{LI6}\n{P1}') == PARA+LI6LIST+PARA
 
 
 def test_item_wrap():

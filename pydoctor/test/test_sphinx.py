@@ -1,7 +1,6 @@
 """
 Tests for Sphinx integration.
 """
-from __future__ import print_function
 
 import datetime
 import io
@@ -242,13 +241,13 @@ def test_getPayload_content():
     """
     Return content as string.
     """
-    payload = u"first_line\nsecond line\nit's a snake: \U0001F40D"
+    payload = "first_line\nsecond line\nit's a snake: \U0001F40D"
     sut = sphinx.SphinxInventory(logger=object())
     content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
 # commented line.
-%s""" % (zlib.compress(payload.encode('utf-8')),)
+""" + zlib.compress(payload.encode('utf-8'))
 
     result = sut._getPayload('http://base.ignore', content)
 
@@ -282,7 +281,7 @@ def test_getPayload_invalid_decode():
     base_url = 'http://tm.tld'
     content = b"""# Project: some-name
 # Version: 2.0
-%s""" % (zlib.compress(payload),)
+""" + zlib.compress(payload)
 
     result = sut._getPayload(base_url, content)
 
@@ -335,7 +334,7 @@ def test_update_functional():
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
-%s""" % (zlib.compress(payload),)
+""" + zlib.compress(payload)
 
     url = 'http://some.url/api/objects.inv'
 
@@ -435,7 +434,7 @@ maxAgeAmounts = st.integers() | st.just("\x00")
 maxAgeUnits = st.sampled_from(tuple(sphinx._maxAgeUnits)) | st.just("\x00")
 
 
-class TestParseMaxAge(object):
+class TestParseMaxAge:
     """
     Tests for L{sphinx.parseMaxAge}
     """
@@ -450,7 +449,7 @@ class TestParseMaxAge(object):
         L{datetime.timedelta}, and the constructed L{datetime.timedelta}
         matches the specification.
         """
-        maxAge = "{}{}".format(amount, unit)
+        maxAge = f"{amount}{unit}"
         try:
             parsedMaxAge = sphinx.parseMaxAge(maxAge)
         except sphinx.InvalidMaxAge:
@@ -476,7 +475,7 @@ class ClosingBytesIO(io.BytesIO):
     """
 
     def read(self, *args, **kwargs):
-        data = super(ClosingBytesIO, self).read(*args, **kwargs)
+        data = super().read(*args, **kwargs)
         if self.tell() >= len(self.getvalue()):
             self.close()
         return data
@@ -500,7 +499,7 @@ def test_ClosingBytesIO():
     assert b''.join(buffer) == data
 
 
-class TestIntersphinxCache(object):
+class TestIntersphinxCache:
     """
     Tests for L{sphinx.IntersphinxCache}
     """
@@ -529,7 +528,7 @@ class TestIntersphinxCache(object):
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
-        url = u"https://cache.example/objects.inv"
+        url = "https://cache.example/objects.inv"
         content = b'content'
 
         send_returns(
@@ -584,13 +583,13 @@ class TestIntersphinxCache(object):
         """
         loggedExceptions = []
 
-        class _Logger(object):
+        class _Logger:
 
             @staticmethod
             def exception(*args, **kwargs):
                 loggedExceptions.append((args, kwargs))
 
-        class _RaisesOnGet(object):
+        class _RaisesOnGet:
 
             @staticmethod
             def get(url):
@@ -598,12 +597,12 @@ class TestIntersphinxCache(object):
 
         cache = sphinx.IntersphinxCache(session=_RaisesOnGet, logger=_Logger)
 
-        assert cache.get(u"some url") is None
+        assert cache.get("some url") is None
 
         assert len(loggedExceptions)
 
 
-class TestStubCache(object):
+class TestStubCache:
     """
     Tests for L{sphinx.StubCache}.
     """
@@ -612,7 +611,7 @@ class TestStubCache(object):
         """
         L{sphinx.StubCache.get} returns its cached content for a URL.
         """
-        url = u"url"
+        url = "url"
         content = b"content"
 
         cache = sphinx.StubCache({url: content})
@@ -664,7 +663,7 @@ def test_prepareCache(
             clearCache=clearCache,
             enableCache=enableCache,
             cachePath=str(cacheDirectory),
-            maxAge="{}{}".format(maxAgeAmount, maxAgeUnit)
+            maxAge=f"{maxAgeAmount}{maxAgeUnit}"
         )
     except sphinx.InvalidMaxAge:
         pass

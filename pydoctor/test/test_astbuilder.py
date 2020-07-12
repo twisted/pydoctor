@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import textwrap
 
 import astor
@@ -11,7 +9,7 @@ from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import py2only, py3only, typecomment
+from . import typecomment
 import pytest
 
 
@@ -96,17 +94,6 @@ def test_function_argspec(systemcls):
     docfunc, = mod.contents.values()
     assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
 
-
-@py2only
-@systemcls_param
-def test_function_argspec_with_tuple(systemcls):
-    src = textwrap.dedent('''
-    def f((a,z), b=3, *c, **kw):
-        pass
-    ''')
-    mod = fromText(src, systemcls=systemcls)
-    docfunc, = mod.contents.values()
-    assert docfunc.argspec ==  ([['a', 'z'], 'b'], 'c', 'kw', ('3',))
 
 @systemcls_param
 def test_class(systemcls):
@@ -500,7 +487,6 @@ def test_inline_docstring_classvar(systemcls):
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
 
-@py3only
 @systemcls_param
 def test_inline_docstring_annotated_classvar(systemcls):
     mod = fromText('''
@@ -584,7 +570,6 @@ def test_inline_docstring_instancevar(systemcls):
     assert f.privacyClass is model.PrivacyClass.VISIBLE
     assert f.kind == 'Instance Variable'
 
-@py3only
 @systemcls_param
 def test_inline_docstring_annotated_instancevar(systemcls):
     mod = fromText('''
@@ -785,7 +770,6 @@ def test_variable_types(systemcls):
     assert str(unwrap(g.parsed_type)) == 'string'
     assert g.kind == 'Instance Variable'
 
-@py3only
 @systemcls_param
 def test_annotated_variables(systemcls):
     mod = fromText('''
@@ -867,7 +851,6 @@ def test_type_comment(systemcls, capsys):
     assert type2str(mod.contents['i'].annotation) == 'List'
     assert not capsys.readouterr().out
 
-@py3only
 @systemcls_param
 def test_bad_string_annotation(systemcls, capsys):
     mod = fromText('''
