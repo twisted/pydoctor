@@ -116,7 +116,13 @@ pydoctor 20.7.0
 * Explicit relative imports (using ``from``) no longer cause warnings
 * Dropped support for index terms in epytext (``X{}``); this was never supported in any meaningful capacity, but now the tag is gone
 
-This will be the last release to support Python 2.7 and 3.5: future releases will require Python 3.6 or later.
+This will be the last major release to support Python 2.7 and 3.5: future major releases will require Python 3.6 or later.
+
+pydoctor 20.7.1
+~~~~~~~~~~~~~~~
+
+* Fix cross-reference links to builtin types in standard library
+* Fix and improve error message printed for unknown fields
 
 .. description-end
 
