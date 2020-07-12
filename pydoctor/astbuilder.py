@@ -1,14 +1,11 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
-from __future__ import print_function
-
 import ast
 import sys
 from itertools import chain
 
 import astor
 from pydoctor import epydoc2stan, model
-from six import string_types
 
 
 def parseFile(path):
@@ -348,7 +345,7 @@ class ModuleVistor(ast.NodeVisitor):
             warn("Unable to figure out value for __doc__ assignment, "
                  "maybe too complex")
             return
-        if not isinstance(docstring, string_types):
+        if not isinstance(docstring, str):
             warn("Ignoring value assigned to __doc__: not a string")
             return
 
@@ -431,8 +428,8 @@ class ModuleVistor(ast.NodeVisitor):
                         isstaticmethod = True
             if isstaticmethod:
                 if isclassmethod:
-                    func.report('%s is both classmethod and staticmethod' % (
-                                func.fullName(),))
+                    func.report(f'{func.fullName()} is both classmethod '
+                                f'and staticmethod')
                 else:
                     func.kind = 'Static Method'
             elif isclassmethod:
@@ -449,11 +446,11 @@ class ModuleVistor(ast.NodeVisitor):
                 args.append(arg.arg)
 
         varargname = node.args.vararg
-        if varargname and not isinstance(varargname, string_types):
+        if varargname and not isinstance(varargname, str):
             varargname = varargname.arg
 
         kwargname = node.args.kwarg
-        if kwargname and not isinstance(kwargname, string_types):
+        if kwargname and not isinstance(kwargname, str):
             kwargname = kwargname.arg
 
         defaults = []
@@ -494,7 +491,7 @@ class ModuleVistor(ast.NodeVisitor):
             return _AnnotationStringParser().visit(node)
         except SyntaxError as ex:
             self.builder.currentMod.report(
-                    'syntax error in annotation: %s' % (ex,),
+                    f'syntax error in annotation: {ex}',
                     lineno_offset=node.lineno)
             return None
 
@@ -567,7 +564,7 @@ def _annotation_for_elements(sequence):
         return None
 
 
-class ASTBuilder(object):
+class ASTBuilder:
     ModuleVistor = ModuleVistor
 
     def __init__(self, system):
@@ -604,7 +601,7 @@ class ASTBuilder(object):
             obj.setLineNumber(lineno)
 
     def pop(self, obj):
-        assert self.current is obj, "%r is not %r"%(self.current, obj)
+        assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
@@ -630,8 +627,8 @@ class ASTBuilder(object):
         system.addObject(attr)
         return attr
 
-    def warning(self, type, detail):
-        self.system._warning(self.current, type, detail)
+    def warning(self, message, detail):
+        self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, ast, mod):
         findAll(ast, mod)

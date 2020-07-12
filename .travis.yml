@@ -2,12 +2,8 @@ language: python
 
 matrix:
   include:
-    - python: 2.7
+    - python: 3.6
       env: TOX_ENV=pyflakes
-    - python: pypy
-      env: TOX_ENV=test-pypy
-    - python: 2.7
-      env: TOX_ENV=test-py27-codecov-travis
     - python: 3.6
       env: TOX_ENV=test-py36
     - python: 3.7
@@ -16,6 +12,8 @@ matrix:
       env: TOX_ENV=test-py38-codecov-travis
     - python: 3.8
       env: TOX_ENV=twisted-apidoc
+    - python: pypy3
+      env: TOX_ENV=test-pypy3
 
   allow_failures:
     # Twisted trunk is broken for now.
@@ -43,4 +41,4 @@ deploy:
     # All branches is still required.
     # https://github.com/travis-ci/travis-ci/issues/1675
     all_branches: true
-    condition: "$TOX_ENV = test-py27-codecov-travis"
+    condition: "$TOX_ENV = test-py38-codecov-travis"

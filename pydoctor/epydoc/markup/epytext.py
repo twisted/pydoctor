@@ -96,8 +96,6 @@ Description::
 # Note: the symbol list is appended to the docstring automatically,
 # below.
 
-from __future__ import print_function
-
 __docformat__ = 'epytext en'
 
 # Code organization..
@@ -108,7 +106,6 @@ __docformat__ = 'epytext en'
 #   5. testing
 
 import re
-import six
 from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
@@ -145,15 +142,14 @@ class Element:
         notation.
         @bug: Doesn't escape '<' or '&' or '>'.
         """
-        attribs = ''.join([' %s=%r' % t for t in self.attribs.items()])
-        return ('<%s%s>' % (self.tag, attribs) +
-                ''.join([str(child) for child in self.children]) +
-                '</%s>' % self.tag)
+        attribs = ''.join(f' {k}={v!r}' for k, v in self.attribs.items())
+        content = ''.join(str(child) for child in self.children)
+        return f'<{self.tag}{attribs}>{content}</{self.tag}>'
 
     def __repr__(self):
-        attribs = ''.join([', %s=%r' % t for t in self.attribs.items()])
-        args = ''.join([', %r' % c for c in self.children])
-        return 'Element(%s%s%s)' % (self.tag, args, attribs)
+        attribs = ''.join(f', {k}={v!r}' for k, v in self.attribs.items())
+        args = ''.join(f', {c!r}' for c in self.children)
+        return f'Element({self.tag}{args}{attribs})'
 
 ##################################################
 ## Constants
@@ -224,13 +220,13 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-def parse(str, errors = None):
+def parse(text, errors = None):
     """
     Return a DOM tree encoding the contents of an epytext string.  Any
     errors generated during parsing will be stored in C{errors}.
 
-    @param str: The epytext string to parse.
-    @type str: C{string}
+    @param text: The epytext string to parse.
+    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then fatal errors
         will generate exceptions, and non-fatal errors will be
@@ -249,11 +245,11 @@ def parse(str, errors = None):
         raise_on_error = False
 
     # Preprocess the string.
-    str = re.sub('\015\012', '\012', str)
-    str = str.expandtabs()
+    text = re.sub('\015\012', '\012', text)
+    text = text.expandtabs()
 
     # Tokenize the input string.
-    tokens = _tokenize(str, errors)
+    tokens = _tokenize(text, errors)
 
     # Have we encountered a field yet?
     encountered_field = False
@@ -277,8 +273,8 @@ def parse(str, errors = None):
     for token in tokens:
         # Uncomment this for debugging:
         #print('%s: %s\n%s: %s\n' %
-        #       (''.join(['%-11s' % (t and t.tag) for t in stack]),
-        #        token.tag, ''.join(['%-11s' % i for i in indent_stack]),
+        #       (''.join('%-11s' % (t and t.tag) for t in stack),
+        #        token.tag, ''.join('%-11s' % i for i in indent_stack),
         #        token.indent))
 
         # Pop any completed blocks off the stack.
@@ -304,7 +300,7 @@ def parse(str, errors = None):
         elif token.tag == Token.BULLET:
             _add_list(doc, token, stack, indent_stack, errors)
         else:
-            assert 0, 'Unknown token type: '+token.tag
+            raise AssertionError(f"Unknown token type: {token.tag}")
 
         # Check if the DOM element we just added was a field..
         if stack[-1].tag == 'field':
@@ -420,7 +416,7 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
     elif bullet_token.contents[-1] == ':':
         list_type = 'fieldlist'
     else:
-        raise AssertionError('Bad Bullet: %r' % bullet_token.contents)
+        raise AssertionError(f'Bad Bullet: {bullet_token.contents!r}')
 
     # Is this a new list?
     newlist = False
@@ -615,7 +611,7 @@ class Token:
             C{Token}s have formal representaitons of the form::
                 <Token: para at line 12>
         """
-        return '<Token: %s at line %s>' % (self.tag, self.startline)
+        return f'<Token: {self.tag} at line {self.startline}>'
 
     def to_dom(self, doc):
         """
@@ -903,13 +899,13 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
     tokens.append(Token(Token.PARA, start, contents, para_indent))
     return linenum
 
-def _tokenize(str, errors):
+def _tokenize(text, errors):
     """
     Split a given formatted docstring into an ordered list of
     C{Token}s, according to the epytext markup rules.
 
-    @param str: The epytext string
-    @type str: C{string}
+    @param text: The epytext string
+    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then errors will
         generate exceptions.
@@ -918,7 +914,7 @@ def _tokenize(str, errors):
     @rtype: C{list} of L{Token}
     """
     tokens = []
-    lines = str.split('\n')
+    lines = text.split('\n')
 
     # Scan through the lines, determining what @type of token we're
     # dealing with, and tokenizing it, as appropriate.
@@ -986,7 +982,7 @@ def _colorize(doc, token, errors, tagName='para'):
     @return: a DOM C{Element} encoding the given paragraph.
     @returntype: C{Element}
     """
-    str = token.contents
+    text = token.contents
 
     # Maintain a stack of DOM elements, containing the ancestors of
     # the text currently being analyzed.  New elements are pushed when
@@ -1005,7 +1001,7 @@ def _colorize(doc, token, errors, tagName='para'):
     # to the next open or close brace.
     start = 0
     while 1:
-        match = _BRACE_RE.search(str, start)
+        match = _BRACE_RE.search(text, start)
         if match is None: break
         end = match.start()
 
@@ -1016,19 +1012,19 @@ def _colorize(doc, token, errors, tagName='para'):
         # and convert them to literal braces once we find the matching
         # close-brace.
         if match.group() == '{':
-            if (end>0) and 'A' <= str[end-1] <= 'Z':
+            if (end>0) and 'A' <= text[end-1] <= 'Z':
                 if (end-1) > start:
-                    stack[-1].children.append(str[start:end-1])
-                if str[end-1] not in _COLORIZING_TAGS:
+                    stack[-1].children.append(text[start:end-1])
+                if text[end-1] not in _COLORIZING_TAGS:
                     estr = "Unknown inline markup tag."
                     errors.append(ColorizingError(estr, token, end-1))
                     stack.append(Element('unknown'))
                 else:
-                    tag = _COLORIZING_TAGS[str[end-1]]
+                    tag = _COLORIZING_TAGS[text[end-1]]
                     stack.append(Element(tag))
             else:
                 if end > start:
-                    stack[-1].children.append(str[start:end])
+                    stack[-1].children.append(text[start:end])
                 stack.append(Element('litbrace'))
             openbrace_stack.append(end)
             stack[-2].children.append(stack[-1])
@@ -1044,12 +1040,12 @@ def _colorize(doc, token, errors, tagName='para'):
 
             # Add any remaining text.
             if end > start:
-                stack[-1].children.append(str[start:end])
+                stack[-1].children.append(text[start:end])
 
             # Special handling for symbols:
             if stack[-1].tag == 'symbol':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], six.string_types)):
+                    not isinstance(stack[-1].children[0], str)):
                     estr = "Invalid symbol code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1064,7 +1060,7 @@ def _colorize(doc, token, errors, tagName='para'):
             # Special handling for escape elements:
             if stack[-1].tag == 'escape':
                 if (len(stack[-1].children) != 1 or
-                    not isinstance(stack[-1].children[0], six.string_types)):
+                    not isinstance(stack[-1].children[0], str)):
                     estr = "Invalid escape code."
                     errors.append(ColorizingError(estr, token, end))
                 else:
@@ -1094,8 +1090,8 @@ def _colorize(doc, token, errors, tagName='para'):
         start = end+1
 
     # Add any final text.
-    if start < len(str):
-        stack[-1].children.append(str[start:])
+    if start < len(text):
+        stack[-1].children.append(text[start:])
 
     if len(stack) != 1:
         estr = "Unbalanced '{'."
@@ -1107,8 +1103,8 @@ def _colorize_link(doc, link, token, end, errors):
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
-    if len(variables)==0 or not isinstance(variables[-1], six.string_types):
-        estr = "Bad %s target." % link.tag
+    if len(variables)==0 or not isinstance(variables[-1], str):
+        estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
         return
 
@@ -1121,7 +1117,7 @@ def _colorize_link(doc, link, token, end, errors):
     elif len(variables) == 1:
         target = variables[0]
     else:
-        estr = "Bad %s target." % link.tag
+        estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
         return
 
@@ -1199,7 +1195,7 @@ class ColorizingError(ParseError):
         else:
             right = (self.token.contents[self.charnum:self.charnum+RANGE]
                      + '...')
-        return ('%s\n\n%s%s\n%s^' % (self._descr, left, right, ' '*len(left)))
+        return f"{self._descr}\n\n{left}{right}\n{' '*len(left)}^"
 
 #################################################################
 ##                    SUPPORT FOR EPYDOC
@@ -1315,7 +1311,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         return self._stan
 
     def _to_stan(self, tree, linker, seclevel=0):
-        if isinstance(tree, six.string_types):
+        if isinstance(tree, str):
             return tree
 
         if tree.tag == 'section':
@@ -1362,7 +1358,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'li':
             return tags.li(*variables)
         elif tree.tag == 'heading':
-            return getattr(tags, 'h%d' % seclevel)(*variables)
+            return getattr(tags, f'h{seclevel:d}')(*variables)
         elif tree.tag == 'literalblock':
             variables.append('\n')
             return tags.pre('\n', *variables, class_='literalblock')
@@ -1376,4 +1372,4 @@ class ParsedEpytextDocstring(ParsedDocstring):
             symbol = tree.children[0]
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
-            raise AssertionError("Unknown epytext DOM element %r" % tree.tag)
+            raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

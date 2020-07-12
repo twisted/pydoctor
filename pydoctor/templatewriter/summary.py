@@ -1,7 +1,5 @@
 """Classes that generate the summary pages."""
 
-from __future__ import print_function
-
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags

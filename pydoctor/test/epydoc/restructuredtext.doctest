@@ -7,7 +7,7 @@ Regression Testing for restructuredtext
 ...     errors = []
 ...     parsed = restructuredtext.parse_docstring(s, errors)
 ...     for error in errors:
-...         print('ERROR: %s' % error)
+...         print(f'ERROR: {error}')
 ...     if parsed is None:
 ...         print('EMPTY BODY')
 ...     else:
@@ -16,9 +16,9 @@ Regression Testing for restructuredtext
 ...         body = flatten(field.body().to_stan(None))
 ...         arg = field.arg()
 ...         if arg is None:
-...             print('%s: %s' % (field.tag(), body))
+...             print(f'{field.tag()}: {body}')
 ...         else:
-...             print('%s "%s": %s' % (field.tag(), arg, body))
+...             print(f'{field.tag()} "{arg}": {body}')
 
 Fields
 ======

@@ -1,11 +1,11 @@
-class NewBaseClassA(object):
+class NewBaseClassA:
     def methodA(self):
         """
         This is method A.
         """
 
 
-class NewBaseClassB(object):
+class NewBaseClassB:
     def methodB(self):
         """
         This is method B.

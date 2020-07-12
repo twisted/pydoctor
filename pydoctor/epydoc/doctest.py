@@ -11,38 +11,31 @@ Syntax highlighting for blocks of Python code.
 
 __docformat__ = 'epytext en'
 
+import builtins
 import re
-import sys
-from six.moves import builtins
+
 from twisted.web.template import tags
 
 __all__ = ['colorize_codeblock', 'colorize_doctest']
 
 #: A list of the names of all Python keywords.
 _KEYWORDS = [
-    'and', 'as', 'assert', 'break', 'class', 'continue', 'def', 'del',
-    'elif', 'else', 'except', 'finally', 'for', 'from', 'global',
-    'if', 'import', 'in', 'is', 'lambda', 'not', 'or', 'pass',
+    'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
+    'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global',
+    'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass',
     'raise', 'return', 'try', 'while', 'with', 'yield'
     ]
-if sys.version_info.major == 2:
-    # These became builtins in Python 3.
-    _KEYWORDS += ['exec', 'print']
-else:
-    _KEYWORDS += ['async', 'await', 'nonlocal']
-    # These are technically keywords since Python 3,
-    # but we don't want to colorize them as such:
-    #_KEYWORDS += ['None', 'True', 'False']
+# The following are technically keywords since Python 3,
+# but we don't want to colorize them as such: 'None', 'True', 'False'.
 
 #: A list of all Python builtins.
 _BUILTINS = [_BI for _BI in dir(builtins) if not _BI.startswith('__')]
 
 #: A regexp group that matches keywords.
-_KEYWORD_GRP = '|'.join([r'\b%s\b' % _KW for _KW in _KEYWORDS])
+_KEYWORD_GRP = '|'.join(rf'\b{_KW}\b' for _KW in _KEYWORDS)
 
 #: A regexp group that matches Python builtins.
-_BUILTIN_GRP = (r'(?<!\.)(?:%s)' % '|'.join([r'\b%s\b' % _BI
-                                             for _BI in _BUILTINS]))
+_BUILTIN_GRP = r'(?<!\.)(?:%s)' % '|'.join(rf'\b{_BI}\b' for _BI in _BUILTINS)
 
 #: A regexp group that matches Python strings.
 _STRING_GRP = '|'.join(
@@ -65,11 +58,11 @@ _DEFINE_GRP = r'\b(?:def|class)[ \t]+\w+'
 DEFINE_FUNC_RE = re.compile(r'(?P<def>\w+)(?P<space>\s+)(?P<name>\w+)')
 
 #: A regexp that matches Python prompts
-PROMPT_RE = re.compile('(%s|%s)' % (_PROMPT1_GRP, _PROMPT2_GRP),
+PROMPT_RE = re.compile(f'({_PROMPT1_GRP}|{_PROMPT2_GRP})',
                        re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches Python "..." prompts.
-PROMPT2_RE = re.compile('(%s)' % _PROMPT2_GRP,
+PROMPT2_RE = re.compile(f'({_PROMPT2_GRP})',
                         re.MULTILINE | re.DOTALL)
 
 #: A regexp that matches doctest exception blocks.
@@ -83,13 +76,11 @@ DOCTEST_DIRECTIVE_RE = re.compile(r'#[ \t]*doctest:.*')
 #: that should be colored.
 DOCTEST_RE = re.compile(
     '('
-        r'(?P<STRING>%s)|(?P<COMMENT>%s)|(?P<DEFINE>%s)|'
-        r'(?P<KEYWORD>%s)|(?P<BUILTIN>%s)|'
-        r'(?P<PROMPT1>%s)|(?P<PROMPT2>%s)|(?P<EOS>\Z)'
-    ')' % (
-        _STRING_GRP, _COMMENT_GRP, _DEFINE_GRP, _KEYWORD_GRP, _BUILTIN_GRP,
-        _PROMPT1_GRP, _PROMPT2_GRP
-        ),
+        rf'(?P<STRING>{_STRING_GRP})|(?P<COMMENT>{_COMMENT_GRP})|'
+        rf'(?P<DEFINE>{_DEFINE_GRP})|'
+        rf'(?P<KEYWORD>{_KEYWORD_GRP})|(?P<BUILTIN>{_BUILTIN_GRP})|'
+        rf'(?P<PROMPT1>{_PROMPT1_GRP})|(?P<PROMPT2>{_PROMPT2_GRP})|(?P<EOS>\Z)'
+    ')',
     re.MULTILINE | re.DOTALL)
 
 #: This regular expression is used to find doctest examples in a
@@ -152,8 +143,7 @@ def colorize_doctest_body(s):
         # Pre-example text:
         yield s[idx:match.start()]
         # Example source code:
-        for stan in colorize_codeblock_body(pysrc):
-            yield stan
+        yield from colorize_codeblock_body(pysrc)
         # Example output:
         if want:
             style = 'py-except' if EXCEPT_RE.match(want) else 'py-output'
@@ -170,8 +160,7 @@ def colorize_codeblock_body(s):
         start = match.start()
         if idx < start:
             yield s[idx:start]
-        for stan in subfunc(match):
-            yield stan
+        yield from subfunc(match)
         idx = match.end()
     # DOCTEST_RE matches end-of-string.
     assert idx == len(s)
