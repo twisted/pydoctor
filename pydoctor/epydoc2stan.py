@@ -292,7 +292,7 @@ class Field:
         r = repr(self.body)
         if len(r) > 25:
             r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %s %d>"%(self.__class__.__name__,
+        return "<%s %r %r %d %s>"%(self.__class__.__name__,
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler:
@@ -387,10 +387,11 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field):
-        self.obj.system.msg(
-            'epydoc2stan',
-            'found unknown field on %r: %r'%(self.obj.fullName(), field),
-            thresh=-1)
+        self.obj.report(
+            'unknown field "%s"' % field.tag,
+            lineno_offset=field.lineno,
+            section='docstring'
+            )
         self.add_info(self.unknowns, field)
 
     def handle(self, field):

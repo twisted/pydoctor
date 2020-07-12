@@ -85,6 +85,19 @@ def test_missing_field_name(capsys):
                        "test:6: Missing field name in @type\n"
 
 
+def test_unknown_field_name(capsys):
+    mod = fromText('''
+    """
+    A test module.
+
+    @zap: No such field.
+    """
+    ''', modname='test')
+    epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == 'test:5: unknown field "zap"\n'
+
+
 def test_EpydocLinker_look_for_intersphinx_no_link():
     """
     Return None if inventory had no link for our markup.
