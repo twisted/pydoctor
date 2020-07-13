@@ -332,20 +332,20 @@ class IntersphinxCache:
     _logger: logging.Logger = logger
 
     @classmethod
-    def fromParameters(cls, sessionFactory, cachePath, maxAgeDictionary):
+    def fromParameters(
+            cls,
+            sessionFactory: Callable[[], requests.Session],
+            cachePath: str,
+            maxAgeDictionary: Mapping[str, int]
+            ) -> 'IntersphinxCache':
         """
         Construct an instance with the given parameters.
 
         @param sessionFactory: A zero-argument L{callable} that
             returns a L{requests.Session}.
-
         @param cachePath: Path of the cache directory.
-        @type cachePath: L{str}
-
-        @param maxAgeDictionary: A dictionary describing the maximum
+        @param maxAgeDictionary: A mapping describing the maximum
             age of any cache entry.
-        @type maxAgeDictionary: L{dict}
-
         @see: L{parseMaxAge}
         """
         session = CacheControl(sessionFactory(),
@@ -353,15 +353,12 @@ class IntersphinxCache:
                                heuristic=ExpiresAfter(**maxAgeDictionary))
         return cls(session)
 
-    def get(self, url):
+    def get(self, url: str) -> Optional[bytes]:
         """
         Retrieve a URL using the cache.
 
         @param url: The URL to retrieve.
-        @type url: L{str}
-
-        @return: The body of the URL.
-        @rtype: L{bytes} on success and L{None} on failure.
+        @return: The body of the URL, or L{None} on failure.
         """
         try:
             return self._session.get(url).content
