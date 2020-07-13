@@ -7,7 +7,9 @@ import os
 import shutil
 import textwrap
 import zlib
-from typing import Callable, Dict, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING, Callable, Dict, IO, Iterable, Mapping, Optional, Tuple
+)
 
 import appdirs
 import attr
@@ -15,6 +17,12 @@ import requests
 from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
 from cachecontrol.heuristics import ExpiresAfter
+
+if TYPE_CHECKING:
+    from pydoctor.model import Documentable
+else:
+    Documentable = object
+
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +140,17 @@ class SphinxInventoryWriter:
 
     version = (2, 0)
 
-    def __init__(self, logger, project_name):
+    def __init__(self, logger: Callable[..., None], project_name: str):
         self.project_name = project_name
-        self.info = logger
-        self.error = lambda where, message: logger(where, message, thresh=-1)
+        self._logger = logger
 
-    def generate(self, subjects, basepath):
+    def info(self, where: str, message: str) -> None:
+        self._logger(where, message)
+
+    def error(self, where: str, message: str) -> None:
+        self._logger(where, message, thresh=-1)
+
+    def generate(self, subjects: Iterable[Documentable], basepath: str) -> None:
         """
         Generate Sphinx objects inventory version 2 at `basepath`/objects.inv.
         """
@@ -149,13 +162,13 @@ class SphinxInventoryWriter:
             content = self._generateContent(subjects)
             target.write(zlib.compress(content))
 
-    def _openFileForWriting(self, path):
+    def _openFileForWriting(self, path: str) -> IO[bytes]:
         """
         Helper for testing.
         """
         return open(path, 'wb')
 
-    def _generateHeader(self):
+    def _generateHeader(self) -> bytes:
         """
         Return header for project  with name.
         """
@@ -165,7 +178,7 @@ class SphinxInventoryWriter:
 # The rest of this file is compressed with zlib.
 """.encode('utf-8')
 
-    def _generateContent(self, subjects):
+    def _generateContent(self, subjects: Iterable[Documentable]) -> bytes:
         """
         Write inventory for all `subjects`.
         """
@@ -178,7 +191,7 @@ class SphinxInventoryWriter:
 
         return b''.join(content)
 
-    def _generateLine(self, obj):
+    def _generateLine(self, obj: Documentable) -> str:
         """
         Return inventory line for object.
 
