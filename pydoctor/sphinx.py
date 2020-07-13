@@ -283,7 +283,16 @@ class InvalidMaxAge(Exception):
     """
 
 
-def parseMaxAge(maxAge):
+def parseMaxAge(maxAge: str) -> Dict[str, int]:
+    """
+    Parse a string into a maximum age dictionary.
+
+    @param maxAge: A string consisting of an integer number
+        followed by a single character unit.
+    @return: A dictionary whose keys match L{datetime.timedelta}'s
+        arguments.
+    @raises: L{InvalidMaxAge} when a string cannot be parsed.
+    """
     try:
         amount = int(maxAge[:-1])
     except (ValueError, TypeError):
@@ -302,22 +311,6 @@ def parseMaxAge(maxAge):
             f"and less than {unit.maximum}")
 
     return {unit.name: amount}
-
-
-parseMaxAge.__doc__ = (
-    """
-    Parse a string into a maximum age dictionary.
-
-    @param maxAge: {}
-    @type maxAge: L{str}
-
-    @raises: L{InvalidMaxAge} when a string cannot be parsed.
-
-    @return: A dictionary whose keys match L{datetime.timedelta}'s
-        arguments.
-    @rtype: L{dict}
-    """
-)
 
 
 @attr.s(auto_attribs=True)
@@ -379,46 +372,34 @@ class StubCache:
     _cache: Dict[str, bytes]
     """A mapping from URLs to content."""
 
-    def get(self, url):
+    def get(self, url: str) -> Optional[bytes]:
         """
         Return stored for the given URL.
 
         @param url: The URL to retrieve.
-        @type url: L{str}
-
         @return: The "body" of the URL - the value from L{_cache} or
             L{None}.
-        @rtype: L{bytes}.
         """
         return self._cache.get(url)
 
 
 def prepareCache(
-        clearCache,
-        enableCache,
-        cachePath,
-        maxAge,
-        sessionFactory=requests.Session,
-):
+        clearCache: bool,
+        enableCache: bool,
+        cachePath: str,
+        maxAge: str,
+        sessionFactory: Callable[[], requests.Session] = requests.Session,
+        ) -> IntersphinxCache:
     """
     Prepare an Intersphinx cache.
 
     @param clearCache: Remove the cache?
-    @type clearCache: L{bool}
-
     @param enableCache: Enable the cache?
-    @type enableCache: L{bool}
-
     @param cachePath: Path of the cache directory.
-    @type cachePath: L{str}
-
     @param maxAge: The maximum age in seconds of cached Intersphinx
         C{objects.inv} files.
-    @type maxAge: L{float}
-
     @param sessionFactory: (optional) A zero-argument L{callable} that
         returns a L{requests.Session}.
-
     @return: A L{IntersphinxCache} instance.
     """
     if clearCache:
