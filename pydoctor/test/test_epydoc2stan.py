@@ -213,3 +213,18 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys):
 
     assert epydoc2stan.STDLIB_URL + 'socket.html#socket.socket' == url
     assert not capsys.readouterr().out
+
+
+def test_stdlib_doc_link_for_name():
+    """
+    Check the URLs returned for names from the standard library.
+    """
+
+    base = epydoc2stan.STDLIB_URL
+    link = epydoc2stan.stdlib_doc_link_for_name
+    assert base + 'exceptions.html#KeyError' == link('KeyError')
+    assert base + 'stdtypes.html#str' == link('str')
+    assert base + 'functions.html#len' == link('len')
+    assert base + 'constants.html#None' == link('None')
+    assert base + 'collections.html#collections.defaultdict' == link('collections.defaultdict')
+    assert base + 'logging.handlers.html#logging.handlers.SocketHandler' == link('logging.handlers.SocketHandler')
