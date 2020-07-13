@@ -7,7 +7,7 @@ import os
 import shutil
 import textwrap
 import zlib
-from typing import Dict
+from typing import Callable, Dict, Mapping, Optional, Tuple
 
 import appdirs
 import attr
@@ -24,15 +24,22 @@ class SphinxInventory:
     Sphinx inventory handler.
     """
 
-    def __init__(self, logger, project_name=None):
+    def __init__(
+            self,
+            logger: Callable[..., None],
+            project_name: Optional[str] = None
+            ):
         """
         @param project_name: Dummy argument to stay compatible with
                              L{twisted.python._pydoctor}.
         """
-        self._links = {}
-        self.error = lambda where, message: logger(where, message, thresh=-1)
+        self._links: Dict[str, Tuple[str, str]] = {}
+        self._logger = logger
 
-    def update(self, cache, url):
+    def error(self, where: str, message: str) -> None:
+        self._logger(where, message, thresh=-1)
+
+    def update(self, cache: Mapping[str, bytes], url: str) -> None:
         """
         Update inventory from URL.
         """
@@ -54,7 +61,7 @@ class SphinxInventory:
         payload = self._getPayload(base_url, data)
         self._links.update(self._parseInventory(base_url, payload))
 
-    def _getPayload(self, base_url, data):
+    def _getPayload(self, base_url: str, data: bytes) -> str:
         """
         Parse inventory and return clear text payload without comments.
         """
@@ -83,7 +90,11 @@ class SphinxInventory:
                 'Failed to decode inventory from %s' % (base_url,))
             return ''
 
-    def _parseInventory(self, base_url, payload):
+    def _parseInventory(
+            self,
+            base_url: str,
+            payload: str
+            ) -> Dict[str, Tuple[str, str]]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
@@ -99,7 +110,7 @@ class SphinxInventory:
             result[parts[0]] = (base_url, parts[3])
         return result
 
-    def getLink(self, name):
+    def getLink(self, name: str) -> Optional[str]:
         """
         Return link for `name` or None if no link is found.
         """
