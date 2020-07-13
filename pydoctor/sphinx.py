@@ -7,6 +7,7 @@ import os
 import shutil
 import textwrap
 import zlib
+from typing import Dict
 
 import appdirs
 import attr
@@ -209,25 +210,22 @@ class SphinxInventoryWriter:
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class _Unit:
     """
     A unit of time for maximum age parsing.
 
-    @ivar name: The name of the unit.
-    @type name: L{str}
-
-    @ivar minimum: The minimum value, inclusive.
-    @ivar minimum: L{int}
-
-    @ivar maximum: The maximum value, exclusive.
-    @ivar maxium: L{int}
-
     @see: L{parseMaxAge}
     """
-    name = attr.ib()
-    minimum = attr.ib()
-    maximum = attr.ib()
+
+    name: str
+    """The name of the unit."""
+
+    minimum: int
+    """The minimum value, inclusive."""
+
+    maximum: int
+    """The maximum value, exclusive."""
 
 
 # timedelta stores seconds and minutes internally as ints.  Limit them
@@ -298,16 +296,16 @@ parseMaxAge.__doc__ = (
 )
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class IntersphinxCache:
     """
     An Intersphinx cache.
-
-    @param session: A session that may or may not cache requests.
-    @type session: L{requests.Session}
     """
-    _session = attr.ib()
-    _logger = attr.ib(default=logger)
+
+    _session: requests.Session
+    """A session that may or may not cache requests."""
+
+    _logger: logging.Logger = logger
 
     @classmethod
     def fromParameters(cls, sessionFactory, cachePath, maxAgeDictionary):
@@ -351,15 +349,14 @@ class IntersphinxCache:
             return None
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class StubCache:
     """
     A stub cache.
-
-    @param cache: A L{dict} mapping URLs to content.
-    @type cache: L{dict} of L{str} to L{bytes}
     """
-    _cache = attr.ib()
+
+    _cache: Dict[str, bytes]
+    """A mapping from URLs to content."""
 
     def get(self, url):
         """
