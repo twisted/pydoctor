@@ -52,7 +52,7 @@ from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
 from docutils.nodes import NodeVisitor, SkipNode
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import directives
+from docutils.parsers.rst import Directive, directives
 import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
@@ -466,8 +466,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
 
-def python_code_directive(name, arguments, options, content, lineno,
-                          content_offset, block_text, state, state_machine):
+class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
     syntax-highlighted Python code blocks.  This directive takes no
@@ -477,11 +476,12 @@ def python_code_directive(name, arguments, options, content, lineno,
     prefer that the output not contain prompts (e.g., to make
     copy/paste easier).
     """
-    text = '\n'.join(content)
-    node = docutils.nodes.doctest_block(text, text, codeblock=True)
-    return [ node ]
 
-python_code_directive.arguments = (0, 0, 0)
-python_code_directive.content = True
+    has_content = True
 
-directives.register_directive('python', python_code_directive)
+    def run(self):
+        text = '\n'.join(self.content)
+        node = docutils.nodes.doctest_block(text, text, codeblock=True)
+        return [ node ]
+
+directives.register_directive('python', PythonCodeDirective)

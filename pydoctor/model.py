@@ -15,8 +15,15 @@ import platform
 import sys
 import types
 from enum import Enum
+from typing import TYPE_CHECKING, Type
 
 from pydoctor.sphinx import SphinxInventory
+
+if TYPE_CHECKING:
+    from pydoctor.astbuilder import ASTBuilder
+else:
+    ASTBuilder = object
+
 
 # originally when I started to write pydoctor I had this idea of a big
 # tree of Documentables arranged in an almost arbitrary tree.
@@ -398,8 +405,9 @@ class System:
     Package = Package
     Function = Function
     Attribute = Attribute
-    # not done here for circularity reasons:
+    # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
+    defaultBuilder: Type[ASTBuilder]
     sourcebase = None
 
     def __init__(self, options=None):
