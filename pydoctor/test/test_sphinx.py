@@ -45,19 +45,6 @@ def make_SphinxInventoryWithLog(factory=sphinx.SphinxInventory):
     return (inventory, log)
 
 
-def test_writer_initialization():
-    """
-    Is initialized with logger and project name.
-    """
-    logger = object()
-    name = object()
-
-    sut = sphinx.SphinxInventoryWriter(logger=logger, project_name=name)
-
-    assert logger is sut.info
-    assert name is sut.project_name
-
-
 def test_generate_empty_functional():
     """
     Functional test for index generation of empty API.
