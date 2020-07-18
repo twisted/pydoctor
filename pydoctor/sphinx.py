@@ -7,6 +7,9 @@ import os
 import shutil
 import textwrap
 import zlib
+from typing import (
+    TYPE_CHECKING, Callable, Dict, IO, Iterable, Mapping, Optional, Tuple
+)
 
 import appdirs
 import attr
@@ -14,6 +17,12 @@ import requests
 from cachecontrol import CacheControl
 from cachecontrol.caches import FileCache
 from cachecontrol.heuristics import ExpiresAfter
+
+if TYPE_CHECKING:
+    from pydoctor.model import Documentable
+else:
+    Documentable = object
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +32,22 @@ class SphinxInventory:
     Sphinx inventory handler.
     """
 
-    def __init__(self, logger, project_name=None):
+    def __init__(
+            self,
+            logger: Callable[..., None],
+            project_name: Optional[str] = None
+            ):
         """
         @param project_name: Dummy argument to stay compatible with
                              L{twisted.python._pydoctor}.
         """
-        self._links = {}
-        self.error = lambda where, message: logger(where, message, thresh=-1)
+        self._links: Dict[str, Tuple[str, str]] = {}
+        self._logger = logger
 
-    def update(self, cache, url):
+    def error(self, where: str, message: str) -> None:
+        self._logger(where, message, thresh=-1)
+
+    def update(self, cache: Mapping[str, bytes], url: str) -> None:
         """
         Update inventory from URL.
         """
@@ -53,7 +69,7 @@ class SphinxInventory:
         payload = self._getPayload(base_url, data)
         self._links.update(self._parseInventory(base_url, payload))
 
-    def _getPayload(self, base_url, data):
+    def _getPayload(self, base_url: str, data: bytes) -> str:
         """
         Parse inventory and return clear text payload without comments.
         """
@@ -82,7 +98,11 @@ class SphinxInventory:
                 'Failed to decode inventory from %s' % (base_url,))
             return ''
 
-    def _parseInventory(self, base_url, payload):
+    def _parseInventory(
+            self,
+            base_url: str,
+            payload: str
+            ) -> Dict[str, Tuple[str, str]]:
         """
         Parse clear text payload and return a dict with module to link mapping.
         """
@@ -98,7 +118,7 @@ class SphinxInventory:
             result[parts[0]] = (base_url, parts[3])
         return result
 
-    def getLink(self, name):
+    def getLink(self, name: str) -> Optional[str]:
         """
         Return link for `name` or None if no link is found.
         """
@@ -120,12 +140,17 @@ class SphinxInventoryWriter:
 
     version = (2, 0)
 
-    def __init__(self, logger, project_name):
+    def __init__(self, logger: Callable[..., None], project_name: str):
         self.project_name = project_name
-        self.info = logger
-        self.error = lambda where, message: logger(where, message, thresh=-1)
+        self._logger = logger
 
-    def generate(self, subjects, basepath):
+    def info(self, where: str, message: str) -> None:
+        self._logger(where, message)
+
+    def error(self, where: str, message: str) -> None:
+        self._logger(where, message, thresh=-1)
+
+    def generate(self, subjects: Iterable[Documentable], basepath: str) -> None:
         """
         Generate Sphinx objects inventory version 2 at `basepath`/objects.inv.
         """
@@ -137,13 +162,13 @@ class SphinxInventoryWriter:
             content = self._generateContent(subjects)
             target.write(zlib.compress(content))
 
-    def _openFileForWriting(self, path):
+    def _openFileForWriting(self, path: str) -> IO[bytes]:
         """
         Helper for testing.
         """
         return open(path, 'wb')
 
-    def _generateHeader(self):
+    def _generateHeader(self) -> bytes:
         """
         Return header for project  with name.
         """
@@ -153,7 +178,7 @@ class SphinxInventoryWriter:
 # The rest of this file is compressed with zlib.
 """.encode('utf-8')
 
-    def _generateContent(self, subjects):
+    def _generateContent(self, subjects: Iterable[Documentable]) -> bytes:
         """
         Write inventory for all `subjects`.
         """
@@ -166,7 +191,7 @@ class SphinxInventoryWriter:
 
         return b''.join(content)
 
-    def _generateLine(self, obj):
+    def _generateLine(self, obj: Documentable) -> str:
         """
         Return inventory line for object.
 
@@ -209,25 +234,22 @@ class SphinxInventoryWriter:
 USER_INTERSPHINX_CACHE = appdirs.user_cache_dir("pydoctor")
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class _Unit:
     """
     A unit of time for maximum age parsing.
 
-    @ivar name: The name of the unit.
-    @type name: L{str}
-
-    @ivar minimum: The minimum value, inclusive.
-    @ivar minimum: L{int}
-
-    @ivar maximum: The maximum value, exclusive.
-    @ivar maxium: L{int}
-
     @see: L{parseMaxAge}
     """
-    name = attr.ib()
-    minimum = attr.ib()
-    maximum = attr.ib()
+
+    name: str
+    """The name of the unit."""
+
+    minimum: int
+    """The minimum value, inclusive."""
+
+    maximum: int
+    """The maximum value, exclusive."""
 
 
 # timedelta stores seconds and minutes internally as ints.  Limit them
@@ -261,7 +283,16 @@ class InvalidMaxAge(Exception):
     """
 
 
-def parseMaxAge(maxAge):
+def parseMaxAge(maxAge: str) -> Dict[str, int]:
+    """
+    Parse a string into a maximum age dictionary.
+
+    @param maxAge: A string consisting of an integer number
+        followed by a single character unit.
+    @return: A dictionary whose keys match L{datetime.timedelta}'s
+        arguments.
+    @raises: L{InvalidMaxAge} when a string cannot be parsed.
+    """
     try:
         amount = int(maxAge[:-1])
     except (ValueError, TypeError):
@@ -282,48 +313,32 @@ def parseMaxAge(maxAge):
     return {unit.name: amount}
 
 
-parseMaxAge.__doc__ = (
-    """
-    Parse a string into a maximum age dictionary.
-
-    @param maxAge: {}
-    @type maxAge: L{str}
-
-    @raises: L{InvalidMaxAge} when a string cannot be parsed.
-
-    @return: A dictionary whose keys match L{datetime.timedelta}'s
-        arguments.
-    @rtype: L{dict}
-    """
-)
-
-
-@attr.s
+@attr.s(auto_attribs=True)
 class IntersphinxCache:
     """
     An Intersphinx cache.
-
-    @param session: A session that may or may not cache requests.
-    @type session: L{requests.Session}
     """
-    _session = attr.ib()
-    _logger = attr.ib(default=logger)
+
+    _session: requests.Session
+    """A session that may or may not cache requests."""
+
+    _logger: logging.Logger = logger
 
     @classmethod
-    def fromParameters(cls, sessionFactory, cachePath, maxAgeDictionary):
+    def fromParameters(
+            cls,
+            sessionFactory: Callable[[], requests.Session],
+            cachePath: str,
+            maxAgeDictionary: Mapping[str, int]
+            ) -> 'IntersphinxCache':
         """
         Construct an instance with the given parameters.
 
         @param sessionFactory: A zero-argument L{callable} that
             returns a L{requests.Session}.
-
         @param cachePath: Path of the cache directory.
-        @type cachePath: L{str}
-
-        @param maxAgeDictionary: A dictionary describing the maximum
+        @param maxAgeDictionary: A mapping describing the maximum
             age of any cache entry.
-        @type maxAgeDictionary: L{dict}
-
         @see: L{parseMaxAge}
         """
         session = CacheControl(sessionFactory(),
@@ -331,15 +346,12 @@ class IntersphinxCache:
                                heuristic=ExpiresAfter(**maxAgeDictionary))
         return cls(session)
 
-    def get(self, url):
+    def get(self, url: str) -> Optional[bytes]:
         """
         Retrieve a URL using the cache.
 
         @param url: The URL to retrieve.
-        @type url: L{str}
-
-        @return: The body of the URL.
-        @rtype: L{bytes} on success and L{None} on failure.
+        @return: The body of the URL, or L{None} on failure.
         """
         try:
             return self._session.get(url).content
@@ -351,56 +363,43 @@ class IntersphinxCache:
             return None
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class StubCache:
     """
     A stub cache.
-
-    @param cache: A L{dict} mapping URLs to content.
-    @type cache: L{dict} of L{str} to L{bytes}
     """
-    _cache = attr.ib()
 
-    def get(self, url):
+    _cache: Dict[str, bytes]
+    """A mapping from URLs to content."""
+
+    def get(self, url: str) -> Optional[bytes]:
         """
         Return stored for the given URL.
 
         @param url: The URL to retrieve.
-        @type url: L{str}
-
         @return: The "body" of the URL - the value from L{_cache} or
             L{None}.
-        @rtype: L{bytes}.
         """
         return self._cache.get(url)
 
 
 def prepareCache(
-        clearCache,
-        enableCache,
-        cachePath,
-        maxAge,
-        sessionFactory=requests.Session,
-):
+        clearCache: bool,
+        enableCache: bool,
+        cachePath: str,
+        maxAge: str,
+        sessionFactory: Callable[[], requests.Session] = requests.Session,
+        ) -> IntersphinxCache:
     """
     Prepare an Intersphinx cache.
 
     @param clearCache: Remove the cache?
-    @type clearCache: L{bool}
-
     @param enableCache: Enable the cache?
-    @type enableCache: L{bool}
-
     @param cachePath: Path of the cache directory.
-    @type cachePath: L{str}
-
     @param maxAge: The maximum age in seconds of cached Intersphinx
         C{objects.inv} files.
-    @type maxAge: L{float}
-
     @param sessionFactory: (optional) A zero-argument L{callable} that
         returns a L{requests.Session}.
-
     @return: A L{IntersphinxCache} instance.
     """
     if clearCache:
