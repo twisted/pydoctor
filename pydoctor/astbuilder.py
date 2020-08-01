@@ -3,6 +3,7 @@
 import ast
 import sys
 from itertools import chain
+from typing import Mapping
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -51,7 +52,7 @@ def node2fullname(expr, ctx):
         return None
 
 
-def _get_all_annotations(func_ast):
+def _get_all_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
     def _get_all_args(func_ast):
         base_args = func_ast.args
         # New on Python 3.8 -- handle absence gracefully
@@ -73,7 +74,7 @@ def _get_all_annotations(func_ast):
         returns = func_ast.returns
         if returns:
             yield 'return', returns
-    return {name: astor.to_source(value).strip() if value is not None else value
+    return {name: value
             for name, value in _get_all_ast_annotations(func_ast)}
 
 

@@ -10,6 +10,7 @@ import builtins
 import itertools
 import os
 import sys
+from typing import Mapping, Any
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
@@ -292,12 +293,12 @@ class Field:
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler:
-    def __init__(self, obj, annotations=None):
+    def __init__(self, obj, annotations: Mapping[str, Any]):
         self.obj = obj
 
-        self.types = {}
-        if annotations is not None:
-            self.types.update(annotations)
+        self.types = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
+                      for name, value in annotations.items()
+                      if value is not None}
 
         self.parameter_descs = []
         self.return_desc = None
@@ -502,7 +503,7 @@ def format_docstring(obj):
     fields = pdoc.fields
     s = tags.div(*content)
     if fields:
-        fh = FieldHandler(obj, getattr(source, 'annotations', None))
+        fh = FieldHandler(obj, getattr(source, 'annotations', {}))
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
