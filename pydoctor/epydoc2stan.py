@@ -316,7 +316,14 @@ class FieldHandler:
         annotations = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
                       for name, value in annotations.items()
                       if value is not None}
-        return cls(obj, annotations)
+        return_type = FieldDesc()
+        try:
+            return_type.body = annotations.pop("return")
+        except KeyError:
+            pass
+        ret_value = cls(obj, annotations)
+        ret_value.handle_returntype(return_type)
+        return ret_value
 
     def redef(self, field):
         self.obj.system.msg(
@@ -409,12 +416,6 @@ class FieldHandler:
         for pd in self.parameter_descs:
             if pd.name in self.types:
                 pd.type = self.types[pd.name]
-        if 'return' not in self.types:
-             return
-        if not self.return_desc:
-            self.return_desc = FieldDesc()
-        if not self.return_desc.type:
-            self.return_desc.type = self.types['return']
 
     def format(self):
         r = []
@@ -510,12 +511,11 @@ def format_docstring(obj):
     content = [stan] if stan.tagName else stan.children
     fields = pdoc.fields
     s = tags.div(*content)
-    if fields:
-        fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
-        for field in fields:
-            fh.handle(Field(field, obj))
-        fh.resolve_types()
-        s(fh.format())
+    fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
+    for field in fields:
+        fh.handle(Field(field, obj))
+    fh.resolve_types()
+    s(fh.format())
     return s
 
 
