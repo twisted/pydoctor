@@ -314,8 +314,7 @@ class FieldHandler:
     @classmethod
     def from_ast_annotations(cls, obj: Any, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
         annotations = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
-                      for name, value in annotations.items()
-                      if value is not None}
+                       for name, value in annotations.items()}
         return_type = FieldDesc()
         try:
             return_type.body = annotations.pop("return")
