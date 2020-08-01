@@ -295,7 +295,7 @@ class Field:
 
 class FieldHandler:
 
-    def __init__(self, obj: Any, annotations: Mapping[str, Tag]):
+    def __init__(self, obj, annotations):
         self.obj = obj
 
         self.types = {}
