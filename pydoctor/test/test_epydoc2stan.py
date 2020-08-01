@@ -1,7 +1,5 @@
 from pytest import raises
 
-from twisted.web.template import flattenString
-
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
