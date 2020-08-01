@@ -59,9 +59,7 @@ def test_func_arg_and_ret_annotation():
     ''')
     def format(docstring):
         stan = epydoc2stan.format_docstring(docstring)
-        stuff = []
-        flattenString(None, stan).addCallback(stuff.append)
-        return stuff[0].decode('ascii').replace('><', '>\n<')
+        return flatten(stan).replace('><', '>\n<')
     annotation_fmt = format(annotation_mod.contents['f'])
     classic_fmt = format(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
@@ -89,9 +87,7 @@ def test_func_arg_and_ret_annotation_with_override():
     ''')
     def format(docstring):
         stan = epydoc2stan.format_docstring(docstring)
-        stuff = []
-        flattenString(None, stan).addCallback(stuff.append)
-        return stuff[0].decode('ascii').replace('><', '>\n<')
+        return flatten(stan).replace('><', '>\n<')
     annotation_fmt = format(annotation_mod.contents['f'])
     classic_fmt = format(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
