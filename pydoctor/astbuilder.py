@@ -3,7 +3,7 @@
 import ast
 import sys
 from itertools import chain
-from typing import Mapping
+from typing import Mapping, Iterable, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -53,7 +53,7 @@ def node2fullname(expr, ctx):
 
 
 def _get_all_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
-    def _get_all_args(func_ast):
+    def _get_all_args() -> Iterable[ast.arg]:
         base_args = func_ast.args
         # New on Python 3.8 -- handle absence gracefully
         try:
@@ -68,14 +68,14 @@ def _get_all_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
         kwargs = base_args.kwarg
         if kwargs:
             yield kwargs
-    def _get_all_ast_annotations(func_ast):
-        for arg in _get_all_args(func_ast):
+    def _get_all_ast_annotations() -> Iterable[Tuple[ast.arg, ast.expr]]:
+        for arg in _get_all_args():
             yield arg.arg, arg.annotation
         returns = func_ast.returns
         if returns:
             yield 'return', returns
     return {name: value
-            for name, value in _get_all_ast_annotations(func_ast)}
+            for name, value in _get_all_ast_annotations()}
 
 
 class ModuleVistor(ast.NodeVisitor):
