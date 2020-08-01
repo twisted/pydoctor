@@ -6,6 +6,7 @@ import astor
 
 from importlib import import_module
 from urllib.parse import quote
+import ast
 import builtins
 import itertools
 import os
@@ -293,12 +294,12 @@ class Field:
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler:
-    def __init__(self, obj, annotations: Mapping[str, Any]):
+
+    def __init__(self, obj: Any, annotations: Mapping[str, Tag]):
         self.obj = obj
 
-        self.types = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
-                      for name, value in annotations.items()
-                      if value is not None}
+        self.types = {}
+        self.types.update(annotations)
 
         self.parameter_descs = []
         self.return_desc = None
@@ -309,6 +310,13 @@ class FieldHandler:
         self.sinces = []
         self.unknowns = []
         self.unattached_types = {}
+
+    @classmethod
+    def from_ast_annotations(cls, obj: Any, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
+        annotations = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
+                      for name, value in annotations.items()
+                      if value is not None}
+        return cls(obj, annotations)
 
     def redef(self, field):
         self.obj.system.msg(
@@ -503,7 +511,7 @@ def format_docstring(obj):
     fields = pdoc.fields
     s = tags.div(*content)
     if fields:
-        fh = FieldHandler(obj, getattr(source, 'annotations', {}))
+        fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
         for field in fields:
             fh.handle(Field(field, obj))
         fh.resolve_types()
