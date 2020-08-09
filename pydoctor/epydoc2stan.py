@@ -312,7 +312,7 @@ class FieldHandler:
         self.unattached_types = {}
 
     @classmethod
-    def from_ast_annotations(cls, obj: Any, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
+    def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
         annotations = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
                        for name, value in annotations.items()}
         return_type = FieldDesc()
