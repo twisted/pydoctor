@@ -52,7 +52,7 @@ def node2fullname(expr, ctx):
         return None
 
 
-def _get_all_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
+def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
     def _get_all_args() -> Iterable[ast.arg]:
         base_args = func_ast.args
         # New on Python 3.8 -- handle absence gracefully
@@ -490,7 +490,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
-        func.annotations = _get_all_annotations(node)
+        func.annotations = _get_function_signature_annotations(node)
         self.default(node)
         self.builder.popFunction()
 
