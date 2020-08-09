@@ -313,7 +313,8 @@ class FieldHandler:
 
     @classmethod
     def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
-        annotations = {name: AnnotationDocstring(value).to_stan(_EpydocLinker(obj))
+        linker = _EpydocLinker(obj)
+        annotations = {name: AnnotationDocstring(value).to_stan(linker)
                        for name, value in annotations.items()}
         return_type = FieldDesc()
         try:
