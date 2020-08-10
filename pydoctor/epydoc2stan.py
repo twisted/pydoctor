@@ -11,7 +11,7 @@ import builtins
 import itertools
 import os
 import sys
-from typing import Mapping, Any
+from typing import Mapping
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
