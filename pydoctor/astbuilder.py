@@ -3,6 +3,7 @@
 import ast
 import sys
 from itertools import chain
+from typing import Mapping, Iterable, Tuple, Optional
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -49,6 +50,33 @@ def node2fullname(expr, ctx):
         return '.'.join([base] + dottedname[1:])
     else:
         return None
+
+
+def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
+    def _get_all_args() -> Iterable[ast.arg]:
+        base_args = func_ast.args
+        # New on Python 3.8 -- handle absence gracefully
+        try:
+            yield from base_args.posonlyargs
+        except AttributeError:
+            pass
+        yield from base_args.args
+        varargs = base_args.vararg
+        if varargs:
+            yield varargs
+        yield from base_args.kwonlyargs
+        kwargs = base_args.kwarg
+        if kwargs:
+            yield kwargs
+    def _get_all_ast_annotations() -> Iterable[Tuple[str, Optional[ast.expr]]]:
+        for arg in _get_all_args():
+            yield arg.arg, arg.annotation
+        returns = func_ast.returns
+        if returns:
+            yield 'return', returns
+    return {name: value
+            for name, value in _get_all_ast_annotations()
+            if value is not None}
 
 
 class ModuleVistor(ast.NodeVisitor):
@@ -462,6 +490,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
+        func.annotations = _get_function_signature_annotations(node)
         self.default(node)
         self.builder.popFunction()
 

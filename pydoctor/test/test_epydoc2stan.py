@@ -38,6 +38,83 @@ def test_multiple_types():
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
+def test_func_arg_and_ret_annotation():
+    annotation_mod = fromText('''
+    def f(a: List[str]) -> bool:
+        """
+        @param a: an arg, a the best of args
+        @return: the best that we can do
+        """
+    ''')
+    classic_mod = fromText('''
+    def f(a):
+        """
+        @param a: an arg, a the best of args
+        @type a: List[str]
+        @return: the best that we can do
+        @rtype: bool
+        """
+    ''')
+    def format(docstring):
+        stan = epydoc2stan.format_docstring(docstring)
+        return flatten(stan).replace('><', '>\n<')
+    annotation_fmt = format(annotation_mod.contents['f'])
+    classic_fmt = format(classic_mod.contents['f'])
+    assert annotation_fmt == classic_fmt
+
+def test_func_arg_and_ret_annotation_with_override():
+    annotation_mod = fromText('''
+    def f(a: List[str], b: List[str]) -> bool:
+        """
+        @param a: an arg, a the best of args
+        @param b: a param to follow a
+        @type b: List[awesome]
+        @return: the best that we can do
+        """
+    ''')
+    classic_mod = fromText('''
+    def f(a):
+        """
+        @param a: an arg, a the best of args
+        @type a: List[str]
+        @param b: a param to follow a
+        @type b: List[awesome]
+        @return: the best that we can do
+        @rtype: bool
+        """
+    ''')
+    def format(docstring):
+        stan = epydoc2stan.format_docstring(docstring)
+        return flatten(stan).replace('><', '>\n<')
+    annotation_fmt = format(annotation_mod.contents['f'])
+    classic_fmt = format(classic_mod.contents['f'])
+    assert annotation_fmt == classic_fmt
+
+def test_func_arg_when_doc_missing():
+    annotation_mod = fromText('''
+    def f(a: List[str], b: int) -> bool:
+        """
+        Today I will not document details
+        """
+    ''')
+    classic_mod = fromText('''
+    def f(a):
+        """
+        Today I will not document details
+        @type a: List[str]
+        @type b: int
+        @rtype: bool
+        """
+    ''')
+    def format(docstring):
+        stan = epydoc2stan.format_docstring(docstring)
+        return flatten(stan).replace('><', '>\n<')
+    annotation_fmt = format(annotation_mod.contents['f'])
+    classic_fmt = format(classic_mod.contents['f'])
+    assert annotation_fmt == classic_fmt
+
+
+
 def test_summary():
     mod = fromText('''
     def single_line_summary():

@@ -6,10 +6,12 @@ import astor
 
 from importlib import import_module
 from urllib.parse import quote
+import ast
 import builtins
 import itertools
 import os
 import sys
+from typing import Mapping
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
@@ -282,7 +284,7 @@ class Field:
         self.tag = field.tag()
         self.arg = field.arg()
         self.lineno = field.lineno
-        self.body = field.body().to_stan(_EpydocLinker(obj))
+        self.body = tags.code(field.body().to_stan(_EpydocLinker(obj)))
 
     def __repr__(self):
         r = repr(self.body)
@@ -292,10 +294,12 @@ class Field:
                              self.tag, self.arg, self.lineno, r)
 
 class FieldHandler:
-    def __init__(self, obj):
+
+    def __init__(self, obj, annotations):
         self.obj = obj
 
         self.types = {}
+        self.types.update(annotations)
 
         self.parameter_descs = []
         self.return_desc = None
@@ -306,6 +310,20 @@ class FieldHandler:
         self.sinces = []
         self.unknowns = []
         self.unattached_types = {}
+
+    @classmethod
+    def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
+        linker = _EpydocLinker(obj)
+        annotations = {name: AnnotationDocstring(value).to_stan(linker)
+                       for name, value in annotations.items()}
+        return_type = FieldDesc()
+        try:
+            return_type.body = annotations.pop("return")
+        except KeyError:
+            pass
+        ret_value = cls(obj, annotations)
+        ret_value.handle_returntype(return_type)
+        return ret_value
 
     def redef(self, field):
         self.obj.system.msg(
@@ -493,12 +511,11 @@ def format_docstring(obj):
     content = [stan] if stan.tagName else stan.children
     fields = pdoc.fields
     s = tags.div(*content)
-    if fields:
-        fh = FieldHandler(obj)
-        for field in fields:
-            fh.handle(Field(field, obj))
-        fh.resolve_types()
-        s(fh.format())
+    fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
+    for field in fields:
+        fh.handle(Field(field, obj))
+    fh.resolve_types()
+    s(fh.format())
     return s
 
 
