@@ -1,13 +1,13 @@
+from io import StringIO
 import sys
 
 from pydoctor import driver
-from twisted.python.compat import NativeStringIO
 
 
 def geterrtext(*options):
     options = list(options)
     se = sys.stderr
-    f = NativeStringIO()
+    f = StringIO()
     print(options)
     sys.stderr = f
     try:
