@@ -363,26 +363,6 @@ class IntersphinxCache:
             return None
 
 
-@attr.s(auto_attribs=True)
-class StubCache:
-    """
-    A stub cache.
-    """
-
-    _cache: Dict[str, bytes]
-    """A mapping from URLs to content."""
-
-    def get(self, url: str) -> Optional[bytes]:
-        """
-        Return stored for the given URL.
-
-        @param url: The URL to retrieve.
-        @return: The "body" of the URL - the value from L{_cache} or
-            L{None}.
-        """
-        return self._cache.get(url)
-
-
 def prepareCache(
         clearCache: bool,
         enableCache: bool,

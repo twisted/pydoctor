@@ -5,7 +5,7 @@ Unit tests for model.
 import sys
 import zlib
 
-from pydoctor import model, sphinx
+from pydoctor import model
 from pydoctor.driver import parse_args
 from pydoctor.test.test_astbuilder import fromText
 
@@ -83,7 +83,7 @@ def test_fetchIntersphinxInventories_empty():
     options.intersphinx = []
     sut = model.System(options=options)
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache({}))
+    sut.fetchIntersphinxInventories({})
 
     # Use internal state since I don't know how else to
     # check for SphinxInventory state.
@@ -112,7 +112,7 @@ def test_fetchIntersphinxInventories_content():
     # Patch url getter to avoid touching the network.
     sut.intersphinx._getURL = lambda url: url_content[url]
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache(url_content))
+    sut.fetchIntersphinxInventories(url_content)
 
     assert [] == log
     assert (

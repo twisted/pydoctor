@@ -325,7 +325,7 @@ def test_update_functional():
 
     url = 'http://some.url/api/objects.inv'
 
-    sut.update(sphinx.StubCache({url: content}), url)
+    sut.update({url: content}, url)
 
     assert 'http://some.url/api/module1.html' == sut.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == sut.getLink('other.module2')
@@ -337,7 +337,7 @@ def test_update_bad_url():
     """
     sut, log = make_SphinxInventoryWithLog()
 
-    sut.update(sphinx.StubCache({}), 'really.bad.url')
+    sut.update({}, 'really.bad.url')
 
     assert sut._links == {}
     expected_log = [(
@@ -352,7 +352,7 @@ def test_update_fail():
     """
     sut, log = make_SphinxInventoryWithLog()
 
-    sut.update(sphinx.StubCache({}), 'http://some.tld/o.inv')
+    sut.update({}, 'http://some.tld/o.inv')
 
     assert sut._links == {}
     expected_log = [(
@@ -586,32 +586,6 @@ class TestIntersphinxCache:
         assert caplog.records[0].levelname == "ERROR"
         assert caplog.records[0].exc_info is not None
         assert caplog.records[0].exc_info[0] is _TestException
-
-
-class TestStubCache:
-    """
-    Tests for L{sphinx.StubCache}.
-    """
-
-    def test_getFromCache(self):
-        """
-        L{sphinx.StubCache.get} returns its cached content for a URL.
-        """
-        url = "url"
-        content = b"content"
-
-        cache = sphinx.StubCache({url: content})
-
-        assert cache.get(url) is content
-
-    def test_not_in_cache(self):
-        """
-        L{sphinx.StubCache.get} returns L{None} if it has no cached
-        content for a URL.
-        """
-        cache = sphinx.StubCache({})
-
-        assert cache.get(b"url") is None
 
 
 @given(
