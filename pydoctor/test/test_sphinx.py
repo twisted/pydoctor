@@ -563,30 +563,29 @@ class TestIntersphinxCache:
 
         assert readsCacheFromFileSystem.get(url) == content
 
-    def test_getRaisesException(self):
+    def test_getRaisesException(self, caplog):
         """
         L{IntersphinxCache.get} returns L{None} if an exception is
         raised while C{GET}ing a URL and logs the exception.
         """
-        loggedExceptions = []
 
-        class _Logger:
-
-            @staticmethod
-            def exception(*args, **kwargs):
-                loggedExceptions.append((args, kwargs))
+        class _TestException(Exception):
+            pass
 
         class _RaisesOnGet:
 
             @staticmethod
             def get(url):
-                raise Exception()
+                raise _TestException()
 
-        cache = sphinx.IntersphinxCache(session=_RaisesOnGet, logger=_Logger)
+        cache = sphinx.IntersphinxCache(session=_RaisesOnGet)
 
         assert cache.get("some url") is None
 
-        assert len(loggedExceptions)
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelname == "ERROR"
+        assert caplog.records[0].exc_info is not None
+        assert caplog.records[0].exc_info[0] is _TestException
 
 
 class TestStubCache:
