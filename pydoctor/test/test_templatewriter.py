@@ -1,6 +1,3 @@
-import os
-import shutil
-import tempfile
 from io import BytesIO
 
 import pytest
@@ -60,24 +57,20 @@ def test_document_code_in_init_module():
     html = getHTMLOf(system.allobjects['codeininit'])
     assert 'functionInInit' in html
 
-def test_basic_package():
+def test_basic_package(tmp_path):
     system = processPackage("basic")
-    targetdir = tempfile.mkdtemp()
-    try:
-        w = writer.TemplateWriter(targetdir)
-        system.options.htmlusesplitlinks = True
-        system.options.htmlusesorttable = True
-        w.prepOutputDirectory()
-        root, = system.rootobjects
-        w.writeDocsFor(root, False)
-        w.writeModuleIndex(system)
-        for ob in system.allobjects.values():
-            if ob.documentation_location is model.DocLocation.OWN_PAGE:
-                assert os.path.isfile(os.path.join(targetdir, ob.fullName() + '.html'))
-        with open(os.path.join(targetdir, 'basic.html')) as f:
-            assert 'Package docstring' in f.read()
-    finally:
-        shutil.rmtree(targetdir)
+    w = writer.TemplateWriter(str(tmp_path))
+    system.options.htmlusesplitlinks = True
+    system.options.htmlusesorttable = True
+    w.prepOutputDirectory()
+    root, = system.rootobjects
+    w.writeDocsFor(root, False)
+    w.writeModuleIndex(system)
+    for ob in system.allobjects.values():
+        if ob.documentation_location is model.DocLocation.OWN_PAGE:
+            assert (tmp_path / f'{ob.fullName()}.html').is_file()
+    with open(tmp_path / 'basic.html') as f:
+        assert 'Package docstring' in f.read()
 
 def test_hasdocstring():
     system = processPackage("basic")
