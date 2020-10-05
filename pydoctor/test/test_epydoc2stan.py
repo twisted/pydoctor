@@ -7,8 +7,10 @@ from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
+from . import CapSys
 
-def test_multiple_types():
+
+def test_multiple_types() -> None:
     mod = fromText('''
     def f(a):
         """
@@ -55,7 +57,7 @@ def test_html_empty_module() -> None:
     """).strip()
     assert docstring2html(mod) == expected_html
 
-def test_func_arg_and_ret_annotation():
+def test_func_arg_and_ret_annotation() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: "List[str]") -> bool:
         """
@@ -79,7 +81,7 @@ def test_func_arg_and_ret_annotation():
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_and_ret_annotation_with_override():
+def test_func_arg_and_ret_annotation_with_override() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: List[str]) -> bool:
         """
@@ -104,7 +106,7 @@ def test_func_arg_and_ret_annotation_with_override():
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_when_doc_missing():
+def test_func_arg_when_doc_missing() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
@@ -125,7 +127,7 @@ def test_func_arg_when_doc_missing():
     assert annotation_fmt == classic_fmt
 
 
-def test_func_missing_param_name(capsys):
+def test_func_missing_param_name(capsys: CapSys) -> None:
     """Param and type fields must include the name of the parameter."""
     mod = fromText('''
     def f(a, b):
@@ -143,7 +145,7 @@ def test_func_missing_param_name(capsys):
         )
 
 
-def test_func_missing_exception_type(capsys):
+def test_func_missing_exception_type(capsys: CapSys) -> None:
     """Raise fields must include the exception type."""
     mod = fromText('''
     def f(x):
@@ -157,7 +159,7 @@ def test_func_missing_exception_type(capsys):
     assert captured == '<test>:5: Exception type missing\n'
 
 
-def test_unexpected_field_args(capsys):
+def test_unexpected_field_args(capsys: CapSys) -> None:
     """Warn when field arguments that should be empty aren't."""
     mod = fromText('''
     def get_it():
@@ -172,7 +174,7 @@ def test_unexpected_field_args(capsys):
                        "<test>:5: Unexpected argument in rtype field\n"
 
 
-def test_func_starargs(capsys):
+def test_func_starargs(capsys: CapSys) -> None:
     """Var-args must be named in fields without asterixes.
     But for compatibility, we warn and strip off the asterixes.
     """
@@ -207,7 +209,7 @@ def test_func_starargs(capsys):
         )
 
 
-def test_summary():
+def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
         """
@@ -231,7 +233,7 @@ def test_summary():
         Lorem Ipsum
         """
     ''')
-    def get_summary(func):
+    def get_summary(func: str) -> str:
         stan = epydoc2stan.format_summary(mod.contents[func])
         assert stan.tagName == 'span', stan
         return flatten(stan.children)
@@ -240,7 +242,7 @@ def test_summary():
     assert 'No summary' == get_summary('no_summary')
 
 
-def test_missing_field_name(capsys):
+def test_missing_field_name(capsys: CapSys) -> None:
     fromText('''
     """
     A test module.
@@ -254,7 +256,7 @@ def test_missing_field_name(capsys):
                        "test:6: Missing field name in @type\n"
 
 
-def test_unknown_field_name(capsys):
+def test_unknown_field_name(capsys: CapSys) -> None:
     mod = fromText('''
     """
     A test module.
@@ -267,7 +269,7 @@ def test_unknown_field_name(capsys):
     assert captured == 'test:5: Unknown field "zap"\n'
 
 
-def test_EpydocLinker_look_for_intersphinx_no_link():
+def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     Return None if inventory had no link for our markup.
     """
@@ -280,7 +282,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link():
     assert None is result
 
 
-def test_EpydocLinker_look_for_intersphinx_hit():
+def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
     Return the link from inventory based on first package name.
     """
@@ -296,7 +298,7 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     assert 'http://tm.tld/some.html' == result
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     """
     Returns the link from Sphinx inventory based on a cross reference
     ID specified in absolute dotted path and with a custom pretty text for the
@@ -314,7 +316,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id():
     assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     """
     Return the link from inventory using short names, by resolving them based
     on the imports done in the module.
@@ -338,7 +340,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id():
     assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys):
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys: CapSys) -> None:
     """
     A message is sent to stdout when no link could be found for the reference,
     while returning the reference name without an A link tag.
@@ -367,7 +369,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys)
     assert expected == captured
 
 
-def test_EpydocLinker_resolve_identifier_xref_order(capsys):
+def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     """
     Check that the best match is picked when there are multiple candidates.
     """
@@ -384,7 +386,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys):
     assert not capsys.readouterr().out
 
 
-def test_stdlib_doc_link_for_name():
+def test_stdlib_doc_link_for_name() -> None:
     """
     Check the URLs returned for names from the standard library.
     """

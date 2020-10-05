@@ -7,6 +7,8 @@ import io
 import string
 import zlib
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Callable, Iterator, List, Optional, Tuple, cast
 
 import cachecontrol
 import pytest
@@ -17,6 +19,8 @@ from urllib3 import HTTPResponse
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from . import CapLog
+
 
 
 class PydoctorLogger:
@@ -25,10 +29,10 @@ class PydoctorLogger:
     logged messages.
     """
 
-    def __init__(self):
-        self.messages = []
+    def __init__(self) -> None:
+        self.messages: List[Tuple[str, str, int]] = []
 
-    def __call__(self, section, msg, thresh=0):
+    def __call__(self, section: str, msg: str, thresh: int = 0) -> None:
         self.messages.append((section, msg, thresh))
 
 
@@ -38,31 +42,39 @@ class PydoctorNoLogger:
     if any message is logged.
     """
 
-    def __call__(self, section, msg, thresh=0):
+    def __call__(self, section: str, msg: str, thresh: int = 0) -> None:
         assert False
 
 
-@pytest.fixture
-def inv_reader():
-    return sphinx.SphinxInventory(logger=PydoctorLogger())
+class InvReader(sphinx.SphinxInventory):
+    _logger: PydoctorLogger
+
+
+class InvWriter(sphinx.SphinxInventoryWriter):
+    _logger: PydoctorLogger
 
 
 @pytest.fixture
-def inv_reader_nolog():
+def inv_reader() -> InvReader:
+    return InvReader(logger=PydoctorLogger())
+
+
+@pytest.fixture
+def inv_reader_nolog() -> sphinx.SphinxInventory:
     return sphinx.SphinxInventory(logger=PydoctorNoLogger())
 
 
 @pytest.fixture
-def inv_writer():
-    return sphinx.SphinxInventoryWriter(logger=PydoctorLogger(), project_name='project_name')
+def inv_writer() -> InvWriter:
+    return InvWriter(logger=PydoctorLogger(), project_name='project_name')
 
 
 @pytest.fixture
-def inv_writer_nolog():
+def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
     return sphinx.SphinxInventoryWriter(logger=PydoctorNoLogger(), project_name='project_name')
 
 
-def test_generate_empty_functional(inv_writer):
+def test_generate_empty_functional(inv_writer: InvWriter) -> None:
     """
     Functional test for index generation of empty API.
 
@@ -71,9 +83,9 @@ def test_generate_empty_functional(inv_writer):
 
     output = io.BytesIO()
     @contextmanager
-    def openFileForWriting(path):
+    def openFileForWriting(path: str) -> Iterator[io.BytesIO]:
         yield output
-    inv_writer._openFileForWriting = openFileForWriting
+    inv_writer._openFileForWriting = openFileForWriting # type: ignore[assignment]
 
     inv_writer.generate(subjects=[], basepath='base-path')
 
@@ -93,7 +105,7 @@ x\x9c\x03\x00\x00\x00\x00\x01"""
 
 
 
-def test_generateContent(inv_writer_nolog):
+def test_generateContent(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Return a string with inventory for all  targeted objects, recursive.
     """
@@ -115,7 +127,7 @@ def test_generateContent(inv_writer_nolog):
     assert expected_result == result
 
 
-def test_generateLine_package(inv_writer_nolog):
+def test_generateLine_package(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for package.
     """
@@ -126,7 +138,7 @@ def test_generateLine_package(inv_writer_nolog):
     assert 'package1 py:module -1 package1.html -\n' == result
 
 
-def test_generateLine_module(inv_writer_nolog):
+def test_generateLine_module(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for module.
     """
@@ -137,7 +149,7 @@ def test_generateLine_module(inv_writer_nolog):
     assert 'module1 py:module -1 module1.html -\n' == result
 
 
-def test_generateLine_class(inv_writer_nolog):
+def test_generateLine_class(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for class.
     """
@@ -148,7 +160,7 @@ def test_generateLine_class(inv_writer_nolog):
     assert 'class1 py:class -1 class1.html -\n' == result
 
 
-def test_generateLine_function(inv_writer_nolog):
+def test_generateLine_function(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for function.
 
@@ -163,7 +175,7 @@ def test_generateLine_function(inv_writer_nolog):
     assert 'module1.func1 py:function -1 module1.html#func1 -\n' == result
 
 
-def test_generateLine_method(inv_writer_nolog):
+def test_generateLine_method(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for method.
 
@@ -178,7 +190,7 @@ def test_generateLine_method(inv_writer_nolog):
     assert 'class1.meth1 py:method -1 class1.html#meth1 -\n' == result
 
 
-def test_generateLine_attribute(inv_writer_nolog):
+def test_generateLine_attribute(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for attributes.
     """
@@ -197,7 +209,7 @@ class UnknownType(model.Documentable):
     """
 
 
-def test_generateLine_unknown(inv_writer):
+def test_generateLine_unknown(inv_writer: InvWriter) -> None:
     """
     When object type is uknown a message is logged and is handled as
     generic object.
@@ -214,7 +226,7 @@ def test_generateLine_unknown(inv_writer):
         )] == inv_writer._logger.messages
 
 
-def test_getPayload_empty(inv_reader_nolog):
+def test_getPayload_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return empty string.
     """
@@ -230,7 +242,7 @@ x\x9c\x03\x00\x00\x00\x00\x01"""
     assert '' == result
 
 
-def test_getPayload_content(inv_reader_nolog):
+def test_getPayload_content(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return content as string.
     """
@@ -247,7 +259,7 @@ def test_getPayload_content(inv_reader_nolog):
     assert payload == result
 
 
-def test_getPayload_invalid_uncompress(inv_reader):
+def test_getPayload_invalid_uncompress(inv_reader: InvReader) -> None:
     """
     Return empty string and log an error when failing to uncompress data.
     """
@@ -264,7 +276,7 @@ not-valid-zlib-content"""
         )] == inv_reader._logger.messages
 
 
-def test_getPayload_invalid_decode(inv_reader):
+def test_getPayload_invalid_decode(inv_reader: InvReader) -> None:
     """
     Return empty string and log an error when failing to uncompress data.
     """
@@ -282,7 +294,7 @@ def test_getPayload_invalid_decode(inv_reader):
         )] == inv_reader._logger.messages
 
 
-def test_getLink_not_found(inv_reader_nolog):
+def test_getLink_not_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return None if link does not exists.
     """
@@ -290,7 +302,7 @@ def test_getLink_not_found(inv_reader_nolog):
     assert None is inv_reader_nolog.getLink('no.such.name')
 
 
-def test_getLink_found(inv_reader_nolog):
+def test_getLink_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return the link from internal state.
     """
@@ -300,7 +312,7 @@ def test_getLink_found(inv_reader_nolog):
     assert 'http://base.tld/some/url.php' == inv_reader_nolog.getLink('some.name')
 
 
-def test_getLink_self_anchor(inv_reader_nolog):
+def test_getLink_self_anchor(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return the link with anchor as target name when link end with $.
     """
@@ -310,7 +322,7 @@ def test_getLink_self_anchor(inv_reader_nolog):
     assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink('some.name')
 
 
-def test_update_functional(inv_reader_nolog):
+def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Functional test for updating from an empty inventory.
     """
@@ -334,7 +346,7 @@ def test_update_functional(inv_reader_nolog):
     assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
 
 
-def test_update_bad_url(inv_reader):
+def test_update_bad_url(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get base url from url.
     """
@@ -348,7 +360,7 @@ def test_update_bad_url(inv_reader):
     assert expected_log == inv_reader._logger.messages
 
 
-def test_update_fail(inv_reader):
+def test_update_fail(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get content from url.
     """
@@ -364,7 +376,7 @@ def test_update_fail(inv_reader):
     assert expected_log == inv_reader._logger.messages
 
 
-def test_parseInventory_empty(inv_reader_nolog):
+def test_parseInventory_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return empty dict for empty input.
     """
@@ -374,7 +386,7 @@ def test_parseInventory_empty(inv_reader_nolog):
     assert {} == result
 
 
-def test_parseInventory_single_line(inv_reader_nolog):
+def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return a dict with a single member.
     """
@@ -385,7 +397,7 @@ def test_parseInventory_single_line(inv_reader_nolog):
     assert {'some.attr': ('http://base.tld', 'some.html')} == result
 
 
-def test_parseInventory_invalid_lines(inv_reader):
+def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     """
     Skip line and log an error.
     """
@@ -429,7 +441,7 @@ class TestParseMaxAge:
         amount=maxAgeAmounts,
         unit=maxAgeUnits,
     )
-    def test_toTimedelta(self, amount, unit):
+    def test_toTimedelta(self, amount: int, unit: str) -> None:
         """
         A parsed max age dictionary consists of valid arguments to
         L{datetime.timedelta}, and the constructed L{datetime.timedelta}
@@ -460,14 +472,14 @@ class ClosingBytesIO(io.BytesIO):
     standard library.
     """
 
-    def read(self, *args, **kwargs):
-        data = super().read(*args, **kwargs)
+    def read(self, size: Optional[int] = None) -> bytes:
+        data = super().read(size)
         if self.tell() >= len(self.getvalue()):
             self.close()
         return data
 
 
-def test_ClosingBytesIO():
+def test_ClosingBytesIO() -> None:
     """
     L{ClosingBytesIO} closes itself when all its data has been read.
     """
@@ -510,7 +522,7 @@ class TestIntersphinxCache:
             return monkeypatch
         return send_returns
 
-    def test_cache(self, tmp_path, send_returns):
+    def test_cache(self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]) -> None:
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
@@ -562,7 +574,7 @@ class TestIntersphinxCache:
 
         assert readsCacheFromFileSystem.get(url) == content
 
-    def test_getRaisesException(self, caplog):
+    def test_getRaisesException(self, caplog: CapLog) -> None:
         """
         L{IntersphinxCache.get} returns L{None} if an exception is
         raised while C{GET}ing a URL and logs the exception.
@@ -574,10 +586,11 @@ class TestIntersphinxCache:
         class _RaisesOnGet:
 
             @staticmethod
-            def get(url):
+            def get(url: str) -> bytes:
                 raise _TestException()
 
-        cache = sphinx.IntersphinxCache(session=_RaisesOnGet)
+        session = cast(requests.Session, _RaisesOnGet)
+        cache = sphinx.IntersphinxCache(session=session)
 
         assert cache.get("some url") is None
 
@@ -605,13 +618,13 @@ def cacheDirectory(request, tmp_path_factory):
 )
 @settings(max_examples=700)
 def test_prepareCache(
-        cacheDirectory,
-        clearCache,
-        enableCache,
-        cacheDirectoryName,
-        maxAgeAmount,
-        maxAgeUnit,
-):
+        cacheDirectory: Path,
+        clearCache: bool,
+        enableCache: bool,
+        cacheDirectoryName: str,
+        maxAgeAmount: int,
+        maxAgeUnit: str,
+) -> None:
     """
     The cache directory is deleted when C{clearCache} is L{True}; an
     L{IntersphinxCache} is created with a session on which is mounted

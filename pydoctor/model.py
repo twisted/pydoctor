@@ -15,7 +15,7 @@ import platform
 import sys
 import types
 from enum import Enum
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Optional, Type
 
 from pydoctor.sphinx import SphinxInventory
 
@@ -408,7 +408,7 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase = None
+    sourcebase: Optional[str] = None
 
     def __init__(self, options=None):
         self.allobjects = {}
