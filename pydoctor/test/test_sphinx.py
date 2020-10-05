@@ -510,7 +510,7 @@ class TestIntersphinxCache:
             return monkeypatch
         return send_returns
 
-    def test_cache(self, tmpdir, send_returns):
+    def test_cache(self, tmp_path, send_returns):
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
@@ -531,7 +531,7 @@ class TestIntersphinxCache:
 
         loadsCache = sphinx.IntersphinxCache.fromParameters(
             sessionFactory=requests.Session,
-            cachePath=str(tmpdir),
+            cachePath=str(tmp_path),
             maxAgeDictionary={"weeks": 1}
         )
 
@@ -556,7 +556,7 @@ class TestIntersphinxCache:
 
         readsCacheFromFileSystem = sphinx.IntersphinxCache.fromParameters(
             sessionFactory=requests.Session,
-            cachePath=str(tmpdir),
+            cachePath=str(tmp_path),
             maxAgeDictionary={"weeks": 1}
         )
 
@@ -587,6 +587,11 @@ class TestIntersphinxCache:
         assert caplog.records[0].exc_info[0] is _TestException
 
 
+@pytest.fixture(scope='module')
+def cacheDirectory(request, tmp_path_factory):
+    name = request.module.__name__.split('.')[-1]
+    return tmp_path_factory.mktemp(f'{name}-cache')
+
 @given(
     clearCache=st.booleans(),
     enableCache=st.booleans(),
@@ -600,7 +605,7 @@ class TestIntersphinxCache:
 )
 @settings(max_examples=700)
 def test_prepareCache(
-        tmpdir,
+        cacheDirectory,
         clearCache,
         enableCache,
         cacheDirectoryName,
@@ -612,10 +617,12 @@ def test_prepareCache(
     L{IntersphinxCache} is created with a session on which is mounted
     L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
     """
-    cacheDirectory = tmpdir.join("fakecache").ensure(dir=True)
-    for child in cacheDirectory.listdir():
-        child.remove()
-    cacheDirectory.ensure(cacheDirectoryName)
+
+    cacheDirectory.mkdir(exist_ok=True)
+    for child in cacheDirectory.iterdir():
+        child.unlink()
+    with open(cacheDirectory / cacheDirectoryName, 'w'):
+        pass
 
     try:
         cache = sphinx.prepareCache(
@@ -639,4 +646,4 @@ def test_prepareCache(
                 assert not hasCacheControl
 
     if clearCache:
-        assert not tmpdir.listdir()
+        assert not cacheDirectory.exists()
