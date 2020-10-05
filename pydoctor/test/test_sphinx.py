@@ -197,7 +197,11 @@ def test_generateLine_unknown():
         UnknownType('ignore-system', 'unknown1'))
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
-
+    assert [(
+        'sphinx',
+        "Unknown type <class 'pydoctor.test.test_sphinx.UnknownType'> for unknown1.",
+        -1
+        )] == log
 
 
 def test_getPayload_empty():
