@@ -6,7 +6,7 @@ import datetime
 import io
 import string
 import zlib
-from contextlib import closing
+from contextlib import contextmanager
 
 import cachecontrol
 import pytest
@@ -16,17 +16,6 @@ from urllib3 import HTTPResponse
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
-
-class PersistentBytesIO(io.BytesIO):
-    """
-    A custom BytesIO which keeps content after file is closed.
-    """
-    def close(self):
-        """
-        Close, but keep the memory buffer and seek position.
-        """
-        pass
 
 
 
@@ -56,8 +45,11 @@ def test_generate_empty_functional():
     logger = lambda section, message, thresh=0: log.append((
         section, message, thresh))
     sut = sphinx.SphinxInventoryWriter(logger=logger, project_name=project_name)
-    output = PersistentBytesIO()
-    sut._openFileForWriting = lambda path: closing(output)
+    output = io.BytesIO()
+    @contextmanager
+    def openFileForWriting(path):
+        yield output
+    sut._openFileForWriting = openFileForWriting
 
     sut.generate(subjects=[], basepath='base-path')
 
