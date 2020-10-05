@@ -18,7 +18,6 @@ def flatten(t):
 
 def getHTMLOf(ob):
     wr = templatewriter.TemplateWriter('')
-    wr.system = ob.system
     f = BytesIO()
     wr.writeDocsForOne(ob, f)
     return f.getvalue().decode()
@@ -66,7 +65,6 @@ def test_basic_package():
     targetdir = tempfile.mkdtemp()
     try:
         w = writer.TemplateWriter(targetdir)
-        w.system = system
         system.options.htmlusesplitlinks = True
         system.options.htmlusesorttable = True
         w.prepOutputDirectory()

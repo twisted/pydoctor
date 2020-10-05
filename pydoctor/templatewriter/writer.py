@@ -81,8 +81,8 @@ class TemplateWriter:
                 break
         else:
             pclass = pages.CommonPage
-        self.system.msg('html', str(ob), thresh=1)
+        ob.system.msg('html', str(ob), thresh=1)
         page = pclass(ob)
         self.written_pages += 1
-        self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
+        ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         flattenToFile(fobj, page)

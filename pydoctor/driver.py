@@ -330,7 +330,6 @@ def main(args=sys.argv[1:]):
                 writerclass.__name__))
 
             writer = writerclass(options.htmloutput)
-            writer.system = system
             writer.prepOutputDirectory()
 
             if options.htmlsubjects:
