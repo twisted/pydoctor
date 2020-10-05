@@ -18,9 +18,7 @@ systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem)
     )
 
-def fromText(text, modname='<test>', system=None,
-             buildercls=None,
-             systemcls=model.System):
+def fromAST(ast, modname='<test>', system=None, buildercls=None, systemcls=model.System):
     if system is None:
         _system = systemcls()
     else:
@@ -30,12 +28,14 @@ def fromText(text, modname='<test>', system=None,
     builder = buildercls(_system)
     mod = builder._push(_system.Module, modname, None)
     builder._pop(_system.Module)
-    ast = astbuilder.parse(textwrap.dedent(text))
     builder.processModuleAST(ast, mod)
     mod = _system.allobjects[modname]
-    mod.ast = ast
     mod.state = model.ProcessingState.PROCESSED
     return mod
+
+def fromText(text, modname='<test>', system=None, buildercls=None, systemcls=model.System):
+    ast = astbuilder.parse(textwrap.dedent(text))
+    return fromAST(ast, modname, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring):
     epytext = parsed_docstring._tree
@@ -325,22 +325,24 @@ def test_nested_class_inheriting_from_same_module(systemcls):
 
 @systemcls_param
 def test_all_recognition(systemcls):
-    mod = fromText('''
+    ast = astbuilder.parse(textwrap.dedent('''
     def f():
         pass
     __all__ = ['f']
-    ''', systemcls=systemcls)
-    astbuilder.findAll(mod.ast, mod)
+    '''))
+    mod = fromAST(ast, systemcls=systemcls)
+    astbuilder.findAll(ast, mod)
     assert mod.all == ['f']
     assert '__all__' not in mod.contents
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls):
-    mod = fromText('''
+    ast = astbuilder.parse(textwrap.dedent('''
     class C:
         __all__ = ['f']
-    ''', systemcls=systemcls)
-    astbuilder.findAll(mod.ast, mod)
+    '''))
+    mod = fromAST(ast, systemcls=systemcls)
+    astbuilder.findAll(ast, mod)
     assert mod.all is None
 
 @systemcls_param
