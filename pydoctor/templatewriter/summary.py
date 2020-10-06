@@ -1,6 +1,6 @@
 """Classes that generate the summary pages."""
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
@@ -259,6 +259,10 @@ class IndexPage(Element):
         for o in self.system.rootobjects:
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()('/'.join(sorted(rootkinds)))
+
+    @renderer
+    def version(self, request, tag):
+        return __version__.public()
 
     @renderer
     def buildtime(self, request, tag):
