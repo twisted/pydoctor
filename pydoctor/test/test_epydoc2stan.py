@@ -38,6 +38,10 @@ def test_multiple_types():
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
+def docstring2html(docstring: model.Documentable) -> str:
+    stan = epydoc2stan.format_docstring(docstring)
+    return flatten(stan).replace('><', '>\n<')
+
 def test_func_arg_and_ret_annotation():
     annotation_mod = fromText('''
     def f(a: List[str]) -> bool:
@@ -55,11 +59,8 @@ def test_func_arg_and_ret_annotation():
         @rtype: bool
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_and_ret_annotation_with_override():
@@ -83,11 +84,8 @@ def test_func_arg_and_ret_annotation_with_override():
         @rtype: bool
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_when_doc_missing():
@@ -106,11 +104,8 @@ def test_func_arg_when_doc_missing():
         @rtype: bool
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 
