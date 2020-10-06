@@ -1,3 +1,5 @@
+import textwrap
+
 from pytest import raises
 
 from pydoctor import epydoc2stan, model
@@ -41,6 +43,17 @@ def test_multiple_types():
 def docstring2html(docstring: model.Documentable) -> str:
     stan = epydoc2stan.format_docstring(docstring)
     return flatten(stan).replace('><', '>\n<')
+
+def test_html_empty_module() -> None:
+    mod = fromText('''
+    """Empty module."""
+    ''')
+    expected_html = textwrap.dedent("""
+    <div>
+    <p>Empty module.</p>
+    </div>
+    """).strip()
+    assert docstring2html(mod) == expected_html
 
 def test_func_arg_and_ret_annotation():
     annotation_mod = fromText('''
