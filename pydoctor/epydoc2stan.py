@@ -284,7 +284,7 @@ class Field:
         self.tag = field.tag()
         self.arg = field.arg()
         self.lineno = field.lineno
-        self.body = tags.code(field.body().to_stan(_EpydocLinker(obj)))
+        self.body = field.body().to_stan(_EpydocLinker(obj))
 
     def __repr__(self):
         r = repr(self.body)

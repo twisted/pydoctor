@@ -50,9 +50,9 @@ def test_func_arg_and_ret_annotation():
     def f(a):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
     def format(docstring):
@@ -68,7 +68,7 @@ def test_func_arg_and_ret_annotation_with_override():
         """
         @param a: an arg, a the best of args
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
         """
     ''')
@@ -76,11 +76,11 @@ def test_func_arg_and_ret_annotation_with_override():
     def f(a):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
     def format(docstring):
@@ -101,9 +101,9 @@ def test_func_arg_when_doc_missing():
     def f(a):
         """
         Today I will not document details
-        @type a: List[str]
-        @type b: int
-        @rtype: bool
+        @type a: C{List[str]}
+        @type b: C{int}
+        @rtype: C{bool}
         """
     ''')
     def format(docstring):
