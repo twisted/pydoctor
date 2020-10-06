@@ -2,7 +2,7 @@
 
 from twisted.web.template import tags, Element, renderer, XMLFile
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 
@@ -183,6 +183,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
+            version=__version__.public(),
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
