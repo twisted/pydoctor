@@ -438,7 +438,10 @@ class FieldHandler:
             label = f"Unknown Field: {kind}"
             r.append(format_desc_list(label, fieldlist, label))
 
-        return tags.table(class_='fieldTable')(r)
+        if any(r):
+            return tags.table(class_='fieldTable')(r)
+        else:
+            return tags.transparent
 
 
 def reportErrors(obj, errs):
