@@ -40,17 +40,20 @@ def test_multiple_types():
 
 def test_func_arg_and_ret_annotation():
     annotation_mod = fromText('''
-    def f(a: List[str]) -> bool:
+    def f(a: List[str], b: "List[str]") -> bool:
         """
         @param a: an arg, a the best of args
+        @param b: a param to follow a
         @return: the best that we can do
         """
     ''')
     classic_mod = fromText('''
-    def f(a):
+    def f(a, b):
         """
         @param a: an arg, a the best of args
         @type a: C{List[str]}
+        @param b: a param to follow a
+        @type b: C{List[str]}
         @return: the best that we can do
         @rtype: C{bool}
         """

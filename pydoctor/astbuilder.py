@@ -3,7 +3,7 @@
 import ast
 import sys
 from itertools import chain
-from typing import Iterator, Mapping, Optional, Tuple
+from typing import Iterator, Mapping, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -507,15 +507,15 @@ class ModuleVistor(ast.NodeVisitor):
             kwargs = base_args.kwarg
             if kwargs:
                 yield kwargs
-        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
+        def _get_all_ast_annotations() -> Iterator[Tuple[str, ast.expr]]:
             for arg in _get_all_args():
-                yield arg.arg, arg.annotation
+                if arg.annotation:
+                    yield arg.arg, arg.annotation
             returns = func.returns
             if returns:
                 yield 'return', returns
-        return {name: value
-                for name, value in _get_all_ast_annotations()
-                if value is not None}
+        return {name: self._unstring_annotation(value)
+                for name, value in _get_all_ast_annotations()}
 
     def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
