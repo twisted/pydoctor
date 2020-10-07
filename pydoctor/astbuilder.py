@@ -517,12 +517,14 @@ class ModuleVistor(ast.NodeVisitor):
                 for name, value in _get_all_ast_annotations()
                 if value is not None}
 
-    def _unstring_annotation(self, node):
+    def _unstring_annotation(self, node: ast.expr) -> Optional[ast.expr]:
         """Replace all strings in the given expression by parsed versions.
-        Returns the resulting node, or None if parsing failed.
+        Returns the resulting node, or L{None} if parsing failed.
         """
         try:
-            return _AnnotationStringParser().visit(node)
+            expr = _AnnotationStringParser().visit(node)
+            assert isinstance(expr, ast.expr), expr
+            return expr
         except SyntaxError as ex:
             self.builder.currentMod.report(
                     f'syntax error in annotation: {ex}',
@@ -531,22 +533,32 @@ class ModuleVistor(ast.NodeVisitor):
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
+    """Implementation of L{ModuleVistor._unstring_annotation()}."""
+
+    def _parse_string(self, value: str) -> ast.expr:
+        stmt, = ast.parse(value).body
+        if isinstance(stmt, ast.Expr):
+            expr = self.visit(stmt.value)
+            assert isinstance(expr, ast.expr), expr
+            return expr
+        else:
+            raise SyntaxError("expected expression, found statement")
 
     # For Python >= 3.8:
 
-    def visit_Constant(self, node):
+    def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
-            expr, = ast.parse(value).body
-            return self.visit(expr.value)
+            return self._parse_string(value)
         else:
-            return self.generic_visit(node)
+            const = self.generic_visit(node)
+            assert isinstance(const, ast.Constant), const
+            return const
 
     # For Python < 3.8:
 
-    def visit_Str(self, node):
-        expr, = ast.parse(node.s).body
-        return self.visit(expr.value)
+    def visit_Str(self, node: ast.Str) -> ast.expr:
+        return self._parse_string(node.s)
 
 def _infer_type(expr):
     """Infer an expression's type.
