@@ -3,7 +3,7 @@
 import ast
 import sys
 from itertools import chain
-from typing import Mapping, Iterable, Tuple, Optional
+from typing import Iterator, Mapping, Optional, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -53,7 +53,7 @@ def node2fullname(expr, ctx):
 
 
 def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
-    def _get_all_args() -> Iterable[ast.arg]:
+    def _get_all_args() -> Iterator[ast.arg]:
         base_args = func_ast.args
         # New on Python 3.8 -- handle absence gracefully
         try:
@@ -68,7 +68,7 @@ def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[st
         kwargs = base_args.kwarg
         if kwargs:
             yield kwargs
-    def _get_all_ast_annotations() -> Iterable[Tuple[str, Optional[ast.expr]]]:
+    def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
         for arg in _get_all_args():
             yield arg.arg, arg.annotation
         returns = func_ast.returns
