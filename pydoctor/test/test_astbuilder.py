@@ -1,3 +1,4 @@
+import ast
 import textwrap
 
 import astor
@@ -857,7 +858,7 @@ def test_bad_string_annotation(annotation, systemcls, capsys):
     mod = fromText(f'''
     x: "{annotation}"
     ''', modname='test', systemcls=systemcls)
-    assert mod.contents['x'].annotation is None
+    assert isinstance(mod.contents['x'].annotation, ast.expr)
     assert "syntax error in annotation" in capsys.readouterr().out
 
 @systemcls_param

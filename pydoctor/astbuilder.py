@@ -517,9 +517,10 @@ class ModuleVistor(ast.NodeVisitor):
                 for name, value in _get_all_ast_annotations()
                 if value is not None}
 
-    def _unstring_annotation(self, node: ast.expr) -> Optional[ast.expr]:
+    def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
-        Returns the resulting node, or L{None} if parsing failed.
+        @return: The unstringed node. If parsing fails, an error is logged
+            and the original node is returned.
         """
         try:
             expr = _AnnotationStringParser().visit(node)
@@ -529,7 +530,7 @@ class ModuleVistor(ast.NodeVisitor):
             self.builder.currentMod.report(
                     f'syntax error in annotation: {ex}',
                     lineno_offset=node.lineno)
-            return None
+            return node
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
