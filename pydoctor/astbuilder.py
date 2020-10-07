@@ -52,33 +52,6 @@ def node2fullname(expr, ctx):
         return None
 
 
-def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
-    def _get_all_args() -> Iterator[ast.arg]:
-        base_args = func_ast.args
-        # New on Python 3.8 -- handle absence gracefully
-        try:
-            yield from base_args.posonlyargs
-        except AttributeError:
-            pass
-        yield from base_args.args
-        varargs = base_args.vararg
-        if varargs:
-            yield varargs
-        yield from base_args.kwonlyargs
-        kwargs = base_args.kwarg
-        if kwargs:
-            yield kwargs
-    def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
-        for arg in _get_all_args():
-            yield arg.arg, arg.annotation
-        returns = func_ast.returns
-        if returns:
-            yield 'return', returns
-    return {name: value
-            for name, value in _get_all_ast_annotations()
-            if value is not None}
-
-
 class ModuleVistor(ast.NodeVisitor):
     def __init__(self, builder, module):
         self.builder = builder
@@ -490,7 +463,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
-        func.annotations = _get_function_signature_annotations(node)
+        func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
 
@@ -511,6 +484,38 @@ class ModuleVistor(ast.NodeVisitor):
             if default is not None:
                 return _infer_type(default)
         return None
+
+    def _annotations_from_function(self, func: ast.FunctionDef) -> Mapping[str, ast.expr]:
+        """Get annotations from a function definition.
+        @param func: The function definition's AST.
+        @return: Mapping from argument name to annotation.
+            The name C{return} is used for the return type.
+            Unannotated arguments are omitted.
+        """
+        def _get_all_args() -> Iterator[ast.arg]:
+            base_args = func.args
+            # New on Python 3.8 -- handle absence gracefully
+            try:
+                yield from base_args.posonlyargs
+            except AttributeError:
+                pass
+            yield from base_args.args
+            varargs = base_args.vararg
+            if varargs:
+                yield varargs
+            yield from base_args.kwonlyargs
+            kwargs = base_args.kwarg
+            if kwargs:
+                yield kwargs
+        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
+            for arg in _get_all_args():
+                yield arg.arg, arg.annotation
+            returns = func.returns
+            if returns:
+                yield 'return', returns
+        return {name: value
+                for name, value in _get_all_ast_annotations()
+                if value is not None}
 
     def _unstring_annotation(self, node):
         """Replace all strings in the given expression by parsed versions.
