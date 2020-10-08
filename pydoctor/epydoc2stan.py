@@ -320,7 +320,8 @@ class FieldHandler:
         self.unknowns: List[FieldDesc] = []
 
     @classmethod
-    def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
+    def from_ast_annotations(cls, obj: model.Documentable) -> "FieldHandler":
+        annotations: Mapping[str, ast.expr] = getattr(obj, 'annotations', {})
         linker = _EpydocLinker(obj)
         formatted_annotations = {
             name: AnnotationDocstring(value).to_stan(linker)
@@ -522,7 +523,7 @@ def format_docstring(obj):
     content = [stan] if stan.tagName else stan.children
     fields = pdoc.fields
     s = tags.div(*content)
-    fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
+    fh = FieldHandler.from_ast_annotations(obj)
     for field in fields:
         fh.handle(Field(field, source))
     fh.resolve_types()
