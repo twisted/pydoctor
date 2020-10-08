@@ -250,7 +250,7 @@ def format_desc_list(singular, descs, plural=None):
         r.append(row)
     return r
 
-def format_field_list(obj, singular, fields, plural=None):
+def format_field_list(singular, fields, plural=None):
     if plural is None:
         plural = singular + 's'
     if not fields:
@@ -430,7 +430,7 @@ class FieldHandler:
                         ('See Also', 'See Also', self.seealsos),
                         ('Present Since', 'Present Since', self.sinces),
                         ('Note', 'Notes', self.notes)):
-            r.append(format_field_list(self.obj, s, l, p))
+            r.append(format_field_list(s, l, p))
         unknowns = {}
         for fieldinfo in self.unknowns:
             unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
