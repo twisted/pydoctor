@@ -2,8 +2,6 @@
 Convert epydoc markup into renderable content.
 """
 
-import astor
-
 from importlib import import_module
 from urllib.parse import quote
 import ast
@@ -11,7 +9,10 @@ import builtins
 import itertools
 import os
 import sys
-from typing import Mapping
+from typing import Mapping, Optional
+
+import astor
+import attr
 
 from pydoctor import model
 from pydoctor.epydoc.markup import ParseError
@@ -205,12 +206,14 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(fullID)
 
 
+@attr.s(auto_attribs=True)
 class FieldDesc:
-    def __init__(self):
-        self.kind = None
-        self.name = None
-        self.type = None
-        self.body = None
+
+    kind: str
+    name: Optional[str] = None
+    type: Optional[Tag] = None
+    body: Optional[Tag] = None
+
     def format(self):
         if self.body is None:
             body = ''
@@ -219,12 +222,6 @@ class FieldDesc:
         if self.type is not None:
             body = body, ' (type: ', self.type, ')'
         return body
-    def __repr__(self):
-        contents = ', '.join(
-            f"{k}={v!r}"
-            for k, v in self.__dict__.items()
-            )
-        return f"<{self.__class__.__name__}({contents})>"
 
 
 def format_desc_list(singular, descs, plural=None):
@@ -326,15 +323,14 @@ class FieldHandler:
         handler = cls(obj, formatted_annotations)
         if ret_type is not None:
             assert isinstance(obj, model.Function), obj
-            handler.return_desc = FieldDesc()
-            handler.return_desc.type = ret_type
+            handler.return_desc = FieldDesc(kind='return', type=ret_type)
         return handler
 
     def handle_return(self, field):
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc()
+            self.return_desc = FieldDesc(kind='return')
         self.return_desc.body = field.body
     handle_returns = handle_return
 
@@ -342,7 +338,7 @@ class FieldHandler:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc()
+            self.return_desc = FieldDesc(kind='return')
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
 
@@ -358,11 +354,7 @@ class FieldHandler:
             return name
 
     def add_info(self, desc_list, name, field):
-        d = FieldDesc()
-        d.kind = field.tag
-        d.name = name
-        d.body = field.body
-        desc_list.append(d)
+        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
 
     def handle_type(self, field):
         if isinstance(self.obj, model.Function):
