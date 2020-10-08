@@ -250,6 +250,28 @@ def format_desc_list(singular, descs, plural=None):
         r.append(row)
     return r
 
+
+class Field:
+    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
+    methods and with a formatted body."""
+    def __init__(self, field, source):
+        self.tag = field.tag()
+        self.arg = field.arg()
+        self.source = source
+        self.lineno = field.lineno
+        self.body = field.body().to_stan(_EpydocLinker(source))
+
+    def __repr__(self):
+        r = repr(self.body)
+        if len(r) > 25:
+            r = r[:20] + '...' + r[-2:]
+        return "<%s %r %r %d %s>"%(self.__class__.__name__,
+                                   self.tag, self.arg, self.lineno, r)
+
+    def report(self, message: str) -> None:
+        self.source.report(message, lineno_offset=self.lineno, section='docstring')
+
+
 def format_field_list(singular, fields, plural=None):
     if plural is None:
         plural = singular + 's'
@@ -272,27 +294,6 @@ def format_field_list(singular, fields, plural=None):
         row(tags.td(colspan="2")(field.body))
         rows.append(row)
     return rows
-
-
-class Field:
-    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
-    methods and with a formatted body."""
-    def __init__(self, field, source):
-        self.tag = field.tag()
-        self.arg = field.arg()
-        self.source = source
-        self.lineno = field.lineno
-        self.body = field.body().to_stan(_EpydocLinker(source))
-
-    def __repr__(self):
-        r = repr(self.body)
-        if len(r) > 25:
-            r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %d %s>"%(self.__class__.__name__,
-                             self.tag, self.arg, self.lineno, r)
-
-    def report(self, message: str) -> None:
-        self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
 class FieldHandler:
