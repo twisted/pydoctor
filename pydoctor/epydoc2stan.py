@@ -314,7 +314,6 @@ class FieldHandler:
         self.authors = []
         self.sinces = []
         self.unknowns = []
-        self.unattached_types = {}
 
     @classmethod
     def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
@@ -330,12 +329,6 @@ class FieldHandler:
             return_type.body = ret_type
             handler.handle_returntype(return_type)
         return handler
-
-    def redef(self, field):
-        self.obj.system.msg(
-            "epytext",
-            "on %r: redefinition of @type %s"%(self.obj.fullName(), field.arg),
-            thresh=-1)
 
     def handle_return(self, field):
         if field.arg is not None:
@@ -356,18 +349,6 @@ class FieldHandler:
             self.obj.system.msg('epydoc2stan', 'XXX')
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
-
-    def add_type_info(self, desc_list, field):
-        if desc_list and desc_list[-1].name == field.arg:
-            if desc_list[-1].type is not None:
-                self.redef(field)
-            desc_list[-1].type = field.body
-        else:
-            d = FieldDesc()
-            d.kind = field.tag
-            d.name = field.arg
-            d.type = field.body
-            desc_list.append(d)
 
     def _handle_param_name(self, field):
         name = field.arg
