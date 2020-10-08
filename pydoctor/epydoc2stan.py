@@ -304,11 +304,10 @@ def format_field_list(
 
 class FieldHandler:
 
-    def __init__(self, obj: model.Documentable, annotations: Mapping[str, Tag]):
+    def __init__(self, obj: model.Documentable):
         self.obj = obj
 
         self.types: Dict[str, Tag] = {}
-        self.types.update(annotations)
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
@@ -319,20 +318,16 @@ class FieldHandler:
         self.sinces: List[Field] = []
         self.unknowns: List[FieldDesc] = []
 
-    @classmethod
-    def from_ast_annotations(cls, obj: model.Documentable) -> "FieldHandler":
-        annotations: Mapping[str, ast.expr] = getattr(obj, 'annotations', {})
-        linker = _EpydocLinker(obj)
+    def set_param_types_from_annotations(self, annotations: Mapping[str, ast.expr]) -> None:
+        linker = _EpydocLinker(self.obj)
         formatted_annotations = {
             name: AnnotationDocstring(value).to_stan(linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
-        handler = cls(obj, formatted_annotations)
+        self.types.update(formatted_annotations)
         if ret_type is not None:
-            assert isinstance(obj, model.Function), obj
-            handler.return_desc = FieldDesc(kind='return', type=ret_type)
-        return handler
+            self.return_desc = FieldDesc(kind='return', type=ret_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
@@ -523,7 +518,9 @@ def format_docstring(obj):
     content = [stan] if stan.tagName else stan.children
     fields = pdoc.fields
     s = tags.div(*content)
-    fh = FieldHandler.from_ast_annotations(obj)
+    fh = FieldHandler(obj)
+    if isinstance(obj, model.Function):
+        fh.set_param_types_from_annotations(obj.annotations)
     for field in fields:
         fh.handle(Field(field, source))
     fh.resolve_types()
