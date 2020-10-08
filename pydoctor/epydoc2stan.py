@@ -3,19 +3,19 @@ Convert epydoc markup into renderable content.
 """
 
 from importlib import import_module
+from typing import Dict, List, Mapping, Optional, Sequence
 from urllib.parse import quote
 import ast
 import builtins
 import itertools
 import os
 import sys
-from typing import Mapping, Optional
 
 import astor
 import attr
 
 from pydoctor import model
-from pydoctor.epydoc.markup import ParseError
+from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
@@ -214,26 +214,28 @@ class FieldDesc:
     type: Optional[Tag] = None
     body: Optional[Tag] = None
 
-    def format(self):
+    def format(self) -> Tag:
         if self.body is None:
-            body = ''
+            body = tags.transparent
         else:
             body = self.body
         if self.type is not None:
             body = body, ' (type: ', self.type, ')'
-        return body
+        return tags.transparent(body)
 
 
-def format_desc_list(singular, descs, plural=None):
+def format_desc_list(
+        singular: str, descs: Sequence[FieldDesc], plural: Optional[str] = None
+        ) -> List[Tag]:
     if plural is None:
         plural = singular + 's'
     if not descs:
-        return ''
+        return []
     if len(descs) > 1:
         label = plural
     else:
         label = singular
-    r = []
+    r: List[Tag] = []
     first = True
     for d in descs:
         if first:
@@ -253,15 +255,17 @@ def format_desc_list(singular, descs, plural=None):
 
 class Field:
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
-    methods and with a formatted body."""
-    def __init__(self, field, source):
+    methods and with a formatted body.
+    """
+
+    def __init__(self, field: EpydocField, source: model.Documentable):
         self.tag = field.tag()
         self.arg = field.arg()
         self.source = source
         self.lineno = field.lineno
         self.body = field.body().to_stan(_EpydocLinker(source))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         r = repr(self.body)
         if len(r) > 25:
             r = r[:20] + '...' + r[-2:]
@@ -272,16 +276,18 @@ class Field:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
-def format_field_list(singular, fields, plural=None):
+def format_field_list(
+        singular: str, fields: Sequence[Field], plural: Optional[str] = None
+        ) -> List[Tag]:
     if plural is None:
         plural = singular + 's'
     if not fields:
-        return ''
+        return []
     if len(fields) > 1:
         label = plural
     else:
         label = singular
-    rows = []
+    rows: List[Tag] = []
     first = True
     for field in fields:
         if first:
@@ -298,20 +304,20 @@ def format_field_list(singular, fields, plural=None):
 
 class FieldHandler:
 
-    def __init__(self, obj, annotations):
+    def __init__(self, obj: model.Documentable, annotations: Mapping[str, Tag]):
         self.obj = obj
 
-        self.types = {}
+        self.types: Dict[str, Tag] = {}
         self.types.update(annotations)
 
-        self.parameter_descs = []
-        self.return_desc = None
-        self.raise_descs = []
-        self.seealsos = []
-        self.notes = []
-        self.authors = []
-        self.sinces = []
-        self.unknowns = []
+        self.parameter_descs: List[FieldDesc] = []
+        self.return_desc: Optional[FieldDesc] = None
+        self.raise_descs: List[FieldDesc] = []
+        self.seealsos: List[Field] = []
+        self.notes: List[Field] = []
+        self.authors: List[Field] = []
+        self.sinces: List[Field] = []
+        self.unknowns: List[FieldDesc] = []
 
     @classmethod
     def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
@@ -327,7 +333,7 @@ class FieldHandler:
             handler.return_desc = FieldDesc(kind='return', type=ret_type)
         return handler
 
-    def handle_return(self, field):
+    def handle_return(self, field: Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
@@ -335,7 +341,7 @@ class FieldHandler:
         self.return_desc.body = field.body
     handle_returns = handle_return
 
-    def handle_returntype(self, field):
+    def handle_returntype(self, field: Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
@@ -343,7 +349,7 @@ class FieldHandler:
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
 
-    def _handle_param_name(self, field):
+    def _handle_param_name(self, field: Field) -> Optional[str]:
         name = field.arg
         if name is None:
             field.report('Parameter name missing')
@@ -354,10 +360,10 @@ class FieldHandler:
         else:
             return name
 
-    def add_info(self, desc_list, name, field):
+    def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
         desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
 
-    def handle_type(self, field):
+    def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
         else:
@@ -370,7 +376,7 @@ class FieldHandler:
         if name is not None:
             self.types[name] = field.body
 
-    def handle_param(self, field):
+    def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
         if name is not None:
             self.add_info(self.parameter_descs, name, field)
@@ -378,7 +384,7 @@ class FieldHandler:
     handle_keyword = handle_param
 
 
-    def handled_elsewhere(self, field):
+    def handled_elsewhere(self, field: Field) -> None:
         # Some fields are handled by extract_fields below.
         pass
 
@@ -386,40 +392,40 @@ class FieldHandler:
     handle_cvar = handled_elsewhere
     handle_var = handled_elsewhere
 
-    def handle_raises(self, field):
+    def handle_raises(self, field: Field) -> None:
         name = field.arg
         if name is None:
             field.report('Exception type missing')
         self.add_info(self.raise_descs, name, field)
     handle_raise = handle_raises
 
-    def handle_seealso(self, field):
+    def handle_seealso(self, field: Field) -> None:
         self.seealsos.append(field)
     handle_see = handle_seealso
 
-    def handle_note(self, field):
+    def handle_note(self, field: Field) -> None:
         self.notes.append(field)
 
-    def handle_author(self, field):
+    def handle_author(self, field: Field) -> None:
         self.authors.append(field)
 
-    def handle_since(self, field):
+    def handle_since(self, field: Field) -> None:
         self.sinces.append(field)
 
-    def handleUnknownField(self, field):
+    def handleUnknownField(self, field: Field) -> None:
         field.report('Unknown field "%s"' % (field.tag,))
         self.add_info(self.unknowns, field.arg, field)
 
-    def handle(self, field):
+    def handle(self, field: Field) -> None:
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
         m(field)
 
-    def resolve_types(self):
+    def resolve_types(self) -> None:
         for pd in self.parameter_descs:
             if pd.name in self.types:
                 pd.type = self.types[pd.name]
 
-    def format(self):
+    def format(self) -> Tag:
         r = []
 
         r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
@@ -432,7 +438,7 @@ class FieldHandler:
                         ('Present Since', 'Present Since', self.sinces),
                         ('Note', 'Notes', self.notes)):
             r.append(format_field_list(s, l, p))
-        unknowns = {}
+        unknowns: Dict[str, List[FieldDesc]] = {}
         for fieldinfo in self.unknowns:
             unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
         for kind, fieldlist in unknowns.items():
@@ -624,13 +630,13 @@ field_name_to_human_name = {
     }
 
 
-def extract_fields(obj):
+def extract_fields(obj: model.Documentable) -> None:
     doc, source = get_docstring(obj)
     if doc is None:
         return
 
     pdoc = parse_docstring(obj, doc, source)
-    obj.parsed_docstring = pdoc
+    obj.parsed_docstring = pdoc # type: ignore[attr-defined]
 
     for field in pdoc.fields:
         tag = field.tag()
