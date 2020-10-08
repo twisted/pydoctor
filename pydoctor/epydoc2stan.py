@@ -325,9 +325,9 @@ class FieldHandler:
         ret_type = formatted_annotations.pop('return', None)
         handler = cls(obj, formatted_annotations)
         if ret_type is not None:
-            return_type = FieldDesc()
-            return_type.body = ret_type
-            handler.handle_returntype(return_type)
+            assert isinstance(obj, model.Function), obj
+            handler.return_desc = FieldDesc()
+            handler.return_desc.type = ret_type
         return handler
 
     def handle_return(self, field):
@@ -339,7 +339,7 @@ class FieldHandler:
     handle_returns = handle_return
 
     def handle_returntype(self, field):
-        if getattr(field, 'arg', None) is not None:
+        if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc()
