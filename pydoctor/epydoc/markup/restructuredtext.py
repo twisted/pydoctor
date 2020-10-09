@@ -165,9 +165,6 @@ class _EpydocReader(StandaloneReader):
         document = new_document(self.source.source_path, self.settings)
         # Capture all warning messages.
         document.reporter.attach_observer(self.report)
-        # These are used so we know how to encode warning messages:
-        self._encoding = document.reporter.encoding
-        self._error_handler = document.reporter.error_handler
         # Return the new document.
         return document
 
@@ -177,8 +174,7 @@ class _EpydocReader(StandaloneReader):
         try: linenum = int(error['line'])
         except: linenum = None
 
-        msg = ''.join([c.astext().encode(self._encoding, self._error_handler)
-                       for c in error])
+        msg = ''.join(c.astext() for c in error)
 
         self._errors.append(ParseError(msg, linenum, is_fatal))
 
