@@ -314,15 +314,16 @@ class FieldHandler:
     @classmethod
     def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
         linker = _EpydocLinker(obj)
-        annotations = {name: AnnotationDocstring(value).to_stan(linker)
-                       for name, value in annotations.items()}
-        return_type = FieldDesc()
-        try:
-            return_type.body = annotations.pop("return")
-        except KeyError:
-            pass
-        ret_value = cls(obj, annotations)
-        ret_value.handle_returntype(return_type)
+        formatted_annotations = {
+            name: AnnotationDocstring(value).to_stan(linker)
+            for name, value in annotations.items()
+            }
+        ret_type = formatted_annotations.pop('return', None)
+        ret_value = cls(obj, formatted_annotations)
+        if ret_type is not None:
+            return_type = FieldDesc()
+            return_type.body = ret_type
+            ret_value.handle_returntype(return_type)
         return ret_value
 
     def redef(self, field):
