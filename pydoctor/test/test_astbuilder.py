@@ -855,11 +855,26 @@ def test_type_comment(systemcls, capsys):
 @pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
 def test_bad_string_annotation(annotation, systemcls, capsys):
+    """Invalid string annotations must be reported as syntax errors."""
     mod = fromText(f'''
     x: "{annotation}"
     ''', modname='test', systemcls=systemcls)
     assert isinstance(mod.contents['x'].annotation, ast.expr)
     assert "syntax error in annotation" in capsys.readouterr().out
+
+@pytest.mark.parametrize('annotation,expected', (
+    ("Literal['[', ']']", "Literal['[', ']']"),
+    ("typing.Literal['pass', 'raise']", "typing.Literal['pass', 'raise']"),
+    ("Optional[Literal['1 ; 2']]", "Optional[Literal['1 ; 2']]"),
+    ("'Literal'['!']", "Literal['!']"),
+    (r"'Literal[\'if\', \'while\']'", "Literal['if', 'while']"),
+    ))
+def test_literal_string_annotation(annotation: str, expected: str) -> None:
+    """Strings inside Literal annotations must not be recursively parsed."""
+    stmt, = ast.parse(annotation).body
+    assert isinstance(stmt, ast.Expr)
+    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
 def test_inferred_variable_types(systemcls):

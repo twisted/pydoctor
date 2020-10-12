@@ -556,6 +556,19 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             raise SyntaxError("expected expression, found statement")
 
+    def visit_Subscript(self, node: ast.Subscript) -> ast.Subscript:
+        value = self.visit(node.value)
+        if isinstance(value, ast.Name) and value.id == 'Literal':
+            # Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        elif isinstance(value, ast.Attribute) and value.attr == 'Literal':
+            # typing.Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        else:
+            # Other subscript; unstring the slice.
+            slice = self.visit(node.slice)
+        return ast.Subscript(value, slice, node.ctx)
+
     # For Python >= 3.8:
 
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
