@@ -524,13 +524,14 @@ class ModuleVistor(ast.NodeVisitor):
         """
         try:
             expr = _AnnotationStringParser().visit(node)
-            assert isinstance(expr, ast.expr), expr
-            return expr
         except SyntaxError as ex:
             self.builder.currentMod.report(
                     f'syntax error in annotation: {ex}',
                     lineno_offset=node.lineno)
             return node
+        else:
+            assert isinstance(expr, ast.expr), expr
+            return expr
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
