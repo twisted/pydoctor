@@ -538,7 +538,10 @@ class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}."""
 
     def _parse_string(self, value: str) -> ast.expr:
-        stmt, = ast.parse(value).body
+        statements = ast.parse(value).body
+        if len(statements) != 1:
+            raise SyntaxError("expected expression, found multiple statements")
+        stmt, = statements
         if isinstance(stmt, ast.Expr):
             expr = self.visit(stmt.value)
             assert isinstance(expr, ast.expr), expr

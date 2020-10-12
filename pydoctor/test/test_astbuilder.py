@@ -852,7 +852,7 @@ def test_type_comment(systemcls, capsys):
     assert type2str(mod.contents['i'].annotation) == 'List'
     assert not capsys.readouterr().out
 
-@pytest.mark.parametrize('annotation', ("[", "pass"))
+@pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
 def test_bad_string_annotation(annotation, systemcls, capsys):
     mod = fromText(f'''
