@@ -307,7 +307,7 @@ class FieldHandler:
     def __init__(self, obj: model.Documentable):
         self.obj = obj
 
-        self.types: Dict[str, Tag] = {}
+        self.types: Dict[str, Optional[Tag]] = {}
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
@@ -318,10 +318,12 @@ class FieldHandler:
         self.sinces: List[Field] = []
         self.unknowns: List[FieldDesc] = []
 
-    def set_param_types_from_annotations(self, annotations: Mapping[str, ast.expr]) -> None:
+    def set_param_types_from_annotations(
+            self, annotations: Mapping[str, Optional[ast.expr]]
+            ) -> None:
         linker = _EpydocLinker(self.obj)
         formatted_annotations = {
-            name: AnnotationDocstring(value).to_stan(linker)
+            name: None if value is None else AnnotationDocstring(value).to_stan(linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -616,13 +618,14 @@ def get_parsed_type(obj):
 
 class AnnotationDocstring(ParsedDocstring):
 
-    def __init__(self, annotation):
+    def __init__(self, annotation: ast.expr) -> None:
         ParsedDocstring.__init__(self, ())
         self.annotation = annotation
 
-    def to_stan(self, docstring_linker):
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         src = astor.to_source(self.annotation).strip()
-        return tags.code(src)
+        ret: Tag = tags.code(src)
+        return ret
 
 
 field_name_to_human_name = {

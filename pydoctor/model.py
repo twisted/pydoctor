@@ -372,7 +372,7 @@ class Inheritable(Documentable):
 
 class Function(Inheritable):
     kind = "Function"
-    annotations: Mapping[str, ast.expr]
+    annotations: Mapping[str, Optional[ast.expr]]
 
     def setup(self):
         super().setup()
