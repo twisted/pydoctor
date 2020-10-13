@@ -487,17 +487,19 @@ def parse_docstring(obj, doc, source):
     return pdoc
 
 
-def format_docstring(obj):
+def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
 
     doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
-    pdoc = getattr(obj, 'parsed_docstring', None)
+    pdoc = obj.parsed_docstring
 
+    ret: Tag = tags.div
     if pdoc is None:
         if doc is None:
-            return tags.div(class_='undocumented')("Undocumented")
+            ret(class_='undocumented')("Undocumented")
+            return ret
         pdoc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = pdoc
     elif source is None:
@@ -514,18 +516,20 @@ def format_docstring(obj):
             pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
             stan = pdoc_plain.to_stan(_EpydocLinker(source))
         reportErrors(source, errs)
+    if stan.tagName:
+        ret(stan)
+    else:
+        ret(*stan.children)
 
-    content = [stan] if stan.tagName else stan.children
     fields = pdoc.fields
-    s = tags.div(*content)
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
     for field in fields:
         fh.handle(Field(field, source))
     fh.resolve_types()
-    s(fh.format())
-    return s
+    ret(fh.format())
+    return ret
 
 
 def format_summary(obj):
@@ -535,7 +539,7 @@ def format_summary(obj):
     if doc is None:
         # Attributes can be documented as fields in their parent's docstring.
         if isinstance(obj, model.Attribute):
-            pdoc = getattr(obj, 'parsed_docstring', None)
+            pdoc = obj.parsed_docstring
         else:
             pdoc = None
         if pdoc is None:
@@ -634,7 +638,7 @@ def extract_fields(obj: model.Documentable) -> None:
         return
 
     pdoc = parse_docstring(obj, doc, source)
-    obj.parsed_docstring = pdoc # type: ignore[attr-defined]
+    obj.parsed_docstring = pdoc
 
     for field in pdoc.fields:
         tag = field.tag()
