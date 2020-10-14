@@ -102,6 +102,13 @@ And use external references::
 What's New?
 -----------
 
+pydoctor 20.7.2
+~~~~~~~~~~~~~~~
+
+* Fix handling of external links in reStructuredText under Python 3
+* Fix reporting of errors in reStructuredText under Python 3
+* Restore syntax highlighting of Python code blocks
+
 pydoctor 20.7.1
 ~~~~~~~~~~~~~~~
 
