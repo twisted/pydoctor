@@ -170,10 +170,12 @@ def test_introspection() -> None:
     system.introspectModule(py_mod, __name__)
 
     module = system.objForFullName(__name__)
+    assert module is not None
     assert module.docstring == __doc__
 
     func = module.contents['test_introspection']
     assert func.docstring == "Find docstrings from this test using introspection."
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
+    assert method is not None
     assert method.docstring == "Mmm"

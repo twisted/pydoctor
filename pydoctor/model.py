@@ -17,6 +17,7 @@ import sys
 import types
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping, Optional, Type
+from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import SphinxInventory
@@ -71,6 +72,7 @@ class Documentable:
     """
     documentation_location = DocLocation.OWN_PAGE
     docstring: Optional[str] = None
+    system: 'System'
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -126,6 +128,23 @@ class Documentable:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
                     self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
+
+    @property
+    def url(self) -> str:
+        """Relative URL at which the documentation for this Documentable
+        can be found.
+        """
+        location = self.documentation_location
+        if location is DocLocation.OWN_PAGE:
+            return f'{quote(self.fullName())}.html'
+        elif location is DocLocation.PARENT_PAGE:
+            parent = self.parent
+            if isinstance(parent, Module) and parent.name == '__init__':
+                parent = parent.parent
+            assert parent is not None
+            return f'{quote(parent.fullName())}.html#{quote(self.name)}'
+        else:
+            assert False, location
 
     def fullName(self):
         parent = self.parent
@@ -481,8 +500,8 @@ class System:
                 self.needsnl = False
                 print('')
 
-    def objForFullName(self, fullName):
-        return self.allobjects.get(fullName)
+    def objForFullName(self, fullName: str) -> Optional[Documentable]:
+        return self.allobjects.get(fullName) # type: ignore[no-any-return]
 
     def _warning(self, current, message, detail):
         if current is not None:

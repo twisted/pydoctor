@@ -8,7 +8,6 @@ from typing import (
     Callable, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional,
     Sequence, Tuple
 )
-from urllib.parse import quote
 import ast
 import itertools
 
@@ -20,10 +19,6 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
-
-
-def link(o: model.Documentable) -> str:
-    return quote(o.fullName()+'.html')
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
@@ -55,18 +50,6 @@ class _EpydocLinker(DocstringLinker):
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
-
-    def _objLink(self, obj: model.Documentable) -> str:
-        if obj.documentation_location is model.DocLocation.PARENT_PAGE:
-            p = obj.parent
-            if isinstance(p, model.Module) and p.name == '__init__':
-                p = p.parent
-            return link(p) + '#' + quote(obj.name)
-        elif obj.documentation_location is model.DocLocation.OWN_PAGE:
-            return link(obj)
-        else:
-            raise AssertionError(
-                f"Unknown documentation_location: {obj.documentation_location}")
 
     def look_for_name(self,
             name: str,
@@ -106,7 +89,7 @@ class _EpydocLinker(DocstringLinker):
         # Check if 'identifier' is the fullName of an object.
         target = self.obj.system.objForFullName(identifier)
         if target is not None:
-            return self._objLink(target)
+            return target.url
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
@@ -129,7 +112,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = src.resolveName(identifier)
             if target is not None:
-                return self._objLink(target)
+                return target.url
             src = src.parent
 
         # Walk up the object tree again and see if 'identifier' refers to an
@@ -140,7 +123,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = self.look_for_name(identifier, src.contents.values())
             if target is not None:
-                return self._objLink(target)
+                return target.url
             src = src.parent
 
         # Examine every module and package in the system and see if 'identifier'
@@ -150,7 +133,7 @@ class _EpydocLinker(DocstringLinker):
             self.obj.system.objectsOfType(model.Module),
             self.obj.system.objectsOfType(model.Package)))
         if target is not None:
-            return self._objLink(target)
+            return target.url
 
         if identifier == fullID:
             self.obj.report(
