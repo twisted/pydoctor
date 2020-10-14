@@ -102,6 +102,12 @@ And use external references::
 What's New?
 -----------
 
+pydoctor 20.7.1
+~~~~~~~~~~~~~~~
+
+* Fix cross-reference links to builtin types in standard library
+* Fix and improve error message printed for unknown fields
+
 pydoctor 20.7.0
 ~~~~~~~~~~~~~~~
 
@@ -117,12 +123,6 @@ pydoctor 20.7.0
 * Dropped support for index terms in epytext (``X{}``); this was never supported in any meaningful capacity, but now the tag is gone
 
 This will be the last major release to support Python 2.7 and 3.5: future major releases will require Python 3.6 or later.
-
-pydoctor 20.7.1
-~~~~~~~~~~~~~~~
-
-* Fix cross-reference links to builtin types in standard library
-* Fix and improve error message printed for unknown fields
 
 .. description-end
 
