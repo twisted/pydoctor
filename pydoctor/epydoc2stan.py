@@ -421,6 +421,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     elif source is None:
         # A split field is documented by its parent.
         source = obj.parent
+        assert source is not None
 
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))

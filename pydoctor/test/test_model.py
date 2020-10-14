@@ -40,7 +40,6 @@ def test_setSourceHrefOption() -> None:
     moduleRelativePart = "/package/module.py"
 
     mod = FakeDocumentable()
-    mod.filepath = projectBaseDir + moduleRelativePart
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
@@ -49,7 +48,7 @@ def test_setSourceHrefOption() -> None:
     system.sourcebase = viewSourceBase
     system.options = options
     mod.system = system
-    system.setSourceHref(mod)
+    system.setSourceHref(mod, projectBaseDir + moduleRelativePart)
 
     expected = viewSourceBase + moduleRelativePart
     assert mod.sourceHref == expected

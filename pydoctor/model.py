@@ -87,7 +87,7 @@ class Documentable:
             class_ += ' private'
         return class_
 
-    def __init__(self, system, name, parent=None):
+    def __init__(self, system: 'System', name: str, parent: Optional['Documentable'] = None):
         self.system = system
         self.name = name
         self.parent = parent
@@ -146,7 +146,7 @@ class Documentable:
         else:
             assert False, location
 
-    def fullName(self):
+    def fullName(self) -> str:
         parent = self.parent
         if parent is not None:
             if (parent.parent and isinstance(parent.parent, Package)
@@ -322,6 +322,14 @@ class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = ProcessingState.UNPROCESSED
 
+    def __init__(
+            self, system: 'System', name: str,
+            parent: Optional['Documentable'] = None,
+            source_path: Optional[str] = None
+            ):
+        super().__init__(system, name, parent)
+        self.source_path = source_path
+
     def setup(self):
         super().setup()
         self.all = None
@@ -342,15 +350,14 @@ class Module(CanContainImportsDocumentable):
         return self
 
     @property
-    def description(self):
+    def description(self) -> str:
         """A string describing this module to the user.
 
         If this module's code was read from a file, this returns
         its file path. In other cases, such as during unit testing,
         the module's full name is returned.
         """
-        filepath = getattr(self, 'filepath', None)
-        return self.fullName() if filepath is None else filepath
+        return self.source_path or self.fullName()
 
 
 class Class(CanContainImportsDocumentable):
@@ -558,27 +565,24 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod):
+    def setSourceHref(self, mod, source_path):
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
-            mod.sourceHref = (
-                self.sourcebase +
-                mod.filepath[len(projBaseDir):])
+            mod.sourceHref = self.sourcebase + source_path[len(projBaseDir):]
 
     def addModule(self, modpath, modname, parentPackage=None):
-        mod = self.Module(self, modname, parentPackage)
+        mod = self.Module(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
             None, "modules and packages discovered")
-        mod.filepath = modpath
         self.unprocessed_modules.add(mod)
         self.module_count += 1
-        self.setSourceHref(mod)
+        self.setSourceHref(mod, modpath)
 
-    def ensureModule(self, module_full_name):
+    def ensureModule(self, module_full_name, modpath):
         if module_full_name in self.allobjects:
             return self.allobjects[module_full_name]
         if '.' in module_full_name:
@@ -587,7 +591,7 @@ class System:
         else:
             parent_package = None
             module_name = module_full_name
-        module = self.Module(self, module_name, parent_package)
+        module = self.Module(self, module_name, parent_package, modpath)
         self.addObject(module)
         return module
 
@@ -625,7 +629,7 @@ class System:
                 self._introspectThing(v, c, parentMod)
 
     def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name)
+        module = self.ensureModule(module_full_name, py_mod.__file__)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
@@ -642,8 +646,7 @@ class System:
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
-        package.filepath = dirpath
-        self.setSourceHref(package)
+        self.setSourceHref(package, dirpath)
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
@@ -726,10 +729,10 @@ class System:
     def processModule(self, mod):
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
-        if getattr(mod, 'filepath', None) is None:
+        if mod.source_path is None:
             return
         builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.filepath)
+        ast = builder.parseFile(mod.source_path)
         if ast:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
