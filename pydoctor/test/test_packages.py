@@ -47,3 +47,6 @@ def test_allgames() -> None:
     # InSourceAll is not moved into mod2, but NotInSourceAll is.
     assert 'InSourceAll' in system.allobjects['allgames.mod1'].contents
     assert 'NotInSourceAll' in system.allobjects['allgames.mod2'].contents
+    moved = system.allobjects['allgames.mod2'].contents['NotInSourceAll']
+    assert moved.source_path.endswith('/allgames/mod1.py')
+    assert moved.parentMod.source_path.endswith('/allgames/mod2.py')

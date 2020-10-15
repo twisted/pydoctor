@@ -87,14 +87,21 @@ class Documentable:
             class_ += ' private'
         return class_
 
-    def __init__(self, system: 'System', name: str, parent: Optional['Documentable'] = None):
+    def __init__(
+            self, system: 'System', name: str,
+            parent: Optional['Documentable'] = None,
+            source_path: Optional[str] = None
+            ):
+        if not isinstance(self, Package):
+            self.doctarget = self
+            if source_path is None and parent is not None:
+                source_path = parent.source_path # type: ignore[has-type]
         self.system = system
         self.name = name
         self.parent = parent
         self.parentMod = None
+        self.source_path = source_path
         self.setup()
-        if not isinstance(self, Package):
-            self.doctarget = self
 
     def setup(self):
         self.contents = {}
@@ -128,6 +135,16 @@ class Documentable:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
                     self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
+
+    @property
+    def description(self) -> str:
+        """A string describing our source location to the user.
+
+        If this module's code was read from a file, this returns
+        its file path. In other cases, such as during unit testing,
+        the full module name is returned.
+        """
+        return self.source_path or self.module.fullName()
 
     @property
     def url(self) -> str:
@@ -280,7 +297,7 @@ class Documentable:
 
         self.system.msg(
             section,
-            f'{self.module.description}:{linenumber}: {descr}',
+            f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
 
 
@@ -322,14 +339,6 @@ class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = ProcessingState.UNPROCESSED
 
-    def __init__(
-            self, system: 'System', name: str,
-            parent: Optional['Documentable'] = None,
-            source_path: Optional[str] = None
-            ):
-        super().__init__(system, name, parent)
-        self.source_path = source_path
-
     def setup(self):
         super().setup()
         self.all = None
@@ -348,16 +357,6 @@ class Module(CanContainImportsDocumentable):
     @property
     def module(self):
         return self
-
-    @property
-    def description(self) -> str:
-        """A string describing this module to the user.
-
-        If this module's code was read from a file, this returns
-        its file path. In other cases, such as during unit testing,
-        the module's full name is returned.
-        """
-        return self.source_path or self.fullName()
 
 
 class Class(CanContainImportsDocumentable):
