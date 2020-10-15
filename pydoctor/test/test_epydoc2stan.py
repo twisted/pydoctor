@@ -127,6 +127,20 @@ def test_func_missing_param_name(capsys):
         )
 
 
+def test_func_missing_exception_type(capsys):
+    """Raise fields must include the exception type."""
+    mod = fromText('''
+    def f(x):
+        """
+        @raise ValueError: If C{x} is rejected.
+        @raise: On a blue moon.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:5: Exception type missing\n'
+
+
 def test_func_starargs(capsys):
     """Var-args must be named in fields without asterixes.
     But for compatibility, we warn and strip off the asterixes.

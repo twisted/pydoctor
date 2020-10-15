@@ -404,7 +404,10 @@ class FieldHandler:
     handle_var = handled_elsewhere
 
     def handle_raises(self, field):
-        self.add_info(self.raise_descs, field.arg, field)
+        name = field.arg
+        if name is None:
+            field.report('Exception type missing')
+        self.add_info(self.raise_descs, name, field)
     handle_raise = handle_raises
 
     def handle_seealso(self, field):
