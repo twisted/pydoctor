@@ -1142,7 +1142,7 @@ def _colorize_link(doc, link, token, end, errors):
             return
 
     # Construct the target element.
-    target_elt = Element('target', target)
+    target_elt = Element('target', target, lineno=str(token.startline))
 
     # Add them to the link element.
     link.children = [name_elt, target_elt]
@@ -1332,8 +1332,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
             label = tags.code(variables[0])
+            lineno = int(tree.children[1].attribs['lineno'])
             try:
-                url = linker.resolve_identifier_xref(variables[1])
+                url = linker.resolve_identifier_xref(variables[1], lineno)
             except LookupError:
                 return label
             else:

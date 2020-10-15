@@ -53,7 +53,8 @@ class _EpydocLinker(DocstringLinker):
 
     def look_for_name(self,
             name: str,
-            candidates: Iterable[model.Documentable]
+            candidates: Iterable[model.Documentable],
+            lineno: int
             ) -> Optional[model.Documentable]:
         part0 = name.split('.')[0]
         potential_targets = []
@@ -70,7 +71,7 @@ class _EpydocLinker(DocstringLinker):
                 "ambiguous ref to %s, could be %s" % (
                     name,
                     ', '.join(ob.fullName() for ob in potential_targets)),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         return None
 
     def look_for_intersphinx(self, name: str) -> Optional[str]:
@@ -81,7 +82,7 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name) # type: ignore[no-any-return]
 
-    def resolve_identifier_xref(self, identifier: str) -> str:
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
@@ -121,7 +122,7 @@ class _EpydocLinker(DocstringLinker):
         # If at any level 'identifier' refers to more than one object, complain.
         src = self.obj
         while src is not None:
-            target = self.look_for_name(identifier, src.contents.values())
+            target = self.look_for_name(identifier, src.contents.values(), lineno)
             if target is not None:
                 return target.url
             src = src.parent
@@ -131,18 +132,19 @@ class _EpydocLinker(DocstringLinker):
         # found, complain.
         target = self.look_for_name(identifier, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
-            self.obj.system.objectsOfType(model.Package)))
+            self.obj.system.objectsOfType(model.Package)),
+            lineno)
         if target is not None:
             return target.url
 
         if identifier == fullID:
             self.obj.report(
                 "invalid ref to '%s' not resolved" % (identifier,),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         else:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
 

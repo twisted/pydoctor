@@ -313,7 +313,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
-    url = sut.resolve_identifier_xref('base.module.other')
+    url = sut.resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
 
@@ -337,7 +337,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier_xref('ext_module')
+    url = sut.resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
 
@@ -361,7 +361,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
 
     # This is called for the L{ext_module} markup.
     with raises(LookupError):
-        sut.resolve_identifier_xref('ext_module')
+        sut.resolve_identifier_xref('ext_module', 0)
 
     captured = capsys.readouterr().out
     expected = (
@@ -395,7 +395,41 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     mod.system.intersphinx = InMemoryInventory()
     linker = epydoc2stan._EpydocLinker(mod)
 
-    url = linker.resolve_identifier_xref('socket.socket')
+    url = linker.resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert not capsys.readouterr().out
+
+
+def test_xref_not_found_epytext(capsys: CapSys) -> None:
+    mod = fromText('''
+    """
+    A test module.
+
+    Link to limbo: L{NoSuchName}.
+    """
+    ''', modname='test')
+
+    epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert captured == "test:5: invalid ref to 'NoSuchName' not resolved\n"
+
+
+def test_xref_not_found_restructured(capsys: CapSys) -> None:
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    mod = fromText('''
+    """
+    A test module.
+
+    Link to limbo: `NoSuchName`.
+    """
+    ''', modname='test', system=system)
+
+    epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    # TODO: Should actually be line 5, but I can't get docutils to fill in
+    #       the line number when it calls visit_title_reference().
+    assert captured == "test:3: invalid ref to 'NoSuchName' not resolved\n"

@@ -284,7 +284,7 @@ class Documentable:
     def report(self, descr, section='parsing', lineno_offset=0):
         """Log an error or warning about this documentable object."""
 
-        if section == 'docstring':
+        if section in ('docstring', 'resolve_identifier_xref'):
             linenumber = self.docstring_lineno
         else:
             linenumber = self.linenumber
