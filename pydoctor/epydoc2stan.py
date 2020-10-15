@@ -359,18 +359,30 @@ class FieldHandler:
             d.type = field.body
             desc_list.append(d)
 
-    def add_info(self, desc_list, field):
+    def _unstar_param_name(self, field):
+        name = field.arg
+        if name and name.startswith('*'):
+            self.obj.report(
+                'Parameter name "%s" should not include asterixes' % (name,),
+                lineno_offset=field.lineno,
+                section='docstring'
+                )
+            return name.lstrip('*')
+        else:
+            return name
+
+    def add_info(self, desc_list, name, field):
         d = FieldDesc()
         d.kind = field.tag
-        d.name = field.arg
+        d.name = name
         d.body = field.body
         desc_list.append(d)
 
     def handle_type(self, field):
-        self.types[field.arg] = field.body
+        self.types[self._unstar_param_name(field)] = field.body
 
     def handle_param(self, field):
-        self.add_info(self.parameter_descs, field)
+        self.add_info(self.parameter_descs, self._unstar_param_name(field), field)
     handle_arg = handle_param
     handle_keyword = handle_param
 
@@ -384,7 +396,7 @@ class FieldHandler:
     handle_var = handled_elsewhere
 
     def handle_raises(self, field):
-        self.add_info(self.raise_descs, field)
+        self.add_info(self.raise_descs, field.arg, field)
     handle_raise = handle_raises
 
     def handle_seealso(self, field):
@@ -406,7 +418,7 @@ class FieldHandler:
             lineno_offset=field.lineno,
             section='docstring'
             )
-        self.add_info(self.unknowns, field)
+        self.add_info(self.unknowns, field.arg, field)
 
     def handle(self, field):
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)

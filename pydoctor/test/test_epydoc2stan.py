@@ -109,6 +109,40 @@ def test_func_arg_when_doc_missing():
     assert annotation_fmt == classic_fmt
 
 
+def test_func_starargs(capsys):
+    """Var-args must be named in fields without asterixes.
+    But for compatibility, we warn and strip off the asterixes.
+    """
+    bad_mod = fromText('''
+    def f(*args: int, **kwargs) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param *args: var-positional arguments
+        @param **kwargs: var-keyword arguments
+        @type **kwargs: L{str}
+        """
+    ''', modname='<bad>')
+    good_mod = fromText('''
+    def f(*args: int, **kwargs) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param args: var-positional arguments
+        @param kwargs: var-keyword arguments
+        @type kwargs: L{str}
+        """
+    ''', modname='<good>')
+    bad_fmt = docstring2html(bad_mod.contents['f'])
+    good_fmt = docstring2html(good_mod.contents['f'])
+    assert bad_fmt == good_fmt
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<bad>:6: Parameter name "*args" should not include asterixes\n'
+        '<bad>:7: Parameter name "**kwargs" should not include asterixes\n'
+        '<bad>:8: Parameter name "**kwargs" should not include asterixes\n'
+        )
+
 
 def test_summary():
     mod = fromText('''
