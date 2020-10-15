@@ -364,8 +364,11 @@ class FieldHandler:
             d.type = field.body
             desc_list.append(d)
 
-    def _unstar_param_name(self, field):
+    def _handle_param_name(self, field):
         name = field.arg
+        if name is None:
+            field.report('Parameter name missing')
+            return None
         if name and name.startswith('*'):
             field.report('Parameter name "%s" should not include asterixes' % (name,))
             return name.lstrip('*')
@@ -380,10 +383,14 @@ class FieldHandler:
         desc_list.append(d)
 
     def handle_type(self, field):
-        self.types[self._unstar_param_name(field)] = field.body
+        name = self._handle_param_name(field)
+        if name is not None:
+            self.types[name] = field.body
 
     def handle_param(self, field):
-        self.add_info(self.parameter_descs, self._unstar_param_name(field), field)
+        name = self._handle_param_name(field)
+        if name is not None:
+            self.add_info(self.parameter_descs, name, field)
     handle_arg = handle_param
     handle_keyword = handle_param
 

@@ -109,6 +109,24 @@ def test_func_arg_when_doc_missing():
     assert annotation_fmt == classic_fmt
 
 
+def test_func_missing_param_name(capsys):
+    """Param and type fields must include the name of the parameter."""
+    mod = fromText('''
+    def f(a, b):
+        """
+        @param a: The first parameter.
+        @param: The other one.
+        @type: L{str}
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<test>:5: Parameter name missing\n'
+        '<test>:6: Parameter name missing\n'
+        )
+
+
 def test_func_starargs(capsys):
     """Var-args must be named in fields without asterixes.
     But for compatibility, we warn and strip off the asterixes.
