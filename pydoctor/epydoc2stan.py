@@ -280,11 +280,12 @@ def format_field_list(obj, singular, fields, plural=None):
 class Field:
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body."""
-    def __init__(self, field, obj):
+    def __init__(self, field, source):
         self.tag = field.tag()
         self.arg = field.arg()
+        self.source = source
         self.lineno = field.lineno
-        self.body = tags.code(field.body().to_stan(_EpydocLinker(obj)))
+        self.body = tags.code(field.body().to_stan(_EpydocLinker(source)))
 
     def __repr__(self):
         r = repr(self.body)
@@ -292,6 +293,10 @@ class Field:
             r = r[:20] + '...' + r[-2:]
         return "<%s %r %r %d %s>"%(self.__class__.__name__,
                              self.tag, self.arg, self.lineno, r)
+
+    def report(self, message: str) -> None:
+        self.source.report(message, lineno_offset=self.lineno, section='docstring')
+
 
 class FieldHandler:
 
@@ -362,11 +367,7 @@ class FieldHandler:
     def _unstar_param_name(self, field):
         name = field.arg
         if name and name.startswith('*'):
-            self.obj.report(
-                'Parameter name "%s" should not include asterixes' % (name,),
-                lineno_offset=field.lineno,
-                section='docstring'
-                )
+            field.report('Parameter name "%s" should not include asterixes' % (name,))
             return name.lstrip('*')
         else:
             return name
@@ -413,11 +414,7 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field):
-        self.obj.report(
-            'unknown field "%s"' % field.tag,
-            lineno_offset=field.lineno,
-            section='docstring'
-            )
+        field.report('unknown field "%s"' % (field.tag,))
         self.add_info(self.unknowns, field.arg, field)
 
     def handle(self, field):
@@ -525,7 +522,7 @@ def format_docstring(obj):
     s = tags.div(*content)
     fh = FieldHandler.from_ast_annotations(obj, getattr(source, 'annotations', {}))
     for field in fields:
-        fh.handle(Field(field, obj))
+        fh.handle(Field(field, source))
     fh.resolve_types()
     s(fh.format())
     return s
@@ -644,8 +641,8 @@ def extract_fields(obj):
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             if arg is None:
-                obj.report("Missing field name in @%s" % (tag,),
-                           'docstring', field.lineno)
+                source.report("Missing field name in @%s" % (tag,),
+                              'docstring', field.lineno)
                 continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
