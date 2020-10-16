@@ -74,6 +74,10 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
     return sphinx.SphinxInventoryWriter(logger=PydoctorNoLogger(), project_name='project_name')
 
 
+IGNORE_SYSTEM = cast(model.System, 'ignore-system')
+"""Passed as a System when we don't want the system to be accessed."""
+
+
 def test_generate_empty_functional(inv_writer: InvWriter) -> None:
     """
     Functional test for index generation of empty API.
@@ -133,7 +137,7 @@ def test_generateLine_package(inv_writer_nolog: sphinx.SphinxInventoryWriter) ->
     """
 
     result = inv_writer_nolog._generateLine(
-        model.Package('ignore-system', 'package1'))
+        model.Package(IGNORE_SYSTEM, 'package1'))
 
     assert 'package1 py:module -1 package1.html -\n' == result
 
@@ -144,7 +148,7 @@ def test_generateLine_module(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> 
     """
 
     result = inv_writer_nolog._generateLine(
-        model.Module('ignore-system', 'module1'))
+        model.Module(IGNORE_SYSTEM, 'module1'))
 
     assert 'module1 py:module -1 module1.html -\n' == result
 
@@ -155,7 +159,7 @@ def test_generateLine_class(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> N
     """
 
     result = inv_writer_nolog._generateLine(
-        model.Class('ignore-system', 'class1'))
+        model.Class(IGNORE_SYSTEM, 'class1'))
 
     assert 'class1 py:class -1 class1.html -\n' == result
 
@@ -167,10 +171,10 @@ def test_generateLine_function(inv_writer_nolog: sphinx.SphinxInventoryWriter) -
     Functions are inside a module.
     """
 
-    parent = model.Module('ignore-system', 'module1')
+    parent = model.Module(IGNORE_SYSTEM, 'module1')
 
     result = inv_writer_nolog._generateLine(
-        model.Function('ignore-system', 'func1', parent))
+        model.Function(IGNORE_SYSTEM, 'func1', parent))
 
     assert 'module1.func1 py:function -1 module1.html#func1 -\n' == result
 
@@ -182,10 +186,10 @@ def test_generateLine_method(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> 
     Methods are functions inside a class.
     """
 
-    parent = model.Class('ignore-system', 'class1')
+    parent = model.Class(IGNORE_SYSTEM, 'class1')
 
     result = inv_writer_nolog._generateLine(
-        model.Function('ignore-system', 'meth1', parent))
+        model.Function(IGNORE_SYSTEM, 'meth1', parent))
 
     assert 'class1.meth1 py:method -1 class1.html#meth1 -\n' == result
 
@@ -195,10 +199,10 @@ def test_generateLine_attribute(inv_writer_nolog: sphinx.SphinxInventoryWriter) 
     Check inventory for attributes.
     """
 
-    parent = model.Class('ignore-system', 'class1')
+    parent = model.Class(IGNORE_SYSTEM, 'class1')
 
     result = inv_writer_nolog._generateLine(
-        model.Attribute('ignore-system', 'attr1', parent))
+        model.Attribute(IGNORE_SYSTEM, 'attr1', parent))
 
     assert 'class1.attr1 py:attribute -1 class1.html#attr1 -\n' == result
 
@@ -216,7 +220,7 @@ def test_generateLine_unknown(inv_writer: InvWriter) -> None:
     """
 
     result = inv_writer._generateLine(
-        UnknownType('ignore-system', 'unknown1'))
+        UnknownType(IGNORE_SYSTEM, 'unknown1'))
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
     assert [(
