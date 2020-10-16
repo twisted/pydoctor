@@ -337,6 +337,8 @@ class FieldHandler:
             thresh=-1)
 
     def handle_return(self, field):
+        if field.arg is not None:
+            field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.body:
@@ -345,6 +347,8 @@ class FieldHandler:
     handle_returns = handle_return
 
     def handle_returntype(self, field):
+        if getattr(field, 'arg', None) is not None:
+            field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc()
         if self.return_desc.type:

@@ -141,6 +141,21 @@ def test_func_missing_exception_type(capsys):
     assert captured == '<test>:5: Exception type missing\n'
 
 
+def test_unexpected_field_args(capsys):
+    """Warn when field arguments that should be empty aren't."""
+    mod = fromText('''
+    def get_it():
+        """
+        @return value: The thing you asked for, probably.
+        @rtype value: Not a clue.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['get_it'])
+    captured = capsys.readouterr().out
+    assert captured == "<test>:4: Unexpected argument in return field\n" \
+                       "<test>:5: Unexpected argument in rtype field\n"
+
+
 def test_func_starargs(capsys):
     """Var-args must be named in fields without asterixes.
     But for compatibility, we warn and strip off the asterixes.
