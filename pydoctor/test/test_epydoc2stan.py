@@ -57,19 +57,22 @@ def test_html_empty_module() -> None:
 
 def test_func_arg_and_ret_annotation():
     annotation_mod = fromText('''
-    def f(a: List[str]) -> bool:
+    def f(a: List[str], b: "List[str]") -> bool:
         """
         @param a: an arg, a the best of args
+        @param b: a param to follow a
         @return: the best that we can do
         """
     ''')
     classic_mod = fromText('''
-    def f(a):
+    def f(a, b):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
+        @param b: a param to follow a
+        @type b: C{List[str]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
     annotation_fmt = docstring2html(annotation_mod.contents['f'])
@@ -82,7 +85,7 @@ def test_func_arg_and_ret_annotation_with_override():
         """
         @param a: an arg, a the best of args
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
         """
     ''')
@@ -90,11 +93,11 @@ def test_func_arg_and_ret_annotation_with_override():
     def f(a):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
     annotation_fmt = docstring2html(annotation_mod.contents['f'])
@@ -112,9 +115,9 @@ def test_func_arg_when_doc_missing():
     def f(a):
         """
         Today I will not document details
-        @type a: List[str]
-        @type b: int
-        @rtype: bool
+        @type a: C{List[str]}
+        @type b: C{int}
+        @rtype: C{bool}
         """
     ''')
     annotation_fmt = docstring2html(annotation_mod.contents['f'])
