@@ -3,7 +3,7 @@
 import ast
 import sys
 from itertools import chain
-from typing import Mapping, Iterable, Tuple, Optional
+from typing import Iterator, Mapping, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -50,33 +50,6 @@ def node2fullname(expr, ctx):
         return '.'.join([base] + dottedname[1:])
     else:
         return None
-
-
-def _get_function_signature_annotations(func_ast: ast.FunctionDef) -> Mapping[str, ast.expr]:
-    def _get_all_args() -> Iterable[ast.arg]:
-        base_args = func_ast.args
-        # New on Python 3.8 -- handle absence gracefully
-        try:
-            yield from base_args.posonlyargs
-        except AttributeError:
-            pass
-        yield from base_args.args
-        varargs = base_args.vararg
-        if varargs:
-            yield varargs
-        yield from base_args.kwonlyargs
-        kwargs = base_args.kwarg
-        if kwargs:
-            yield kwargs
-    def _get_all_ast_annotations() -> Iterable[Tuple[str, Optional[ast.expr]]]:
-        for arg in _get_all_args():
-            yield arg.arg, arg.annotation
-        returns = func_ast.returns
-        if returns:
-            yield 'return', returns
-    return {name: value
-            for name, value in _get_all_ast_annotations()
-            if value is not None}
 
 
 class ModuleVistor(ast.NodeVisitor):
@@ -490,7 +463,7 @@ class ModuleVistor(ast.NodeVisitor):
                 defaults.append(astor.to_source(default).strip())
 
         func.argspec = (args, varargname, kwargname, tuple(defaults))
-        func.annotations = _get_function_signature_annotations(node)
+        func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
 
@@ -512,36 +485,105 @@ class ModuleVistor(ast.NodeVisitor):
                 return _infer_type(default)
         return None
 
-    def _unstring_annotation(self, node):
+    def _annotations_from_function(self, func: ast.FunctionDef) -> Mapping[str, ast.expr]:
+        """Get annotations from a function definition.
+        @param func: The function definition's AST.
+        @return: Mapping from argument name to annotation.
+            The name C{return} is used for the return type.
+            Unannotated arguments are omitted.
+        """
+        def _get_all_args() -> Iterator[ast.arg]:
+            base_args = func.args
+            # New on Python 3.8 -- handle absence gracefully
+            try:
+                yield from base_args.posonlyargs
+            except AttributeError:
+                pass
+            yield from base_args.args
+            varargs = base_args.vararg
+            if varargs:
+                yield varargs
+            yield from base_args.kwonlyargs
+            kwargs = base_args.kwarg
+            if kwargs:
+                yield kwargs
+        def _get_all_ast_annotations() -> Iterator[Tuple[str, ast.expr]]:
+            for arg in _get_all_args():
+                if arg.annotation:
+                    yield arg.arg, arg.annotation
+            returns = func.returns
+            if returns:
+                yield 'return', returns
+        return {name: self._unstring_annotation(value)
+                for name, value in _get_all_ast_annotations()}
+
+    def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
-        Returns the resulting node, or None if parsing failed.
+        @return: The unstringed node. If parsing fails, an error is logged
+            and the original node is returned.
         """
         try:
-            return _AnnotationStringParser().visit(node)
+            expr = _AnnotationStringParser().visit(node)
         except SyntaxError as ex:
             self.builder.currentMod.report(
                     f'syntax error in annotation: {ex}',
                     lineno_offset=node.lineno)
-            return None
+            return node
+        else:
+            assert isinstance(expr, ast.expr), expr
+            return expr
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
+    """Implementation of L{ModuleVistor._unstring_annotation()}.
+
+    When given an expression, the node returned by L{visit()} will also
+    be an expression.
+    If any string literal contained in the original expression is either
+    invalid Python or not a singular expression, L{SyntaxError} is raised.
+    """
+
+    def _parse_string(self, value: str) -> ast.expr:
+        statements = ast.parse(value).body
+        if len(statements) != 1:
+            raise SyntaxError("expected expression, found multiple statements")
+        stmt, = statements
+        if isinstance(stmt, ast.Expr):
+            # Expression wrapped in an Expr statement.
+            expr = self.visit(stmt.value)
+            assert isinstance(expr, ast.expr), expr
+            return expr
+        else:
+            raise SyntaxError("expected expression, found statement")
+
+    def visit_Subscript(self, node: ast.Subscript) -> ast.Subscript:
+        value = self.visit(node.value)
+        if isinstance(value, ast.Name) and value.id == 'Literal':
+            # Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        elif isinstance(value, ast.Attribute) and value.attr == 'Literal':
+            # typing.Literal[...] expression; don't unstring the arguments.
+            slice = node.slice
+        else:
+            # Other subscript; unstring the slice.
+            slice = self.visit(node.slice)
+        return ast.Subscript(value, slice, node.ctx)
 
     # For Python >= 3.8:
 
-    def visit_Constant(self, node):
+    def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
-            expr, = ast.parse(value).body
-            return self.visit(expr.value)
+            return self._parse_string(value)
         else:
-            return self.generic_visit(node)
+            const = self.generic_visit(node)
+            assert isinstance(const, ast.Constant), const
+            return const
 
     # For Python < 3.8:
 
-    def visit_Str(self, node):
-        expr, = ast.parse(node.s).body
-        return self.visit(expr.value)
+    def visit_Str(self, node: ast.Str) -> ast.expr:
+        return self._parse_string(node.s)
 
 def _infer_type(expr):
     """Infer an expression's type.

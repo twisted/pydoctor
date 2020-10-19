@@ -1,3 +1,5 @@
+import textwrap
+
 from pytest import raises
 
 from pydoctor import epydoc2stan, model
@@ -38,28 +40,43 @@ def test_multiple_types():
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
+def docstring2html(docstring: model.Documentable) -> str:
+    stan = epydoc2stan.format_docstring(docstring)
+    return flatten(stan).replace('><', '>\n<')
+
+def test_html_empty_module() -> None:
+    mod = fromText('''
+    """Empty module."""
+    ''')
+    expected_html = textwrap.dedent("""
+    <div>
+    <p>Empty module.</p>
+    </div>
+    """).strip()
+    assert docstring2html(mod) == expected_html
+
 def test_func_arg_and_ret_annotation():
     annotation_mod = fromText('''
-    def f(a: List[str]) -> bool:
+    def f(a: List[str], b: "List[str]") -> bool:
         """
         @param a: an arg, a the best of args
+        @param b: a param to follow a
         @return: the best that we can do
         """
     ''')
     classic_mod = fromText('''
-    def f(a):
+    def f(a, b):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
+        @param b: a param to follow a
+        @type b: C{List[str]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_and_ret_annotation_with_override():
@@ -68,7 +85,7 @@ def test_func_arg_and_ret_annotation_with_override():
         """
         @param a: an arg, a the best of args
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
         """
     ''')
@@ -76,18 +93,15 @@ def test_func_arg_and_ret_annotation_with_override():
     def f(a):
         """
         @param a: an arg, a the best of args
-        @type a: List[str]
+        @type a: C{List[str]}
         @param b: a param to follow a
-        @type b: List[awesome]
+        @type b: C{List[awesome]}
         @return: the best that we can do
-        @rtype: bool
+        @rtype: C{bool}
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_when_doc_missing():
@@ -101,16 +115,13 @@ def test_func_arg_when_doc_missing():
     def f(a):
         """
         Today I will not document details
-        @type a: List[str]
-        @type b: int
-        @rtype: bool
+        @type a: C{List[str]}
+        @type b: C{int}
+        @rtype: C{bool}
         """
     ''')
-    def format(docstring):
-        stan = epydoc2stan.format_docstring(docstring)
-        return flatten(stan).replace('><', '>\n<')
-    annotation_fmt = format(annotation_mod.contents['f'])
-    classic_fmt = format(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 
