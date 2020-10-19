@@ -319,12 +319,12 @@ class FieldHandler:
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
-        ret_value = cls(obj, formatted_annotations)
+        handler = cls(obj, formatted_annotations)
         if ret_type is not None:
             return_type = FieldDesc()
             return_type.body = ret_type
-            ret_value.handle_returntype(return_type)
-        return ret_value
+            handler.handle_returntype(return_type)
+        return handler
 
     def redef(self, field):
         self.obj.system.msg(
