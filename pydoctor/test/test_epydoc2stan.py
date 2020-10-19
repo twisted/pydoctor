@@ -125,6 +125,87 @@ def test_func_arg_when_doc_missing():
     assert annotation_fmt == classic_fmt
 
 
+def test_func_missing_param_name(capsys):
+    """Param and type fields must include the name of the parameter."""
+    mod = fromText('''
+    def f(a, b):
+        """
+        @param a: The first parameter.
+        @param: The other one.
+        @type: L{str}
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<test>:5: Parameter name missing\n'
+        '<test>:6: Parameter name missing\n'
+        )
+
+
+def test_func_missing_exception_type(capsys):
+    """Raise fields must include the exception type."""
+    mod = fromText('''
+    def f(x):
+        """
+        @raise ValueError: If C{x} is rejected.
+        @raise: On a blue moon.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:5: Exception type missing\n'
+
+
+def test_unexpected_field_args(capsys):
+    """Warn when field arguments that should be empty aren't."""
+    mod = fromText('''
+    def get_it():
+        """
+        @return value: The thing you asked for, probably.
+        @rtype value: Not a clue.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['get_it'])
+    captured = capsys.readouterr().out
+    assert captured == "<test>:4: Unexpected argument in return field\n" \
+                       "<test>:5: Unexpected argument in rtype field\n"
+
+
+def test_func_starargs(capsys):
+    """Var-args must be named in fields without asterixes.
+    But for compatibility, we warn and strip off the asterixes.
+    """
+    bad_mod = fromText('''
+    def f(*args: int, **kwargs) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param *args: var-positional arguments
+        @param **kwargs: var-keyword arguments
+        @type **kwargs: L{str}
+        """
+    ''', modname='<bad>')
+    good_mod = fromText('''
+    def f(*args: int, **kwargs) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param args: var-positional arguments
+        @param kwargs: var-keyword arguments
+        @type kwargs: L{str}
+        """
+    ''', modname='<good>')
+    bad_fmt = docstring2html(bad_mod.contents['f'])
+    good_fmt = docstring2html(good_mod.contents['f'])
+    assert bad_fmt == good_fmt
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<bad>:6: Parameter name "*args" should not include asterixes\n'
+        '<bad>:7: Parameter name "**kwargs" should not include asterixes\n'
+        '<bad>:8: Parameter name "**kwargs" should not include asterixes\n'
+        )
+
 
 def test_summary():
     mod = fromText('''
@@ -183,7 +264,7 @@ def test_unknown_field_name(capsys):
     ''', modname='test')
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    assert captured == 'test:5: unknown field "zap"\n'
+    assert captured == 'test:5: Unknown field "zap"\n'
 
 
 def test_EpydocLinker_look_for_intersphinx_no_link():
