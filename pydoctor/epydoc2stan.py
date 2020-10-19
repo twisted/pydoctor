@@ -285,7 +285,7 @@ class Field:
         self.arg = field.arg()
         self.source = source
         self.lineno = field.lineno
-        self.body = tags.code(field.body().to_stan(_EpydocLinker(source)))
+        self.body = field.body().to_stan(_EpydocLinker(source))
 
     def __repr__(self):
         r = repr(self.body)
@@ -319,16 +319,17 @@ class FieldHandler:
     @classmethod
     def from_ast_annotations(cls, obj: model.Documentable, annotations: Mapping[str, ast.expr]) -> "FieldHandler":
         linker = _EpydocLinker(obj)
-        annotations = {name: AnnotationDocstring(value).to_stan(linker)
-                       for name, value in annotations.items()}
-        return_type = FieldDesc()
-        try:
-            return_type.body = annotations.pop("return")
-        except KeyError:
-            pass
-        ret_value = cls(obj, annotations)
-        ret_value.handle_returntype(return_type)
-        return ret_value
+        formatted_annotations = {
+            name: AnnotationDocstring(value).to_stan(linker)
+            for name, value in annotations.items()
+            }
+        ret_type = formatted_annotations.pop('return', None)
+        handler = cls(obj, formatted_annotations)
+        if ret_type is not None:
+            return_type = FieldDesc()
+            return_type.body = ret_type
+            handler.handle_returntype(return_type)
+        return handler
 
     def redef(self, field):
         self.obj.system.msg(
@@ -460,7 +461,10 @@ class FieldHandler:
             label = f"Unknown Field: {kind}"
             r.append(format_desc_list(label, fieldlist, label))
 
-        return tags.table(class_='fieldTable')(r)
+        if any(r):
+            return tags.table(class_='fieldTable')(r)
+        else:
+            return tags.transparent
 
 
 def reportErrors(obj, errs):

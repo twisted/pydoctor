@@ -116,7 +116,6 @@ def flatten(stan: Tag) -> str:
 
     @param stan: Document fragment to flatten.
     @return: An HTML string representation of the C{stan} tree.
-    @rtype: C{str}
     """
     ret: List[bytes] = []
     err: List[Failure] = []
