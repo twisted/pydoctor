@@ -241,3 +241,36 @@ body.private-hidden #splitTables .private, body.private-hidden #childList .priva
 .deprecationNotice {
     margin: 10px;
 }
+
+/* Syntax highlighting for source code */
+
+.py-string {
+    color: #337ab7;
+}
+.py-comment {
+    color: #309078;
+    font-style: italic;
+}
+.py-keyword {
+    font-weight: bold;
+}
+.py-defname {
+    color: #a947b8;
+    font-weight: bold;
+}
+.py-builtin {
+    color: #fc7844;
+    font-weight: bold;
+}
+
+/* Doctest */
+
+pre.py-doctest {
+    padding: .5em;
+}
+.py-prompt, .py-more {
+    color: #a8a8a8;
+}
+.py-output {
+    color: #c7254e;
+}
