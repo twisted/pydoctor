@@ -373,9 +373,35 @@ class FieldHandler:
         m(field)
 
     def resolve_types(self) -> None:
-        for pd in self.parameter_descs:
-            if pd.name in self.types:
-                pd.type = self.types[pd.name]
+        """Merge information from 'param' fields and AST analysis."""
+
+        params = {param.name: param for param in self.parameter_descs}
+        any_info = bool(params)
+
+        # We create a new parameter_descs list to ensure the parameter order
+        # matches the AST order.
+        new_parameter_descs = []
+        for index, (name, type_doc) in enumerate(self.types.items()):
+            try:
+                param = params.pop(name)
+            except KeyError:
+                if index == 0 and name in ('self', 'cls'):
+                    continue
+                param = FieldDesc(kind='param', name=name, type=type_doc,
+                            body=tags.span(class_='undocumented')("Undocumented"))
+                any_info |= type_doc is not None
+            else:
+                param.type = type_doc
+            new_parameter_descs.append(param)
+
+        # Add any leftover parameters, which includes documented **kwargs keywords
+        # and non-existing (but documented) parameters.
+        new_parameter_descs += params.values()
+
+        # Only replace the descriptions if at least one parameter is documented
+        # or annotated.
+        if any_info:
+            self.parameter_descs = new_parameter_descs
 
     def format(self) -> Tag:
         r: List[Tag] = []
@@ -481,7 +507,8 @@ def format_docstring(obj: model.Documentable) -> Tag:
         fh.set_param_types_from_annotations(obj.annotations)
     for field in fields:
         fh.handle(Field.from_epydoc(field, source))
-    fh.resolve_types()
+    if isinstance(obj, model.Function):
+        fh.resolve_types()
     ret(fh.format())
     return ret
 
