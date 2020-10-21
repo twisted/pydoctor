@@ -365,7 +365,15 @@ class FieldHandler:
         desc_list.append(d)
 
     def handle_type(self, field):
-        name = self._handle_param_name(field)
+        if isinstance(self.obj, model.Function):
+            name = self._handle_param_name(field)
+        else:
+            # Note: extract_fields() will issue warnings about missing field
+            #       names, so we can silently ignore them here.
+            # TODO: Processing the fields once in extract_fields() and again
+            #       in format_docstring() adds complexity and can cause
+            #       inconsistencies.
+            name = field.arg
         if name is not None:
             self.types[name] = field.body
 
