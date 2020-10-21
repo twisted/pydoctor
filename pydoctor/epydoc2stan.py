@@ -305,8 +305,33 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             self.add_info(self.parameter_descs, name, field)
+            if name in self.types:
+                return
+
+            # Figure out if the parameter might exist despite not being found
+            # in this documentable's code, warn if not.
+            source = field.source
+            if source is not self.obj:
+                # Docstring is inherited, so it may not represent this exact method.
+                return
+            if isinstance(source, model.Class):
+                if None in source.baseobjects:
+                    # Class has a computed base class, which could define parameters
+                    # we can't discover.
+                    # For example, this class might use
+                    # L{twisted.python.components.proxyForInterface()}.
+                    return
+                if name in source.constructor_params:
+                    # Constructor parameters can be documented on the class.
+                    return
+            field.report('Documented parameter "%s" does not exist' % (name,))
     handle_arg = handle_param
-    handle_keyword = handle_param
+
+    def handle_keyword(self, field: Field) -> None:
+        name = self._handle_param_name(field)
+        if name is not None:
+            # TODO: How should this be matched to the type annotation?
+            self.add_info(self.parameter_descs, name, field)
 
 
     def handled_elsewhere(self, field: Field) -> None:
