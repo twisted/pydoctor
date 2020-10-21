@@ -335,8 +335,6 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc()
-        if self.return_desc.body:
-            self.obj.system.msg('epydoc2stan', 'XXX')
         self.return_desc.body = field.body
     handle_returns = handle_return
 
@@ -345,8 +343,6 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc()
-        if self.return_desc.type:
-            self.obj.system.msg('epydoc2stan', 'XXX')
         self.return_desc.type = field.body
     handle_rtype = handle_returntype
 
