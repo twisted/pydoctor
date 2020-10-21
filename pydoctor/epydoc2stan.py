@@ -332,6 +332,8 @@ class FieldHandler:
         if name is not None:
             # TODO: How should this be matched to the type annotation?
             self.add_info(self.parameter_descs, name, field)
+            if name in self.types:
+                field.report('Parameter "%s" is documented as keyword' % (name,))
 
 
     def handled_elsewhere(self, field: Field) -> None:

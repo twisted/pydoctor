@@ -162,14 +162,15 @@ def test_func_arg_not_inherited(capsys: CapSys) -> None:
 def test_func_keyword(capsys: CapSys) -> None:
     """Test handling of @keyword."""
     mod = fromText('''
-    def f(**kwargs):
+    def f(p, **kwargs):
         """
         @keyword a: Advanced.
         @keyword b: Basic.
+        @keyword p: A parameter, not a keyword.
         """
     ''')
     epydoc2stan.format_docstring(mod.contents['f'])
-    assert capsys.readouterr().out == ''
+    assert capsys.readouterr().out == '<test>:6: Parameter "p" is documented as keyword\n'
 
 def test_func_missing_param_name(capsys: CapSys) -> None:
     """Param and type fields must include the name of the parameter."""
