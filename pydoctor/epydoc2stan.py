@@ -276,11 +276,7 @@ class Field:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
-def format_field_list(
-        singular: str, fields: Sequence[Field], plural: Optional[str] = None
-        ) -> List[Tag]:
-    if plural is None:
-        plural = singular + 's'
+def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> List[Tag]:
     if not fields:
         return []
     if len(fields) > 1:
@@ -431,11 +427,11 @@ class FieldHandler:
             r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
                                tags.td(colspan="2")(self.return_desc.format())))
         r.append(format_desc_list("Raises", self.raise_descs))
-        for s, p, l in (('Author', 'Authors', self.authors),
-                        ('See Also', 'See Also', self.seealsos),
-                        ('Present Since', 'Present Since', self.sinces),
-                        ('Note', 'Notes', self.notes)):
-            r.append(format_field_list(s, l, p))
+        for s_p_l in (('Author', 'Authors', self.authors),
+                      ('See Also', 'See Also', self.seealsos),
+                      ('Present Since', 'Present Since', self.sinces),
+                      ('Note', 'Notes', self.notes)):
+            r.append(format_field_list(*s_p_l))
         unknowns: Dict[str, List[FieldDesc]] = {}
         for fieldinfo in self.unknowns:
             unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
