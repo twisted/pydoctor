@@ -145,74 +145,74 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name) # type: ignore[no-any-return]
 
-    def resolve_identifier_xref(self, fullID: str) -> str:
+    def resolve_identifier_xref(self, identifier: str) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
 
-        # Check if fullID is the fullName of an object.
-        target = self.obj.system.objForFullName(fullID)
+        # Check if 'identifier' is the fullName of an object.
+        target = self.obj.system.objForFullName(identifier)
         if target is not None:
             return self._objLink(target)
 
-        # Check to see if fullID names a builtin or standard library module.
-        fullerID = self.obj.expandName(fullID)
-        linktext = stdlib_doc_link_for_name(fullerID)
+        # Check to see if 'identifier' names a builtin or standard library module.
+        fullID = self.obj.expandName(identifier)
+        linktext = stdlib_doc_link_for_name(fullID)
         if linktext is not None:
             return linktext
 
         # Check if the fullID exists in an intersphinx inventory.
-        target_name = self.look_for_intersphinx(fullerID)
+        target_name = self.look_for_intersphinx(fullID)
         if not target_name:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
-            # expandName is unreliable so in the case fullerID fails, we
-            # try our luck with fullID.
-            target_name = self.look_for_intersphinx(fullID)
+            # expandName is unreliable so in the case fullID fails, we
+            # try our luck with 'identifier'.
+            target_name = self.look_for_intersphinx(identifier)
         if target_name:
             return target_name
 
         # Since there was no global match, go look for the name in the
         # context where it was used.
 
-        # Check if fullID refers to an object by Python name resolution
-        # in our context. Walk up the object tree and see if fullID refers
+        # Check if 'identifier' refers to an object by Python name resolution
+        # in our context. Walk up the object tree and see if 'identifier' refers
         # to an object by Python name resolution in each context.
         src: Optional[model.Documentable] = self.obj
         while src is not None:
-            target = src.resolveName(fullID)
+            target = src.resolveName(identifier)
             if target is not None:
                 return self._objLink(target)
             src = src.parent
 
-        # Walk up the object tree again and see if fullID refers to an
+        # Walk up the object tree again and see if 'identifier' refers to an
         # object in an "uncle" object.  (So if p.m1 has a class C, the
         # docstring for p.m2 can say L{C} to refer to the class in m1).
-        # If at any level fullID refers to more than one object, complain.
+        # If at any level 'identifier' refers to more than one object, complain.
         src = self.obj
         while src is not None:
-            target = self.look_for_name(fullID, src.contents.values())
+            target = self.look_for_name(identifier, src.contents.values())
             if target is not None:
                 return self._objLink(target)
             src = src.parent
 
-        # Examine every module and package in the system and see if fullID
+        # Examine every module and package in the system and see if 'identifier'
         # names an object in each one.  Again, if more than one object is
         # found, complain.
-        target = self.look_for_name(fullID, itertools.chain(
+        target = self.look_for_name(identifier, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
             self.obj.system.objectsOfType(model.Package)))
         if target is not None:
             return self._objLink(target)
 
-        if fullID == fullerID:
+        if identifier == fullID:
             self.obj.report(
-                "invalid ref to '%s' not resolved" % (fullID,),
+                "invalid ref to '%s' not resolved" % (identifier,),
                 section='resolve_identifier_xref')
         else:
             self.obj.report(
-                "invalid ref to '%s' resolved as '%s'" % (fullID, fullerID),
+                "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
                 section='resolve_identifier_xref')
-        raise LookupError(fullID)
+        raise LookupError(identifier)
 
 
 @attr.s(auto_attribs=True)
