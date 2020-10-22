@@ -5,7 +5,8 @@ Convert epydoc markup into renderable content.
 from collections import defaultdict
 from importlib import import_module
 from typing import (
-    Callable, DefaultDict, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+    Callable, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional,
+    Sequence, Tuple
 )
 from urllib.parse import quote
 import ast
@@ -232,10 +233,7 @@ class FieldDesc:
         return tags.transparent(body)
 
 
-def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> List[Tag]:
-    if not descs:
-        return []
-    r: List[Tag] = []
+def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     first = True
     for d in descs:
         if first:
@@ -249,8 +247,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> List[Tag]:
             row(tags.td(colspan="2")(d.format()))
         else:
             row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
-        r.append(row)
-    return r
+        yield row
 
 
 class Field:
@@ -276,14 +273,8 @@ class Field:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
 
 
-def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> List[Tag]:
-    if not fields:
-        return []
-    if len(fields) > 1:
-        label = plural
-    else:
-        label = singular
-    rows: List[Tag] = []
+def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+    label = singular if len(fields) == 1 else plural
     first = True
     for field in fields:
         if first:
@@ -294,8 +285,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Li
             row = tags.tr()
             row(tags.td())
         row(tags.td(colspan="2")(field.body))
-        rows.append(row)
-    return rows
+        yield row
 
 
 class FieldHandler:
@@ -420,23 +410,23 @@ class FieldHandler:
                 pd.type = self.types[pd.name]
 
     def format(self) -> Tag:
-        r = []
+        r: List[Tag] = []
 
-        r.append(format_desc_list('Parameters', self.parameter_descs))
+        r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
                                tags.td(colspan="2")(self.return_desc.format())))
-        r.append(format_desc_list("Raises", self.raise_descs))
+        r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
                       ('Present Since', 'Present Since', self.sinces),
                       ('Note', 'Notes', self.notes)):
-            r.append(format_field_list(*s_p_l))
+            r += format_field_list(*s_p_l)
         unknowns: Dict[str, List[FieldDesc]] = {}
         for fieldinfo in self.unknowns:
             unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
         for kind, fieldlist in unknowns.items():
-            r.append(format_desc_list(f"Unknown Field: {kind}", fieldlist))
+            r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
             return tags.table(class_='fieldTable')(r)
