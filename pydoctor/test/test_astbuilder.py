@@ -830,34 +830,40 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     m: bytes = b"M"
     """module-level"""
     ''', modname='test', systemcls=systemcls)
+
+    def type2html(obj: model.Documentable) -> str:
+        parsed_type = get_parsed_type(obj)
+        assert parsed_type is not None
+        return to_html(parsed_type)
+
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert to_html(get_parsed_type(a)) == 'string'
+    assert type2html(a) == 'string'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert to_html(get_parsed_type(b)) == 'string'
+    assert type2html(b) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
-    assert to_html(get_parsed_type(c)) == '<code>str</code>'
+    assert type2html(c) == '<code>str</code>'
     d = C.contents['d']
     assert d.docstring == """fourth"""
-    assert to_html(get_parsed_type(d)) == '<code>str</code>'
+    assert type2html(d) == '<code>str</code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert to_html(get_parsed_type(e)) == '<code>List[C]</code>'
+    assert type2html(e) == '<code>List[C]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert to_html(get_parsed_type(f)) == '<code>List[C]</code>'
+    assert type2html(f) == '<code>List[C]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert to_html(get_parsed_type(g)) == '<code>List[C]</code>'
+    assert type2html(g) == '<code>List[C]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert to_html(get_parsed_type(s)) == '<code>List[str]</code>'
+    assert type2html(s) == '<code>List[str]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
-    assert to_html(get_parsed_type(m)) == '<code>bytes</code>'
+    assert type2html(m) == '<code>bytes</code>'
 
 @typecomment
 @systemcls_param
