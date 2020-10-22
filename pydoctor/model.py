@@ -75,6 +75,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref = None
+    kind: str
 
     @property
     def css_class(self):

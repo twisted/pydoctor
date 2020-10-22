@@ -2,8 +2,9 @@
 Convert epydoc markup into renderable content.
 """
 
+from collections import defaultdict
 from importlib import import_module
-from typing import Dict, List, Mapping, Optional, Sequence
+from typing import DefaultDict, Dict, List, Mapping, Optional, Sequence
 from urllib.parse import quote
 import ast
 import builtins
@@ -560,31 +561,34 @@ def format_summary(obj):
     return tags.span(*content)
 
 
-def format_undocumented(obj):
+def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
-    subdocstrings = {}
-    subcounts = {}
+
+    subdocstrings: DefaultDict[str, int] = defaultdict(int)
+    subcounts: DefaultDict[str, int]  = defaultdict(int)
     for subob in obj.contents.values():
         k = subob.kind.lower()
-        subcounts[k] = subcounts.get(k, 0) + 1
+        subcounts[k] += 1
         if subob.docstring is not None:
-            subdocstrings[k] = subdocstrings.get(k, 0) + 1
+            subdocstrings[k] += 1
     if isinstance(obj, model.Package):
         subcounts['module'] -= 1
+
+    tag: Tag = tags.span(class_='undocumented')
     if subdocstrings:
         plurals = {'class': 'classes'}
-        text = (
+        tag(
             "No ", obj.kind.lower(), " docstring; "
             ', '.join(
-                f"{subdocstrings.get(k, 0)}/{subcounts[k]} "
+                f"{subdocstrings[k]}/{subcounts[k]} "
                 f"{plurals.get(k, k + 's')}"
                 for k in sorted(subcounts)
                 ),
             " documented"
             )
     else:
-        text = "Undocumented"
-    return tags.span(class_='undocumented')(text)
+        tag("Undocumented")
+    return tag
 
 
 def type2stan(obj):
