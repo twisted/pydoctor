@@ -70,7 +70,7 @@ class Documentable:
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
-    docstring = None
+    docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0

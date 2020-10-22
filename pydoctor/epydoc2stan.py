@@ -632,14 +632,14 @@ field_name_to_human_name = {
 
 
 def extract_fields(obj: model.Documentable) -> None:
-    doc, source = get_docstring(obj)
-    if doc is None:
-        return
-    else:
-        # Tell mypy that if we found a docstring, we also have its source.
-        assert source is not None
+    """Populate Attributes for module/class variables using fields from
+    that module/class's docstring.
+    Must only be called for objects that have a docstring.
+    """
 
-    pdoc = parse_docstring(obj, doc, source)
+    doc = obj.docstring
+    assert doc is not None, obj
+    pdoc = parse_docstring(obj, doc, obj)
     obj.parsed_docstring = pdoc
 
     for field in pdoc.fields:
@@ -647,8 +647,8 @@ def extract_fields(obj: model.Documentable) -> None:
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
             if arg is None:
-                source.report("Missing field name in @%s" % (tag,),
-                              'docstring', field.lineno)
+                obj.report("Missing field name in @%s" % (tag,),
+                           'docstring', field.lineno)
                 continue
             attrobj = obj.contents.get(arg)
             if attrobj is None:
@@ -656,7 +656,7 @@ def extract_fields(obj: model.Documentable) -> None:
                 attrobj.kind = None
                 attrobj.parentMod = obj.parentMod
                 obj.system.addObject(attrobj)
-            attrobj.setLineNumber(source.docstring_lineno + field.lineno)
+            attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
             if tag == 'type':
                 attrobj.parsed_type = field.body()
             else:
