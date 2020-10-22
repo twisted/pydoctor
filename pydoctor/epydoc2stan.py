@@ -250,24 +250,27 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         yield row
 
 
+@attr.s(auto_attribs=True)
 class Field:
     """Like pydoctor.epydoc.markup.Field, but without the gross accessor
     methods and with a formatted body.
     """
 
-    def __init__(self, field: EpydocField, source: model.Documentable):
-        self.tag = field.tag()
-        self.arg = field.arg()
-        self.source = source
-        self.lineno = field.lineno
-        self.body = field.body().to_stan(_EpydocLinker(source))
+    tag: str
+    arg: Optional[str]
+    source: model.Documentable
+    lineno: int
+    body: Tag
 
-    def __repr__(self) -> str:
-        r = repr(self.body)
-        if len(r) > 25:
-            r = r[:20] + '...' + r[-2:]
-        return "<%s %r %r %d %s>"%(self.__class__.__name__,
-                                   self.tag, self.arg, self.lineno, r)
+    @classmethod
+    def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
+        return Field(
+            tag=field.tag(),
+            arg=field.arg(),
+            source=source,
+            lineno=field.lineno,
+            body=field.body().to_stan(_EpydocLinker(source))
+            )
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -511,7 +514,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
     for field in fields:
-        fh.handle(Field(field, source))
+        fh.handle(Field.from_epydoc(field, source))
     fh.resolve_types()
     ret(fh.format())
     return ret
