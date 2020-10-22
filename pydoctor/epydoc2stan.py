@@ -4,7 +4,9 @@ Convert epydoc markup into renderable content.
 
 from collections import defaultdict
 from importlib import import_module
-from typing import DefaultDict, Dict, List, Mapping, Optional, Sequence
+from typing import (
+    Callable, DefaultDict, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+)
 from urllib.parse import quote
 import ast
 import builtins
@@ -22,7 +24,7 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 
 
-def _find_stdlib_dir():
+def _find_stdlib_dir() -> str:
     """Find the standard library location for the currently running
     Python interpreter.
     """
@@ -39,11 +41,11 @@ STDLIB_DIR = _find_stdlib_dir()
 STDLIB_URL = 'https://docs.python.org/3/library/'
 
 
-def link(o):
+def link(o: model.Documentable) -> str:
     return quote(o.fullName()+'.html')
 
 
-def get_parser(obj):
+def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     formatname = obj.system.options.docformat
     try:
         mod = import_module('pydoctor.epydoc.markup.' + formatname)
@@ -52,10 +54,12 @@ def get_parser(obj):
             formatname, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         mod = pydoctor.epydoc.markup.plaintext
-    return mod.parse_docstring
+    return getattr(mod, 'parse_docstring') # type: ignore[no-any-return]
 
 
-def get_docstring(obj):
+def get_docstring(
+        obj: model.Documentable
+        ) -> Tuple[Optional[str], Optional[model.Documentable]]:
     for source in obj.docsources():
         doc = source.docstring
         if doc:
@@ -66,7 +70,7 @@ def get_docstring(obj):
     return None, None
 
 
-def stdlib_doc_link_for_name(name):
+def stdlib_doc_link_for_name(name: str) -> Optional[str]:
     parts = name.split('.')
     for i in range(len(parts), 0, -1):
         sub_parts = parts[:i]
@@ -95,10 +99,10 @@ def stdlib_doc_link_for_name(name):
 
 class _EpydocLinker(DocstringLinker):
 
-    def __init__(self, obj):
+    def __init__(self, obj: model.Documentable):
         self.obj = obj
 
-    def _objLink(self, obj):
+    def _objLink(self, obj: model.Documentable) -> str:
         if obj.documentation_location is model.DocLocation.PARENT_PAGE:
             p = obj.parent
             if isinstance(p, model.Module) and p.name == '__init__':
@@ -110,7 +114,10 @@ class _EpydocLinker(DocstringLinker):
             raise AssertionError(
                 f"Unknown documentation_location: {obj.documentation_location}")
 
-    def look_for_name(self, name, candidates):
+    def look_for_name(self,
+            name: str,
+            candidates: Iterable[model.Documentable]
+            ) -> Optional[model.Documentable]:
         part0 = name.split('.')[0]
         potential_targets = []
         for src in candidates:
@@ -120,7 +127,7 @@ class _EpydocLinker(DocstringLinker):
             if target is not None and target not in potential_targets:
                 potential_targets.append(target)
         if len(potential_targets) == 1:
-            return potential_targets[0]
+            return potential_targets[0] # type: ignore[no-any-return]
         elif len(potential_targets) > 1:
             self.obj.report(
                 "ambiguous ref to %s, could be %s" % (
@@ -129,15 +136,15 @@ class _EpydocLinker(DocstringLinker):
                 section='resolve_identifier_xref')
         return None
 
-    def look_for_intersphinx(self, name):
+    def look_for_intersphinx(self, name: str) -> Optional[str]:
         """
         Return link for `name` based on intersphinx inventory.
 
         Return None if link is not found.
         """
-        return self.obj.system.intersphinx.getLink(name)
+        return self.obj.system.intersphinx.getLink(name) # type: ignore[no-any-return]
 
-    def resolve_identifier_xref(self, fullID):
+    def resolve_identifier_xref(self, fullID: str) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
@@ -154,14 +161,14 @@ class _EpydocLinker(DocstringLinker):
             return linktext
 
         # Check if the fullID exists in an intersphinx inventory.
-        target = self.look_for_intersphinx(fullerID)
-        if not target:
+        target_name = self.look_for_intersphinx(fullerID)
+        if not target_name:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
             # expandName is unreliable so in the case fullerID fails, we
             # try our luck with fullID.
-            target = self.look_for_intersphinx(fullID)
-        if target:
-            return target
+            target_name = self.look_for_intersphinx(fullID)
+        if target_name:
+            return target_name
 
         # Since there was no global match, go look for the name in the
         # context where it was used.
@@ -169,7 +176,7 @@ class _EpydocLinker(DocstringLinker):
         # Check if fullID refers to an object by Python name resolution
         # in our context. Walk up the object tree and see if fullID refers
         # to an object by Python name resolution in each context.
-        src = self.obj
+        src: Optional[model.Documentable] = self.obj
         while src is not None:
             target = src.resolveName(fullID)
             if target is not None:
@@ -450,7 +457,7 @@ class FieldHandler:
             return tags.transparent
 
 
-def reportErrors(obj, errs):
+def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
         for err in errs:
@@ -461,19 +468,24 @@ def reportErrors(obj, errs):
                 )
 
 
-def parse_docstring(obj, doc, source):
+def parse_docstring(
+        obj: model.Documentable,
+        doc: str,
+        source: model.Documentable,
+        ) -> ParsedDocstring:
     """Parse a docstring.
-    @rtype: L{ParsedDocstring}
+    @param obj: The object we're parsing the documentation for.
+    @param doc: The docstring.
+    @param source: The object on which the docstring is defined.
+        This can differ from C{obj} if the docstring is inherited.
     """
 
     parser = get_parser(obj)
-    errs = []
+    errs: List[ParseError] = []
     try:
         pdoc = parser(doc, errs)
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
-        pdoc = None
-    if pdoc is None:
         pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
     if errs:
         reportErrors(source, errs)
@@ -493,6 +505,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
         if doc is None:
             ret(class_='undocumented')("Undocumented")
             return ret
+        else:
+            # Tell mypy that if we found a docstring, we also have its source.
+            assert source is not None
         pdoc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = pdoc
     elif source is None:
@@ -525,7 +540,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     return ret
 
 
-def format_summary(obj):
+def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
     doc, source = get_docstring(obj)
@@ -538,12 +553,19 @@ def format_summary(obj):
         if pdoc is None:
             return format_undocumented(obj)
         source = obj.parent
+        # Since obj is an Attribute, it has a parent.
+        assert source is not None
     else:
+        # Tell mypy that if we found a docstring, we also have its source.
+        assert source is not None
         # Use up to three first non-empty lines of doc string as summary.
-        lines = itertools.dropwhile(lambda line: not line.strip(),
-                                    doc.split('\n'))
-        lines = itertools.takewhile(lambda line: line.strip(), lines)
-        lines = [ line.strip() for line in lines ]
+        lines = [
+            line.strip()
+            for line in itertools.takewhile(
+                lambda line: line.strip(),
+                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
+                )
+            ]
         if len(lines) > 3:
             return tags.span(class_='undocumented')("No summary")
         pdoc = parse_docstring(obj, ' '.join(lines), source)
@@ -591,19 +613,19 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     return tag
 
 
-def type2stan(obj):
+def type2stan(obj: model.Documentable) -> Optional[Tag]:
     parsed_type = get_parsed_type(obj)
     if parsed_type is None:
         return None
     else:
         return parsed_type.to_stan(_EpydocLinker(obj))
 
-def get_parsed_type(obj):
-    parsed_type = getattr(obj, 'parsed_type', None)
+def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
+    parsed_type: Optional[ParsedDocstring] = getattr(obj, 'parsed_type', None)
     if parsed_type is not None:
         return parsed_type
 
-    annotation = getattr(obj, 'annotation', None)
+    annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
         return AnnotationDocstring(annotation)
 
@@ -633,6 +655,9 @@ def extract_fields(obj: model.Documentable) -> None:
     doc, source = get_docstring(obj)
     if doc is None:
         return
+    else:
+        # Tell mypy that if we found a docstring, we also have its source.
+        assert source is not None
 
     pdoc = parse_docstring(obj, doc, source)
     obj.parsed_docstring = pdoc
