@@ -452,20 +452,10 @@ class FieldHandler:
 def reportErrors(obj, errs):
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
-
         for err in errs:
-            lineno_offset = 0
-            if isinstance(err, str):
-                descr = err
-            elif isinstance(err, ParseError):
-                descr = err.descr()
-                lineno_offset = err.linenum() - 1
-            else:
-                raise TypeError(type(err).__name__)
-
             obj.report(
-                'bad docstring: ' + descr,
-                lineno_offset=lineno_offset,
+                'bad docstring: ' + err.descr(),
+                lineno_offset=err.linenum() - 1,
                 section='docstring'
                 )
 
@@ -480,7 +470,7 @@ def parse_docstring(obj, doc, source):
     try:
         pdoc = parser(doc, errs)
     except Exception as e:
-        errs.append(f'{e.__class__.__name__}: {e}')
+        errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         pdoc = None
     if pdoc is None:
         pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
@@ -511,7 +501,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))
     except Exception as e:
-        errs = [f'{e.__class__.__name__}: {e}']
+        errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
         if doc is None:
             stan = tags.p(class_="undocumented")('Broken description')
         else:
