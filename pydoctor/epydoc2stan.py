@@ -232,17 +232,9 @@ class FieldDesc:
         return tags.transparent(body)
 
 
-def format_desc_list(
-        singular: str, descs: Sequence[FieldDesc], plural: Optional[str] = None
-        ) -> List[Tag]:
-    if plural is None:
-        plural = singular + 's'
+def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> List[Tag]:
     if not descs:
         return []
-    if len(descs) > 1:
-        label = plural
-    else:
-        label = singular
     r: List[Tag] = []
     first = True
     for d in descs:
@@ -434,11 +426,11 @@ class FieldHandler:
     def format(self) -> Tag:
         r = []
 
-        r.append(format_desc_list('Parameters', self.parameter_descs, 'Parameters'))
+        r.append(format_desc_list('Parameters', self.parameter_descs))
         if self.return_desc:
             r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
                                tags.td(colspan="2")(self.return_desc.format())))
-        r.append(format_desc_list("Raises", self.raise_descs, "Raises"))
+        r.append(format_desc_list("Raises", self.raise_descs))
         for s, p, l in (('Author', 'Authors', self.authors),
                         ('See Also', 'See Also', self.seealsos),
                         ('Present Since', 'Present Since', self.sinces),
@@ -448,8 +440,7 @@ class FieldHandler:
         for fieldinfo in self.unknowns:
             unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
         for kind, fieldlist in unknowns.items():
-            label = f"Unknown Field: {kind}"
-            r.append(format_desc_list(label, fieldlist, label))
+            r.append(format_desc_list(f"Unknown Field: {kind}", fieldlist))
 
         if any(r):
             return tags.table(class_='fieldTable')(r)
