@@ -224,10 +224,7 @@ class FieldDesc:
     body: Optional[Tag] = None
 
     def format(self) -> Tag:
-        if self.body is None:
-            formatted = tags.transparent
-        else:
-            formatted = self.body
+        formatted: Tag = tags.transparent if self.body is None else self.body
         if self.type is not None:
             formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
         return formatted
@@ -432,9 +429,9 @@ class FieldHandler:
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
-            return tags.table(class_='fieldTable')(r)
+            return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
         else:
-            return tags.transparent
+            return tags.transparent # type: ignore[no-any-return]
 
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
@@ -547,7 +544,7 @@ def format_summary(obj: model.Documentable) -> Tag:
                 )
             ]
         if len(lines) > 3:
-            return tags.span(class_='undocumented')("No summary")
+            return tags.span(class_='undocumented')("No summary") # type: ignore[no-any-return]
         pdoc = parse_docstring(obj, ' '.join(lines), source)
 
     try:
@@ -555,12 +552,12 @@ def format_summary(obj: model.Documentable) -> Tag:
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
-        return tags.span(class_='undocumented')("Broken description")
+        return tags.span(class_='undocumented')("Broken description") # type: ignore[no-any-return]
 
     content = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content)
+    return tags.span(*content) # type: ignore[no-any-return]
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
@@ -598,7 +595,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(_EpydocLinker(obj))
+        return parsed_type.to_stan(_EpydocLinker(obj)) # type: ignore[no-any-return]
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type: Optional[ParsedDocstring] = getattr(obj, 'parsed_type', None)
