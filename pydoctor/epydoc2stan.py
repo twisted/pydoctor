@@ -55,7 +55,7 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], Par
             formatname, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         mod = pydoctor.epydoc.markup.plaintext
-    return getattr(mod, 'parse_docstring') # type: ignore[no-any-return]
+    return mod.parse_docstring # type: ignore[attr-defined, no-any-return]
 
 
 def get_docstring(
@@ -225,12 +225,12 @@ class FieldDesc:
 
     def format(self) -> Tag:
         if self.body is None:
-            body = tags.transparent
+            formatted = tags.transparent
         else:
-            body = self.body
+            formatted = self.body
         if self.type is not None:
-            body = body, ' (type: ', self.type, ')'
-        return tags.transparent(body)
+            formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
+        return formatted
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
@@ -264,7 +264,7 @@ class Field:
 
     @classmethod
     def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
-        return Field(
+        return cls(
             tag=field.tag(),
             arg=field.arg(),
             source=source,

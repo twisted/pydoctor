@@ -515,8 +515,13 @@ class ModuleVistor(ast.NodeVisitor):
             returns = func.returns
             if returns:
                 yield 'return', returns
-        return {name: None if value is None else self._unstring_annotation(value)
-                for name, value in _get_all_ast_annotations()}
+        return {
+            # Include parameter names even if they're not annotated, so that
+            # we can use the key set to know which parameters exist and warn
+            # when non-existing parameters are documented.
+            name: None if value is None else self._unstring_annotation(value)
+            for name, value in _get_all_ast_annotations()
+            }
 
     def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
