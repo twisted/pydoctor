@@ -3,7 +3,7 @@
 import ast
 import sys
 from itertools import chain
-from typing import Iterator, Mapping, Tuple
+from typing import Iterator, Mapping, Optional, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -485,7 +485,9 @@ class ModuleVistor(ast.NodeVisitor):
                 return _infer_type(default)
         return None
 
-    def _annotations_from_function(self, func: ast.FunctionDef) -> Mapping[str, ast.expr]:
+    def _annotations_from_function(
+            self, func: ast.FunctionDef
+            ) -> Mapping[str, Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
         @return: Mapping from argument name to annotation.
@@ -507,15 +509,19 @@ class ModuleVistor(ast.NodeVisitor):
             kwargs = base_args.kwarg
             if kwargs:
                 yield kwargs
-        def _get_all_ast_annotations() -> Iterator[Tuple[str, ast.expr]]:
+        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():
-                if arg.annotation:
-                    yield arg.arg, arg.annotation
+                yield arg.arg, arg.annotation
             returns = func.returns
             if returns:
                 yield 'return', returns
-        return {name: self._unstring_annotation(value)
-                for name, value in _get_all_ast_annotations()}
+        return {
+            # Include parameter names even if they're not annotated, so that
+            # we can use the key set to know which parameters exist and warn
+            # when non-existing parameters are documented.
+            name: None if value is None else self._unstring_annotation(value)
+            for name, value in _get_all_ast_annotations()
+            }
 
     def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.

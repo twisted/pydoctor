@@ -243,7 +243,7 @@ def test_summary() -> None:
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
-    fromText('''
+    mod = fromText('''
     """
     A test module.
 
@@ -251,6 +251,7 @@ def test_missing_field_name(capsys: CapSys) -> None:
     @type: str
     """
     ''', modname='test')
+    epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
     assert captured == "test:5: Missing field name in @ivar\n" \
                        "test:6: Missing field name in @type\n"
