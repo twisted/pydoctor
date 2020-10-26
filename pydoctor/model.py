@@ -6,6 +6,7 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
+import ast
 import builtins
 import datetime
 import imp
@@ -15,8 +16,9 @@ import platform
 import sys
 import types
 from enum import Enum
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Mapping, Optional, Type
 
+from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import SphinxInventory
 
 if TYPE_CHECKING:
@@ -68,10 +70,12 @@ class Documentable:
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
-    docstring = None
+    docstring: Optional[str] = None
+    parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
     sourceHref = None
+    kind: str
 
     @property
     def css_class(self):
@@ -369,6 +373,7 @@ class Inheritable(Documentable):
 
 class Function(Inheritable):
     kind = "Function"
+    annotations: Mapping[str, Optional[ast.expr]]
 
     def setup(self):
         super().setup()
