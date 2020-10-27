@@ -1,3 +1,4 @@
+from typing import Optional
 import textwrap
 
 from pytest import raises
@@ -134,7 +135,7 @@ def test_func_missing_param_name(capsys: CapSys) -> None:
         """
         @param a: The first parameter.
         @param: The other one.
-        @type: L{str}
+        @type: C{str}
         """
     ''')
     epydoc2stan.format_docstring(mod.contents['f'])
@@ -185,7 +186,7 @@ def test_func_starargs(capsys: CapSys) -> None:
 
         @param *args: var-positional arguments
         @param **kwargs: var-keyword arguments
-        @type **kwargs: L{str}
+        @type **kwargs: C{str}
         """
     ''', modname='<bad>')
     good_mod = fromText('''
@@ -195,7 +196,7 @@ def test_func_starargs(capsys: CapSys) -> None:
 
         @param args: var-positional arguments
         @param kwargs: var-keyword arguments
-        @type kwargs: L{str}
+        @type kwargs: C{str}
         """
     ''', modname='<good>')
     bad_fmt = docstring2html(bad_mod.contents['f'])
@@ -370,6 +371,18 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert expected == captured
 
 
+class InMemoryInventory:
+    """
+    A simple inventory implementation which has an in-memory API link mapping.
+    """
+
+    INVENTORY = {
+        'socket.socket': 'https://docs.python.org/3/library/socket.html#socket.socket',
+        }
+
+    def getLink(self, name: str) -> Optional[str]:
+        return self.INVENTORY.get(name)
+
 def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     """
     Check that the best match is picked when there are multiple candidates.
@@ -379,24 +392,10 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     class C:
         socket = None
     ''')
+    mod.system.intersphinx = InMemoryInventory()
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier_xref('socket.socket')
 
-    assert epydoc2stan.STDLIB_URL + 'socket.html#socket.socket' == url
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert not capsys.readouterr().out
-
-
-def test_stdlib_doc_link_for_name() -> None:
-    """
-    Check the URLs returned for names from the standard library.
-    """
-
-    base = epydoc2stan.STDLIB_URL
-    link = epydoc2stan.stdlib_doc_link_for_name
-    assert base + 'exceptions.html#KeyError' == link('KeyError')
-    assert base + 'stdtypes.html#str' == link('str')
-    assert base + 'functions.html#len' == link('len')
-    assert base + 'constants.html#None' == link('None')
-    assert base + 'collections.html#collections.defaultdict' == link('collections.defaultdict')
-    assert base + 'logging.handlers.html#logging.handlers.SocketHandler' == link('logging.handlers.SocketHandler')
