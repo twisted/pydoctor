@@ -13,9 +13,6 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
-        include:
-        - python-version: 3.8
-          publish-coverage: true
 
     steps:
     - uses: actions/checkout@v2
@@ -41,6 +38,6 @@ jobs:
         tox -e test
 
     - name: Publish code coverage
-      if: matrix.publish-coverage
+      continue-on-error: true
       run: |
         tox -e codecov
