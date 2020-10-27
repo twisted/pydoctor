@@ -10,10 +10,7 @@ from typing import (
 )
 from urllib.parse import quote
 import ast
-import builtins
 import itertools
-import os
-import sys
 
 import astor
 import attr
@@ -23,23 +20,6 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
-
-
-def _find_stdlib_dir() -> str:
-    """Find the standard library location for the currently running
-    Python interpreter.
-    """
-
-    # When running in a virtualenv, when some (but not all) modules
-    # may be symlinked. We want the actual installation location of
-    # the standard library, not the location of the virtualenv.
-    os_mod_path = os.__file__
-    if os_mod_path.endswith('.pyc') or os_mod_path.endswith('.pyo'):
-        os_mod_path = os_mod_path[:-1]
-    return os.path.dirname(os.path.realpath(os_mod_path))
-
-STDLIB_DIR = _find_stdlib_dir()
-STDLIB_URL = 'https://docs.python.org/3/library/'
 
 
 def link(o: model.Documentable) -> str:
@@ -69,33 +49,6 @@ def get_docstring(
             # Treat empty docstring as undocumented.
             return None, source
     return None, None
-
-
-def stdlib_doc_link_for_name(name: str) -> Optional[str]:
-    parts = name.split('.')
-    for i in range(len(parts), 0, -1):
-        sub_parts = parts[:i]
-        filename = '/'.join(sub_parts)
-        sub_name = '.'.join(sub_parts)
-        if sub_name == 'os.path' \
-               or os.path.exists(os.path.join(STDLIB_DIR, filename) + '.py') \
-               or os.path.exists(os.path.join(STDLIB_DIR, filename, '__init__.py')) \
-               or os.path.exists(os.path.join(STDLIB_DIR, 'lib-dynload', filename) + '.so') \
-               or sub_name in sys.builtin_module_names:
-            return STDLIB_URL + sub_name + '.html#' + name
-    part0 = parts[0]
-    if part0 in builtins.__dict__ and not part0.startswith('__'):
-        bltin = builtins.__dict__[part0]
-        if isinstance(bltin, type):
-            if issubclass(bltin, BaseException):
-                return STDLIB_URL + 'exceptions.html#' + name
-            else:
-                return STDLIB_URL + 'stdtypes.html#' + name
-        elif callable(bltin):
-            return STDLIB_URL + 'functions.html#' + name
-        else:
-            return STDLIB_URL + 'constants.html#' + name
-    return None
 
 
 class _EpydocLinker(DocstringLinker):
@@ -155,13 +108,8 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return self._objLink(target)
 
-        # Check to see if 'identifier' names a builtin or standard library module.
-        fullID = self.obj.expandName(identifier)
-        linktext = stdlib_doc_link_for_name(fullID)
-        if linktext is not None:
-            return linktext
-
         # Check if the fullID exists in an intersphinx inventory.
+        fullID = self.obj.expandName(identifier)
         target_name = self.look_for_intersphinx(fullID)
         if not target_name:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
