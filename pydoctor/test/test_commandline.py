@@ -1,18 +1,17 @@
+from io import StringIO
 import sys
 
 from pydoctor import driver
-from twisted.python.compat import NativeStringIO
 
 
-def geterrtext(*options):
-    options = list(options)
+def geterrtext(*options: str) -> str:
     se = sys.stderr
-    f = NativeStringIO()
+    f = StringIO()
     print(options)
     sys.stderr = f
     try:
         try:
-            driver.main(options)
+            driver.main(list(options))
         except SystemExit:
             pass
         else:
@@ -21,19 +20,19 @@ def geterrtext(*options):
         sys.stderr = se
     return f.getvalue()
 
-def test_invalid_option():
+def test_invalid_option() -> None:
     err = geterrtext('--no-such-option')
     assert 'no such option' in err
 
-def test_cannot_advance_blank_system():
+def test_cannot_advance_blank_system() -> None:
     err = geterrtext('--make-html')
     assert 'forget an --add-package?' in err
 
-def test_no_systemclasses_py3():
+def test_no_systemclasses_py3() -> None:
     err = geterrtext('--system-class')
     assert 'requires 1 argument' in err
 
-def test_invalid_systemclasses():
+def test_invalid_systemclasses() -> None:
     err = geterrtext('--system-class=notdotted')
     assert 'dotted name' in err
     err = geterrtext('--system-class=no-such-module.System')
@@ -42,7 +41,7 @@ def test_invalid_systemclasses():
     assert 'is not a subclass' in err
 
 
-def test_projectbasedir():
+def test_projectbasedir() -> None:
     """
     The --project-base-dir option should set the projectbasedirectory attribute
     on the options object.
@@ -53,7 +52,7 @@ def test_projectbasedir():
     assert options.projectbasedirectory == value
 
 
-def test_cache_disabled_by_default():
+def test_cache_disabled_by_default() -> None:
     """
     Intersphinx object caching is disabled by default.
     """

@@ -5,7 +5,7 @@ Unit tests for model.
 import sys
 import zlib
 
-from pydoctor import model, sphinx
+from pydoctor import model
 from pydoctor.driver import parse_args
 from pydoctor.test.test_astbuilder import fromText
 
@@ -15,6 +15,7 @@ class FakeOptions:
     A fake options object as if it came from that stupid optparse thing.
     """
     sourcehref = None
+    projectbasedirectory: str
 
 
 
@@ -23,12 +24,13 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
-    system = None
+    system: model.System
     sourceHref = None
+    filepath: str
 
 
 
-def test_setSourceHrefOption():
+def test_setSourceHrefOption() -> None:
     """
     Test that the projectbasedirectory option sets the model.sourceHref
     properly.
@@ -53,7 +55,7 @@ def test_setSourceHrefOption():
     assert mod.sourceHref == expected
 
 
-def test_initialization_default():
+def test_initialization_default() -> None:
     """
     When initialized without options, will use default options and default
     verbosity.
@@ -64,7 +66,7 @@ def test_initialization_default():
     assert 3 == sut.options.verbosity
 
 
-def test_initialization_options():
+def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
@@ -75,7 +77,7 @@ def test_initialization_options():
     assert options is sut.options
 
 
-def test_fetchIntersphinxInventories_empty():
+def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
@@ -83,14 +85,14 @@ def test_fetchIntersphinxInventories_empty():
     options.intersphinx = []
     sut = model.System(options=options)
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache({}))
+    sut.fetchIntersphinxInventories({})
 
     # Use internal state since I don't know how else to
     # check for SphinxInventory state.
     assert {} == sut.intersphinx._links
 
 
-def test_fetchIntersphinxInventories_content():
+def test_fetchIntersphinxInventories_content() -> None:
     """
     Download and parse intersphinx inventories for each configured
     intersphix.
@@ -108,11 +110,13 @@ def test_fetchIntersphinxInventories_content():
         }
     sut = model.System(options=options)
     log = []
-    sut.msg = lambda part, msg: log.append((part, msg))
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
     # Patch url getter to avoid touching the network.
     sut.intersphinx._getURL = lambda url: url_content[url]
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache(url_content))
+    sut.fetchIntersphinxInventories(url_content)
 
     assert [] == log
     assert (
@@ -125,7 +129,7 @@ def test_fetchIntersphinxInventories_content():
         )
 
 
-def test_docsources_class_attribute():
+def test_docsources_class_attribute() -> None:
     src = '''
     class Base:
         attr = False
@@ -139,7 +143,7 @@ def test_docsources_class_attribute():
     assert base_attr in list(sub_attr.docsources())
 
 
-def test_docstring_lineno():
+def test_docstring_lineno() -> None:
     src = '''
     def f():
         """
@@ -156,10 +160,10 @@ def test_docstring_lineno():
 
 
 class Dummy:
-    def crash(self):
+    def crash(self) -> None:
         """Mmm"""
 
-def test_introspection():
+def test_introspection() -> None:
     """Find docstrings from this test using introspection."""
     system = model.System()
     py_mod = sys.modules[__name__]

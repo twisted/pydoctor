@@ -6,7 +6,9 @@ import datetime
 import io
 import string
 import zlib
-from contextlib import closing
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Callable, Iterator, List, Optional, Tuple, cast
 
 import cachecontrol
 import pytest
@@ -17,59 +19,89 @@ from urllib3 import HTTPResponse
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from . import CapLog
 
-class PersistentBytesIO(io.BytesIO):
+
+
+class PydoctorLogger:
     """
-    A custom BytesIO which keeps content after file is closed.
+    Partial implementation of pydoctor.model.System.msg() that records
+    logged messages.
     """
-    def close(self):
-        """
-        Close, but keep the memory buffer and seek position.
-        """
-        pass
+
+    def __init__(self) -> None:
+        self.messages: List[Tuple[str, str, int]] = []
+
+    def __call__(self, section: str, msg: str, thresh: int = 0) -> None:
+        self.messages.append((section, msg, thresh))
 
 
-
-def make_SphinxInventoryWithLog(factory=sphinx.SphinxInventory):
+class PydoctorNoLogger:
     """
-    Return a SphinxInventory with patched log.
+    Partial implementation of pydoctor.model.System.msg() that asserts
+    if any message is logged.
     """
-    log = []
-    def msg(section, msg, thresh=0):
-        """
-        Partial implementation of pydoctor.model.System.msg
-        """
-        log.append((section, msg, thresh))
 
-    inventory = factory(logger=msg)
-    return (inventory, log)
+    def __call__(self, section: str, msg: str, thresh: int = 0) -> None:
+        assert False
 
 
-def test_generate_empty_functional():
+class InvReader(sphinx.SphinxInventory):
+    _logger: PydoctorLogger
+
+
+class InvWriter(sphinx.SphinxInventoryWriter):
+    _logger: PydoctorLogger
+
+
+@pytest.fixture
+def inv_reader() -> InvReader:
+    return InvReader(logger=PydoctorLogger())
+
+
+@pytest.fixture
+def inv_reader_nolog() -> sphinx.SphinxInventory:
+    return sphinx.SphinxInventory(logger=PydoctorNoLogger())
+
+
+@pytest.fixture
+def inv_writer() -> InvWriter:
+    return InvWriter(logger=PydoctorLogger(), project_name='project_name')
+
+
+@pytest.fixture
+def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
+    return sphinx.SphinxInventoryWriter(logger=PydoctorNoLogger(), project_name='project_name')
+
+
+IGNORE_SYSTEM = cast(model.System, 'ignore-system')
+"""Passed as a System when we don't want the system to be accessed."""
+
+
+def test_generate_empty_functional(inv_writer: InvWriter) -> None:
     """
     Functional test for index generation of empty API.
 
     Header is plain text while content is compressed.
     """
-    project_name = 'some-name'
-    log = []
-    logger = lambda section, message, thresh=0: log.append((
-        section, message, thresh))
-    sut = sphinx.SphinxInventoryWriter(logger=logger, project_name=project_name)
-    output = PersistentBytesIO()
-    sut._openFileForWriting = lambda path: closing(output)
 
-    sut.generate(subjects=[], basepath='base-path')
+    output = io.BytesIO()
+    @contextmanager
+    def openFileForWriting(path: str) -> Iterator[io.BytesIO]:
+        yield output
+    inv_writer._openFileForWriting = openFileForWriting # type: ignore[assignment]
+
+    inv_writer.generate(subjects=[], basepath='base-path')
 
     expected_log = [(
         'sphinx',
         'Generating objects inventory at base-path/objects.inv',
         0
         )]
-    assert expected_log == log
+    assert expected_log == inv_writer._logger.messages
 
     expected_ouput = b"""# Sphinx inventory version 2
-# Project: some-name
+# Project: project_name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
 x\x9c\x03\x00\x00\x00\x00\x01"""
@@ -77,12 +109,11 @@ x\x9c\x03\x00\x00\x00\x00\x01"""
 
 
 
-def test_generateContent():
+def test_generateContent(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Return a string with inventory for all  targeted objects, recursive.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
+
     system = model.System()
     root1 = model.Package(system, 'package1')
     root2 = model.Package(system, 'package2')
@@ -90,7 +121,7 @@ def test_generateContent():
     system.addObject(child1)
     subjects = [root1, root2]
 
-    result = sut._generateContent(subjects)
+    result = inv_writer_nolog._generateContent(subjects)
 
     expected_result = (
         b'package1 py:module -1 package1.html -\n'
@@ -100,87 +131,78 @@ def test_generateContent():
     assert expected_result == result
 
 
-def test_generateLine_package():
+def test_generateLine_package(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for package.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
 
-    result = sut._generateLine(
-        model.Package('ignore-system', 'package1'))
+    result = inv_writer_nolog._generateLine(
+        model.Package(IGNORE_SYSTEM, 'package1'))
 
     assert 'package1 py:module -1 package1.html -\n' == result
 
 
-def test_generateLine_module():
+def test_generateLine_module(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for module.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
 
-    result = sut._generateLine(
-        model.Module('ignore-system', 'module1'))
+    result = inv_writer_nolog._generateLine(
+        model.Module(IGNORE_SYSTEM, 'module1'))
 
     assert 'module1 py:module -1 module1.html -\n' == result
 
 
-def test_generateLine_class():
+def test_generateLine_class(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for class.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
 
-    result = sut._generateLine(
-        model.Class('ignore-system', 'class1'))
+    result = inv_writer_nolog._generateLine(
+        model.Class(IGNORE_SYSTEM, 'class1'))
 
     assert 'class1 py:class -1 class1.html -\n' == result
 
 
-def test_generateLine_function():
+def test_generateLine_function(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for function.
 
     Functions are inside a module.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
-    parent = model.Module('ignore-system', 'module1')
 
-    result = sut._generateLine(
-        model.Function('ignore-system', 'func1', parent))
+    parent = model.Module(IGNORE_SYSTEM, 'module1')
+
+    result = inv_writer_nolog._generateLine(
+        model.Function(IGNORE_SYSTEM, 'func1', parent))
 
     assert 'module1.func1 py:function -1 module1.html#func1 -\n' == result
 
 
-def test_generateLine_method():
+def test_generateLine_method(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for method.
 
     Methods are functions inside a class.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
-    parent = model.Class('ignore-system', 'class1')
 
-    result = sut._generateLine(
-        model.Function('ignore-system', 'meth1', parent))
+    parent = model.Class(IGNORE_SYSTEM, 'class1')
+
+    result = inv_writer_nolog._generateLine(
+        model.Function(IGNORE_SYSTEM, 'meth1', parent))
 
     assert 'class1.meth1 py:method -1 class1.html#meth1 -\n' == result
 
 
-def test_generateLine_attribute():
+def test_generateLine_attribute(inv_writer_nolog: sphinx.SphinxInventoryWriter) -> None:
     """
     Check inventory for attributes.
     """
-    sut = sphinx.SphinxInventoryWriter(logger=object(),
-                                       project_name='project_name')
-    parent = model.Class('ignore-system', 'class1')
 
-    result = sut._generateLine(
-        model.Attribute('ignore-system', 'attr1', parent))
+    parent = model.Class(IGNORE_SYSTEM, 'class1')
+
+    result = inv_writer_nolog._generateLine(
+        model.Attribute(IGNORE_SYSTEM, 'attr1', parent))
 
     assert 'class1.attr1 py:attribute -1 class1.html#attr1 -\n' == result
 
@@ -191,131 +213,128 @@ class UnknownType(model.Documentable):
     """
 
 
-def test_generateLine_unknown():
+def test_generateLine_unknown(inv_writer: InvWriter) -> None:
     """
     When object type is uknown a message is logged and is handled as
     generic object.
     """
-    sut, log = make_SphinxInventoryWithLog(
-        lambda **kwargs: sphinx.SphinxInventoryWriter(
-                                    project_name='project_name', **kwargs)
-        )
 
-    result = sut._generateLine(
-        UnknownType('ignore-system', 'unknown1'))
+    result = inv_writer._generateLine(
+        UnknownType(IGNORE_SYSTEM, 'unknown1'))
 
     assert 'unknown1 py:obj -1 unknown1.html -\n' == result
+    assert [(
+        'sphinx',
+        "Unknown type <class 'pydoctor.test.test_sphinx.UnknownType'> for unknown1.",
+        -1
+        )] == inv_writer._logger.messages
 
 
-
-def test_getPayload_empty():
+def test_getPayload_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return empty string.
     """
-    sut = sphinx.SphinxInventory(logger=object())
+
     content = b"""# Sphinx inventory version 2
 # Project: some-name
 # Version: 2.0
 # The rest of this file is compressed with zlib.
 x\x9c\x03\x00\x00\x00\x00\x01"""
 
-    result = sut._getPayload('http://base.ignore', content)
+    result = inv_reader_nolog._getPayload('http://base.ignore', content)
 
     assert '' == result
 
 
-def test_getPayload_content():
+def test_getPayload_content(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return content as string.
     """
+
     payload = "first_line\nsecond line\nit's a snake: \U0001F40D"
-    sut = sphinx.SphinxInventory(logger=object())
     content = b"""# Ignored line
 # Project: some-name
 # Version: 2.0
 # commented line.
 """ + zlib.compress(payload.encode('utf-8'))
 
-    result = sut._getPayload('http://base.ignore', content)
+    result = inv_reader_nolog._getPayload('http://base.ignore', content)
 
     assert payload == result
 
 
-def test_getPayload_invalid_uncompress():
+def test_getPayload_invalid_uncompress(inv_reader: InvReader) -> None:
     """
     Return empty string and log an error when failing to uncompress data.
     """
-    sut, log = make_SphinxInventoryWithLog()
     base_url = 'http://tm.tld'
     content = b"""# Project: some-name
 # Version: 2.0
 not-valid-zlib-content"""
 
-    result = sut._getPayload(base_url, content)
+    result = inv_reader._getPayload(base_url, content)
 
     assert '' == result
     assert [(
         'sphinx', 'Failed to uncompress inventory from http://tm.tld', -1,
-        )] == log
+        )] == inv_reader._logger.messages
 
 
-def test_getPayload_invalid_decode():
+def test_getPayload_invalid_decode(inv_reader: InvReader) -> None:
     """
     Return empty string and log an error when failing to uncompress data.
     """
     payload = b'\x80'
-    sut, log = make_SphinxInventoryWithLog()
     base_url = 'http://tm.tld'
     content = b"""# Project: some-name
 # Version: 2.0
 """ + zlib.compress(payload)
 
-    result = sut._getPayload(base_url, content)
+    result = inv_reader._getPayload(base_url, content)
 
     assert '' == result
     assert [(
         'sphinx', 'Failed to decode inventory from http://tm.tld', -1,
-        )] == log
+        )] == inv_reader._logger.messages
 
 
-def test_getLink_not_found():
+def test_getLink_not_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return None if link does not exists.
     """
-    sut = sphinx.SphinxInventory(logger=object())
 
-    assert None is sut.getLink('no.such.name')
+    assert None is inv_reader_nolog.getLink('no.such.name')
 
 
-def test_getLink_found():
+def test_getLink_found(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return the link from internal state.
     """
-    sut = sphinx.SphinxInventory(logger=object())
-    sut._links['some.name'] = ('http://base.tld', 'some/url.php')
 
-    assert 'http://base.tld/some/url.php' == sut.getLink('some.name')
+    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php')
+
+    assert 'http://base.tld/some/url.php' == inv_reader_nolog.getLink('some.name')
 
 
-def test_getLink_self_anchor():
+def test_getLink_self_anchor(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return the link with anchor as target name when link end with $.
     """
-    sut = sphinx.SphinxInventory(logger=object())
-    sut._links['some.name'] = ('http://base.tld', 'some/url.php#$')
 
-    assert 'http://base.tld/some/url.php#some.name' == sut.getLink('some.name')
+    inv_reader_nolog._links['some.name'] = ('http://base.tld', 'some/url.php#$')
+
+    assert 'http://base.tld/some/url.php#some.name' == inv_reader_nolog.getLink('some.name')
 
 
-def test_update_functional():
+def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Functional test for updating from an empty inventory.
     """
+
     payload = (
         b'some.module1 py:module -1 module1.html -\n'
         b'other.module2 py:module 0 module2.html Other description\n'
         )
-    sut = sphinx.SphinxInventory(logger=object())
     # Patch URL loader to avoid hitting the system.
     content = b"""# Sphinx inventory version 2
 # Project: some-name
@@ -325,72 +344,68 @@ def test_update_functional():
 
     url = 'http://some.url/api/objects.inv'
 
-    sut.update(sphinx.StubCache({url: content}), url)
+    inv_reader_nolog.update({url: content}, url)
 
-    assert 'http://some.url/api/module1.html' == sut.getLink('some.module1')
-    assert 'http://some.url/api/module2.html' == sut.getLink('other.module2')
+    assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
+    assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
 
 
-def test_update_bad_url():
+def test_update_bad_url(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get base url from url.
     """
-    sut, log = make_SphinxInventoryWithLog()
 
-    sut.update(sphinx.StubCache({}), 'really.bad.url')
+    inv_reader.update({}, 'really.bad.url')
 
-    assert sut._links == {}
+    assert inv_reader._links == {}
     expected_log = [(
         'sphinx', 'Failed to get remote base url for really.bad.url', -1
         )]
-    assert expected_log == log
+    assert expected_log == inv_reader._logger.messages
 
 
-def test_update_fail():
+def test_update_fail(inv_reader: InvReader) -> None:
     """
     Log an error when failing to get content from url.
     """
-    sut, log = make_SphinxInventoryWithLog()
 
-    sut.update(sphinx.StubCache({}), 'http://some.tld/o.inv')
+    inv_reader.update({}, 'http://some.tld/o.inv')
 
-    assert sut._links == {}
+    assert inv_reader._links == {}
     expected_log = [(
         'sphinx',
         'Failed to get object inventory from http://some.tld/o.inv',
         -1,
         )]
-    assert expected_log == log
+    assert expected_log == inv_reader._logger.messages
 
 
-def test_parseInventory_empty():
+def test_parseInventory_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return empty dict for empty input.
     """
-    sut = sphinx.SphinxInventory(logger=object())
 
-    result = sut._parseInventory('http://base.tld', '')
+    result = inv_reader_nolog._parseInventory('http://base.tld', '')
 
     assert {} == result
 
 
-def test_parseInventory_single_line():
+def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) -> None:
     """
     Return a dict with a single member.
     """
-    sut = sphinx.SphinxInventory(logger=object())
 
-    result = sut._parseInventory(
+    result = inv_reader_nolog._parseInventory(
         'http://base.tld', 'some.attr py:attr -1 some.html De scription')
 
     assert {'some.attr': ('http://base.tld', 'some.html')} == result
 
 
-def test_parseInventory_invalid_lines():
+def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     """
     Skip line and log an error.
     """
-    sut, log = make_SphinxInventoryWithLog()
+
     base_url = 'http://tm.tld'
     content = (
         'good.attr py:attribute -1 some.html -\n'
@@ -400,7 +415,7 @@ def test_parseInventory_invalid_lines():
         'good.again py:module 0 again.html -\n'
         )
 
-    result = sut._parseInventory(base_url, content)
+    result = inv_reader._parseInventory(base_url, content)
 
     assert {
         'good.attr': (base_url, 'some.html'),
@@ -414,7 +429,7 @@ def test_parseInventory_invalid_lines():
             ),
         ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
         ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
-        ] == log
+        ] == inv_reader._logger.messages
 
 
 maxAgeAmounts = st.integers() | st.just("\x00")
@@ -430,7 +445,7 @@ class TestParseMaxAge:
         amount=maxAgeAmounts,
         unit=maxAgeUnits,
     )
-    def test_toTimedelta(self, amount, unit):
+    def test_toTimedelta(self, amount: int, unit: str) -> None:
         """
         A parsed max age dictionary consists of valid arguments to
         L{datetime.timedelta}, and the constructed L{datetime.timedelta}
@@ -461,14 +476,14 @@ class ClosingBytesIO(io.BytesIO):
     standard library.
     """
 
-    def read(self, *args, **kwargs):
-        data = super().read(*args, **kwargs)
+    def read(self, size: Optional[int] = None) -> bytes:
+        data = super().read(size)
         if self.tell() >= len(self.getvalue()):
             self.close()
         return data
 
 
-def test_ClosingBytesIO():
+def test_ClosingBytesIO() -> None:
     """
     L{ClosingBytesIO} closes itself when all its data has been read.
     """
@@ -511,7 +526,7 @@ class TestIntersphinxCache:
             return monkeypatch
         return send_returns
 
-    def test_cache(self, tmpdir, send_returns):
+    def test_cache(self, tmp_path: Path, send_returns: Callable[[HTTPResponse], None]) -> None:
         """
         L{IntersphinxCache.get} caches responses to the file system.
         """
@@ -532,7 +547,7 @@ class TestIntersphinxCache:
 
         loadsCache = sphinx.IntersphinxCache.fromParameters(
             sessionFactory=requests.Session,
-            cachePath=str(tmpdir),
+            cachePath=str(tmp_path),
             maxAgeDictionary={"weeks": 1}
         )
 
@@ -557,63 +572,42 @@ class TestIntersphinxCache:
 
         readsCacheFromFileSystem = sphinx.IntersphinxCache.fromParameters(
             sessionFactory=requests.Session,
-            cachePath=str(tmpdir),
+            cachePath=str(tmp_path),
             maxAgeDictionary={"weeks": 1}
         )
 
         assert readsCacheFromFileSystem.get(url) == content
 
-    def test_getRaisesException(self):
+    def test_getRaisesException(self, caplog: CapLog) -> None:
         """
         L{IntersphinxCache.get} returns L{None} if an exception is
         raised while C{GET}ing a URL and logs the exception.
         """
-        loggedExceptions = []
 
-        class _Logger:
-
-            @staticmethod
-            def exception(*args, **kwargs):
-                loggedExceptions.append((args, kwargs))
+        class _TestException(Exception):
+            pass
 
         class _RaisesOnGet:
 
             @staticmethod
-            def get(url):
-                raise Exception()
+            def get(url: str) -> bytes:
+                raise _TestException()
 
-        cache = sphinx.IntersphinxCache(session=_RaisesOnGet, logger=_Logger)
+        session = cast(requests.Session, _RaisesOnGet)
+        cache = sphinx.IntersphinxCache(session=session)
 
         assert cache.get("some url") is None
 
-        assert len(loggedExceptions)
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelname == "ERROR"
+        assert caplog.records[0].exc_info is not None
+        assert caplog.records[0].exc_info[0] is _TestException
 
 
-class TestStubCache:
-    """
-    Tests for L{sphinx.StubCache}.
-    """
-
-    def test_getFromCache(self):
-        """
-        L{sphinx.StubCache.get} returns its cached content for a URL.
-        """
-        url = "url"
-        content = b"content"
-
-        cache = sphinx.StubCache({url: content})
-
-        assert cache.get(url) is content
-
-    def test_not_in_cache(self):
-        """
-        L{sphinx.StubCache.get} returns L{None} if it has no cached
-        content for a URL.
-        """
-        cache = sphinx.StubCache({})
-
-        assert cache.get(b"url") is None
-
+@pytest.fixture(scope='module')
+def cacheDirectory(request, tmp_path_factory):
+    name = request.module.__name__.split('.')[-1]
+    return tmp_path_factory.mktemp(f'{name}-cache')
 
 @given(
     clearCache=st.booleans(),
@@ -628,22 +622,24 @@ class TestStubCache:
 )
 @settings(max_examples=700)
 def test_prepareCache(
-        tmpdir,
-        clearCache,
-        enableCache,
-        cacheDirectoryName,
-        maxAgeAmount,
-        maxAgeUnit,
-):
+        cacheDirectory: Path,
+        clearCache: bool,
+        enableCache: bool,
+        cacheDirectoryName: str,
+        maxAgeAmount: int,
+        maxAgeUnit: str,
+) -> None:
     """
     The cache directory is deleted when C{clearCache} is L{True}; an
     L{IntersphinxCache} is created with a session on which is mounted
     L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
     """
-    cacheDirectory = tmpdir.join("fakecache").ensure(dir=True)
-    for child in cacheDirectory.listdir():
-        child.remove()
-    cacheDirectory.ensure(cacheDirectoryName)
+
+    cacheDirectory.mkdir(exist_ok=True)
+    for child in cacheDirectory.iterdir():
+        child.unlink()
+    with open(cacheDirectory / cacheDirectoryName, 'w'):
+        pass
 
     try:
         cache = sphinx.prepareCache(
@@ -667,4 +663,4 @@ def test_prepareCache(
                 assert not hasCacheControl
 
     if clearCache:
-        assert not tmpdir.listdir()
+        assert not cacheDirectory.exists()

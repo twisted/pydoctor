@@ -413,7 +413,7 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase = None
+    sourcebase: Optional[str] = None
 
     def __init__(self, options=None):
         self.allobjects = {}

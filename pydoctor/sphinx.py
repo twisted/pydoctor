@@ -8,7 +8,8 @@ import shutil
 import textwrap
 import zlib
 from typing import (
-    TYPE_CHECKING, Callable, Dict, IO, Iterable, Mapping, Optional, Tuple
+    TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping,
+    Optional, Tuple
 )
 
 import appdirs
@@ -162,7 +163,7 @@ class SphinxInventoryWriter:
             content = self._generateContent(subjects)
             target.write(zlib.compress(content))
 
-    def _openFileForWriting(self, path: str) -> IO[bytes]:
+    def _openFileForWriting(self, path: str) -> ContextManager[IO[bytes]]:
         """
         Helper for testing.
         """
@@ -361,26 +362,6 @@ class IntersphinxCache:
                 url
             )
             return None
-
-
-@attr.s(auto_attribs=True)
-class StubCache:
-    """
-    A stub cache.
-    """
-
-    _cache: Dict[str, bytes]
-    """A mapping from URLs to content."""
-
-    def get(self, url: str) -> Optional[bytes]:
-        """
-        Return stored for the given URL.
-
-        @param url: The URL to retrieve.
-        @return: The "body" of the URL - the value from L{_cache} or
-            L{None}.
-        """
-        return self._cache.get(url)
 
 
 def prepareCache(
