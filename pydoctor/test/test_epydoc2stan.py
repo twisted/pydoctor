@@ -371,12 +371,17 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert expected == captured
 
 
-class FakeInventory:
+class InMemoryInventory:
+    """
+    A simple inventory implementation which has an in-memory API link mapping.
+    """
+
+    INVENTORY = {
+        'socket.socket': 'https://docs.python.org/3/library/socket.html#socket.socket',
+        }
 
     def getLink(self, name: str) -> Optional[str]:
-        return {
-            'socket.socket': 'https://docs.python.org/3/library/socket.html#socket.socket',
-            }.get(name)
+        return self.INVENTORY.get(name)
 
 def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     """
@@ -387,7 +392,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     class C:
         socket = None
     ''')
-    mod.system.intersphinx = FakeInventory()
+    mod.system.intersphinx = InMemoryInventory()
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier_xref('socket.socket')
