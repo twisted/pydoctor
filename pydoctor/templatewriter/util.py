@@ -7,10 +7,6 @@ from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import Tag, tags
 
-def link(o: model.Documentable) -> str:
-    if not o.isVisible:
-        o.system.msg("html", "don't link to %s"%o.fullName())
-    return o.url
 
 def srclink(o):
     return o.sourceHref
