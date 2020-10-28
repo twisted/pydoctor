@@ -402,6 +402,11 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
 
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
+    """
+    When a link in an epytext docstring cannot be resolved, the reference
+    and the line number of the link should be reported.
+    """
+
     mod = fromText('''
     """
     A test module.
@@ -417,6 +422,13 @@ def test_xref_not_found_epytext(capsys: CapSys) -> None:
 
 
 def test_xref_not_found_restructured(capsys: CapSys) -> None:
+    """
+    When a link in an reStructedText docstring cannot be resolved, the reference
+    and the line number of the link should be reported.
+    However, currently the best we can do is report the starting line of the
+    docstring instead.
+    """
+
     system = model.System()
     system.options.docformat = 'restructuredtext'
     mod = fromText('''
