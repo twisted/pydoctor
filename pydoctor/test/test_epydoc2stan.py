@@ -444,4 +444,5 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     # TODO: Should actually be line 5, but I can't get docutils to fill in
     #       the line number when it calls visit_title_reference().
+    #       https://github.com/twisted/pydoctor/issues/237
     assert captured == "test:3: invalid ref to 'NoSuchName' not resolved\n"
