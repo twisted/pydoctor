@@ -40,7 +40,6 @@ def test_setSourceHrefOption() -> None:
     moduleRelativePart = "/package/module.py"
 
     mod = FakeDocumentable()
-    mod.filepath = projectBaseDir + moduleRelativePart
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
@@ -49,7 +48,7 @@ def test_setSourceHrefOption() -> None:
     system.sourcebase = viewSourceBase
     system.options = options
     mod.system = system
-    system.setSourceHref(mod)
+    system.setSourceHref(mod, projectBaseDir + moduleRelativePart)
 
     expected = viewSourceBase + moduleRelativePart
     assert mod.sourceHref == expected
@@ -170,10 +169,12 @@ def test_introspection() -> None:
     system.introspectModule(py_mod, __name__)
 
     module = system.objForFullName(__name__)
+    assert module is not None
     assert module.docstring == __doc__
 
     func = module.contents['test_introspection']
     assert func.docstring == "Find docstrings from this test using introspection."
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
+    assert method is not None
     assert method.docstring == "Mmm"

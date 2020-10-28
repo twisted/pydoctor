@@ -69,8 +69,10 @@ def test_basic_package(tmp_path: Path) -> None:
     w.writeDocsFor(root, False)
     w.writeModuleIndex(system)
     for ob in system.allobjects.values():
-        if ob.documentation_location is model.DocLocation.OWN_PAGE:
-            assert (tmp_path / f'{ob.fullName()}.html').is_file()
+        url = ob.url
+        if '#' in url:
+            url = url[:url.find('#')]
+        assert (tmp_path / url).is_file()
     with open(tmp_path / 'basic.html') as f:
         assert 'Package docstring' in f.read()
 

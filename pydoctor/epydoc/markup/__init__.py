@@ -184,15 +184,15 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
-    def resolve_identifier_xref(self, identifier):
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
         """
         Resolve a crossreference link to a Python identifier.
 
-        @type identifier: C{string}
         @param identifier: The name of the Python identifier that
             should be linked to.
-        @rtype: C{string}
-        @return: The URL of the target
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The URL of the target.
         @raise LookupError: If C{identifier} could not be resolved.
         """
         raise NotImplementedError()

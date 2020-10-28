@@ -654,15 +654,15 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     captured = capsys.readouterr()
     lines = captured.out.split('\n')
     assert len(lines) > 0 and lines[0] == \
-        "<unknown>:20: Unable to figure out target for __doc__ assignment"
+        "<test>:20: Unable to figure out target for __doc__ assignment"
     assert len(lines) > 1 and lines[1] == \
-        "<unknown>:21: Unable to figure out target for __doc__ assignment: " \
+        "<test>:21: Unable to figure out target for __doc__ assignment: " \
         "computed full name not found: real"
     assert len(lines) > 2 and lines[2] == \
-        "<unknown>:22: Unable to figure out value for __doc__ assignment, " \
+        "<test>:22: Unable to figure out value for __doc__ assignment, " \
         "maybe too complex"
     assert len(lines) > 3 and lines[3] == \
-        "<unknown>:23: Ignoring value assigned to __doc__: not a string"
+        "<test>:23: Ignoring value assigned to __doc__: not a string"
     assert len(lines) == 5 and lines[-1] == ''
 
 @systemcls_param

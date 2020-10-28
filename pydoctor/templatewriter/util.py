@@ -1,16 +1,16 @@
 """Miscellaneous utilities."""
 
-from urllib.parse import quote
+from typing import Optional
 import os
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
-from twisted.web.template import tags
+from twisted.web.template import Tag, tags
 
-def link(o):
+def link(o: model.Documentable) -> str:
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
-    return quote(o.fullName()+'.html')
+    return o.url
 
 def srclink(o):
     return o.sourceHref
@@ -23,22 +23,13 @@ def templatefile(filename):
 def templatefilepath(filename):
     return FilePath(templatefile(filename))
 
-def taglink(o, label=None):
+def taglink(o: model.Documentable, label: Optional[str] = None) -> Tag:
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
     if label is None:
         label = o.fullName()
-    if o.documentation_location is model.DocLocation.PARENT_PAGE:
-        p = o.parent
-        if isinstance(p, model.Module) and p.name == '__init__':
-            p = p.parent
-        linktext = link(p) + '#' + quote(o.name)
-    elif o.documentation_location is model.DocLocation.OWN_PAGE:
-        linktext = link(o)
-    else:
-        raise AssertionError(
-            f"Unknown documentation_location: {o.documentation_location}")
     # Create a link to the object, with a "data-type" attribute which says what
     # kind of object it is (class, etc). This helps doc2dash figure out what it
     # is.
-    return tags.a(href=linktext, class_="code", **{"data-type":o.kind})(label)
+    ret: Tag = tags.a(href=o.url, class_="code", **{"data-type": o.kind})(label)
+    return ret

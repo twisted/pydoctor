@@ -324,8 +324,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleDocstringUpdate(self, targetNode, expr, lineno):
         def warn(msg):
             self.system.msg('ast', "%s:%d: %s" % (
-                    getattr(self.builder.currentMod, 'filepath', '<unknown>'),
-                    lineno, msg))
+                    self.builder.currentMod.description, lineno, msg))
 
         # Figure out target object.
         full_name = node2fullname(targetNode, self.builder.current)

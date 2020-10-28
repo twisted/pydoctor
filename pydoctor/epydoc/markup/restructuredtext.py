@@ -393,8 +393,11 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         if m: text, target = m.groups()
         else: target = text = node.astext()
         label = tags.code(text)
+        # TODO: 'node.line' is None for some reason.
+        #       https://github.com/twisted/pydoctor/issues/237
+        lineno = 0
         try:
-            url = self._linker.resolve_identifier_xref(target)
+            url = self._linker.resolve_identifier_xref(target, lineno)
         except LookupError:
             xref = label
         else:

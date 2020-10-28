@@ -206,11 +206,7 @@ class SphinxInventoryWriter:
         from pydoctor import model
 
         full_name = obj.fullName()
-
-        if obj.documentation_location is model.DocLocation.OWN_PAGE:
-            url = obj.fullName() + '.html'
-        else:
-            url = obj.parent.fullName() + '.html#' + obj.name
+        url = obj.url
 
         display = '-'
         if isinstance(obj, (model.Package, model.Module)):

@@ -8,7 +8,6 @@ from typing import (
     Callable, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional,
     Sequence, Tuple
 )
-from urllib.parse import quote
 import ast
 import itertools
 
@@ -20,10 +19,6 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
-
-
-def link(o: model.Documentable) -> str:
-    return quote(o.fullName()+'.html')
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
@@ -56,21 +51,10 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj: model.Documentable):
         self.obj = obj
 
-    def _objLink(self, obj: model.Documentable) -> str:
-        if obj.documentation_location is model.DocLocation.PARENT_PAGE:
-            p = obj.parent
-            if isinstance(p, model.Module) and p.name == '__init__':
-                p = p.parent
-            return link(p) + '#' + quote(obj.name)
-        elif obj.documentation_location is model.DocLocation.OWN_PAGE:
-            return link(obj)
-        else:
-            raise AssertionError(
-                f"Unknown documentation_location: {obj.documentation_location}")
-
     def look_for_name(self,
             name: str,
-            candidates: Iterable[model.Documentable]
+            candidates: Iterable[model.Documentable],
+            lineno: int
             ) -> Optional[model.Documentable]:
         part0 = name.split('.')[0]
         potential_targets = []
@@ -87,7 +71,7 @@ class _EpydocLinker(DocstringLinker):
                 "ambiguous ref to %s, could be %s" % (
                     name,
                     ', '.join(ob.fullName() for ob in potential_targets)),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         return None
 
     def look_for_intersphinx(self, name: str) -> Optional[str]:
@@ -98,7 +82,7 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name) # type: ignore[no-any-return]
 
-    def resolve_identifier_xref(self, identifier: str) -> str:
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
@@ -106,7 +90,7 @@ class _EpydocLinker(DocstringLinker):
         # Check if 'identifier' is the fullName of an object.
         target = self.obj.system.objForFullName(identifier)
         if target is not None:
-            return self._objLink(target)
+            return target.url
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
@@ -129,7 +113,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = src.resolveName(identifier)
             if target is not None:
-                return self._objLink(target)
+                return target.url
             src = src.parent
 
         # Walk up the object tree again and see if 'identifier' refers to an
@@ -138,9 +122,9 @@ class _EpydocLinker(DocstringLinker):
         # If at any level 'identifier' refers to more than one object, complain.
         src = self.obj
         while src is not None:
-            target = self.look_for_name(identifier, src.contents.values())
+            target = self.look_for_name(identifier, src.contents.values(), lineno)
             if target is not None:
-                return self._objLink(target)
+                return target.url
             src = src.parent
 
         # Examine every module and package in the system and see if 'identifier'
@@ -148,18 +132,19 @@ class _EpydocLinker(DocstringLinker):
         # found, complain.
         target = self.look_for_name(identifier, itertools.chain(
             self.obj.system.objectsOfType(model.Module),
-            self.obj.system.objectsOfType(model.Package)))
+            self.obj.system.objectsOfType(model.Package)),
+            lineno)
         if target is not None:
-            return self._objLink(target)
+            return target.url
 
         if identifier == fullID:
             self.obj.report(
                 "invalid ref to '%s' not resolved" % (identifier,),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         else:
             self.obj.report(
                 "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
-                section='resolve_identifier_xref')
+                'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
 
@@ -438,6 +423,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     elif source is None:
         # A split field is documented by its parent.
         source = obj.parent
+        assert source is not None
 
     try:
         stan = pdoc.to_stan(_EpydocLinker(source))

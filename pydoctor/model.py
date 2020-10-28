@@ -17,6 +17,7 @@ import sys
 import types
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping, Optional, Type
+from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import SphinxInventory
@@ -71,6 +72,7 @@ class Documentable:
     """
     documentation_location = DocLocation.OWN_PAGE
     docstring: Optional[str] = None
+    system: 'System'
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -85,14 +87,21 @@ class Documentable:
             class_ += ' private'
         return class_
 
-    def __init__(self, system, name, parent=None):
+    def __init__(
+            self, system: 'System', name: str,
+            parent: Optional['Documentable'] = None,
+            source_path: Optional[str] = None
+            ):
+        if not isinstance(self, Package):
+            self.doctarget = self
+            if source_path is None and parent is not None:
+                source_path = parent.source_path # type: ignore[has-type]
         self.system = system
         self.name = name
         self.parent = parent
         self.parentMod = None
+        self.source_path = source_path
         self.setup()
-        if not isinstance(self, Package):
-            self.doctarget = self
 
     def setup(self):
         self.contents = {}
@@ -127,7 +136,34 @@ class Documentable:
                 if parentSourceHref:
                     self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
 
-    def fullName(self):
+    @property
+    def description(self) -> str:
+        """A string describing our source location to the user.
+
+        If this module's code was read from a file, this returns
+        its file path. In other cases, such as during unit testing,
+        the full module name is returned.
+        """
+        return self.source_path or self.module.fullName()
+
+    @property
+    def url(self) -> str:
+        """Relative URL at which the documentation for this Documentable
+        can be found.
+        """
+        location = self.documentation_location
+        if location is DocLocation.OWN_PAGE:
+            return f'{quote(self.fullName())}.html'
+        elif location is DocLocation.PARENT_PAGE:
+            parent = self.parent
+            if isinstance(parent, Module) and parent.name == '__init__':
+                parent = parent.parent
+            assert parent is not None
+            return f'{quote(parent.fullName())}.html#{quote(self.name)}'
+        else:
+            assert False, location
+
+    def fullName(self) -> str:
         parent = self.parent
         if parent is not None:
             if (parent.parent and isinstance(parent.parent, Package)
@@ -248,7 +284,7 @@ class Documentable:
     def report(self, descr, section='parsing', lineno_offset=0):
         """Log an error or warning about this documentable object."""
 
-        if section == 'docstring':
+        if section in ('docstring', 'resolve_identifier_xref'):
             linenumber = self.docstring_lineno
         else:
             linenumber = self.linenumber
@@ -261,7 +297,7 @@ class Documentable:
 
         self.system.msg(
             section,
-            f'{self.module.description}:{linenumber}: {descr}',
+            f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
 
 
@@ -321,17 +357,6 @@ class Module(CanContainImportsDocumentable):
     @property
     def module(self):
         return self
-
-    @property
-    def description(self):
-        """A string describing this module to the user.
-
-        If this module's code was read from a file, this returns
-        its file path. In other cases, such as during unit testing,
-        the module's full name is returned.
-        """
-        filepath = getattr(self, 'filepath', None)
-        return self.fullName() if filepath is None else filepath
 
 
 class Class(CanContainImportsDocumentable):
@@ -481,8 +506,8 @@ class System:
                 self.needsnl = False
                 print('')
 
-    def objForFullName(self, fullName):
-        return self.allobjects.get(fullName)
+    def objForFullName(self, fullName: str) -> Optional[Documentable]:
+        return self.allobjects.get(fullName) # type: ignore[no-any-return]
 
     def _warning(self, current, message, detail):
         if current is not None:
@@ -539,27 +564,24 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod):
+    def setSourceHref(self, mod, source_path):
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
-            mod.sourceHref = (
-                self.sourcebase +
-                mod.filepath[len(projBaseDir):])
+            mod.sourceHref = self.sourcebase + source_path[len(projBaseDir):]
 
     def addModule(self, modpath, modname, parentPackage=None):
-        mod = self.Module(self, modname, parentPackage)
+        mod = self.Module(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
             None, "modules and packages discovered")
-        mod.filepath = modpath
         self.unprocessed_modules.add(mod)
         self.module_count += 1
-        self.setSourceHref(mod)
+        self.setSourceHref(mod, modpath)
 
-    def ensureModule(self, module_full_name):
+    def ensureModule(self, module_full_name, modpath):
         if module_full_name in self.allobjects:
             return self.allobjects[module_full_name]
         if '.' in module_full_name:
@@ -568,7 +590,7 @@ class System:
         else:
             parent_package = None
             module_name = module_full_name
-        module = self.Module(self, module_name, parent_package)
+        module = self.Module(self, module_name, parent_package, modpath)
         self.addObject(module)
         return module
 
@@ -606,7 +628,7 @@ class System:
                 self._introspectThing(v, c, parentMod)
 
     def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name)
+        module = self.ensureModule(module_full_name, py_mod.__file__)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
@@ -623,8 +645,7 @@ class System:
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
-        package.filepath = dirpath
-        self.setSourceHref(package)
+        self.setSourceHref(package, dirpath)
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
@@ -707,10 +728,10 @@ class System:
     def processModule(self, mod):
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
-        if getattr(mod, 'filepath', None) is None:
+        if mod.source_path is None:
             return
         builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.filepath)
+        ast = builder.parseFile(mod.source_path)
         if ast:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)

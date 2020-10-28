@@ -43,7 +43,18 @@ def test_importingfrompackage() -> None:
     assert submod.state is model.ProcessingState.PROCESSED
 
 def test_allgames() -> None:
+    """
+    Test reparenting of documentables.
+    A name which is defined in module 1, but included in __all__ of module 2
+    that it is imported into, should end up in the documentation of module 2.
+    """
+
     system = processPackage("allgames")
     # InSourceAll is not moved into mod2, but NotInSourceAll is.
     assert 'InSourceAll' in system.allobjects['allgames.mod1'].contents
     assert 'NotInSourceAll' in system.allobjects['allgames.mod2'].contents
+    # Source paths must be unaffected by the move, so that error messages
+    # point to the right source code.
+    moved = system.allobjects['allgames.mod2'].contents['NotInSourceAll']
+    assert moved.source_path.endswith('/allgames/mod1.py')
+    assert moved.parentMod.source_path.endswith('/allgames/mod2.py')
