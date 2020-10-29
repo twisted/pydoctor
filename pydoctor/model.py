@@ -16,6 +16,7 @@ import platform
 import sys
 import types
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Mapping, Optional, Type
 from urllib.parse import quote
 
@@ -76,7 +77,7 @@ class Documentable:
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
-    sourceHref = None
+    sourceHref: Optional[str] = None
     kind: str
 
     @property
@@ -90,7 +91,7 @@ class Documentable:
     def __init__(
             self, system: 'System', name: str,
             parent: Optional['Documentable'] = None,
-            source_path: Optional[str] = None
+            source_path: Optional[Path] = None
             ):
         if not isinstance(self, Package):
             self.doctarget = self
@@ -99,7 +100,7 @@ class Documentable:
         self.system = system
         self.name = name
         self.parent = parent
-        self.parentMod = None
+        self.parentMod: Optional[Module] = None
         self.source_path = source_path
         self.setup()
 
@@ -144,7 +145,8 @@ class Documentable:
         its file path. In other cases, such as during unit testing,
         the full module name is returned.
         """
-        return self.source_path or self.module.fullName()
+        source_path = self.source_path
+        return self.module.fullName() if source_path is None else str(source_path)
 
     @property
     def url(self) -> str:
@@ -271,7 +273,7 @@ class Documentable:
         return self.privacyClass is not PrivacyClass.HIDDEN
 
     @property
-    def module(self):
+    def module(self) -> 'Module':
         """This object's L{Module}.
 
         For modules, this returns the object itself, otherwise
@@ -422,6 +424,9 @@ class PrivacyClass(Enum):
     VISIBLE = 2
 
 
+# Work around the attributes of the same name within the System class.
+_ModuleT = Module
+_PackageT = Package
 
 class System:
     """A collection of related documentable objects.
@@ -564,14 +569,19 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod, source_path):
+    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
-            projBaseDir = mod.system.options.projectbasedirectory
-            mod.sourceHref = self.sourcebase + source_path[len(projBaseDir):]
+            projBaseDir = Path(mod.system.options.projectbasedirectory)
+            relative = source_path.relative_to(projBaseDir).as_posix()
+            mod.sourceHref = f'{self.sourcebase}/{relative}'
 
-    def addModule(self, modpath, modname, parentPackage=None):
+    def addModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT] = None
+            ) -> None:
         mod = self.Module(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
@@ -581,9 +591,15 @@ class System:
         self.module_count += 1
         self.setSourceHref(mod, modpath)
 
-    def ensureModule(self, module_full_name, modpath):
-        if module_full_name in self.allobjects:
-            return self.allobjects[module_full_name]
+    def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
+        try:
+            module: Module = self.allobjects[module_full_name]
+            assert isinstance(module, Module)
+        except KeyError:
+            pass
+        else:
+            return module
+
         if '.' in module_full_name:
             parent_name, module_name = module_full_name.rsplit('.', 1)
             parent_package = self.ensurePackage(parent_name)
@@ -628,7 +644,7 @@ class System:
                 self._introspectThing(v, c, parentMod)
 
     def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name, py_mod.__file__)
+        module = self.ensureModule(module_full_name, Path(py_mod.__file__))
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
@@ -672,7 +688,7 @@ class System:
                     (suffix, mode, impl))
                 self.introspectModule(py_mod, module_full_name)
             elif impl == imp.PY_SOURCE:
-                self.addModule(path, module_name, package)
+                self.addModule(Path(path), module_name, package)
             break
 
     def handleDuplicate(self, obj):

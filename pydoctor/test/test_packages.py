@@ -50,11 +50,19 @@ def test_allgames() -> None:
     """
 
     system = processPackage("allgames")
+    mod1 = system.allobjects['allgames.mod1']
+    assert isinstance(mod1, model.Module)
+    mod2 = system.allobjects['allgames.mod2']
+    assert isinstance(mod2, model.Module)
     # InSourceAll is not moved into mod2, but NotInSourceAll is.
-    assert 'InSourceAll' in system.allobjects['allgames.mod1'].contents
-    assert 'NotInSourceAll' in system.allobjects['allgames.mod2'].contents
+    assert 'InSourceAll' in mod1.contents
+    assert 'NotInSourceAll' in mod2.contents
     # Source paths must be unaffected by the move, so that error messages
     # point to the right source code.
-    moved = system.allobjects['allgames.mod2'].contents['NotInSourceAll']
-    assert moved.source_path.endswith('/allgames/mod1.py')
-    assert moved.parentMod.source_path.endswith('/allgames/mod2.py')
+    moved = mod2.contents['NotInSourceAll']
+    assert isinstance(moved, model.Class)
+    assert moved.source_path is not None
+    assert moved.source_path.parts[-2:] == ('allgames', 'mod1.py')
+    assert moved.parentMod is mod2
+    assert moved.parentMod.source_path is not None
+    assert moved.parentMod.source_path.parts[-2:] == ('allgames', 'mod2.py')

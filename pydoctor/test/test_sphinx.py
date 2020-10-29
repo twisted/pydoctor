@@ -93,9 +93,10 @@ def test_generate_empty_functional(inv_writer: InvWriter) -> None:
 
     inv_writer.generate(subjects=[], basepath='base-path')
 
+    inventory_path = Path('base-path') / 'objects.inv'
     expected_log = [(
         'sphinx',
-        'Generating objects inventory at base-path/objects.inv',
+        f'Generating objects inventory at {inventory_path}',
         0
         )]
     assert expected_log == inv_writer._logger.messages
@@ -613,7 +614,7 @@ def cacheDirectory(request, tmp_path_factory):
     clearCache=st.booleans(),
     enableCache=st.booleans(),
     cacheDirectoryName=st.text(
-        alphabet=sorted(set(string.printable) - set('\\/:*?"<>|\x0c\x0b\n')),
+        alphabet=sorted(set(string.printable) - set('\\/:*?"<>|\x0c\x0b\t\r\n')),
         min_size=3,             # Avoid ..
         max_size=32,            # Avoid upper length on path
     ),

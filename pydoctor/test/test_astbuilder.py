@@ -48,7 +48,7 @@ def fromText(
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
-    ast = astbuilder.parse(textwrap.dedent(text))
+    ast = astbuilder._parse(textwrap.dedent(text))
     return fromAST(ast, modname, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
@@ -343,7 +343,7 @@ def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System])
 
 @systemcls_param
 def test_all_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder.parse(textwrap.dedent('''
+    ast = astbuilder._parse(textwrap.dedent('''
     def f():
         pass
     __all__ = ['f']
@@ -355,7 +355,7 @@ def test_all_recognition(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder.parse(textwrap.dedent('''
+    ast = astbuilder._parse(textwrap.dedent('''
     class C:
         __all__ = ['f']
     '''))
