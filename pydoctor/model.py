@@ -9,7 +9,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 import ast
 import builtins
 import datetime
-import imp
+import importlib
 import inspect
 import os
 import platform
@@ -625,8 +625,10 @@ class System:
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
-            if isinstance(v, (types.BuiltinFunctionType,
-                              types.FunctionType)):
+            if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
+                    # In PyPy 7.3.1, functions from extensions are not
+                    # instances of the above abstract types.
+                    or v.__class__.__name__ == 'builtin_function_or_method'):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -643,8 +645,13 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name, Path(py_mod.__file__))
+    def introspectModule(self, path: Path, module_full_name: str) -> None:
+        spec = importlib.util.spec_from_file_location(module_full_name, path)
+        py_mod = importlib.util.module_from_spec(spec)
+        loader = spec.loader
+        assert isinstance(loader, importlib.abc.Loader), loader
+        loader.exec_module(py_mod)
+        module = self.ensureModule(module_full_name, path)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
@@ -671,23 +678,20 @@ class System:
             elif not fname.startswith('.'):
                 self.addModuleFromPath(package, fullname)
 
-    def addModuleFromPath(self, package, path):
-        for (suffix, mode, impl) in imp.get_suffixes():
+    def addModuleFromPath(self, package: Optional[_PackageT], path: str) -> None:
+        for suffix in importlib.machinery.all_suffixes():
             if not path.endswith(suffix):
                 continue
             module_name = os.path.basename(path[:-len(suffix)])
-            if impl == imp.C_EXTENSION:
+            if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
                     module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
-                py_mod = imp.load_module(
-                    module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, impl))
-                self.introspectModule(py_mod, module_full_name)
-            elif impl == imp.PY_SOURCE:
+                self.introspectModule(Path(path), module_full_name)
+            elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.addModule(Path(path), module_name, package)
             break
 
