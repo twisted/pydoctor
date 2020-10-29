@@ -54,8 +54,8 @@ def test_setSourceHrefOptionUnix() -> None:
 
 def test_setSourceHrefOptionWindows() -> None:
     """
-    Test that the projectbasedirectory option sets the model.sourceHref
-    properly.
+    System.sourceHref is set to a valid URL even when the source file is a
+    Windows path.
     """
     projectBaseDir = "C:\\foo\\bar\\ProjectName"
 
