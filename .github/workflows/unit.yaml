@@ -30,8 +30,8 @@ jobs:
       run: |
         test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
         python --version
-        python -c 'print("\nENVIRONMENT VARIABLES\n=====================\n")'
-        python -c 'import os; [print(f"{k}={v}") for k, v in os.environ.items()]'
+        python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+        python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
 
     - name: Run unit tests
       run: |
