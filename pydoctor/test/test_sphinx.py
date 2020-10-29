@@ -16,7 +16,7 @@ import requests
 from pydoctor import model, sphinx
 from urllib3 import HTTPResponse
 
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from . import CapLog
@@ -615,7 +615,7 @@ def cacheDirectory(request, tmp_path_factory):
     enableCache=st.booleans(),
     cacheDirectoryName=st.text(
         alphabet=sorted(set(string.printable) - set('\\/:*?"<>|\x0c\x0b\t\r\n')),
-        min_size=3,             # Avoid ..
+        min_size=1,
         max_size=32,            # Avoid upper length on path
     ),
     maxAgeAmount=maxAgeAmounts,
@@ -635,6 +635,14 @@ def test_prepareCache(
     L{IntersphinxCache} is created with a session on which is mounted
     L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
     """
+
+    # Windows doesn't like paths ending in a space or dot.
+    assume(cacheDirectoryName[-1] not in '. ')
+
+    # These DOS device names still have special meaning in modern Windows.
+    assume(cacheDirectoryName.upper() not in {'CON', 'PRN', 'AUX', 'NUL'})
+    assume(not cacheDirectoryName.upper().startswith('COM'))
+    assume(not cacheDirectoryName.upper().startswith('LPT'))
 
     cacheDirectory.mkdir(exist_ok=True)
     for child in cacheDirectory.iterdir():
