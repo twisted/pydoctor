@@ -165,8 +165,8 @@ class Dummy:
     def crash(self) -> None:
         """Mmm"""
 
-def test_introspection() -> None:
-    """Find docstrings from this test using introspection."""
+def test_introspection_python() -> None:
+    """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
     system.introspectModule(Path(__file__), __name__)
 
@@ -174,9 +174,36 @@ def test_introspection() -> None:
     assert module is not None
     assert module.docstring == __doc__
 
-    func = module.contents['test_introspection']
-    assert func.docstring == "Find docstrings from this test using introspection."
+    func = module.contents['test_introspection_python']
+    assert func.docstring == "Find docstrings from this test using introspection on pure Python."
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
     assert method is not None
     assert method.docstring == "Mmm"
+
+
+def test_introspection_extension() -> None:
+    """Find docstrings from this test using introspection of an extension."""
+
+    try:
+        import cython_test_exception_raiser.raiser
+    except ImportError:
+        pytest.skip("cython_test_exception_raiser not installed")
+
+    system = model.System()
+    system.introspectModule(
+        Path(cython_test_exception_raiser.raiser.__file__),
+        'cython_test_exception_raiser.raiser')
+
+    module = system.objForFullName('cython_test_exception_raiser.raiser')
+    assert module is not None
+    assert module.docstring is not None
+    assert module.docstring.strip().split('\n')[0] == "A trivial extension that just raises an exception."
+
+    cls = module.contents['RaiserException']
+    assert cls.docstring is not None
+    assert cls.docstring.strip() == "A speficic exception only used to be identified in tests."
+
+    func = module.contents['raiseException']
+    assert func.docstring is not None
+    assert func.docstring.strip() == "Raise L{RaiserException}."
