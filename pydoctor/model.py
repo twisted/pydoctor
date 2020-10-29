@@ -99,7 +99,7 @@ class Documentable:
         self.system = system
         self.name = name
         self.parent = parent
-        self.parentMod = None
+        self.parentMod: Optional[Module] = None
         self.source_path = source_path
         self.setup()
 
