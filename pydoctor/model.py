@@ -569,7 +569,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
-            mod.sourceHref = self.sourcebase + source_path[len(projBaseDir):]
+            mod.sourceHref = self.sourcebase + source_path[len(projBaseDir):].replace("\\", "/")
 
     def addModule(self, modpath, modname, parentPackage=None):
         mod = self.Module(self, modname, parentPackage, modpath)

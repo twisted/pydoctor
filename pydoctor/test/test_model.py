@@ -30,7 +30,7 @@ class FakeDocumentable:
 
 
 
-def test_setSourceHrefOption() -> None:
+def test_setSourceHrefOptionUnix() -> None:
     """
     Test that the projectbasedirectory option sets the model.sourceHref
     properly.
@@ -50,9 +50,27 @@ def test_setSourceHrefOption() -> None:
     mod.system = system
     system.setSourceHref(mod, projectBaseDir + moduleRelativePart)
 
-    expected = viewSourceBase + moduleRelativePart
-    assert mod.sourceHref == expected
+    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
+def test_setSourceHrefOptionWindows() -> None:
+    """
+    Test that the projectbasedirectory option sets the model.sourceHref
+    properly.
+    """
+    projectBaseDir = "C:\\foo\\bar\\ProjectName"
+
+    mod = FakeDocumentable()
+
+    options = FakeOptions()
+    options.projectbasedirectory = projectBaseDir
+
+    system = model.System()
+    system.sourcebase = "http://example.org/trac/browser/trunk"
+    system.options = options
+    mod.system = system
+    system.setSourceHref(mod, projectBaseDir + "\\package\\module.py")
+
+    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
 def test_initialization_default() -> None:
     """
