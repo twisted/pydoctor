@@ -643,10 +643,12 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, path, module_full_name):
+    def introspectModule(self, path: Path, module_full_name: str) -> None:
         spec = importlib.util.spec_from_file_location(module_full_name, path)
         py_mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(py_mod)
+        loader = spec.loader
+        assert isinstance(loader, importlib.abc.Loader), loader
+        loader.exec_module(py_mod)
         module = self.ensureModule(module_full_name, path)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
@@ -674,7 +676,7 @@ class System:
             elif not fname.startswith('.'):
                 self.addModuleFromPath(package, fullname)
 
-    def addModuleFromPath(self, package, path):
+    def addModuleFromPath(self, package: Optional[_PackageT], path: str) -> None:
         for suffix in importlib.machinery.all_suffixes():
             if not path.endswith(suffix):
                 continue
