@@ -2,6 +2,8 @@
 Unit tests for model.
 """
 
+from pathlib import Path
+from typing import cast
 import sys
 import zlib
 
@@ -39,7 +41,7 @@ def test_setSourceHrefOption() -> None:
     projectBaseDir = "/foo/bar/ProjectName"
     moduleRelativePart = "/package/module.py"
 
-    mod = FakeDocumentable()
+    mod = cast(model.Module, FakeDocumentable())
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
@@ -48,7 +50,7 @@ def test_setSourceHrefOption() -> None:
     system.sourcebase = viewSourceBase
     system.options = options
     mod.system = system
-    system.setSourceHref(mod, projectBaseDir + moduleRelativePart)
+    system.setSourceHref(mod, Path(projectBaseDir + moduleRelativePart))
 
     expected = viewSourceBase + moduleRelativePart
     assert mod.sourceHref == expected

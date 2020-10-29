@@ -62,7 +62,7 @@ def test_allgames() -> None:
     moved = mod2.contents['NotInSourceAll']
     assert isinstance(moved, model.Class)
     assert moved.source_path is not None
-    assert moved.source_path.endswith('/allgames/mod1.py')
+    assert moved.source_path.parts[-2:] == ('allgames', 'mod1.py')
     assert moved.parentMod is mod2
     assert moved.parentMod.source_path is not None
-    assert moved.parentMod.source_path.endswith('/allgames/mod2.py')
+    assert moved.parentMod.source_path.parts[-2:] == ('allgames', 'mod2.py')

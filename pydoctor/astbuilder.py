@@ -2,26 +2,25 @@
 
 import ast
 import sys
+from functools import partial
 from itertools import chain
-from typing import Iterator, Mapping, Optional, Tuple
+from pathlib import Path
+from typing import Dict, Iterator, Mapping, Optional, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
 
 
-def parseFile(path):
+def parseFile(path: Path) -> ast.AST:
     """Parse the contents of a Python source file."""
     with open(path, 'rb') as f:
         src = f.read() + b'\n'
-    return parse(src)
+    return _parse(src)
 
-_parse_kwargs = {}
 if sys.version_info >= (3,8):
-    _parse_kwargs['type_comments'] = True
-
-def parse(buf):
-    """Parse the contents of a Unicode or bytes string."""
-    return ast.parse(buf, **_parse_kwargs)
+    _parse = partial(ast.parse, type_comments=True)
+else:
+    _parse = ast.parse
 
 
 def node2dottedname(node):
@@ -643,6 +642,8 @@ def _annotation_for_elements(sequence):
 class ASTBuilder:
     ModuleVistor = ModuleVistor
 
+    ast_cache: Dict[Path, Optional[ast.AST]]
+
     def __init__(self, system):
         self.system = system
         self.current = None
@@ -711,16 +712,17 @@ class ASTBuilder:
 
         self.ModuleVistor(self, mod).visit(ast)
 
-    def parseFile(self, filePath):
-        if filePath in self.ast_cache:
-            return self.ast_cache[filePath]
+    def parseFile(self, path: Path) -> Optional[ast.AST]:
         try:
-            ast = parseFile(filePath)
-        except (SyntaxError, ValueError):
-            self.warning("cannot parse", filePath)
-            ast = None
-        self.ast_cache[filePath] = ast
-        return ast
+            return self.ast_cache[path]
+        except KeyError:
+            mod: Optional[ast.AST] = None
+            try:
+                mod = parseFile(path)
+            except (SyntaxError, ValueError):
+                self.warning("cannot parse", str(path))
+            self.ast_cache[path] = mod
+            return mod
 
 model.System.defaultBuilder = ASTBuilder
 
