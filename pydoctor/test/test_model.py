@@ -2,11 +2,12 @@
 Unit tests for model.
 """
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import cast
-import os
 import sys
 import zlib
+
+import pytest
 
 from pydoctor import model
 from pydoctor.driver import parse_args
@@ -33,27 +34,26 @@ class FakeDocumentable:
 
 
 
-def test_setSourceHrefOption() -> None:
+@pytest.mark.parametrize('projectBaseDir', [
+    PurePosixPath("/foo/bar/ProjectName"),
+    PureWindowsPath("C:\\foo\\bar\\ProjectName")]
+)
+def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     """
     Test that the projectbasedirectory option sets the model.sourceHref
     properly.
     """
 
-    if os.name == 'nt':
-        projectBaseDir = "C:\\foo\\bar\\ProjectName"
-    else:
-        projectBaseDir = "/foo/bar/ProjectName"
-
     mod = cast(model.Module, FakeDocumentable())
 
     options = FakeOptions()
-    options.projectbasedirectory = projectBaseDir
+    options.projectbasedirectory = str(projectBaseDir)
 
     system = model.System()
     system.sourcebase = "http://example.org/trac/browser/trunk"
     system.options = options
     mod.system = system
-    system.setSourceHref(mod, Path(projectBaseDir) / "package" / "module.py")
+    system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
