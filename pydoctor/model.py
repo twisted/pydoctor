@@ -9,7 +9,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 import ast
 import builtins
 import datetime
-import imp
+import importlib
 import inspect
 import os
 import platform
@@ -656,22 +656,21 @@ class System:
                 self.addModuleFromPath(package, fullname)
 
     def addModuleFromPath(self, package, path):
-        for (suffix, mode, impl) in imp.get_suffixes():
+        for suffix in importlib.machinery.all_suffixes():
             if not path.endswith(suffix):
                 continue
             module_name = os.path.basename(path[:-len(suffix)])
-            if impl == imp.C_EXTENSION:
+            if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
                     module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
-                py_mod = imp.load_module(
-                    module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, impl))
+                py_mod = importlib.util.spec_from_file_location(
+                    module_full_name, path)
                 self.introspectModule(py_mod, module_full_name)
-            elif impl == imp.PY_SOURCE:
+            elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.addModule(path, module_name, package)
             break
 
