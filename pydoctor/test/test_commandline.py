@@ -49,7 +49,7 @@ def test_projectbasedir() -> None:
     value = "projbasedirvalue"
     options, args = driver.parse_args([
             "--project-base-dir", value])
-    assert options.projectbasedirectory == value
+    assert str(options.projectbasedirectory) == value
 
 
 def test_cache_disabled_by_default() -> None:

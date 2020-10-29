@@ -573,7 +573,7 @@ class System:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
-            projBaseDir = Path(mod.system.options.projectbasedirectory)
+            projBaseDir = mod.system.options.projectbasedirectory
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
