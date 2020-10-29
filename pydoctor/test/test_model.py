@@ -4,7 +4,6 @@ Unit tests for model.
 
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import cast
-import sys
 import zlib
 
 import pytest
@@ -169,8 +168,7 @@ class Dummy:
 def test_introspection() -> None:
     """Find docstrings from this test using introspection."""
     system = model.System()
-    py_mod = sys.modules[__name__]
-    system.introspectModule(py_mod, __name__)
+    system.introspectModule(Path(__file__), __name__)
 
     module = system.objForFullName(__name__)
     assert module is not None

@@ -643,8 +643,11 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name, Path(py_mod.__file__))
+    def introspectModule(self, path, module_full_name):
+        spec = importlib.util.spec_from_file_location(module_full_name, path)
+        py_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(py_mod)
+        module = self.ensureModule(module_full_name, path)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
@@ -683,9 +686,7 @@ class System:
                     module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
-                py_mod = importlib.util.spec_from_file_location(
-                    module_full_name, path)
-                self.introspectModule(py_mod, module_full_name)
+                self.introspectModule(Path(path), module_full_name)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.addModule(Path(path), module_name, package)
             break
