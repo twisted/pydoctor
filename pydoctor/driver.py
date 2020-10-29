@@ -34,7 +34,10 @@ def findClassFromDottedName(dottedname, optionname):
 
 MAKE_HTML_DEFAULT = object()
 
-def check_path(option, opt, value):
+def parse_path(option, opt, value):
+    """Parse a path value given to an option to a L{Path} object.
+    The path is not verified: it is only parsed.
+    """
     try:
         return Path(value)
     except Exception as ex:
@@ -42,7 +45,7 @@ def check_path(option, opt, value):
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
-    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=check_path)
+    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
 
 def getparser():
     parser = OptionParser(option_class=CustomOption, version=__version__.public())
