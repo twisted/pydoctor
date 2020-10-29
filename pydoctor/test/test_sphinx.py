@@ -93,9 +93,10 @@ def test_generate_empty_functional(inv_writer: InvWriter) -> None:
 
     inv_writer.generate(subjects=[], basepath='base-path')
 
+    inventory_path = Path('base-path') / 'objects.inv'
     expected_log = [(
         'sphinx',
-        'Generating objects inventory at base-path/objects.inv',
+        f'Generating objects inventory at {inventory_path}',
         0
         )]
     assert expected_log == inv_writer._logger.messages
