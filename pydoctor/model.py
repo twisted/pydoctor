@@ -625,8 +625,10 @@ class System:
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
-            if isinstance(v, (types.BuiltinFunctionType,
-                              types.FunctionType)):
+            if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
+                    # In PyPy 7.3.1, functions from extensions are not
+                    # instances of the above abstract types.
+                    or v.__class__.__name__ == 'builtin_function_or_method'):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
