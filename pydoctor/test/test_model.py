@@ -4,6 +4,7 @@ Unit tests for model.
 
 from pathlib import Path
 from typing import cast
+import os
 import sys
 import zlib
 
@@ -37,9 +38,11 @@ def test_setSourceHrefOption() -> None:
     Test that the projectbasedirectory option sets the model.sourceHref
     properly.
     """
-    viewSourceBase = "http://example.org/trac/browser/trunk"
-    projectBaseDir = "/foo/bar/ProjectName"
-    moduleRelativePart = "/package/module.py"
+
+    if os.name == 'nt':
+        projectBaseDir = "C:\\foo\\bar\\ProjectName"
+    else:
+        projectBaseDir = "/foo/bar/ProjectName"
 
     mod = cast(model.Module, FakeDocumentable())
 
@@ -47,13 +50,12 @@ def test_setSourceHrefOption() -> None:
     options.projectbasedirectory = projectBaseDir
 
     system = model.System()
-    system.sourcebase = viewSourceBase
+    system.sourcebase = "http://example.org/trac/browser/trunk"
     system.options = options
     mod.system = system
-    system.setSourceHref(mod, Path(projectBaseDir + moduleRelativePart))
+    system.setSourceHref(mod, Path(projectBaseDir) / "package" / "module.py")
 
-    expected = viewSourceBase + moduleRelativePart
-    assert mod.sourceHref == expected
+    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
 
 def test_initialization_default() -> None:
