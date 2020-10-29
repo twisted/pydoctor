@@ -1,5 +1,7 @@
 """The command-line parsing and entry point."""
 
+from optparse import Option, OptionParser, OptionValueError
+from pathlib import Path
 import datetime
 import os
 import sys
@@ -32,9 +34,18 @@ def findClassFromDottedName(dottedname, optionname):
 
 MAKE_HTML_DEFAULT = object()
 
+def check_path(option, opt, value):
+    try:
+        return Path(value)
+    except Exception as ex:
+        raise OptionValueError(f"{opt}: invalid path: {ex}")
+
+class CustomOption(Option):
+    TYPES = Option.TYPES + ("path",)
+    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=check_path)
+
 def getparser():
-    from optparse import OptionParser
-    parser = OptionParser(version=__version__.public())
+    parser = OptionParser(option_class=CustomOption, version=__version__.public())
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
@@ -49,10 +60,9 @@ def getparser():
         '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
     parser.add_option(
-        '--project-base-dir', dest='projectbasedirectory',
-        help=("Absolute path to the base directory of the "
-              "project.  Source links will be computed based "
-              "on this value."))
+        '--project-base-dir', dest='projectbasedirectory', type='path',
+        help=("Path to the base directory of the project.  Source links "
+              "will be computed based on this value."))
     parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))

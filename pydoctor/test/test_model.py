@@ -19,7 +19,7 @@ class FakeOptions:
     A fake options object as if it came from that stupid optparse thing.
     """
     sourcehref = None
-    projectbasedirectory: str
+    projectbasedirectory: Path
 
 
 
@@ -47,7 +47,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     mod = cast(model.Module, FakeDocumentable())
 
     options = FakeOptions()
-    options.projectbasedirectory = str(projectBaseDir)
+    options.projectbasedirectory = projectBaseDir
 
     system = model.System()
     system.sourcebase = "http://example.org/trac/browser/trunk"
