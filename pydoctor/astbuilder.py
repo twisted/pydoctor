@@ -500,7 +500,10 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popFunction()
 
-    def _annotation_from_attrib(self, expr, ctx):
+    def _annotation_from_attrib(self,
+            expr: ast.expr,
+            ctx: model.Documentable
+            ) -> Optional[ast.expr]:
         """Get the type of an C{attr.ib} definition.
         @param expr: The expression's AST.
         @param ctx: The context in which this expression is evaluated.
@@ -624,7 +627,7 @@ class _AnnotationStringParser(ast.NodeTransformer):
     def visit_Str(self, node: ast.Str) -> ast.expr:
         return self._parse_string(node.s)
 
-def _infer_type(expr):
+def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
@@ -637,7 +640,7 @@ def _infer_type(expr):
     else:
         return _annotation_for_value(value)
 
-def _annotation_for_value(value):
+def _annotation_for_value(value: object) -> Optional[ast.expr]:
     if value is None:
         return None
     name = type(value).__name__
@@ -657,7 +660,7 @@ def _annotation_for_value(value):
                                  slice=ast.Index(value=ann_elem))
     return ast.Name(id=name)
 
-def _annotation_for_elements(sequence):
+def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
     names = set()
     for elem in sequence:
         ann = _annotation_for_value(elem)
