@@ -973,6 +973,20 @@ def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert type2str(mod.contents['i'].annotation) == 'List'
     assert not capsys.readouterr().out
 
+@systemcls_param
+def test_unstring_annotation(systemcls: Type[model.System]) -> None:
+    """Annotations or parts thereof that are strings are parsed and
+    line number information is preserved.
+    """
+    mod = fromText('''
+    a: "int"
+    b: 'str' = 'B'
+    c: list["Thingy"]
+    ''', systemcls=systemcls)
+    assert str_and_line(mod.contents['a']) == ('int', 2)
+    assert str_and_line(mod.contents['b']) == ('str', 3)
+    assert str_and_line(mod.contents['c']) == ('list[Thingy]', 4)
+
 @pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
 def test_bad_string_annotation(

@@ -609,14 +609,14 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             # Other subscript; unstring the slice.
             slice = self.visit(node.slice)
-        return ast.Subscript(value, slice, node.ctx)
+        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
 
     # For Python >= 3.8:
 
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
-            return self._parse_string(value)
+            return ast.copy_location(self._parse_string(value), node)
         else:
             const = self.generic_visit(node)
             assert isinstance(const, ast.Constant), const
@@ -625,7 +625,7 @@ class _AnnotationStringParser(ast.NodeTransformer):
     # For Python < 3.8:
 
     def visit_Str(self, node: ast.Str) -> ast.expr:
-        return self._parse_string(node.s)
+        return ast.copy_location(self._parse_string(node.s), node)
 
 def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
