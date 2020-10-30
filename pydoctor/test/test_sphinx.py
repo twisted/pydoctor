@@ -460,6 +460,26 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
         ] == inv_reader._logger.messages
 
 
+def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
+    """
+    Ignore entries that don't have a 'py:' type field.
+    """
+
+    base_url = 'https://docs.python.org/3'
+    content = (
+        'dict std:label -1 reference/expressions.html#$ Dictionary displays\n'
+        'dict py:class 1 library/stdtypes.html#$ -\n'
+        'dict std:2to3fixer 1 library/2to3.html#2to3fixer-$ -\n'
+        )
+
+    result = inv_reader._parseInventory(base_url, content)
+
+    assert {
+        'dict': (base_url, 'library/stdtypes.html#$'),
+        } == result
+    assert [] == inv_reader._logger.messages
+
+
 maxAgeAmounts = st.integers() | st.just("\x00")
 maxAgeUnits = st.sampled_from(tuple(sphinx._maxAgeUnits)) | st.just("\x00")
 

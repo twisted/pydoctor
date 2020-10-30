@@ -117,7 +117,8 @@ class SphinxInventory:
                     'Failed to parse line "%s" for %s' % (line, base_url),
                     )
                 continue
-            result[name] = (base_url, location)
+            if typ.startswith('py:'):
+                result[name] = (base_url, location)
         return result
 
     def getLink(self, name: str) -> Optional[str]:
