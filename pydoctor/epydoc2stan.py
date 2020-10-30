@@ -94,14 +94,14 @@ class _EpydocLinker(DocstringLinker):
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
-        target_name = self.look_for_intersphinx(fullID)
-        if not target_name:
+        target_url = self.look_for_intersphinx(fullID)
+        if not target_url:
             # FIXME: https://github.com/twisted/pydoctor/issues/125
             # expandName is unreliable so in the case fullID fails, we
             # try our luck with 'identifier'.
-            target_name = self.look_for_intersphinx(identifier)
-        if target_name:
-            return target_name
+            target_url = self.look_for_intersphinx(identifier)
+        if target_url:
+            return target_url
 
         # Since there was no global match, go look for the name in the
         # context where it was used.
