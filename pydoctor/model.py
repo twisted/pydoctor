@@ -655,7 +655,7 @@ class System:
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
-    def addPackage(self, dirpath, parentPackage=None):
+    def addPackage(self, dirpath: str, parentPackage: Optional[_PackageT] = None) -> None:
         if not os.path.exists(dirpath):
             raise Exception(f"package path {dirpath!r} does not exist!")
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
@@ -668,7 +668,7 @@ class System:
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
-        self.setSourceHref(package, dirpath)
+        self.setSourceHref(package, Path(dirpath))
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
