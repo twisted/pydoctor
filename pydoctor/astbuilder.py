@@ -638,7 +638,11 @@ def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     except ValueError:
         return None
     else:
-        return _annotation_for_value(value)
+        ann = _annotation_for_value(value)
+        if ann is None:
+            return None
+        else:
+            return ast.fix_missing_locations(ast.copy_location(ann, expr))
 
 def _annotation_for_value(value: object) -> Optional[ast.expr]:
     if value is None:
