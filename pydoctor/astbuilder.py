@@ -649,7 +649,6 @@ def _annotation_for_value(value: object) -> Optional[ast.expr]:
         return None
     name = type(value).__name__
     if isinstance(value, (dict, list, set, tuple)):
-        name = name.capitalize()
         ann_elem = _annotation_for_elements(value)
         if isinstance(value, dict):
             ann_value = _annotation_for_elements(value.values())
@@ -658,7 +657,7 @@ def _annotation_for_value(value: object) -> Optional[ast.expr]:
             elif ann_elem is not None:
                 ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
         if ann_elem is not None:
-            if name == 'Tuple':
+            if name == 'tuple':
                 ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
             return ast.Subscript(value=ast.Name(id=name),
                                  slice=ast.Index(value=ann_elem))

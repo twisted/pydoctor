@@ -964,13 +964,13 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
-    d = {} # type: Dict[str, int]
+    d = {} # type: dict[str, int]
     i = [] # type: ignore[misc]
     ''', systemcls=systemcls)
-    assert type2str(mod.contents['d'].annotation) == 'Dict[str, int]'
+    assert type2str(mod.contents['d'].annotation) == 'dict[str, int]'
     # We don't use ignore comments for anything at the moment,
     # but do verify that their presence doesn't break things.
-    assert type2str(mod.contents['i'].annotation) == 'List'
+    assert type2str(mod.contents['i'].annotation) == 'list'
     assert not capsys.readouterr().out
 
 @systemcls_param
@@ -1038,15 +1038,15 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     C = mod.contents['C']
     assert str_and_line(C.contents['a']) == ('str', 3)
     assert str_and_line(C.contents['b']) == ('int', 4)
-    assert str_and_line(C.contents['c']) == ('List[str]', 5)
-    assert str_and_line(C.contents['d']) == ('Dict[str, int]', 6)
-    assert str_and_line(C.contents['e']) == ('Tuple[bool, ...]', 7)
+    assert str_and_line(C.contents['c']) == ('list[str]', 5)
+    assert str_and_line(C.contents['d']) == ('dict[str, int]', 6)
+    assert str_and_line(C.contents['e']) == ('tuple[bool, ...]', 7)
     assert str_and_line(C.contents['f']) == ('float', 8)
-    assert str_and_line(C.contents['g']) == ('Set[int]', 9)
+    assert str_and_line(C.contents['g']) == ('set[int]', 9)
     # Element type is unknown, not uniform or too complex.
-    assert str_and_line(C.contents['h']) == ('List', 10)
-    assert str_and_line(C.contents['i']) == ('List', 11)
-    assert str_and_line(C.contents['j']) == ('Tuple', 12)
+    assert str_and_line(C.contents['h']) == ('list', 10)
+    assert str_and_line(C.contents['i']) == ('list', 11)
+    assert str_and_line(C.contents['j']) == ('tuple', 12)
     # It is unlikely that a variable actually will contain only None,
     # so we should treat this as not be able to infer the type.
     assert C.contents['n'].annotation is None
@@ -1056,7 +1056,7 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert C.contents['y'].annotation is None
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
-    assert str_and_line(C.contents['s']) == ('List[str]', 17)
+    assert str_and_line(C.contents['s']) == ('list[str]', 17)
     # Check that type is inferred on assignments with multiple targets.
     assert str_and_line(C.contents['t']) == ('str', 18)
     assert str_and_line(mod.contents['m']) == ('bytes', 19)
