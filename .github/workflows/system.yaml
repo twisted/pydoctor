@@ -30,6 +30,5 @@ jobs:
         python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
 
     - name: Generate Twisted API docs
-      continue-on-error: true
       run: |
         tox -e twisted-apidoc
