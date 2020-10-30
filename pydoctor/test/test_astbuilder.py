@@ -1017,9 +1017,7 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert type2str(C.contents['d'].annotation) == 'Dict[str, int]'
     assert type2str(C.contents['e'].annotation) == 'Tuple[bool, ...]'
     assert type2str(C.contents['f'].annotation) == 'float'
-    # The Python 2.7 implementation of literal_eval() does not support
-    # set literals.
-    assert type2str(C.contents['g'].annotation) in ('Set[int]', None)
+    assert type2str(C.contents['g'].annotation) == 'Set[int]'
     # Element type is unknown, not uniform or too complex.
     assert type2str(C.contents['h'].annotation) == 'List'
     assert type2str(C.contents['i'].annotation) == 'List'
@@ -1036,9 +1034,7 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert type2str(C.contents['s'].annotation) == 'List[str]'
     # Check that type is inferred on assignments with multiple targets.
     assert type2str(C.contents['t'].annotation) == 'str'
-    # On Python 2.7, bytes literals are parsed into ast.Str objects,
-    # so there is no way to tell them apart from ASCII strings.
-    assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
+    assert type2str(mod.contents['m'].annotation) == 'bytes'
 
 @systemcls_param
 def test_type_from_attrib(systemcls: Type[model.System]) -> None:
