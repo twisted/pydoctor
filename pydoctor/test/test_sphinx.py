@@ -402,6 +402,33 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
     assert {'some.attr': ('http://base.tld', 'some.html')} == result
 
 
+def test_parseInventory_spaces() -> None:
+    """
+    Check that columns that contain spaces are not split up.
+    """
+
+    # Space in first (name) column.
+    assert sphinx._parseInventoryLine(
+        'key function std:term -1 glossary.html#term-key-function -'
+        ) == (
+        'key function', 'std:term', -1, 'glossary.html#term-key-function', '-'
+        )
+
+    # Space in last (display name) column.
+    assert sphinx._parseInventoryLine(
+        'doctest-execution-context std:label -1 library/doctest.html#$ What’s the Execution Context?'
+        ) == (
+        'doctest-execution-context', 'std:label', -1, 'library/doctest.html#$', 'What’s the Execution Context?'
+        )
+
+    # Space in both first and last column.
+    assert sphinx._parseInventoryLine(
+        'async def std:label -1 reference/compound_stmts.html#async-def Coroutine function definition'
+        ) == (
+        'async def', 'std:label', -1, 'reference/compound_stmts.html#async-def', 'Coroutine function definition'
+        )
+
+
 def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     """
     Skip line and log an error.
