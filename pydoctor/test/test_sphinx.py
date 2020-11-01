@@ -437,6 +437,7 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     base_url = 'http://tm.tld'
     content = (
         'good.attr py:attribute -1 some.html -\n'
+        'missing.display.name py:attribute 1 some.html\n'
         'bad.attr bad format\n'
         'very.bad\n'
         '\n'
@@ -450,6 +451,11 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
         'good.again': (base_url, 'again.html'),
         } == result
     assert [
+        (
+            'sphinx',
+            'Failed to parse line "missing.display.name py:attribute 1 some.html" for http://tm.tld',
+            -1,
+            ),
         (
             'sphinx',
             'Failed to parse line "bad.attr bad format" for http://tm.tld',
