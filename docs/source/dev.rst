@@ -1,3 +1,11 @@
+Development
+===========
+
+.. imclude:: ../../CONTRINUTING.rst
+
+Design Notes
+------------
+
 I guess I've always been interested in more-or-less static analysis of
 Python code and have over time developed some fairly strong opinions
 on the Right Way (tm) to do it.
@@ -20,3 +28,4 @@ Finally, pydoctor should never crash, no matter what code you feed it
 that universally applied, it seems).  Missing information is OK,
 crashing out is not.  This probably isn't as true as it should be at
 the moment.
+
