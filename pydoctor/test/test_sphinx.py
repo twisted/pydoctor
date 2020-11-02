@@ -404,7 +404,9 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
 
 def test_parseInventory_spaces() -> None:
     """
-    Check that columns that contain spaces are not split up.
+    Sphinx inventory lines always contain 5 values, separated by spaces.
+    However, the first and fifth value can contain internal spaces.
+    The parser must be able to tell apart separators from internal spaces.
     """
 
     # Space in first (name) column.
