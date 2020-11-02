@@ -42,8 +42,7 @@ jobs:
             --html-viewsource-base https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
             --make-html \
             --html-output=./apidocs \
-            --project-base-dir "$(pwd)" \
-            --docformat=restructuredtext
+            --project-base-dir "$(pwd)" 
 
     - name: Publish Pydoctor documentation to the gh-pages branch
       uses: peaceiris/actions-gh-pages@v3
