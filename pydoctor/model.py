@@ -6,17 +6,21 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
+import ast
 import builtins
 import datetime
-import imp
+import importlib
 import inspect
 import os
 import platform
 import sys
 import types
 from enum import Enum
-from typing import TYPE_CHECKING, Type
+from pathlib import Path
+from typing import TYPE_CHECKING, Mapping, Optional, Type
+from urllib.parse import quote
 
+from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import SphinxInventory
 
 if TYPE_CHECKING:
@@ -68,10 +72,13 @@ class Documentable:
     @ivar kind: ...
     """
     documentation_location = DocLocation.OWN_PAGE
-    docstring = None
+    docstring: Optional[str] = None
+    system: 'System'
+    parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
-    sourceHref = None
+    sourceHref: Optional[str] = None
+    kind: str
 
     @property
     def css_class(self):
@@ -81,14 +88,21 @@ class Documentable:
             class_ += ' private'
         return class_
 
-    def __init__(self, system, name, parent=None):
+    def __init__(
+            self, system: 'System', name: str,
+            parent: Optional['Documentable'] = None,
+            source_path: Optional[Path] = None
+            ):
+        if not isinstance(self, Package):
+            self.doctarget = self
+            if source_path is None and parent is not None:
+                source_path = parent.source_path # type: ignore[has-type]
         self.system = system
         self.name = name
         self.parent = parent
-        self.parentMod = None
+        self.parentMod: Optional[Module] = None
+        self.source_path = source_path
         self.setup()
-        if not isinstance(self, Package):
-            self.doctarget = self
 
     def setup(self):
         self.contents = {}
@@ -123,7 +137,35 @@ class Documentable:
                 if parentSourceHref:
                     self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
 
-    def fullName(self):
+    @property
+    def description(self) -> str:
+        """A string describing our source location to the user.
+
+        If this module's code was read from a file, this returns
+        its file path. In other cases, such as during unit testing,
+        the full module name is returned.
+        """
+        source_path = self.source_path
+        return self.module.fullName() if source_path is None else str(source_path)
+
+    @property
+    def url(self) -> str:
+        """Relative URL at which the documentation for this Documentable
+        can be found.
+        """
+        location = self.documentation_location
+        if location is DocLocation.OWN_PAGE:
+            return f'{quote(self.fullName())}.html'
+        elif location is DocLocation.PARENT_PAGE:
+            parent = self.parent
+            if isinstance(parent, Module) and parent.name == '__init__':
+                parent = parent.parent
+            assert parent is not None
+            return f'{quote(parent.fullName())}.html#{quote(self.name)}'
+        else:
+            assert False, location
+
+    def fullName(self) -> str:
         parent = self.parent
         if parent is not None:
             if (parent.parent and isinstance(parent.parent, Package)
@@ -231,7 +273,7 @@ class Documentable:
         return self.privacyClass is not PrivacyClass.HIDDEN
 
     @property
-    def module(self):
+    def module(self) -> 'Module':
         """This object's L{Module}.
 
         For modules, this returns the object itself, otherwise
@@ -244,7 +286,7 @@ class Documentable:
     def report(self, descr, section='parsing', lineno_offset=0):
         """Log an error or warning about this documentable object."""
 
-        if section == 'docstring':
+        if section in ('docstring', 'resolve_identifier_xref'):
             linenumber = self.docstring_lineno
         else:
             linenumber = self.linenumber
@@ -257,7 +299,7 @@ class Documentable:
 
         self.system.msg(
             section,
-            f'{self.module.description}:{linenumber}: {descr}',
+            f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
 
 
@@ -318,17 +360,6 @@ class Module(CanContainImportsDocumentable):
     def module(self):
         return self
 
-    @property
-    def description(self):
-        """A string describing this module to the user.
-
-        If this module's code was read from a file, this returns
-        its file path. In other cases, such as during unit testing,
-        the module's full name is returned.
-        """
-        filepath = getattr(self, 'filepath', None)
-        return self.fullName() if filepath is None else filepath
-
 
 class Class(CanContainImportsDocumentable):
     kind = "Class"
@@ -369,6 +400,7 @@ class Inheritable(Documentable):
 
 class Function(Inheritable):
     kind = "Function"
+    annotations: Mapping[str, Optional[ast.expr]]
 
     def setup(self):
         super().setup()
@@ -392,6 +424,9 @@ class PrivacyClass(Enum):
     VISIBLE = 2
 
 
+# Work around the attributes of the same name within the System class.
+_ModuleT = Module
+_PackageT = Package
 
 class System:
     """A collection of related documentable objects.
@@ -408,7 +443,7 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase = None
+    sourcebase: Optional[str] = None
 
     def __init__(self, options=None):
         self.allobjects = {}
@@ -476,8 +511,8 @@ class System:
                 self.needsnl = False
                 print('')
 
-    def objForFullName(self, fullName):
-        return self.allobjects.get(fullName)
+    def objForFullName(self, fullName: str) -> Optional[Documentable]:
+        return self.allobjects.get(fullName) # type: ignore[no-any-return]
 
     def _warning(self, current, message, detail):
         if current is not None:
@@ -534,36 +569,44 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod):
+    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
-            mod.sourceHref = (
-                self.sourcebase +
-                mod.filepath[len(projBaseDir):])
+            relative = source_path.relative_to(projBaseDir).as_posix()
+            mod.sourceHref = f'{self.sourcebase}/{relative}'
 
-    def addModule(self, modpath, modname, parentPackage=None):
-        mod = self.Module(self, modname, parentPackage)
+    def addModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT] = None
+            ) -> None:
+        mod = self.Module(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
             None, "modules and packages discovered")
-        mod.filepath = modpath
         self.unprocessed_modules.add(mod)
         self.module_count += 1
-        self.setSourceHref(mod)
+        self.setSourceHref(mod, modpath)
 
-    def ensureModule(self, module_full_name):
-        if module_full_name in self.allobjects:
-            return self.allobjects[module_full_name]
+    def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
+        try:
+            module: Module = self.allobjects[module_full_name]
+            assert isinstance(module, Module)
+        except KeyError:
+            pass
+        else:
+            return module
+
         if '.' in module_full_name:
             parent_name, module_name = module_full_name.rsplit('.', 1)
             parent_package = self.ensurePackage(parent_name)
         else:
             parent_package = None
             module_name = module_full_name
-        module = self.Module(self, module_name, parent_package)
+        module = self.Module(self, module_name, parent_package, modpath)
         self.addObject(module)
         return module
 
@@ -582,8 +625,10 @@ class System:
 
     def _introspectThing(self, thing, parent, parentMod):
         for k, v in thing.__dict__.items():
-            if isinstance(v, (types.BuiltinFunctionType,
-                              types.FunctionType)):
+            if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
+                    # In PyPy 7.3.1, functions from extensions are not
+                    # instances of the above abstract types.
+                    or v.__class__.__name__ == 'builtin_function_or_method'):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
@@ -600,12 +645,17 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, py_mod, module_full_name):
-        module = self.ensureModule(module_full_name)
+    def introspectModule(self, path: Path, module_full_name: str) -> None:
+        spec = importlib.util.spec_from_file_location(module_full_name, path)
+        py_mod = importlib.util.module_from_spec(spec)
+        loader = spec.loader
+        assert isinstance(loader, importlib.abc.Loader), loader
+        loader.exec_module(py_mod)
+        module = self.ensureModule(module_full_name, path)
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
-    def addPackage(self, dirpath, parentPackage=None):
+    def addPackage(self, dirpath: str, parentPackage: Optional[_PackageT] = None) -> None:
         if not os.path.exists(dirpath):
             raise Exception(f"package path {dirpath!r} does not exist!")
         if not os.path.exists(os.path.join(dirpath, '__init__.py')):
@@ -618,8 +668,7 @@ class System:
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
-        package.filepath = dirpath
-        self.setSourceHref(package)
+        self.setSourceHref(package, Path(dirpath))
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
@@ -629,24 +678,21 @@ class System:
             elif not fname.startswith('.'):
                 self.addModuleFromPath(package, fullname)
 
-    def addModuleFromPath(self, package, path):
-        for (suffix, mode, impl) in imp.get_suffixes():
+    def addModuleFromPath(self, package: Optional[_PackageT], path: str) -> None:
+        for suffix in importlib.machinery.all_suffixes():
             if not path.endswith(suffix):
                 continue
             module_name = os.path.basename(path[:-len(suffix)])
-            if impl == imp.C_EXTENSION:
+            if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if not self.options.introspect_c_modules:
                     continue
                 if package is not None:
                     module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
-                py_mod = imp.load_module(
-                    module_full_name, open(path, 'rb'), path,
-                    (suffix, mode, impl))
-                self.introspectModule(py_mod, module_full_name)
-            elif impl == imp.PY_SOURCE:
-                self.addModule(path, module_name, package)
+                self.introspectModule(Path(path), module_full_name)
+            elif suffix in importlib.machinery.SOURCE_SUFFIXES:
+                self.addModule(Path(path), module_name, package)
             break
 
     def handleDuplicate(self, obj):
@@ -702,10 +748,10 @@ class System:
     def processModule(self, mod):
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
-        if getattr(mod, 'filepath', None) is None:
+        if mod.source_path is None:
             return
         builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.filepath)
+        ast = builder.parseFile(mod.source_path)
         if ast:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)

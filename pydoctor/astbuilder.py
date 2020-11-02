@@ -2,26 +2,25 @@
 
 import ast
 import sys
+from functools import partial
 from itertools import chain
-from typing import Iterator, Mapping, Tuple
+from pathlib import Path
+from typing import Dict, Iterator, Mapping, Optional, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
 
 
-def parseFile(path):
+def parseFile(path: Path) -> ast.AST:
     """Parse the contents of a Python source file."""
     with open(path, 'rb') as f:
         src = f.read() + b'\n'
-    return parse(src)
+    return _parse(src)
 
-_parse_kwargs = {}
 if sys.version_info >= (3,8):
-    _parse_kwargs['type_comments'] = True
-
-def parse(buf):
-    """Parse the contents of a Unicode or bytes string."""
-    return ast.parse(buf, **_parse_kwargs)
+    _parse = partial(ast.parse, type_comments=True)
+else:
+    _parse = ast.parse
 
 
 def node2dottedname(node):
@@ -324,8 +323,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleDocstringUpdate(self, targetNode, expr, lineno):
         def warn(msg):
             self.system.msg('ast', "%s:%d: %s" % (
-                    getattr(self.builder.currentMod, 'filepath', '<unknown>'),
-                    lineno, msg))
+                    self.builder.currentMod.description, lineno, msg))
 
         # Figure out target object.
         full_name = node2fullname(targetNode, self.builder.current)
@@ -485,7 +483,9 @@ class ModuleVistor(ast.NodeVisitor):
                 return _infer_type(default)
         return None
 
-    def _annotations_from_function(self, func: ast.FunctionDef) -> Mapping[str, ast.expr]:
+    def _annotations_from_function(
+            self, func: ast.FunctionDef
+            ) -> Mapping[str, Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
         @return: Mapping from argument name to annotation.
@@ -507,15 +507,19 @@ class ModuleVistor(ast.NodeVisitor):
             kwargs = base_args.kwarg
             if kwargs:
                 yield kwargs
-        def _get_all_ast_annotations() -> Iterator[Tuple[str, ast.expr]]:
+        def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():
-                if arg.annotation:
-                    yield arg.arg, arg.annotation
+                yield arg.arg, arg.annotation
             returns = func.returns
             if returns:
                 yield 'return', returns
-        return {name: self._unstring_annotation(value)
-                for name, value in _get_all_ast_annotations()}
+        return {
+            # Include parameter names even if they're not annotated, so that
+            # we can use the key set to know which parameters exist and warn
+            # when non-existing parameters are documented.
+            name: None if value is None else self._unstring_annotation(value)
+            for name, value in _get_all_ast_annotations()
+            }
 
     def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
@@ -638,6 +642,8 @@ def _annotation_for_elements(sequence):
 class ASTBuilder:
     ModuleVistor = ModuleVistor
 
+    ast_cache: Dict[Path, Optional[ast.AST]]
+
     def __init__(self, system):
         self.system = system
         self.current = None
@@ -706,16 +712,17 @@ class ASTBuilder:
 
         self.ModuleVistor(self, mod).visit(ast)
 
-    def parseFile(self, filePath):
-        if filePath in self.ast_cache:
-            return self.ast_cache[filePath]
+    def parseFile(self, path: Path) -> Optional[ast.AST]:
         try:
-            ast = parseFile(filePath)
-        except (SyntaxError, ValueError):
-            self.warning("cannot parse", filePath)
-            ast = None
-        self.ast_cache[filePath] = ast
-        return ast
+            return self.ast_cache[path]
+        except KeyError:
+            mod: Optional[ast.AST] = None
+            try:
+                mod = parseFile(path)
+            except (SyntaxError, ValueError):
+                self.warning("cannot parse", str(path))
+            self.ast_cache[path] = mod
+            return mod
 
 model.System.defaultBuilder = ASTBuilder
 

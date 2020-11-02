@@ -2,10 +2,13 @@ from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
+from . import CapSys
+
+
 # we set up the same situation using both implements and
 # classImplements and run the same tests.
 
-def test_implements():
+def test_implements() -> None:
     src = '''
     import zope.interface
 
@@ -23,7 +26,7 @@ def test_implements():
     '''
     implements_test(src)
 
-def test_classImplements():
+def test_classImplements() -> None:
     src = '''
     import zope.interface
     class IFoo(zope.interface.Interface):
@@ -42,7 +45,7 @@ def test_classImplements():
     '''
     implements_test(src)
 
-def test_implementer():
+def test_implementer() -> None:
     src = '''
     import zope.interface
 
@@ -62,7 +65,7 @@ def test_implementer():
     '''
     implements_test(src)
 
-def implements_test(src):
+def implements_test(src: str) -> None:
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
@@ -89,7 +92,7 @@ def implements_test(src):
     assert ibar.allImplementations == [foobar, onlybar]
 
 
-def test_subclass_with_same_name():
+def test_subclass_with_same_name() -> None:
     src = '''
     class A:
         pass
@@ -98,7 +101,7 @@ def test_subclass_with_same_name():
     '''
     fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
 
-def test_multiply_inheriting_interfaces():
+def test_multiply_inheriting_interfaces() -> None:
     src = '''
     from zope.interface import Interface, implements
 
@@ -111,7 +114,7 @@ def test_multiply_inheriting_interfaces():
     mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['Both'].allImplementedInterfaces) == 2
 
-def test_attribute(capsys):
+def test_attribute(capsys: CapSys) -> None:
     src = '''
     import zope.interface as zi
     class C(zi.Interface):
@@ -131,14 +134,14 @@ def test_attribute(capsys):
     captured = capsys.readouterr().out
     assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
-def test_interfaceclass():
+def test_interfaceclass() -> None:
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
     assert mod.contents['MyInterface'].isinterface
     assert mod.contents['MyInterface'].docstring == "This is my interface."
     assert mod.contents['AnInterface'].isinterface
 
-def test_warnerproofing():
+def test_warnerproofing() -> None:
     src = '''
     from zope import interface
     Interface = interface.Interface
@@ -148,7 +151,7 @@ def test_warnerproofing():
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     assert mod.contents['IMyInterface'].isinterface
 
-def test_zopeschema(capsys):
+def test_zopeschema(capsys: CapSys) -> None:
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
@@ -169,7 +172,7 @@ def test_zopeschema(capsys):
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
-def test_aliasing_in_class():
+def test_aliasing_in_class() -> None:
     src = '''
     from zope import interface
     class IMyInterface(interface.Interface):
@@ -181,7 +184,7 @@ def test_aliasing_in_class():
     assert attr.docstring == 'fun in a bun'
     assert attr.kind == "Attribute"
 
-def test_zopeschema_inheritance():
+def test_zopeschema_inheritance() -> None:
     src = '''
     from zope import schema, interface
     from zope.schema import Int as INTEGERSCHMEMAFIELD
@@ -204,7 +207,7 @@ def test_zopeschema_inheritance():
     myint = mod.contents['IMyInterface'].contents['myint']
     assert myint.kind == "Int"
 
-def test_docsources_includes_interface():
+def test_docsources_includes_interface() -> None:
     src = '''
     from zope import interface
     class IInterface(interface.Interface):
@@ -220,7 +223,7 @@ def test_docsources_includes_interface():
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
-def test_docsources_includes_baseinterface():
+def test_docsources_includes_baseinterface() -> None:
     src = '''
     from zope import interface
     class IBase(interface.Interface):
@@ -238,7 +241,7 @@ def test_docsources_includes_baseinterface():
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
-def test_docsources_interface_attribute():
+def test_docsources_interface_attribute() -> None:
     src = '''
     from zope import interface
     class IInterface(interface.Interface):
@@ -252,7 +255,7 @@ def test_docsources_interface_attribute():
     attr = mod.contents['Implementation'].contents['attr']
     assert iattr in list(attr.docsources())
 
-def test_implementer_decoration():
+def test_implementer_decoration() -> None:
     src = '''
     from zope.interface import Interface, implementer
     class IMyInterface(Interface):
@@ -268,7 +271,7 @@ def test_implementer_decoration():
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_decoration_nonclass():
+def test_implementer_decoration_nonclass() -> None:
     src = '''
     from zope.interface import implementer
     var = 0
@@ -280,7 +283,7 @@ def test_implementer_decoration_nonclass():
     impl = mod.contents['Implementation']
     assert impl.implements_directly == []
 
-def test_docsources_from_moduleprovides():
+def test_docsources_from_moduleprovides() -> None:
     src = '''
     from zope import interface
 
@@ -298,12 +301,12 @@ def test_docsources_from_moduleprovides():
     function = mod.contents['bar']
     assert imethod in function.docsources(), list(function.docsources())
 
-def test_interfaceallgames():
+def test_interfaceallgames() -> None:
     system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceallgames.interface']
     assert [o.fullName() for o in mod.contents['IAnInterface'].allImplementations] == ['interfaceallgames.implementation.Implementation']
 
-def test_implementer_with_none():
+def test_implementer_with_none() -> None:
     """
     If the implementer call contains a split out empty list, don't fail on
     attempting to process it.
@@ -324,7 +327,7 @@ def test_implementer_with_none():
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_nonclass(capsys):
+def test_implementer_nonclass(capsys: CapSys) -> None:
     """
     Check rejection of non-class arguments passed to @implementer.
     """
@@ -341,7 +344,7 @@ def test_implementer_nonclass(capsys):
     captured = capsys.readouterr().out
     assert captured == "mod:4: probable interface mod.var not detected as a class\n"
 
-def test_implementer_plainclass(capsys):
+def test_implementer_plainclass(capsys: CapSys) -> None:
     """
     Check patching of non-interface classes passed to @implementer.
     """

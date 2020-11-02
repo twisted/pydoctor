@@ -36,7 +36,7 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import List
+from typing import List, Optional
 import re
 
 from twisted.python.failure import Failure
@@ -143,36 +143,32 @@ class Field:
     Tags are automatically downcased and stripped; and arguments are
     automatically stripped.
     """
-    def __init__(self, tag, arg, body, lineno):
+
+    def __init__(self, tag: str, arg: Optional[str], body: ParsedDocstring, lineno: int):
         self._tag = tag.lower().strip()
-        if arg is None: self._arg = None
-        else: self._arg = arg.strip()
+        self._arg = None if arg is None else arg.strip()
         self._body = body
         self.lineno = lineno
 
-    def tag(self):
+    def tag(self) -> str:
         """
         @return: This field's tag.
-        @rtype: C{string}
         """
         return self._tag
 
-    def arg(self):
+    def arg(self) -> Optional[str]:
         """
-        @return: This field's argument, or C{None} if this field has
-            no argument.
-        @rtype: C{string} or C{None}
+        @return: This field's argument, or C{None} if this field has no argument.
         """
         return self._arg
 
-    def body(self):
+    def body(self) -> ParsedDocstring:
         """
         @return: This field's body.
-        @rtype: L{ParsedDocstring}
         """
         return self._body
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self._arg is None:
             return f'<Field @{self._tag}: ...>'
         else:
@@ -188,15 +184,15 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
-    def resolve_identifier_xref(self, identifier):
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
         """
         Resolve a crossreference link to a Python identifier.
 
-        @type identifier: C{string}
         @param identifier: The name of the Python identifier that
             should be linked to.
-        @rtype: C{string}
-        @return: The URL of the target
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The URL of the target.
         @raise LookupError: If C{identifier} could not be resolved.
         """
         raise NotImplementedError()

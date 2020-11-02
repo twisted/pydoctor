@@ -8,7 +8,8 @@ import shutil
 import textwrap
 import zlib
 from typing import (
-    TYPE_CHECKING, Callable, Dict, IO, Iterable, Mapping, Optional, Tuple
+    TYPE_CHECKING, Callable, ContextManager, Dict, IO, Iterable, Mapping,
+    Optional, Tuple
 )
 
 import appdirs
@@ -108,14 +109,20 @@ class SphinxInventory:
         """
         result = {}
         for line in payload.splitlines():
-            parts = line.split(' ', 4)
-            if len(parts) != 5:
+            try:
+                name, typ, prio, location, display = _parseInventoryLine(line)
+            except ValueError:
                 self.error(
                     'sphinx',
                     'Failed to parse line "%s" for %s' % (line, base_url),
                     )
                 continue
-            result[parts[0]] = (base_url, parts[3])
+
+            if not typ.startswith('py:'):
+                # Non-Python references are ignored.
+                continue
+
+            result[name] = (base_url, location)
         return result
 
     def getLink(self, name: str) -> Optional[str]:
@@ -131,6 +138,38 @@ class SphinxInventory:
             relative_link = relative_link[:-1] + name
 
         return f'{base_url}/{relative_link}'
+
+
+def _parseInventoryLine(line: str) -> Tuple[str, str, int, str, str]:
+    """
+    Parse a single line from a Sphinx inventory.
+    @raise ValueError: If the line does not conform to the syntax.
+    """
+    parts = line.split(' ')
+
+    # The format is a bit of a mess: spaces are used as separators, but
+    # there are also columns that can contain spaces.
+    # Use the numeric priority column as a reference point, since that is
+    # what sphinx.util.inventory.InventoryFile.load_v2() does as well.
+    prio_idx = 2
+    try:
+        while True:
+            try:
+                prio = int(parts[prio_idx])
+                break
+            except ValueError:
+                prio_idx += 1
+    except IndexError:
+        raise ValueError("Could not find priority column")
+
+    name = ' '.join(parts[: prio_idx - 1])
+    typ = parts[prio_idx - 1]
+    location = parts[prio_idx + 1]
+    display = ' '.join(parts[prio_idx + 2 :])
+    if not display:
+        raise ValueError("Display name column cannot be empty")
+
+    return name, typ, prio, location, display
 
 
 class SphinxInventoryWriter:
@@ -162,7 +201,7 @@ class SphinxInventoryWriter:
             content = self._generateContent(subjects)
             target.write(zlib.compress(content))
 
-    def _openFileForWriting(self, path: str) -> IO[bytes]:
+    def _openFileForWriting(self, path: str) -> ContextManager[IO[bytes]]:
         """
         Helper for testing.
         """
@@ -205,11 +244,7 @@ class SphinxInventoryWriter:
         from pydoctor import model
 
         full_name = obj.fullName()
-
-        if obj.documentation_location is model.DocLocation.OWN_PAGE:
-            url = obj.fullName() + '.html'
-        else:
-            url = obj.parent.fullName() + '.html#' + obj.name
+        url = obj.url
 
         display = '-'
         if isinstance(obj, (model.Package, model.Module)):
@@ -361,26 +396,6 @@ class IntersphinxCache:
                 url
             )
             return None
-
-
-@attr.s(auto_attribs=True)
-class StubCache:
-    """
-    A stub cache.
-    """
-
-    _cache: Dict[str, bytes]
-    """A mapping from URLs to content."""
-
-    def get(self, url: str) -> Optional[bytes]:
-        """
-        Return stored for the given URL.
-
-        @param url: The URL to retrieve.
-        @return: The "body" of the URL - the value from L{_cache} or
-            L{None}.
-        """
-        return self._cache.get(url)
 
 
 def prepareCache(

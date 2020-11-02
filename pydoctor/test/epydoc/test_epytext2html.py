@@ -10,23 +10,25 @@ To work around this, expected output should contain at most
 one attribute per tag.
 """
 
-from pydoctor.epydoc.markup import flatten
+from typing import List
+
+from pydoctor.epydoc.markup import ParseError, flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
 
 
-def epytext2html(s):
-    errors = []
+def epytext2html(s: str) -> str:
+    errors: List[ParseError] = []
     parsed = parse_docstring(s, errors)
     assert not errors
     return flatten(parsed.to_stan(None))
 
-def squash(s):
+def squash(s: str) -> str:
     return ''.join(
         line.lstrip() for line in s.strip().split('\n')
         ).replace('|', '\n')
 
 
-def test_epytext_paragraph():
+def test_epytext_paragraph() -> None:
     doc = '''
         This is a paragraph.  Paragraphs can
         span multiple lines, and can contain
@@ -42,7 +44,7 @@ def test_epytext_paragraph():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_ordered_list():
+def test_epytext_ordered_list() -> None:
     doc = '''
           1. This is an ordered list item.
 
@@ -70,7 +72,7 @@ def test_epytext_ordered_list():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_nested_list():
+def test_epytext_nested_list() -> None:
     doc = '''
         This is a paragraph.
             1. This is a list item.
@@ -88,7 +90,7 @@ def test_epytext_nested_list():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_complex_list():
+def test_epytext_complex_list() -> None:
     doc = '''
         This is a paragraph.
           1. This is a list item.
@@ -132,7 +134,7 @@ def test_epytext_complex_list():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_sections():
+def test_epytext_sections() -> None:
     doc = '''
         This paragraph is not in any section.
 
@@ -159,7 +161,7 @@ def test_epytext_sections():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_literal_block():
+def test_epytext_literal_block() -> None:
     doc = '''
         The following is a literal block::
 
@@ -179,7 +181,7 @@ def test_epytext_literal_block():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_inline():
+def test_epytext_inline() -> None:
     doc = '''
         I{B{Inline markup} may be nested; and
         it may span} multiple lines.
@@ -205,7 +207,7 @@ def test_epytext_inline():
         '''
     assert epytext2html(doc) == squash(expected)
 
-def test_epytext_url():
+def test_epytext_url() -> None:
     doc = '''
         - U{www.python.org}
         - U{http://www.python.org}
@@ -228,7 +230,7 @@ def test_epytext_url():
     # Drop 'target' attribute so we have one attribute per tag.
     assert epytext2html(doc).replace(' target="_top"', '') == squash(expected)
 
-def test_epytext_symbol():
+def test_epytext_symbol() -> None:
     doc = '''
         Symbols can be used in equations:
           - S{sum}S{alpha}/x S{<=} S{beta}

@@ -1,3 +1,4 @@
+from typing import Optional
 import textwrap
 
 from pytest import raises
@@ -7,8 +8,10 @@ from pydoctor.epydoc.markup import flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
+from . import CapSys
 
-def test_multiple_types():
+
+def test_multiple_types() -> None:
     mod = fromText('''
     def f(a):
         """
@@ -55,7 +58,7 @@ def test_html_empty_module() -> None:
     """).strip()
     assert docstring2html(mod) == expected_html
 
-def test_func_arg_and_ret_annotation():
+def test_func_arg_and_ret_annotation() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: "List[str]") -> bool:
         """
@@ -79,7 +82,7 @@ def test_func_arg_and_ret_annotation():
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_and_ret_annotation_with_override():
+def test_func_arg_and_ret_annotation_with_override() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: List[str]) -> bool:
         """
@@ -104,7 +107,7 @@ def test_func_arg_and_ret_annotation_with_override():
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_arg_when_doc_missing():
+def test_func_arg_when_doc_missing() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
@@ -125,14 +128,14 @@ def test_func_arg_when_doc_missing():
     assert annotation_fmt == classic_fmt
 
 
-def test_func_missing_param_name(capsys):
+def test_func_missing_param_name(capsys: CapSys) -> None:
     """Param and type fields must include the name of the parameter."""
     mod = fromText('''
     def f(a, b):
         """
         @param a: The first parameter.
         @param: The other one.
-        @type: L{str}
+        @type: C{str}
         """
     ''')
     epydoc2stan.format_docstring(mod.contents['f'])
@@ -143,7 +146,7 @@ def test_func_missing_param_name(capsys):
         )
 
 
-def test_func_missing_exception_type(capsys):
+def test_func_missing_exception_type(capsys: CapSys) -> None:
     """Raise fields must include the exception type."""
     mod = fromText('''
     def f(x):
@@ -157,7 +160,7 @@ def test_func_missing_exception_type(capsys):
     assert captured == '<test>:5: Exception type missing\n'
 
 
-def test_unexpected_field_args(capsys):
+def test_unexpected_field_args(capsys: CapSys) -> None:
     """Warn when field arguments that should be empty aren't."""
     mod = fromText('''
     def get_it():
@@ -172,7 +175,7 @@ def test_unexpected_field_args(capsys):
                        "<test>:5: Unexpected argument in rtype field\n"
 
 
-def test_func_starargs(capsys):
+def test_func_starargs(capsys: CapSys) -> None:
     """Var-args must be named in fields without asterixes.
     But for compatibility, we warn and strip off the asterixes.
     """
@@ -183,7 +186,7 @@ def test_func_starargs(capsys):
 
         @param *args: var-positional arguments
         @param **kwargs: var-keyword arguments
-        @type **kwargs: L{str}
+        @type **kwargs: C{str}
         """
     ''', modname='<bad>')
     good_mod = fromText('''
@@ -193,7 +196,7 @@ def test_func_starargs(capsys):
 
         @param args: var-positional arguments
         @param kwargs: var-keyword arguments
-        @type kwargs: L{str}
+        @type kwargs: C{str}
         """
     ''', modname='<good>')
     bad_fmt = docstring2html(bad_mod.contents['f'])
@@ -207,7 +210,7 @@ def test_func_starargs(capsys):
         )
 
 
-def test_summary():
+def test_summary() -> None:
     mod = fromText('''
     def single_line_summary():
         """
@@ -231,7 +234,7 @@ def test_summary():
         Lorem Ipsum
         """
     ''')
-    def get_summary(func):
+    def get_summary(func: str) -> str:
         stan = epydoc2stan.format_summary(mod.contents[func])
         assert stan.tagName == 'span', stan
         return flatten(stan.children)
@@ -240,8 +243,8 @@ def test_summary():
     assert 'No summary' == get_summary('no_summary')
 
 
-def test_missing_field_name(capsys):
-    fromText('''
+def test_missing_field_name(capsys: CapSys) -> None:
+    mod = fromText('''
     """
     A test module.
 
@@ -249,12 +252,13 @@ def test_missing_field_name(capsys):
     @type: str
     """
     ''', modname='test')
+    epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
     assert captured == "test:5: Missing field name in @ivar\n" \
                        "test:6: Missing field name in @type\n"
 
 
-def test_unknown_field_name(capsys):
+def test_unknown_field_name(capsys: CapSys) -> None:
     mod = fromText('''
     """
     A test module.
@@ -267,7 +271,7 @@ def test_unknown_field_name(capsys):
     assert captured == 'test:5: Unknown field "zap"\n'
 
 
-def test_EpydocLinker_look_for_intersphinx_no_link():
+def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     Return None if inventory had no link for our markup.
     """
@@ -280,7 +284,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link():
     assert None is result
 
 
-def test_EpydocLinker_look_for_intersphinx_hit():
+def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     """
     Return the link from inventory based on first package name.
     """
@@ -296,7 +300,7 @@ def test_EpydocLinker_look_for_intersphinx_hit():
     assert 'http://tm.tld/some.html' == result
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     """
     Returns the link from Sphinx inventory based on a cross reference
     ID specified in absolute dotted path and with a custom pretty text for the
@@ -309,12 +313,12 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id():
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
-    url = sut.resolve_identifier_xref('base.module.other')
+    url = sut.resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id():
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     """
     Return the link from inventory using short names, by resolving them based
     on the imports done in the module.
@@ -333,12 +337,12 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id():
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier_xref('ext_module')
+    url = sut.resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
 
 
-def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys):
+def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys: CapSys) -> None:
     """
     A message is sent to stdout when no link could be found for the reference,
     while returning the reference name without an A link tag.
@@ -357,7 +361,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys)
 
     # This is called for the L{ext_module} markup.
     with raises(LookupError):
-        sut.resolve_identifier_xref('ext_module')
+        sut.resolve_identifier_xref('ext_module', 0)
 
     captured = capsys.readouterr().out
     expected = (
@@ -367,7 +371,19 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys)
     assert expected == captured
 
 
-def test_EpydocLinker_resolve_identifier_xref_order(capsys):
+class InMemoryInventory:
+    """
+    A simple inventory implementation which has an in-memory API link mapping.
+    """
+
+    INVENTORY = {
+        'socket.socket': 'https://docs.python.org/3/library/socket.html#socket.socket',
+        }
+
+    def getLink(self, name: str) -> Optional[str]:
+        return self.INVENTORY.get(name)
+
+def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     """
     Check that the best match is picked when there are multiple candidates.
     """
@@ -376,24 +392,57 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys):
     class C:
         socket = None
     ''')
+    mod.system.intersphinx = InMemoryInventory()
     linker = epydoc2stan._EpydocLinker(mod)
 
-    url = linker.resolve_identifier_xref('socket.socket')
+    url = linker.resolve_identifier_xref('socket.socket', 0)
 
-    assert epydoc2stan.STDLIB_URL + 'socket.html#socket.socket' == url
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert not capsys.readouterr().out
 
 
-def test_stdlib_doc_link_for_name():
+def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
-    Check the URLs returned for names from the standard library.
+    When a link in an epytext docstring cannot be resolved, the reference
+    and the line number of the link should be reported.
     """
 
-    base = epydoc2stan.STDLIB_URL
-    link = epydoc2stan.stdlib_doc_link_for_name
-    assert base + 'exceptions.html#KeyError' == link('KeyError')
-    assert base + 'stdtypes.html#str' == link('str')
-    assert base + 'functions.html#len' == link('len')
-    assert base + 'constants.html#None' == link('None')
-    assert base + 'collections.html#collections.defaultdict' == link('collections.defaultdict')
-    assert base + 'logging.handlers.html#logging.handlers.SocketHandler' == link('logging.handlers.SocketHandler')
+    mod = fromText('''
+    """
+    A test module.
+
+    Link to limbo: L{NoSuchName}.
+    """
+    ''', modname='test')
+
+    epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert captured == "test:5: invalid ref to 'NoSuchName' not resolved\n"
+
+
+def test_xref_not_found_restructured(capsys: CapSys) -> None:
+    """
+    When a link in an reStructedText docstring cannot be resolved, the reference
+    and the line number of the link should be reported.
+    However, currently the best we can do is report the starting line of the
+    docstring instead.
+    """
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    mod = fromText('''
+    """
+    A test module.
+
+    Link to limbo: `NoSuchName`.
+    """
+    ''', modname='test', system=system)
+
+    epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    # TODO: Should actually be line 5, but I can't get docutils to fill in
+    #       the line number when it calls visit_title_reference().
+    #       https://github.com/twisted/pydoctor/issues/237
+    assert captured == "test:3: invalid ref to 'NoSuchName' not resolved\n"
