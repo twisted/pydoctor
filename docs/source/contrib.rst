@@ -1,7 +1,7 @@
-Development
-===========
+Contribute
+==========
 
-.. imclude:: ../../CONTRINUTING.rst
+.. imclude:: ../../CONTRIBUTING.rst
 
 Design Notes
 ------------

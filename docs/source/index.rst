@@ -25,8 +25,9 @@ A few projects using ``pydoctor``
    self
    usage
    markup
+   faq
    transition
-   dev
+   contrib
 
    
 .. toctree::

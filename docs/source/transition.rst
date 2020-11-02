@@ -8,7 +8,7 @@ If you are looking for a successor to ``epydoc`` after moving to Python 3, ``pyd
 
 .. important::
 
-    - ``pydoctor`` dropped support for the ``X{}`` tag. All other epytext matkup should be fully supported
+    - ``pydoctor`` dropped support for the ``X{}`` tag. All other epytext markup syntax should be fully supported
 
 From ``pdoc3``
 --------------

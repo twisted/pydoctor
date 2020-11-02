@@ -23,7 +23,7 @@ It will add a link to your project website in all pages header and show a link t
 
 .. note:: This exemple assume you are running the ``pydoctor`` build from Unix and the current directory is the root folder of your package. 
 
-.. warning:: The ``--html-viewsource-base`` argument  should point to a tag rather than a branch since line 
+.. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line 
     numbers aren't going to match otherwise when commits are added to the branch after the documentation has been published.
 
 Publish your documentation with Github actions
