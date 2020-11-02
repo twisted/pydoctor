@@ -697,15 +697,15 @@ class System:
 
     def handleDuplicate(self, obj):
         '''This is called when we see two objects with the same
-        .fullName(), for example:
+        .fullName(), for example::
 
-        class C:
-            if something:
-                def meth(self):
-                    implementation 1
-            else:
-                def meth(self):
-                    implementation 2
+            class C:
+                if something:
+                    def meth(self):
+                        implementation 1
+                else:
+                    def meth(self):
+                        implementation 2
 
         The default is that the second definition "wins".
         '''
