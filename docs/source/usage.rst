@@ -148,7 +148,7 @@ Customize builds
 Use a custom System class
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass :py:class:`pydoctor.model.System` and pass your custom class dotted name with the ``--system-class`` argument. 
+You can subclass :py:class:`pydoctor:pydoctor.model.System` and pass your custom class dotted name with the ``--system-class`` argument. 
 
 System class allows you to dynamically show/hide classes or methods. 
 This is can also be used by the Twisted project to handle deprecation.
@@ -169,7 +169,7 @@ See the `Twisted usage <https://github.com/twisted/twisted/blob/trunk/src/twiste
 Use a custom HTML writer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter` and pass your custom class dotted name with the ``--html-writer`` argument. 
+You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.TemplateWriter` and pass your custom class dotted name with the ``--html-writer`` argument. 
 
 .. note:: Not fully documented yet
 
