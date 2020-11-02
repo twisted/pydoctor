@@ -11,7 +11,7 @@ If you like the project and think you could help with making it better, there ar
 - Spread a word about the project to your colleagues, friends, blogs or any other channels
 - Any other things you could imagine
 
-Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue, or contact me via buggygm@gmail.com
+Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue. 
 
 Releasing a new package
 -----------------------
