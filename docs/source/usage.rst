@@ -162,7 +162,7 @@ Use a custom HTML templates
 
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
-See the `Twisted usage <https://github.com/twisted/twisted/blob/trunk/src/twisted/python/_release.py#L314>`_.
+See the `Twisted usage <https://github.com/twisted/twisted/blob/trunk/src/twisted/python/_release.py>`_.
 
 .. note:: Not fully documented yet
 
