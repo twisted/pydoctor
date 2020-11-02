@@ -42,7 +42,7 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language of epydoc.
     Simple and compact.
 
-`reStructuredText`__
+`restructuredtext`__
     The markup language used by Sphinx.
     More expressive than epytext, but also slighly more complex and verbose.
 
