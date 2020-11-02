@@ -1,20 +1,22 @@
-from pydoctor.epydoc.markup import epytext, flatten
+from typing import List
+
+from pydoctor.epydoc.markup import ParseError, epytext, flatten
 
 
-def epytext2html(s):
-    errs = []
+def epytext2html(s: str) -> str:
+    errs: List[ParseError] = []
     v = flatten(epytext.parse_docstring(s, errs).to_stan(None))
     if errs:
         raise errs[0]
     return (v or '').rstrip()
 
 
-def parse(s):
+def parse(s: str) -> str:
     # this strips off the <epytext>...</epytext>
     return ''.join(str(n) for n in epytext.parse(s).children)
 
 
-def test_basic_list():
+def test_basic_list() -> None:
     P1 = "This is a paragraph."
     P2 = "This is a \nparagraph."
     LI1 = "  - This is a list item."
@@ -58,7 +60,7 @@ def test_basic_list():
     assert parse(f'{P2}\n{LI6}\n{P1}') == PARA+LI6LIST+PARA
 
 
-def test_item_wrap():
+def test_item_wrap() -> None:
     LI = "- This is a list\n  item."
     ONELIST = ('<ulist><li><para inline=True>This is a '
                'list item.</para></li></ulist>')
@@ -72,7 +74,7 @@ def test_item_wrap():
                 assert parse(nl1+indent+LI+nl2+indent+LI) == TWOLIST
 
 
-def test_literal_braces():
+def test_literal_braces() -> None:
     """SF bug #1562530 reported some trouble with literal braces.
     This test makes sure that braces are getting rendered as desired.
     """

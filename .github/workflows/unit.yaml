@@ -1,0 +1,47 @@
+name: Unit tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  unit_tests:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
+        os: [ubuntu-20.04]
+        include:
+        - os: windows-latest
+        - python-version: 3.6
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip tox
+
+    - name: Log system information
+      run: |
+        test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
+        python --version
+        python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+        python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
+
+    - name: Run unit tests
+      run: |
+        tox -e test
+
+    - name: Publish code coverage
+      continue-on-error: true
+      run: |
+        tox -e codecov

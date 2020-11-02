@@ -2,7 +2,7 @@ from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import flatten
 
 
-def test_colorize_codeblock():
+def test_colorize_codeblock() -> None:
     src = '''
 def foo():
     """A multi-line docstring.
@@ -35,7 +35,7 @@ class Foo:
 '''.strip()
     assert flatten(colorize_codeblock(src)) == expected
 
-def test_colorize_doctest_more_string():
+def test_colorize_doctest_more_string() -> None:
     src = '''
 Test multi-line string:
 
@@ -56,7 +56,7 @@ Test multi-line string:
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
 
-def test_colorize_doctest_more_input():
+def test_colorize_doctest_more_input() -> None:
     src = '''
 Test multi-line expression:
 
@@ -77,7 +77,7 @@ Test multi-line expression:
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
 
-def test_colorize_doctest_exception():
+def test_colorize_doctest_exception() -> None:
     src = '''
 Test division by zero:
 
@@ -96,7 +96,7 @@ Test division by zero:
 '''.strip()
     assert flatten(colorize_doctest(src)) == expected
 
-def test_colorize_doctest_no_output():
+def test_colorize_doctest_no_output() -> None:
     src = '''
 Test expecting no output:
 

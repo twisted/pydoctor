@@ -2,10 +2,13 @@
 Unit tests for model.
 """
 
-import sys
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import cast
 import zlib
 
-from pydoctor import model, sphinx
+import pytest
+
+from pydoctor import model
 from pydoctor.driver import parse_args
 from pydoctor.test.test_astbuilder import fromText
 
@@ -15,6 +18,7 @@ class FakeOptions:
     A fake options object as if it came from that stupid optparse thing.
     """
     sourcehref = None
+    projectbasedirectory: Path
 
 
 
@@ -23,37 +27,37 @@ class FakeDocumentable:
     A fake of pydoctor.model.Documentable that provides a system and
     sourceHref attribute.
     """
-    system = None
+    system: model.System
     sourceHref = None
+    filepath: str
 
 
 
-def test_setSourceHrefOption():
+@pytest.mark.parametrize('projectBaseDir', [
+    PurePosixPath("/foo/bar/ProjectName"),
+    PureWindowsPath("C:\\foo\\bar\\ProjectName")]
+)
+def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     """
     Test that the projectbasedirectory option sets the model.sourceHref
     properly.
     """
-    viewSourceBase = "http://example.org/trac/browser/trunk"
-    projectBaseDir = "/foo/bar/ProjectName"
-    moduleRelativePart = "/package/module.py"
 
-    mod = FakeDocumentable()
-    mod.filepath = projectBaseDir + moduleRelativePart
+    mod = cast(model.Module, FakeDocumentable())
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
 
     system = model.System()
-    system.sourcebase = viewSourceBase
+    system.sourcebase = "http://example.org/trac/browser/trunk"
     system.options = options
     mod.system = system
-    system.setSourceHref(mod)
+    system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
-    expected = viewSourceBase + moduleRelativePart
-    assert mod.sourceHref == expected
+    assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
 
-def test_initialization_default():
+def test_initialization_default() -> None:
     """
     When initialized without options, will use default options and default
     verbosity.
@@ -64,7 +68,7 @@ def test_initialization_default():
     assert 3 == sut.options.verbosity
 
 
-def test_initialization_options():
+def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
@@ -75,7 +79,7 @@ def test_initialization_options():
     assert options is sut.options
 
 
-def test_fetchIntersphinxInventories_empty():
+def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
@@ -83,14 +87,14 @@ def test_fetchIntersphinxInventories_empty():
     options.intersphinx = []
     sut = model.System(options=options)
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache({}))
+    sut.fetchIntersphinxInventories({})
 
     # Use internal state since I don't know how else to
     # check for SphinxInventory state.
     assert {} == sut.intersphinx._links
 
 
-def test_fetchIntersphinxInventories_content():
+def test_fetchIntersphinxInventories_content() -> None:
     """
     Download and parse intersphinx inventories for each configured
     intersphix.
@@ -108,11 +112,13 @@ def test_fetchIntersphinxInventories_content():
         }
     sut = model.System(options=options)
     log = []
-    sut.msg = lambda part, msg: log.append((part, msg))
+    def log_msg(part: str, msg: str) -> None:
+        log.append((part, msg))
+    sut.msg = log_msg # type: ignore[assignment]
     # Patch url getter to avoid touching the network.
     sut.intersphinx._getURL = lambda url: url_content[url]
 
-    sut.fetchIntersphinxInventories(sphinx.StubCache(url_content))
+    sut.fetchIntersphinxInventories(url_content)
 
     assert [] == log
     assert (
@@ -125,7 +131,7 @@ def test_fetchIntersphinxInventories_content():
         )
 
 
-def test_docsources_class_attribute():
+def test_docsources_class_attribute() -> None:
     src = '''
     class Base:
         attr = False
@@ -139,7 +145,7 @@ def test_docsources_class_attribute():
     assert base_attr in list(sub_attr.docsources())
 
 
-def test_docstring_lineno():
+def test_docstring_lineno() -> None:
     src = '''
     def f():
         """
@@ -156,20 +162,48 @@ def test_docstring_lineno():
 
 
 class Dummy:
-    def crash(self):
+    def crash(self) -> None:
         """Mmm"""
 
-def test_introspection():
-    """Find docstrings from this test using introspection."""
+def test_introspection_python() -> None:
+    """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
-    py_mod = sys.modules[__name__]
-    system.introspectModule(py_mod, __name__)
+    system.introspectModule(Path(__file__), __name__)
 
     module = system.objForFullName(__name__)
+    assert module is not None
     assert module.docstring == __doc__
 
-    func = module.contents['test_introspection']
-    assert func.docstring == "Find docstrings from this test using introspection."
+    func = module.contents['test_introspection_python']
+    assert func.docstring == "Find docstrings from this test using introspection on pure Python."
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
+    assert method is not None
     assert method.docstring == "Mmm"
+
+
+def test_introspection_extension() -> None:
+    """Find docstrings from this test using introspection of an extension."""
+
+    try:
+        import cython_test_exception_raiser.raiser
+    except ImportError:
+        pytest.skip("cython_test_exception_raiser not installed")
+
+    system = model.System()
+    system.introspectModule(
+        Path(cython_test_exception_raiser.raiser.__file__),
+        'cython_test_exception_raiser.raiser')
+
+    module = system.objForFullName('cython_test_exception_raiser.raiser')
+    assert module is not None
+    assert module.docstring is not None
+    assert module.docstring.strip().split('\n')[0] == "A trivial extension that just raises an exception."
+
+    cls = module.contents['RaiserException']
+    assert cls.docstring is not None
+    assert cls.docstring.strip() == "A speficic exception only used to be identified in tests."
+
+    func = module.contents['raiseException']
+    assert func.docstring is not None
+    assert func.docstring.strip() == "Raise L{RaiserException}."

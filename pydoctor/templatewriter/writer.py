@@ -5,7 +5,8 @@ import shutil
 
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import link, templatefile
+from pydoctor.templatewriter.util import templatefile
+from twisted.python.filepath import FilePath
 from twisted.web.template import flattenString
 
 
@@ -63,9 +64,9 @@ class TemplateWriter:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                f = open(os.path.join(self.base, link(ob)), 'wb')
-                self.writeDocsForOne(ob, f)
-                f.close()
+                path = FilePath(self.base).child(f'{ob.fullName()}.html')
+                with path.open('wb') as out:
+                    self.writeDocsForOne(ob, out)
         for o in ob.contents.values():
             self.writeDocsFor(o, functionpages)
 
@@ -81,8 +82,8 @@ class TemplateWriter:
                 break
         else:
             pclass = pages.CommonPage
-        self.system.msg('html', str(ob), thresh=1)
+        ob.system.msg('html', str(ob), thresh=1)
         page = pclass(ob)
         self.written_pages += 1
-        self.system.progress('html', self.written_pages, self.total_pages, 'pages written')
+        ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         flattenToFile(fobj, page)
