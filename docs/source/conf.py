@@ -41,6 +41,10 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Configure intersphinx magic
+intersphinx_mapping = {
+    'pydoctor': ('https://mfesiem.github.io/pydoctor/apidocs/', None),
+}
 
 # -- Options for HTML output -------------------------------------------------
 
