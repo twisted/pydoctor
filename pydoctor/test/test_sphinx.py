@@ -402,6 +402,35 @@ def test_parseInventory_single_line(inv_reader_nolog: sphinx.SphinxInventory) ->
     assert {'some.attr': ('http://base.tld', 'some.html')} == result
 
 
+def test_parseInventory_spaces() -> None:
+    """
+    Sphinx inventory lines always contain 5 values, separated by spaces.
+    However, the first and fifth value can contain internal spaces.
+    The parser must be able to tell apart separators from internal spaces.
+    """
+
+    # Space in first (name) column.
+    assert sphinx._parseInventoryLine(
+        'key function std:term -1 glossary.html#term-key-function -'
+        ) == (
+        'key function', 'std:term', -1, 'glossary.html#term-key-function', '-'
+        )
+
+    # Space in last (display name) column.
+    assert sphinx._parseInventoryLine(
+        'doctest-execution-context std:label -1 library/doctest.html#$ What’s the Execution Context?'
+        ) == (
+        'doctest-execution-context', 'std:label', -1, 'library/doctest.html#$', 'What’s the Execution Context?'
+        )
+
+    # Space in both first and last column.
+    assert sphinx._parseInventoryLine(
+        'async def std:label -1 reference/compound_stmts.html#async-def Coroutine function definition'
+        ) == (
+        'async def', 'std:label', -1, 'reference/compound_stmts.html#async-def', 'Coroutine function definition'
+        )
+
+
 def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     """
     Skip line and log an error.
@@ -410,6 +439,7 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     base_url = 'http://tm.tld'
     content = (
         'good.attr py:attribute -1 some.html -\n'
+        'missing.display.name py:attribute 1 some.html\n'
         'bad.attr bad format\n'
         'very.bad\n'
         '\n'
@@ -425,12 +455,37 @@ def test_parseInventory_invalid_lines(inv_reader: InvReader) -> None:
     assert [
         (
             'sphinx',
+            'Failed to parse line "missing.display.name py:attribute 1 some.html" for http://tm.tld',
+            -1,
+            ),
+        (
+            'sphinx',
             'Failed to parse line "bad.attr bad format" for http://tm.tld',
             -1,
             ),
         ('sphinx', 'Failed to parse line "very.bad" for http://tm.tld', -1),
         ('sphinx', 'Failed to parse line "" for http://tm.tld', -1),
         ] == inv_reader._logger.messages
+
+
+def test_parseInventory_type_filter(inv_reader: InvReader) -> None:
+    """
+    Ignore entries that don't have a 'py:' type field.
+    """
+
+    base_url = 'https://docs.python.org/3'
+    content = (
+        'dict std:label -1 reference/expressions.html#$ Dictionary displays\n'
+        'dict py:class 1 library/stdtypes.html#$ -\n'
+        'dict std:2to3fixer 1 library/2to3.html#2to3fixer-$ -\n'
+        )
+
+    result = inv_reader._parseInventory(base_url, content)
+
+    assert {
+        'dict': (base_url, 'library/stdtypes.html#$'),
+        } == result
+    assert [] == inv_reader._logger.messages
 
 
 maxAgeAmounts = st.integers() | st.just("\x00")
