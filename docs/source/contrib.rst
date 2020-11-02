@@ -1,7 +1,7 @@
 Contribute
 ==========
 
-.. imclude:: ../../CONTRIBUTING.rst
+.. include:: ../../CONTRIBUTING.rst
 
 Design Notes
 ------------
