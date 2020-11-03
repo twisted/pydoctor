@@ -1,0 +1,78 @@
+Usage: pydoctor [options]
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -c CONFIGFILE, --config=CONFIGFILE
+                        Use config from this file (any command lineoptions
+                        override settings from the file).
+  --system-class=SYSTEMCLASS
+                        A dotted name of the class to use to make a system.
+  --project-name=PROJECTNAME
+                        The project name, appears in the html.
+  --project-url=PROJECTURL
+                        The project url, appears in the html if given.
+  --project-base-dir=PROJECTBASEDIRECTORY
+                        Absolute path to the base directory of the project.
+                        Source links will be computed based on this value.
+  --testing             Don't complain if the run doesn't have any effects.
+  --pdb                 Like py.test's --pdb.
+  --make-html           Produce html output.
+  --make-intersphinx    Produce (only) the objects.inv intersphinx file.
+  --add-package=PACKAGEDIR
+                        Add a package to the system.  Can be repeated to add
+                        more than one package.
+  --add-module=MODULE   Add a module to the system.  Can be repeated.
+  --prepend-package=PREPENDEDPACKAGE
+                        Pretend that all packages are within this one.  Can be
+                        used to document part of a package.
+  --abbreviate-specialcase=ABBREVMAPPING
+                        This is a comma seperated list of key=value pairs.
+                        Where any key corresponds to a module name and value
+                        is the desired abbreviation.  This can be used to
+                        resolve conflicts with abbreviation where you have two
+                        or more modules that start with the same letter.
+                        Example: twistedcaldav=tcd.
+  --docformat=DOCFORMAT
+                        Which epydoc-supported format docstrings are assumed
+                        to be in.
+  --html-subject=HTMLSUBJECTS
+                        The fullName of object to generate API docs for
+                        (default: everything).
+  --html-summary-pages  Only generate the summary pages.
+  --html-write-function-pages
+                        Make individual HTML files for every function and
+                        method. They're not linked to in any pydoctor-
+                        generated HTML, but they can be useful for third-party
+                        linking.
+  --html-output=HTMLOUTPUT
+                        Directory to save HTML files to (default 'apidocs')
+  --html-writer=HTMLWRITER
+                        Dotted name of html writer class to use (default
+                        'pydoctor.templatewriter.TemplateWriter').
+  --html-viewsource-base=HTMLSOURCEBASE
+                        This should be the path to the trac browser for the
+                        top of the svn checkout we are documenting part of.
+  --buildtime=BUILDTIME
+                        Use the specified build time over the current time.
+                        Format: %Y-%m-%d %H:%M:%S
+  -v, --verbose         Be noisier.  Can be repeated for more noise.
+  -q, --quiet           Be quieter.
+  --verbose-about=stage
+                        Be noiser during a particular stage of generation.
+  --introspect-c-modules
+                        Import and introspect any C modules found.
+  --intersphinx=URL_TO_OBJECTS.INV
+                        Use Sphinx objects inventory to generate links to
+                        externaldocumetation. Can be repeated.
+  --enable-intersphinx-cache
+                        Enable Intersphinx cache.
+  --intersphinx-cache-path=INTERSPHINX_CACHE_PATH
+                        Where to cache intersphinx objects.inv files.
+  --clear-intersphinx-cache
+                        Clear the Intersphinx cache specified by
+                        --intersphinx-cache-path.
+  --intersphinx-cache-max-age=INTERSPHINX_CACHE_MAX_AGE
+                         The maximum age of any entry in the cache.  Of the
+                        format <int><unit> where <unit> is one of s (seconds),
+                        m (minutes), h (hours), d (days), w (weeks).
