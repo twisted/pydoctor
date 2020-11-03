@@ -43,7 +43,7 @@ exclude_patterns = []
 
 # Configure intersphinx magic
 intersphinx_mapping = {
-    'pydoctor': ('https://mfesiem.github.io/pydoctor/apidocs/', None),
+    'pydoctor': ('https://pydoctor.readthedocs.io/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
