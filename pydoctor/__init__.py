@@ -1,9 +1,7 @@
 """PyDoctor, an API documentation generator for Python libraries.
 
 Warning:
-    PyDoctor's own API isn't stable YET, custom builds are prone to break!
-
-`Return to main documentation <https://mfesiem.github.io/pydoctor/index.html>`_
+    PyDoctor's API isn't stable YET, custom builds are prone to break!
 
 """
 
