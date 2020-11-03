@@ -86,6 +86,11 @@ __ https://github.com/peaceiris/actions-gh-pages
 
     The website we'll be at https://(user).github.io/(repo)/
 
+Publish your documentation with Sphinx and Read The Docs
+--------------------------------------------------------
+
+.. note:: Documentation to come!
+
 Document part of your package
 -----------------------------
 
@@ -143,35 +148,36 @@ And use external references::
 Customize builds
 ----------------
 
-.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break. Nevertheless, `PyDoctor's API documentation is available here <apidocs/>`_. 
+.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break. Nevertheless, `PyDoctor's API documentation is available here <api/>`_. 
 
 Use a custom System class
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass :py:class:`pydoctor:pydoctor.model.System` and pass your custom class dotted name with the ``--system-class`` argument. 
+You can subclass the :py:class:`pydoctor.zopeinterface.ZopeInterfaceSystem` and pass your custom class dotted name with the ``--system-class`` argument. 
 
 System class allows you to dynamically show/hide classes or methods. 
-This is can also be used by the Twisted project to handle deprecation.
+This is also used by the Twisted project to handle deprecation.
 
-See the `Twisted usage <https://github.com/twisted/twisted/blob/trunk/src/twisted/python/_pydoctor.py>`_.
+See the `Twisted custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better ovweview.
 
-.. note:: Not fully documented yet
+.. note:: Not fully documented, prone to break
 
-Use a custom HTML templates
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use custom HTML templates
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
-See the `Twisted usage <https://github.com/twisted/twisted/blob/trunk/src/twisted/python/_release.py>`_.
+See the `Twisted custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better ovweview.
+The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function. 
 
-.. note:: Not fully documented yet
+.. note:: Not fully documented, prone to break
 
 Use a custom HTML writer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.TemplateWriter` and pass your custom class dotted name with the ``--html-writer`` argument. 
+You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` and pass your custom class dotted name with the ``--html-writer`` argument. 
 
-.. note:: Not fully documented yet
+.. note:: Not fully documented, prone to break
 
 Full help
 ---------

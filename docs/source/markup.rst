@@ -22,18 +22,18 @@ As a reminder, the following fields are supported::
     @type
     @var
 
-
 ReStructuredText Support
 ------------------------
 
-`Syntax reference <https://docutils.sourceforge.io/rst.html>`_
+`Syntax reference <https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html>`_
 
 .. important::
 
-    The following fields are **NOT supported yet**:
-
-    - Abnomitions: ``.. warning::``, ``.. note::`` and others... 
+    - Abnomitions are not supported yet: ``.. warning::``, ``.. note::``, etc. 
     
+    - Other directives like ``.. contents::`` and ``.. include::`` are working just fine !
+
     (Full list of supported and unsupported ReStructuredText markup to come)
 
 .. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.  
+

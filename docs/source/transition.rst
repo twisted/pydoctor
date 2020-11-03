@@ -23,4 +23,4 @@ There a couple reasons to stop using ``pdoc3``, the main one beeing the swastika
 
     - Some ReStructuredText directives are not supported yet, please refer to `Documentation Formats <markup.html>`_ ReStructuredText Support section for more infos. 
 
-    - All references to ``__pdoc__`` module variable should be deleted as they are not supported. 
+    - All references to ``__pdoc__`` module variable should be deleted as they are not supported. If you dynamically generated documentation, you should create a separate script and include it's output with an ``.. include::`` directive. 

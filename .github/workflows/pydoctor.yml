@@ -41,14 +41,14 @@ jobs:
             --project-url=https://github.com/$GITHUB_REPOSITORY \
             --html-viewsource-base https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
             --make-html \
-            --html-output=./apidocs \
+            --html-output=./api \
             --project-base-dir "$(pwd)" 
 
     - name: Publish Pydoctor documentation to the gh-pages branch
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./apidocs
+        publish_dir: ./api
         commit_message: "Generate Pydoctor documentation"
-        destination_dir: apidocs
+        destination_dir: api
         keep_files: true

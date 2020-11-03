@@ -31,7 +31,6 @@ It also has support for `zope.interface <http://www.zope.org/Products/ZopeInterf
 recognise interfaces and classes which implement such interfaces.
 
 Pydoctor can be integrated to your Sphinx prose documentation seemlesly to replace the hazardous ``sphinx-autodoc`` extension. 
-Yep! It's all figured out, this very documentaion uses this feature. 
 
 What does the output look like?
 -------------------------------
