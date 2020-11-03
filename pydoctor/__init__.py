@@ -1,11 +1,8 @@
 """PyDoctor, an API documentation generator for Python libraries.
 
-Warning:
-    PyDoctor's API isn't stable YET, custom builds are prone to break!
+Warning: PyDoctor's API isn't stable YET, custom builds are prone to break!
 
 """
-
-__docformat__ = "restructuredtext en"
 
 __all__ = ["__version__"]
 
