@@ -1,5 +1,5 @@
 pydoctor
-========
+--------
 
 .. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
   :target: https://travis-ci.org/twisted/pydoctor
@@ -24,8 +24,8 @@ versa.
 .. contents:: Contents:
 
 
-Usage
------
+Simple Usage
+~~~~~~~~~~~~
 
 You can run pydoctor on your project like this::
 
@@ -34,7 +34,7 @@ You can run pydoctor on your project like this::
 You can see the full list of options using ``pydoctor --help``.
 
 Markup
-------
+~~~~~~
 
 pydoctor currently supports the following markup languages in docstrings:
 
@@ -55,23 +55,23 @@ __ https://docutils.sourceforge.io/rst.html
 You can select a different format using the ``--docformat`` option.
 
 What's New?
------------
+~~~~~~~~~~~
 
 pydoctor 20.7.2
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 * Fix handling of external links in reStructuredText under Python 3
 * Fix reporting of errors in reStructuredText under Python 3
 * Restore syntax highlighting of Python code blocks
 
 pydoctor 20.7.1
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 * Fix cross-reference links to builtin types in standard library
 * Fix and improve error message printed for unknown fields
 
 pydoctor 20.7.0
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 * Python 3 support
 * Type annotations on attributes are supported when running on Python 3
