@@ -7,6 +7,9 @@ pydoctor
 .. image:: https://codecov.io/gh/twisted/pydoctor/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/twisted/pydoctor
 
+.. image:: https://img.shields.io/badge/-documentation-blue
+  :target: https://pydoctor.readthedocs.io/
+
 This is *pydoctor*, an API documentation generator that works by
 static analysis.
 
@@ -33,6 +36,8 @@ You can run pydoctor on your project like this::
 
 You can see the full list of options using ``pydoctor --help``.
 
+For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
+
 Markup
 ~~~~~~
 
@@ -46,7 +51,7 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language used by Sphinx.
     More expressive than epytext, but also slighly more complex and verbose.
 
-plain text
+plaintext
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
