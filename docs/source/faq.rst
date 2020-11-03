@@ -41,8 +41,9 @@ It looks `like this <http://twistedmatrix.com/documents/current/api/>`_, which i
 The output is reasonably simple.
 
 As a bonus here are other projects using ``pydoctor``:
+    - Wokkel 
     - msiempy
-    -  
+    - An many others! 
 
 How do I use it?
 ----------------
