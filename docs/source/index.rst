@@ -1,34 +1,26 @@
 Introduction
 ============
 
-Welcome to pydoctor's documentation!
+Welcome to ``pydoctor``'s documentation!
 
 Installation
 ------------
 
 ``pydoctor`` can be installed from PyPi::
 
-   $ pip install pydoctor --upgrade
-
-.. include:: ../../README.rst
-
-A few projects using ``pydoctor``
----------------------------------
-
-- Twisted
-- msiempy
+   $ pip install -U pydoctor
 
 .. toctree::
    :maxdepth: 4
    :caption: Table of contents:
    
    self
+   readme
    usage
    markup
    faq
    transition
    contrib
-
    
 .. toctree::
    :maxdepth: 1

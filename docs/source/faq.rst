@@ -1,17 +1,6 @@
 Frequently asked questions
 ==========================
 
-Who wrote ``pydoctor``?
-------------------------
-
-Michael "mwhudson" Hudson, PyPy, Launchpad and sometimes
-Twisted hacker, with help from Christopher "radix" Armstrong
-and Jonathan "jml" Lange and advice and ideas from many
-people who hang out in #twisted on freenode.
-
-More recently, Maarten ter Huurne "mthuurne", took the lead.
-Always backed with `numerous contributors <https://github.com/twisted/pydoctor/graphs/contributors>`_.
-
 Why?
 ----
 
@@ -23,10 +12,21 @@ The needs of the Twisted project are still the main driving force for ``pydoctor
 development, but it is getting to the point where there's some chance that it is
 useful for your project too.
 
-Why would I use it?  How is it different from Epydoc, sphinx-autodoc, etc?
---------------------------------------------------------------------------
+Who wrote ``pydoctor``?
+------------------------
 
-``pydoctor`` is probably best suited to documenting a library with a some degree of internal subclassing. 
+Michael "mwhudson" Hudson, PyPy, Launchpad and sometimes
+Twisted hacker, with help from Christopher "radix" Armstrong
+and Jonathan "jml" Lange and advice and ideas from many
+people who hang out in #twisted on freenode.
+
+More recently, Maarten ter Huurne "mthuurne", took the lead.
+Always backed with `numerous contributors <https://github.com/twisted/pydoctor/graphs/contributors>`_.
+
+Why would I use it?  How is it different from ``sphinx-autodoc``
+----------------------------------------------------------------
+
+``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing. 
 It also has support for `zope.interface <http://www.zope.org/Products/ZopeInterface>`_, and can
 recognise interfaces and classes which implement such interfaces.
 
@@ -47,4 +47,4 @@ As a bonus here are other projects using ``pydoctor``:
 How do I use it?
 ----------------
 
-Please review the "Usage" page. 
+Please review the `Usage <usage.html>`_ section. 

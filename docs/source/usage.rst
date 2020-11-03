@@ -143,7 +143,7 @@ And use external references::
 Customize builds
 ----------------
 
-.. warning:: Pydoctor does not have a stable API yet. Custom builds are prone to break. 
+.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break. Nevertheless, `PyDoctor's API documentation is available here <apidocs/>`_. 
 
 Use a custom System class
 ~~~~~~~~~~~~~~~~~~~~~~~~~
