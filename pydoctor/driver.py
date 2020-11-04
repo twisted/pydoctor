@@ -365,6 +365,10 @@ def main(args=sys.argv[1:]):
                 for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
 
+            if system.warnings:
+                # Update exit code if the run has produced warnings.
+                exitcode = 1
+
         if options.makeintersphinx:
             if not options.makehtml:
                 subjects = system.rootobjects
@@ -384,4 +388,5 @@ def main(args=sys.argv[1:]):
             import pdb
             pdb.post_mortem(sys.exc_info()[2])
         raise
+
     return exitcode
