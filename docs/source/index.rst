@@ -27,5 +27,4 @@ Installation
    :caption: Quick links
    
    GitHub <https://github.com/twisted/pydoctor>
-   Lauchpad <https://launchpad.net/pydoctor>
    PyPi <https://pypi.org/project/pydoctor>
