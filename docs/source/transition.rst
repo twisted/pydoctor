@@ -6,7 +6,9 @@ From ``epydoc``
 
 If you are looking for a successor to ``epydoc`` after moving to Python 3, ``pydoctor`` is the right tool for your project!
 
-- ``pydoctor`` dropped support for the ``X{}`` tag. All other epytext markup syntax should be fully supported
+- ``pydoctor`` dropped support for the ``X{}`` tag. All other epytext markup syntax should be fully supported.
+
+- Specific per file ``__docformat__`` are not supported, though it won't create errors in you keep them.
 
 From ``pdoc3``
 --------------
