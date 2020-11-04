@@ -24,7 +24,7 @@ def on_build_finished(app, exception):
         args.append(argument.format(**placeholders))
 
 
-    logger.info("Building pydoctor API docs using arguments:")
+    logger.info("Pydoctor API docs with CWD %s and arguments:" % (os.getcwd()))
     logger.info('\n'.join(args))
 
     stream = StringIO()
