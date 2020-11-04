@@ -27,7 +27,7 @@ Why would I use it?  How is it different from ``sphinx-autodoc``
 ----------------------------------------------------------------
 
 ``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing. 
-It also has support for `zope.interface <http://www.zope.org/Products/ZopeInterface>`_, and can
+It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en/latest/>`_, and can
 recognise interfaces and classes which implement such interfaces.
 
 Pydoctor can be integrated to your Sphinx prose documentation seemlesly to replace the hazardous ``sphinx-autodoc`` extension. 
