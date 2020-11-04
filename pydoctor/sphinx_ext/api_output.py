@@ -14,7 +14,6 @@ def on_build_finished(app, exception):
     """
     Called when Sphinx build is done.
     """
-    logger.info("Building pydoctor API docs...")
     placeholders = {
         'outdir': app.outdir,
         }
@@ -22,6 +21,10 @@ def on_build_finished(app, exception):
     args = []
     for argument in app.config.pydoctor_args:
         args.append(argument.format(**placeholders))
+
+
+    logger.info("Building pydoctor API docs using arguments:")
+    logger.info('\n'.join(args))
 
     stream = StringIO()
     with redirect_stdout(stream):
