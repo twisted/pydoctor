@@ -17,6 +17,7 @@ Installation
    self
    readme
    usage
+   help
    markup
    faq
    transition
