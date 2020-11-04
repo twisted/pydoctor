@@ -1,4 +1,8 @@
-"""PyDoctor, an API documentation generator for Python libraries."""
+"""PyDoctor, an API documentation generator for Python libraries.
+
+Warning: PyDoctor's API isn't stable YET, custom builds are prone to break!
+
+"""
 
 __all__ = ["__version__"]
 

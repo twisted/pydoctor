@@ -89,9 +89,35 @@ Description::
 
    <!ELEMENT symbol (#PCDATA)>
 
-@var SYMBOLS: A list of the of escape symbols that are supported
-      by epydoc.  Currently the following symbols are supported:
-<<<SYMBOLS>>>
+@var SYMBOLS: A list of the of escape symbols that are supported by epydoc.  Currently the following symbols are supported ::
+
+    # Arrows
+    '<-', '->', '^', 'v',
+
+    # Greek letters
+    'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta',
+    'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu',
+    'nu', 'xi', 'omicron', 'pi', 'rho', 'sigma',
+    'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega',
+    'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta',
+    'Eta', 'Theta', 'Iota', 'Kappa', 'Lambda', 'Mu',
+    'Nu', 'Xi', 'Omicron', 'Pi', 'Rho', 'Sigma',
+    'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega',
+
+    # HTML character entities
+    'larr', 'rarr', 'uarr', 'darr', 'harr', 'crarr',
+    'lArr', 'rArr', 'uArr', 'dArr', 'hArr',
+    'copy', 'times', 'forall', 'exist', 'part',
+    'empty', 'isin', 'notin', 'ni', 'prod', 'sum',
+    'prop', 'infin', 'ang', 'and', 'or', 'cap', 'cup',
+    'int', 'there4', 'sim', 'cong', 'asymp', 'ne',
+    'equiv', 'le', 'ge', 'sub', 'sup', 'nsub',
+    'sube', 'supe', 'oplus', 'otimes', 'perp',
+
+    # Alternate (long) names
+    'infinity', 'integral', 'product',
+    '>=', '<=',
+
 """
 # Note: the symbol list is appended to the docstring automatically,
 # below.

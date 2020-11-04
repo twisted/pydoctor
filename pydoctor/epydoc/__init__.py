@@ -24,18 +24,14 @@ and subpackages.
 :requires: Python 2.3+
 :version: 3.0.1
 :see: `The epydoc webpage <http://epydoc.sourceforge.net>`__
-:see: `The epytext markup language
-    manual <http://epydoc.sourceforge.net/epytext.html>`__
+:see: `The epytext markup language manual <http://epydoc.sourceforge.net/epytext.html>`__
 
 :todo: Create a better default top_page than trees.html.
-:todo: Fix trees.html to work when documenting non-top-level
-       modules/packages
+:todo: Fix trees.html to work when documenting non-top-levelmodules/packages
 :todo: Implement @include
 :todo: Optimize epytext
 :todo: More doctests
-:todo: When introspecting, limit how much introspection you do (eg,
-       don't construct docs for imported modules' vars if it's
-       not necessary)
+:todo: When introspecting, limit how much introspection you do (eg, don't construct docs for imported modules' vars if it's not necessary)
 
 :bug: UserDict.* is interpreted as imported .. why??
 

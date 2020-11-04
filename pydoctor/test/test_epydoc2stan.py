@@ -347,8 +347,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     A message is sent to stdout when no link could be found for the reference,
     while returning the reference name without an A link tag.
     The message contains the full name under which the reference was resolved.
-    FIXME: Use a proper logging system instead of capturing stdout.
-           https://github.com/twisted/pydoctor/issues/112
+    FIXME: Use a proper logging system instead of capturing stdout. https://github.com/twisted/pydoctor/issues/112
     """
     system = model.System()
     target = model.Module(system, 'ignore-name')
