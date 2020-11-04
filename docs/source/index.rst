@@ -18,7 +18,7 @@ Installation
    readme
    usage
    help
-   markup
+   docformat
    faq
    transition
    contrib
