@@ -10,8 +10,9 @@ from pydoctor.driver import parse_args
 
 
 class HelpOutputDirective(SphinxDirective):
-
-    # this enables content in the directive
+    """
+    Directive that will generate the pydoctor help as block literal.
+    """
     has_content = True
 
     def run(self):
@@ -35,5 +36,3 @@ def setup(app):
             'parallel_read_safe': True,
             'parallel_write_safe': True,
         }
-
-
