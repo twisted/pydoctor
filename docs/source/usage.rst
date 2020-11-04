@@ -124,7 +124,7 @@ with the following cumulative configuration option::
 
     --intersphinx=https://docs.python.org/3/objects.inv
 
-Then, your interpreted text, with backtics (`````) for `restructuredtext` and with ``L{}`` tag with `epytext`, will be linked to the Python element, if found. Exemple::
+Then, your interpreted text, with backtics (`````) using `restructuredtext` and with ``L{}`` tag using `epytext`, will be linked to the Python element. Exemple::
 
   `datetime.datetime`
   L{datetime.datetime}
