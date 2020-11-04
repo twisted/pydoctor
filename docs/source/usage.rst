@@ -103,8 +103,8 @@ You can choose to document only a couple classes or modules with the following c
 
   --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
 
-Will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``, required CSS and JS files, and ``objects.inv``. 
-The ``--add-package`` still needs to be passed, ``--html-subject`` act like a filter.  
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course). 
+The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.  
 
 .. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page. 
 
