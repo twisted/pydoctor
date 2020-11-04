@@ -10,3 +10,4 @@ _trial_temp/
 apidocs/
 *.egg-info
 .eggs
+docs/source/help.txt
