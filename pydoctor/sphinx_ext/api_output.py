@@ -24,7 +24,6 @@ def on_build_finished(app, exception):
         args.append(argument.format(**placeholders))
 
 
-    logger.info('Env is: %r' % (os.environ,))
     logger.info("Building pydoctor API docs using arguments:")
     logger.info('\n'.join(args))
 

@@ -73,20 +73,27 @@ html_static_path = []
 #
 # Any output from pydoctor is converted into a Sphinx warning.
 #
-_git_branch_name = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
+_git_reference = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
+if _git_reference == 'HEAD':
+    # It looks like the branch has no name.
+    # Fallback to commit ID.
+    _git_reference = subprocess.getoutput('git rev-parse HEAD')
 
 if os.environ.get('READTHEDOCS', '') == 'True':
     rtd_version = os.environ.get('READTHEDOCS_VERSION', '')
+    if '.' in rtd_version:
+        # It looks like we have a tag build.
+        _git_reference = rtd_version
+
 
 pydoctor_args = [
-    '--quiet',
     '--add-package=pydoctor',
     '--project-name=pydoctor',
     '--project-url=https://github.com/twisted/pydoctor/',
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--make-html',
-    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_branch_name,
+    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
     '--html-output={outdir}/api',
     '--project-base-dir=' + str(pathlib.Path(__file__).parent.parent.parent),
     ]
