@@ -2,14 +2,14 @@
 Produce the pydoctor help output to be included in the documentation.
 """
 from docutils import nodes
-from sphinx.util.docutils import SphinxDirective
+from docutils.parsers.rst import Directive
 
 from contextlib import redirect_stdout
 from io import StringIO
 from pydoctor.driver import parse_args
 
 
-class HelpOutputDirective(SphinxDirective):
+class HelpOutputDirective(Directive):
     """
     Directive that will generate the pydoctor help as block literal.
     """
