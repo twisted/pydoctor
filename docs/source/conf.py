@@ -15,6 +15,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess
+import pathlib
 
 
 # -- Project information -----------------------------------------------------
@@ -64,6 +65,14 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
+# `pydoctor_args` is the list of arguments used to call pydoctor when
+# generating the API docs via the Sphinx pydoctor extension.
+#
+# The following placeholders are available are resolved at runtime:
+# * `{outdir}` the Sphinx output dir
+#
+# Any output from pydoctor is converted into a Sphinx warning.
+#
 _git_branch_name = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
 pydoctor_args = [
     '--quiet',
@@ -75,5 +84,5 @@ pydoctor_args = [
     '--make-html',
     '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_branch_name,
     '--html-output={outdir}/api',
-    '--project-base-dir={cwd}',
+    '--project-base-dir=' + str(pathlib.Path(__file__).parent.parent.parent),
     ]
