@@ -34,8 +34,6 @@ You can run pydoctor on your project like this::
 
     $ pydoctor --make-html --html-output=docs/api --add-package=src/mylib
 
-You can see the full list of options using ``pydoctor --help``.
-
 For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
 
 Markup
