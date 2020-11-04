@@ -60,10 +60,9 @@ html_theme = "sphinx_rtd_theme"
 html_static_path = ['_static']
 
 # -- Automatically generate the Full help text in Shpinx build ---------------
-
+import pathlib
 import subprocess
 subprocess.run(
     ["pydoctor", "--help"],
-    cwd="../..",
-    stdout=open('docs/source/help.txt', 'w')
+    stdout=(pathlib.Path(__file__).parent / "help.txt").open('w')
 )
