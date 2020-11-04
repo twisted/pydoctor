@@ -14,6 +14,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import subprocess
+
 
 # -- Project information -----------------------------------------------------
 
@@ -33,6 +35,7 @@ extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
     "pydoctor.sphinx_ext.help_output",
+    "pydoctor.sphinx_ext.api_output",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,3 +63,17 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
+
+_git_branch_name = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
+pydoctor_args = [
+    '--quiet',
+    '--add-package=pydoctor',
+    '--project-name=pydoctor',
+    '--project-url=https://github.com/twisted/pydoctor/',
+    '--docformat=epytext',
+    '--intersphinx=https://docs.python.org/3/objects.inv',
+    '--make-html',
+    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_branch_name,
+    '--html-output={outdir}/api',
+    '--project-base-dir={cwd}',
+    ]
