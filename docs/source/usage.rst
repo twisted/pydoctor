@@ -99,9 +99,14 @@ Document part of your package
 
 Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.  
 
-You can choose to document only a couple classes or modules passed with argument ``--html-subject``.
+You can choose to document only a couple classes or modules with the following cumulative configuration option::
 
-.. warning:: The ``index.html`` won't be generated, you need to link to the specific HTML page. 
+  --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
+
+Will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``, required CSS and JS files, and ``objects.inv``. 
+The ``--add-package`` still needs to be passed, ``--html-subject`` act like a filter.  
+
+.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page. 
 
 Sphinx Integration
 ------------------
@@ -156,7 +161,9 @@ Customize builds
 Use a custom System class
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSystem` and pass your custom class dotted name with the ``--system-class`` argument. 
+You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSystem` and pass your custom class dotted name with the following argument::
+
+  --system-class=mylib._pydoctor.CustomSystem
 
 System class allows you to dynamically show/hide classes or methods. 
 This is also used by the Twisted project to handle deprecation.
@@ -171,13 +178,15 @@ Use custom HTML templates
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
 See the `Twisted custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better overview.
-The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function. 
+The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build. 
 
 .. note:: Not fully documented, prone to break
 
 Use a custom HTML writer
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` and pass your custom class dotted name with the ``--html-writer`` argument. 
+You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` and pass your custom class dotted name with the following argument::
+
+  --html-writer=mylib._pydoctor.CustomTemplateWriter
 
 .. note:: Not fully documented, prone to break
