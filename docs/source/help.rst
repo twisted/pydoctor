@@ -1,3 +1,6 @@
+Full help
+=========
+
 Usage: pydoctor [options]
 
 Options:
