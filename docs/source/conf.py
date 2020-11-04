@@ -10,10 +10,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import os
 import subprocess
 import pathlib
 
@@ -74,6 +74,10 @@ html_static_path = []
 # Any output from pydoctor is converted into a Sphinx warning.
 #
 _git_branch_name = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
+
+if os.environ.get('READTHEDOCS', '') == 'True':
+    rtd_version = os.environ.get('READTHEDOCS_VERSION', '')
+
 pydoctor_args = [
     '--quiet',
     '--add-package=pydoctor',

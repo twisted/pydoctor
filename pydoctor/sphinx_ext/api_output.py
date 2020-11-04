@@ -1,6 +1,7 @@
 """
 Generate the API docs using pydoctor to be integrated into Sphinx build system.
 """
+import os
 from sphinx.util import logging
 
 from contextlib import redirect_stdout
@@ -23,6 +24,7 @@ def on_build_finished(app, exception):
         args.append(argument.format(**placeholders))
 
 
+    logger.info('Env is: %r' % (os.environ,))
     logger.info("Building pydoctor API docs using arguments:")
     logger.info('\n'.join(args))
 
