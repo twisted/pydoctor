@@ -97,6 +97,6 @@ pydoctor_args = [
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--make-html',
     '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
-    '--html-output={outdir}/api',
+    '--html-output={outdir}/apidocs',
     '--project-base-dir=' + pydoctor_cwd ,
     ]
