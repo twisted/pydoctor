@@ -6,7 +6,7 @@ from docutils.parsers.rst import Directive
 
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import List, Mapping, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from pydoctor.driver import parse_args
 
@@ -34,7 +34,7 @@ class HelpOutputDirective(Directive):
         return [nodes.literal_block(text='\n'.join(text))]
 
 
-def setup(app: 'Sphinx') -> Mapping[str, object]:
+def setup(app: 'Sphinx') -> Dict[str, Any]:
     app.add_directive('help_output', HelpOutputDirective)
 
     return {
