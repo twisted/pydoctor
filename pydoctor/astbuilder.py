@@ -52,7 +52,7 @@ def node2fullname(expr, ctx):
 
 
 class ModuleVistor(ast.NodeVisitor):
-    def __init__(self, builder, module):
+    def __init__(self, builder: 'ASTBuilder', module: model.Module):
         self.builder = builder
         self.system = builder.system
         self.module = module
@@ -141,7 +141,7 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popClass()
 
-    def visit_ImportFrom(self, node):
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
             self.builder.warning("processing import statement in odd context",
                                  str(self.builder.current))
@@ -153,15 +153,15 @@ class ModuleVistor(ast.NodeVisitor):
 
         if node.level:
             # Relative import.
-            parentMod = self.builder.current.parentMod
+            parent: Optional[model.Documentable] = self.builder.current.parentMod
             for _ in range(node.level):
-                if parentMod is None:
+                if parent is None:
                     self.builder.warning("relative import level too high",
                                          str(node.level))
                     return
-                parentMod = parentMod.parent
-            if parentMod is not None:
-                modname = parentMod.fullName() + '.' + modname
+                parent = parent.parent
+            if parent is not None:
+                modname = parent.fullName() + '.' + modname
 
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
@@ -169,7 +169,7 @@ class ModuleVistor(ast.NodeVisitor):
                                  model.ProcessingState.PROCESSED]
             expandName = mod.expandName
         else:
-            expandName = lambda name: modname + '.' + name
+            expandName = lambda name: f'{modname}.{name}'
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
             fromname, asname = al.name, al.asname
@@ -642,6 +642,7 @@ def _annotation_for_elements(sequence):
 class ASTBuilder:
     ModuleVistor = ModuleVistor
 
+    system: model.System
     ast_cache: Dict[Path, Optional[ast.AST]]
 
     def __init__(self, system):

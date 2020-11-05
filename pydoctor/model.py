@@ -752,12 +752,14 @@ class System:
         self.allobjects[fullName] = obj
 
 
-    def getProcessedModule(self, modname):
+    def getProcessedModule(self, modname: str) -> Optional[_ModuleT]:
         mod = self.allobjects.get(modname)
         if mod is None:
             return None
         if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__').parent
+            initModule = self.getProcessedModule(modname + '.__init__')
+            assert initModule is not None
+            return initModule.parent
         if not isinstance(mod, Module):
             return None
 
