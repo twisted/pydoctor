@@ -6,8 +6,8 @@ Usage
 Most common options
 -------------------
 
-The following exemple uses all most common options to generate ``pydoctor``'s own API docs under the ``docs/api`` folder. 
-It will add a link to the project website in all pages header, show a link to source code aside every documented elements and resolve links to standard library objects. 
+The following exemple uses all most common options to generate ``pydoctor``'s own API docs under the ``docs/api`` folder.
+It will add a link to the project website in all pages header, show a link to source code aside every documented elements and resolve links to standard library objects.
 
 ::
 
@@ -22,12 +22,12 @@ It will add a link to the project website in all pages header, show a link to so
         --docformat=epytext \
         --intersphinx=https://docs.python.org/3/objects.inv
 
-.. note:: This exemple assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project. 
+.. note:: This exemple assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
 
-.. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line 
+.. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line
     numbers aren't going to match otherwise when commits are added to the branch after the documentation has been published.
 
-Publish your documentation 
+Publish your documentation
 --------------------------
 
 ``pydoctor`` output are static HTML pages without no extra server-side support.
@@ -84,8 +84,8 @@ Here is an exemple to automatically generate and publish your documentation with
             publish_dir: ./apidocs
             commit_message: "Generate pydoctor documentation"
 
-.. note:: As mentionned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to Github pages. 
-    Github pages needs to be enabled afterwards in the repo settings, select ``gh-pages`` branch, then re-run your workflow. 
+.. note:: As mentionned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to Github pages.
+    Github pages needs to be enabled afterwards in the repo settings, select ``gh-pages`` branch, then re-run your workflow.
 
     The website we'll be at https://(user).github.io/(repo)/
 
@@ -99,16 +99,16 @@ Here is an exemple to automatically generate and publish your documentation with
 Document part of your package
 -----------------------------
 
-Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.  
+Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.
 
 You can choose to document only a couple classes or modules with the following cumulative configuration option::
 
   --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
 
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course). 
-The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.  
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course).
+The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.
 
-.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page. 
+.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page.
 
 Sphinx Integration
 ------------------
@@ -150,7 +150,7 @@ __ https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
 
 Link to elements :py:func:`with custom text <twisted:twisted.web.client.urlunparse>` with::
 
-    :py:func:`with custom text <twisted:twisted.web.client.urlunparse>` 
+    :py:func:`with custom text <twisted:twisted.web.client.urlunparse>`
 
 Link to elements with default label :py:class:`twisted:twisted.web.client.HTTPDownloader` with::
 
@@ -179,10 +179,10 @@ You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSys
 
   --system-class=mylib._pydoctor.CustomSystem
 
-System class allows you to dynamically show/hide classes or methods. 
+System class allows you to dynamically show/hide classes or methods.
 This is also used by the Twisted project to handle deprecation.
 
-See the `Twisted custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better overview.
+See the `TwistedSystem custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better overview.
 
 .. note:: Not fully documented, prone to break
 
@@ -191,8 +191,8 @@ Use custom HTML templates
 
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
-See the `Twisted custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better overview.
-The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build. 
+See the `Twisted APIBuilder custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better overview.
+The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build.
 
 .. note:: Not fully documented, prone to break
 
