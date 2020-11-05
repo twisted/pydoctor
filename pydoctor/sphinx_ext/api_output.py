@@ -23,14 +23,15 @@ def on_build_finished(app, exception):
     for argument in app.config.pydoctor_args:
         args.append(argument.format(**placeholders))
 
-    logger.info("Pydoctor API docs with CWD %s and arguments:" % (os.getcwd()))
-    logger.info('\n'.join(args))
-
     stream = StringIO()
 
     old_cwd = os.getcwd()
     try:
         os.chdir(app.config.pydoctor_cwd)
+
+        logger.info("Bulding pydoctor API docs with CWD %s and arguments:" % (os.getcwd(),))
+        logger.info('\n'.join(args))
+
         with redirect_stdout(stream):
             main(args=args)
     finally:

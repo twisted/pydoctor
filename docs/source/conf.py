@@ -89,6 +89,7 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 
 pydoctor_cwd = str(pathlib.Path(__file__).parent.parent.parent)
 pydoctor_args = [
+    '--quiet',
     '--add-package=pydoctor',
     '--project-name=pydoctor',
     '--project-url=https://github.com/twisted/pydoctor/',
