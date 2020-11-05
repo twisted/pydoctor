@@ -518,7 +518,7 @@ class System:
         if current is not None:
             fn = current.fullName()
         else:
-            fn = '<None>'
+            fn = '.'
         if self.options.verbosity > 0:
             print(fn, message, detail)
         self.warnings.setdefault(message, []).append((fn, detail))

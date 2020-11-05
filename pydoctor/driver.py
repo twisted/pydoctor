@@ -135,9 +135,9 @@ def getparser():
         help=("Use the specified build time over the current time. "
               "Format: %s" % BUILDTIME_FORMAT))
     parser.add_option(
-        '-W', action='store_true', dest='warnings_as_errors',
-        default=False,
-        help=("Exit with non zero code on warnings."))
+        '-W', '--warnings-as-errors', action='store_true',
+        dest='warnings_as_errors', default=False,
+        help=("Return exit code 3 on warnings."))
     parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
@@ -320,12 +320,11 @@ def main(args=sys.argv[1:]):
             error("The system does not contain any code, did you "
                   "forget an --add-package?")
 
-
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
             system._warning(
                 current=None,
-                message='guessing {} for project name'.format(name),
+                message=f'guessing "{name}" for project name',
                 detail='',
                 )
             system.projectname = name
