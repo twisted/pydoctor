@@ -23,13 +23,18 @@ def on_build_finished(app, exception):
     for argument in app.config.pydoctor_args:
         args.append(argument.format(**placeholders))
 
-
     logger.info("Pydoctor API docs with CWD %s and arguments:" % (os.getcwd()))
     logger.info('\n'.join(args))
 
     stream = StringIO()
-    with redirect_stdout(stream):
-        main(args=args)
+
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(app.config.pydoctor_cwd)
+        with redirect_stdout(stream):
+            main(args=args)
+    finally:
+        os.chdir(old_cwd)
 
     for line in stream.getvalue().splitlines():
         logger.warning(line)
@@ -37,6 +42,7 @@ def on_build_finished(app, exception):
 
 def setup(app):
     app.connect('build-finished', on_build_finished)
+    app.add_config_value("pydoctor_cwd", "", "env")
     app.add_config_value("pydoctor_args", [], "env")
 
     return {

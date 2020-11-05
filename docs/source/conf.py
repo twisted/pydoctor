@@ -65,6 +65,7 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
+# `pydoctor_cwd` is the working directory used to call pydoctor.
 # `pydoctor_args` is the list of arguments used to call pydoctor when
 # generating the API docs via the Sphinx pydoctor extension.
 #
@@ -86,6 +87,7 @@ if os.environ.get('READTHEDOCS', '') == 'True':
         _git_reference = rtd_version
 
 
+pydoctor_cwd = str(pathlib.Path(__file__).parent.parent.parent)
 pydoctor_args = [
     '--add-package=pydoctor',
     '--project-name=pydoctor',
@@ -95,5 +97,5 @@ pydoctor_args = [
     '--make-html',
     '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
     '--html-output={outdir}/api',
-    '--project-base-dir=' + str(pathlib.Path(__file__).parent.parent.parent),
+    '--project-base-dir=' + pydoctor_cwd ,
     ]
