@@ -320,16 +320,19 @@ def main(args=sys.argv[1:]):
             error("The system does not contain any code, did you "
                   "forget an --add-package?")
 
-        system.process()
 
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
-            system.msg(
-                'warning',
-                'WARNING: guessing '+name+' for project name', thresh=-1)
+            system._warning(
+                current=None,
+                message='guessing {} for project name'.format(name),
+                detail='',
+                )
             system.projectname = name
         else:
             system.projectname = system.options.projectname
+
+        system.process()
 
         # step 4: make html, if desired
 
@@ -369,9 +372,9 @@ def main(args=sys.argv[1:]):
                 for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
 
-            if system.warnings and options.warnings_as_errors:
-                # Update exit code if the run has produced warnings.
-                exitcode = 3
+        if system.warnings and options.warnings_as_errors:
+            # Update exit code if the run has produced warnings.
+            exitcode = 3
 
         if options.makeintersphinx:
             if not options.makehtml:
