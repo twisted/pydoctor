@@ -6,7 +6,13 @@ from docutils.parsers.rst import Directive
 
 from contextlib import redirect_stdout
 from io import StringIO
+from typing import List, Mapping, TYPE_CHECKING
+
 from pydoctor.driver import parse_args
+
+
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
 
 
 class HelpOutputDirective(Directive):
@@ -15,7 +21,7 @@ class HelpOutputDirective(Directive):
     """
     has_content = True
 
-    def run(self):
+    def run(self) -> List[nodes.Node]:
 
         stream = StringIO()
         try:
@@ -28,7 +34,7 @@ class HelpOutputDirective(Directive):
         return [nodes.literal_block(text='\n'.join(text))]
 
 
-def setup(app):
+def setup(app: 'Sphinx') -> Mapping[str, object]:
     app.add_directive('help_output', HelpOutputDirective)
 
     return {
