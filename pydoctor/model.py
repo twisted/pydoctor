@@ -7,7 +7,6 @@ being documented -- a System is a bad of Documentables, in some sense.
 """
 
 import ast
-import builtins
 import datetime
 import importlib
 import inspect
@@ -363,8 +362,6 @@ class Module(CanContainImportsDocumentable):
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
-        elif name in builtins.__dict__:
-            return name
         else:
             return name
 
