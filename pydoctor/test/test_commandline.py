@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout
 from io import StringIO
 import sys
 
@@ -78,9 +79,10 @@ def test_cli_warnings_on_error() -> None:
     assert options.warnings_as_errors == True
 
 
-def test_main_return_zero_on_warnings(capsys: CapSys) -> None:
+def test_main_project_name_guess(capsys: CapSys) -> None:
     """
-    By default it will return 0 as exit code even when there are warnings.
+    When no project name is provided in the CLI arguments, a default name
+    is used and logged.
     """
     exit_code = driver.main(args=[
         '-v', '--testing',
@@ -88,18 +90,51 @@ def test_main_return_zero_on_warnings(capsys: CapSys) -> None:
         ])
 
     assert exit_code == 0
-    assert '. guessing "basic" for project name' in capsys.readouterr().out
+    assert 'Guessing "basic" for project name' in capsys.readouterr().out
 
 
-def test_main_return_non_zero_on_warnings(capsys: CapSys) -> None:
+def test_main_project_name_option(capsys: CapSys) -> None:
     """
-    When `-W` is used it returns 3 as exit code even when there are warnings.
+    When a project name is provided in the CLI arguments nothing is logged.
     """
     exit_code = driver.main(args=[
-        '-W',
         '-v', '--testing',
+        '--project-name=some-name',
         'pydoctor/test/testpackages/basic/'
         ])
 
+    assert exit_code == 0
+    assert 'Guessing ' not in capsys.readouterr().out
+
+
+def test_main_return_zero_on_warnings() -> None:
+    """
+    By default it will return 0 as exit code even when there are warnings.
+    """
+    stream = StringIO()
+    with redirect_stdout(stream):
+        exit_code = driver.main(args=[
+            '--html-writer=pydoctor.test.InMemoryWriter',
+            'pydoctor/test/testpackages/report_trigger/'
+            ])
+
+    assert exit_code == 0
+    assert '__init__.py:8: Unknown field "bad_field"' in stream.getvalue()
+    assert 'report_module.py:9: invalid ref to "BadLink" not resolved' in stream.getvalue()
+
+
+def test_main_return_non_zero_on_warnings() -> None:
+    """
+    When `-W` is used it returns 3 as exit code even when there are warnings.
+    """
+    stream = StringIO()
+    with redirect_stdout(stream):
+        exit_code = driver.main(args=[
+            '-W',
+            '--html-writer=pydoctor.test.InMemoryWriter',
+            'pydoctor/test/testpackages/report_trigger/'
+            ])
+
     assert exit_code == 3
-    assert '. guessing "basic" for project name' in capsys.readouterr().out
+    assert '__init__.py:8: Unknown field "bad_field"' in stream.getvalue()
+    assert 'report_module.py:9: invalid ref to "BadLink" not resolved' in stream.getvalue()

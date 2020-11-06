@@ -500,6 +500,10 @@ class System:
                 return
             else:
                 self.once_msgs.add((section, msg))
+
+        if thresh < 0:
+            self.warnings.setdefault(section, []).append((section, msg))
+
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
                 print()

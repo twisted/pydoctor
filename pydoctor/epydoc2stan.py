@@ -139,11 +139,11 @@ class _EpydocLinker(DocstringLinker):
 
         if identifier == fullID:
             self.obj.report(
-                "invalid ref to '%s' not resolved" % (identifier,),
+                "invalid ref to \"%s\" not resolved" % (identifier,),
                 'resolve_identifier_xref', lineno)
         else:
             self.obj.report(
-                "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
+                "invalid ref to \"%s\" resolved as '%s'" % (identifier, fullID),
                 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
