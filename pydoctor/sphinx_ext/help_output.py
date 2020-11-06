@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class HelpOutputDirective(Directive):
     """
     Directive that will generate the pydoctor help as block literal.
-    
+
     It takes no options or input value.
     """
     has_content = True
@@ -37,7 +37,7 @@ class HelpOutputDirective(Directive):
             pass
 
         text = ['pydoctor --help'] + stream.getvalue().splitlines()[1:]
-        return [nodes.literal_block(text='\n'.join(text))]
+        return [nodes.literal_block(text='\n'.join(text), language='text')]
 
 
 def setup(app: 'Sphinx') -> Dict[str, Any]:
@@ -47,7 +47,7 @@ def setup(app: 'Sphinx') -> Dict[str, Any]:
     app.add_directive('help_output', HelpOutputDirective)
 
     return {
-            'version': '0.1',
-            'parallel_read_safe': True,
-            'parallel_write_safe': True,
+        'version': '0.1',
+        'parallel_read_safe': True,
+        'parallel_write_safe': True,
         }

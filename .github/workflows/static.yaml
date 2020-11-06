@@ -36,3 +36,7 @@ jobs:
     - name: Run pyflakes
       run: |
         tox -e pyflakes
+
+    - name: Run docs
+      run: |
+        tox -e docs
