@@ -45,7 +45,6 @@ exclude_patterns = []
 
 # Configure intersphinx magic
 intersphinx_mapping = {
-    #'pydoctor': ('https://pydoctor.readthedocs.io/api/', None),
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
 }
 
