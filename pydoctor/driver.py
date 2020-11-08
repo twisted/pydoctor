@@ -135,6 +135,10 @@ def getparser():
         help=("Use the specified build time over the current time. "
               "Format: %s" % BUILDTIME_FORMAT))
     parser.add_option(
+        '-W', '--warnings-as-errors', action='store_true',
+        dest='warnings_as_errors', default=False,
+        help=("Return exit code 3 on warnings."))
+    parser.add_option(
         '-v', '--verbose', action='count', dest='verbosity',
         default=0,
         help=("Be noisier.  Can be repeated for more noise."))
@@ -316,16 +320,14 @@ def main(args=sys.argv[1:]):
             error("The system does not contain any code, did you "
                   "forget an --add-package?")
 
-        system.process()
-
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
-            system.msg(
-                'warning',
-                'WARNING: guessing '+name+' for project name', thresh=-1)
+            system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
             system.projectname = name
         else:
             system.projectname = system.options.projectname
+
+        system.process()
 
         # step 4: make html, if desired
 
@@ -364,6 +366,10 @@ def main(args=sys.argv[1:]):
                 exitcode = 2
                 for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
+
+        if system.warnings and options.warnings_as_errors:
+            # Update exit code if the run has produced warnings.
+            exitcode = 3
 
         if options.makeintersphinx:
             if not options.makehtml:

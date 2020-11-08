@@ -330,7 +330,7 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field: Field) -> None:
-        field.report('Unknown field "%s"' % (field.tag,))
+        field.report(f"Unknown field '{field.tag}'" )
         self.add_info(self.unknowns, field.arg, field)
 
     def handle(self, field: Field) -> None:

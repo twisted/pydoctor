@@ -10,9 +10,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+
+import os
+import subprocess
+import pathlib
 
 
 # -- Project information -----------------------------------------------------
@@ -30,7 +33,10 @@ version = __version__.short()
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx_rtd_theme", "sphinx.ext.intersphinx"
+    "sphinx_rtd_theme",
+    "sphinx.ext.intersphinx",
+    "pydoctor.sphinx_ext._help_output",
+    "pydoctor.sphinx_ext.api_output",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -58,10 +64,38 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-# -- Automatically generate the Full help text in Shpinx build ---------------
-import pathlib
-import subprocess
-subprocess.run(
-    ["pydoctor", "--help"],
-    stdout=(pathlib.Path(__file__).parent / "help.txt").open('w')
-)
+# `pydoctor_cwd` is the working directory used to call pydoctor.
+# `pydoctor_args` is the list of arguments used to call pydoctor when
+# generating the API docs via the Sphinx pydoctor extension.
+#
+# The following placeholders are available are resolved at runtime:
+# * `{outdir}` the Sphinx output dir
+#
+# Any output from pydoctor is converted into a Sphinx warning.
+#
+_git_reference = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
+if _git_reference == 'HEAD':
+    # It looks like the branch has no name.
+    # Fallback to commit ID.
+    _git_reference = subprocess.getoutput('git rev-parse HEAD')
+
+if os.environ.get('READTHEDOCS', '') == 'True':
+    rtd_version = os.environ.get('READTHEDOCS_VERSION', '')
+    if '.' in rtd_version:
+        # It looks like we have a tag build.
+        _git_reference = rtd_version
+
+
+pydoctor_cwd = str(pathlib.Path(__file__).parent.parent.parent)
+pydoctor_args = [
+    '--quiet',
+    '--add-package=pydoctor',
+    '--project-name=pydoctor',
+    '--project-url=https://github.com/twisted/pydoctor/',
+    '--docformat=epytext',
+    '--intersphinx=https://docs.python.org/3/objects.inv',
+    '--make-html',
+    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
+    '--html-output={outdir}/api',
+    '--project-base-dir=' + pydoctor_cwd,
+    ]
