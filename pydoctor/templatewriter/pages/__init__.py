@@ -82,7 +82,7 @@ class CommonPage(Element):
 
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
-            tags.code(self.mediumName(self.ob)), " ",
+            tags.code(self.namespace(self.ob)), " ",
             tags.small(self.ob.kind.lower(), " documentation"),
             )
 
@@ -98,6 +98,9 @@ class CommonPage(Element):
         parts.reverse()
         return parts
 
+    # Deprecated: pydoctor's templates no longer use this, but it is kept
+    #             for now to not break customized templates like Twisted's.
+    #             NOTE: Remember to remove the CSS as well.
     def part(self):
         parent = self.ob.parent
         if parent:
@@ -192,7 +195,18 @@ class CommonPage(Element):
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
-class PackagePage(CommonPage):
+class ModulePage(CommonPage):
+    def extras(self):
+        r = super().extras()
+
+        sourceHref = util.srclink(self.ob)
+        if sourceHref:
+            r.append(tags.a("View Source", href=sourceHref))
+
+        return r
+
+
+class PackagePage(ModulePage):
     def children(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible),
@@ -215,8 +229,6 @@ class PackagePage(CommonPage):
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
-class ModulePage(CommonPage):
-    pass
 
 def overriding_subclasses(c, name, firstcall=True):
     if not firstcall and name in c.contents:
@@ -283,6 +295,17 @@ class ClassPage(CommonPage):
 
     def extras(self):
         r = super().extras()
+
+        sourceHref = util.srclink(self.ob)
+        if sourceHref:
+            source = (" ", tags.a("(source)", href=sourceHref))
+        else:
+            source = tags.transparent
+        r.append(tags.p(tags.code(
+            tags.span("class", class_='py-keyword'), " ",
+            self.mediumName(self.ob), ":", source
+            )))
+
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
