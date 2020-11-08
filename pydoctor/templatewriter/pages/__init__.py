@@ -1,6 +1,8 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from twisted.web.template import tags, Element, renderer, XMLFile
+from typing import List, Optional, Union
+
+from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -84,19 +86,24 @@ class CommonPage(Element):
             tags.small(self.ob.kind.lower(), " documentation"),
             )
 
-    def part(self):
-        if self.ob.parent:
-            parent = self.ob.parent
-            if isinstance(parent, model.Module) and parent.name == '__init__':
-                parent = parent.parent
-            parts = []
-            while parent.parent:
-                parts.append(util.taglink(parent, parent.name))
+    def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
+        parts: List[Union[Tag, str]] = []
+        ob: Optional[model.Documentable] = obj
+        while ob:
+            if parts:
                 parts.append('.')
-                parent = parent.parent
-            parts.append(util.taglink(parent, parent.name))
-            parts.reverse()
-            return 'Part of ', tags.code(parts)
+            parts.append(util.taglink(ob, ob.name))
+            ob = ob.parent
+            if isinstance(ob, model.Module) and ob.name == '__init__':
+                # The __init__ module is documented on the package page.
+                ob = ob.parent
+        parts.reverse()
+        return parts
+
+    def part(self):
+        parent = self.ob.parent
+        if parent:
+            return 'Part of ', tags.code(self.namespace(parent))
         else:
             return []
 
