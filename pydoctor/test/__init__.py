@@ -31,7 +31,8 @@ else:
 
 class InMemoryWriter:
     """
-    Minimal template writer that doesn't touches the filesystem.
+    Minimal template writer that doesn't touches the filesystem but will
+    trigger the rendering of epydoc for the targeted code.
     """
 
     def __init__(self, filebase: str) -> None:
