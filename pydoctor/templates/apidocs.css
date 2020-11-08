@@ -4,6 +4,9 @@
 
 .page-header {
     margin-top: 22px;
+    position: sticky;
+    top: 0;
+    background-color: #fff;
 }
 
 
