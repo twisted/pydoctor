@@ -90,7 +90,7 @@ def test_main_project_name_guess(capsys: CapSys) -> None:
         ])
 
     assert exit_code == 0
-    assert 'Guessing "basic" for project name' in capsys.readouterr().out
+    assert "Guessing 'basic' for project name." in capsys.readouterr().out
 
 
 def test_main_project_name_option(capsys: CapSys) -> None:
@@ -119,13 +119,13 @@ def test_main_return_zero_on_warnings() -> None:
             ])
 
     assert exit_code == 0
-    assert '__init__.py:8: Unknown field "bad_field"' in stream.getvalue()
-    assert 'report_module.py:9: invalid ref to "BadLink" not resolved' in stream.getvalue()
+    assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
+    assert "report_module.py:9: invalid ref to 'BadLink' not resolved" in stream.getvalue()
 
 
 def test_main_return_non_zero_on_warnings() -> None:
     """
-    When `-W` is used it returns 3 as exit code even when there are warnings.
+    When `-W` is used it returns 3 as exit code when there are warnings.
     """
     stream = StringIO()
     with redirect_stdout(stream):
@@ -136,5 +136,5 @@ def test_main_return_non_zero_on_warnings() -> None:
             ])
 
     assert exit_code == 3
-    assert '__init__.py:8: Unknown field "bad_field"' in stream.getvalue()
-    assert 'report_module.py:9: invalid ref to "BadLink" not resolved' in stream.getvalue()
+    assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
+    assert "report_module.py:9: invalid ref to 'BadLink' not resolved" in stream.getvalue()

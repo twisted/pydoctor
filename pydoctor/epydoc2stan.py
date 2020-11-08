@@ -139,11 +139,11 @@ class _EpydocLinker(DocstringLinker):
 
         if identifier == fullID:
             self.obj.report(
-                "invalid ref to \"%s\" not resolved" % (identifier,),
+                "invalid ref to '%s' not resolved" % (identifier,),
                 'resolve_identifier_xref', lineno)
         else:
             self.obj.report(
-                "invalid ref to \"%s\" resolved as '%s'" % (identifier, fullID),
+                "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
                 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
@@ -330,7 +330,7 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field: Field) -> None:
-        field.report('Unknown field "%s"' % (field.tag,))
+        field.report(f"Unknown field '{field.tag}'" )
         self.add_info(self.unknowns, field.arg, field)
 
     def handle(self, field: Field) -> None:

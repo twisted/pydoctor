@@ -502,6 +502,9 @@ class System:
                 self.once_msgs.add((section, msg))
 
         if thresh < 0:
+            # Apidoc build messages are generated using negative threshold
+            # and we have separate reporting for them,
+            # on top of the logging system.
             self.warnings.setdefault(section, []).append((section, msg))
 
         if thresh <= self.verbosity(section) <= topthresh:
@@ -522,7 +525,7 @@ class System:
         if current is not None:
             fn = current.fullName()
         else:
-            fn = '.'
+            fn = '<None>'
         if self.options.verbosity > 0:
             print(fn, message, detail)
         self.warnings.setdefault(message, []).append((fn, detail))

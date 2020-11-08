@@ -322,7 +322,7 @@ def main(args=sys.argv[1:]):
 
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
-            system.msg('warning', f'Guessing "{name}" for project name', thresh=0)
+            system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
             system.projectname = name
         else:
             system.projectname = system.options.projectname
