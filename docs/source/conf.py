@@ -30,7 +30,9 @@ version = __version__.short()
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx_rtd_theme", "sphinx.ext.intersphinx"
+    "sphinx_rtd_theme",
+    "sphinx.ext.intersphinx",
+    "pydoctor.sphinx_ext._help_output",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -57,11 +59,3 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
-
-# -- Automatically generate the Full help text in Shpinx build ---------------
-import pathlib
-import subprocess
-subprocess.run(
-    ["pydoctor", "--help"],
-    stdout=(pathlib.Path(__file__).parent / "help.txt").open('w')
-)

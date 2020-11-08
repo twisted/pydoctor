@@ -1,4 +1,6 @@
-Full help
-=========
+CLI Options
+===========
 
-.. include:: help.txt
+Below are the available command line options:
+
+.. help_output::
