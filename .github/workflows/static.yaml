@@ -37,6 +37,7 @@ jobs:
       run: |
         tox -e pyflakes
 
-    - name: Run docs
+    - name: Run docs and check extensions
       run: |
         tox -e docs
+        grep '\-\-project-url=PROJECTURL' build/docs/

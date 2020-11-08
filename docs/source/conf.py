@@ -32,7 +32,7 @@ version = __version__.short()
 extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
-    "pydoctor.sphinx_ext.help_output",
+    "pydoctor.sphinx_ext._help_output",
 ]
 
 # Add any paths that contain templates here, relative to this directory.

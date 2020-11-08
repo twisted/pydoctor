@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import Any, Dict, List, TYPE_CHECKING
 
+from pydoctor import __version__
 from pydoctor.driver import parse_args
 
 
@@ -47,7 +48,7 @@ def setup(app: 'Sphinx') -> Dict[str, Any]:
     app.add_directive('help_output', HelpOutputDirective)
 
     return {
-        'version': '0.1',
+        'version': str(__version__),
         'parallel_read_safe': True,
         'parallel_write_safe': True,
         }
