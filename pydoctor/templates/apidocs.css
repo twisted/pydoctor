@@ -9,7 +9,8 @@
     background-color: #fff;
 }
 .page-header h1 {
-    overflow: hidden;
+    overflow: visible hidden;
+    min-width: min-content;
     max-height: 44px;
 }
 
