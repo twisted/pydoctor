@@ -90,13 +90,11 @@ class CommonPage(Element):
         parts: List[Union[Tag, str]] = []
         ob: Optional[model.Documentable] = obj
         while ob:
-            if parts:
-                parts.append('.')
-            parts.append(util.taglink(ob, ob.name))
+            if ob.documentation_location is model.DocLocation.OWN_PAGE:
+                if parts:
+                    parts.append('.')
+                parts.append(util.taglink(ob, ob.name))
             ob = ob.parent
-            if isinstance(ob, model.Module) and ob.name == '__init__':
-                # The __init__ module is documented on the package page.
-                ob = ob.parent
         parts.reverse()
         return parts
 
