@@ -268,7 +268,7 @@ def test_unknown_field_name(capsys: CapSys) -> None:
     ''', modname='test')
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    assert captured == 'test:5: Unknown field "zap"\n'
+    assert captured == "test:5: Unknown field 'zap'\n"
 
 
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:

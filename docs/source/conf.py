@@ -35,7 +35,7 @@ version = __version__.short()
 extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
-    "pydoctor.sphinx_ext.help_output",
+    "pydoctor.sphinx_ext._help_output",
     "pydoctor.sphinx_ext.api_output",
 ]
 
@@ -49,7 +49,6 @@ exclude_patterns = []
 
 # Configure intersphinx magic
 intersphinx_mapping = {
-    #'pydoctor': ('https://pydoctor.readthedocs.io/api/', None),
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
 }
 
