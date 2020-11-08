@@ -1,5 +1,5 @@
-Full help
-=========
+CLI Options
+===========
 
 Below are the available command line options:
 
