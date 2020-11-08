@@ -8,7 +8,10 @@
     top: 0;
     background-color: #fff;
 }
-
+.page-header h1 {
+    overflow: hidden;
+    max-height: 44px;
+}
 
 ul {
     margin-top: 10px;
