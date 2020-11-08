@@ -194,6 +194,11 @@ code > .code {
     padding: 0px;
 }
 
+a.functionSourceLink {
+    font-weight: normal;
+}
+  
+
 #childList > div {
     border-left-color: #03a9f4;
     border-left-width: 1px;
