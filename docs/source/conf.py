@@ -97,5 +97,5 @@ pydoctor_args = [
     '--make-html',
     '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
     '--html-output={outdir}/api',
-    '--project-base-dir=' + pydoctor_cwd ,
+    '--project-base-dir=' + pydoctor_cwd,
     ]

@@ -6,7 +6,7 @@ Usage
 Most common options
 -------------------
 
-The following exemple uses all most common options to generate ``pydoctor``'sown API docs under the ``docs/api`` folder.
+The following exemple uses all most common options to generate ``pydoctor``'s own API docs under the ``docs/api`` folder.
 It will add a link to the project website in all pages header, show a link to source code aside every documented elements and resolve links to standard library objects.
 
 ::
