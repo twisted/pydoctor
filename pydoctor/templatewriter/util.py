@@ -8,7 +8,7 @@ from twisted.python.filepath import FilePath
 from twisted.web.template import Tag, tags
 
 
-def srclink(o):
+def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref
 
 def templatefile(filename):

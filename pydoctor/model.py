@@ -67,11 +67,9 @@ class Documentable:
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
-    @ivar documentation_location: ...
     @ivar sourceHref: ...
     @ivar kind: ...
     """
-    documentation_location = DocLocation.OWN_PAGE
     docstring: Optional[str] = None
     system: 'System'
     parsed_docstring: Optional[ParsedDocstring] = None
@@ -79,6 +77,13 @@ class Documentable:
     linenumber = 0
     sourceHref: Optional[str] = None
     kind: str
+
+    @property
+    def documentation_location(self) -> DocLocation:
+        """Page location where we are documented.
+        The default implementation returns L{DocLocation.OWN_PAGE}.
+        """
+        return DocLocation.OWN_PAGE
 
     @property
     def css_class(self):
@@ -341,6 +346,13 @@ class Module(CanContainImportsDocumentable):
     kind = "Module"
     state = ProcessingState.UNPROCESSED
 
+    @property
+    def documentation_location(self) -> DocLocation:
+        if self.name == '__init__':
+            return DocLocation.PARENT_PAGE
+        else:
+            return DocLocation.OWN_PAGE
+
     def setup(self):
         super().setup()
         self.all = None
@@ -385,7 +397,10 @@ class Class(CanContainImportsDocumentable):
 
 
 class Inheritable(Documentable):
-    documentation_location = DocLocation.PARENT_PAGE
+
+    @property
+    def documentation_location(self) -> DocLocation:
+        return DocLocation.PARENT_PAGE
 
     def docsources(self):
         yield self

@@ -59,8 +59,7 @@ class TemplateWriter:
     def writeDocsFor(self, ob, functionpages):
         if not ob.isVisible:
             return
-        isfunc = ob.documentation_location is model.DocLocation.PARENT_PAGE
-        if (isfunc and functionpages) or not isfunc:
+        if functionpages or ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
