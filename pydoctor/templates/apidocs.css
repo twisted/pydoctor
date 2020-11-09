@@ -207,11 +207,15 @@ a.navbar-brand {
     /* background-color:#f3d3db; */
     border:solid;
     margin-right: 0.3em;
+    border-width: 1.5px;
+    border-color: #c7254e;
+    background-color:#f9f2f4;
+    border-radius: 4px;
 }
 
 /* This is for the main top navagation bar */
 .page-header > h1 > code {
-    background-color:#FCF9FA;
+    background-color:#f9f2f4;
     /* background-color:transparent; */
 }
 
@@ -225,7 +229,7 @@ This is inline docstring content marked up as code, for example C{foo} in epytex
 */
 a > code {
     color:#c7254e; 
-    background-color:#FCF9FA;
+    background-color:#f9f2f4;
     /* background-color:transparent; */
 }
 /* 
@@ -233,7 +237,7 @@ a > code {
 */
 a.code {
     color:#c7254e; 
-    background-color:#FCF9FA;
+    background-color:#f9f2f4;
     /* background-color:transparent; */
 }
 /* 
