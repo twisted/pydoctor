@@ -206,6 +206,7 @@ tr.private {
 a.navbar-brand {
     /* background-color:#f3d3db; */
     border:solid;
+    margin-right: 0.3em;
 }
 
 /* This is for the main top navagation bar */
