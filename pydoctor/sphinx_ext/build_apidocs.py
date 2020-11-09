@@ -14,28 +14,28 @@ The following format placeholders are resolved for C{pydoctor_args} at runtime:
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
-import os
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict
 
+from sphinx.application import Sphinx
+from sphinx.config import Config
 from sphinx.errors import ConfigError
 from sphinx.util import logging
 
 from pydoctor import __version__
 from pydoctor.driver import main
 
-if TYPE_CHECKING:
-    from sphinx.application import Sphinx
 
 logger = logging.getLogger(__name__)
 
 
-def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
+def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
-    if not app.config.pydoctor_args:
+    config: Config = app.config  # type: ignore[has-type]
+    if not config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
 
     placeholders = {
@@ -43,7 +43,7 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
         }
 
     args = []
-    for argument in app.config.pydoctor_args:
+    for argument in config.pydoctor_args:
         args.append(argument.format(**placeholders))
 
     logger.info("Bulding pydoctor API docs as:")
@@ -57,7 +57,7 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
             logger.warning(line)
 
 
-def setup(app: 'Sphinx') ->  Dict[str, Any]:
+def setup(app: Sphinx) ->  Dict[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 
