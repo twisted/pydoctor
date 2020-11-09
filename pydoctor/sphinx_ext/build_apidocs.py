@@ -16,26 +16,25 @@ as otherwise any extra output is converted into Sphinx warnings.
 """
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict
 
+from sphinx.application import Sphinx
+from sphinx.config import Config
 from sphinx.errors import ConfigError
 from sphinx.util import logging
 
 from pydoctor import __version__
 from pydoctor.driver import main
 
-if TYPE_CHECKING:
-    from sphinx.application import Sphinx
-    from sphinx.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
+def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
-    config: 'Config' = app.config # type: ignore[has-type]
+    config: Config = app.config # type: ignore[has-type]
     if not config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
 
@@ -58,7 +57,7 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
             logger.warning(line)
 
 
-def setup(app: 'Sphinx') ->  Dict[str, Any]:
+def setup(app: Sphinx) ->  Dict[str, Any]:
     app.connect('build-finished', on_build_finished)
     app.add_config_value("pydoctor_args", [], "env")
 
