@@ -13,7 +13,7 @@ Installation
 .. toctree::
    :maxdepth: 4
    :caption: Table of contents:
-   
+
    self
    readme
    usage
@@ -22,10 +22,11 @@ Installation
    faq
    transition
    contrib
-   
+
 .. toctree::
    :maxdepth: 1
    :caption: Quick links
-   
+
+   api/index
    GitHub <https://github.com/twisted/pydoctor>
-   PyPi <https://pypi.org/project/pydoctor>
+   PyPI <https://pypi.org/project/pydoctor>
