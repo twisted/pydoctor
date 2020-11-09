@@ -1,6 +1,8 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from twisted.web.template import tags, Element, renderer, XMLFile
+from typing import List, Optional, Union
+
+from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -80,23 +82,31 @@ class CommonPage(Element):
 
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
-            tags.code(self.mediumName(self.ob)), " ",
-            tags.small(self.ob.kind.lower(), " documentation"),
+            tags.code(self.namespace(self.ob))
             )
 
+    def category(self) -> str:
+        return f"{self.ob.kind.lower()} documentation"
+
+    def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
+        parts: List[Union[Tag, str]] = []
+        ob: Optional[model.Documentable] = obj
+        while ob:
+            if ob.documentation_location is model.DocLocation.OWN_PAGE:
+                if parts:
+                    parts.append('.')
+                parts.append(util.taglink(ob, ob.name))
+            ob = ob.parent
+        parts.reverse()
+        return parts
+
+    # Deprecated: pydoctor's templates no longer use this, but it is kept
+    #             for now to not break customized templates like Twisted's.
+    #             NOTE: Remember to remove the CSS as well.
     def part(self):
-        if self.ob.parent:
-            parent = self.ob.parent
-            if isinstance(parent, model.Module) and parent.name == '__init__':
-                parent = parent.parent
-            parts = []
-            while parent.parent:
-                parts.append(util.taglink(parent, parent.name))
-                parts.append('.')
-                parent = parent.parent
-            parts.append(util.taglink(parent, parent.name))
-            parts.reverse()
-            return 'Part of ', tags.code(parts)
+        parent = self.ob.parent
+        if parent:
+            return 'Part of ', tags.code(self.namespace(parent))
         else:
             return []
 
@@ -176,6 +186,7 @@ class CommonPage(Element):
         return tag.fillSlots(
             title=self.title(),
             heading=self.heading(),
+            category=self.category(),
             part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
@@ -187,7 +198,18 @@ class CommonPage(Element):
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
-class PackagePage(CommonPage):
+class ModulePage(CommonPage):
+    def extras(self):
+        r = super().extras()
+
+        sourceHref = util.srclink(self.ob)
+        if sourceHref:
+            r.append(tags.a("(source)", href=sourceHref))
+
+        return r
+
+
+class PackagePage(ModulePage):
     def children(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible),
@@ -210,8 +232,6 @@ class PackagePage(CommonPage):
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
-class ModulePage(CommonPage):
-    pass
 
 def overriding_subclasses(c, name, firstcall=True):
     if not firstcall and name in c.contents:
@@ -278,6 +298,17 @@ class ClassPage(CommonPage):
 
     def extras(self):
         r = super().extras()
+
+        sourceHref = util.srclink(self.ob)
+        if sourceHref:
+            source = (" ", tags.a("(source)", href=sourceHref))
+        else:
+            source = tags.transparent
+        r.append(tags.p(tags.code(
+            tags.span("class", class_='py-keyword'), " ",
+            self.mediumName(self.ob), ":", source
+            )))
+
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
         if not scs:
             return r
