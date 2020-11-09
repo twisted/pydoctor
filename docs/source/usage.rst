@@ -187,10 +187,9 @@ way.::
 
     extensions.append("pydoctor.sphinx_ext.build_apidocs)
 
-    pydoctor_cwd = "/absolute/path/to/your/project"
     pydoctor_args = [
         '--quiet',
-        '--add-package=YOUR-TARGETED-PACKAGE',
+        '--add-package=/absolute/path/to/your/project/package1',
         '--project-name=YOUR-PROJECT-NAME',
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',

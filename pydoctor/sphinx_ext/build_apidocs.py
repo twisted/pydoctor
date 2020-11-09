@@ -49,14 +49,12 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
     logger.info("Bulding pydoctor API docs as:")
     logger.info('\n'.join(args))
 
-    stream = StringIO()
-    with redirect_stdout(stream):
-        main(args=args)
+    with StringIO() as stream:
+        with redirect_stdout(stream):
+            main(args=args)
 
-    for line in stream.getvalue().splitlines():
-        logger.warning(line)
-
-    stream.close()
+        for line in stream.getvalue().splitlines():
+            logger.warning(line)
 
 
 def setup(app: 'Sphinx') ->  Dict[str, Any]:
@@ -64,7 +62,7 @@ def setup(app: 'Sphinx') ->  Dict[str, Any]:
     app.add_config_value("pydoctor_args", [], "env")
 
     return {
-            'version': str(__version__),
-            'parallel_read_safe': True,
-            'parallel_write_safe': True,
+        'version': str(__version__),
+        'parallel_read_safe': True,
+        'parallel_write_safe': True,
         }
