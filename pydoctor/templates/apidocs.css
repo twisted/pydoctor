@@ -191,7 +191,7 @@ tr.private {
 }
 
 /* 
-- <h1><*><></h1> : This is for the main top navagation bar
+- <h1><code></code></h1> : This is for the main top navagation bar
 
 - <a><code></code><a> for links in docstrings texts
 This is inline docstring content marked up as code, for example L{foo} in epytext
@@ -199,7 +199,7 @@ or `bar` in restructuredtext
 
 - <a class="code"> links that are present in summary tables 
 */
-a > code, a.code, .page-header > h1 > * {
+a > code, a.code, .page-header > h1 > code {
     color:#c7254e; 
     background-color:#f9f2f4;
 }
