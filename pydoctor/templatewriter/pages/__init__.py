@@ -204,7 +204,7 @@ class ModulePage(CommonPage):
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
-            r.append(tags.a("View Source", href=sourceHref))
+            r.append(tags.a("(source)", href=sourceHref))
 
         return r
 
