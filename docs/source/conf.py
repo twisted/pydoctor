@@ -10,6 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+# import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -36,7 +37,7 @@ extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
     "pydoctor.sphinx_ext._help_output",
-    "pydoctor.sphinx_ext.api_output",
+    "pydoctor.sphinx_ext.build_apidocs",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -64,15 +65,8 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-# `pydoctor_cwd` is the working directory used to call pydoctor.
-# `pydoctor_args` is the list of arguments used to call pydoctor when
-# generating the API docs via the Sphinx pydoctor extension.
-#
-# The following placeholders are available are resolved at runtime:
-# * `{outdir}` the Sphinx output dir
-#
-# Any output from pydoctor is converted into a Sphinx warning.
-#
+# Try to find URL fragment for the GitHub source page based on current
+# branch or tag.
 _git_reference = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
 if _git_reference == 'HEAD':
     # It looks like the branch has no name.
@@ -85,17 +79,16 @@ if os.environ.get('READTHEDOCS', '') == 'True':
         # It looks like we have a tag build.
         _git_reference = rtd_version
 
-
-pydoctor_cwd = str(pathlib.Path(__file__).parent.parent.parent)
+_pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 pydoctor_args = [
+    f'--add-package={_pydoctor_root}/pydoctor',
+    '--html-output={outdir}/api',
+    f'--project-base-dir={_pydoctor_root}',
+    f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
     '--quiet',
-    '--add-package=pydoctor',
+    '--make-html',
     '--project-name=pydoctor',
     '--project-url=https://github.com/twisted/pydoctor/',
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
-    '--make-html',
-    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/' + _git_reference,
-    '--html-output={outdir}/api',
-    '--project-base-dir=' + pydoctor_cwd,
     ]

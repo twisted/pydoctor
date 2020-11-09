@@ -29,4 +29,4 @@ Installation
 
    api/index
    GitHub <https://github.com/twisted/pydoctor>
-   PyPi <https://pypi.org/project/pydoctor>
+   PyPI <https://pypi.org/project/pydoctor>
