@@ -7,11 +7,18 @@
     position: sticky;
     top: 0;
     background-color: #fff;
+    padding-bottom: 12px;
+    margin-bottom: 0;
+    border-bottom: 0;
 }
 .page-header h1 {
-    overflow: visible hidden;
-    min-width: min-content;
-    max-height: 44px;
+    margin-bottom: 0;
+}
+
+.categoryHeader {
+    font-size: 24px;
+    color: #777;
+    margin-bottom: 1.8em;
 }
 
 ul {

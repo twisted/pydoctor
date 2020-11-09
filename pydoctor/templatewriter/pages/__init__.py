@@ -82,9 +82,11 @@ class CommonPage(Element):
 
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
-            tags.code(self.namespace(self.ob)), " ",
-            tags.small(self.ob.kind.lower(), " documentation"),
+            tags.code(self.namespace(self.ob))
             )
+
+    def category(self) -> str:
+        return f"{self.ob.kind.lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
         parts: List[Union[Tag, str]] = []
@@ -184,6 +186,7 @@ class CommonPage(Element):
         return tag.fillSlots(
             title=self.title(),
             heading=self.heading(),
+            category=self.category(),
             part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
