@@ -108,9 +108,6 @@ ul ul ul ul ul ul ul {
     padding: 5px;
 }
 
-div.extrasDocstring > p:nth-child(1) > code{
-    color: #000000;
-}
 
 #splitTables > table tr td {
     border-left-color: #eee;
@@ -161,9 +158,10 @@ tr.private {
 }
 
 .fieldArg {
-    font-style: italic;
     color: #222222;
 }
+
+/* Add an arrow before fields */ 
 
 .fieldArg:before {
     content: "\2192";
@@ -204,18 +202,65 @@ tr.private {
     margin-bottom: 6px;
 }
 
+/* This is magic to show the transparent index link */
+a.navbar-brand {
+    /* background-color:#f3d3db; */
+    border:solid;
+}
+
+/* This is for the main top navagation bar */
+.page-header > h1 > code {
+    background-color:#FCF9FA;
+    /* background-color:transparent; */
+}
+
+/* .page-header > h1 > code > a {
+    background-color:#FCF9FA;
+} */
+
+/* 
+<a><code></code><a> for links
+This is inline docstring content marked up as code, for example C{foo} in epytext
+*/
+a > code {
+    color:#c7254e; 
+    background-color:#FCF9FA;
+    /* background-color:transparent; */
+}
+/* 
+<a class="code"> links that are present in summary tables 
+*/
+a.code {
+    color:#c7254e; 
+    background-color:#FCF9FA;
+    /* background-color:transparent; */
+}
+/* 
+This defines  the "code" class, it's black on light gray
+*/
 .code {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
     padding:2px 4px;
     font-size:90%;
-    color:#c7254e;
-    background-color:#f9f2f4;
+    color: #222222;
+    background-color: #f9f2f4;
+    /* color:#c7254e; 
+    background-color:#FCF9FA;*/
     border-radius:4px
+}
+/* 
+This overwrites the default values inherited from bootstrap min
+*/
+code {
+    color: #222222;
+    background-color: #f9f2f4;
 }
 
 code > .code {
     padding: 0px;
 }
+
+
 
 a.functionSourceLink {
     font-weight: normal;
@@ -226,13 +271,14 @@ a.functionSourceLink {
     border-left-color: #03a9f4;
     border-left-width: 1px;
     border-left-style: solid;
-    background: #fafafa;
+    background: #fbfbfb;
 }
 
+/* Function definitions `def func():` and `var =` */ 
+ 
 #childList > div .functionHeader {
     font-family: monospace;
     font-weight: bold;
-    font-style: italic;
     color: #222222;
 
 }
