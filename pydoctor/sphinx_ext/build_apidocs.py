@@ -6,12 +6,12 @@ Read The Docs build process.
 
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-* pydoctor_args: A list with all the pydoctor command line arguments used to trigger the build.
+  - C{pydoctor_args} - a list with all the pydoctor command line arguments used to trigger the build.
 
-The following format placeholders are resolved for pydoctor_args at runtime:
-* `{outdir}` the Sphinx output dir
+The following format placeholders are resolved for C{pydoctor_args} at runtime:
+  - C{{outdir}} - the Sphinx output dir
 
-You must call pydoctor with `--quiet` argument
+You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
 import os
@@ -58,6 +58,11 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
 
 
 def setup(app: 'Sphinx') ->  Dict[str, Any]:
+    """
+    Called by Sphinx when the extension is initialized.
+
+    @return: The extension version and runtime options.
+    """
     app.connect('build-finished', on_build_finished)
     app.add_config_value("pydoctor_args", [], "env")
 
