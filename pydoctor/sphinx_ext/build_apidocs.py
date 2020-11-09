@@ -14,7 +14,6 @@ The following format placeholders are resolved for pydoctor_args at runtime:
 You must call pydoctor with `--quiet` argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
-import os
 from contextlib import redirect_stdout
 from io import StringIO
 from typing import Any, Dict, TYPE_CHECKING
