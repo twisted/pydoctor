@@ -18,7 +18,7 @@
 .categoryHeader {
     font-size: 24px;
     color: #777;
-    margin-bottom: 0.5em;
+    margin-bottom: 1.8em;
 }
 
 ul {
@@ -108,7 +108,6 @@ ul ul ul ul ul ul ul {
     padding: 5px;
 }
 
-
 #splitTables > table tr td {
     border-left-color: #eee;
     border-left-width: 1px;
@@ -157,17 +156,6 @@ tr.private {
     margin-top: 10px;
 }
 
-.fieldArg {
-    color: #222222;
-}
-
-/* Add an arrow before fields */ 
-
-.fieldArg:before {
-    content: "\2192";
-    margin-right: 6px;
-}
-
 .fieldName {
     font-weight: bold;
 }
@@ -202,63 +190,32 @@ tr.private {
     margin-bottom: 6px;
 }
 
-/* This is magic to show the transparent index link */
-a.navbar-brand {
-    /* background-color:#f3d3db; */
-    border:solid;
-    margin-right: 0.3em;
-    border-width: 1.5px;
-    border-color: #c7254e;
-    background-color:#f9f2f4;
-    border-radius: 4px;
-}
-
-/* This is for the main top navagation bar */
-.page-header > h1 > code {
-    background-color:#f9f2f4;
-    /* background-color:transparent; */
-}
-
-/* .page-header > h1 > code > a {
-    background-color:#FCF9FA;
-} */
-
 /* 
-<a><code></code><a> for links
-This is inline docstring content marked up as code, for example C{foo} in epytext
+- <h1><*><></h1> : This is for the main top navagation bar
+
+- <a><code></code><a> for links in docstrings texts
+This is inline docstring content marked up as code, for example L{foo} in epytext
+or `bar` in restructuredtext
+
+- <a class="code"> links that are present in summary tables 
 */
-a > code {
+a > code, a.code, .page-header > h1 > * {
     color:#c7254e; 
     background-color:#f9f2f4;
-    /* background-color:transparent; */
 }
-/* 
-<a class="code"> links that are present in summary tables 
+
+/*
+This defines  the "code" class, it's black on light gray,
+
+It also overwrite the default values inherited from bootstrap min
 */
-a.code {
-    color:#c7254e; 
-    background-color:#f9f2f4;
-    /* background-color:transparent; */
-}
-/* 
-This defines  the "code" class, it's black on light gray
-*/
-.code {
+code, .code {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
     padding:2px 4px;
     font-size:90%;
     color: #222222;
-    background-color: #f9f2f4;
-    /* color:#c7254e; 
-    background-color:#FCF9FA;*/
+    background-color: #f4f4f4;
     border-radius:4px
-}
-/* 
-This overwrites the default values inherited from bootstrap min
-*/
-code {
-    color: #222222;
-    background-color: #f9f2f4;
 }
 
 code > .code {
@@ -276,7 +233,7 @@ a.functionSourceLink {
     border-left-color: #03a9f4;
     border-left-width: 1px;
     border-left-style: solid;
-    background: #fbfbfb;
+    background: #fafafa;
 }
 
 /* Function definitions `def func():` and `var =` */ 
@@ -317,7 +274,6 @@ body.private-hidden #splitTables .private, body.private-hidden #childList .priva
     left: 0;
     padding: 10px;
     opacity: 0.7;
-    margin-bottom: 35px;
 }
 
 #showPrivate:hover {
