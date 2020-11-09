@@ -1,35 +1,42 @@
 """
 Generate the API docs using pydoctor to be integrated into Sphinx build system.
 
+This was designed to generate pydoctor HTML files as part of the
+Read The Docs build process.
+
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-* pydoctor_cwd: Absolute path in which the pydoctor build is trigerred.
 * pydoctor_args: A list with all the pydoctor command line arguments used to trigger the build.
+
+The following format placeholders are resolved for pydoctor_args at runtime:
+* `{outdir}` the Sphinx output dir
 
 You must call pydoctor with `--quiet` argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
 import os
-from sphinx.util import logging
-from sphinx.errors import ConfigError
-
 from contextlib import redirect_stdout
 from io import StringIO
+from typing import Any, Dict, TYPE_CHECKING
+
+from sphinx.errors import ConfigError
+from sphinx.util import logging
+
 from pydoctor import __version__
 from pydoctor.driver import main
+
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
 
 logger = logging.getLogger(__name__)
 
 
-def on_build_finished(app, exception):
+def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
     if not app.config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
-
-    if not app.config.pydoctor_cwd:
-        raise ConfigError("Missing 'pydoctor_cwd'.")
 
     placeholders = {
         'outdir': app.outdir,
@@ -39,27 +46,21 @@ def on_build_finished(app, exception):
     for argument in app.config.pydoctor_args:
         args.append(argument.format(**placeholders))
 
+    logger.info("Bulding pydoctor API docs as:")
+    logger.info('\n'.join(args))
+
     stream = StringIO()
-
-    old_cwd = os.getcwd()
-    try:
-        os.chdir(app.config.pydoctor_cwd)
-
-        logger.info("Bulding pydoctor API docs with CWD %s and arguments:" % (os.getcwd(),))
-        logger.info('\n'.join(args))
-
-        with redirect_stdout(stream):
-            main(args=args)
-    finally:
-        os.chdir(old_cwd)
+    with redirect_stdout(stream):
+        main(args=args)
 
     for line in stream.getvalue().splitlines():
         logger.warning(line)
 
+    stream.close()
 
-def setup(app):
+
+def setup(app: 'Sphinx') ->  Dict[str, Any]:
     app.connect('build-finished', on_build_finished)
-    app.add_config_value("pydoctor_cwd", "", "env")
     app.add_config_value("pydoctor_args", [], "env")
 
     return {
