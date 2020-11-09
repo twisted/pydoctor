@@ -108,6 +108,10 @@ ul ul ul ul ul ul ul {
     padding: 5px;
 }
 
+div.extrasDocstring > p:nth-child(1) > code{
+    color: #000000;
+}
+
 #splitTables > table tr td {
     border-left-color: #eee;
     border-left-width: 1px;
