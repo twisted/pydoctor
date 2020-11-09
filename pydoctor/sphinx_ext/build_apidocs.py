@@ -26,6 +26,7 @@ from pydoctor.driver import main
 
 if TYPE_CHECKING:
     from sphinx.application import Sphinx
+    from sphinx.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
-    if not app.config.pydoctor_args:
+    config: 'Config' = app.config # type: ignore[has-type]
+    if not config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
 
     placeholders = {
@@ -42,7 +44,7 @@ def on_build_finished(app: 'Sphinx', exception: Exception) -> None:
         }
 
     args = []
-    for argument in app.config.pydoctor_args:
+    for argument in config.pydoctor_args:
         args.append(argument.format(**placeholders))
 
     logger.info("Bulding pydoctor API docs as:")
