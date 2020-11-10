@@ -763,6 +763,7 @@ class System:
         if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
+        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
         return mod
 
 

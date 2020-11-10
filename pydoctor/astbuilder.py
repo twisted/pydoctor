@@ -5,7 +5,7 @@ import sys
 from functools import partial
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterator, Mapping, Optional, Tuple
+from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -161,57 +161,79 @@ class ModuleVistor(ast.NodeVisitor):
                     return
                 parent = parent.parent
             if parent is not None:
-                modname = parent.fullName() + '.' + modname
+                modname = f'{parent.fullName()}.{modname}'
+
+        if node.names[0].name == '*':
+            self._importAll(modname)
+        else:
+            self._importNames(modname, node.names)
+
+    def _importAll(self, modname: str) -> None:
+        """Handle a C{from <modname> import *} statement."""
+
+        mod = self.system.getProcessedModule(modname)
+        if mod is None:
+            # We don't have any information about the module, so we don't know
+            # what names to import.
+            self.builder.warning("import * from unknown", modname)
+            return
+
+        self.builder.warning("import *", modname)
+
+        # Get names to import: use __all__ if available, otherwise take all
+        # names that are not private.
+        names = mod.all
+        if names is None:
+            names = (
+                name
+                for name in chain(mod.contents.keys(),
+                                  mod._localNameToFullName_map.keys())
+                if not name.startswith('_')
+                )
+
+        # Add imported names to our module namespace.
+        _localNameToFullName = self.builder.current._localNameToFullName_map
+        expandName = mod.expandName
+        for name in names:
+            _localNameToFullName[name] = expandName(name)
+
+    def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
+        """Handle a C{from <modname> import <names>} statement."""
 
         mod = self.system.getProcessedModule(modname)
         if mod is not None:
-            assert mod.state in [model.ProcessingState.PROCESSING,
-                                 model.ProcessingState.PROCESSED]
             expandName = mod.expandName
         else:
             expandName = lambda name: f'{modname}.{name}'
+
         _localNameToFullName = self.builder.current._localNameToFullName_map
-        for al in node.names:
-            fromname, asname = al.name, al.asname
-            if fromname == '*':
-                if mod is None:
-                    self.builder.warning("import * from unknown", modname)
-                    return
-                self.builder.warning("import *", modname)
-                if mod.all is not None:
-                    names = mod.all
-                else:
-                    names = (
-                        k
-                        for k in chain(mod.contents.keys(),
-                                       mod._localNameToFullName_map.keys())
-                        if not k.startswith('_')
-                        )
-                for n in names:
-                    _localNameToFullName[n] = expandName(n)
-                return
+        for al in names:
+            orgname, asname = al.name, al.asname
             if asname is None:
-                asname = fromname
+                asname = orgname
+
+            # Handle re-exporting of imported names.
             if isinstance(self.builder.current, model.Module) and \
-                   self.builder.current.all is not None and \
-                   asname in self.builder.current.all and \
-                   modname in self.system.allobjects:
+                    self.builder.current.all is not None and \
+                    asname in self.builder.current.all and \
+                    modname in self.system.allobjects:
                 mod = self.system.allobjects[modname]
                 if isinstance(mod, model.Module) and \
-                       fromname in mod.contents and \
-                       (mod.all is None or fromname not in mod.all):
+                        orgname in mod.contents and \
+                        (mod.all is None or orgname not in mod.all):
                     self.system.msg(
                         "astbuilder",
                         "moving %r into %r"
-                        % (mod.contents[fromname].fullName(),
+                        % (mod.contents[orgname].fullName(),
                            self.builder.current.fullName()))
-                    ob = mod.contents[fromname]
+                    ob = mod.contents[orgname]
                     ob.reparent(self.builder.current, asname)
                     continue
-            if isinstance(
-                self.system.objForFullName(modname), model.Package):
-                self.system.getProcessedModule(modname + '.' + fromname)
-            _localNameToFullName[asname] = expandName(fromname)
+
+            if isinstance(self.system.objForFullName(modname), model.Package):
+                self.system.getProcessedModule(f'{modname}.{orgname}')
+
+            _localNameToFullName[asname] = expandName(orgname)
 
     def visit_Import(self, node):
         """Process an import statement.
