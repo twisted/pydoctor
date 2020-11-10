@@ -16,7 +16,7 @@ import sys
 import types
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping, Optional, Type
+from typing import TYPE_CHECKING, Collection, Mapping, Optional, Type
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -352,9 +352,9 @@ class Module(CanContainImportsDocumentable):
         else:
             return DocLocation.OWN_PAGE
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
-        self.all = None
+        self.all: Optional[Collection[str]] = None
 
     def _localNameToFullName(self, name):
         if name in self.contents:

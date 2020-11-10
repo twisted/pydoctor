@@ -184,12 +184,12 @@ class ModuleVistor(ast.NodeVisitor):
         # names that are not private.
         names = mod.all
         if names is None:
-            names = (
+            names = [
                 name
                 for name in chain(mod.contents.keys(),
                                   mod._localNameToFullName_map.keys())
                 if not name.startswith('_')
-                )
+                ]
 
         # Add imported names to our module namespace.
         _localNameToFullName = self.builder.current._localNameToFullName_map
@@ -206,29 +206,37 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             expandName = lambda name: f'{modname}.{name}'
 
-        _localNameToFullName = self.builder.current._localNameToFullName_map
+        # Fetch names to export.
+        current = self.builder.current
+        if isinstance(current, model.Module):
+            exports = current.all
+            if exports is None:
+                exports = []
+        else:
+            # Don't export names imported inside classes or functions.
+            exports = []
+
+        _localNameToFullName = current._localNameToFullName_map
         for al in names:
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
 
-            # Handle re-exporting of imported names.
-            if isinstance(self.builder.current, model.Module) and \
-                    self.builder.current.all is not None and \
-                    asname in self.builder.current.all and \
-                    modname in self.system.allobjects:
-                mod = self.system.allobjects[modname]
-                if isinstance(mod, model.Module) and \
-                        orgname in mod.contents and \
-                        (mod.all is None or orgname not in mod.all):
-                    self.system.msg(
-                        "astbuilder",
-                        "moving %r into %r"
-                        % (mod.contents[orgname].fullName(),
-                           self.builder.current.fullName()))
+            # Move re-exported objects into current module.
+            if asname in exports and mod is not None:
+                try:
                     ob = mod.contents[orgname]
-                    ob.reparent(self.builder.current, asname)
-                    continue
+                except KeyError:
+                    self.builder.warning("cannot find re-exported name",
+                                         f'{modname}.{orgname}')
+                else:
+                    if mod.all is None or orgname not in mod.all:
+                        self.system.msg(
+                            "astbuilder",
+                            "moving %r into %r" % (ob.fullName(), current.fullName())
+                            )
+                        ob.reparent(current, asname)
+                        continue
 
             if isinstance(self.system.objForFullName(modname), model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
