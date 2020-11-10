@@ -206,6 +206,9 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             expandName = lambda name: f'{modname}.{name}'
 
+        # Are we importing from a package?
+        is_package = isinstance(self.system.objForFullName(modname), model.Package)
+
         # Fetch names to export.
         current = self.builder.current
         if isinstance(current, model.Module):
@@ -238,7 +241,9 @@ class ModuleVistor(ast.NodeVisitor):
                         ob.reparent(current, asname)
                         continue
 
-            if isinstance(self.system.objForFullName(modname), model.Package):
+            # If we're importing from a package, make sure imported modules
+            # are processed (getProcessedModule() ignores non-modules).
+            if is_package:
                 self.system.getProcessedModule(f'{modname}.{orgname}')
 
             _localNameToFullName[asname] = expandName(orgname)
