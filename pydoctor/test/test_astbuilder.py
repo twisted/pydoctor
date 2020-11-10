@@ -450,6 +450,20 @@ def test_import_star(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
+def test_import_from_package(systemcls: Type[model.System]) -> None:
+    """Importing from a package should look in __init__ module."""
+    system = systemcls()
+    system.ensurePackage('a')
+    mod_a = fromText('''
+    def f(): pass
+    ''', modname='a.__init__', system=system)
+    mod_b = fromText('''
+    from a import f
+    ''', modname='b', system=system)
+    assert mod_b.resolveName('f') == mod_a.contents['f']
+
+
+@systemcls_param
 def test_inline_docstring_modulevar(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     """regular module docstring
