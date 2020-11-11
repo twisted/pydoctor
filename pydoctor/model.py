@@ -564,11 +564,9 @@ class System:
         else:
             self.rootobjects.append(obj)
 
-        fullName = obj.fullName()
-        if fullName in self.allobjects:
+        first = self.allobjects.setdefault(obj.fullName(), obj)
+        if obj is not first:
             self.handleDuplicate(obj)
-        else:
-            self.allobjects[fullName] = obj
 
     # if we assume:
     #
