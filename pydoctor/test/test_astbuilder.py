@@ -23,6 +23,7 @@ systemcls_param = pytest.mark.parametrize(
 def fromAST(
         ast: ast.Module,
         modname: str = '<test>',
+        parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
@@ -34,22 +35,30 @@ def fromAST(
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
+    if parent_name is None:
+        full_name = modname
+    else:
+        full_name = f'{parent_name}.{modname}'
+        # Set containing package as parent.
+        builder.current = _system.allobjects[parent_name]
     mod: model.Module = builder._push(_system.Module, modname, None)
     builder._pop(_system.Module)
     builder.processModuleAST(ast, mod)
-    mod = _system.allobjects[modname]
+    mod = _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
     return mod
 
 def fromText(
         text: str,
+        *,
         modname: str = '<test>',
+        parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
     ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, system, buildercls, systemcls)
+    return fromAST(ast, modname, parent_name, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
@@ -236,9 +245,9 @@ def test_aliasing(systemcls: Type[model.System]) -> None:
         class C(B):
             pass
         '''
-        fromText(src_a, 'a', system)
-        fromText(src_b, 'b', system)
-        fromText(src_c, 'c', system)
+        fromText(src_a, modname='a', system=system)
+        fromText(src_b, modname='b', system=system)
+        fromText(src_c, modname='c', system=system)
 
     system = systemcls()
     addsrc(system)
@@ -262,10 +271,10 @@ def test_more_aliasing(systemcls: Type[model.System]) -> None:
         class D(C):
             pass
         '''
-        fromText(src_a, 'a', system)
-        fromText(src_b, 'b', system)
-        fromText(src_c, 'c', system)
-        fromText(src_d, 'd', system)
+        fromText(src_a, modname='a', system=system)
+        fromText(src_b, modname='b', system=system)
+        fromText(src_c, modname='c', system=system)
+        fromText(src_d, modname='d', system=system)
 
     system = systemcls()
     addsrc(system)
@@ -281,7 +290,7 @@ def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
     class D(C):
         pass
     '''
-    mod = fromText(src, 'mod', system)
+    mod = fromText(src, modname='mod', system=system)
     assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
 @systemcls_param
@@ -456,7 +465,7 @@ def test_import_from_package(systemcls: Type[model.System]) -> None:
     system.ensurePackage('a')
     mod_a = fromText('''
     def f(): pass
-    ''', modname='a.__init__', system=system)
+    ''', modname='__init__', parent_name='a', system=system)
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
