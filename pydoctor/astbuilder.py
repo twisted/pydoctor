@@ -200,14 +200,19 @@ class ModuleVistor(ast.NodeVisitor):
     def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
         """Handle a C{from <modname> import <names>} statement."""
 
+        # Process the module we're importing from.
+        # If we're importing from a package, 'mod' will be the __init__ module.
         mod = self.system.getProcessedModule(modname)
-        if mod is not None:
-            expandName = mod.expandName
-        else:
-            expandName = lambda name: f'{modname}.{name}'
+        obj = self.system.objForFullName(modname)
 
         # Are we importing from a package?
-        is_package = isinstance(self.system.objForFullName(modname), model.Package)
+        is_package = isinstance(obj, model.Package)
+        assert is_package or obj is mod or mod is None
+
+        if obj is not None:
+            expandName = obj.expandName
+        else:
+            expandName = lambda name: f'{modname}.{name}'
 
         # Fetch names to export.
         current = self.builder.current
