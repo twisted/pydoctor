@@ -556,13 +556,15 @@ class System:
             return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
 
-    def addObject(self, obj):
+    def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
-        fullName = obj.fullName()
-        if obj.parent and obj.parent.fullName() != fullName:
+
+        if obj.parent:
             obj.parent.contents[obj.name] = obj
         else:
             self.rootobjects.append(obj)
+
+        fullName = obj.fullName()
         if fullName in self.allobjects:
             self.handleDuplicate(obj)
         else:
