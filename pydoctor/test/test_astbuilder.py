@@ -473,6 +473,24 @@ def test_import_from_package(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
+def test_import_module_from_package(systemcls: Type[model.System]) -> None:
+    """Importing a module from a package should not look in __init__ module."""
+    system = systemcls()
+    system.ensurePackage('a')
+    fromText('''
+    # This module intentionally left blank.
+    ''', modname='__init__', parent_name='a', system=system)
+    mod_b = fromText('''
+    def f(): pass
+    ''', modname='b', parent_name='a', system=system)
+    mod_c = fromText('''
+    from a import b
+    f = b.f
+    ''', modname='c', system=system)
+    assert mod_c.resolveName('f') == mod_b.contents['f']
+
+
+@systemcls_param
 def test_inline_docstring_modulevar(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     """regular module docstring
