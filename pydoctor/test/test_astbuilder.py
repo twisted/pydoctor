@@ -459,8 +459,21 @@ def test_import_star(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_import_from_package(systemcls: Type[model.System]) -> None:
-    """Importing from a package should look in __init__ module."""
+def test_import_func_from_package(systemcls: Type[model.System]) -> None:
+    """Importing a function from a package should look in the C{__init__}
+    module.
+
+    In this test the following hierarchy is constructed::
+
+        package a
+          module __init__
+            defines function 'f'
+        module b
+          imports function 'f'
+
+    We verify that when module C{b} imports the name C{f} from package C{a},
+    it imports the function C{f} from the module C{a.__init__}.
+    """
     system = systemcls()
     system.ensurePackage('a')
     mod_a = fromText('''
@@ -474,7 +487,21 @@ def test_import_from_package(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_import_module_from_package(systemcls: Type[model.System]) -> None:
-    """Importing a module from a package should not look in __init__ module."""
+    """Importing a module from a package should not look in C{__init__}
+    module.
+
+    In this test the following hierarchy is constructed::
+
+        package a
+          module __init__
+          module b
+            defines function 'f'
+        module c
+          imports module 'a.b'
+
+    We verify that when module C{c} imports the name C{b} from package C{a},
+    it imports the module C{a.b} which contains C{f}.
+    """
     system = systemcls()
     system.ensurePackage('a')
     fromText('''
