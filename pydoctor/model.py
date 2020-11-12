@@ -354,7 +354,17 @@ class Module(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
+
         self.all: Optional[Collection[str]] = None
+        """Names listed in the C{__all__} variable of this module.
+
+        These names are considered to be exported by the module,
+        both for the purpose of C{from <module> import *} and
+        for the purpose of publishing names from private modules.
+
+        If no C{__all__} variable was found in the module, or its
+        contents could not be parsed, this is L{None}.
+        """
 
     def _localNameToFullName(self, name):
         if name in self.contents:
