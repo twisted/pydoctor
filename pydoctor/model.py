@@ -754,9 +754,7 @@ class System:
         if mod is None:
             return None
         if isinstance(mod, Package):
-            initModule = self.getProcessedModule(modname + '.__init__')
-            assert initModule is not None
-            return initModule
+            return self.getProcessedModule(modname + '.__init__')
         if not isinstance(mod, Module):
             return None
 
