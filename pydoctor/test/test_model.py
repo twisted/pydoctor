@@ -10,6 +10,7 @@ import pytest
 
 from pydoctor import model
 from pydoctor.driver import parse_args
+from pydoctor.sphinx import CacheT
 from pydoctor.test.test_astbuilder import fromText
 
 
@@ -115,10 +116,13 @@ def test_fetchIntersphinxInventories_content() -> None:
     def log_msg(part: str, msg: str) -> None:
         log.append((part, msg))
     sut.msg = log_msg # type: ignore[assignment]
-    # Patch url getter to avoid touching the network.
-    sut.intersphinx._getURL = lambda url: url_content[url]
 
-    sut.fetchIntersphinxInventories(url_content)
+    class Cache(CacheT):
+        """Avoid touching the network."""
+        def get(self, url: str) -> bytes:
+            return url_content[url]
+
+    sut.fetchIntersphinxInventories(Cache())
 
     assert [] == log
     assert (
