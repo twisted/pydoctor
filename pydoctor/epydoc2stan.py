@@ -373,7 +373,7 @@ def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
         for err in errs:
             obj.report(
                 'bad docstring: ' + err.descr(),
-                lineno_offset=err.linenum() - 1,
+                lineno_offset=(err.linenum() or 1) - 1,
                 section='docstring'
                 )
 

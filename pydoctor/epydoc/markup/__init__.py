@@ -205,73 +205,66 @@ class DocstringLinker:
 class ParseError(Exception):
     """
     The base class for errors generated while parsing docstrings.
-
-    @ivar _linenum: The line on which the error occured within the
-        docstring.  The linenum of the first line is 0.
-    @type _linenum: C{int}
-    @ivar _descr: A description of the error.
-    @type _descr: C{string}
-    @ivar _fatal: True if this is a fatal error.
-    @type _fatal: C{bool}
     """
-    def __init__(self, descr, linenum=None, is_fatal=True):
+
+    def __init__(self,
+            descr: str,
+            linenum: Optional[int] = None,
+            is_fatal: bool = True
+            ):
         """
-        @type descr: C{string}
         @param descr: A description of the error.
-        @type linenum: C{int}
         @param linenum: The line on which the error occured within
             the docstring.  The linenum of the first line is 0.
-        @type is_fatal: C{bool}
         @param is_fatal: True if this is a fatal error.
         """
         self._descr = descr
         self._linenum = linenum
         self._fatal = is_fatal
 
-    def is_fatal(self):
+    def is_fatal(self) -> bool:
         """
         @return: true if this is a fatal error.  If an error is fatal,
             then epydoc should ignore the output of the parser, and
             parse the docstring as plaintext.
-        @rtype: C{bool}
         """
         return self._fatal
 
-    def linenum(self):
+    def linenum(self) -> Optional[int]:
         """
         @return: The line number on which the error occured (including
         any offset).  If the line number is unknown, then return
         C{None}.
-        @rtype: C{int} or C{None}
         """
         if self._linenum is None: return None
         else: return self._linenum + 1
 
-    def descr(self):
+    def descr(self) -> str:
+        """
+        @return: A description of the error.
+        """
         return self._descr
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a string representation of this C{ParseError}.  This
         multi-line string contains a description of the error, and
         specifies where it occured.
 
         @return: the informal representation of this C{ParseError}.
-        @rtype: C{string}
         """
         if self._linenum is not None:
             return f'Line {self._linenum + 1:d}: {self.descr()}'
         else:
             return self.descr()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Return the formal representation of this C{ParseError}.
         C{ParseError}s have formal representations of the form::
            <ParseError on line 12>
 
         @return: the formal representation of this C{ParseError}.
-        @rtype: C{string}
         """
         if self._linenum is None:
             return '<ParseError on unknown line>'
