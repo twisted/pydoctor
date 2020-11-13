@@ -697,7 +697,6 @@ class System:
         package_name = os.path.basename(dirpath)
         package_full_name = prefix + package_name
         package = self.ensurePackage(package_full_name)
-        self.setSourceHref(package, Path(dirpath))
         for fname in sorted(os.listdir(dirpath)):
             fullname = os.path.join(dirpath, fname)
             if os.path.isdir(fullname):
