@@ -16,6 +16,7 @@ def processPackage(packname: str, systemcls: Type[model.System] = model.System) 
 def test_relative_import() -> None:
     system = processPackage("relativeimporttest")
     cls = system.allobjects['relativeimporttest.mod1.C']
+    assert isinstance(cls, model.Class)
     assert cls.bases == ['relativeimporttest.mod2.B']
 
 def test_package_docstring() -> None:
@@ -27,12 +28,14 @@ def test_modnamedafterbuiltin() -> None:
     # well, basically the test is that this doesn't explode:
     system = processPackage("modnamedafterbuiltin")
     # but let's test _something_
-    assert system.allobjects['modnamedafterbuiltin.mod.Dict'].baseobjects == [None], \
-      system.allobjects['modnamedafterbuiltin.mod.Dict'].baseobjects
+    dict_class = system.allobjects['modnamedafterbuiltin.mod.Dict']
+    assert isinstance(dict_class, model.Class)
+    assert dict_class.baseobjects == [None]
 
 def test_nestedconfusion() -> None:
     system = processPackage("nestedconfusion")
     A = system.allobjects['nestedconfusion.mod.nestedconfusion.A']
+    assert isinstance(A, model.Class)
     C = system.allobjects['nestedconfusion.mod.C']
     assert A.baseobjects[0] is C
 
@@ -40,6 +43,7 @@ def test_importingfrompackage() -> None:
     system = processPackage("importingfrompackage")
     system.getProcessedModule('importingfrompackage.mod')
     submod = system.allobjects['importingfrompackage.subpack.submod']
+    assert isinstance(submod, model.Module)
     assert submod.state is model.ProcessingState.PROCESSED
 
 def test_allgames() -> None:

@@ -2,6 +2,7 @@
 Unit tests for model.
 """
 
+from optparse import Values
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import cast
 import zlib
@@ -51,7 +52,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     system = model.System()
     system.sourcebase = "http://example.org/trac/browser/trunk"
-    system.options = options
+    system.options = cast(Values, options)
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
@@ -73,7 +74,7 @@ def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
-    options = object()
+    options = cast(Values, object())
 
     sut = model.System(options=options)
 

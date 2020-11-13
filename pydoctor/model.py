@@ -15,8 +15,11 @@ import platform
 import sys
 import types
 from enum import Enum
+from optparse import Values
 from pathlib import Path
-from typing import TYPE_CHECKING, Collection, Mapping, Optional, Type
+from typing import (
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+)
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -56,6 +59,25 @@ class DocLocation(Enum):
     #UNDER_PARENT_DOCSTRING = 3
 
 
+class ProcessingState(Enum):
+    UNPROCESSED = 0
+    PROCESSING = 1
+    PROCESSED = 2
+
+
+class PrivacyClass(Enum):
+    """L{Enum} containing values indicating how private an object should be.
+
+    @cvar HIDDEN: Don't show the object at all.
+    @cvar PRIVATE: Show, but de-emphasize the object.
+    @cvar VISIBLE: Show the object as normal.
+    """
+
+    HIDDEN = 0
+    PRIVATE = 1
+    VISIBLE = 2
+
+
 class Documentable:
     """An object that can be documented.
 
@@ -75,7 +97,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: str
+    kind: Optional[str]
 
     @property
     def documentation_location(self) -> DocLocation:
@@ -85,12 +107,18 @@ class Documentable:
         return DocLocation.OWN_PAGE
 
     @property
-    def css_class(self):
+    def css_class(self) -> str:
         """A short, lower case description for use as a CSS class in HTML."""
-        class_ = self.kind.lower().replace(' ', '')
+        kind = self.kind
+        assert kind is not None # if kind is None, object is invisible
+        class_ = kind.lower().replace(' ', '')
         if self.privacyClass is PrivacyClass.PRIVATE:
             class_ += ' private'
         return class_
+
+    @property
+    def doctarget(self) -> 'Documentable':
+        return self
 
     def __init__(
             self, system: 'System', name: str,
@@ -98,7 +126,6 @@ class Documentable:
             source_path: Optional[Path] = None
             ):
         if not isinstance(self, Package):
-            self.doctarget = self
             if source_path is None and parent is not None:
                 source_path = parent.source_path # type: ignore[has-type]
         self.system = system
@@ -108,10 +135,12 @@ class Documentable:
         self.source_path = source_path
         self.setup()
 
-    def setup(self):
-        self.contents = {}
+    def setup(self) -> None:
+        # TODO: The actual value type is Documentable, but using that
+        #       requires a boatload of changes.
+        self.contents: Dict[str, Any] = {}
 
-    def setDocstring(self, node):
+    def setDocstring(self, node: ast.Str) -> None:
         doc = node.s
         lineno = node.lineno
         if _string_lineno_is_end:
@@ -132,7 +161,7 @@ class Documentable:
         self.docstring = inspect.cleandoc(doc)
         self.docstring_lineno = lineno
 
-    def setLineNumber(self, lineno):
+    def setLineNumber(self, lineno: int) -> None:
         if not self.linenumber:
             self.linenumber = lineno
             parentMod = self.parentMod
@@ -182,10 +211,10 @@ class Documentable:
             prefix = ''
         return prefix + self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
 
-    def docsources(self):
+    def docsources(self) -> Iterator['Documentable']:
         """Objects that can be considered as a source of documentation.
 
         The motivating example for having multiple sources is looking at a
@@ -195,13 +224,14 @@ class Documentable:
         yield self
 
 
-    def reparent(self, new_parent, new_name):
+    def reparent(self, new_parent: 'Module', new_name: str) -> None:
         # this code attempts to preserve "rather a lot" of
         # invariants assumed by various bits of pydoctor
         # and that are of course not written down anywhere
         # :/
         self._handle_reparenting_pre()
         old_parent = self.parent
+        assert isinstance(old_parent, Module)
         old_name = self.name
         self.parent = self.parentMod = new_parent
         self.name = new_name
@@ -211,20 +241,20 @@ class Documentable:
         new_parent.contents[new_name] = self
         self._handle_reparenting_post()
 
-    def _handle_reparenting_pre(self):
+    def _handle_reparenting_pre(self) -> None:
         del self.system.allobjects[self.fullName()]
         for o in self.contents.values():
             o._handle_reparenting_pre()
 
-    def _handle_reparenting_post(self):
+    def _handle_reparenting_post(self) -> None:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def _localNameToFullName(self, name):
+    def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
-    def expandName(self, name):
+    def expandName(self, name: str) -> str:
         """Return a fully qualified name for the possibly-dotted `name`.
 
         To explain what this means, consider the following modules:
@@ -246,30 +276,28 @@ class Documentable:
         "external_location.External" and expandName("renamed_mod.Local")
         should be "mod1.Local". """
         parts = name.split('.')
-        obj = self
+        obj: Documentable = self
         for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
-            obj = self.system.objForFullName(full_name)
-            if obj is None:
+            nxt = self.system.objForFullName(full_name)
+            if nxt is None:
                 break
+            obj = nxt
         remaning = parts[i+1:]
         return '.'.join([full_name] + remaning)
 
-    def resolveName(self, name):
+    def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in
         this context, if any is known to pydoctor."""
         return self.system.objForFullName(self.expandName(name))
 
     @property
-    def privacyClass(self):
-        """How visible this object should be.
-
-        @rtype: a member of the L{PrivacyClass} class/enum.
-        """
+    def privacyClass(self) -> PrivacyClass:
+        """How visible this object should be."""
         return self.system.privacyClass(self)
 
     @property
-    def isVisible(self):
+    def isVisible(self) -> bool:
         """Is this object is so private as to be not shown at all?
 
         This is just a simple helper which defers to self.privacyClass.
@@ -287,9 +315,10 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr, section='parsing', lineno_offset=0):
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0) -> None:
         """Log an error or warning about this documentable object."""
 
+        linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
             linenumber = self.docstring_lineno
         else:
@@ -309,36 +338,30 @@ class Documentable:
 
 class Package(Documentable):
     kind = "Package"
-    def docsources(self):
+    def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
     @property
-    def doctarget(self):
-        return self.contents['__init__']
+    def doctarget(self) -> Documentable:
+        return self.contents['__init__'] # type: ignore[no-any-return]
     @property
-    def module(self):
-        return self.contents['__init__']
+    def module(self) -> 'Module':
+        return self.contents['__init__'] # type: ignore[no-any-return]
     @property
-    def state(self):
-        return self.contents['__init__'].state
+    def state(self) -> ProcessingState:
+        return self.contents['__init__'].state # type: ignore[no-any-return]
 
-    def _localNameToFullName(self, name):
+    def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
-            o = self.contents[name]
+            o: Documentable = self.contents[name]
             return o.fullName()
         else:
-            return self.contents['__init__']._localNameToFullName(name)
-
-
-class ProcessingState(Enum):
-    UNPROCESSED = 0
-    PROCESSING = 1
-    PROCESSED = 2
+            return self.module._localNameToFullName(name)
 
 
 class CanContainImportsDocumentable(Documentable):
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
-        self._localNameToFullName_map = {}
+        self._localNameToFullName_map: Dict[str, str] = {}
 
 
 class Module(CanContainImportsDocumentable):
@@ -366,9 +389,9 @@ class Module(CanContainImportsDocumentable):
         contents could not be parsed, this is L{None}.
         """
 
-    def _localNameToFullName(self, name):
+    def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
-            o = self.contents[name]
+            o: Documentable = self.contents[name]
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
@@ -376,26 +399,31 @@ class Module(CanContainImportsDocumentable):
             return name
 
     @property
-    def module(self):
+    def module(self) -> 'Module':
         return self
 
 
 class Class(CanContainImportsDocumentable):
     kind = "Class"
-    def setup(self):
-        super().setup()
-        self.rawbases = []
-        self.subclasses = []
+    parent: CanContainImportsDocumentable
+    bases: List[str]
+    baseobjects: List[Optional['Class']]
 
-    def allbases(self, include_self=False):
+    def setup(self) -> None:
+        super().setup()
+        self.rawbases: List[Class] = []
+        self.subclasses: List[Class] = []
+
+    def allbases(self, include_self: bool = False) -> Iterator['Class']:
         if include_self:
             yield self
         for b in self.baseobjects:
             if b is not None:
                 yield from b.allbases(True)
-    def _localNameToFullName(self, name):
+
+    def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
-            o = self.contents[name]
+            o: Documentable = self.contents[name]
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
@@ -405,11 +433,13 @@ class Class(CanContainImportsDocumentable):
 
 class Inheritable(Documentable):
 
+    parent: CanContainImportsDocumentable
+
     @property
     def documentation_location(self) -> DocLocation:
         return DocLocation.PARENT_PAGE
 
-    def docsources(self):
+    def docsources(self) -> Iterator[Documentable]:
         yield self
         if not isinstance(self.parent, Class):
             return
@@ -417,38 +447,29 @@ class Inheritable(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-    def _localNameToFullName(self, name):
+    def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
     kind = "Function"
     annotations: Mapping[str, Optional[ast.expr]]
+    decorators: Optional[Sequence[ast.expr]]
+    argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = "Method"
 
 class Attribute(Inheritable):
-    kind = "Attribute"
-
-
-class PrivacyClass(Enum):
-    """L{Enum} containing values indicating how private an object should be.
-
-    @cvar HIDDEN: Don't show the object at all.
-    @cvar PRIVATE: Show, but de-emphasize the object.
-    @cvar VISIBLE: Show the object as normal.
-    """
-
-    HIDDEN = 0
-    PRIVATE = 1
-    VISIBLE = 2
+    kind: Optional[str] = "Attribute"
 
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
 _PackageT = Package
+
+T = TypeVar('T')
 
 class System:
     """A collection of related documentable objects.
@@ -467,11 +488,11 @@ class System:
     defaultBuilder: Type[ASTBuilder]
     sourcebase: Optional[str] = None
 
-    def __init__(self, options=None):
-        self.allobjects = {}
-        self.rootobjects = []
-        self.warnings = {}
-        self.packages = []
+    def __init__(self, options: Optional[Values] = None):
+        self.allobjects: Dict[str, Documentable] = {}
+        self.rootobjects: List[Documentable] = []
+        self.warnings: Dict[str, List[Tuple[str, str]]] = {}
+        self.packages: List[str] = []
 
         if options:
             self.options = options
@@ -482,40 +503,49 @@ class System:
 
         self.projectname = 'my project'
 
-        self.docstring_syntax_errors = set()
+        self.docstring_syntax_errors: Set[str] = set()
         """FullNames of objects for which the docstring failed to parse."""
 
         self.verboselevel = 0
         self.needsnl = False
-        self.once_msgs = set()
-        self.unprocessed_modules = set()
+        self.once_msgs: Set[Tuple[str, str]] = set()
+        self.unprocessed_modules: Set[Module] = set()
         self.module_count = 0
-        self.processing_modules = []
+        self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
-    def verbosity(self, section=None):
+    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
         if isinstance(section, str):
             section = (section,)
-        delta = max(self.options.verbosity_details.get(sect, 0)
-                    for sect in section)
-        return self.options.verbosity + delta
+        delta: int = max(self.options.verbosity_details.get(sect, 0)
+                         for sect in section)
+        base: int = self.options.verbosity
+        return base + delta
 
-    def progress(self, section, i, n, msg):
+    def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
-            i = str(i)
+            d = str(i)
         else:
-            i = f'{i}/{n}'
+            d = f'{i}/{n}'
         if self.verbosity(section) == 0 and sys.stdout.isatty():
-            print('\r'+i, msg, end='')
+            print('\r'+d, msg, end='')
             sys.stdout.flush()
-            if i == n:
+            if d == n:
                 self.needsnl = False
                 print()
             else:
                 self.needsnl = True
 
-    def msg(self, section, msg, thresh=0, topthresh=100, nonl=False, wantsnl=True, once=False):
+    def msg(self,
+            section: str,
+            msg: str,
+            thresh: int = 0,
+            topthresh: int = 100,
+            nonl: bool = False,
+            wantsnl: bool = True,
+            once: bool = False
+            ) -> None:
         if once:
             if (section, msg) in self.once_msgs:
                 return
@@ -540,9 +570,13 @@ class System:
                 print('')
 
     def objForFullName(self, fullName: str) -> Optional[Documentable]:
-        return self.allobjects.get(fullName) # type: ignore[no-any-return]
+        return self.allobjects.get(fullName)
 
-    def _warning(self, current, message, detail):
+    def _warning(self,
+            current: Optional[Documentable],
+            message: str,
+            detail: str
+            ) -> None:
         if current is not None:
             fn = current.fullName()
         else:
@@ -551,13 +585,13 @@ class System:
             print(fn, message, detail)
         self.warnings.setdefault(message, []).append((fn, detail))
 
-    def objectsOfType(self, cls):
+    def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
         """Iterate over all instances of C{cls} present in the system. """
         for o in self.allobjects.values():
             if isinstance(o, cls):
                 yield o
 
-    def privacyClass(self, ob):
+    def privacyClass(self, ob: Documentable) -> PrivacyClass:
         if ob.kind is None:
             return PrivacyClass.HIDDEN
         if ob.name.startswith('_') and \
@@ -621,13 +655,14 @@ class System:
 
     def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
         try:
-            module: Module = self.allobjects[module_full_name]
+            module = self.allobjects[module_full_name]
             assert isinstance(module, Module)
         except KeyError:
             pass
         else:
             return module
 
+        parent_package: Optional[_PackageT]
         if '.' in module_full_name:
             parent_name, module_name = module_full_name.rsplit('.', 1)
             parent_package = self.ensurePackage(parent_name)
@@ -638,9 +673,12 @@ class System:
         self.addObject(module)
         return module
 
-    def ensurePackage(self, package_full_name):
+    def ensurePackage(self, package_full_name: str) -> _PackageT:
         if package_full_name in self.allobjects:
-            return self.allobjects[package_full_name]
+            package = self.allobjects[package_full_name]
+            assert isinstance(package, Package)
+            return package
+        parent_package: Optional[_PackageT]
         if '.' in package_full_name:
             parent_name, package_name = package_full_name.rsplit('.', 1)
             parent_package = self.ensurePackage(parent_name)
@@ -651,7 +689,7 @@ class System:
         self.addObject(package)
         return package
 
-    def _introspectThing(self, thing, parent, parentMod):
+    def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
             if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
                     # In PyPy 7.3.1, functions from extensions are not
@@ -722,7 +760,7 @@ class System:
                 self.addModule(Path(path), module_name, package)
             break
 
-    def handleDuplicate(self, obj):
+    def handleDuplicate(self, obj: Documentable) -> None:
         '''This is called when we see two objects with the same
         .fullName(), for example::
 
@@ -741,15 +779,15 @@ class System:
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
-        self._warning(obj.parent, "duplicate", prev)
-        def remove(o):
+        self._warning(obj.parent, "duplicate", str(prev))
+        def remove(o: Documentable) -> None:
             del self.allobjects[o.fullName()]
             oc = list(o.contents.values())
             for c in oc:
                 remove(c)
         remove(prev)
         prev.name = obj.name + ' ' + str(i)
-        def readd(o):
+        def readd(o: Documentable) -> None:
             self.allobjects[o.fullName()] = o
             for c in o.contents.values():
                 readd(c)
@@ -773,7 +811,7 @@ class System:
         return mod
 
 
-    def processModule(self, mod):
+    def processModule(self, mod: _ModuleT) -> None:
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
         if mod.source_path is None:
@@ -796,7 +834,7 @@ class System:
             f"modules processed {num_warnings} warnings")
 
 
-    def process(self):
+    def process(self) -> None:
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
