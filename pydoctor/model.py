@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Collection, Mapping, Optional, Type
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from pydoctor.astbuilder import ASTBuilder
@@ -804,7 +804,7 @@ class System:
             self.processModule(mod)
 
 
-    def fetchIntersphinxInventories(self, cache):
+    def fetchIntersphinxInventories(self, cache: CacheT) -> None:
         """
         Download and parse intersphinx inventories based on configuration.
         """

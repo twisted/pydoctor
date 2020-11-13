@@ -21,8 +21,13 @@ from cachecontrol.heuristics import ExpiresAfter
 
 if TYPE_CHECKING:
     from pydoctor.model import Documentable
+    from typing_extensions import Protocol
+
+    class CacheT(Protocol):
+        def get(self, url: str) -> Optional[bytes]: ...
 else:
     Documentable = object
+    CacheT = object
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +53,7 @@ class SphinxInventory:
     def error(self, where: str, message: str) -> None:
         self._logger(where, message, thresh=-1)
 
-    def update(self, cache: Mapping[str, bytes], url: str) -> None:
+    def update(self, cache: CacheT, url: str) -> None:
         """
         Update inventory from URL.
         """
@@ -349,7 +354,7 @@ def parseMaxAge(maxAge: str) -> Dict[str, int]:
 
 
 @attr.s(auto_attribs=True)
-class IntersphinxCache:
+class IntersphinxCache(CacheT):
     """
     An Intersphinx cache.
     """
