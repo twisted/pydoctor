@@ -378,7 +378,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:
-                    system.msg(('epytext', 'epytext-summary'), msg, thresh=-1, topthresh=1)
+                    system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
                 p("these %s objects' docstrings contain syntax errors:"
                   %(len(system.docstring_syntax_errors),))
                 exitcode = 2
