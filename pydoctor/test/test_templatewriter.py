@@ -17,7 +17,7 @@ def flatten(t: pages.ChildTable) -> str:
 def getHTMLOf(ob: model.Documentable) -> str:
     wr = templatewriter.TemplateWriter('')
     f = BytesIO()
-    wr.writeDocsForOne(ob, f)
+    wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
 
@@ -66,7 +66,7 @@ def test_basic_package(tmp_path: Path) -> None:
     system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
-    w.writeDocsFor(root, False)
+    w._writeDocsFor(root, False)
     w.writeModuleIndex(system)
     for ob in system.allobjects.values():
         url = ob.url

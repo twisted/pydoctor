@@ -1,5 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
+from abc import ABC
+from typing import Type
 import os
 import shutil
 
@@ -20,7 +22,15 @@ def flattenToFile(fobj, page):
         raise err[0]
 
 
-class TemplateWriter:
+class TemplateWriter(ABC):
+    @classmethod
+    def __subclasshook__(cls, subclass: Type[object]) -> bool:
+        for name in dir(cls):
+            if not name.startswith('_'):
+                if not hasattr(subclass, name):
+                    return False
+        return True
+
     def __init__(self, filebase):
         self.base = filebase
         self.written_pages = 0
@@ -40,10 +50,10 @@ class TemplateWriter:
     def writeIndividualFiles(self, obs, functionpages=False):
         self.dry_run = True
         for ob in obs:
-            self.writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob, functionpages=functionpages)
         self.dry_run = False
         for ob in obs:
-            self.writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob, functionpages=functionpages)
 
     def writeModuleIndex(self, system):
         import time
@@ -56,7 +66,7 @@ class TemplateWriter:
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def writeDocsFor(self, ob, functionpages):
+    def _writeDocsFor(self, ob, functionpages):
         if not ob.isVisible:
             return
         if functionpages or ob.documentation_location is model.DocLocation.OWN_PAGE:
@@ -65,11 +75,11 @@ class TemplateWriter:
             else:
                 path = FilePath(self.base).child(f'{ob.fullName()}.html')
                 with path.open('wb') as out:
-                    self.writeDocsForOne(ob, out)
+                    self._writeDocsForOne(ob, out)
         for o in ob.contents.values():
-            self.writeDocsFor(o, functionpages)
+            self._writeDocsFor(o, functionpages)
 
-    def writeDocsForOne(self, ob, fobj):
+    def _writeDocsForOne(self, ob, fobj):
         if not ob.isVisible:
             return
         # brrrrrrr!

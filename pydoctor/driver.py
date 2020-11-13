@@ -1,7 +1,8 @@
 """The command-line parsing and entry point."""
 
-from optparse import Option, OptionParser, OptionValueError
+from optparse import Option, OptionParser, OptionValueError, Values
 from pathlib import Path
+from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
@@ -10,16 +11,31 @@ from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
+if TYPE_CHECKING:
+    from typing_extensions import NoReturn
+else:
+    NoReturn = None
+
+
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
-def error(msg, *args):
+def error(msg: str, *args: object) -> NoReturn:
     if args:
         msg = msg%args
     print(msg, file=sys.stderr)
     sys.exit(1)
 
-def findClassFromDottedName(dottedname, optionname):
-    # watch out, prints a message and SystemExits on error!
+T = TypeVar('T')
+
+def findClassFromDottedName(
+        dottedname: str,
+        optionname: str,
+        base_class: Type[T]
+        ) -> Type[T]:
+    """
+    Looks up a class by full name.
+    Watch out, prints a message and SystemExits on error!
+    """
     if '.' not in dottedname:
         error("%stakes a dotted name", optionname)
     parts = dottedname.rsplit('.', 1)
@@ -28,13 +44,16 @@ def findClassFromDottedName(dottedname, optionname):
     except ImportError:
         error("could not import module %s", parts[0])
     try:
-        return getattr(mod, parts[1])
+        cls = getattr(mod, parts[1])
     except AttributeError:
         error("did not find %s in module %s", parts[1], parts[0])
+    if not issubclass(cls, base_class):
+        error("%s is not a subclass of %s", cls, base_class)
+    return cast(Type[T], cls)
 
 MAKE_HTML_DEFAULT = object()
 
-def parse_path(option, opt, value):
+def parse_path(option: Option, opt: str, value: str) -> Path:
     """Parse a path value given to an option to a L{Path} object.
     The path is not verified: it is only parsed.
     """
@@ -47,7 +66,7 @@ class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
 
-def getparser():
+def getparser() -> OptionParser:
     parser = OptionParser(option_class=CustomOption, version=__version__.public())
     parser.add_option(
         '-c', '--config', dest='configfile',
@@ -146,7 +165,8 @@ def getparser():
         '-q', '--quiet', action='count', dest='quietness',
         default=0,
         help=("Be quieter."))
-    def verbose_about_callback(option, opt_str, value, parser):
+    def verbose_about_callback(option: Option, opt_str: str, value: str, parser: OptionParser) -> None:
+        assert parser.values is not None
         d = parser.values.verbosity_details
         d[value] = d.get(value, 0) + 1
     parser.add_option(
@@ -195,7 +215,7 @@ def getparser():
 
     return parser
 
-def readConfigFile(options):
+def readConfigFile(options: Values) -> None:
     # this is all a bit horrible.  rethink, then rewrite!
     for i, line in enumerate(open(options.configfile)):
         line = line.strip()
@@ -221,13 +241,13 @@ def readConfigFile(options):
             if not isinstance(pre_v, list):
                 setattr(options, k, v)
 
-def parse_args(args):
+def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
     options.verbosity -= options.quietness
     return options, args
 
-def main(args=sys.argv[1:]):
+def main(args: Sequence[str] = sys.argv[1:]) -> int:
     options, args = parse_args(args)
 
     exitcode = 0
@@ -243,11 +263,8 @@ def main(args=sys.argv[1:]):
     try:
         # step 1: make/find the system
         if options.systemclass:
-            systemclass = findClassFromDottedName(options.systemclass,
-                                                  '--system-class')
-            if not issubclass(systemclass, model.System):
-                msg = "%s is not a subclass of model.System"
-                error(msg, systemclass)
+            systemclass = findClassFromDottedName(
+                options.systemclass, '--system-class', model.System)
         else:
             systemclass = zopeinterface.ZopeInterfaceSystem
 
@@ -280,7 +297,7 @@ def main(args=sys.argv[1:]):
             system.buildtime = datetime.datetime.utcfromtimestamp(
                 int(os.environ['SOURCE_DATE_EPOCH']))
         except ValueError as e:
-            error(e)
+            error(str(e))
         except KeyError:
             pass
 
@@ -289,7 +306,7 @@ def main(args=sys.argv[1:]):
                 system.buildtime = datetime.datetime.strptime(
                     options.buildtime, BUILDTIME_FORMAT)
             except ValueError as e:
-                error(e)
+                error(str(e))
 
         # step 2: add any packages and modules
 
@@ -333,11 +350,12 @@ def main(args=sys.argv[1:]):
 
         if options.makehtml:
             options.makeintersphinx = True
+            from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer')
+                    options.htmlwriter, '--html-writer',
+                    templatewriter.TemplateWriter)
             else:
-                from pydoctor import templatewriter
                 writerclass = templatewriter.TemplateWriter
 
             system.msg('html', 'writing html to %s using %s.%s'%(
@@ -359,7 +377,7 @@ def main(args=sys.argv[1:]):
                 subjects = system.rootobjects
             writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
             if system.docstring_syntax_errors:
-                def p(msg):
+                def p(msg: str) -> None:
                     system.msg(('epytext', 'epytext-summary'), msg, thresh=-1, topthresh=1)
                 p("these %s objects' docstrings contain syntax errors:"
                   %(len(system.docstring_syntax_errors),))
