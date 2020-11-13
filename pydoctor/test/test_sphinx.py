@@ -13,13 +13,13 @@ from typing import Callable, Iterator, List, Optional, Tuple, cast
 import cachecontrol
 import pytest
 import requests
-from pydoctor import model, sphinx
 from urllib3 import HTTPResponse
 
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from . import CapLog
+from . import CapLog, FixtureRequest, MonkeyPatch, TempPathFactory
+from pydoctor import model, sphinx
 
 
 
@@ -563,15 +563,21 @@ class TestIntersphinxCache:
     """
 
     @pytest.fixture
-    def send_returns(self, monkeypatch):
+    def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
         """
         Return a function that patches
         L{requests.adapters.HTTPResponse.send} so that it returns the
         provided L{urllib3.Response}.
         """
-        def send_returns(response):
-            def send(self, request, **kwargs):
-                return self.build_response(request, response)
+        def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
+            def send(
+                    self: requests.adapters.HTTPAdapter,
+                    request: requests.PreparedRequest,
+                    **kwargs: object
+                    ) -> requests.Response:
+                response: requests.Response
+                response = self.build_response(request, urllib3_response)
+                return response
 
             monkeypatch.setattr(
                 requests.adapters.HTTPAdapter,
@@ -661,7 +667,7 @@ class TestIntersphinxCache:
 
 
 @pytest.fixture(scope='module')
-def cacheDirectory(request, tmp_path_factory):
+def cacheDirectory(request: FixtureRequest, tmp_path_factory: TempPathFactory) -> Path:
     name = request.module.__name__.split('.')[-1]
     return tmp_path_factory.mktemp(f'{name}-cache')
 

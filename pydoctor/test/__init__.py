@@ -25,8 +25,13 @@ if TYPE_CHECKING:
 
     class CapSys(Protocol):
         def readouterr(self) -> CaptureResult: ...
+
+    from _pytest.fixtures import FixtureRequest
+    from _pytest.monkeypatch import MonkeyPatch
+    from _pytest.tmpdir import TempPathFactory
 else:
     CapLog = CaptureResult = CapSys = object
+    FixtureRequest = MonkeyPatch = TempPathFactory = object
 
 
 class InMemoryWriter:
