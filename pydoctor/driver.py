@@ -111,15 +111,6 @@ def getparser() -> OptionParser:
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
     parser.add_option(
-        '--abbreviate-specialcase', action='store',
-        dest='abbrevmapping', default='',
-        help=("This is a comma seperated list of key=value pairs.  "
-              "Where any key corresponds to a module name and value is "
-              "the desired abbreviation.  This can be used to resolve "
-              "conflicts with abbreviation where you have two or more "
-              "modules that start with the same letter.  Example: "
-              "twistedcaldav=tcd."))
-    parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
         help=("Which epydoc-supported format docstrings are assumed "
               "to be in."))
@@ -276,11 +267,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 error("you must specify --project-base-dir "
                       "when using --html-viewsource-base")
             system.sourcebase = options.htmlsourcebase
-
-        if options.abbrevmapping:
-            for thing in options.abbrevmapping.split(','):
-                k, v = thing.split('=')
-                system.abbrevmapping[k] = v
 
         # step 1.5: check that we're actually going to accomplish something here
         args = list(args) + options.modules + options.packages

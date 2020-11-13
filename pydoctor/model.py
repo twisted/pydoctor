@@ -480,7 +480,6 @@ class System:
             self.options, _ = parse_args([])
             self.options.verbosity = 3
 
-        self.abbrevmapping = {}
         self.projectname = 'my project'
 
         self.docstring_syntax_errors = set()
