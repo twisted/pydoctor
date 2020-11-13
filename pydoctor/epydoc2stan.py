@@ -65,7 +65,7 @@ class _EpydocLinker(DocstringLinker):
             if target is not None and target not in potential_targets:
                 potential_targets.append(target)
         if len(potential_targets) == 1:
-            return potential_targets[0] # type: ignore[no-any-return]
+            return potential_targets[0]
         elif len(potential_targets) > 1:
             self.obj.report(
                 "ambiguous ref to %s, could be %s" % (
@@ -80,7 +80,7 @@ class _EpydocLinker(DocstringLinker):
 
         Return None if link is not found.
         """
-        return self.obj.system.intersphinx.getLink(name) # type: ignore[no-any-return]
+        return self.obj.system.intersphinx.getLink(name)
 
     def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
@@ -510,8 +510,10 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     tag: Tag = tags.span(class_='undocumented')
     if subdocstrings:
         plurals = {'class': 'classes'}
+        kind = obj.kind
+        assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", obj.kind.lower(), " docstring; "
+            "No ", kind.lower(), " docstring; "
             ', '.join(
                 f"{subdocstrings[k]}/{subcounts[k]} "
                 f"{plurals.get(k, k + 's')}"
@@ -581,7 +583,7 @@ def extract_fields(obj: model.Documentable) -> None:
                 obj.report("Missing field name in @%s" % (tag,),
                            'docstring', field.lineno)
                 continue
-            attrobj = obj.contents.get(arg)
+            attrobj: Optional[model.Documentable] = obj.contents.get(arg)
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, obj)
                 attrobj.kind = None
@@ -589,7 +591,7 @@ def extract_fields(obj: model.Documentable) -> None:
                 obj.system.addObject(attrobj)
             attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
             if tag == 'type':
-                attrobj.parsed_type = field.body()
+                attrobj.parsed_type = field.body() # type: ignore[attr-defined]
             else:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_human_name[tag]

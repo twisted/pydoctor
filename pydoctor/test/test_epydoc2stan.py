@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 import textwrap
 
 from pytest import raises
@@ -391,7 +391,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     class C:
         socket = None
     ''')
-    mod.system.intersphinx = InMemoryInventory()
+    mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier_xref('socket.socket', 0)

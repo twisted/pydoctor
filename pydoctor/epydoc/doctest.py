@@ -11,10 +11,11 @@ Syntax highlighting for blocks of Python code.
 
 __docformat__ = 'epytext en'
 
+from typing import Iterator, Match, Union
 import builtins
 import re
 
-from twisted.web.template import tags
+from twisted.web.template import Tag, tags
 
 __all__ = ['colorize_codeblock', 'colorize_doctest']
 
@@ -99,7 +100,7 @@ DOCTEST_EXAMPLE_RE = re.compile(r'''
               )*)
     ''', re.MULTILINE | re.VERBOSE)
 
-def colorize_codeblock(s):
+def colorize_codeblock(s: str) -> Tag:
     """
     Colorize a string containing only Python code.  This method
     differs from L{colorize_doctest} in that it will not search
@@ -120,7 +121,7 @@ def colorize_codeblock(s):
 
     return tags.pre('\n', *colorize_codeblock_body(s), class_='py-doctest')
 
-def colorize_doctest(s):
+def colorize_doctest(s: str) -> Tag:
     """
     Perform syntax highlighting on the given doctest string, and
     return the resulting HTML code.
@@ -135,7 +136,7 @@ def colorize_doctest(s):
 
     return tags.pre('\n', *colorize_doctest_body(s), class_='py-doctest')
 
-def colorize_doctest_body(s):
+def colorize_doctest_body(s: str) -> Iterator[Union[str, Tag]]:
     idx = 0
     for match in DOCTEST_EXAMPLE_RE.finditer(s):
         # Parse the doctest example:
@@ -154,7 +155,7 @@ def colorize_doctest_body(s):
     # Add any remaining post-example text.
     yield s[idx:]
 
-def colorize_codeblock_body(s):
+def colorize_codeblock_body(s: str) -> Iterator[Union[Tag, str]]:
     idx = 0
     for match in DOCTEST_RE.finditer(s):
         start = match.start()
@@ -165,7 +166,7 @@ def colorize_codeblock_body(s):
     # DOCTEST_RE matches end-of-string.
     assert idx == len(s)
 
-def subfunc(match):
+def subfunc(match: Match[str]) -> Iterator[Union[Tag, str]]:
     text = match.group(1)
     if match.group('PROMPT1'):
         yield tags.span(text, class_='py-prompt')
@@ -195,6 +196,7 @@ def subfunc(match):
             idx = nxt + 1
     elif match.group('DEFINE'):
         m = DEFINE_FUNC_RE.match(text)
+        assert m is not None
         yield tags.span(m.group('def'), class_='py-keyword')
         yield m.group('space')
         yield tags.span(m.group('name'), class_='py-defname')

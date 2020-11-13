@@ -44,7 +44,7 @@ def fromAST(
     mod: model.Module = builder._push(_system.Module, modname, None)
     builder._pop(_system.Module)
     builder.processModuleAST(ast, mod)
-    mod = _system.allobjects[full_name]
+    assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
     return mod
 
@@ -251,7 +251,9 @@ def test_aliasing(systemcls: Type[model.System]) -> None:
 
     system = systemcls()
     addsrc(system)
-    assert system.allobjects['c.C'].bases == ['a.A']
+    C = system.allobjects['c.C']
+    assert isinstance(C, model.Class)
+    assert C.bases == ['a.A']
 
 @systemcls_param
 def test_more_aliasing(systemcls: Type[model.System]) -> None:
@@ -278,7 +280,9 @@ def test_more_aliasing(systemcls: Type[model.System]) -> None:
 
     system = systemcls()
     addsrc(system)
-    assert system.allobjects['d.D'].bases == ['a.A']
+    D = system.allobjects['d.D']
+    assert isinstance(D, model.Class)
+    assert D.bases == ['a.A']
 
 @systemcls_param
 def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
@@ -325,8 +329,9 @@ def test_subclasses(systemcls: Type[model.System]) -> None:
         pass
     '''
     system = fromText(src, systemcls=systemcls).system
-    assert (system.allobjects['<test>.A'].subclasses ==
-            [system.allobjects['<test>.B']])
+    A = system.allobjects['<test>.A']
+    assert isinstance(A, model.Class)
+    assert A.subclasses == [system.allobjects['<test>.B']]
 
 @systemcls_param
 def test_inherit_names(systemcls: Type[model.System]) -> None:
