@@ -10,6 +10,10 @@ jobs:
   system_tests:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        tox_target: [twisted-apidoc, cpython-summary]
+
     steps:
     - uses: actions/checkout@v2
 
@@ -29,6 +33,6 @@ jobs:
         python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
         python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
 
-    - name: Generate Twisted API docs
+    - name: Generate API docs
       run: |
-        tox -e twisted-apidoc
+        tox -e ${{ matrix.tox_target }}

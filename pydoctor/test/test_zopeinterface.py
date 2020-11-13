@@ -66,7 +66,7 @@ def test_implementer() -> None:
     implements_test(src)
 
 def implements_test(src: str) -> None:
-    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
     foo = mod.contents['Foo']
@@ -99,7 +99,7 @@ def test_subclass_with_same_name() -> None:
     class A(A):
         pass
     '''
-    fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
+    fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
 
 def test_multiply_inheriting_interfaces() -> None:
     src = '''
@@ -111,7 +111,7 @@ def test_multiply_inheriting_interfaces() -> None:
     class Two: implements(ITwo)
     class Both(One, Two): pass
     '''
-    mod = fromText(src, 'zi', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['Both'].allImplementedInterfaces) == 2
 
 def test_attribute(capsys: CapSys) -> None:

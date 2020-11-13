@@ -7,7 +7,6 @@ being documented -- a System is a bad of Documentables, in some sense.
 """
 
 import ast
-import builtins
 import datetime
 import importlib
 import inspect
@@ -17,7 +16,7 @@ import sys
 import types
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping, Optional, Type
+from typing import TYPE_CHECKING, Collection, Mapping, Optional, Type
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -353,9 +352,19 @@ class Module(CanContainImportsDocumentable):
         else:
             return DocLocation.OWN_PAGE
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
-        self.all = None
+
+        self.all: Optional[Collection[str]] = None
+        """Names listed in the C{__all__} variable of this module.
+
+        These names are considered to be exported by the module,
+        both for the purpose of C{from <module> import *} and
+        for the purpose of publishing names from private modules.
+
+        If no C{__all__} variable was found in the module, or its
+        contents could not be parsed, this is L{None}.
+        """
 
     def _localNameToFullName(self, name):
         if name in self.contents:
@@ -363,8 +372,6 @@ class Module(CanContainImportsDocumentable):
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
-        elif name in builtins.__dict__:
-            return name
         else:
             return name
 
@@ -559,17 +566,17 @@ class System:
             return PrivacyClass.PRIVATE
         return PrivacyClass.VISIBLE
 
-    def addObject(self, obj):
+    def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
-        fullName = obj.fullName()
-        if obj.parent and obj.parent.fullName() != fullName:
+
+        if obj.parent:
             obj.parent.contents[obj.name] = obj
         else:
             self.rootobjects.append(obj)
-        if fullName in self.allobjects:
+
+        first = self.allobjects.setdefault(obj.fullName(), obj)
+        if obj is not first:
             self.handleDuplicate(obj)
-        else:
-            self.allobjects[fullName] = obj
 
     # if we assume:
     #
@@ -752,18 +759,19 @@ class System:
         self.allobjects[fullName] = obj
 
 
-    def getProcessedModule(self, modname):
+    def getProcessedModule(self, modname: str) -> Optional[_ModuleT]:
         mod = self.allobjects.get(modname)
         if mod is None:
             return None
         if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__').parent
+            return self.getProcessedModule(modname + '.__init__')
         if not isinstance(mod, Module):
             return None
 
         if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
+        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
         return mod
 
 
