@@ -1,5 +1,6 @@
 from contextlib import redirect_stdout
 from io import StringIO
+from pathlib import Path
 import sys
 
 from pydoctor import driver
@@ -50,12 +51,18 @@ def test_invalid_systemclasses() -> None:
 def test_projectbasedir() -> None:
     """
     The --project-base-dir option should set the projectbasedirectory attribute
-    on the options object.
+    on the options object, as an absolute path.
     """
-    value = "projbasedirvalue"
-    options, args = driver.parse_args([
-            "--project-base-dir", value])
-    assert str(options.projectbasedirectory) == value
+
+    absolute = "/home/name/src/project"
+    options, args = driver.parse_args(["--project-base-dir", absolute])
+    assert str(options.projectbasedirectory) == absolute
+
+    relative = "projbasedirvalue"
+    options, args = driver.parse_args(["--project-base-dir", relative])
+    assert options.projectbasedirectory.is_absolute()
+    assert options.projectbasedirectory.name == relative
+    assert options.projectbasedirectory.parent == Path.cwd()
 
 
 def test_cache_disabled_by_default() -> None:
