@@ -25,9 +25,6 @@ a[name] {
     position: relative;
     bottom: 70px;
 }
-a[name]:before {
-    content: "";
-}
 
 ul {
     margin-top: 10px;
