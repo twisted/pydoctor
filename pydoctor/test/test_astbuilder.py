@@ -253,7 +253,15 @@ def test_aliasing(systemcls: Type[model.System]) -> None:
     addsrc(system)
     C = system.allobjects['c.C']
     assert isinstance(C, model.Class)
-    assert C.bases == ['a.A']
+    # An older version of this test expected a.A as the result.
+    # The expected behavior was changed because:
+    # - relying on on-demand processing of other modules is unreliable when
+    #   there are cyclic imports: expandName() on a module that is still being
+    #   processed can return the not-found result for a name that does exist
+    # - code should be importing names from their official home, so if we
+    #   import b.B then for the purposes of documentation b.B is the name
+    #   we should use
+    assert C.bases == ['b.B']
 
 @systemcls_param
 def test_more_aliasing(systemcls: Type[model.System]) -> None:
@@ -282,7 +290,9 @@ def test_more_aliasing(systemcls: Type[model.System]) -> None:
     addsrc(system)
     D = system.allobjects['d.D']
     assert isinstance(D, model.Class)
-    assert D.bases == ['a.A']
+    # An older version of this test expected a.A as the result.
+    # Read the comment in test_aliasing() to learn why this was changed.
+    assert D.bases == ['c.C']
 
 @systemcls_param
 def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
