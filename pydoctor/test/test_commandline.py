@@ -1,6 +1,7 @@
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+import os
 import sys
 
 from pydoctor import driver
@@ -54,7 +55,10 @@ def test_projectbasedir() -> None:
     on the options object, as an absolute path.
     """
 
-    absolute = "/home/name/src/project"
+    if os.name == 'nt':
+        absolute = r"C:\Users\name\src\project"
+    else:
+        absolute = "/home/name/src/project"
     options, args = driver.parse_args(["--project-base-dir", absolute])
     assert str(options.projectbasedirectory) == absolute
 
