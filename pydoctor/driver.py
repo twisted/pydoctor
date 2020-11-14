@@ -55,10 +55,15 @@ MAKE_HTML_DEFAULT = object()
 
 def parse_path(option: Option, opt: str, value: str) -> Path:
     """Parse a path value given to an option to a L{Path} object.
-    The path is not verified: it is only parsed.
+    The path is converted to an absolute path, as required by
+    L{System.setSourceHref()}.
+    The path does not need to exist.
     """
     try:
-        return Path(value)
+        # We explicitly make the path relative to the current working dir
+        # because on Windows resolve() does not produce an absolute path
+        # when operating on a non-existing path.
+        return Path(Path.cwd(), value).resolve()
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 

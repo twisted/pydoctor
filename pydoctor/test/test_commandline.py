@@ -1,5 +1,7 @@
 from contextlib import redirect_stdout
 from io import StringIO
+from pathlib import Path
+import os
 import sys
 
 from pydoctor import driver
@@ -47,15 +49,30 @@ def test_invalid_systemclasses() -> None:
     assert 'is not a subclass' in err
 
 
-def test_projectbasedir() -> None:
+def test_projectbasedir_absolute() -> None:
     """
-    The --project-base-dir option should set the projectbasedirectory attribute
-    on the options object.
+    The --project-base-dir option, when given an absolute path, should set that
+    path as the projectbasedirectory attribute on the options object.
     """
-    value = "projbasedirvalue"
-    options, args = driver.parse_args([
-            "--project-base-dir", value])
-    assert str(options.projectbasedirectory) == value
+    if os.name == 'nt':
+        absolute = r"C:\Users\name\src\project"
+    else:
+        absolute = "/home/name/src/project"
+    options, args = driver.parse_args(["--project-base-dir", absolute])
+    assert str(options.projectbasedirectory) == absolute
+
+
+def test_projectbasedir_relative() -> None:
+    """
+    The --project-base-dir option, when given a relative path, should convert
+    that path to absolute and set it as the projectbasedirectory attribute on
+    the options object.
+    """
+    relative = "projbasedirvalue"
+    options, args = driver.parse_args(["--project-base-dir", relative])
+    assert options.projectbasedirectory.is_absolute()
+    assert options.projectbasedirectory.name == relative
+    assert options.projectbasedirectory.parent == Path.cwd()
 
 
 def test_cache_disabled_by_default() -> None:
