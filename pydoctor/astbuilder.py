@@ -209,9 +209,12 @@ class ModuleVistor(ast.NodeVisitor):
         is_package = isinstance(obj, model.Package)
         assert is_package or obj is mod or mod is None
 
-        if obj is not None:
+        if mod is not None and mod.state is model.ProcessingState.PROCESSED:
+            assert obj is not None
             expandName = obj.expandName
         else:
+            # Module information is absent or incomplete;
+            # treat it as a black box.
             expandName = lambda name: f'{modname}.{name}'
 
         # Fetch names to export.

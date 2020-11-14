@@ -70,3 +70,10 @@ def test_allgames() -> None:
     assert moved.parentMod is mod2
     assert moved.parentMod.source_path is not None
     assert moved.parentMod.source_path.parts[-2:] == ('allgames', 'mod2.py')
+
+def test_cyclic_imports() -> None:
+    system = processPackage('cyclic_imports')
+    mod_a = system.allobjects['cyclic_imports.a']
+    assert mod_a.expandName('B') == 'cyclic_imports.b.B'
+    mod_b = system.allobjects['cyclic_imports.b']
+    assert mod_b.expandName('A') == 'cyclic_imports.a.A'
