@@ -21,6 +21,14 @@
     margin-bottom: 1.8em;
 }
 
+a[name] {
+    position: relative;
+    bottom: 70px;
+}
+a[name]:before {
+    content: "";
+}
+
 ul {
     margin-top: 10px;
     padding-left: 10px;
