@@ -60,7 +60,10 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     The path does not need to exist.
     """
     try:
-        return Path(value).resolve()
+        # We explicitly make the path relative to the current working dir
+        # because on Windows resolve() does not produce an absolute path
+        # when operating on a non-existing path.
+        return Path(Path.cwd(), value).resolve()
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
