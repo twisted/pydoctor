@@ -21,6 +21,11 @@
     margin-bottom: 1.8em;
 }
 
+a[name] {
+    position: relative;
+    bottom: 62px;
+}
+
 ul {
     margin-top: 10px;
     padding-left: 10px;
