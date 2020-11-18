@@ -72,6 +72,14 @@ def test_allgames() -> None:
     assert moved.parentMod.source_path.parts[-2:] == ('allgames', 'mod2.py')
 
 def test_cyclic_imports() -> None:
+    """
+    Test whether names are resolved correctly when we have import cycles.
+    The test package contains module 'a' that defines class 'A' and module 'b'
+    that defines class 'B'; each module imports the other. Since the test data
+    is symmetrical, we will at some point be importing a module that has not
+    been fully processed yet, no matter which module gets processed first.
+    """
+
     system = processPackage('cyclic_imports')
     mod_a = system.allobjects['cyclic_imports.a']
     assert mod_a.expandName('B') == 'cyclic_imports.b.B'
