@@ -233,35 +233,36 @@ def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_aliasing(systemcls: Type[model.System]) -> None:
     def addsrc(system: model.System) -> None:
-        src_a = '''
+        src_private = '''
         class A:
             pass
         '''
-        src_b = '''
-        from a import A as B
+        src_export = '''
+        from _private import A as B
+        __all__ = ['B']
         '''
-        src_c = '''
-        from b import B
+        src_user = '''
+        from public import B
         class C(B):
             pass
         '''
-        fromText(src_a, modname='a', system=system)
-        fromText(src_b, modname='b', system=system)
-        fromText(src_c, modname='c', system=system)
+        fromText(src_private, modname='_private', system=system)
+        fromText(src_export, modname='public', system=system)
+        fromText(src_user, modname='app', system=system)
 
     system = systemcls()
     addsrc(system)
-    C = system.allobjects['c.C']
+    C = system.allobjects['app.C']
     assert isinstance(C, model.Class)
-    # An older version of this test expected a.A as the result.
+    # An older version of this test expected _private.A as the result.
     # The expected behavior was changed because:
     # - relying on on-demand processing of other modules is unreliable when
     #   there are cyclic imports: expandName() on a module that is still being
     #   processed can return the not-found result for a name that does exist
     # - code should be importing names from their official home, so if we
-    #   import b.B then for the purposes of documentation b.B is the name
-    #   we should use
-    assert C.bases == ['b.B']
+    #   import public.B then for the purposes of documentation public.B is
+    #   the name we should use
+    assert C.bases == ['public.B']
 
 @systemcls_param
 def test_more_aliasing(systemcls: Type[model.System]) -> None:
