@@ -1,10 +1,11 @@
-from typing import Optional, cast
+from typing import List, Optional, cast
+import re
 import textwrap
 
-from pytest import raises
+from pytest import mark, raises
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import flatten
+from pydoctor.epydoc.markup import DocstringLinker, flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
@@ -445,3 +446,52 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     #       the line number when it calls visit_title_reference().
     #       https://github.com/twisted/pydoctor/issues/237
     assert captured == "test:3: invalid ref to 'NoSuchName' not resolved\n"
+
+
+class RecordingAnnotationLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links,
+    but does record which identifiers it was asked to link.
+    """
+
+    def __init__(self) -> None:
+        self.requests: List[str] = []
+
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        self.requests.append(identifier)
+        return None
+
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        assert False
+
+@mark.parametrize('annotation', (
+    '<bool>',
+    '<NotImplemented>',
+    '<typing.Iterable>[<int>]',
+    '<Literal>[<True>]',
+    '<Mapping>[<str>, <C>]',
+    '<Tuple>[<a.b.C>, ...]',
+    '<Callable>[[<str>, <bool>], <None>]',
+    ))
+def test_annotation_formatter(annotation: str) -> None:
+    """Perform two checks on the annotation formatter:
+    - all type names in the annotation are passed to the linker
+    - the plain text version of the output matches the input
+    """
+
+    expected_lookups = [found[1:-1] for found in re.findall('<[^>]*>', annotation)]
+    expected_text = annotation.replace('<', '').replace('>', '')
+
+    mod = fromText(f'''
+    value: {expected_text}
+    ''')
+    obj = mod.contents['value']
+    parsed = epydoc2stan.get_parsed_type(obj)
+    assert parsed is not None
+    linker = RecordingAnnotationLinker()
+    stan = parsed.to_stan(linker)
+    assert linker.requests == expected_lookups
+    html = flatten(stan)
+    assert html.startswith('<code>')
+    assert html.endswith('</code>')
+    text= html[6:-7]
+    assert text == expected_text

@@ -82,6 +82,15 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        fullID = self.obj.expandName(identifier)
+
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return target.url
+
+        return self.look_for_intersphinx(fullID)
+
     def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
@@ -552,8 +561,93 @@ class AnnotationDocstring(ParsedDocstring):
         self.annotation = annotation
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        src = astor.to_source(self.annotation).strip()
-        ret: Tag = tags.code(src)
+        tag: Tag = tags.code
+        tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
+        return tag
+
+
+class _AnnotationFormatter(ast.NodeVisitor):
+
+    def __init__(self, linker: DocstringLinker):
+        super().__init__()
+        self.linker = linker
+
+    def _handle_name(self, identifier: str) -> Tag:
+        url = self.linker.resolve_identifier(identifier)
+
+        tag: Tag
+        if url is None:
+            tag = tags.transparent(identifier)
+        else:
+            tag = tags.a(identifier, href=url, class_='code')
+        return tag
+
+    def _handle_constant(self, node: ast.expr, value: object) -> Tag:
+        if value in (False, True, None, NotImplemented):
+            # Link built-in constants to the standard library.
+            # Ellipsis is not included here, both because its code syntax is
+            # different from its constant's name and because its documentation
+            # is not relevant to annotations.
+            return self._handle_name(str(value))
+        else:
+            return self.generic_visit(node)
+
+    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
+        first = True
+        for elem in sequence:
+            if first:
+                first = False
+            else:
+                tag(', ')
+            tag(self.visit(elem))
+
+    def visit_Name(self, node: ast.Name) -> Tag:
+        return self._handle_name(node.id)
+
+    def visit_Attribute(self, node: ast.Attribute) -> Tag:
+        parts = []
+        curr: ast.expr = node
+        while isinstance(curr, ast.Attribute):
+            parts.append(curr.attr)
+            curr = curr.value
+        if not isinstance(curr, ast.Name):
+            return self.generic_visit(node)
+        parts.append(curr.id)
+        parts.reverse()
+        return self._handle_name('.'.join(parts))
+
+    def visit_Constant(self, node: ast.Constant) -> Tag:
+        return self._handle_constant(node, node.value)
+
+    # Deprecated since Python 3.8, but required on older versions.
+    def visit_NameConstant(self, node: 'ast.NameConstant') -> Tag:
+        return self._handle_constant(node, node.value)
+
+    def visit_Subscript(self, node: ast.Subscript) -> Tag:
+        tag: Tag = tags.transparent
+        tag(self.visit(node.value))
+        tag('[')
+        sub: ast.AST = node.slice
+        if isinstance(sub, ast.Index):
+            # In Python < 3.9, non-slices are always wrapped in an Index node.
+            sub = sub.value
+        if isinstance(sub, ast.Tuple):
+            self._handle_sequence(tag, sub.elts)
+        else:
+            tag(self.visit(sub))
+        tag(']')
+        return tag
+
+    def visit_List(self, node: ast.List) -> Tag:
+        tag: Tag = tags.transparent
+        tag('[')
+        self._handle_sequence(tag, node.elts)
+        tag(']')
+        return tag
+
+    def generic_visit(self, node: ast.AST) -> Tag:
+        src = astor.to_source(node).strip()
+        ret: Tag = tags.transparent(src)
         return ret
 
 

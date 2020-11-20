@@ -7,7 +7,7 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -71,8 +71,17 @@ def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     assert isinstance(value, str)
     return value
 
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        return None
+
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        raise LookupError(identifier)
+
 def to_html(parsed_docstring: ParsedDocstring) -> str:
-    return flatten(parsed_docstring.to_stan(None))
+    return flatten(parsed_docstring.to_stan(NotFoundLinker()))
 
 @overload
 def type2str(type_expr: None) -> None: ...
