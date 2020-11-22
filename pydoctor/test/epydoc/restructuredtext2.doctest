@@ -1,0 +1,159 @@
+Generic Testing for restructuredtext
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+:RequireModule: docutils
+
+>>> from pydoctor.epydoc.markup import flatten, restructuredtext
+
+Directives
+==========
+
+Abnomitions
+-----------
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. warning:: Hey
+... """, err)
+>>> [ e.__dict__ for e in err ]
+[]
+>>> print(flatten(p.to_stan(None)))
+Traceback (most recent call last):
+    ...
+NotImplementedError: <class 'pydoctor.epydoc.markup.restructuredtext._EpydocHTMLTranslator'> visiting unknown node type: warning
+
+Should be 
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Hey</p>
+</div>
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. note:: Hey
+... """, err)
+>>> [ e.__dict__ for e in err ]
+[]
+>>> print(flatten(p.to_stan(None)))
+Traceback (most recent call last):
+    ...
+NotImplementedError: <class 'pydoctor.epydoc.markup.restructuredtext._EpydocHTMLTranslator'> visiting unknown node type: note
+
+Should be 
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Hey</p>
+</div>
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. seealso:: Hey
+... """, err)
+>>> [ e.__dict__ for e in err ] # doctest: +SKIP
+[]
+>>> print(flatten(p.to_stan(None))) # doctest: +SKIP
+<div class="admonition seealso">
+<p class="admonition-title">See Also</p>
+<p>Hey</p>
+</div>
+
+Tracking changes
+----------------
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. versionadded:: 0.6
+... """, err)
+>>> [ e.__dict__ for e in err ] # doctest: +SKIP
+[]
+>>> print(flatten(p.to_stan(None))) # doctest: +SKIP
+<div class="versionadded">
+<p><span class="versionmodified added">New in version 0.6.</span></p>
+</div>
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. versionchanged:: 0.7
+...    Add extras
+... """, err)
+>>> [ e.__dict__ for e in err ] # doctest: +SKIP
+[]
+>>> print(flatten(p.to_stan(None))) # doctest: +SKIP
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.7: Add extras</span></p>
+</div>
+
+>>> err = []
+>>> p = restructuredtext.parse_docstring(
+... """
+... .. deprecated:: 0.2
+...    For security reasons
+... """, err)
+>>> [ e.__dict__ for e in err ] # doctest: +SKIP
+[]
+>>> print(flatten(p.to_stan(None))) # doctest: +SKIP
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
+</div>
+
+Fields
+======
+
+Send a message to a recipient
+
+:param str sender: The person sending the message
+:param str recipient: The recipient of the message
+:param str message_body: The body of the message
+:param priority: The priority of the message, can be a number 1-5
+:type priority: integer or None
+:return: the message id
+:rtype: int
+:raises ValueError: if the message_body exceeds 160 characters
+:raises TypeError: if the message_body is not a basestring
+
+
+
+Docstring markup parsing is handled by the `markup` package.
+See the submodule list for more information about the submodules
+and subpackages.
+
+:group Docstring Processing: markup
+:group Miscellaneous: util, test
+
+:author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__
+:requires: Python 2.3+
+:version: 3.0.1
+:see: `The epydoc webpage <http://epydoc.sourceforge.net>`__
+:see: `The epytext markup language manual <http://epydoc.sourceforge.net/epytext.html>`__
+
+:todo: Create a better default top_page than trees.html.
+:todo: Fix trees.html to work when documenting non-top-levelmodules/packages
+:todo: Implement @include
+:todo: Optimize epytext
+:todo: More doctests
+:todo: When introspecting, limit how much introspection you do (eg, don't construct docs for imported modules' vars if it's not necessary)
+
+:bug: UserDict.* is interpreted as imported .. why??
+
+:license: IBM Open Source License
+:copyright: |copy| 2006 Edward Loper
+
+:newfield contributor: Contributor, Contributors (Alphabetical Order)
+:contributor: `Glyph Lefkowitz  <mailto:glyph@twistedmatrix.com>`__
+:contributor: `Edward Loper  <mailto:edloper@gradient.cis.upenn.edu>`__
+:contributor: `Bruce Mitchener  <mailto:bruce@cubik.org>`__
+:contributor: `Jeff O'Halloran  <mailto:jeff@ohalloran.ca>`__
+:contributor: `Simon Pamies  <mailto:spamies@bipbap.de>`__
+:contributor: `Christian Reis  <mailto:kiko@async.com.br>`__
+:contributor: `Daniele Varrazzo  <mailto:daniele.varrazzo@gmail.com>`__
+:contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
+
+.. |copy| unicode:: 0xA9 .. copyright sign
+
+
+Continue read in https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#
+and https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#directives

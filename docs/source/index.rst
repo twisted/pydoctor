@@ -10,6 +10,10 @@ Installation
 
    $ pip install -U pydoctor
 
+Install with *restructuredtext* support::
+
+   $ pip install -U pydoctor docutils
+
 .. toctree::
    :maxdepth: 4
    :caption: Table of contents:
