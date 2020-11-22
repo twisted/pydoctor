@@ -12,7 +12,6 @@ It will add a link to the project website in all pages header, show a link to so
 ::
 
     pydoctor \
-        --add-package=pydoctor \
         --project-name=pydoctor \
         --project-url=https://github.com/twisted/pydoctor/ \
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
@@ -20,7 +19,8 @@ It will add a link to the project website in all pages header, show a link to so
         --html-output=docs/api \
         --project-base-dir="$(pwd)" \
         --docformat=epytext \
-        --intersphinx=https://docs.python.org/3/objects.inv
+        --intersphinx=https://docs.python.org/3/objects.inv \
+        ./pydoctor
 
 .. note:: This exemple assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
 
@@ -67,7 +67,6 @@ Here is an exemple to automatically generate and publish your documentation with
 
             # Run pydoctor build
             pydoctor \
-                --add-package=(packagedirectory) \
                 --project-name=(projectname) \
                 --project-url=https://github.com/$GITHUB_REPOSITORY \
                 --html-viewsource-base=https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
@@ -75,7 +74,8 @@ Here is an exemple to automatically generate and publish your documentation with
                 --html-output=./apidocs \
                 --project-base-dir="$(pwd)" \
                 --docformat=restructuredtext \
-                --intersphinx=https://docs.python.org/3/objects.inv
+                --intersphinx=https://docs.python.org/3/objects.inv \
+                ./(packagedirectory)
 
         - name: Publish pydoctor documentation to the gh-pages branch
           uses: peaceiris/actions-gh-pages@v3
