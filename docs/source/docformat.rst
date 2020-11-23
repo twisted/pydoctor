@@ -62,188 +62,188 @@ Alternatively, fields can be passed with this syntax::
 Directives
 ^^^^^^^^^^
 
-.. list-table:: Supported and unsupported directives
+.. list-table:: Summary of supported and unsupported directives, with links to appropritate reference. 
    :header-rows: 1
    
    * - Directive
+     - Reference
      - Support
 
    * - ``.. include::``
-     
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#including-an-external-document-fragment>`_
      - Yes
 
    * - ``.. contents::``
-     
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table-of-contents>`_
      - Yes
 
    * - ``.. image::``
-     
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#image>`_
+     - Yes
+       
+   * - ``.. |time| date:: %H:%M``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#date>`_
+     - Yes
+
+   * - ``.. figure::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#figure>`_
+     - Yes
+
+   * - ``.. |T| replace:: term``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#replacement-text>`_
+     - Yes
+ 
+   * - ``.. unicode::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#unicode-character-codes>`_
+     - Yes
+ 
+   * - ``.. raw::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#raw-data-pass-through>`_
+     - Yes
+  
+   * - ``.. class::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#class>`_
+     - Yes
+  
+   * - ``.. role::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#custom-interpreted-text-roles>`_
+     - Yes
+  
+   * - ``.. default-role::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#setting-the-default-interpreted-text-role>`_
      - Yes
     
-   * - ``.. warning::``
-     
-     - No. This include support for other abnomitions like ``note``, ``attention``, ``important``, etc
+   * - ``.. line-block::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`_
+     - Yes
+
+   * - ``.. code::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`_
+     - Yes (syntax highlight ignored)
+
+   * - ``.. math::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`_
+     - Yes
+    
+   * - ``.. highlights::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#highlights>`_
+     - Yes
+
+   * - ``.. pull-quote::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#pull-quote>`_
+     - Yes
+
+   * - ``.. container::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#container>`_
+     - Yes
+
+   * - ``.. table::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table>`_
+     - Yes
+
+   * - ``.. csv-table::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#id4>`_
+     - Yes
+
+   * - ``.. list-table::``
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#list-table>`_
+     - Yes
+
+   * - ``.. warning::`` and other abnomitions
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#specific-admonitions>`_
+     - No 
 
    * - ``.. versionadded::``
-     
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionadded>`_
      - No
 
    * - ``.. versionchanged::``
-     
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionchanged>`_
      - No
 
    * - ``.. deprecated::``
-     
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-deprecated>`_
      - No
 
    * - ``.. centered::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-centered>`_
+     - No
 
    * - ``.. hlist::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-hlist>`_
+     - No
 
    * - ``.. highlight::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-highlight>`_
+     - No
 
    * - ``.. code-block::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block>`_
+     - No
 
    * - ``.. literalinclude::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-literalinclude>`_
+     - No
 
    * - ``.. glossary::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-glossary>`_
+     - No
 
    * - ``.. index::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-index>`_
+     - No
 
    * - ``.. sectionauthor::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-sectionauthor>`_
+     - No
 
    * - ``.. codeauthor::``
-     
-     - ?
-
-   * - ``.. figure::``
-     
-     - ?
+     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-codeauthor>`_
+     - No
 
    * - ``.. topic::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#topic>`_
+     - eh
 
    * - ``.. sidebar::``
-     
-     - ?
-
-   * - ``.. line-block::``
-     
-     - ?
-
-   * - ``.. code::``
-     
-     - ?
-
-   * - ``.. math::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#sidebar>`_
+     - No
 
    * - ``.. rubric::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#rubric>`_
+     - eh
 
    * - ``.. epigraph::``
-     
-     - ?
-
-   * - ``.. highlights::``
-     
-     - ?
-
-   * - ``.. pull-quote::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#epigraph>`_
+     - No
 
    * - ``.. compound::``
-     
-     - ?
-
-   * - ``.. container::``
-     
-     - ?
-
-   * - ``.. table::``
-     
-     - ?
-
-   * - ``.. csv-table::``
-     
-     - ?
-
-   * - ``.. list-table::``
-     
-     - ?
- 
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#compound-paragraph>`_
+     - eh
+   
    * - ``.. sectnum::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#automatic-section-numbering>`_
+     - No
  
    * - ``.. header::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
+     - No
  
    * - ``.. footer::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
+     - No
  
    * - ``.. meta::``
-     
-     - ?
- 
-   * - ``.. |time| date:: %H:%M``
-     
-     - ?
- 
-   * - ``.. |RST| replace:: restructuredtext``
-     
-     - ?
- 
-   * - ``.. unicode::``
-     
-     - ?
- 
-   * - ``.. raw::``
-     
-     - ?
-  
-   * - ``.. class::``
-     
-     - ?
-  
-   * - ``.. role::``
-     
-     - ?
-  
-   * - ``.. default-role::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#meta>`_
+     - No
   
    * - ``.. title::``
-     
-     - ?
-  
-   * - ``.. restructuredtext-test-directive::``
-     
-     - ?
+     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#metadata-document-title>`_
+     - No
+
 
 *This list is not exhaustive*
+
+.. note:: HTML Classes *restructuredtext* markup creates have a ``"rst-"`` prefix
 
 .. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.
