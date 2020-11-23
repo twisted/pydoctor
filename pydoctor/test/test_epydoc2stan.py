@@ -409,6 +409,27 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     assert not capsys.readouterr().out
 
 
+def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
+    """Link to an internal object referenced by its full name."""
+
+    # Object we want to link to.
+    int_mod = fromText('''
+    class C:
+        pass
+    ''', modname='internal_module')
+    system = int_mod.system
+
+    # Dummy module that we want to link from.
+    target = model.Module(system, 'ignore-name')
+    sut = epydoc2stan._EpydocLinker(target)
+
+    url = sut.resolve_identifier('internal_module.C')
+    url_xref = sut.resolve_identifier_xref('internal_module.C', 0)
+
+    assert "internal_module.C.html" == url
+    assert "internal_module.C.html" == url_xref
+
+
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
     When a link in an epytext docstring cannot be resolved, the reference
