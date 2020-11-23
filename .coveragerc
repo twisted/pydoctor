@@ -1,0 +1,8 @@
+[run]
+branch = True
+
+[report]
+exclude_lines =
+    # Intended to be unreachable:
+    raise NotImplementedError$
+    raise NotImplementedError\(

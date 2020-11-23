@@ -500,7 +500,10 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.popFunction()
 
-    def _annotation_from_attrib(self, expr, ctx):
+    def _annotation_from_attrib(self,
+            expr: ast.expr,
+            ctx: model.Documentable
+            ) -> Optional[ast.expr]:
         """Get the type of an C{attr.ib} definition.
         @param expr: The expression's AST.
         @param ctx: The context in which this expression is evaluated.
@@ -606,14 +609,14 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             # Other subscript; unstring the slice.
             slice = self.visit(node.slice)
-        return ast.Subscript(value, slice, node.ctx)
+        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
 
     # For Python >= 3.8:
 
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
-            return self._parse_string(value)
+            return ast.copy_location(self._parse_string(value), node)
         else:
             const = self.generic_visit(node)
             assert isinstance(const, ast.Constant), const
@@ -622,9 +625,9 @@ class _AnnotationStringParser(ast.NodeTransformer):
     # For Python < 3.8:
 
     def visit_Str(self, node: ast.Str) -> ast.expr:
-        return self._parse_string(node.s)
+        return ast.copy_location(self._parse_string(node.s), node)
 
-def _infer_type(expr):
+def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
@@ -635,14 +638,17 @@ def _infer_type(expr):
     except ValueError:
         return None
     else:
-        return _annotation_for_value(value)
+        ann = _annotation_for_value(value)
+        if ann is None:
+            return None
+        else:
+            return ast.fix_missing_locations(ast.copy_location(ann, expr))
 
-def _annotation_for_value(value):
+def _annotation_for_value(value: object) -> Optional[ast.expr]:
     if value is None:
         return None
     name = type(value).__name__
     if isinstance(value, (dict, list, set, tuple)):
-        name = name.capitalize()
         ann_elem = _annotation_for_elements(value)
         if isinstance(value, dict):
             ann_value = _annotation_for_elements(value.values())
@@ -651,13 +657,13 @@ def _annotation_for_value(value):
             elif ann_elem is not None:
                 ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
         if ann_elem is not None:
-            if name == 'Tuple':
+            if name == 'tuple':
                 ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
             return ast.Subscript(value=ast.Name(id=name),
                                  slice=ast.Index(value=ann_elem))
     return ast.Name(id=name)
 
-def _annotation_for_elements(sequence):
+def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
     names = set()
     for elem in sequence:
         ann = _annotation_for_value(elem)

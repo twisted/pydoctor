@@ -1,10 +1,11 @@
-from typing import Optional, cast
+from typing import List, Optional, cast
+import re
 import textwrap
 
-from pytest import raises
+from pytest import mark, raises
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import flatten
+from pydoctor.epydoc.markup import DocstringLinker, flatten
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText
 
@@ -313,9 +314,11 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
-    url = sut.resolve_identifier_xref('base.module.other', 0)
+    url = sut.resolve_identifier('base.module.other')
+    url_xref = sut.resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
+    assert "http://tm.tld/some.html" == url_xref
 
 
 def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
@@ -337,9 +340,11 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier_xref('ext_module', 0)
+    url = sut.resolve_identifier('ext_module')
+    url_xref = sut.resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
+    assert "http://tm.tld/some.html" == url_xref
 
 
 def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys: CapSys) -> None:
@@ -359,6 +364,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module} markup.
+    assert sut.resolve_identifier('ext_module') is None
+    assert not capsys.readouterr().out
     with raises(LookupError):
         sut.resolve_identifier_xref('ext_module', 0)
 
@@ -394,10 +401,33 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
     linker = epydoc2stan._EpydocLinker(mod)
 
-    url = linker.resolve_identifier_xref('socket.socket', 0)
+    url = linker.resolve_identifier('socket.socket')
+    url_xref = linker.resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
     assert not capsys.readouterr().out
+
+
+def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
+    """Link to an internal object referenced by its full name."""
+
+    # Object we want to link to.
+    int_mod = fromText('''
+    class C:
+        pass
+    ''', modname='internal_module')
+    system = int_mod.system
+
+    # Dummy module that we want to link from.
+    target = model.Module(system, 'ignore-name')
+    sut = epydoc2stan._EpydocLinker(target)
+
+    url = sut.resolve_identifier('internal_module.C')
+    url_xref = sut.resolve_identifier_xref('internal_module.C', 0)
+
+    assert "internal_module.C.html" == url
+    assert "internal_module.C.html" == url_xref
 
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
@@ -445,3 +475,52 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     #       the line number when it calls visit_title_reference().
     #       https://github.com/twisted/pydoctor/issues/237
     assert captured == "test:3: invalid ref to 'NoSuchName' not resolved\n"
+
+
+class RecordingAnnotationLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links,
+    but does record which identifiers it was asked to link.
+    """
+
+    def __init__(self) -> None:
+        self.requests: List[str] = []
+
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        self.requests.append(identifier)
+        return None
+
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        assert False
+
+@mark.parametrize('annotation', (
+    '<bool>',
+    '<NotImplemented>',
+    '<typing.Iterable>[<int>]',
+    '<Literal>[<True>]',
+    '<Mapping>[<str>, <C>]',
+    '<Tuple>[<a.b.C>, ...]',
+    '<Callable>[[<str>, <bool>], <None>]',
+    ))
+def test_annotation_formatter(annotation: str) -> None:
+    """Perform two checks on the annotation formatter:
+    - all type names in the annotation are passed to the linker
+    - the plain text version of the output matches the input
+    """
+
+    expected_lookups = [found[1:-1] for found in re.findall('<[^>]*>', annotation)]
+    expected_text = annotation.replace('<', '').replace('>', '')
+
+    mod = fromText(f'''
+    value: {expected_text}
+    ''')
+    obj = mod.contents['value']
+    parsed = epydoc2stan.get_parsed_type(obj)
+    assert parsed is not None
+    linker = RecordingAnnotationLinker()
+    stan = parsed.to_stan(linker)
+    assert linker.requests == expected_lookups
+    html = flatten(stan)
+    assert html.startswith('<code>')
+    assert html.endswith('</code>')
+    text= html[6:-7]
+    assert text == expected_text
