@@ -1,8 +1,24 @@
 [run]
 branch = True
+omit =
+    pydoctor/sphinx_ext/*
+    pydoctor/test/*
+source =
+    pydoctor
 
 [report]
 exclude_lines =
     # Intended to be unreachable:
     raise NotImplementedError$
     raise NotImplementedError\(
+    raise AssertionError$
+    raise AssertionError\(
+    assert False$
+    assert False,
+
+    # Debug-only code:
+    def __repr__\(
+
+    # Exclusive to mypy:
+    if TYPE_CHECKING:$
+    \.\.\.$
