@@ -230,7 +230,7 @@ You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSys
 System class allows you to dynamically show/hide classes or methods.
 This is also used by the Twisted project to handle deprecation.
 
-See the `TwistedSystem custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better overview.
+See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation. Naviguate to the source code for a better overview.
 
 .. note:: Not fully documented, prone to break
 
@@ -239,7 +239,7 @@ Use custom HTML templates
 
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
-See the `Twisted APIBuilder custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better overview.
+See the Twisted :py:class:`twisted:twisted.python._release.APIBuilder` custom class documentation . Naviguate to the source code for a better overview.
 The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build.
 
 .. note:: Not fully documented, prone to break
