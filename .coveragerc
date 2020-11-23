@@ -1,6 +1,7 @@
 [run]
 branch = True
 omit =
+    pydoctor/sphinx_ext/*
     pydoctor/test/*
 source =
     pydoctor
