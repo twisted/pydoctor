@@ -314,9 +314,11 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._EpydocLinker(target)
 
-    url = sut.resolve_identifier_xref('base.module.other', 0)
+    url = sut.resolve_identifier('base.module.other')
+    url_xref = sut.resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
+    assert "http://tm.tld/some.html" == url_xref
 
 
 def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
@@ -338,9 +340,11 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
-    url = sut.resolve_identifier_xref('ext_module', 0)
+    url = sut.resolve_identifier('ext_module')
+    url_xref = sut.resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
+    assert "http://tm.tld/some.html" == url_xref
 
 
 def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys: CapSys) -> None:
@@ -360,6 +364,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     sut = epydoc2stan._EpydocLinker(target)
 
     # This is called for the L{ext_module} markup.
+    assert sut.resolve_identifier('ext_module') is None
+    assert not capsys.readouterr().out
     with raises(LookupError):
         sut.resolve_identifier_xref('ext_module', 0)
 
@@ -395,9 +401,11 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
     linker = epydoc2stan._EpydocLinker(mod)
 
-    url = linker.resolve_identifier_xref('socket.socket', 0)
+    url = linker.resolve_identifier('socket.socket')
+    url_xref = linker.resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
+    assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
     assert not capsys.readouterr().out
 
 
