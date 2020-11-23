@@ -438,7 +438,13 @@ class ModuleVistor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_AsyncFunctionDef(self, node):
+        self._handleFunctionDef(node, is_async=True)
+
     def visit_FunctionDef(self, node):
+        self._handleFunctionDef(node, is_async=False)
+
+    def _handleFunctionDef(self, node, is_async):
         # Ignore inner functions.
         if isinstance(self.builder.current, model.Function):
             return
@@ -448,6 +454,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno = node.decorator_list[0].lineno
 
         func = self.builder.pushFunction(node.name, lineno)
+        func.is_async = is_async
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             func.setDocstring(node.body[0].value)
         func.decorators = node.decorator_list

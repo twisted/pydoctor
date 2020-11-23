@@ -55,8 +55,9 @@ class FunctionChild(Element):
         return decorator
 
     @renderer
-    def functionName(self, request, tag):
-        return [self.ob.name, '(', signature(self.ob.argspec), '):']
+    def functionDef(self, request, tag):
+        def_stmt = 'async def' if self.ob.is_async else 'def'
+        return [def_stmt, ' ', self.ob.name, '(', signature(self.ob.argspec), '):']
 
     @renderer
     def sourceLink(self, request, tag):

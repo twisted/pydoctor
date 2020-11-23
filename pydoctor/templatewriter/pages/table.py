@@ -1,5 +1,7 @@
-from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer
+
+from pydoctor.model import Function
+from pydoctor.templatewriter import util
 
 
 class TableRow(Element):
@@ -19,7 +21,13 @@ class TableRow(Element):
 
     @renderer
     def kind(self, request, tag):
-        return tag.clear()(self.child.kind)
+        child = self.child
+        kind = child.kind
+        if isinstance(child, Function) and child.is_async:
+            # The official name is "coroutine function", but that is both
+            # a bit long and not as widely recognized.
+            kind = f'Async {kind}'
+        return tag.clear()(kind)
 
     @renderer
     def name(self, request, tag):

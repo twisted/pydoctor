@@ -123,7 +123,7 @@ def test_no_docstring(systemcls: Type[model.System]) -> None:
     assert m.docstring is None
 
 @systemcls_param
-def test_simple(systemcls: Type[model.System]) -> None:
+def test_function_simple(systemcls: Type[model.System]) -> None:
     src = '''
     """ MOD DOC """
     def f():
@@ -134,6 +134,22 @@ def test_simple(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.f'
     assert func.docstring == """This is a docstring."""
+    assert func.is_async is False
+
+
+@systemcls_param
+def test_function_async(systemcls: Type[model.System]) -> None:
+    src = '''
+    """ MOD DOC """
+    async def a():
+        """This is a docstring."""
+    '''
+    mod = fromText(src, systemcls=systemcls)
+    assert len(mod.contents) == 1
+    func, = mod.contents.values()
+    assert func.fullName() == '<test>.a'
+    assert func.docstring == """This is a docstring."""
+    assert func.is_async is True
 
 
 @systemcls_param
