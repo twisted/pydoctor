@@ -97,7 +97,11 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         assert isinstance(src, str)
         return src.strip()
 
-def str_and_line(obj: model.Documentable) -> Tuple[str, int]:
+def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
+    """Return the textual representation and line number of an object's
+    type annotation.
+    @param obj: Documentable object with a type annotation.
+    """
     ann = obj.annotation # type: ignore[attr-defined]
     assert ann is not None
     return type2str(ann), ann.lineno
@@ -992,9 +996,9 @@ def test_unstring_annotation(systemcls: Type[model.System]) -> None:
     b: 'str' = 'B'
     c: list["Thingy"]
     ''', systemcls=systemcls)
-    assert str_and_line(mod.contents['a']) == ('int', 2)
-    assert str_and_line(mod.contents['b']) == ('str', 3)
-    assert str_and_line(mod.contents['c']) == ('list[Thingy]', 4)
+    assert ann_str_and_line(mod.contents['a']) == ('int', 2)
+    assert ann_str_and_line(mod.contents['b']) == ('str', 3)
+    assert ann_str_and_line(mod.contents['c']) == ('list[Thingy]', 4)
 
 @pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
@@ -1045,17 +1049,17 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     m = b'octets'
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert str_and_line(C.contents['a']) == ('str', 3)
-    assert str_and_line(C.contents['b']) == ('int', 4)
-    assert str_and_line(C.contents['c']) == ('list[str]', 5)
-    assert str_and_line(C.contents['d']) == ('dict[str, int]', 6)
-    assert str_and_line(C.contents['e']) == ('tuple[bool, ...]', 7)
-    assert str_and_line(C.contents['f']) == ('float', 8)
-    assert str_and_line(C.contents['g']) == ('set[int]', 9)
+    assert ann_str_and_line(C.contents['a']) == ('str', 3)
+    assert ann_str_and_line(C.contents['b']) == ('int', 4)
+    assert ann_str_and_line(C.contents['c']) == ('list[str]', 5)
+    assert ann_str_and_line(C.contents['d']) == ('dict[str, int]', 6)
+    assert ann_str_and_line(C.contents['e']) == ('tuple[bool, ...]', 7)
+    assert ann_str_and_line(C.contents['f']) == ('float', 8)
+    assert ann_str_and_line(C.contents['g']) == ('set[int]', 9)
     # Element type is unknown, not uniform or too complex.
-    assert str_and_line(C.contents['h']) == ('list', 10)
-    assert str_and_line(C.contents['i']) == ('list', 11)
-    assert str_and_line(C.contents['j']) == ('tuple', 12)
+    assert ann_str_and_line(C.contents['h']) == ('list', 10)
+    assert ann_str_and_line(C.contents['i']) == ('list', 11)
+    assert ann_str_and_line(C.contents['j']) == ('tuple', 12)
     # It is unlikely that a variable actually will contain only None,
     # so we should treat this as not be able to infer the type.
     assert C.contents['n'].annotation is None
@@ -1065,10 +1069,10 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert C.contents['y'].annotation is None
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
-    assert str_and_line(C.contents['s']) == ('list[str]', 17)
+    assert ann_str_and_line(C.contents['s']) == ('list[str]', 17)
     # Check that type is inferred on assignments with multiple targets.
-    assert str_and_line(C.contents['t']) == ('str', 18)
-    assert str_and_line(mod.contents['m']) == ('bytes', 19)
+    assert ann_str_and_line(C.contents['t']) == ('str', 18)
+    assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
 
 @systemcls_param
 def test_type_from_attrib(systemcls: Type[model.System]) -> None:
