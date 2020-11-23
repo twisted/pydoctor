@@ -1,5 +1,9 @@
 [run]
 branch = True
+omit =
+    pydoctor/test/*
+source =
+    pydoctor
 
 [report]
 exclude_lines =
