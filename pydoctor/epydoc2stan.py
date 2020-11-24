@@ -146,14 +146,10 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return target.url
 
-        if identifier == fullID:
-            self.obj.report(
-                "invalid ref to '%s' not resolved" % (identifier,),
-                'resolve_identifier_xref', lineno)
-        else:
-            self.obj.report(
-                "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
-                'resolve_identifier_xref', lineno)
+        message = f'Cannot find link target for "{fullID}"'
+        if identifier != fullID:
+            message = f'{message} (resolved from "{identifier}")'
+        self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
 

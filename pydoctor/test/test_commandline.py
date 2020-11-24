@@ -137,7 +137,7 @@ def test_main_return_zero_on_warnings() -> None:
 
     assert exit_code == 0
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
-    assert "report_module.py:9: invalid ref to 'BadLink' not resolved" in stream.getvalue()
+    assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
 
 
 def test_main_return_non_zero_on_warnings() -> None:
@@ -154,4 +154,4 @@ def test_main_return_non_zero_on_warnings() -> None:
 
     assert exit_code == 3
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
-    assert "report_module.py:9: invalid ref to 'BadLink' not resolved" in stream.getvalue()
+    assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
