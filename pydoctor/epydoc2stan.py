@@ -148,7 +148,10 @@ class _EpydocLinker(DocstringLinker):
 
         message = f'Cannot find link target for "{fullID}"'
         if identifier != fullID:
-            message = f'{message} (resolved from "{identifier}")'
+            message = f'{message}, resolved from "{identifier}"'
+        root_idx = fullID.find('.')
+        if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
+            message += ' (you can link to external docs with --intersphinx)'
         self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
