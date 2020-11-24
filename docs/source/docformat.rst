@@ -28,9 +28,9 @@ As a reminder, here are some of the supported *epytext* fields:
 ReStructuredText Support
 ------------------------
 
-Install PyDoctor with *restructuredtext* support::
+``pydoctor`` needs the following packages to offer *restructuredtext* support::
 
-   $ pip install -U pydoctor docutils
+   $ pip install -U docutils Pygments
 
 Read the `RST syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
@@ -271,9 +271,9 @@ Directives
 
 .. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.
 
-PyDoctor *restructuredtext* quick ref
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. PyDoctor *restructuredtext* quick ref
+.. ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*In construction*
+.. *In construction*
 
-`Visit the PyDoctor ReST Quick Reference <https://tristanlatr.github.io/pydoctor/rst-quick-ref/>`_
+.. `Visit the PyDoctor ReST Quick Reference <https://tristanlatr.github.io/pydoctor/rst-quick-ref/>`_

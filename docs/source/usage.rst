@@ -27,6 +27,27 @@ It will add a link to the project website in all pages header, show a link to so
 .. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line
     numbers aren't going to match otherwise when commits are added to the branch after the documentation has been published.
 
+``__all__`` re-export
+---------------------
+
+A documented element which is defined in ``module1``, but included in ``__all__`` of ``module2``
+that it is imported into, will end up in the documentation of ``module2``.
+
+Document part of your package
+-----------------------------
+
+Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.
+
+You can choose to document only a couple classes or modules with the following cumulative configuration option::
+
+  --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
+
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course).
+The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.
+
+.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page.
+
+
 Publish your documentation
 --------------------------
 
@@ -95,21 +116,6 @@ Here is an exemple to automatically generate and publish your documentation with
 .. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. .. note:: Documentation to come!
-
-Document part of your package
------------------------------
-
-Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.
-
-You can choose to document only a couple classes or modules with the following cumulative configuration option::
-
-  --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
-
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course).
-The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.
-
-.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page.
-
 
 Sphinx Integration
 ------------------
