@@ -58,7 +58,6 @@ Alternatively, fields can be passed with this syntax::
         age : int
             The age of the fox (in years)
 
-    
 Directives
 ^^^^^^^^^^
 
@@ -103,7 +102,7 @@ Directives
   
    * - ``.. class::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#class>`_
-     - Yes
+     - eh
   
    * - ``.. role::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#custom-interpreted-text-roles>`_
@@ -115,23 +114,27 @@ Directives
     
    * - ``.. line-block::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`_
-     - Yes
+     - eh
 
    * - ``.. code::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`_
-     - Yes (syntax highlight ignored)
-
+     - Yes (syntax highlight ignored). Use ``.. python::``. 
+   
+   * - ``.. python::``
+     - `ref (pydoctor) <https://pydoctor.readthedocs.io/en/latest/api/pydoctor.epydoc.markup.restructuredtext.PythonCodeDirective.html>`_
+     - Yes
+     
    * - ``.. math::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`_
      - Yes
     
    * - ``.. highlights::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#highlights>`_
-     - Yes
+     - eh
 
    * - ``.. pull-quote::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#pull-quote>`_
-     - Yes
+     - eh
 
    * - ``.. container::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#container>`_
@@ -167,6 +170,26 @@ Directives
 
    * - ``.. centered::``
      - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-centered>`_
+     - No
+
+   * - ``.. digraph::``
+     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#digraph_directive>`_
+     - No
+
+   * - ``.. classtree::``
+     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#classtree_directive>`_
+     - No
+
+   * - ``.. packagetree::``
+     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#package_directive>`_
+     - No
+
+   * - ``.. importgraph::``
+     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#importgraph_directive>`_
+     - No
+
+   * - ``.. callgraph::``
+     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#callgraph_directive>`_
      - No
 
    * - ``.. hlist::``
@@ -247,3 +270,8 @@ Directives
 .. note:: HTML Classes *restructuredtext* markup creates have a ``"rst-"`` prefix
 
 .. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.
+
+PyDoctor *restructuredtext* quick ref
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
