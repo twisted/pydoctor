@@ -516,6 +516,15 @@ class System:
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
+    @property
+    def root_names(self) -> Collection[str]:
+        """The top-level package/module names in this system."""
+        return {
+            obj.name
+            for obj in self.rootobjects
+            if isinstance(obj, (Module, Package))
+            }
+
     def verbosity(self, section: Union[str, Iterable[str]]) -> int:
         if isinstance(section, str):
             section = (section,)
