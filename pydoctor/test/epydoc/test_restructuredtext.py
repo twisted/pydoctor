@@ -1,11 +1,10 @@
 import pprint
+import pytest
 from typing import List
-from unittest import skip
 from pydoctor.epydoc.markup import ParseError, flatten, restructuredtext
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
+from pydoctor.epydoc.markup import flatten, restructuredtext
 from bs4 import BeautifulSoup
-
-# FIRST PART OF THE TESTS
 
 def rst2html(s: str) -> str:
     errors: List[ParseError] = []
@@ -30,39 +29,20 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
-# THIS IS HELPER METHODS
-from pydoctor.epydoc.markup import flatten, restructuredtext
-def to_html(docstring) -> str:
+def to_html(docstring: str) -> str:
     """
     Utility method to convert a docstring to html with pydoctor. 
     """
-    err = []
+    err: List[ParseError] = []
     p = restructuredtext.parse_docstring(docstring, err)
-    if [ e.__dict__ for e in err ]!=[]: 
-        raise ValueError("\n".join([ pprint.pformat(e.__dict__) for e in err ]))
+    if err: 
+        raise ValueError("\n".join([ repr(e) for e in err ]))
     html=flatten(p.to_stan(None))
     return html
 
-def parse_and_print(s):
-     errors = []
-     parsed = restructuredtext.parse_docstring(s, errors)
-     for error in errors:
-         print(f'ERROR: {error}')
-     if parsed is None:
-         print('EMPTY BODY')
-     else:
-         print(flatten(parsed.to_stan(None)))
-     for field in parsed.fields:
-         body = flatten(field.body().to_stan(None))
-         arg = field.arg()
-         if arg is None:
-             print(f'{field.tag()}: {body}')
-         else:
-             print(f'{field.tag()} "{arg}": {body}')
-
 # TESTS FOR NOT IMPLEMENTTED FEATURES 
 
-'''
+@pytest.mark.xfail
 def test_rst_directive_abnomitions() -> None:
     html = to_html(".. warning:: Hey")
     expected_html="""
@@ -80,6 +60,7 @@ def test_rst_directive_abnomitions() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
+@pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:
     html = to_html(".. versionadded:: 0.6")
     expected_html="""
@@ -88,6 +69,7 @@ def test_rst_directive_versionadded() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
+@pytest.mark.xfail
 def test_rst_directive_versionchanged() -> None:
     html = to_html(""".. versionchanged:: 0.7
     Add extras""")
@@ -97,6 +79,7 @@ def test_rst_directive_versionchanged() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
+@pytest.mark.xfail
 def test_rst_directive_deprecated() -> None:
     html = to_html(""".. deprecated:: 0.2
     For security reasons""")
@@ -105,4 +88,3 @@ def test_rst_directive_deprecated() -> None:
         <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
-'''
