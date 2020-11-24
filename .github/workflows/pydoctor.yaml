@@ -2,7 +2,7 @@ name: Generate and publish some pydoctor docs
 
 on:
   push:
-    branches: "*
+    branches: "*"
 
 jobs:
   doc:
