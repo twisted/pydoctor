@@ -1,9 +1,7 @@
-import pprint
 import pytest
 from typing import List
 from pydoctor.epydoc.markup import ParseError, flatten, restructuredtext
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
-from pydoctor.epydoc.markup import flatten, restructuredtext
 from bs4 import BeautifulSoup
 
 def rst2html(s: str) -> str:
