@@ -1,4 +1,4 @@
-name: Generate and publish some pydoctor docs
+name: Generate and publish the pydoctor RST quick ref 
 
 on:
   push:
@@ -30,31 +30,6 @@ jobs:
         python --version
         python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
         python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
-
-    - name: Build cpython documentation
-      run: |
-
-        # Clone cpython
-        git clone https://github.com/python/cpython.git cpython
-        touch cpython/Lib/__init__.py
-        rm -rf cpython-output
-
-        # Run pydoctor build
-        pydoctor \
-            --docformat=restructuredtext \
-            --project-name=Python3.8 Standard Library \
-            --project-base-dir=cpython \
-            --html-output=cpython-output \
-            cpython/Lib || true # Allow pydoctor to exit with non-zero status code
-    
-    - name: Publish Pydoctor documentation to the gh-pages branch, folder cpython
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./cpython-output
-        commit_message: "Generate Pydoctor documentation"
-        destination_dir: cpython
-        keep_files: true
     
     - name: Build PyDoctor_ReST_Quick_Reference documentation
       run: |
