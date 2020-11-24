@@ -62,7 +62,7 @@ def parse_and_print(s):
 
 # TESTS FOR NOT IMPLEMENTTED FEATURES 
 
-@skip
+'''
 def test_rst_directive_abnomitions() -> None:
     html = to_html(".. warning:: Hey")
     expected_html="""
@@ -80,7 +80,6 @@ def test_rst_directive_abnomitions() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
-@skip
 def test_rst_directive_versionadded() -> None:
     html = to_html(".. versionadded:: 0.6")
     expected_html="""
@@ -89,7 +88,6 @@ def test_rst_directive_versionadded() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
-@skip
 def test_rst_directive_versionchanged() -> None:
     html = to_html(""".. versionchanged:: 0.7
     Add extras""")
@@ -99,7 +97,6 @@ def test_rst_directive_versionchanged() -> None:
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
 
-@skip
 def test_rst_directive_deprecated() -> None:
     html = to_html(""".. deprecated:: 0.2
     For security reasons""")
@@ -108,3 +105,4 @@ def test_rst_directive_deprecated() -> None:
         <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
         </div>"""
     assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+'''
