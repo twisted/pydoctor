@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
@@ -8,14 +8,16 @@ from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 
-def getBetterThanArgspec(argspec):
+def getBetterThanArgspec(
+        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+        ) -> Tuple[Iterable[str], Iterable[Tuple[str, str]]]:
     """Ok, maybe argspec's format isn't the best after all: This takes an
     argspec and returns (regularArguments, [(kwarg, kwval), (kwarg, kwval)])."""
     args = argspec[0]
     defaults = argspec[-1]
     if not defaults:
         return (args, [])
-    backargs = args[:]
+    backargs = list(args)
     backargs.reverse()
     defaults = list(defaults)
     defaults.reverse()
@@ -29,7 +31,9 @@ def _strtup(tup):
         return str(tup)
     return '(' + ', '.join(map(_strtup, tup)) + ')'
 
-def signature(argspec):
+def signature(
+        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+        ) -> str:
     """Return a nicely-formatted source-like signature, formatted from an
     argspec.
     """
