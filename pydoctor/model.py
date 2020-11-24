@@ -452,6 +452,7 @@ class Inheritable(Documentable):
 
 class Function(Inheritable):
     kind = "Function"
+    is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
