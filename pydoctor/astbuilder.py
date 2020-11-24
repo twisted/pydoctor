@@ -5,7 +5,7 @@ import sys
 from functools import partial
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -479,15 +479,7 @@ class ModuleVistor(ast.NodeVisitor):
             elif isclassmethod:
                 func.kind = 'Class Method'
 
-        args: List[str] = []
-
-        for arg in node.args.args:
-            if isinstance(arg, (ast.Tuple, ast.List)):
-                args.append([x.id for x in arg.elts])
-            elif isinstance(arg, ast.Name):
-                args.append(arg.id)
-            else:
-                args.append(arg.arg)
+        args = [arg.arg for arg in node.args.args]
 
         vararg = node.args.vararg
         varargname = None if vararg is None else vararg.arg

@@ -25,12 +25,6 @@ def getBetterThanArgspec(
     kws.reverse()
     return (args[:-len(kws)], kws)
 
-def _strtup(tup):
-    # Ugh
-    if not isinstance(tup, (tuple, list)):
-        return str(tup)
-    return '(' + ', '.join(map(_strtup, tup)) + ')'
-
 def signature(
         argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
         ) -> str:
@@ -39,19 +33,15 @@ def signature(
     """
     regargs, kwargs = getBetterThanArgspec(argspec)
     varargname, varkwname = argspec[1:3]
-    things = []
-    for regarg in regargs:
-        if isinstance(regarg, list):
-            things.append(_strtup(regarg))
-        else:
-            things.append(regarg)
+
+    things = list(regargs)
     if varargname:
         things.append(f'*{varargname}')
-
     for k, v in kwargs:
         things.append(f'{k}={v}')
     if varkwname:
         things.append(f'**{varkwname}')
+
     return ', '.join(things)
 
 class DocGetter:
