@@ -123,7 +123,7 @@ Directives
    * - ``.. python::``
      - `ref (pydoctor) <https://pydoctor.readthedocs.io/en/latest/api/pydoctor.epydoc.markup.restructuredtext.PythonCodeDirective.html>`_
      - Yes
-     
+
    * - ``.. math::``
      - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`_
      - Yes
@@ -274,4 +274,6 @@ Directives
 PyDoctor *restructuredtext* quick ref
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+*In construction*
 
+`Visit the PyDoctor ReST Quick Reference <https://tristanlatr.github.io/pydoctor/rst-quick-ref/>`_
