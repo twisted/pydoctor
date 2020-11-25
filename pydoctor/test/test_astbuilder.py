@@ -157,10 +157,9 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(*, a, b=None)',
     '(*, a=(), b)',
     '(a, b=3, *c, **kw)',
-    # TODO: These are technically correct but ugly:
-    '(f=(True))',
-    '(x=0.1, y=(-2))',
-    '(s="""theory""")',
+    '(f=True)',
+    '(x=0.1, y=-2)',
+    '(s=\'theory\', t="con\'text")',
     ))
 @systemcls_param
 def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:

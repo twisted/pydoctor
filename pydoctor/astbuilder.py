@@ -613,9 +613,18 @@ class _ValueFormatter:
         value = self.value
         if isinstance(value, ast.Num):
             return str(value.n)
-        else:
-            source: str = astor.to_source(value)
-            return source.strip()
+        if isinstance(value, ast.Str):
+            return repr(value.s)
+        if isinstance(value, ast.Constant):
+            return repr(value.value)
+        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+            operand = value.operand
+            if isinstance(operand, ast.Num):
+                return f'-{operand.n}'
+            if isinstance(operand, ast.Constant):
+                return f'-{operand.value}'
+        source: str = astor.to_source(value)
+        return source.strip()
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
