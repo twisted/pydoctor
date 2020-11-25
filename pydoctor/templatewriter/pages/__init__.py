@@ -1,6 +1,7 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Iterable, List, Optional, Sequence, Tuple, Union
+from inspect import Parameter, Signature
+from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
@@ -25,24 +26,44 @@ def getBetterThanArgspec(
     kws.reverse()
     return (args[:-len(kws)], kws)
 
+class _Preformatted:
+    """Wrapper for a string that returns that exact string from __repr__(),
+    without any added quotes.
+    """
+    def __init__(self, text: str):
+        self.text = text
+    def __repr__(self) -> str:
+        return self.text
+
+def iter_argspec(
+        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+        ) -> Iterator[Parameter]:
+    varargname, varkwname = argspec[1:3]
+    nodefaults, withdefaults = getBetterThanArgspec(argspec)
+
+    for name in nodefaults:
+        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
+    if varargname:
+        yield Parameter(varargname, Parameter.VAR_POSITIONAL)
+    for name, default in withdefaults:
+        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD, default=_Preformatted(default))
+    if varkwname:
+        yield Parameter(varkwname, Parameter.VAR_KEYWORD)
+
 def signature(
         argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
         ) -> str:
     """Return a nicely-formatted source-like signature, formatted from an
     argspec.
     """
-    regargs, kwargs = getBetterThanArgspec(argspec)
-    varargname, varkwname = argspec[1:3]
 
-    things = list(regargs)
-    if varargname:
-        things.append(f'*{varargname}')
-    for k, v in kwargs:
-        things.append(f'{k}={v}')
-    if varkwname:
-        things.append(f'**{varkwname}')
-
-    return ', '.join(things)
+    try:
+        sig = Signature(parameters=list(iter_argspec(argspec)))
+    except ValueError as ex:
+        # TODO: Log this as well.
+        return f'(invalid signature: {ex})'
+    else:
+        return str(sig)
 
 class DocGetter:
     def get(self, ob, summary=False):
@@ -414,4 +435,4 @@ class ZopeInterfaceClassPage(ClassPage):
 
 class FunctionPage(CommonPage):
     def mediumName(self, ob):
-        return [super().mediumName(ob), '(', signature(self.ob.argspec), ')']
+        return [super().mediumName(ob), signature(self.ob.argspec)]
