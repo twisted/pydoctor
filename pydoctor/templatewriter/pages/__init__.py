@@ -9,22 +9,6 @@ from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 
-def getBetterThanArgspec(
-        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
-        ) -> Tuple[Iterable[str], Iterable[Tuple[str, str]]]:
-    """Ok, maybe argspec's format isn't the best after all: This takes an
-    argspec and returns (regularArguments, [(kwarg, kwval), (kwarg, kwval)])."""
-    args = argspec[0]
-    defaults = argspec[-1]
-    if not defaults:
-        return (args, [])
-    backargs = list(args)
-    backargs.reverse()
-    defaults = list(defaults)
-    defaults.reverse()
-    kws = list(zip(backargs, defaults))
-    kws.reverse()
-    return (args[:-len(kws)], kws)
 
 class _Preformatted:
     """Wrapper for a string that returns that exact string from __repr__(),
@@ -36,10 +20,19 @@ class _Preformatted:
         return self.text
 
 def iter_argspec(
-        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+        args: Sequence[str],
+        varargname: Optional[str],
+        varkwname: Optional[str],
+        defaults: Sequence[str]
         ) -> Iterator[Parameter]:
-    varargname, varkwname = argspec[1:3]
-    nodefaults, withdefaults = getBetterThanArgspec(argspec)
+
+    if defaults:
+        withdefaults = list(zip(reversed(args), reversed(defaults)))
+        withdefaults.reverse()
+        nodefaults = args[:-len(withdefaults)]
+    else:
+        withdefaults = []
+        nodefaults = args
 
     for name in nodefaults:
         yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
@@ -58,7 +51,7 @@ def signature(
     """
 
     try:
-        sig = Signature(parameters=list(iter_argspec(argspec)))
+        sig = Signature(parameters=list(iter_argspec(*argspec)))
     except ValueError as ex:
         # TODO: Log this as well.
         return f'(invalid signature: {ex})'
