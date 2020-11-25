@@ -5,7 +5,7 @@ import sys
 from functools import partial
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -438,13 +438,16 @@ class ModuleVistor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_AsyncFunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._handleFunctionDef(node, is_async=True)
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _handleFunctionDef(self, node, is_async):
+    def _handleFunctionDef(self,
+            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+            is_async: bool
+            ) -> None:
         # Ignore inner functions.
         if isinstance(self.builder.current, model.Function):
             return
@@ -476,7 +479,7 @@ class ModuleVistor(ast.NodeVisitor):
             elif isclassmethod:
                 func.kind = 'Class Method'
 
-        args = []
+        args: List[str] = []
 
         for arg in node.args.args:
             if isinstance(arg, (ast.Tuple, ast.List)):
@@ -486,13 +489,11 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 args.append(arg.arg)
 
-        varargname = node.args.vararg
-        if varargname and not isinstance(varargname, str):
-            varargname = varargname.arg
+        vararg = node.args.vararg
+        varargname = None if vararg is None else vararg.arg
 
-        kwargname = node.args.kwarg
-        if kwargname and not isinstance(kwargname, str):
-            kwargname = kwargname.arg
+        kwarg = node.args.kwarg
+        kwargname = None if kwarg is None else kwarg.arg
 
         defaults = []
 
@@ -529,7 +530,7 @@ class ModuleVistor(ast.NodeVisitor):
         return None
 
     def _annotations_from_function(
-            self, func: ast.FunctionDef
+            self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
             ) -> Mapping[str, Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
