@@ -93,3 +93,13 @@ pydoctor_args = [
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     ]
+multi_pydoctor_args=[[
+    '--html-output={outdir}/rst',
+    f'--project-base-dir={_pydoctor_root}/docs/source/',
+    '--quiet',
+    '--make-html',
+    '--project-name=PyDoctor ReST Reference',
+    '--docformat=restructuredtext',
+    '--intersphinx=https://docs.python.org/3/objects.inv',
+     f'{_pydoctor_root}/docs/source/rst.py'
+]]
