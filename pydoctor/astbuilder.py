@@ -6,7 +6,7 @@ from functools import partial
 from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -480,32 +480,39 @@ class ModuleVistor(ast.NodeVisitor):
             elif isclassmethod:
                 func.kind = 'Class Method'
 
-        args = [arg.arg for arg in node.args.args]
+        # Position-only arguments were introduced in Python 3.8.
+        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
+
+        num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
-        if defaults:
-            withdefaults = list(zip(reversed(args), reversed(defaults)))
-            withdefaults.reverse()
-            nodefaults = args[:-len(withdefaults)]
-        else:
-            withdefaults = []
-            nodefaults = args
+        default_offset = num_pos_args - len(defaults)
+        def get_default(index: int) -> Optional[ast.expr]:
+            assert 0 <= index < num_pos_args, index
+            index -= default_offset
+            return None if index < 0 else defaults[index]
 
         parameters = []
+        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
+            default_val = Parameter.empty if default is None else _ValueFormatter(default)
+            parameters.append(Parameter(name, kind, default=default_val))
 
-        for name in nodefaults:
-            parameters.append(Parameter(name, Parameter.POSITIONAL_OR_KEYWORD))
+        for index, arg in enumerate(posonlyargs):
+            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
+
+        for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
+            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
 
         vararg = node.args.vararg
         if vararg is not None:
-            parameters.append(Parameter(vararg.arg, Parameter.VAR_POSITIONAL))
+            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
 
-        for name, default in withdefaults:
-            parameters.append(Parameter(name, Parameter.POSITIONAL_OR_KEYWORD,
-                                        default=_ValueFormatter(default)))
+        assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
+        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
 
         kwarg = node.args.kwarg
         if kwarg is not None:
-            parameters.append(Parameter(kwarg.arg, Parameter.VAR_KEYWORD))
+            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         try:
             signature = Signature(parameters)
