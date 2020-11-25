@@ -61,207 +61,207 @@ Alternatively, fields can be passed with this syntax::
 Directives
 ^^^^^^^^^^
 
-.. list-table:: Summary of supported and unsupported directives, with links to appropritate reference. 
+.. list-table:: Summary of supported and unsupported directives, with links to appropritate documentation. 
    :header-rows: 1
    
    * - Directive
-     - Reference
-     - Support
+     - Defined by
+     - Supported
 
    * - ``.. include::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#including-an-external-document-fragment>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#including-an-external-document-fragment>`_
      - Yes
 
    * - ``.. contents::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table-of-contents>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table-of-contents>`_
      - Yes
 
    * - ``.. image::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#image>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#image>`_
      - Yes
        
    * - ``.. |time| date:: %H:%M``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#date>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#date>`_
      - Yes
 
    * - ``.. figure::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#figure>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#figure>`_
      - Yes
 
    * - ``.. |T| replace:: term``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#replacement-text>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#replacement-text>`_
      - Yes
  
    * - ``.. unicode::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#unicode-character-codes>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#unicode-character-codes>`_
      - Yes
  
    * - ``.. raw::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#raw-data-pass-through>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#raw-data-pass-through>`_
      - Yes
   
    * - ``.. class::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#class>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#class>`_
      - eh
   
    * - ``.. role::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#custom-interpreted-text-roles>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#custom-interpreted-text-roles>`_
      - Yes
   
    * - ``.. default-role::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#setting-the-default-interpreted-text-role>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#setting-the-default-interpreted-text-role>`_
      - Yes
     
    * - ``.. line-block::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`_
      - eh
 
    * - ``.. code::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`_
      - Yes (syntax highlight ignored). Use ``.. python::``. 
    
    * - ``.. python::``
-     - `ref (pydoctor) <https://pydoctor.readthedocs.io/en/latest/api/pydoctor.epydoc.markup.restructuredtext.PythonCodeDirective.html>`_
+     - pydoctor
      - Yes
 
    * - ``.. math::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`_
      - Yes
     
    * - ``.. highlights::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#highlights>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#highlights>`_
      - eh
 
    * - ``.. pull-quote::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#pull-quote>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#pull-quote>`_
      - eh
 
    * - ``.. container::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#container>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#container>`_
      - Yes
 
    * - ``.. table::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#table>`_
      - Yes
 
    * - ``.. csv-table::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#id4>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#id4>`_
      - Yes
 
    * - ``.. list-table::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#list-table>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#list-table>`_
      - Yes
 
    * - ``.. warning::`` and other abnomitions
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#specific-admonitions>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#specific-admonitions>`_
      - No 
 
    * - ``.. versionadded::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionadded>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionadded>`_
      - No
 
    * - ``.. versionchanged::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionchanged>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionchanged>`_
      - No
 
    * - ``.. deprecated::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-deprecated>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-deprecated>`_
      - No
 
    * - ``.. centered::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-centered>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-centered>`_
      - No
 
    * - ``.. digraph::``
-     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#digraph_directive>`_
+     - `epydoc <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#digraph_directive>`_
      - No
 
    * - ``.. classtree::``
-     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#classtree_directive>`_
+     - `epydoc <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#classtree_directive>`_
      - No
 
    * - ``.. packagetree::``
-     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#package_directive>`_
+     - `epydoc <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#package_directive>`_
      - No
 
    * - ``.. importgraph::``
-     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#importgraph_directive>`_
+     - `epydoc <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#importgraph_directive>`_
      - No
 
    * - ``.. callgraph::``
-     - `ref (epydoc) <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#callgraph_directive>`_
+     - `epydoc <http://epydoc.sourceforge.net/api/epydoc.markup.restructuredtext-module.html#callgraph_directive>`_
      - No
 
    * - ``.. hlist::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-hlist>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-hlist>`_
      - No
 
    * - ``.. highlight::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-highlight>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-highlight>`_
      - No
 
    * - ``.. code-block::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block>`_
      - No
 
    * - ``.. literalinclude::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-literalinclude>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-literalinclude>`_
      - No
 
    * - ``.. glossary::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-glossary>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-glossary>`_
      - No
 
    * - ``.. index::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-index>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-index>`_
      - No
 
    * - ``.. sectionauthor::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-sectionauthor>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-sectionauthor>`_
      - No
 
    * - ``.. codeauthor::``
-     - `ref (Sphinx) <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-codeauthor>`_
+     - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-codeauthor>`_
      - No
 
    * - ``.. topic::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#topic>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#topic>`_
      - eh
 
    * - ``.. sidebar::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#sidebar>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#sidebar>`_
      - No
 
    * - ``.. rubric::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#rubric>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#rubric>`_
      - eh
 
    * - ``.. epigraph::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#epigraph>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#epigraph>`_
      - No
 
    * - ``.. compound::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#compound-paragraph>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#compound-paragraph>`_
      - eh
    
    * - ``.. sectnum::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#automatic-section-numbering>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#automatic-section-numbering>`_
      - No
  
    * - ``.. header::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
      - No
  
    * - ``.. footer::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`_
      - No
  
    * - ``.. meta::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#meta>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#meta>`_
      - No
   
    * - ``.. title::``
-     - `ref (docutils) <https://docutils.sourceforge.io/docs/ref/rst/directives.html#metadata-document-title>`_
+     - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#metadata-document-title>`_
      - No
 
 

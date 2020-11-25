@@ -16,7 +16,7 @@ author
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
+   * - Docstring
      
    * - :: 
   
@@ -31,7 +31,7 @@ Synonym:
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
+   * - Docstring
      
    * - :: 
 
@@ -44,7 +44,7 @@ parameters
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
+   * - Docstring
      
    * - :: 
   
@@ -115,8 +115,8 @@ line-block
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - :: 
 
@@ -147,8 +147,8 @@ code
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
 
    * - ::
     
@@ -212,8 +212,8 @@ math
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - :: 
 
@@ -231,8 +231,8 @@ raw
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - :: 
 
@@ -250,8 +250,8 @@ figure & image
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - :: 
 
@@ -275,8 +275,8 @@ tables
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - ::
 
@@ -375,8 +375,8 @@ date
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - ::
 
@@ -400,8 +400,8 @@ replace
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - ::
 
@@ -421,8 +421,8 @@ unicode
 .. list-table:: 
    :header-rows: 1
 
-   * - Plain text
-     - Result
+   * - Docstring
+     - Output
      
    * - ::
    
