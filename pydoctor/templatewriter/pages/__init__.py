@@ -1,7 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from inspect import Parameter, Signature
-from typing import Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Union
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
@@ -10,53 +9,9 @@ from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 
 
-class _Preformatted:
-    """Wrapper for a string that returns that exact string from __repr__(),
-    without any added quotes.
-    """
-    def __init__(self, text: str):
-        self.text = text
-    def __repr__(self) -> str:
-        return self.text
-
-def iter_argspec(
-        args: Sequence[str],
-        varargname: Optional[str],
-        varkwname: Optional[str],
-        defaults: Sequence[str]
-        ) -> Iterator[Parameter]:
-
-    if defaults:
-        withdefaults = list(zip(reversed(args), reversed(defaults)))
-        withdefaults.reverse()
-        nodefaults = args[:-len(withdefaults)]
-    else:
-        withdefaults = []
-        nodefaults = args
-
-    for name in nodefaults:
-        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
-    if varargname:
-        yield Parameter(varargname, Parameter.VAR_POSITIONAL)
-    for name, default in withdefaults:
-        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD, default=_Preformatted(default))
-    if varkwname:
-        yield Parameter(varkwname, Parameter.VAR_KEYWORD)
-
-def signature(
-        argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
-        ) -> str:
-    """Return a nicely-formatted source-like signature, formatted from an
-    argspec.
-    """
-
-    try:
-        sig = Signature(parameters=list(iter_argspec(*argspec)))
-    except ValueError as ex:
-        # TODO: Log this as well.
-        return f'(invalid signature: {ex})'
-    else:
-        return str(sig)
+def signature(function: model.Function) -> str:
+    """Return a nicely-formatted source-like function signature."""
+    return str(function.signature)
 
 class DocGetter:
     def get(self, ob, summary=False):
@@ -428,4 +383,4 @@ class ZopeInterfaceClassPage(ClassPage):
 
 class FunctionPage(CommonPage):
     def mediumName(self, ob):
-        return [super().mediumName(ob), signature(self.ob.argspec)]
+        return [super().mediumName(ob), signature(self.ob)]

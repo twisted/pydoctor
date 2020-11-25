@@ -3,9 +3,10 @@
 import ast
 import sys
 from functools import partial
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple, Union
+from typing import Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -495,7 +496,15 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 defaults.append(astor.to_source(default).strip())
 
-        func.argspec = (args, varargname, kwargname, tuple(defaults))
+        argspec = (args, varargname, kwargname, tuple(defaults))
+        try:
+            signature = Signature(parameters=list(_iter_parameters(*argspec)))
+        except ValueError:
+            # TODO: Log this.
+            signature = Signature()
+
+        func.argspec = argspec
+        func.signature = signature
         func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
@@ -575,6 +584,40 @@ class ModuleVistor(ast.NodeVisitor):
             assert isinstance(expr, ast.expr), expr
             return expr
 
+
+class _Preformatted:
+    """Wrapper for a string that returns that exact string from __repr__(),
+    without any added quotes.
+    """
+    def __init__(self, text: str):
+        self.text = text
+    def __repr__(self) -> str:
+        return self.text
+
+def _iter_parameters(
+        args: Sequence[str],
+        varargname: Optional[str],
+        varkwname: Optional[str],
+        defaults: Sequence[str]
+        ) -> Iterator[Parameter]:
+
+    if defaults:
+        withdefaults = list(zip(reversed(args), reversed(defaults)))
+        withdefaults.reverse()
+        nodefaults = args[:-len(withdefaults)]
+    else:
+        withdefaults = []
+        nodefaults = args
+
+    for name in nodefaults:
+        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
+    if varargname:
+        yield Parameter(varargname, Parameter.VAR_POSITIONAL)
+    for name, default in withdefaults:
+        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD,
+                        default=_Preformatted(default))
+    if varkwname:
+        yield Parameter(varkwname, Parameter.VAR_KEYWORD)
 
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
