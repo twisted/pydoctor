@@ -503,7 +503,6 @@ class ModuleVistor(ast.NodeVisitor):
             # TODO: Log this.
             signature = Signature()
 
-        func.argspec = argspec
         func.signature = signature
         func.annotations = self._annotations_from_function(node)
         self.default(node)

@@ -152,15 +152,38 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     assert func.is_async is True
 
 
+@pytest.mark.parametrize('signature', (
+    '()',
+    '(a, b=3, *c, **kw)',
+    ))
 @systemcls_param
-def test_function_argspec(systemcls: Type[model.System]) -> None:
-    src = textwrap.dedent('''
-    def f(a, b=3, *c, **kw):
-        pass
-    ''')
-    mod = fromText(src, systemcls=systemcls)
+def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
+    """A round trip from source to inspect.Signature and back produces
+    the original text.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
-    assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == signature
+
+
+@pytest.mark.parametrize('signature', (
+    '(a, a)',
+    ))
+@systemcls_param
+def test_function_badsig(signature: str, systemcls: Type[model.System]) -> None:
+    """When a function has an invalid signature, an error is logged and
+    the empty signature is returned.
+
+    Note that most bad signatures lead to a SyntaxError, which we cannot
+    recover from. This test checks what happens if the AST can be produced
+    but inspect.Signature() rejects the parsed parameters.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
+    docfunc, = mod.contents.values()
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == '()'
+    # TODO: Test logging.
 
 
 @systemcls_param
