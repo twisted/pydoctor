@@ -118,7 +118,7 @@ Directives
 
    * - ``.. code::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`_
-     - Yes (syntax highlight ignored). Use ``.. python::``. 
+     - No. Use ``.. python::``. 
    
    * - ``.. python::``
      - pydoctor
