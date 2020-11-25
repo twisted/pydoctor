@@ -34,7 +34,7 @@ def to_html(docstring: str) -> str:
     err: List[ParseError] = []
     p = restructuredtext.parse_docstring(docstring, err)
     if err: 
-        raise ValueError("\n".join([ repr(e) for e in err ]))
+        raise ValueError("\n".join(repr(e) for e in err))
     html=flatten(p.to_stan(None))
     return html
 
