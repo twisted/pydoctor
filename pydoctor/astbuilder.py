@@ -481,24 +481,34 @@ class ModuleVistor(ast.NodeVisitor):
                 func.kind = 'Class Method'
 
         args = [arg.arg for arg in node.args.args]
+        defaults = node.args.defaults
+        if defaults:
+            withdefaults = list(zip(reversed(args), reversed(defaults)))
+            withdefaults.reverse()
+            nodefaults = args[:-len(withdefaults)]
+        else:
+            withdefaults = []
+            nodefaults = args
+
+        parameters = []
+
+        for name in nodefaults:
+            parameters.append(Parameter(name, Parameter.POSITIONAL_OR_KEYWORD))
 
         vararg = node.args.vararg
-        varargname = None if vararg is None else vararg.arg
+        if vararg is not None:
+            parameters.append(Parameter(vararg.arg, Parameter.VAR_POSITIONAL))
+
+        for name, default in withdefaults:
+            parameters.append(Parameter(name, Parameter.POSITIONAL_OR_KEYWORD,
+                                        default=_ValueFormatter(default)))
 
         kwarg = node.args.kwarg
-        kwargname = None if kwarg is None else kwarg.arg
+        if kwarg is not None:
+            parameters.append(Parameter(kwarg.arg, Parameter.VAR_KEYWORD))
 
-        defaults = []
-
-        for default in node.args.defaults:
-            if isinstance(default, ast.Num):
-                defaults.append(str(default.n))
-            else:
-                defaults.append(astor.to_source(default).strip())
-
-        argspec = (args, varargname, kwargname, tuple(defaults))
         try:
-            signature = Signature(parameters=list(_iter_parameters(*argspec)))
+            signature = Signature(parameters)
         except ValueError:
             # TODO: Log this.
             signature = Signature()
@@ -584,39 +594,22 @@ class ModuleVistor(ast.NodeVisitor):
             return expr
 
 
-class _Preformatted:
-    """Wrapper for a string that returns that exact string from __repr__(),
-    without any added quotes.
+class _ValueFormatter:
+    """Formats values stored in AST expressions.
+    Used for presenting default values of parameters.
     """
-    def __init__(self, text: str):
-        self.text = text
+
+    def __init__(self, value: ast.expr):
+        self.value = value
+
     def __repr__(self) -> str:
-        return self.text
+        value = self.value
+        if isinstance(value, ast.Num):
+            return str(value.n)
+        else:
+            source: str = astor.to_source(value)
+            return source.strip()
 
-def _iter_parameters(
-        args: Sequence[str],
-        varargname: Optional[str],
-        varkwname: Optional[str],
-        defaults: Sequence[str]
-        ) -> Iterator[Parameter]:
-
-    if defaults:
-        withdefaults = list(zip(reversed(args), reversed(defaults)))
-        withdefaults.reverse()
-        nodefaults = args[:-len(withdefaults)]
-    else:
-        withdefaults = []
-        nodefaults = args
-
-    for name in nodefaults:
-        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD)
-    if varargname:
-        yield Parameter(varargname, Parameter.VAR_POSITIONAL)
-    for name, default in withdefaults:
-        yield Parameter(name, Parameter.POSITIONAL_OR_KEYWORD,
-                        default=_Preformatted(default))
-    if varkwname:
-        yield Parameter(varkwname, Parameter.VAR_KEYWORD)
 
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
