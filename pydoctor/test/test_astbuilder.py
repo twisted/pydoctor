@@ -192,7 +192,7 @@ def test_function_signature_posonly(signature: str, systemcls: Type[model.System
     '(a, a)',
     ))
 @systemcls_param
-def test_function_badsig(signature: str, systemcls: Type[model.System]) -> None:
+def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: CapSys) -> None:
     """When a function has an invalid signature, an error is logged and
     the empty signature is returned.
 
@@ -200,11 +200,12 @@ def test_function_badsig(signature: str, systemcls: Type[model.System]) -> None:
     recover from. This test checks what happens if the AST can be produced
     but inspect.Signature() rejects the parsed parameters.
     """
-    mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
     assert str(docfunc.signature) == '()'
-    # TODO: Test logging.
+    captured = capsys.readouterr().out
+    assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
 
 @systemcls_param

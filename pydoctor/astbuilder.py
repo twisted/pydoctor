@@ -516,8 +516,8 @@ class ModuleVistor(ast.NodeVisitor):
 
         try:
             signature = Signature(parameters)
-        except ValueError:
-            # TODO: Log this.
+        except ValueError as ex:
+            func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
         func.signature = signature
