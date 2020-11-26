@@ -1,16 +1,16 @@
-.. Configuration from https://setupdocx.sourceforge.io/configurations/epydoc/epydoc_sphinx_iframe/index.html
-.. Not used: <base target="_parent" />
+.. Configuration adjusted from https://setupdocx.sourceforge.io/configurations/epydoc/epydoc_sphinx_iframe/index.html
 
-      
-.. title:: PyDoctor ReST Reference (`View Full Screen <rst/rst.html>`)
-
+ReST Quick Ref
+^^^^^^^^^^^^^^
 
 .. raw:: html
 
    <style>
-      div[aria-label^=breadcrumbs], footer, #rst h1 {
+
+      div[aria-label^=breadcrumbs], footer, h1 {
          display: none;
       }
+
       div.wy-nav-content {
           padding: 0px 0px 0px 0px;
           max-width: 100%;
@@ -22,6 +22,7 @@
           position: absolute;
           top: 0;
           width: 100%;
+          border: none;
       }
    </style>
 
@@ -38,5 +39,6 @@
       <iframe id='glu'
          class="pydoctor-sphinx"
          src="rst/rst.html"
+         seamless
       ></iframe>
    </div>

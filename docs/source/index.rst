@@ -18,7 +18,7 @@ Installation
    readme
    usage
    help
-   docformat
+   docformat/index
    faq
    transition
    contrib

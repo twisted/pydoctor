@@ -93,13 +93,19 @@ pydoctor_args = [
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     ]
-multi_pydoctor_args=[[
-    '--html-output={outdir}/rst',
-    f'--project-base-dir={_pydoctor_root}/docs/source/',
-    '--quiet',
-    '--make-html',
-    '--project-name=PyDoctor ReST Reference',
-    '--docformat=restructuredtext',
-    '--intersphinx=https://docs.python.org/3/objects.inv',
-     f'{_pydoctor_root}/docs/source/rst.py'
-]]
+    
+# multi_pydoctor_args=[[
+#     '--html-output={outdir}/rst',
+#     f'--project-base-dir={_pydoctor_root}/docs/source/',
+#     '--quiet',
+#     '--make-html',
+#     '--project-name=PyDoctor ReST Reference',
+#     '--docformat=restructuredtext',
+#     '--intersphinx=https://docs.python.org/3/objects.inv',
+#      f'{_pydoctor_root}/docs/source/rst.py'
+# ]]
+
+# Getting AttributeError: 'Values' object has no attribute 'env'
+# It might be the same cause of https://github.com/sphinx-doc/sphinx/issues/2922
+# But I'm unsure what directive is the issue
+# Working arround... Using the tox environment to generate the HTML files before the sphinx build. In the tox environment. 
