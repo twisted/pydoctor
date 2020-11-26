@@ -38,6 +38,9 @@ def to_html(docstring: str) -> str:
     html=flatten(p.to_stan(None))
     return html
 
+def prettify(html:str) -> str:
+    return(BeautifulSoup(html).prettify())
+
 # TESTS FOR NOT IMPLEMENTTED FEATURES 
 
 @pytest.mark.xfail
@@ -48,7 +51,7 @@ def test_rst_directive_abnomitions() -> None:
         <p class="admonition-title">Warning</p>
         <p>Hey</p>
         </div>"""
-    assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+    assert prettify(html) == prettify(expected_html)
     
     html = to_html(".. note:: Hey")
     expected_html = """
@@ -56,7 +59,7 @@ def test_rst_directive_abnomitions() -> None:
         <p class="admonition-title">Note</p>
         <p>Hey</p>
         </div>"""
-    assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+    assert prettify(html) == prettify(expected_html)
 
 @pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:
@@ -65,7 +68,7 @@ def test_rst_directive_versionadded() -> None:
         <div class="versionadded">
         <p><span class="versionmodified added">New in version 0.6.</span></p>
         </div>"""
-    assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+    assert prettify(html) == prettify(expected_html)
 
 @pytest.mark.xfail
 def test_rst_directive_versionchanged() -> None:
@@ -75,7 +78,7 @@ def test_rst_directive_versionchanged() -> None:
         <div class="versionchanged">
         <p><span class="versionmodified changed">Changed in version 0.7: Add extras</span></p>
         </div>"""
-    assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+    assert prettify(html) == prettify(expected_html)
 
 @pytest.mark.xfail
 def test_rst_directive_deprecated() -> None:
@@ -85,4 +88,4 @@ def test_rst_directive_deprecated() -> None:
         <div class="deprecated">
         <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
         </div>"""
-    assert BeautifulSoup(html, 'html.parser').tree==BeautifulSoup(expected_html, 'html.parser').tree
+    assert prettify(html) == prettify(expected_html)
