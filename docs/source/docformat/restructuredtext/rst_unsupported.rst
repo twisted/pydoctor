@@ -1,3 +1,16 @@
+
+PyDoctor *restructuredtext* (Unsupported)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This document is a technical working document designed to help improve ReST support for PyDoctor.  
+It is not part of the main documentation.
+It's designed for PyDoctor developers.
+
+It lists some of the Unsupported fields of Directives. 
+
+Even if it is not part of the main documentation, it has some demontrative value. 
+
+
 topic
 +++++
 
