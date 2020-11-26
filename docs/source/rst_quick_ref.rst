@@ -45,7 +45,16 @@ parameters
    :header-rows: 1
 
    * - Docstring
-     
+
+   * - :: 
+
+          :Parameters:
+              - `size`: The size of the fox (in meters)
+              - `weight` (float) The weight of the fox (in stones)
+              - `age` (int) The age of the fox (in years)
+          :rtype: str
+          :return: The number of foxes
+
    * - :: 
   
           :Parameters:
@@ -67,44 +76,6 @@ parameters
           :type age: age
           :rtype: str
           :return: The number of foxes
-
-..
-
-  and others
-  ++++++++++
-
-  :group Docstring Processing: markup
-  :group Miscellaneous: util, test
-
-  :author: `Edward Loper <edloper@gradient.cis.upenn.edu>`__
-  :requires: Python 2.3+
-  :version: 3.0.1
-  :see: `The epydoc webpage <http://epydoc.sourceforge.net>`__
-  :see: `The epytext markup language manual <http://epydoc.sourceforge.net/epytext.html>`__
-
-  :todo: Create a better default top_page than trees.html.
-  :todo: Fix trees.html to work when documenting non-top-levelmodules/packages
-  :todo: Implement @include
-  :todo: Optimize epytext
-  :todo: More doctests
-  :todo: When introspecting, limit how much introspection you do (eg, don't construct docs for imported modules' vars if it's not necessary)
-
-  :bug: UserDict.* is interpreted as imported .. why??
-
-  :license: IBM Open Source License
-  :copyright: |copy| 2006 Edward Loper
-
-  :newfield contributor: Contributor, Contributors (Alphabetical Order)
-  :contributor: `Glyph Lefkowitz  <mailto:glyph@twistedmatrix.com>`__
-  :contributor: `Edward Loper  <mailto:edloper@gradient.cis.upenn.edu>`__
-  :contributor: `Bruce Mitchener  <mailto:bruce@cubik.org>`__
-  :contributor: `Jeff O'Halloran  <mailto:jeff@ohalloran.ca>`__
-  :contributor: `Simon Pamies  <mailto:spamies@bipbap.de>`__
-  :contributor: `Christian Reis  <mailto:kiko@async.com.br>`__
-  :contributor: `Daniele Varrazzo  <mailto:daniele.varrazzo@gmail.com>`__
-  :contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
-
-  .. |copy| unicode:: 0xA9 .. copyright sign
 
 Directives
 ~~~~~~~~~~
@@ -135,6 +106,7 @@ line-block
         |     or not to be an entire bee,
         |         when half the bee is not a bee,
         |             due to some ancient injury?
+
      -
         | But can a bee be said to be
         |     or not to be an entire bee,
@@ -149,34 +121,6 @@ code
 
    * - Docstring
      - Output
-
-   * - ::
-    
-        .. code:: python
-
-            def hey(**kargs):
-                '''
-                Do something.
-                :Parameters:
-                    size
-                        The size of the fox (in meters)
-                :rtype: str
-                :return: The number of foxes
-                '''
-                pass
-
-     - .. code:: python
-
-        def hey(**kargs):
-            '''
-            Do something.
-            :Parameters:
-                size
-                    The size of the fox (in meters)
-            :rtype: str
-            :return: The number of foxes
-            '''
-            pass
 
    * - ::
     

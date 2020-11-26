@@ -185,6 +185,8 @@ topic
     default-role
     ++++++++++++
 
+      PYDOCTOR ALREADY REPLACE THE DEFAULT ROLE 
+
     .. list-table:: 
       :header-rows: 1
 
@@ -222,4 +224,4 @@ meta
 title
 +++++
 
-.. title:: Just Tesing Yay
+.. title:: Just Testing Yay

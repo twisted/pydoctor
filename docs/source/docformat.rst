@@ -61,7 +61,23 @@ Alternatively, fields can be passed with this syntax::
 Directives
 ^^^^^^^^^^
 
-.. list-table:: Summary of supported and unsupported directives, with links to appropritate documentation. 
+Here is a list of the supported ReST directives:
+
+Defined 
+- by `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, 
+- by `epydoc`: None
+- by `Sphinx`: None
+- by `pydoctor`: ``.. python::``, 
+
+Reference
+^^^^^^^^^
+
+`Read the PyDoctor ReST Reference <rst.html>`_
+
+List
+^^^^
+
+.. list-table:: 
    :header-rows: 1
    
    * - Directive
