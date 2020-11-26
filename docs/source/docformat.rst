@@ -61,13 +61,12 @@ Alternatively, fields can be passed with this syntax::
 Directives
 ^^^^^^^^^^
 
-Here is a list of the supported ReST directives:
+Here is a list of the supported ReST directives by package of origin:
 
-Defined 
-- by `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, 
-- by `epydoc`: None
-- by `Sphinx`: None
-- by `pydoctor`: ``.. python::``, 
+- `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, etc
+- `epydoc`: None
+- `Sphinx`: None
+- `pydoctor`: ``.. python::``, 
 
 Reference
 ^^^^^^^^^
