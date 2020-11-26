@@ -5,6 +5,8 @@ ReStructuredText
 
    $ pip install -U docutils
 
+For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
+
 Default role
 ^^^^^^^^^^^^
 
@@ -104,5 +106,3 @@ Appendix (work in progress):
 .. note:: HTML Classes *restructuredtext* markup creates have a ``"rst-"`` prefix
 
 .. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.
-
-For more documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
