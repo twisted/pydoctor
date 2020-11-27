@@ -257,7 +257,13 @@ class FieldHandler:
         ret_type = formatted_annotations.pop('return', None)
         self.types.update(formatted_annotations)
         if ret_type is not None:
-            self.return_desc = FieldDesc(kind='return', type=ret_type)
+            # In most cases 'None' is not an actual return type, but the absence
+            # of a returned value. Not storing it is the easiest way to prevent
+            # it from being presented.
+            ann_ret = annotations['return']
+            assert ann_ret is not None  # ret_type would be None otherwise
+            if not _is_none_literal(ann_ret):
+                self.return_desc = FieldDesc(kind='return', type=ret_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
@@ -426,6 +432,11 @@ class FieldHandler:
             return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
         else:
             return tags.transparent # type: ignore[no-any-return]
+
+
+def _is_none_literal(node: ast.expr) -> bool:
+    """Does this AST node represent the literal constant None?"""
+    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:

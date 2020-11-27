@@ -59,6 +59,38 @@ def test_html_empty_module() -> None:
     """).strip()
     assert docstring2html(mod) == expected_html
 
+
+def test_func_undocumented_return_nothing() -> None:
+    """When the returned value is undocumented and its type is None,
+    omit the "Returns" entry from the output.
+    """
+    mod = fromText('''
+    def nop() -> None:
+        """Does nothing."""
+    ''')
+    func = mod.contents['nop']
+    lines = docstring2html(func).split('\n')
+    assert '<td class="fieldName">Returns</td>' not in lines
+
+
+def test_func_undocumented_return_something() -> None:
+    """When the returned value is undocumented and its type is not None,
+    include a the "Returns" entry in the output.
+    """
+    mod = fromText('''
+    def get_answer() -> int:
+        """Mostly harmless."""
+        return 42
+    ''')
+    func = mod.contents['get_answer']
+    lines = docstring2html(func).split('\n')
+    ret_idx = lines.index('<td class="fieldName">Returns</td>')
+    expected_html = """
+    <span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>
+    """.strip()
+    assert lines[ret_idx + 2] == expected_html
+
+
 def test_func_arg_and_ret_annotation() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: "List[str]") -> bool:
