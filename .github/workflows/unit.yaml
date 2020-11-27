@@ -48,7 +48,7 @@ jobs:
       run: |
         tox -e codecov
 
-  publish:
+  release:
 
     needs: [unit_tests]
     runs-on: ubuntu-latest
