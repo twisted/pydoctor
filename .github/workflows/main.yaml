@@ -138,7 +138,7 @@ jobs:
 
       - name: Build pydoctor
         run: |
-          python3 setup.py --quiet build check sdist bdist_wheel
+          python setup.py --quiet build check sdist bdist_wheel
           ls -alh ./dist/
 
       - name: Publish pydoctor to PyPI on tags
