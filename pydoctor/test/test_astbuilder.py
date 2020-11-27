@@ -12,7 +12,7 @@ from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import CapSys, typecomment
+from . import CapSys, posonlyargs, typecomment
 import pytest
 
 
@@ -152,15 +152,59 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     assert func.is_async is True
 
 
+@pytest.mark.parametrize('signature', (
+    '()',
+    '(*, a, b=None)',
+    '(*, a=(), b)',
+    '(a, b=3, *c, **kw)',
+    '(f=True)',
+    '(x=0.1, y=-2)',
+    '(s=\'theory\', t="con\'text")',
+    ))
 @systemcls_param
-def test_function_argspec(systemcls: Type[model.System]) -> None:
-    src = textwrap.dedent('''
-    def f(a, b=3, *c, **kw):
-        pass
-    ''')
-    mod = fromText(src, systemcls=systemcls)
+def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
+    """A round trip from source to inspect.Signature and back produces
+    the original text.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
-    assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == signature
+
+@posonlyargs
+@pytest.mark.parametrize('signature', (
+    '(x, y, /)',
+    '(x, y=0, /)',
+    '(x, y, /, z, w)',
+    '(x, y, /, z, w=42)',
+    '(x, y, /, z=0, w=0)',
+    '(x, y=3, /, z=5, w=7)',
+    '(x, /, *v, a=1, b=2)',
+    '(x, /, *, a=1, b=2, **kwargs)',
+    ))
+@systemcls_param
+def test_function_signature_posonly(signature: str, systemcls: Type[model.System]) -> None:
+    test_function_signature(signature, systemcls)
+
+
+@pytest.mark.parametrize('signature', (
+    '(a, a)',
+    ))
+@systemcls_param
+def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: CapSys) -> None:
+    """When a function has an invalid signature, an error is logged and
+    the empty signature is returned.
+
+    Note that most bad signatures lead to a SyntaxError, which we cannot
+    recover from. This test checks what happens if the AST can be produced
+    but inspect.Signature() rejects the parsed parameters.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
+    docfunc, = mod.contents.values()
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == '()'
+    captured = capsys.readouterr().out
+    assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
 
 @systemcls_param

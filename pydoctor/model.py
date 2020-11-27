@@ -15,6 +15,7 @@ import platform
 import sys
 import types
 from enum import Enum
+from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
@@ -455,7 +456,7 @@ class Function(Inheritable):
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
-    argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+    signature: Signature
 
     def setup(self) -> None:
         super().setup()
@@ -709,7 +710,7 @@ class System:
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
                 f.decorators = None
-                f.argspec = ((), None, None, ())
+                f.signature = Signature()
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)

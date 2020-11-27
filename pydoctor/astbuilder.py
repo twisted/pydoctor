@@ -3,9 +3,10 @@
 import ast
 import sys
 from functools import partial
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -438,13 +439,16 @@ class ModuleVistor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_AsyncFunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._handleFunctionDef(node, is_async=True)
 
-    def visit_FunctionDef(self, node):
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._handleFunctionDef(node, is_async=False)
 
-    def _handleFunctionDef(self, node, is_async):
+    def _handleFunctionDef(self,
+            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+            is_async: bool
+            ) -> None:
         # Ignore inner functions.
         if isinstance(self.builder.current, model.Function):
             return
@@ -476,33 +480,47 @@ class ModuleVistor(ast.NodeVisitor):
             elif isclassmethod:
                 func.kind = 'Class Method'
 
-        args = []
+        # Position-only arguments were introduced in Python 3.8.
+        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
 
-        for arg in node.args.args:
-            if isinstance(arg, (ast.Tuple, ast.List)):
-                args.append([x.id for x in arg.elts])
-            elif isinstance(arg, ast.Name):
-                args.append(arg.id)
-            else:
-                args.append(arg.arg)
+        num_pos_args = len(posonlyargs) + len(node.args.args)
+        defaults = node.args.defaults
+        default_offset = num_pos_args - len(defaults)
+        def get_default(index: int) -> Optional[ast.expr]:
+            assert 0 <= index < num_pos_args, index
+            index -= default_offset
+            return None if index < 0 else defaults[index]
 
-        varargname = node.args.vararg
-        if varargname and not isinstance(varargname, str):
-            varargname = varargname.arg
+        parameters = []
+        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
+            default_val = Parameter.empty if default is None else _ValueFormatter(default)
+            parameters.append(Parameter(name, kind, default=default_val))
 
-        kwargname = node.args.kwarg
-        if kwargname and not isinstance(kwargname, str):
-            kwargname = kwargname.arg
+        for index, arg in enumerate(posonlyargs):
+            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
 
-        defaults = []
+        for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
+            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
 
-        for default in node.args.defaults:
-            if isinstance(default, ast.Num):
-                defaults.append(str(default.n))
-            else:
-                defaults.append(astor.to_source(default).strip())
+        vararg = node.args.vararg
+        if vararg is not None:
+            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
 
-        func.argspec = (args, varargname, kwargname, tuple(defaults))
+        assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
+        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
+
+        kwarg = node.args.kwarg
+        if kwarg is not None:
+            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
+
+        try:
+            signature = Signature(parameters)
+        except ValueError as ex:
+            func.report(f'{func.fullName()} has invalid parameters: {ex}')
+            signature = Signature()
+
+        func.signature = signature
         func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
@@ -529,7 +547,7 @@ class ModuleVistor(ast.NodeVisitor):
         return None
 
     def _annotations_from_function(
-            self, func: ast.FunctionDef
+            self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
             ) -> Mapping[str, Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
@@ -581,6 +599,32 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             assert isinstance(expr, ast.expr), expr
             return expr
+
+
+class _ValueFormatter:
+    """Formats values stored in AST expressions.
+    Used for presenting default values of parameters.
+    """
+
+    def __init__(self, value: ast.expr):
+        self.value = value
+
+    def __repr__(self) -> str:
+        value = self.value
+        if isinstance(value, ast.Num):
+            return str(value.n)
+        if isinstance(value, ast.Str):
+            return repr(value.s)
+        if isinstance(value, ast.Constant):
+            return repr(value.value)
+        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+            operand = value.operand
+            if isinstance(operand, ast.Num):
+                return f'-{operand.n}'
+            if isinstance(operand, ast.Constant):
+                return f'-{operand.value}'
+        source: str = astor.to_source(value)
+        return source.strip()
 
 
 class _AnnotationStringParser(ast.NodeTransformer):
