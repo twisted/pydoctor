@@ -166,7 +166,7 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(Element):
+class NameIndexPage(IncludeCustomizableTemplates):
     filename = 'nameIndex.html'
 
     @property

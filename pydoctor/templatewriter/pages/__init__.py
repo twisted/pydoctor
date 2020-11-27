@@ -69,7 +69,7 @@ class IncludeCustomizableTemplates(Element):
         return tag('Header.')
 
     @renderer
-    def pageTitle(self, request, tag):
+    def pageHeader(self, request, tag):
         return tag('Page title.')
 
     @renderer
