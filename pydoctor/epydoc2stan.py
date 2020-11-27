@@ -292,12 +292,38 @@ class FieldHandler:
         else:
             return name
 
+    def _handle_param_not_found(self, name: str, field: Field) -> None:
+        """Figure out if the parameter might exist despite not being found
+        in this documentable's code, warn if not.
+        """
+        source = field.source
+        if source is not self.obj:
+            # Docstring is inherited, so it may not represent this exact method.
+            return
+        if isinstance(source, model.Class):
+            if None in source.baseobjects:
+                # Class has a computed base class, which could define parameters
+                # we can't discover.
+                # For example, this class might use
+                # L{twisted.python.components.proxyForInterface()}.
+                return
+            if name in source.constructor_params:
+                # Constructor parameters can be documented on the class.
+                return
+        field.report('Documented parameter "%s" does not exist' % (name,))
+
     def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
         desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
+            if name is not None and name not in self.types and not any(
+                    # Don't warn about keywords or about parameters we already
+                    # reported a warning for.
+                    desc.name == name for desc in self.parameter_descs
+                    ):
+                self._handle_param_not_found(name, field)
         else:
             # Note: extract_fields() will issue warnings about missing field
             #       names, so we can silently ignore them here.
@@ -312,26 +338,9 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             self.add_info(self.parameter_descs, name, field)
-            if name in self.types:
-                return
+            if name not in self.types:
+                self._handle_param_not_found(name, field)
 
-            # Figure out if the parameter might exist despite not being found
-            # in this documentable's code, warn if not.
-            source = field.source
-            if source is not self.obj:
-                # Docstring is inherited, so it may not represent this exact method.
-                return
-            if isinstance(source, model.Class):
-                if None in source.baseobjects:
-                    # Class has a computed base class, which could define parameters
-                    # we can't discover.
-                    # For example, this class might use
-                    # L{twisted.python.components.proxyForInterface()}.
-                    return
-                if name in source.constructor_params:
-                    # Constructor parameters can be documented on the class.
-                    return
-            field.report('Documented parameter "%s" does not exist' % (name,))
     handle_arg = handle_param
 
     def handle_keyword(self, field: Field) -> None:

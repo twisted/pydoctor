@@ -159,19 +159,38 @@ def test_func_arg_when_doc_missing() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-def test_func_no_such_arg(capsys: CapSys) -> None:
+@mark.parametrize('field', ('param', 'type'))
+def test_func_no_such_arg(field: str, capsys: CapSys) -> None:
     """Warn about documented parameters that don't exist in the definition."""
-    mod = fromText('''
+    mod = fromText(f'''
     def f():
         """
         This function takes no arguments...
 
-        @param x: ...but it does document one.
+        @{field} x: ...but it does document one.
         """
     ''')
     epydoc2stan.format_docstring(mod.contents['f'])
     captured = capsys.readouterr().out
     assert captured == '<test>:6: Documented parameter "x" does not exist\n'
+
+def test_func_no_such_arg_warn_once(capsys: CapSys) -> None:
+    """Warn exactly once about a param/type combination not existing."""
+    mod = fromText('''
+    def f():
+        """
+        @param x: Param first.
+        @type x: Param first.
+        @type y: Type first.
+        @param y: Type first.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<test>:4: Documented parameter "x" does not exist\n'
+        '<test>:6: Documented parameter "y" does not exist\n'
+        )
 
 def test_func_arg_not_inherited(capsys: CapSys) -> None:
     """Do not warn about non-existing parameters from inherited docstrings."""
@@ -180,6 +199,7 @@ def test_func_arg_not_inherited(capsys: CapSys) -> None:
         def __init__(self, value):
             """
             @param value: Preciousss.
+            @type value: Gold.
             """
     class Sub(Base):
         def __init__(self):
@@ -197,11 +217,12 @@ def test_func_keyword(capsys: CapSys) -> None:
         """
         @keyword a: Advanced.
         @keyword b: Basic.
+        @type b: Type for previously introduced keyword.
         @keyword p: A parameter, not a keyword.
         """
     ''')
     epydoc2stan.format_docstring(mod.contents['f'])
-    assert capsys.readouterr().out == '<test>:6: Parameter "p" is documented as keyword\n'
+    assert capsys.readouterr().out == '<test>:7: Parameter "p" is documented as keyword\n'
 
 def test_func_missing_param_name(capsys: CapSys) -> None:
     """Param and type fields must include the name of the parameter."""
