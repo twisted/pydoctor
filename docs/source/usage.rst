@@ -30,8 +30,26 @@ It will add a link to the project website in all pages header, show a link to so
 ``__all__`` re-export
 ---------------------
 
-A documented element which is defined in ``module1``, but included in ``__all__`` of ``module2``
-that it is imported into, will end up in the documentation of ``module2``.
+A documented element which is defined in ``my_package.core.session``, but included in ``__all__`` of ``my_package`` - in the ``__init__.py`` - 
+that it is imported into, will end up in the documentation of ``my_package``. 
+
+For instance, in the following configuration, the documentation of the ``MyClass`` object will be moved to the root package, ``my_package``.
+
+:: 
+
+  ├── CONTRIBUTING.rst
+  ├── LICENSE.txt
+  ├── README.rst
+  ├── my_package
+  │   ├── __init__.py     <-- Re-export `my_package.core.session.MyClass` 
+  │   ├── core                as `my_package.MyClass`
+  │   │   ├── __init__.py
+  │   │   ├── session.py  <-- Defines `MyClass`
+
+The content of ``my_package/__init__.py``::
+
+  from .core.session import MyClass
+  __all__ = ['MyClass', 'etc.']
 
 Document part of your package
 -----------------------------
