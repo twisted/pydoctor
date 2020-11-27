@@ -66,7 +66,7 @@ def test_func_undocumented_return_nothing() -> None:
     """
     mod = fromText('''
     def nop() -> None:
-        """Does nothing."""
+        pass
     ''')
     func = mod.contents['nop']
     lines = docstring2html(func).split('\n')
@@ -79,7 +79,6 @@ def test_func_undocumented_return_something() -> None:
     """
     mod = fromText('''
     def get_answer() -> int:
-        """Mostly harmless."""
         return 42
     ''')
     func = mod.contents['get_answer']

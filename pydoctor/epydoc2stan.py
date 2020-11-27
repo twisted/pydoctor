@@ -482,42 +482,45 @@ def format_docstring(obj: model.Documentable) -> Tag:
     # Use cached or split version if possible.
     pdoc = obj.parsed_docstring
 
-    ret: Tag = tags.div
-    if pdoc is None:
-        if doc is None:
-            ret(class_='undocumented')("Undocumented")
-            return ret
+    if source is None:
+        if pdoc is None:
+            # We don't use 'source' if pdoc is None, but mypy is not that
+            # sophisticated, so we fool it by assigning a dummy object.
+            source = obj
         else:
-            # Tell mypy that if we found a docstring, we also have its source.
+            # A split field is documented by its parent.
+            source = obj.parent
             assert source is not None
+
+    if pdoc is None and doc is not None:
         pdoc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = pdoc
-    elif source is None:
-        # A split field is documented by its parent.
-        source = obj.parent
-        assert source is not None
 
-    try:
-        stan = pdoc.to_stan(_EpydocLinker(source))
-    except Exception as e:
-        errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-        if doc is None:
-            stan = tags.p(class_="undocumented")('Broken description')
-        else:
-            pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-            stan = pdoc_plain.to_stan(_EpydocLinker(source))
-        reportErrors(source, errs)
-    if stan.tagName:
-        ret(stan)
+    ret: Tag = tags.div
+    if pdoc is None:
+        ret(tags.p(class_='undocumented')("Undocumented"))
     else:
-        ret(*stan.children)
+        try:
+            stan = pdoc.to_stan(_EpydocLinker(source))
+        except Exception as e:
+            errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
+            if doc is None:
+                stan = tags.p(class_="undocumented")('Broken description')
+            else:
+                pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+                stan = pdoc_plain.to_stan(_EpydocLinker(source))
+            reportErrors(source, errs)
+        if stan.tagName:
+            ret(stan)
+        else:
+            ret(*stan.children)
 
-    fields = pdoc.fields
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    for field in fields:
-        fh.handle(Field.from_epydoc(field, source))
+    if pdoc is not None:
+        for field in pdoc.fields:
+            fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
         fh.resolve_types()
     ret(fh.format())
