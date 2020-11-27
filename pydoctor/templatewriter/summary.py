@@ -2,6 +2,7 @@
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import IncludeCustomizableTemplates
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
 
@@ -25,7 +26,7 @@ def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
 
-class ModuleIndexPage(Element):
+class ModuleIndexPage(IncludeCustomizableTemplates):
     filename = 'moduleIndex.html'
 
     @property
@@ -84,7 +85,7 @@ def subclassesFrom(hostsystem, cls, anchors):
         r(ul)
     return r
 
-class ClassIndexPage(Element):
+class ClassIndexPage(IncludeCustomizableTemplates):
     filename = 'classIndex.html'
 
     @property
@@ -199,7 +200,7 @@ class NameIndexPage(Element):
         return r
 
 
-class IndexPage(Element):
+class IndexPage(IncludeCustomizableTemplates):
     filename = 'index.html'
 
     @property
@@ -275,7 +276,7 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(Element):
+class UndocumentedSummaryPage(IncludeCustomizableTemplates):
     filename = 'undoccedSummary.html'
 
     @property

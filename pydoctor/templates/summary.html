@@ -7,6 +7,9 @@
     <link rel="stylesheet" type="text/css" href="apidocs.css"/>
   </head>
   <body>
+
+    <div t:render="header" />
+
     <nav class="navbar navbar-default">
       <div class="container">
 
@@ -18,6 +21,8 @@
       </div>
     </nav>
 
+    <div class="container" t:render="pageHeader" />
+
     <div class="container">
 
       <div class="page-header">
@@ -28,5 +33,8 @@
       </ul>
 
     </div>
+
+    <div class="container" t:render="footer" />
+
   </body>
 </html>

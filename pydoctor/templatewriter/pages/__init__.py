@@ -62,7 +62,21 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class CommonPage(Element):
+class IncludeCustomizableTemplates(Element):
+
+    @renderer
+    def header(self, request, tag):
+        return tag('Header.')
+
+    @renderer
+    def pageTitle(self, request, tag):
+        return tag('Page title.')
+
+    @renderer
+    def footer(self, request, tag):
+        return tag('Footer.')
+
+class CommonPage(IncludeCustomizableTemplates):
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob
@@ -421,3 +435,4 @@ class ZopeInterfaceClassPage(ClassPage):
 class FunctionPage(CommonPage):
     def mediumName(self, ob):
         return [super().mediumName(ob), '(', signature(self.ob.argspec), ')']
+

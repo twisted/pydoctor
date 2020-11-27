@@ -9,6 +9,8 @@
   </head>
   <body>
 
+    <div t:render="header" />
+
     <nav class="navbar navbar-default">
       <div class="container">
 
@@ -20,6 +22,7 @@
       </div>
     </nav>
 
+    <div class="container" t:render="pageHeader" />
 
     <div class="container">
 
@@ -39,6 +42,9 @@
       </t:transparent>
 
     </div>
+
+    <div class="container" t:render="footer" />
+
   </body>
 
 </html>
