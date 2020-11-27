@@ -59,6 +59,39 @@ def test_html_empty_module() -> None:
     """).strip()
     assert docstring2html(mod) == expected_html
 
+
+def test_func_undocumented_return_nothing() -> None:
+    """When the returned value is undocumented (no 'return' field) and its type
+    annotation is None, omit the "Returns" entry from the output.
+    """
+    mod = fromText('''
+    def nop() -> None:
+        pass
+    ''')
+    func = mod.contents['nop']
+    lines = docstring2html(func).split('\n')
+    assert '<td class="fieldName">Returns</td>' not in lines
+
+
+def test_func_undocumented_return_something() -> None:
+    """When the returned value is undocumented (no 'return' field) and its type
+    annotation is not None, include the "Returns" entry in the output.
+    """
+    mod = fromText('''
+    def get_answer() -> int:
+        return 42
+    ''')
+    func = mod.contents['get_answer']
+    lines = docstring2html(func).split('\n')
+    ret_idx = lines.index('<td class="fieldName">Returns</td>')
+    expected_html = [
+        '<td class="fieldName">Returns</td>',
+        '<td colspan="2">',
+        '<span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>',
+        ]
+    assert lines[ret_idx:ret_idx + 3] == expected_html
+
+
 def test_func_arg_and_ret_annotation() -> None:
     annotation_mod = fromText('''
     def f(a: List[str], b: "List[str]") -> bool:
@@ -94,7 +127,7 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
         """
     ''')
     classic_mod = fromText('''
-    def f(a):
+    def f(a, b):
         """
         @param a: an arg, a the best of args
         @type a: C{List[str]}
@@ -128,6 +161,85 @@ def test_func_arg_when_doc_missing() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
+def test_func_param_duplicate(capsys: CapSys) -> None:
+    """Warn when the same parameter is documented more than once."""
+    mod = fromText('''
+    def f(x, y):
+        """
+        @param x: Actual documentation.
+        @param x: Likely typo or copy-paste error.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:5: Parameter "x" was already documented\n'
+
+@mark.parametrize('field', ('param', 'type'))
+def test_func_no_such_arg(field: str, capsys: CapSys) -> None:
+    """Warn about documented parameters that don't exist in the definition."""
+    mod = fromText(f'''
+    def f():
+        """
+        This function takes no arguments...
+
+        @{field} x: ...but it does document one.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:6: Documented parameter "x" does not exist\n'
+
+def test_func_no_such_arg_warn_once(capsys: CapSys) -> None:
+    """Warn exactly once about a param/type combination not existing."""
+    mod = fromText('''
+    def f():
+        """
+        @param x: Param first.
+        @type x: Param first.
+        @type y: Type first.
+        @param y: Type first.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == (
+        '<test>:4: Documented parameter "x" does not exist\n'
+        '<test>:6: Documented parameter "y" does not exist\n'
+        )
+
+def test_func_arg_not_inherited(capsys: CapSys) -> None:
+    """Do not warn when a subclass method lacks parameters that are documented
+    in an inherited docstring.
+    """
+    mod = fromText('''
+    class Base:
+        def __init__(self, value):
+            """
+            @param value: Preciousss.
+            @type value: Gold.
+            """
+    class Sub(Base):
+        def __init__(self):
+            super().__init__(1)
+    ''')
+    epydoc2stan.format_docstring(mod.contents['Base'].contents['__init__'])
+    assert capsys.readouterr().out == ''
+    epydoc2stan.format_docstring(mod.contents['Sub'].contents['__init__'])
+    assert capsys.readouterr().out == ''
+
+def test_func_param_as_keyword(capsys: CapSys) -> None:
+    """Warn when a parameter is documented as a @keyword."""
+    mod = fromText('''
+    def f(p, **kwargs):
+        """
+        @keyword a: Advanced.
+        @keyword b: Basic.
+        @type b: Type for previously introduced keyword.
+        @keyword p: A parameter, not a keyword.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    assert capsys.readouterr().out == '<test>:7: Parameter "p" is documented as keyword\n'
 
 def test_func_missing_param_name(capsys: CapSys) -> None:
     """Param and type fields must include the name of the parameter."""
@@ -145,6 +257,44 @@ def test_func_missing_param_name(capsys: CapSys) -> None:
         '<test>:5: Parameter name missing\n'
         '<test>:6: Parameter name missing\n'
         )
+
+def test_missing_param_computed_base(capsys: CapSys) -> None:
+    """Do not warn if a parameter might be added by a computed base class."""
+    mod = fromText('''
+    from twisted.python import components
+    import zope.interface
+    class IFoo(zope.interface.Interface):
+        pass
+    class Proxy(components.proxyForInterface(IFoo)):
+        """
+        @param original: The wrapped instance.
+        """
+    ''')
+    html = docstring2html(mod.contents['Proxy'])
+    assert '<td>The wrapped instance.</td>' in html.split('\n')
+    captured = capsys.readouterr().out
+    assert captured == ''
+
+def test_constructor_param_on_class(capsys: CapSys) -> None:
+    """Constructor parameters can be documented on the class."""
+    mod = fromText('''
+    class C:
+        """
+        @param p: Constructor parameter.
+        @param q: Not a constructor parameter.
+        """
+        def __init__(self, p):
+            pass
+    ''')
+    html = docstring2html(mod.contents['C']).split('\n')
+    assert '<td>Constructor parameter.</td>' in html
+    # Non-existing parameters should still end up in the output, because:
+    # - pydoctor might be wrong about them not existing
+    # - the documentation may still be useful, for example if belongs to
+    #   an existing parameter but the name in the @param field has a typo
+    assert '<td>Not a constructor parameter.</td>' in html
+    captured = capsys.readouterr().out
+    assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
 
 def test_func_missing_exception_type(capsys: CapSys) -> None:

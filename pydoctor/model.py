@@ -93,7 +93,6 @@ class Documentable:
     @ivar kind: ...
     """
     docstring: Optional[str] = None
-    system: 'System'
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -430,6 +429,22 @@ class Class(CanContainImportsDocumentable):
             return self._localNameToFullName_map[name]
         else:
             return self.parent._localNameToFullName(name)
+
+    @property
+    def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
+        """A mapping of constructor parameter names to their type annotation.
+        If a parameter is not annotated, its value is L{None}.
+        """
+
+        # We assume that the constructor parameters are the same as the
+        # __init__() parameters. This is incorrect if __new__() or the class
+        # call have different parameters.
+        for base in self.allbases(include_self=True):
+            init = base.contents.get('__init__')
+            if isinstance(init, Function):
+                return init.annotations
+        else:
+            return {}
 
 
 class Inheritable(Documentable):
