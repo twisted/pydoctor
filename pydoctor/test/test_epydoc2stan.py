@@ -61,8 +61,8 @@ def test_html_empty_module() -> None:
 
 
 def test_func_undocumented_return_nothing() -> None:
-    """When the returned value is undocumented and its type is None,
-    omit the "Returns" entry from the output.
+    """When the returned value is undocumented (no 'return' field) and its type
+    annotation is None, omit the "Returns" entry from the output.
     """
     mod = fromText('''
     def nop() -> None:
@@ -74,8 +74,8 @@ def test_func_undocumented_return_nothing() -> None:
 
 
 def test_func_undocumented_return_something() -> None:
-    """When the returned value is undocumented and its type is not None,
-    include a the "Returns" entry in the output.
+    """When the returned value is undocumented (no 'return' field) and its type
+    annotation is not None, include the "Returns" entry in the output.
     """
     mod = fromText('''
     def get_answer() -> int:
@@ -206,7 +206,9 @@ def test_func_no_such_arg_warn_once(capsys: CapSys) -> None:
         )
 
 def test_func_arg_not_inherited(capsys: CapSys) -> None:
-    """Do not warn about non-existing parameters from inherited docstrings."""
+    """Do not warn when a subclass method lacks parameters that are documented
+    in an inherited docstring.
+    """
     mod = fromText('''
     class Base:
         def __init__(self, value):
@@ -223,8 +225,8 @@ def test_func_arg_not_inherited(capsys: CapSys) -> None:
     epydoc2stan.format_docstring(mod.contents['Sub'].contents['__init__'])
     assert capsys.readouterr().out == ''
 
-def test_func_keyword(capsys: CapSys) -> None:
-    """Test handling of @keyword."""
+def test_func_param_as_keyword(capsys: CapSys) -> None:
+    """Warn when a parameter is documented as a @keyword."""
     mod = fromText('''
     def f(p, **kwargs):
         """
