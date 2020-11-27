@@ -1,20 +1,22 @@
-name: Publish pydoctor to PyPI
+name: Publish pydoctor to PyPI on tags
 on:
   push:
-    tags: 
+    branches:
       - '*'
-
+      
 jobs:
   publish:
+
+    needs: [static_checks, system_tests, unit_tests]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
 
-      - name: Set up Python 3.6
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: 3.6
+          python-version: 3.9
       
       - name: Log system information
         run: |
@@ -29,9 +31,12 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Build pydoctor
-        run: python3 setup.py --quiet build check sdist bdist_wheel
+        run: |
+          python3 setup.py --quiet build check sdist bdist_wheel
+          ls -alh ./dist/
 
-      - name: Publish pydoctor to PyPI
+      - name: Publish pydoctor to PyPI on tags
+        if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
