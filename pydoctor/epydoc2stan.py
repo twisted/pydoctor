@@ -337,6 +337,8 @@ class FieldHandler:
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
         if name is not None:
+            if any(desc.name == name for desc in self.parameter_descs):
+                field.report('Parameter "%s" was already documented' % (name,))
             self.add_info(self.parameter_descs, name, field)
             if name not in self.types:
                 self._handle_param_not_found(name, field)

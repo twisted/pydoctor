@@ -159,6 +159,19 @@ def test_func_arg_when_doc_missing() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
+def test_func_param_duplicate(capsys: CapSys) -> None:
+    """Warn when the same parameter is documented more than once."""
+    mod = fromText('''
+    def f(x, y):
+        """
+        @param x: Actual documentation.
+        @param x: Likely typo or copy-paste error.
+        """
+    ''')
+    epydoc2stan.format_docstring(mod.contents['f'])
+    captured = capsys.readouterr().out
+    assert captured == '<test>:5: Parameter "x" was already documented\n'
+
 @mark.parametrize('field', ('param', 'type'))
 def test_func_no_such_arg(field: str, capsys: CapSys) -> None:
     """Warn about documented parameters that don't exist in the definition."""
