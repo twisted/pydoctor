@@ -84,10 +84,12 @@ def test_func_undocumented_return_something() -> None:
     func = mod.contents['get_answer']
     lines = docstring2html(func).split('\n')
     ret_idx = lines.index('<td class="fieldName">Returns</td>')
-    expected_html = """
-    <span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>
-    """.strip()
-    assert lines[ret_idx + 2] == expected_html
+    expected_html = [
+        '<td class="fieldName">Returns</td>',
+        '<td colspan="2">',
+        '<span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>',
+        ]
+    assert lines[ret_idx:ret_idx + 3] == expected_html
 
 
 def test_func_arg_and_ret_annotation() -> None:
