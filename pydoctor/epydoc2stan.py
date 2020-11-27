@@ -5,8 +5,8 @@ Convert epydoc markup into renderable content.
 from collections import defaultdict
 from importlib import import_module
 from typing import (
-    Callable, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional,
-    Sequence, Tuple
+    Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Tuple
 )
 import ast
 import itertools
@@ -158,6 +158,7 @@ class _EpydocLinker(DocstringLinker):
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
+    _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     kind: str
     name: Optional[str] = None
@@ -165,7 +166,7 @@ class FieldDesc:
     body: Optional[Tag] = None
 
     def format(self) -> Tag:
-        formatted: Tag = tags.transparent if self.body is None else self.body
+        formatted = self.body or self._UNDOCUMENTED
         if self.type is not None:
             formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
         return formatted
@@ -387,8 +388,7 @@ class FieldHandler:
             except KeyError:
                 if index == 0 and name in ('self', 'cls'):
                     continue
-                param = FieldDesc(kind='param', name=name, type=type_doc,
-                            body=tags.span(class_='undocumented')("Undocumented"))
+                param = FieldDesc(kind='param', name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
                 param.type = type_doc
