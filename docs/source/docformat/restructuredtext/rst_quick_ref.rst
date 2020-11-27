@@ -62,7 +62,7 @@ List of ReST directives
   
    * - ``.. default-role::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#setting-the-default-interpreted-text-role>`_
-     - Yes
+     - Should not be changed. 
     
    * - ``.. line-block::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`_
