@@ -150,6 +150,15 @@ def test_docsources_class_attribute() -> None:
     assert base_attr in list(sub_attr.docsources())
 
 
+def test_constructor_params_empty() -> None:
+    src = '''
+    class C:
+        pass
+    '''
+    mod = fromText(src)
+    assert mod.contents['C'].constructor_params == {}
+
+
 def test_constructor_params_simple() -> None:
     src = '''
     class C:
