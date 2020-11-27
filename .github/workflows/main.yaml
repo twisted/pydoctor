@@ -1,0 +1,149 @@
+name: Main CI workflow for pydoctor
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+      
+jobs:
+  unit_tests:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9, pypy3]
+        os: [ubuntu-20.04]
+        include:
+        - os: windows-latest
+        - python-version: 3.6
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip tox
+
+    - name: Log system information
+      run: |
+        test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
+        python --version
+        python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+        python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
+
+    - name: Run unit tests
+      run: |
+        tox -e test
+
+    - name: Publish code coverage
+      continue-on-error: true
+      run: |
+        tox -e codecov
+
+  system_tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        tox_target: [twisted-apidoc, cpython-summary]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip tox
+
+    - name: Log system information
+      run: |
+        test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
+        python --version
+        python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+        python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
+
+    - name: Generate API docs
+      run: |
+        tox -e ${{ matrix.tox_target }}
+        
+  static_checks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip tox
+
+    - name: Log system information
+      run: |
+        test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
+        python --version
+        python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+        python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
+
+    - name: Run mypy
+      run: |
+        tox -e mypy
+
+    - name: Run pyflakes
+      run: |
+        tox -e pyflakes
+
+    - name: Run docs and check extensions
+      run: |
+        tox -e docs
+        grep '\-\-project-url=PROJECTURL' build/docs/help.html
+
+  publish:
+
+    needs: [static_checks, system_tests, unit_tests]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      
+      - name: Log system information
+        run: |
+          test -r /etc/os-release && sh -c '. /etc/os-release && echo "OS: $PRETTY_NAME"'
+          python --version
+          python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
+          python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+
+      - name: Build pydoctor
+        run: |
+          python3 setup.py --quiet build check sdist bdist_wheel
+          ls -alh ./dist/
+
+      - name: Publish pydoctor to PyPI on tags
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
