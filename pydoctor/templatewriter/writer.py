@@ -7,7 +7,7 @@ import shutil
 
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import templatefile
+from pydoctor.templatewriter.util import templatefile, TemplateFileManager
 from twisted.python.filepath import FilePath
 from twisted.web.template import flattenString
 
@@ -36,6 +36,7 @@ class TemplateWriter(ABC):
         self.written_pages = 0
         self.total_pages = 0
         self.dry_run = False
+        self.templatefile_manager = TemplateFileManager()
 
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):

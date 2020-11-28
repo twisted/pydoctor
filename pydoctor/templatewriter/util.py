@@ -19,10 +19,14 @@ class TemplateFileManager:
     with the option `--template-dir`, custom files with matching names will be 
     loaded if present. 
 
-    Warning: While this object allow the customization of any templates, this can lead to errors. 
-    Only customization of "footer.html", "header.html" and "pageHeader.html" is currently supported
+    Warning: While this object allow the customization of any templates, this can lead to errors 
+    when upgrading pydoctor. 
+
+    Only customization of "footer.html", "header.html" and "pageHeader.html" is currently supported.
 
     """
+
+    # Needs a singleton object while static func templatefile() is used.
     _instance = None
     def __new__(cls):
         if cls._instance == None:
@@ -35,7 +39,7 @@ class TemplateFileManager:
         """
         Set the custom template directory. 
         """
-        if not FilePath(folderpath).exists():
+        if not FilePath(folderpath).isdir():
             raise FileNotFoundError(f"Cannot find the template directory '{folderpath}'")
         self.templatedir = os.path.abspath(folderpath)
 
