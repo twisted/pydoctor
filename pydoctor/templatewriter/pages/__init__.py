@@ -1,8 +1,9 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
+from pydoctor.templatewriter.util import templatefile
 from typing import List, Optional, Union
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLFile
+from twisted.web.template import tags, Element, renderer, Tag, XMLFile, XMLString
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -62,21 +63,36 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class IncludeCustomizableTemplates(Element):
+class Customizable(Element):
+    """
+    Defines 3 special placeholders that can be overwritten by users: header.html, pageHeader.html and footer.html.
+    """
 
     @renderer
     def header(self, request, tag):
-        return tag('Header.')
+        template = util.templatefilepath('header.html')
+        if template.getsize()>0:
+            return XMLString(template.open('r').read().decode()).load()
+        else:
+            return ''
 
     @renderer
     def pageHeader(self, request, tag):
-        return tag('Page title.')
+        template = util.templatefilepath('pageHeader.html')
+        if template.getsize()>0:
+            return XMLString(template.open('r').read().decode()).load()
+        else:
+            return ''
 
     @renderer
     def footer(self, request, tag):
-        return tag('Footer.')
+        template = util.templatefilepath('footer.html')
+        if template.getsize()>0:
+            return XMLString(template.open('r').read().decode()).load()
+        else:
+            return ''
 
-class CommonPage(IncludeCustomizableTemplates):
+class CommonPage(Customizable):
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob

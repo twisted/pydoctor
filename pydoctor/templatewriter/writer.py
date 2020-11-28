@@ -82,12 +82,13 @@ class TemplateWriter(ABC):
     def _writeDocsForOne(self, ob, fobj):
         if not ob.isVisible:
             return
-        # brrrrrrr!
-        d = pages.__dict__
-        for c in ob.__class__.__mro__:
-            n = c.__name__ + 'Page'
-            if n in d:
-                pclass = d[n]
+        # Dynalmically list all known page subclasses
+        # Maybe we should list them manually?
+        page_clses = { k:v for k,v in pages.__dict__.items() if 'Page' in k }
+        for parent in ob.__class__.__mro__:
+            potential_page_cls = parent.__name__ + 'Page'
+            if potential_page_cls in page_clses:
+                pclass = page_clses[potential_page_cls]
                 break
         else:
             pclass = pages.CommonPage

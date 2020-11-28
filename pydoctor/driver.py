@@ -7,6 +7,7 @@ import datetime
 import os
 import sys
 
+from pydoctor.templatewriter.util import TemplateFileManager
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
@@ -208,6 +209,13 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
+    parser.add_option(
+        '--template-dir',
+        dest='templatedir',
+        default=None,
+        help=(  'Path to a folder containing HTML templates.'
+                'It can be header.html, pageHeader.html or footer.html'),
+    )
 
     return parser
 
@@ -353,9 +361,14 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
+            # Init writer
             writer = writerclass(options.htmloutput)
             writer.prepOutputDirectory()
 
+            # Set template directory 
+            if options.templatedir:
+                TemplateFileManager().set_templatedir(options.templatedir)
+                
             if options.htmlsubjects:
                 subjects = []
                 for fn in options.htmlsubjects:
