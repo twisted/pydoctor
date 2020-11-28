@@ -11,14 +11,19 @@ If you like the project and think you could help with making it better, there ar
 - Spread a word about the project to your colleagues, friends, blogs or any other channels
 - Any other things you could imagine
 
-Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue. 
+Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue.
 
-.. Releasing a new package
-   -----------------------
 
-    Releasing a new version is done via GitHub Actions.
-    First commit the version update to master and wait for tests to pass.
-    Create a tag on local branch and then push it::
+Releasing and publishing a new package
+--------------------------------------
+
+Publishing to PyPI is done via a GitHub Actions workflow that is triggered when a tag is pushed.
+
+First commit the version update to master and wait for tests to pass.
+
+You can push a tab by creating a `GitHub Release <https://github.com/twisted/pydoctor/releases/new>`
+
+You can also create a tag on local branch then push it::
 
         git tag 1.2.3
         git push --tags
