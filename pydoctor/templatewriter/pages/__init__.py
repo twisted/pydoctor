@@ -8,6 +8,7 @@ from twisted.web.template import tags, Element, renderer, Tag, XMLFile, XMLStrin
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
+from pydoctor.epydoc.markup import html2stan
 
 def getBetterThanArgspec(argspec):
     """Ok, maybe argspec's format isn't the best after all: This takes an
@@ -72,7 +73,7 @@ class Customizable(Element):
     def header(self, request, tag):
         template = util.templatefilepath('header.html')
         if template.getsize()>0:
-            return XMLString(template.open('r').read().decode()).load()
+            return html2stan(template.open('r').read().decode())
         else:
             return ''
 
@@ -80,7 +81,7 @@ class Customizable(Element):
     def pageHeader(self, request, tag):
         template = util.templatefilepath('pageHeader.html')
         if template.getsize()>0:
-            return XMLString(template.open('r').read().decode()).load()
+            return html2stan(template.open('r').read().decode())
         else:
             return ''
 
@@ -88,7 +89,7 @@ class Customizable(Element):
     def footer(self, request, tag):
         template = util.templatefilepath('footer.html')
         if template.getsize()>0:
-            return XMLString(template.open('r').read().decode()).load()
+            return html2stan(template.open('r').read().decode())
         else:
             return ''
 
