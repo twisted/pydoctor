@@ -91,4 +91,5 @@ pydoctor_args = [
     '--project-url=https://github.com/twisted/pydoctor/',
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
+    f'--template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
     ]
