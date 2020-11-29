@@ -366,10 +366,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             # Set template directory 
             if options.templatedir:
-                if hasattr(writer, 'templatefile_manager'):
-                    writer.templatefile_manager.set_templatedir(options.templatedir)
+                if hasattr(writer, 'templatefile_lookup'):
+                    writer.templatefile_lookup.set_templatedir(options.templatedir)
                 else:
-                    error(  "The template writer class do not implement 'templatefile_manager' attribute. ",
+                    error(  "The template writer class do not implement 'templatefile_lookup' attribute. ",
                             "Cannot set the template directory. ")
                 
             if options.htmlsubjects:

@@ -1,9 +1,8 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from pydoctor.templatewriter.util import templatefile
 from typing import List, Optional, Union
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLFile, XMLString
+from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter.pages.table import ChildTable

@@ -7,7 +7,7 @@ import shutil
 
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import templatefile, TemplateFileManager
+from pydoctor.templatewriter.util import templatefile, TemplateFileLookup
 from twisted.python.filepath import FilePath
 from twisted.web.template import flattenString
 
@@ -36,7 +36,7 @@ class TemplateWriter(ABC):
         self.written_pages = 0
         self.total_pages = 0
         self.dry_run = False
-        self.templatefile_manager = TemplateFileManager()
+        self.templatefile_lookup = TemplateFileLookup()
 
     def prepOutputDirectory(self):
         if not os.path.exists(self.base):
@@ -84,7 +84,6 @@ class TemplateWriter(ABC):
         if not ob.isVisible:
             return
         # Dynalmically list all known page subclasses
-        # Maybe we should list them manually?
         page_clses = { k:v for k,v in pages.__dict__.items() if 'Page' in k }
         for parent in ob.__class__.__mro__:
             potential_page_cls = parent.__name__ + 'Page'

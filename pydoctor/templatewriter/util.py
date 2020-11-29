@@ -11,9 +11,10 @@ from twisted.web.template import Tag, tags
 def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref
 
-class TemplateFileManager:
+class TemplateFileLookup:
     """
     The `TemplateFileManager` handles the HTML template files locations. 
+    A little bit like `mako.lookup.TemplateLookup` but more simple. 
 
     The location of the files depends wether the users set a template directory 
     with the option `--template-dir`, custom files with matching names will be 
@@ -25,12 +26,10 @@ class TemplateFileManager:
     Only customization of "footer.html", "header.html" and "pageHeader.html" is currently supported.
 
     """
-
-    # Needs a singleton object while static func templatefile() is used.
     _instance = None
     def __new__(cls):
         if cls._instance == None:
-            cls._instance = super(TemplateFileManager, cls).__new__(cls)
+            cls._instance = super(TemplateFileLookup, cls).__new__(cls)
             # Put any initialization here.
             cls.templatedir: Optional[str] = None
         return cls._instance
@@ -64,7 +63,7 @@ class TemplateFileManager:
         return os.path.join(pydoctordir, 'templates', filename)
 
 def templatefile(filename:str) -> str:
-    return TemplateFileManager().get_templatefile(filename)
+    return TemplateFileLookup().get_templatefile(filename)
 
 def templatefilepath(filename:str) -> FilePath:
     return FilePath(templatefile(filename))
