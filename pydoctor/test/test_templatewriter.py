@@ -118,7 +118,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     assert "methodA" in html
     assert "methodB" in html
 
-def test_templatefile_lookup():
+def test_templatefile_lookup() -> None:
     
     lookup = TemplateFileLookup()
 
