@@ -15,6 +15,7 @@ import platform
 import sys
 import types
 from enum import Enum
+from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
@@ -92,7 +93,6 @@ class Documentable:
     @ivar kind: ...
     """
     docstring: Optional[str] = None
-    system: 'System'
     parsed_docstring: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -430,6 +430,22 @@ class Class(CanContainImportsDocumentable):
         else:
             return self.parent._localNameToFullName(name)
 
+    @property
+    def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
+        """A mapping of constructor parameter names to their type annotation.
+        If a parameter is not annotated, its value is L{None}.
+        """
+
+        # We assume that the constructor parameters are the same as the
+        # __init__() parameters. This is incorrect if __new__() or the class
+        # call have different parameters.
+        for base in self.allbases(include_self=True):
+            init = base.contents.get('__init__')
+            if isinstance(init, Function):
+                return init.annotations
+        else:
+            return {}
+
 
 class Inheritable(Documentable):
 
@@ -455,7 +471,7 @@ class Function(Inheritable):
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
-    argspec: Tuple[Sequence[str], Optional[str], Optional[str], Sequence[str]]
+    signature: Signature
 
     def setup(self) -> None:
         super().setup()
@@ -709,7 +725,7 @@ class System:
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
                 f.decorators = None
-                f.argspec = ((), None, None, ())
+                f.signature = Signature()
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)
