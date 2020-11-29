@@ -213,7 +213,7 @@ def getparser() -> OptionParser:
         dest='templatedir',
         default=None,
         help=(  'Path to a folder containing HTML templates.'
-                'Customixable files are header.html, pageHeader.html or footer.html'),
+                'Customizable files are header.html, pageHeader.html or footer.html'),
     )
 
     return parser
