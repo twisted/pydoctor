@@ -218,10 +218,29 @@ later overwritten the the pydoctor build process.
 Customize builds
 ----------------
 
-.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
+Custom HTML
+~~~~~~~~~~~
 
-Use a custom System class
-~~~~~~~~~~~~~~~~~~~~~~~~~
+They are 3 placeholders designed to be overwritten to include custom HTML into the pages.
+All empty by default. 
+
+- `header.html`: At the very beginning of the body
+- `pageHeader.html`: After the main header, before the page title
+- `footer.html`: At the very end of the body
+
+To overwrite a placeholder, write your cusom HTLM files to a folder 
+and use the following option::
+
+  --template-dir=./pydoctor_templates
+
+.. note::
+
+  If you want more customization, you can overwrite the defaults 
+  HTML and CSS templates in `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_ with the same method. 
+  But it's discouraged since the templates will change from a release to another. 
+
+Custom System class
+~~~~~~~~~~~~~~~~~~~
 
 You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSystem` and pass your custom class dotted name with the following argument::
 
@@ -232,23 +251,13 @@ This is also used by the Twisted project to handle deprecation.
 
 See the `TwistedSystem custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better overview.
 
-.. note:: Not fully documented, prone to break
+.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
 
-Use custom HTML templates
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
-
-See the `Twisted APIBuilder custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._release.APIBuilder.html>`_. Naviguate to the source code for a better overview.
-The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build.
-
-.. note:: Not fully documented, prone to break
-
-Use a custom HTML writer
-~~~~~~~~~~~~~~~~~~~~~~~~
+Custom writer
+~~~~~~~~~~~~~
 
 You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` and pass your custom class dotted name with the following argument::
 
   --html-writer=mylib._pydoctor.CustomTemplateWriter
 
-.. note:: Not fully documented, prone to break
+.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
