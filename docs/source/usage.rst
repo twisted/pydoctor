@@ -224,9 +224,9 @@ Custom HTML
 They are 3 placeholders designed to be overwritten to include custom HTML into the pages.
 All empty by default. 
 
-- `header.html`: At the very beginning of the body
-- `pageHeader.html`: After the main header, before the page title
-- `footer.html`: At the very end of the body
+- ``header.html``: At the very beginning of the body
+- ``pageHeader.html``: After the main header, before the page title
+- ``footer.html``: At the very end of the body
 
 To overwrite a placeholder, write your cusom HTLM files to a folder 
 and use the following option::
