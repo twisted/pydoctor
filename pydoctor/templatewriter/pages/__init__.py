@@ -104,10 +104,14 @@ class CommonPage(Customizable):
             return []
 
     def project(self):
+        return self.ob.system.projectname
+
+    @renderer
+    def projecthome(self, request, tag):
         if self.ob.system.options.projecturl:
-            return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
+            return tags.li(tags.a(href=self.ob.system.options.projecturl)('Project Home'), id="projecthome")
         else:
-            return self.ob.system.projectname
+            return ''
 
     @renderer
     def deprecated(self, request, tag):
