@@ -39,6 +39,13 @@ class ModuleIndexPage(Element):
     def project(self, request, tag):
         return self.system.projectname
 
+    # @renderer
+    # def projecthome(self):
+    #     if self.system.options.projecturl:
+    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+    #     else:
+    #         return ''
+
     @renderer
     def title(self, request, tag):
         return tag.clear()("Module Index")
@@ -101,6 +108,13 @@ class ClassIndexPage(Element):
     @renderer
     def project(self, request, tag):
         return self.system.projectname
+
+    # @renderer
+    # def projecthome(self):
+    #     if self.system.options.projecturl:
+    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+    #     else:
+    #         return ''
 
     @renderer
     def stuff(self, request, tag):
@@ -191,6 +205,13 @@ class NameIndexPage(Element):
     def project(self, request, tag):
         return self.system.projectname
 
+    # @renderer
+    # def projecthome(self):
+    #     if self.system.options.projecturl:
+    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+    #     else:
+    #         return ''
+
     @renderer
     def index(self, request, tag):
         r = []
@@ -216,6 +237,13 @@ class IndexPage(Element):
                 self.system.projectname)
         else:
             return self.system.projectname
+
+    # @renderer
+    # def projecthome(self):
+    #     if self.system.options.projecturl:
+    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+    #     else:
+    #         return ''
 
     @renderer
     def project(self, request, tag):

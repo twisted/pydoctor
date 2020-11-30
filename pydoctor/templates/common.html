@@ -11,10 +11,23 @@
 
     <nav class="navbar navbar-default">
       <div class="container">
+        
         <div class="navbar-header">
-          <a class="navbar-brand" href="index.html">
-            <t:slot name="project">Some Project</t:slot> API Documentation
-          </a>
+
+            <a class="navbar-brand" href="index.html"> 
+              <t:slot name="project">Some Project</t:slot> 
+              API Documentation </a>
+        
+        </div>
+
+        <div class="navbar-header">
+
+          <ul class="nav navlinks">
+
+            <t:transparent t:render="projecthome">Project Home Link</t:transparent>
+
+          </ul>
+
         </div>
       </div>
     </nav>
