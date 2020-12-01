@@ -630,8 +630,8 @@ class _ValueFormatter:
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
 
-    When given an expression, the node returned by L{visit()} will also
-    be an expression.
+    When given an expression, the node returned by L{ast.NodeVisitor.visit()}
+    will also be an expression.
     If any string literal contained in the original expression is either
     invalid Python or not a singular expression, L{SyntaxError} is raised.
     """
