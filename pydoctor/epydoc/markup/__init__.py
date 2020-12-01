@@ -30,9 +30,6 @@ responsible for resolving identifier crossreferences
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
 each error.
-
-@sort: ParsedDocstring, Field, DocstringLinker
-@group Errors and Warnings: ParseError
 """
 __docformat__ = 'epytext en'
 
@@ -59,8 +56,8 @@ class ParsedDocstring:
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
-    markup parsers such as L{pydoctor.epydoc.epytext.parse_docstring()}
-    or L{pydoctor.epydoc.restructuredtext.parse_docstring()}.
+    markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
+    or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
     Subclasses must implement L{to_stan()}.
     """
