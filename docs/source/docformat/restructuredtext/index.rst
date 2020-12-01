@@ -1,9 +1,7 @@
 ReStructuredText
 ----------------
 
-``pydoctor`` needs the following packages to offer *restructuredtext* support::
-
-   $ pip install -U docutils
+``pydoctor`` needs ``docutils`` to offer *restructuredtext* support.
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
