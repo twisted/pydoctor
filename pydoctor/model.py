@@ -609,7 +609,6 @@ class System:
             fn = '<None>'
         if self.options.verbosity > 0:
             print(fn, message, detail)
-        self.violations.setdefault(message, []).append((fn, detail))
 
     def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
         """Iterate over all instances of C{cls} present in the system. """
