@@ -376,7 +376,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
 
-        if system.warnings and options.warnings_as_errors:
+        if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.
             exitcode = 3
 

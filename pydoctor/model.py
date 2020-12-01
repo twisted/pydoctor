@@ -508,7 +508,7 @@ class System:
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[Documentable] = []
-        self.warnings: Dict[str, List[Tuple[str, str]]] = {}
+        self.violations: Dict[str, List[Tuple[str, str]]] = {}
         self.packages: List[str] = []
 
         if options:
@@ -582,7 +582,7 @@ class System:
             # Apidoc build messages are generated using negative threshold
             # and we have separate reporting for them,
             # on top of the logging system.
-            self.warnings.setdefault(section, []).append((section, msg))
+            self.violations.setdefault(section, []).append((section, msg))
 
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
@@ -609,7 +609,7 @@ class System:
             fn = '<None>'
         if self.options.verbosity > 0:
             print(fn, message, detail)
-        self.warnings.setdefault(message, []).append((fn, detail))
+        self.violations.setdefault(message, []).append((fn, detail))
 
     def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
         """Iterate over all instances of C{cls} present in the system. """
@@ -852,7 +852,7 @@ class System:
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
-        num_warnings = sum(len(v) for v in self.warnings.values())
+        num_warnings = sum(len(v) for v in self.violations.values())
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
