@@ -7,6 +7,7 @@ import pytest
 
 from pydoctor import epydoc2stan, model
 
+posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 
 

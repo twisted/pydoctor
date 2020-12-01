@@ -150,6 +150,40 @@ def test_docsources_class_attribute() -> None:
     assert base_attr in list(sub_attr.docsources())
 
 
+def test_constructor_params_empty() -> None:
+    src = '''
+    class C:
+        pass
+    '''
+    mod = fromText(src)
+    assert mod.contents['C'].constructor_params == {}
+
+
+def test_constructor_params_simple() -> None:
+    src = '''
+    class C:
+        def __init__(self, a: int, b: str):
+            pass
+    '''
+    mod = fromText(src)
+    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+
+
+def test_constructor_params_inherited() -> None:
+    src = '''
+    class A:
+        def __init__(self, a: int, b: str):
+            pass
+    class B:
+        def __init__(self):
+            pass
+    class C(A, B):
+        pass
+    '''
+    mod = fromText(src)
+    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+
+
 def test_docstring_lineno() -> None:
     src = '''
     def f():

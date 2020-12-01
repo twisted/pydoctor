@@ -3,9 +3,10 @@
 import ast
 import sys
 from functools import partial
+from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -438,7 +439,16 @@ class ModuleVistor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_FunctionDef(self, node):
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._handleFunctionDef(node, is_async=True)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._handleFunctionDef(node, is_async=False)
+
+    def _handleFunctionDef(self,
+            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+            is_async: bool
+            ) -> None:
         # Ignore inner functions.
         if isinstance(self.builder.current, model.Function):
             return
@@ -448,6 +458,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno = node.decorator_list[0].lineno
 
         func = self.builder.pushFunction(node.name, lineno)
+        func.is_async = is_async
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             func.setDocstring(node.body[0].value)
         func.decorators = node.decorator_list
@@ -469,38 +480,55 @@ class ModuleVistor(ast.NodeVisitor):
             elif isclassmethod:
                 func.kind = 'Class Method'
 
-        args = []
+        # Position-only arguments were introduced in Python 3.8.
+        posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
 
-        for arg in node.args.args:
-            if isinstance(arg, (ast.Tuple, ast.List)):
-                args.append([x.id for x in arg.elts])
-            elif isinstance(arg, ast.Name):
-                args.append(arg.id)
-            else:
-                args.append(arg.arg)
+        num_pos_args = len(posonlyargs) + len(node.args.args)
+        defaults = node.args.defaults
+        default_offset = num_pos_args - len(defaults)
+        def get_default(index: int) -> Optional[ast.expr]:
+            assert 0 <= index < num_pos_args, index
+            index -= default_offset
+            return None if index < 0 else defaults[index]
 
-        varargname = node.args.vararg
-        if varargname and not isinstance(varargname, str):
-            varargname = varargname.arg
+        parameters = []
+        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
+            default_val = Parameter.empty if default is None else _ValueFormatter(default)
+            parameters.append(Parameter(name, kind, default=default_val))
 
-        kwargname = node.args.kwarg
-        if kwargname and not isinstance(kwargname, str):
-            kwargname = kwargname.arg
+        for index, arg in enumerate(posonlyargs):
+            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
 
-        defaults = []
+        for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
+            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
 
-        for default in node.args.defaults:
-            if isinstance(default, ast.Num):
-                defaults.append(str(default.n))
-            else:
-                defaults.append(astor.to_source(default).strip())
+        vararg = node.args.vararg
+        if vararg is not None:
+            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
 
-        func.argspec = (args, varargname, kwargname, tuple(defaults))
+        assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
+        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
+
+        kwarg = node.args.kwarg
+        if kwarg is not None:
+            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
+
+        try:
+            signature = Signature(parameters)
+        except ValueError as ex:
+            func.report(f'{func.fullName()} has invalid parameters: {ex}')
+            signature = Signature()
+
+        func.signature = signature
         func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
 
-    def _annotation_from_attrib(self, expr, ctx):
+    def _annotation_from_attrib(self,
+            expr: ast.expr,
+            ctx: model.Documentable
+            ) -> Optional[ast.expr]:
         """Get the type of an C{attr.ib} definition.
         @param expr: The expression's AST.
         @param ctx: The context in which this expression is evaluated.
@@ -519,7 +547,7 @@ class ModuleVistor(ast.NodeVisitor):
         return None
 
     def _annotations_from_function(
-            self, func: ast.FunctionDef
+            self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
             ) -> Mapping[str, Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
@@ -573,6 +601,32 @@ class ModuleVistor(ast.NodeVisitor):
             return expr
 
 
+class _ValueFormatter:
+    """Formats values stored in AST expressions.
+    Used for presenting default values of parameters.
+    """
+
+    def __init__(self, value: ast.expr):
+        self.value = value
+
+    def __repr__(self) -> str:
+        value = self.value
+        if isinstance(value, ast.Num):
+            return str(value.n)
+        if isinstance(value, ast.Str):
+            return repr(value.s)
+        if isinstance(value, ast.Constant):
+            return repr(value.value)
+        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
+            operand = value.operand
+            if isinstance(operand, ast.Num):
+                return f'-{operand.n}'
+            if isinstance(operand, ast.Constant):
+                return f'-{operand.value}'
+        source: str = astor.to_source(value)
+        return source.strip()
+
+
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
 
@@ -606,14 +660,14 @@ class _AnnotationStringParser(ast.NodeTransformer):
         else:
             # Other subscript; unstring the slice.
             slice = self.visit(node.slice)
-        return ast.Subscript(value, slice, node.ctx)
+        return ast.copy_location(ast.Subscript(value, slice, node.ctx), node)
 
     # For Python >= 3.8:
 
     def visit_Constant(self, node: ast.Constant) -> ast.expr:
         value = node.value
         if isinstance(value, str):
-            return self._parse_string(value)
+            return ast.copy_location(self._parse_string(value), node)
         else:
             const = self.generic_visit(node)
             assert isinstance(const, ast.Constant), const
@@ -622,9 +676,9 @@ class _AnnotationStringParser(ast.NodeTransformer):
     # For Python < 3.8:
 
     def visit_Str(self, node: ast.Str) -> ast.expr:
-        return self._parse_string(node.s)
+        return ast.copy_location(self._parse_string(node.s), node)
 
-def _infer_type(expr):
+def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
@@ -635,14 +689,17 @@ def _infer_type(expr):
     except ValueError:
         return None
     else:
-        return _annotation_for_value(value)
+        ann = _annotation_for_value(value)
+        if ann is None:
+            return None
+        else:
+            return ast.fix_missing_locations(ast.copy_location(ann, expr))
 
-def _annotation_for_value(value):
+def _annotation_for_value(value: object) -> Optional[ast.expr]:
     if value is None:
         return None
     name = type(value).__name__
     if isinstance(value, (dict, list, set, tuple)):
-        name = name.capitalize()
         ann_elem = _annotation_for_elements(value)
         if isinstance(value, dict):
             ann_value = _annotation_for_elements(value.values())
@@ -651,13 +708,13 @@ def _annotation_for_value(value):
             elif ann_elem is not None:
                 ann_elem = ast.Tuple(elts=[ann_elem, ann_value])
         if ann_elem is not None:
-            if name == 'Tuple':
+            if name == 'tuple':
                 ann_elem = ast.Tuple(elts=[ann_elem, ast.Ellipsis()])
             return ast.Subscript(value=ast.Name(id=name),
                                  slice=ast.Index(value=ann_elem))
     return ast.Name(id=name)
 
-def _annotation_for_elements(sequence):
+def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
     names = set()
     for elem in sequence:
         ann = _annotation_for_value(elem)

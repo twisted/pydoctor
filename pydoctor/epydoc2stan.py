@@ -5,8 +5,8 @@ Convert epydoc markup into renderable content.
 from collections import defaultdict
 from importlib import import_module
 from typing import (
-    Callable, DefaultDict, Dict, Iterable, Iterator, List, Mapping, Optional,
-    Sequence, Tuple
+    Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Tuple
 )
 import ast
 import itertools
@@ -82,6 +82,15 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        fullID = self.obj.expandName(identifier)
+
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return target.url
+
+        return self.look_for_intersphinx(fullID)
+
     def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
@@ -137,19 +146,19 @@ class _EpydocLinker(DocstringLinker):
         if target is not None:
             return target.url
 
-        if identifier == fullID:
-            self.obj.report(
-                "invalid ref to '%s' not resolved" % (identifier,),
-                'resolve_identifier_xref', lineno)
-        else:
-            self.obj.report(
-                "invalid ref to '%s' resolved as '%s'" % (identifier, fullID),
-                'resolve_identifier_xref', lineno)
+        message = f'Cannot find link target for "{fullID}"'
+        if identifier != fullID:
+            message = f'{message}, resolved from "{identifier}"'
+        root_idx = fullID.find('.')
+        if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
+            message += ' (you can link to external docs with --intersphinx)'
+        self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
+    _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     kind: str
     name: Optional[str] = None
@@ -157,7 +166,7 @@ class FieldDesc:
     body: Optional[Tag] = None
 
     def format(self) -> Tag:
-        formatted: Tag = tags.transparent if self.body is None else self.body
+        formatted = self.body or self._UNDOCUMENTED
         if self.type is not None:
             formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
         return formatted
@@ -248,7 +257,13 @@ class FieldHandler:
         ret_type = formatted_annotations.pop('return', None)
         self.types.update(formatted_annotations)
         if ret_type is not None:
-            self.return_desc = FieldDesc(kind='return', type=ret_type)
+            # In most cases 'None' is not an actual return type, but the absence
+            # of a returned value. Not storing it is the easiest way to prevent
+            # it from being presented.
+            ann_ret = annotations['return']
+            assert ann_ret is not None  # ret_type would be None otherwise
+            if not _is_none_literal(ann_ret):
+                self.return_desc = FieldDesc(kind='return', type=ret_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
@@ -277,12 +292,38 @@ class FieldHandler:
         else:
             return name
 
+    def _handle_param_not_found(self, name: str, field: Field) -> None:
+        """Figure out if the parameter might exist despite not being found
+        in this documentable's code, warn if not.
+        """
+        source = field.source
+        if source is not self.obj:
+            # Docstring is inherited, so it may not represent this exact method.
+            return
+        if isinstance(source, model.Class):
+            if None in source.baseobjects:
+                # Class has a computed base class, which could define parameters
+                # we can't discover.
+                # For example, this class might use
+                # L{twisted.python.components.proxyForInterface()}.
+                return
+            if name in source.constructor_params:
+                # Constructor parameters can be documented on the class.
+                return
+        field.report('Documented parameter "%s" does not exist' % (name,))
+
     def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
         desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
+            if name is not None and name not in self.types and not any(
+                    # Don't warn about keywords or about parameters we already
+                    # reported a warning for.
+                    desc.name == name for desc in self.parameter_descs
+                    ):
+                self._handle_param_not_found(name, field)
         else:
             # Note: extract_fields() will issue warnings about missing field
             #       names, so we can silently ignore them here.
@@ -296,9 +337,21 @@ class FieldHandler:
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
         if name is not None:
+            if any(desc.name == name for desc in self.parameter_descs):
+                field.report('Parameter "%s" was already documented' % (name,))
             self.add_info(self.parameter_descs, name, field)
+            if name not in self.types:
+                self._handle_param_not_found(name, field)
+
     handle_arg = handle_param
-    handle_keyword = handle_param
+
+    def handle_keyword(self, field: Field) -> None:
+        name = self._handle_param_name(field)
+        if name is not None:
+            # TODO: How should this be matched to the type annotation?
+            self.add_info(self.parameter_descs, name, field)
+            if name in self.types:
+                field.report('Parameter "%s" is documented as keyword' % (name,))
 
 
     def handled_elsewhere(self, field: Field) -> None:
@@ -338,9 +391,34 @@ class FieldHandler:
         m(field)
 
     def resolve_types(self) -> None:
-        for pd in self.parameter_descs:
-            if pd.name in self.types:
-                pd.type = self.types[pd.name]
+        """Merge information from 'param' fields and AST analysis."""
+
+        params = {param.name: param for param in self.parameter_descs}
+        any_info = bool(params)
+
+        # We create a new parameter_descs list to ensure the parameter order
+        # matches the AST order.
+        new_parameter_descs = []
+        for index, (name, type_doc) in enumerate(self.types.items()):
+            try:
+                param = params.pop(name)
+            except KeyError:
+                if index == 0 and name in ('self', 'cls'):
+                    continue
+                param = FieldDesc(kind='param', name=name, type=type_doc)
+                any_info |= type_doc is not None
+            else:
+                param.type = type_doc
+            new_parameter_descs.append(param)
+
+        # Add any leftover parameters, which includes documented **kwargs keywords
+        # and non-existing (but documented) parameters.
+        new_parameter_descs += params.values()
+
+        # Only replace the descriptions if at least one parameter is documented
+        # or annotated.
+        if any_info:
+            self.parameter_descs = new_parameter_descs
 
     def format(self) -> Tag:
         r: List[Tag] = []
@@ -365,6 +443,11 @@ class FieldHandler:
             return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
         else:
             return tags.transparent # type: ignore[no-any-return]
+
+
+def _is_none_literal(node: ast.expr) -> bool:
+    """Does this AST node represent the literal constant None?"""
+    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
@@ -410,43 +493,47 @@ def format_docstring(obj: model.Documentable) -> Tag:
     # Use cached or split version if possible.
     pdoc = obj.parsed_docstring
 
-    ret: Tag = tags.div
-    if pdoc is None:
-        if doc is None:
-            ret(class_='undocumented')("Undocumented")
-            return ret
+    if source is None:
+        if pdoc is None:
+            # We don't use 'source' if pdoc is None, but mypy is not that
+            # sophisticated, so we fool it by assigning a dummy object.
+            source = obj
         else:
-            # Tell mypy that if we found a docstring, we also have its source.
+            # A split field is documented by its parent.
+            source = obj.parent
             assert source is not None
+
+    if pdoc is None and doc is not None:
         pdoc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = pdoc
-    elif source is None:
-        # A split field is documented by its parent.
-        source = obj.parent
-        assert source is not None
 
-    try:
-        stan = pdoc.to_stan(_EpydocLinker(source))
-    except Exception as e:
-        errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-        if doc is None:
-            stan = tags.p(class_="undocumented")('Broken description')
-        else:
-            pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-            stan = pdoc_plain.to_stan(_EpydocLinker(source))
-        reportErrors(source, errs)
-    if stan.tagName:
-        ret(stan)
+    ret: Tag = tags.div
+    if pdoc is None:
+        ret(tags.p(class_='undocumented')("Undocumented"))
     else:
-        ret(*stan.children)
+        try:
+            stan = pdoc.to_stan(_EpydocLinker(source))
+        except Exception as e:
+            errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
+            if doc is None:
+                stan = tags.p(class_="undocumented")('Broken description')
+            else:
+                pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+                stan = pdoc_plain.to_stan(_EpydocLinker(source))
+            reportErrors(source, errs)
+        if stan.tagName:
+            ret(stan)
+        else:
+            ret(*stan.children)
 
-    fields = pdoc.fields
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    for field in fields:
-        fh.handle(Field.from_epydoc(field, source))
-    fh.resolve_types()
+    if pdoc is not None:
+        for field in pdoc.fields:
+            fh.handle(Field.from_epydoc(field, source))
+    if isinstance(obj, model.Function):
+        fh.resolve_types()
     ret(fh.format())
     return ret
 
@@ -552,8 +639,93 @@ class AnnotationDocstring(ParsedDocstring):
         self.annotation = annotation
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        src = astor.to_source(self.annotation).strip()
-        ret: Tag = tags.code(src)
+        tag: Tag = tags.code
+        tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
+        return tag
+
+
+class _AnnotationFormatter(ast.NodeVisitor):
+
+    def __init__(self, linker: DocstringLinker):
+        super().__init__()
+        self.linker = linker
+
+    def _handle_name(self, identifier: str) -> Tag:
+        url = self.linker.resolve_identifier(identifier)
+
+        tag: Tag
+        if url is None:
+            tag = tags.transparent(identifier)
+        else:
+            tag = tags.a(identifier, href=url, class_='code')
+        return tag
+
+    def _handle_constant(self, node: ast.expr, value: object) -> Tag:
+        if value in (False, True, None, NotImplemented):
+            # Link built-in constants to the standard library.
+            # Ellipsis is not included here, both because its code syntax is
+            # different from its constant's name and because its documentation
+            # is not relevant to annotations.
+            return self._handle_name(str(value))
+        else:
+            return self.generic_visit(node)
+
+    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
+        first = True
+        for elem in sequence:
+            if first:
+                first = False
+            else:
+                tag(', ')
+            tag(self.visit(elem))
+
+    def visit_Name(self, node: ast.Name) -> Tag:
+        return self._handle_name(node.id)
+
+    def visit_Attribute(self, node: ast.Attribute) -> Tag:
+        parts = []
+        curr: ast.expr = node
+        while isinstance(curr, ast.Attribute):
+            parts.append(curr.attr)
+            curr = curr.value
+        if not isinstance(curr, ast.Name):
+            return self.generic_visit(node)
+        parts.append(curr.id)
+        parts.reverse()
+        return self._handle_name('.'.join(parts))
+
+    def visit_Constant(self, node: ast.Constant) -> Tag:
+        return self._handle_constant(node, node.value)
+
+    # Deprecated since Python 3.8, but required on older versions.
+    def visit_NameConstant(self, node: 'ast.NameConstant') -> Tag:
+        return self._handle_constant(node, node.value)
+
+    def visit_Subscript(self, node: ast.Subscript) -> Tag:
+        tag: Tag = tags.transparent
+        tag(self.visit(node.value))
+        tag('[')
+        sub: ast.AST = node.slice
+        if isinstance(sub, ast.Index):
+            # In Python < 3.9, non-slices are always wrapped in an Index node.
+            sub = sub.value
+        if isinstance(sub, ast.Tuple):
+            self._handle_sequence(tag, sub.elts)
+        else:
+            tag(self.visit(sub))
+        tag(']')
+        return tag
+
+    def visit_List(self, node: ast.List) -> Tag:
+        tag: Tag = tags.transparent
+        tag('[')
+        self._handle_sequence(tag, node.elts)
+        tag(']')
+        return tag
+
+    def generic_visit(self, node: ast.AST) -> Tag:
+        src = astor.to_source(node).strip()
+        ret: Tag = tags.transparent(src)
         return ret
 
 

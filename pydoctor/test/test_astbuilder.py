@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Tuple, Type, overload
 import ast
 import textwrap
 
@@ -7,12 +7,12 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc2stan import get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import CapSys, typecomment
+from . import CapSys, posonlyargs, typecomment
 import pytest
 
 
@@ -71,16 +71,40 @@ def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     assert isinstance(value, str)
     return value
 
-def to_html(parsed_docstring: ParsedDocstring) -> str:
-    return flatten(parsed_docstring.to_stan(None))
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
 
-def type2str(type_expr: object) -> Optional[str]:
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        return None
+
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        raise LookupError(identifier)
+
+def to_html(parsed_docstring: ParsedDocstring) -> str:
+    return flatten(parsed_docstring.to_stan(NotFoundLinker()))
+
+@overload
+def type2str(type_expr: None) -> None: ...
+
+@overload
+def type2str(type_expr: ast.expr) -> str: ...
+
+def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
     if type_expr is None:
         return None
     else:
         src = astor.to_source(type_expr)
         assert isinstance(src, str)
         return src.strip()
+
+def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
+    """Return the textual representation and line number of an object's
+    type annotation.
+    @param obj: Documentable object with a type annotation.
+    """
+    ann = obj.annotation # type: ignore[attr-defined]
+    assert ann is not None
+    return type2str(ann), ann.lineno
 
 @systemcls_param
 def test_no_docstring(systemcls: Type[model.System]) -> None:
@@ -99,7 +123,7 @@ def test_no_docstring(systemcls: Type[model.System]) -> None:
     assert m.docstring is None
 
 @systemcls_param
-def test_simple(systemcls: Type[model.System]) -> None:
+def test_function_simple(systemcls: Type[model.System]) -> None:
     src = '''
     """ MOD DOC """
     def f():
@@ -110,17 +134,77 @@ def test_simple(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.f'
     assert func.docstring == """This is a docstring."""
+    assert func.is_async is False
 
 
 @systemcls_param
-def test_function_argspec(systemcls: Type[model.System]) -> None:
-    src = textwrap.dedent('''
-    def f(a, b=3, *c, **kw):
-        pass
-    ''')
+def test_function_async(systemcls: Type[model.System]) -> None:
+    src = '''
+    """ MOD DOC """
+    async def a():
+        """This is a docstring."""
+    '''
     mod = fromText(src, systemcls=systemcls)
+    assert len(mod.contents) == 1
+    func, = mod.contents.values()
+    assert func.fullName() == '<test>.a'
+    assert func.docstring == """This is a docstring."""
+    assert func.is_async is True
+
+
+@pytest.mark.parametrize('signature', (
+    '()',
+    '(*, a, b=None)',
+    '(*, a=(), b)',
+    '(a, b=3, *c, **kw)',
+    '(f=True)',
+    '(x=0.1, y=-2)',
+    '(s=\'theory\', t="con\'text")',
+    ))
+@systemcls_param
+def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
+    """A round trip from source to inspect.Signature and back produces
+    the original text.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
-    assert docfunc.argspec == (['a', 'b'], 'c', 'kw', ('3',))
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == signature
+
+@posonlyargs
+@pytest.mark.parametrize('signature', (
+    '(x, y, /)',
+    '(x, y=0, /)',
+    '(x, y, /, z, w)',
+    '(x, y, /, z, w=42)',
+    '(x, y, /, z=0, w=0)',
+    '(x, y=3, /, z=5, w=7)',
+    '(x, /, *v, a=1, b=2)',
+    '(x, /, *, a=1, b=2, **kwargs)',
+    ))
+@systemcls_param
+def test_function_signature_posonly(signature: str, systemcls: Type[model.System]) -> None:
+    test_function_signature(signature, systemcls)
+
+
+@pytest.mark.parametrize('signature', (
+    '(a, a)',
+    ))
+@systemcls_param
+def test_function_badsig(signature: str, systemcls: Type[model.System], capsys: CapSys) -> None:
+    """When a function has an invalid signature, an error is logged and
+    the empty signature is returned.
+
+    Note that most bad signatures lead to a SyntaxError, which we cannot
+    recover from. This test checks what happens if the AST can be produced
+    but inspect.Signature() rejects the parsed parameters.
+    """
+    mod = fromText(f'def f{signature}: ...', systemcls=systemcls, modname='mod')
+    docfunc, = mod.contents.values()
+    assert isinstance(docfunc, model.Function)
+    assert str(docfunc.signature) == '()'
+    captured = capsys.readouterr().out
+    assert captured.startswith("mod:1: mod.f has invalid parameters: ")
 
 
 @systemcls_param
@@ -953,14 +1037,28 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
-    d = {} # type: Dict[str, int]
+    d = {} # type: dict[str, int]
     i = [] # type: ignore[misc]
     ''', systemcls=systemcls)
-    assert type2str(mod.contents['d'].annotation) == 'Dict[str, int]'
+    assert type2str(mod.contents['d'].annotation) == 'dict[str, int]'
     # We don't use ignore comments for anything at the moment,
     # but do verify that their presence doesn't break things.
-    assert type2str(mod.contents['i'].annotation) == 'List'
+    assert type2str(mod.contents['i'].annotation) == 'list'
     assert not capsys.readouterr().out
+
+@systemcls_param
+def test_unstring_annotation(systemcls: Type[model.System]) -> None:
+    """Annotations or parts thereof that are strings are parsed and
+    line number information is preserved.
+    """
+    mod = fromText('''
+    a: "int"
+    b: 'str' = 'B'
+    c: list["Thingy"]
+    ''', systemcls=systemcls)
+    assert ann_str_and_line(mod.contents['a']) == ('int', 2)
+    assert ann_str_and_line(mod.contents['b']) == ('str', 3)
+    assert ann_str_and_line(mod.contents['c']) == ('list[Thingy]', 4)
 
 @pytest.mark.parametrize('annotation', ("[", "pass", "1 ; 2"))
 @systemcls_param
@@ -1011,19 +1109,17 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     m = b'octets'
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert type2str(C.contents['a'].annotation) == 'str'
-    assert type2str(C.contents['b'].annotation) == 'int'
-    assert type2str(C.contents['c'].annotation) == 'List[str]'
-    assert type2str(C.contents['d'].annotation) == 'Dict[str, int]'
-    assert type2str(C.contents['e'].annotation) == 'Tuple[bool, ...]'
-    assert type2str(C.contents['f'].annotation) == 'float'
-    # The Python 2.7 implementation of literal_eval() does not support
-    # set literals.
-    assert type2str(C.contents['g'].annotation) in ('Set[int]', None)
+    assert ann_str_and_line(C.contents['a']) == ('str', 3)
+    assert ann_str_and_line(C.contents['b']) == ('int', 4)
+    assert ann_str_and_line(C.contents['c']) == ('list[str]', 5)
+    assert ann_str_and_line(C.contents['d']) == ('dict[str, int]', 6)
+    assert ann_str_and_line(C.contents['e']) == ('tuple[bool, ...]', 7)
+    assert ann_str_and_line(C.contents['f']) == ('float', 8)
+    assert ann_str_and_line(C.contents['g']) == ('set[int]', 9)
     # Element type is unknown, not uniform or too complex.
-    assert type2str(C.contents['h'].annotation) == 'List'
-    assert type2str(C.contents['i'].annotation) == 'List'
-    assert type2str(C.contents['j'].annotation) == 'Tuple'
+    assert ann_str_and_line(C.contents['h']) == ('list', 10)
+    assert ann_str_and_line(C.contents['i']) == ('list', 11)
+    assert ann_str_and_line(C.contents['j']) == ('tuple', 12)
     # It is unlikely that a variable actually will contain only None,
     # so we should treat this as not be able to infer the type.
     assert C.contents['n'].annotation is None
@@ -1033,12 +1129,10 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert C.contents['y'].annotation is None
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
-    assert type2str(C.contents['s'].annotation) == 'List[str]'
+    assert ann_str_and_line(C.contents['s']) == ('list[str]', 17)
     # Check that type is inferred on assignments with multiple targets.
-    assert type2str(C.contents['t'].annotation) == 'str'
-    # On Python 2.7, bytes literals are parsed into ast.Str objects,
-    # so there is no way to tell them apart from ASCII strings.
-    assert type2str(mod.contents['m'].annotation) in ('bytes', 'str')
+    assert ann_str_and_line(C.contents['t']) == ('str', 18)
+    assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
 
 @systemcls_param
 def test_type_from_attrib(systemcls: Type[model.System]) -> None:
