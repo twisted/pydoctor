@@ -331,7 +331,7 @@ def parseMaxAge(maxAge: str) -> Dict[str, int]:
         followed by a single character unit.
     @return: A dictionary whose keys match L{datetime.timedelta}'s
         arguments.
-    @raises: L{InvalidMaxAge} when a string cannot be parsed.
+    @raises InvalidMaxAge: when a string cannot be parsed.
     """
     try:
         amount = int(maxAge[:-1])
