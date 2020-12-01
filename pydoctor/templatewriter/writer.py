@@ -38,8 +38,7 @@ class TemplateWriter(ABC):
         self.dry_run = False
 
     def prepOutputDirectory(self):
-        if not os.path.exists(self.base):
-            os.mkdir(self.base)
+        os.makedirs(self.base, exist_ok=True)
         shutil.copyfile(templatefile('apidocs.css'),
                         os.path.join(self.base, 'apidocs.css'))
         shutil.copyfile(templatefile('bootstrap.min.css'),
