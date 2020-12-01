@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
+import warnings
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
@@ -361,17 +362,23 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writerclass.__name__))
 
             # Init writer
-            writer = writerclass(options.htmloutput)
+            if system.options.templatedir:
+                system.templatefile_lookup.add_templatedir(
+                    system.options.templatedir)
+                try:
+                    writer = writerclass(options.htmloutput, 
+                        templatefile_lookup=system.templatefile_lookup) 
+
+                except TypeError:
+                    writer = writerclass(options.htmloutput)
+                    warnings.warn(f"Your custom writer '{writerclass}' do not support template customization with --template-dir."
+                        "Please refer to the docs to update your code. ")
+            
+            else:
+                writer = writerclass(options.htmloutput)
+
             writer.prepOutputDirectory()
 
-            # Set template directory 
-            if options.templatedir:
-                if hasattr(writer, 'templatefile_lookup'):
-                    writer.templatefile_lookup.set_templatedir(options.templatedir)
-                else:
-                    error(  "The template writer class do not implement 'templatefile_lookup' attribute. ",
-                            "Cannot set the template directory. ")
-                
             if options.htmlsubjects:
                 subjects = []
                 for fn in options.htmlsubjects:

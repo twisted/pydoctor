@@ -39,8 +39,11 @@ class TableRow(Element):
 
 
 class ChildTable(Element):
-    loader = XMLFile(util.templatefilepath('table.html'))
     last_id = 0
+
+    @property
+    def loader(self):
+        return XMLFile(self.ob.system.templatefile_lookup.get_templatefilepath('table.html'))
 
     def __init__(self, docgetter, ob, children):
         self.docgetter = docgetter

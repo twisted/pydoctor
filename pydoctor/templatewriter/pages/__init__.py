@@ -26,14 +26,20 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class Customizable(Element):
+class BasePage(Element):
     """
-    Defines 3 special placeholders that can be overwritten by users: header.html, pageHeader.html and footer.html.
+    
+    Defines special placeholders that can be overwritten by users: 
+        header.html, pageHeader.html and footer.html.
     """
+    
+    def __init__(self, templatefile_lookup:util.TemplateFileLookup):
+        self.templatefile_lookup = templatefile_lookup
+        """Reference to the system's L{TemplateFileLookup} object"""
 
     @renderer
     def header(self, request, tag):
-        template = util.templatefilepath('header.html')
+        template = self.templatefile_lookup.get_templatefilepath('header.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -41,7 +47,7 @@ class Customizable(Element):
 
     @renderer
     def pageHeader(self, request, tag):
-        template = util.templatefilepath('pageHeader.html')
+        template = self.templatefile_lookup.get_templatefilepath('pageHeader.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -49,15 +55,16 @@ class Customizable(Element):
 
     @renderer
     def footer(self, request, tag):
-        template = util.templatefilepath('footer.html')
+        template = self.templatefile_lookup.get_templatefilepath('footer.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
             return ''
 
-class CommonPage(Customizable):
+class CommonPage(BasePage):
 
     def __init__(self, ob, docgetter=None):
+        super().__init__(templatefile_lookup = ob.system.templatefile_lookup)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
@@ -65,7 +72,7 @@ class CommonPage(Customizable):
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('common.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()

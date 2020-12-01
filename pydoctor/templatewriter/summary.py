@@ -2,7 +2,7 @@
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
-from pydoctor.templatewriter.pages import Customizable
+from pydoctor.templatewriter.pages import BasePage
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
 
@@ -26,14 +26,15 @@ def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
 
-class ModuleIndexPage(Customizable):
+class ModuleIndexPage(BasePage):
     filename = 'moduleIndex.html'
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
 
     def __init__(self, system):
+        super().__init__(templatefile_lookup = system.templatefile_lookup)
         self.system = system
 
     @renderer
@@ -92,14 +93,15 @@ def subclassesFrom(hostsystem, cls, anchors):
         r(ul)
     return r
 
-class ClassIndexPage(Customizable):
+class ClassIndexPage(BasePage):
     filename = 'classIndex.html'
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
 
     def __init__(self, system):
+        super().__init__(templatefile_lookup = system.templatefile_lookup)
         self.system = system
 
     @renderer
@@ -180,14 +182,15 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(Customizable):
+class NameIndexPage(BasePage):
     filename = 'nameIndex.html'
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('nameIndex.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('nameIndex.html'))
 
     def __init__(self, system):
+        super().__init__(templatefile_lookup = system.templatefile_lookup)
         self.system = system
         self.initials = {}
         for ob in self.system.allobjects.values():
@@ -221,14 +224,15 @@ class NameIndexPage(Customizable):
         return r
 
 
-class IndexPage(Customizable):
+class IndexPage(BasePage):
     filename = 'index.html'
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('index.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('index.html'))
 
     def __init__(self, system):
+        super().__init__(templatefile_lookup = system.templatefile_lookup)
         self.system = system
 
     @renderer
@@ -304,14 +308,15 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(Customizable):
+class UndocumentedSummaryPage(BasePage):
     filename = 'undoccedSummary.html'
 
     @property
     def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
 
     def __init__(self, system):
+        super().__init__(templatefile_lookup = system.templatefile_lookup)
         self.system = system
 
     @renderer

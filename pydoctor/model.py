@@ -532,6 +532,10 @@ class System:
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
+        from pydoctor.templatewriter.util import TemplateFileLookup
+        self.templatefile_lookup = TemplateFileLookup()
+        """Reference to the system's L{TemplateFileLookup} object"""
+
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""

@@ -1,7 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
 from abc import ABC
-from typing import Type, Iterable, Union
+from typing import Type, Optional, List
 import os
 import shutil
 from typing import IO, Any
@@ -35,12 +35,14 @@ class TemplateWriter(ABC):
                     return False
         return True
 
-    def __init__(self, filebase:str):
+    def __init__(self, filebase:str, templatefile_lookup:Optional[TemplateFileLookup] = None):
         self.base = filebase
         self.written_pages = 0
         self.total_pages = 0
         self.dry_run = False
-        self.templatefile_lookup = TemplateFileLookup()
+        self.templatefile_lookup:TemplateFileLookup = ( 
+            templatefile_lookup if templatefile_lookup else TemplateFileLookup() )
+        """Reference to the system's L{TemplateFileLookup} object"""
 
     def prepOutputDirectory(self) -> None:
         """
@@ -48,14 +50,14 @@ class TemplateWriter(ABC):
         """
         if not os.path.exists(self.base):
             os.mkdir(self.base)
-        shutil.copyfile(templatefile('apidocs.css'),
-                        os.path.join(self.base, 'apidocs.css'))
-        shutil.copyfile(templatefile('bootstrap.min.css'),
-                        os.path.join(self.base, 'bootstrap.min.css'))
-        shutil.copyfile(templatefile('pydoctor.js'),
-                        os.path.join(self.base, 'pydoctor.js'))
+        self.templatefile_lookup.get_templatefilepath('apidocs.css').copyTo(
+            FilePath(os.path.join(self.base, 'apidocs.css')))
+        self.templatefile_lookup.get_templatefilepath('bootstrap.min.css').copyTo(
+            FilePath(os.path.join(self.base, 'bootstrap.min.css')))
+        self.templatefile_lookup.get_templatefilepath('pydoctor.js').copyTo(
+            FilePath(os.path.join(self.base, 'pydoctor.js')))
 
-    def writeIndividualFiles(self, obs:Iterable[model.Documentable], functionpages:bool=False) -> None:
+    def writeIndividualFiles(self, obs:List[model.Documentable], functionpages:bool=False) -> None:
         """
         Iterate trought ``obs`` and call `_writeDocsFor` method for each `Documentable`. 
         """

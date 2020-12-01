@@ -124,33 +124,33 @@ def test_templatefile_lookup() -> None:
 
     here = Path(__file__).parent
 
-    assert ( Path(lookup.get_templatefile('index.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
         == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
 
-    lookup.set_templatedir((here / 'faketemplate'))
+    lookup.add_templatedir((here / 'faketemplate'))
 
-    assert ( Path(lookup.get_templatefile('footer.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('footer.html').path).as_uri() 
         == (here / 'faketemplate' / 'footer.html').absolute().as_uri() )
     
-    assert ( Path(lookup.get_templatefile('header.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('header.html').path).as_uri() 
         == (here / 'faketemplate' / 'header.html').absolute().as_uri() )
 
-    assert ( Path(lookup.get_templatefile('pageHeader.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('pageHeader.html').path).as_uri() 
         == (here / 'faketemplate' / 'pageHeader.html').absolute().as_uri() )
 
-    assert ( Path(lookup.get_templatefile('index.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
         == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
 
-    lookup.reset_templatedir()
+    lookup.clear_templates()
 
-    assert ( Path(lookup.get_templatefile('footer.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('footer.html').path).as_uri() 
         == (here.parent / 'templates' / 'footer.html').absolute().as_uri() )
     
-    assert ( Path(lookup.get_templatefile('header.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('header.html').path).as_uri() 
         == (here.parent / 'templates' / 'header.html').absolute().as_uri() )
 
-    assert ( Path(lookup.get_templatefile('pageHeader.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('pageHeader.html').path).as_uri() 
         == (here.parent / 'templates' / 'pageHeader.html').absolute().as_uri() )
 
-    assert ( Path(lookup.get_templatefile('index.html')).as_uri() 
+    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
         == (here.parent / 'templates' / 'index.html').absolute().as_uri() )

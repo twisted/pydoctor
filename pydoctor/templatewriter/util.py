@@ -1,12 +1,12 @@
 """Miscellaneous utilities."""
 
-from typing import Optional
+from typing import Optional, List
 import os
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import Tag, tags
-
+import warnings
 
 def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref
@@ -26,45 +26,48 @@ class TemplateFileLookup:
     Only customization of "footer.html", "header.html" and "pageHeader.html" is currently supported.
 
     """
-    _instance = None
-    def __new__(cls):
-        if cls._instance == None:
-            cls._instance = super(TemplateFileLookup, cls).__new__(cls)
-            # Put any initialization here.
-            cls.templatedir: Optional[str] = None
-        return cls._instance
+    def __init__(self):
+        self.templatedirs:List[FilePath] = []
+        # Add default template dir
+        self._init_default_template_dir()
 
-    def set_templatedir(self, folderpath:str) -> None:
-        """
-        Set the custom template directory. 
-        """
-        if not FilePath(folderpath).isdir():
-            raise FileNotFoundError(f"Cannot find the template directory '{folderpath}'")
-        self.templatedir = os.path.abspath(folderpath)
+    def _init_default_template_dir(self) -> None:
+        abspath = os.path.abspath(__file__)
+        pydoctordir = os.path.dirname(os.path.dirname(abspath))
+        self.templatedirs.append(FilePath(os.path.join(pydoctordir, 'templates')))
 
-    def reset_templatedir(self) -> None:
-        self.templatedir = None
-
-    def get_templatefile(self, filename:str) -> str:
+    def add_templatedir(self, folderpath:str) -> None:
         """
-        Get a template file path base on it's name.
-        Use the custom template if provided, else load the default template.
+        Add a custom template directory. 
+        """
+        path = FilePath(folderpath)
+        if not path.isdir():
+            raise FileNotFoundError(f"Cannot find the template directory: '{path}'")
+        self.templatedirs.append(path)
+
+    def clear_templates(self) -> None:
+        self.templatedirs = []
+        self._init_default_template_dir()
+
+    def get_templatefilepath(self, filename:str) -> FilePath:
+        """
+        Lookup a template file path base on the file name. 
+        Load the custom template if provided, else load the default template.
 
         @param filename: File name, (ie 'index.html')
         """
-        # Return custom template
-        if self.templatedir:
-            p_templatefile = os.path.join(self.templatedir, filename)
-            if FilePath(p_templatefile).isfile():
+        for template in reversed(self.templatedirs):
+            p_templatefile = FilePath(os.path.join(template.path, filename))
+            if p_templatefile.isfile():
                 return p_templatefile
-        # Return original template
-        abspath = os.path.abspath(__file__)
-        pydoctordir = os.path.dirname(os.path.dirname(abspath))
-        return os.path.join(pydoctordir, 'templates', filename)
+        raise FileNotFoundError(f"Cannot find template file: '{filename}' in template directories: {self.templatedirs}")
 
+# Deprecated
 def templatefile(filename:str) -> str:
+    warnings.warn(  "pydoctor.templatewriter.templatefile() and pydoctor.templatewriter.templatefilepath() " 
+                    "are deprecated since pydoctor 21.0. Please use templating system. ")
     return TemplateFileLookup().get_templatefile(filename)
-
+# Deprecated
 def templatefilepath(filename:str) -> FilePath:
     return FilePath(templatefile(filename))
 

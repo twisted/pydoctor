@@ -4,7 +4,9 @@ from twisted.web.template import Element, XMLFile, renderer
 
 class AttributeChild(Element):
 
-    loader = XMLFile(util.templatefilepath('attribute-child.html'))
+    @property
+    def loader(self):
+        return XMLFile(self.ob.system.templatefile_lookup.get_templatefilepath('attribute-child.html'))
 
     def __init__(self, docgetter, ob, functionExtras):
         self.docgetter = docgetter
