@@ -29,11 +29,11 @@ def test_rst_anon_link_email() -> None:
 
 def to_html(docstring: str) -> str:
     """
-    Utility method to convert a docstring to html with pydoctor. 
+    Utility method to convert a docstring to html with pydoctor.
     """
     err: List[ParseError] = []
     p = restructuredtext.parse_docstring(docstring, err)
-    if err: 
+    if err:
         raise ValueError("\n".join(repr(e) for e in err))
     html=flatten(p.to_stan(None))
     return html
@@ -41,7 +41,7 @@ def to_html(docstring: str) -> str:
 def prettify(html:str) -> str:
     return(BeautifulSoup(html).prettify())
 
-# TESTS FOR NOT IMPLEMENTTED FEATURES 
+# TESTS FOR NOT IMPLEMENTTED FEATURES
 
 @pytest.mark.xfail
 def test_rst_directive_abnomitions() -> None:
@@ -52,7 +52,7 @@ def test_rst_directive_abnomitions() -> None:
         <p>Hey</p>
         </div>"""
     assert prettify(html) == prettify(expected_html)
-    
+
     html = to_html(".. note:: Hey")
     expected_html = """
         <div class="admonition note">

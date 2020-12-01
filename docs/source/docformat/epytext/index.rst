@@ -1,10 +1,9 @@
-
 Epytext
 -------
 
 Read the `epytext syntax reference <http://epydoc.sourceforge.net/manual-epytext.html>`_.
 
-The Epytext support has been herited from the ``epydoc`` software. So all markup should work. Except ``X{}`` tag, which has been removed. 
+The Epytext support has been herited from the ``epydoc`` software. So all markup should work. Except ``X{}`` tag, which has been removed.
 
 Fields
 ^^^^^^

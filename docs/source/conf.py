@@ -93,4 +93,3 @@ pydoctor_args = [
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     ]
-    

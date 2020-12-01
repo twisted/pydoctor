@@ -10,8 +10,8 @@ For the language syntax documentation, read the `ReST docutils syntax reference 
 Default role
 ^^^^^^^^^^^^
 
-PyDoctor replaces the Docutils' default `interpreted text role <http://docutils.sourceforge.net/docs/ref/rst/roles.html>`_ with the creation of 
-`documentation crossreference links <http://epydoc.sourceforge.net/epydoc.html#documentation-crossreference-links>`_. If you want to create a crossreference link 
+PyDoctor replaces the Docutils' default `interpreted text role <http://docutils.sourceforge.net/docs/ref/rst/roles.html>`_ with the creation of
+`documentation crossreference links <http://epydoc.sourceforge.net/epydoc.html#documentation-crossreference-links>`_. If you want to create a crossreference link
 to the somemod.Example class, you can put backquotes around your test, typing::
 
     `module.Example`
@@ -30,18 +30,18 @@ As a reminder, here are some of the supported *restructuredtext* fields:
     - ``:rtype: list``
     - ``:except ValueError:``
 
-In addition to the standard set of fields, the reStructruedText 
-parser also supports **consolidated fields**, which combine the documentation 
-for several objects into a single field. 
+In addition to the standard set of fields, the reStructruedText
+parser also supports **consolidated fields**, which combine the documentation
+for several objects into a single field.
 
-These consolidated fields may be written using either a `bulleted list <http://docutils.sourceforge.net/docs/user/rst/quickref.html#bullet-lists>`_ 
+These consolidated fields may be written using either a `bulleted list <http://docutils.sourceforge.net/docs/user/rst/quickref.html#bullet-lists>`_
 or a `definition list <http://docutils.sourceforge.net/docs/user/rst/quickref.html#definition-lists>`_.
 
-- If a consolidated field is written as a bulleted list, then each list item must begin with the field's argument, 
+- If a consolidated field is written as a bulleted list, then each list item must begin with the field's argument,
   marked as `interpreted text <http://docutils.sourceforge.net/docs/user/rst/quickref.html#inline-markup>`_, and followed by a colon or dash.
 - If a consolidated field is written as a definition list, then each definition item's term should contain the field's argument, (it is not mandatory for it being marked as interpreted text).
 
-The following example shows the use of a definition list to define the ``Parameters`` consolidated field with type definition. 
+The following example shows the use of a definition list to define the ``Parameters`` consolidated field with type definition.
 Note that *docutils* requires a space before and after the ``:`` used to mark classifiers.
 
 .. code:: python
@@ -86,17 +86,17 @@ The following consolidated fields are currently supported by PyDoctor:
     ``:Types:``	                        ``:type:``
     ==============================      ==============================
 
-Case *insensitive*. 
+Case *insensitive*.
 
 Directives
 ^^^^^^^^^^
 
 Here is a list of the supported ReST directives by package of origin:
 
-- `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, ``.. role::``, ``.. table::``, etc. 
+- `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, ``.. role::``, ``.. table::``, etc.
 - `epydoc`: None
 - `Sphinx`: None
-- `pydoctor`: ``.. python::``. 
+- `pydoctor`: ``.. python::``.
 
 Colorized snippets directive
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

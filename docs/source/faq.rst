@@ -5,7 +5,7 @@ Why?
 ----
 
 ``pydoctor`` was written to be used by the `Twisted project <http://twistedmatrix.com>`_ which was
-using `epydoc <http://epydoc.sourceforge.net/>`_ but was becoming increasingly unhappy with it for various reasons.  
+using `epydoc <http://epydoc.sourceforge.net/>`_ but was becoming increasingly unhappy with it for various reasons.
 In addition, development on Epydoc seemed to have halted.
 
 The needs of the Twisted project are still the main driving force for ``pydoctor``'s
@@ -26,15 +26,15 @@ Always backed with `numerous contributors <https://github.com/twisted/pydoctor/g
 Why would I use it?
 -------------------
 
-``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing. 
+``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing.
 It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en/latest/>`_, and can
 recognise interfaces and classes which implement such interfaces.
 
 How is it different from ``sphinx-autodoc``
 -------------------------------------------
 
-``sphinx-autodoc`` can be hazardous and the output is sometimes overwhelming, ``pydoctor`` will generate 
-one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables. 
+``sphinx-autodoc`` can be hazardous and the output is sometimes overwhelming, ``pydoctor`` will generate
+one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables.
 
 It can be integrated to your Sphinx prose documentation seemlesly to link to your API documentation, please refer to `Usage <usage.html>`_ section.
 
@@ -46,11 +46,11 @@ It looks `like this <http://twistedmatrix.com/documents/current/api/>`_, which i
 The output is reasonably simple.
 
 As a bonus here are other projects using ``pydoctor``:
-    - Wokkel 
+    - Wokkel
     - msiempy
-    - An many others! 
+    - An many others!
 
 How do I use it?
 ----------------
 
-Please review the `Usage <usage.html>`_ section. 
+Please review the `Usage <usage.html>`_ section.
