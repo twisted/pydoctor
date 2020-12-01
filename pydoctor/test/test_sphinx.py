@@ -694,7 +694,7 @@ def test_prepareCache(
     """
     The cache directory is deleted when C{clearCache} is L{True}; an
     L{IntersphinxCache} is created with a session on which is mounted
-    L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
+    C{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
     """
 
     # Windows doesn't like paths ending in a space or dot.
