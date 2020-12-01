@@ -7,12 +7,12 @@ ReStructuredText
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
-Default role
-^^^^^^^^^^^^
+Cross references
+^^^^^^^^^^^^^^^^
 
 PyDoctor replaces the Docutils' default `interpreted text role <http://docutils.sourceforge.net/docs/ref/rst/roles.html>`_ with the creation of
 `documentation crossreference links <http://epydoc.sourceforge.net/epydoc.html#documentation-crossreference-links>`_. If you want to create a crossreference link
-to the somemod.Example class, you can put backquotes around your test, typing::
+to the ``module.Example`` class, simply put backquotes around it, typing::
 
     `module.Example`
 

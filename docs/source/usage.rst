@@ -30,10 +30,10 @@ It will add a link to the project website in all pages header, show a link to so
 ``__all__`` re-export
 ---------------------
 
-A documented element which is defined in ``my_package.core.session``, but included in ``__all__`` of ``my_package`` - in the ``__init__.py`` -
-that it is imported into, will end up in the documentation of ``my_package``.
+A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package`` 
+- in the ``__init__.py`` that it is imported into - will end up in the documentation of ``my_package``.
 
-For instance, in the following configuration, the documentation of the ``MyClass`` object will be moved to the root package, ``my_package``.
+For instance, in the following exemple, the documentation of ``MyClass`` will be moved to the root package, ``my_package``.
 
 ::
 
@@ -46,7 +46,7 @@ For instance, in the following configuration, the documentation of the ``MyClass
   │   │   ├── __init__.py
   │   │   ├── session.py  <-- Defines `MyClass`
 
-The content of ``my_package/__init__.py``::
+The content of ``my_package/__init__.py`` includes::
 
   from .core.session import MyClass
   __all__ = ['MyClass', 'etc.']
@@ -60,10 +60,10 @@ You can choose to document only a couple classes or modules with the following c
 
   --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
 
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course).
-The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``. 
+The ``--html-subject`` argument acts like a filter.
 
-.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page.
+.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML pages.
 
 
 Publish your documentation
@@ -213,7 +213,6 @@ way.::
 
     pydoctor_args = [
         '--quiet',
-        '--add-package=/absolute/path/to/your/project/package1',
         '--project-name=YOUR-PROJECT-NAME',
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
@@ -222,6 +221,7 @@ way.::
         '--html-viewsource-base=https://github.com/ORG/REPO/tree/default',
         '--html-output={outdir}/api',
         '--project-base-dir=/absolute/path/to/your/project',
+        '/absolute/path/to/your/project/package1'
         ]
 
 The `{outdir}` will replaced with the Sphinx build dir.
