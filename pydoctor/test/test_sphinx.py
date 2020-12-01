@@ -528,7 +528,7 @@ class TestParseMaxAge:
 class ClosingBytesIO(io.BytesIO):
     """
     A L{io.BytesIO} instance that closes itself after all its data has
-    been read.  This mimics the behavior of L{HTTPResponse} in the
+    been read.  This mimics the behavior of L{http.client.HTTPResponse} in the
     standard library.
     """
 
