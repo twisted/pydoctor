@@ -38,8 +38,8 @@ def to_html(docstring: str) -> str:
     html=flatten(p.to_stan(None))
     return html
 
-def prettify(html:str) -> str:
-    return(BeautifulSoup(html).prettify())
+def prettify(html: str) -> str:
+    return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
 
 # TESTS FOR NOT IMPLEMENTTED FEATURES
 
