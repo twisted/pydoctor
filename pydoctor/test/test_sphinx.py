@@ -566,8 +566,8 @@ class TestIntersphinxCache:
     def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
         """
         Return a function that patches
-        L{requests.adapters.HTTPResponse.send} so that it returns the
-        provided L{urllib3.Response}.
+        L{requests.adapters.HTTPAdapter.send} so that it returns the
+        provided L{requests.Response}.
         """
         def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
             def send(
