@@ -166,7 +166,8 @@ class Element:
         """
         Return a string representation of this element, using XML
         notation.
-        @bug: Doesn't escape '<' or '&' or '>'.
+        @note: Doesn't escape '<' or '&' or '>', so the result is only XML-like
+            and cannot actually be parsed as XML.
         """
         attribs = ''.join(f' {k}={v!r}' for k, v in self.attribs.items())
         content = ''.join(str(child) for child in self.children)

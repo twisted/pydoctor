@@ -30,9 +30,6 @@ responsible for resolving identifier crossreferences
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
 each error.
-
-@sort: ParsedDocstring, Field, DocstringLinker
-@group Errors and Warnings: ParseError
 """
 __docformat__ = 'epytext en'
 
