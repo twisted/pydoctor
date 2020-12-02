@@ -178,8 +178,8 @@ def getparser() -> OptionParser:
         '--intersphinx', action='append', dest='intersphinx',
         metavar='URL_TO_OBJECTS.INV', default=[],
         help=(
-            "Use Sphinx objects inventory to generate links to external"
-            "documetation. Can be repeated."))
+            "Use Sphinx objects inventory to generate links to external "
+            "documentation. Can be repeated."))
 
     parser.add_option(
         '--enable-intersphinx-cache',
