@@ -37,6 +37,10 @@ jobs:
       run: |
         tox -e pyflakes
 
+    - name: Run pydoctor on its own source and fail on docstring errors
+      run: |
+        tox -e apidocs
+
     - name: Run docs and check extensions
       run: |
         tox -e docs
