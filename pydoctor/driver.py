@@ -1,6 +1,6 @@
 """The command-line parsing and entry point."""
 
-from optparse import Option, OptionParser, OptionValueError, Values
+from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
@@ -178,15 +178,22 @@ def getparser() -> OptionParser:
         '--intersphinx', action='append', dest='intersphinx',
         metavar='URL_TO_OBJECTS.INV', default=[],
         help=(
-            "Use Sphinx objects inventory to generate links to external"
-            "documetation. Can be repeated."))
+            "Use Sphinx objects inventory to generate links to external "
+            "documentation. Can be repeated."))
 
     parser.add_option(
         '--enable-intersphinx-cache',
-        dest='enable_intersphinx_cache',
+        dest='enable_intersphinx_cache_deprecated',
         action='store_true',
         default=False,
-        help="Enable Intersphinx cache."
+        help=SUPPRESS_HELP
+    )
+    parser.add_option(
+        '--disable-intersphinx-cache',
+        dest='enable_intersphinx_cache',
+        action='store_false',
+        default=True,
+        help="Disable Intersphinx cache."
     )
     parser.add_option(
         '--intersphinx-cache-path',
@@ -250,6 +257,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     if options.configfile:
         readConfigFile(options)
+
+    if options.enable_intersphinx_cache_deprecated:
+        print("The --enable-intersphinx-cache option is deprecated; "
+              "the cache is now enabled by default.", file=sys.stderr)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
