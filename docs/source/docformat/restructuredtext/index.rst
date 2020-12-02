@@ -26,7 +26,7 @@ As a reminder, here are some of the supported *restructuredtext* fields:
     - ``:type bar: str``
     - ``:return:``
     - ``:rtype: list``
-    - ``:except ValueError:``
+    - ``:raises ValueError:``
 
 In addition to the standard set of fields, the reStructruedText
 parser also supports **consolidated fields**, which combine the documentation
@@ -75,13 +75,9 @@ The following consolidated fields are currently supported by PyDoctor:
     Consolidated Field Tag              Corresponding Base Field Tag
     ==============================      ==============================
     ``:Parameters:``	                ``:param:``
-    ``:Exceptions:``	                ``:except:``
-    ``:Groups:``	                    ``:group:``
-    ``:Keywords:``	                    ``:keyword:``
     ``:Variables:``	                    ``:var:``
     ``:IVariables:``	                ``:ivar:``
     ``:CVariables:``	                ``:cvar:``
-    ``:Types:``	                        ``:type:``
     ==============================      ==============================
 
 Case *insensitive*.
