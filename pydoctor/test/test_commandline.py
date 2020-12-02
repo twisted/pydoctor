@@ -75,13 +75,13 @@ def test_projectbasedir_relative() -> None:
     assert options.projectbasedirectory.parent == Path.cwd()
 
 
-def test_cache_disabled_by_default() -> None:
+def test_cache_enabled_by_default() -> None:
     """
-    Intersphinx object caching is disabled by default.
+    Intersphinx object caching is enabled by default.
     """
     parser = driver.getparser()
     (options, _) = parser.parse_args([])
-    assert not options.enable_intersphinx_cache
+    assert options.enable_intersphinx_cache
 
 
 def test_cli_warnings_on_error() -> None:
