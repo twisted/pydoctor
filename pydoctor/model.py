@@ -508,7 +508,14 @@ class System:
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[Documentable] = []
-        self.violations: Dict[str, List[Tuple[str, str]]] = {}
+
+        self.violations = 0
+        """The number of docstring problems found.
+        This is used to determine whether to fail the build when using
+        the --warnings-as-errors option, so it should only be increased
+        for problems that the user can fix.
+        """
+
         self.packages: List[str] = []
 
         if options:
@@ -582,7 +589,7 @@ class System:
             # Apidoc build messages are generated using negative threshold
             # and we have separate reporting for them,
             # on top of the logging system.
-            self.violations.setdefault(section, []).append((section, msg))
+            self.violations += 1
 
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
@@ -851,12 +858,11 @@ class System:
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
-        num_warnings = sum(len(v) for v in self.violations.values())
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            f"modules processed {num_warnings} warnings")
+            f"modules processed, {self.violations} warnings")
 
 
     def process(self) -> None:
