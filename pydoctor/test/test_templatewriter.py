@@ -1,10 +1,11 @@
 from io import BytesIO
 from pathlib import Path
+from typing import Callable
 
 import pytest
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
-from pydoctor.templatewriter.summary import isClassNodePrivate
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
@@ -119,8 +120,11 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     assert "methodB" in html
 
 
-def test_isClassNodePrivate_scope() -> None:
-    """A class is private if it is private itself or lives in a private context."""
+@pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
+def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
+    """A documentable object is private if it is private itself or
+    lives in a private context.
+    """
     mod = fromText('''
     class Public:
         class Inner:
@@ -130,14 +134,14 @@ def test_isClassNodePrivate_scope() -> None:
             pass
     ''')
     public = mod.contents['Public']
-    assert not isClassNodePrivate(public)
-    assert not isClassNodePrivate(public.contents['Inner'])
+    assert not func(public)
+    assert not func(public.contents['Inner'])
     private = mod.contents['_Private']
-    assert isClassNodePrivate(private)
-    assert isClassNodePrivate(private.contents['Inner'])
+    assert func(private)
+    assert func(private.contents['Inner'])
 
 
-def test_isClassNodePrivate_inheritance() -> None:
+def test_isClassNodePrivate() -> None:
     """A node for a private class with public subclasses is considered public."""
     mod = fromText('''
     class _BaseForPublic:

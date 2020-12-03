@@ -74,19 +74,23 @@ def findRootClasses(
             roots[cls.fullName()] = cls
     return sorted(roots.items(), key=lambda x:x[0].lower())
 
-def isClassNodePrivate(cls: model.Class) -> bool:
-    """Are a class and all its subclasses are private?"""
+def isPrivate(obj: model.Documentable) -> bool:
+    """Is the object itself private or does it live in a private context?"""
 
-    # Check whether the class is private, either by itself or because
-    # it lives inside a private context.
-    obj: model.Documentable = cls
     while not obj.isPrivate:
         parent = obj.parent
         if parent is None:
             return False
         obj = parent
 
-    # Check whether all subclasses are private.
+    return True
+
+def isClassNodePrivate(cls: model.Class) -> bool:
+    """Are a class and all its subclasses are private?"""
+
+    if not isPrivate(cls):
+        return False
+
     for sc in cls.subclasses:
         if not isClassNodePrivate(sc):
             return False
