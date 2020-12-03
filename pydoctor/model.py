@@ -650,8 +650,7 @@ class System:
     # - that http://divmod.org/trac/browser/trunk is the trac URL to the
     #   above directory
     #
-    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
-    #   "--add-package" argument
+    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an argument
     #
     # we want to work out the sourceHref for nevow.flat.ten.  the answer
     # is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
