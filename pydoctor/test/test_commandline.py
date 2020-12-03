@@ -34,7 +34,7 @@ def test_invalid_option() -> None:
 
 def test_cannot_advance_blank_system() -> None:
     err = geterrtext('--make-html')
-    assert 'forget an --add-package?' in err
+    assert 'No source paths given' in err
 
 def test_no_systemclasses_py3() -> None:
     err = geterrtext('--system-class')

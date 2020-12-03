@@ -72,7 +72,9 @@ class CustomOption(Option):
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
 
 def getparser() -> OptionParser:
-    parser = OptionParser(option_class=CustomOption, version=__version__.public())
+    parser = OptionParser(
+        option_class=CustomOption, version=__version__.public(),
+        usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
@@ -104,13 +106,10 @@ def getparser() -> OptionParser:
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
     parser.add_option(
         '--add-package', action='append', dest='packages',
-        metavar='PACKAGEDIR', default=[],
-        help=("Add a package to the system.  Can be repeated "
-              "to add more than one package."))
+        metavar='PACKAGEDIR', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--add-module', action='append', dest='modules',
-        metavar='MODULE', default=[],
-        help=("Add a module to the system.  Can be repeated."))
+        metavar='MODULE', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
@@ -261,6 +260,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.", file=sys.stderr)
+    if options.modules:
+        print("The --add-module option is deprecated; "
+              "pass modules as positional arguments instead.", file=sys.stderr)
+    if options.packages:
+        print("The --add-package option is deprecated; "
+              "pass packages as positional arguments instead.", file=sys.stderr)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
@@ -321,23 +326,26 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.addObject(prependedpackage)
                     initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
+            added_paths = set()
             for path in args:
                 path = os.path.abspath(path)
-                if path in system.packages:
+                if path in added_paths:
                     continue
                 if os.path.isdir(path):
                     system.msg('addPackage', 'adding directory ' + path)
                     system.addPackage(path, prependedpackage)
-                else:
+                elif os.path.isfile(path):
                     system.msg('addModuleFromPath', 'adding module ' + path)
                     system.addModuleFromPath(prependedpackage, path)
-                system.packages.append(path)
+                elif os.path.exists(path):
+                    error(f"Source path is neither file nor directory: {path}")
+                else:
+                    error(f"Source path does not exist: {path}")
+                added_paths.add(path)
+        else:
+            error("No source paths given.")
 
         # step 3: move the system to the desired state
-
-        if not system.packages:
-            error("The system does not contain any code, did you "
-                  "forget an --add-package?")
 
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
