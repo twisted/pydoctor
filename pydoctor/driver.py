@@ -104,13 +104,10 @@ def getparser() -> OptionParser:
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
     parser.add_option(
         '--add-package', action='append', dest='packages',
-        metavar='PACKAGEDIR', default=[],
-        help=("Add a package to the system.  Can be repeated "
-              "to add more than one package."))
+        metavar='PACKAGEDIR', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--add-module', action='append', dest='modules',
-        metavar='MODULE', default=[],
-        help=("Add a module to the system.  Can be repeated."))
+        metavar='MODULE', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
@@ -261,6 +258,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.", file=sys.stderr)
+    if options.modules:
+        print("The --add-module option is deprecated; "
+              "pass modules as positional arguments instead.", file=sys.stderr)
+    if options.packages:
+        print("The --add-package option is deprecated; "
+              "pass packages as positional arguments instead.", file=sys.stderr)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
