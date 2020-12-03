@@ -450,35 +450,36 @@ class ModuleVistor(ast.NodeVisitor):
             is_async: bool
             ) -> None:
         # Ignore inner functions.
-        if isinstance(self.builder.current, model.Function):
+        parent = self.builder.current
+        if isinstance(parent, model.Function):
             return
 
         lineno = node.lineno
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        is_classmethod = False
+        is_staticmethod = False
+        if isinstance(parent, model.Class) and node.decorator_list:
+            for d in node.decorator_list:
+                if isinstance(d, ast.Name):
+                    if d.id == 'classmethod':
+                        is_classmethod = True
+                    elif d.id == 'staticmethod':
+                        is_staticmethod = True
+
         func = self.builder.pushFunction(node.name, lineno)
         func.is_async = is_async
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             func.setDocstring(node.body[0].value)
         func.decorators = node.decorator_list
-        if isinstance(func.parent, model.Class) and node.decorator_list:
-            isclassmethod = False
-            isstaticmethod = False
-            for d in node.decorator_list:
-                if isinstance(d, ast.Name):
-                    if d.id == 'classmethod':
-                        isclassmethod = True
-                    elif d.id == 'staticmethod':
-                        isstaticmethod = True
-            if isstaticmethod:
-                if isclassmethod:
-                    func.report(f'{func.fullName()} is both classmethod '
-                                f'and staticmethod')
-                else:
-                    func.kind = 'Static Method'
-            elif isclassmethod:
-                func.kind = 'Class Method'
+        if is_staticmethod:
+            if is_classmethod:
+                func.report(f'{func.fullName()} is both classmethod and staticmethod')
+            else:
+                func.kind = 'Static Method'
+        elif is_classmethod:
+            func.kind = 'Class Method'
 
         # Position-only arguments were introduced in Python 3.8.
         posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
