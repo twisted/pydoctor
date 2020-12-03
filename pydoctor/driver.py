@@ -335,12 +335,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.msg('addModuleFromPath', 'adding module ' + path)
                     system.addModuleFromPath(prependedpackage, path)
                 system.packages.append(path)
+        else:
+            error("No source paths given.")
 
         # step 3: move the system to the desired state
-
-        if not system.packages:
-            error("The system does not contain any code, did you "
-                  "forget an --add-package?")
 
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
