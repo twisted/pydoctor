@@ -72,7 +72,9 @@ class CustomOption(Option):
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
 
 def getparser() -> OptionParser:
-    parser = OptionParser(option_class=CustomOption, version=__version__.public())
+    parser = OptionParser(
+        option_class=CustomOption, version=__version__.public(),
+        usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
