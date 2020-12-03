@@ -74,8 +74,29 @@ def findRootClasses(
             roots[cls.fullName()] = cls
     return sorted(roots.items(), key=lambda x:x[0].lower())
 
+def isClassNodePrivate(cls: model.Class) -> bool:
+    """Are a class and all its subclasses are private?"""
+
+    # Check whether the class is private, either by itself or because
+    # it lives inside a private context.
+    obj: model.Documentable = cls
+    while not obj.isPrivate:
+        parent = obj.parent
+        if parent is None:
+            return False
+        obj = parent
+
+    # Check whether all subclasses are private.
+    for sc in cls.subclasses:
+        if not isClassNodePrivate(sc):
+            return False
+
+    return True
+
 def subclassesFrom(hostsystem, cls, anchors):
     r = tags.li()
+    if isClassNodePrivate(cls):
+        r(class_='private')
     name = cls.fullName()
     if name not in anchors:
         r(tags.a(name=name))
@@ -117,6 +138,10 @@ class ClassIndexPage(Element):
                 t(subclassesFrom(self.system, o, anchors))
             else:
                 item = tags.li(tags.code(b))
+                if all(isClassNodePrivate(sc) for sc in o):
+                    # This is an external class used only by private API;
+                    # mark the whole node private.
+                    item(class_='private')
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):

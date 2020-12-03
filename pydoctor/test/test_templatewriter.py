@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
+from pydoctor.templatewriter.summary import isClassNodePrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
@@ -116,3 +117,39 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 
     assert "methodA" in html
     assert "methodB" in html
+
+
+def test_isClassNodePrivate_scope() -> None:
+    """A class is private if it is private itself or lives in a private context."""
+    mod = fromText('''
+    class Public:
+        class Inner:
+            pass
+    class _Private:
+        class Inner:
+            pass
+    ''')
+    public = mod.contents['Public']
+    assert not isClassNodePrivate(public)
+    assert not isClassNodePrivate(public.contents['Inner'])
+    private = mod.contents['_Private']
+    assert isClassNodePrivate(private)
+    assert isClassNodePrivate(private.contents['Inner'])
+
+
+def test_isClassNodePrivate_inheritance() -> None:
+    """A node for a private class with public subclasses is considered public."""
+    mod = fromText('''
+    class _BaseForPublic:
+        pass
+    class _BaseForPrivate:
+        pass
+    class Public(_BaseForPublic):
+        pass
+    class _Private(_BaseForPrivate):
+        pass
+    ''')
+    assert not isClassNodePrivate(mod.contents['Public'])
+    assert isClassNodePrivate(mod.contents['_Private'])
+    assert not isClassNodePrivate(mod.contents['_BaseForPublic'])
+    assert isClassNodePrivate(mod.contents['_BaseForPrivate'])
