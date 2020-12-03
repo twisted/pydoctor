@@ -20,6 +20,9 @@
       </div>
     </nav>
 
+    <div id="showPrivate">
+      <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+    </div>
 
     <div class="container">
 
@@ -33,12 +36,15 @@
         </a>
         <h2 t:render="letter" />
         <p class="letterlinks" t:render="letterlinks" />
-        <ul>
+        <ul id="summaryTree">
           <li t:render="names" />
         </ul>
       </t:transparent>
 
     </div>
+
+    <script src="pydoctor.js" type='text/javascript'></script>
+
   </body>
 
 </html>

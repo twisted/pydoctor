@@ -189,14 +189,21 @@ class LetterElement(Element):
             name2obs.setdefault(obj.name, []).append(obj)
         r = []
         for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
+            item = tag.clone()(name)
             obs = name2obs[name]
+            if all(isPrivate(ob) for ob in obs):
+                item(class_='private')
             if len(obs) == 1:
-                r.append(tag.clone()(name, ' - ', util.taglink(obs[0])))
+                item(' - ', util.taglink(obs[0]))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    ul(tags.li(util.taglink(ob)))
-                r.append(tag.clone()(name, ul))
+                    subitem = tags.li(util.taglink(ob))
+                    if isPrivate(ob):
+                        subitem(class_='private')
+                    ul(subitem)
+                item(ul)
+            r.append(item)
         return r
 
 
