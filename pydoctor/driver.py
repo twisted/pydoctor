@@ -324,9 +324,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.addObject(prependedpackage)
                     initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
+            added_paths = set()
             for path in args:
                 path = os.path.abspath(path)
-                if path in system.packages:
+                if path in added_paths:
                     continue
                 if os.path.isdir(path):
                     system.msg('addPackage', 'adding directory ' + path)
@@ -334,7 +335,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 else:
                     system.msg('addModuleFromPath', 'adding module ' + path)
                     system.addModuleFromPath(prependedpackage, path)
-                system.packages.append(path)
+                added_paths.add(path)
         else:
             error("No source paths given.")
 

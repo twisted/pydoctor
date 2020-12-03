@@ -516,8 +516,6 @@ class System:
         for problems that the user can fix.
         """
 
-        self.packages: List[str] = []
-
         if options:
             self.options = options
         else:

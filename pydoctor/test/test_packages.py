@@ -8,7 +8,6 @@ testpackages = os.path.join(os.path.dirname(__file__), 'testpackages')
 def processPackage(packname: str, systemcls: Type[model.System] = model.System) -> model.System:
     testpackage = os.path.join(testpackages, packname)
     system = systemcls()
-    system.packages.append(testpackage)
     system.addPackage(testpackage)
     system.process()
     return system
