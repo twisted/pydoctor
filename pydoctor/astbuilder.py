@@ -460,20 +460,42 @@ class ModuleVistor(ast.NodeVisitor):
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        docstring: Optional[ast.Str] = None
+        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
+                              and isinstance(node.body[0].value, ast.Str):
+            docstring = node.body[0].value
+
+        is_property = False
         is_classmethod = False
         is_staticmethod = False
         if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Name):
-                    if d.id == 'classmethod':
+                    if d.id == 'property':
+                        is_property = True
+                    elif d.id == 'classmethod':
                         is_classmethod = True
                     elif d.id == 'staticmethod':
                         is_staticmethod = True
 
+        if is_property:
+            attr = self.builder.addAttribute(node.name, 'Property', parent)
+            attr.setLineNumber(lineno)
+            if docstring is not None:
+                attr.setDocstring(docstring)
+            if node.returns is not None:
+                attr.annotation = self._unstring_annotation(node.returns)
+            if is_classmethod:
+                attr.report(f'{attr.fullName()} is both property and classmethod')
+            if is_staticmethod:
+                attr.report(f'{attr.fullName()} is both property and staticmethod')
+            attr.decorators = node.decorator_list
+            return
+
         func = self.builder.pushFunction(node.name, lineno)
         func.is_async = is_async
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            func.setDocstring(node.body[0].value)
+        if docstring is not None:
+            func.setDocstring(docstring)
         func.decorators = node.decorator_list
         if is_staticmethod:
             if is_classmethod:

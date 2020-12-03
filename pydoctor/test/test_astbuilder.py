@@ -1159,6 +1159,43 @@ def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     assert sorted(mod.contents.keys()) == ['a', 'b', 'c']
 
 @systemcls_param
+def test_property_decorator(systemcls: Type[model.System]) -> None:
+    """A function decorated with '@property' is documented as an attribute."""
+    mod = fromText('''
+    class C:
+        @property
+        def prop(self) -> str:
+            """For sale."""
+            return 'seaside'
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+    prop = C.contents['prop']
+    assert isinstance(prop, model.Attribute)
+    assert prop.kind == 'Property'
+    assert prop.docstring == """For sale."""
+    assert type2str(prop.annotation) == 'str'
+
+@pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
+@systemcls_param
+def test_property_conflict(
+        decoration: str, systemcls: Type[model.System], capsys: CapSys
+        ) -> None:
+    """Warn when a function is decorated as both property and class/staticmethod.
+    These decoration combinations do not create class/static properties.
+    """
+    mod = fromText(f'''
+    class C:
+        @{decoration}
+        @property
+        def prop():
+            raise NotImplementedError
+    ''', modname='mod', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['prop'].kind == 'Property'
+    captured = capsys.readouterr().out
+    assert captured == f"mod:3: mod.C.prop is both property and {decoration}\n"
+
+@systemcls_param
 def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     def outer():
