@@ -334,9 +334,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 if os.path.isdir(path):
                     system.msg('addPackage', 'adding directory ' + path)
                     system.addPackage(path, prependedpackage)
-                else:
+                elif os.path.isfile(path):
                     system.msg('addModuleFromPath', 'adding module ' + path)
                     system.addModuleFromPath(prependedpackage, path)
+                elif os.path.exists(path):
+                    error(f"Source path is neither file nor directory: {path}")
+                else:
+                    error(f"Source path does not exist: {path}")
                 added_paths.add(path)
         else:
             error("No source paths given.")
