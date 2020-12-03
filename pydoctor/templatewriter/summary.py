@@ -12,7 +12,7 @@ def moduleSummary(modorpack):
         util.taglink(modorpack), ' - ',
         epydoc2stan.format_summary(modorpack)
         )
-    if modorpack.privacyClass is model.PrivacyClass.PRIVATE:
+    if modorpack.isPrivate:
         r(class_='private')
     if not isinstance(modorpack, model.Package):
         return r

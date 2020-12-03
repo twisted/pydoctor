@@ -298,11 +298,19 @@ class Documentable:
 
     @property
     def isVisible(self) -> bool:
-        """Is this object is so private as to be not shown at all?
+        """Is this object so private as to be not shown at all?
 
         This is just a simple helper which defers to self.privacyClass.
         """
         return self.privacyClass is not PrivacyClass.HIDDEN
+
+    @property
+    def isPrivate(self) -> bool:
+        """Is this object considered private API?
+
+        This is just a simple helper which defers to self.privacyClass.
+        """
+        return self.privacyClass is not PrivacyClass.VISIBLE
 
     @property
     def module(self) -> 'Module':
