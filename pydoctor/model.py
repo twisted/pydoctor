@@ -375,6 +375,13 @@ class Module(CanContainImportsDocumentable):
         else:
             return DocLocation.OWN_PAGE
 
+    @property
+    def privacyClass(self) -> PrivacyClass:
+        if self.name == '__main__':
+            return PrivacyClass.PRIVATE
+        else:
+            return super().privacyClass
+
     def setup(self) -> None:
         super().setup()
 
