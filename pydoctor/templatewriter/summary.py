@@ -1,5 +1,7 @@
 """Classes that generate the summary pages."""
 
+from typing import Dict, List, Sequence, Tuple, Union, cast
+
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
@@ -55,15 +57,17 @@ class ModuleIndexPage(Element):
     def heading(self, request, tag):
         return tag().clear()("Module Index")
 
-def findRootClasses(system):
-    roots = {}
+def findRootClasses(
+        system: model.System
+        ) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
+    roots: Dict[str, Union[model.Class, List[model.Class]]] = {}
     for cls in system.objectsOfType(model.Class):
         if ' ' in cls.name or not cls.isVisible:
             continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
                 if b is None or not b.isVisible:
-                    roots.setdefault(n, []).append(cls)
+                    cast(List[model.Class], roots.setdefault(n, [])).append(cls)
                 elif b.system is not system:
                     roots[b.fullName()] = b
         else:
