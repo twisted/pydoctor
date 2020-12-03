@@ -212,11 +212,11 @@ class NameIndexPage(Element):
 
     @renderer
     def title(self, request, tag):
-        return tag.clear()("Index Of Names")
+        return tag.clear()("Index of Names")
 
     @renderer
     def heading(self, request, tag):
-        return tag.clear()("Index Of Names")
+        return tag.clear()("Index of Names")
 
     @renderer
     def project(self, request, tag):
