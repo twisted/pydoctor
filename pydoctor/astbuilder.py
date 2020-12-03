@@ -313,9 +313,10 @@ class ModuleVistor(ast.NodeVisitor):
             # It is handled by findAll(), which operates on the AST and
             # therefore doesn't need an Attribute instance.
             return
-        obj = self.builder.current.resolveName(target)
+        parent = self.builder.current
+        obj = parent.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None)
+            obj = self.builder.addAttribute(target, None, parent)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
             obj.annotation = annotation
@@ -327,9 +328,10 @@ class ModuleVistor(ast.NodeVisitor):
             self._handleModuleVar(target, annotation, lineno)
 
     def _handleClassVar(self, target, annotation, lineno):
-        obj = self.builder.current.contents.get(target)
+        parent = self.builder.current
+        obj = parent.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None)
+            obj = self.builder.addAttribute(target, None, parent)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
@@ -787,12 +789,12 @@ class ASTBuilder:
     def popFunction(self):
         self._pop(self.system.Function)
 
-    def addAttribute(self, target, kind, parent=None):
-        if parent is None:
-            parent = self.current
+    def addAttribute(self,
+            name: str, kind: Optional[str], parent: model.Documentable
+            ) -> model.Attribute:
         system = self.system
         parentMod = self.currentMod
-        attr = system.Attribute(system, target, parent)
+        attr = system.Attribute(system, name, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
