@@ -313,9 +313,10 @@ class ModuleVistor(ast.NodeVisitor):
             # It is handled by findAll(), which operates on the AST and
             # therefore doesn't need an Attribute instance.
             return
-        obj = self.builder.current.resolveName(target)
+        parent = self.builder.current
+        obj = parent.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None)
+            obj = self.builder.addAttribute(target, None, parent)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
             obj.annotation = annotation
@@ -327,9 +328,10 @@ class ModuleVistor(ast.NodeVisitor):
             self._handleModuleVar(target, annotation, lineno)
 
     def _handleClassVar(self, target, annotation, lineno):
-        obj = self.builder.current.contents.get(target)
+        parent = self.builder.current
+        obj = parent.contents.get(target)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None)
+            obj = self.builder.addAttribute(target, None, parent)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
@@ -450,35 +452,58 @@ class ModuleVistor(ast.NodeVisitor):
             is_async: bool
             ) -> None:
         # Ignore inner functions.
-        if isinstance(self.builder.current, model.Function):
+        parent = self.builder.current
+        if isinstance(parent, model.Function):
             return
 
         lineno = node.lineno
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
-        func = self.builder.pushFunction(node.name, lineno)
-        func.is_async = is_async
-        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
-            func.setDocstring(node.body[0].value)
-        func.decorators = node.decorator_list
-        if isinstance(func.parent, model.Class) and node.decorator_list:
-            isclassmethod = False
-            isstaticmethod = False
+        docstring: Optional[ast.Str] = None
+        if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
+                              and isinstance(node.body[0].value, ast.Str):
+            docstring = node.body[0].value
+
+        func_name = node.name
+        is_property = False
+        is_classmethod = False
+        is_staticmethod = False
+        if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Name):
-                    if d.id == 'classmethod':
-                        isclassmethod = True
+                    if d.id == 'property':
+                        is_property = True
+                    elif d.id == 'classmethod':
+                        is_classmethod = True
                     elif d.id == 'staticmethod':
-                        isstaticmethod = True
-            if isstaticmethod:
-                if isclassmethod:
-                    func.report(f'{func.fullName()} is both classmethod '
-                                f'and staticmethod')
-                else:
-                    func.kind = 'Static Method'
-            elif isclassmethod:
-                func.kind = 'Class Method'
+                        is_staticmethod = True
+                elif isinstance(d, ast.Attribute):
+                    if d.attr in ('setter', 'deleter'):
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        func_name = f'{func_name}.{d.attr}'
+
+        if is_property:
+            attr = self._handlePropertyDef(node, docstring, lineno)
+            if is_classmethod:
+                attr.report(f'{attr.fullName()} is both property and classmethod')
+            if is_staticmethod:
+                attr.report(f'{attr.fullName()} is both property and staticmethod')
+            return
+
+        func = self.builder.pushFunction(func_name, lineno)
+        func.is_async = is_async
+        if docstring is not None:
+            func.setDocstring(docstring)
+        func.decorators = node.decorator_list
+        if is_staticmethod:
+            if is_classmethod:
+                func.report(f'{func.fullName()} is both classmethod and staticmethod')
+            else:
+                func.kind = 'Static Method'
+        elif is_classmethod:
+            func.kind = 'Class Method'
 
         # Position-only arguments were introduced in Python 3.8.
         posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
@@ -524,6 +549,37 @@ class ModuleVistor(ast.NodeVisitor):
         func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
+
+    def _handlePropertyDef(self,
+            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+            docstring: Optional[ast.Str],
+            lineno: int
+            ) -> model.Attribute:
+        attr = self.builder.addAttribute(node.name, 'Property', self.builder.current)
+        attr.setLineNumber(lineno)
+        if docstring is not None:
+            attr.setDocstring(docstring)
+            assert attr.docstring is not None
+            pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
+            other_fields = []
+            for field in pdoc.fields:
+                tag = field.tag()
+                if tag == 'return':
+                    if not pdoc.has_body:
+                        pdoc = field.body()
+                        # Avoid format_summary() going back to the original
+                        # empty-body docstring.
+                        attr.docstring = ''
+                elif tag == 'rtype':
+                    attr.parsed_type = field.body() # type: ignore[attr-defined]
+                else:
+                    other_fields.append(field)
+            pdoc.fields = other_fields
+            attr.parsed_docstring = pdoc
+        if node.returns is not None:
+            attr.annotation = self._unstring_annotation(node.returns)
+        attr.decorators = node.decorator_list
+        return attr
 
     def _annotation_from_attrib(self,
             expr: ast.expr,
@@ -630,8 +686,8 @@ class _ValueFormatter:
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
 
-    When given an expression, the node returned by L{visit()} will also
-    be an expression.
+    When given an expression, the node returned by L{ast.NodeVisitor.visit()}
+    will also be an expression.
     If any string literal contained in the original expression is either
     invalid Python or not a singular expression, L{SyntaxError} is raised.
     """
@@ -786,12 +842,12 @@ class ASTBuilder:
     def popFunction(self):
         self._pop(self.system.Function)
 
-    def addAttribute(self, target, kind, parent=None):
-        if parent is None:
-            parent = self.current
+    def addAttribute(self,
+            name: str, kind: Optional[str], parent: model.Documentable
+            ) -> model.Attribute:
         system = self.system
         parentMod = self.currentMod
-        attr = system.Attribute(system, target, parent)
+        attr = system.Attribute(system, name, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)

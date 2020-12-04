@@ -48,8 +48,7 @@ class TemplateWriter(ABC):
         """
         Copy static CSS and JS files to build directory.
         """
-        if not os.path.exists(self.base):
-            os.mkdir(self.base)
+        os.makedirs(self.base, exist_ok=True)
         self.templatefile_lookup.get_templatefilepath('apidocs.css').copyTo(
             FilePath(os.path.join(self.base, 'apidocs.css')))
         self.templatefile_lookup.get_templatefilepath('bootstrap.min.css').copyTo(

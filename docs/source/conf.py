@@ -51,6 +51,7 @@ exclude_patterns = []
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
+    'pydoctor': ('https://pydoctor.readthedocs.io/en/latest/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -81,7 +82,6 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 pydoctor_args = [
-    f'--add-package={_pydoctor_root}/pydoctor',
     '--html-output={outdir}/api',
     f'--project-base-dir={_pydoctor_root}',
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
@@ -91,5 +91,9 @@ pydoctor_args = [
     '--project-url=https://github.com/twisted/pydoctor/',
     '--docformat=epytext',
     '--intersphinx=https://docs.python.org/3/objects.inv',
+    '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
+    '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
+    '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     f'--template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
+    f'{_pydoctor_root}/pydoctor',
     ]

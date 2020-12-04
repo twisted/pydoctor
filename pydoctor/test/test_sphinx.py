@@ -528,7 +528,7 @@ class TestParseMaxAge:
 class ClosingBytesIO(io.BytesIO):
     """
     A L{io.BytesIO} instance that closes itself after all its data has
-    been read.  This mimics the behavior of L{HTTPResponse} in the
+    been read.  This mimics the behavior of L{http.client.HTTPResponse} in the
     standard library.
     """
 
@@ -566,8 +566,8 @@ class TestIntersphinxCache:
     def send_returns(self, monkeypatch: MonkeyPatch) -> Callable[[HTTPResponse], MonkeyPatch]:
         """
         Return a function that patches
-        L{requests.adapters.HTTPResponse.send} so that it returns the
-        provided L{urllib3.Response}.
+        L{requests.adapters.HTTPAdapter.send} so that it returns the
+        provided L{requests.Response}.
         """
         def send_returns(urllib3_response: HTTPResponse) -> MonkeyPatch:
             def send(
@@ -694,7 +694,7 @@ def test_prepareCache(
     """
     The cache directory is deleted when C{clearCache} is L{True}; an
     L{IntersphinxCache} is created with a session on which is mounted
-    L{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
+    C{cachecontrol.CacheControlAdapter} for C{http} and C{https} URLs.
     """
 
     # Windows doesn't like paths ending in a space or dot.

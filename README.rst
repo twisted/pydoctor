@@ -32,7 +32,7 @@ Simple Usage
 
 You can run pydoctor on your project like this::
 
-    $ pydoctor --make-html --html-output=docs/api --add-package=src/mylib
+    $ pydoctor --make-html --html-output=docs/api src/mylib
 
 For more info, `Read The Docs <https://pydoctor.readthedocs.io/>`_.
 

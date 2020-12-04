@@ -30,13 +30,10 @@ responsible for resolving identifier crossreferences
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
 each error.
-
-@sort: ParsedDocstring, Field, DocstringLinker
-@group Errors and Warnings: ParseError
 """
 __docformat__ = 'epytext en'
 
-from typing import List, Optional
+from typing import List, Optional, Sequence, Union
 import re
 
 from twisted.python.failure import Failure
@@ -59,20 +56,29 @@ class ParsedDocstring:
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
-    markup parsers such as L{pydoctor.epydoc.epytext.parse_docstring()}
-    or L{pydoctor.epydoc.restructuredtext.parse_docstring()}.
+    markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
+    or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{to_stan()}.
+    Subclasses must implement L{has_body()} and L{to_stan()}.
     """
 
-    def __init__(self, fields):
+    def __init__(self, fields: Sequence['Field']):
         self.fields = fields
         """
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
 
-    def to_stan(self, docstring_linker):
+    @property
+    def has_body(self) -> bool:
+        """Does this docstring have a non-empty body?
+
+        The body is the part of the docstring that remains after the fields
+        have been split off.
+        """
+        raise NotImplementedError()
+
+    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -82,7 +88,6 @@ class ParsedDocstring:
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
-        @type docstring_linker: L{DocstringLinker}
         @return: The docstring presented as a tree.
         """
         raise NotImplementedError()
@@ -93,19 +98,18 @@ _RE_CONTROL = re.compile((
     ) + ']'
     ).encode())
 
-def html2stan(html):
+def html2stan(html: Union[bytes, str]) -> Tag:
     """
     Convert an HTML string to a Stan tree.
 
     @param html: An HTML fragment; multiple roots are allowed.
-    @type html: C{string}
     @return: The fragment as a tree with a transparent root node.
     """
     if isinstance(html, str):
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    stan = XMLString(b'<div>%s</div>' % html).load()[0]
+    stan: Tag = XMLString(b'<div>%s</div>' % html).load()[0]
     assert stan.tagName == 'div'
     stan.tagName = ''
     return stan

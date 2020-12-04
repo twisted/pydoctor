@@ -1,9 +1,11 @@
 from io import BytesIO
 from pathlib import Path
+from typing import Callable
 
 import pytest
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 from pydoctor.templatewriter.util import TemplateFileLookup
@@ -154,3 +156,41 @@ def test_templatefile_lookup() -> None:
 
     assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
         == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
+
+@pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
+def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
+    """A documentable object is private if it is private itself or
+    lives in a private context.
+    """
+    mod = fromText('''
+    class Public:
+        class Inner:
+            pass
+    class _Private:
+        class Inner:
+            pass
+    ''')
+    public = mod.contents['Public']
+    assert not func(public)
+    assert not func(public.contents['Inner'])
+    private = mod.contents['_Private']
+    assert func(private)
+    assert func(private.contents['Inner'])
+
+
+def test_isClassNodePrivate() -> None:
+    """A node for a private class with public subclasses is considered public."""
+    mod = fromText('''
+    class _BaseForPublic:
+        pass
+    class _BaseForPrivate:
+        pass
+    class Public(_BaseForPublic):
+        pass
+    class _Private(_BaseForPrivate):
+        pass
+    ''')
+    assert not isClassNodePrivate(mod.contents['Public'])
+    assert isClassNodePrivate(mod.contents['_Private'])
+    assert not isClassNodePrivate(mod.contents['_BaseForPublic'])
+    assert isClassNodePrivate(mod.contents['_BaseForPrivate'])

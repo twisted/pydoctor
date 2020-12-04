@@ -12,7 +12,6 @@ It will add a link to the project website in all pages header, show a link to so
 ::
 
     pydoctor \
-        --add-package=pydoctor \
         --project-name=pydoctor \
         --project-url=https://github.com/twisted/pydoctor/ \
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
@@ -20,12 +19,52 @@ It will add a link to the project website in all pages header, show a link to so
         --html-output=docs/api \
         --project-base-dir="$(pwd)" \
         --docformat=epytext \
-        --intersphinx=https://docs.python.org/3/objects.inv
+        --intersphinx=https://docs.python.org/3/objects.inv \
+        ./pydoctor
 
 .. note:: This exemple assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
 
 .. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line
     numbers aren't going to match otherwise when commits are added to the branch after the documentation has been published.
+
+``__all__`` re-export
+---------------------
+
+A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package`` 
+- in the ``__init__.py`` that it is imported into - will end up in the documentation of ``my_package``.
+
+For instance, in the following exemple, the documentation of ``MyClass`` will be moved to the root package, ``my_package``.
+
+::
+
+  ├── CONTRIBUTING.rst
+  ├── LICENSE.txt
+  ├── README.rst
+  ├── my_package
+  │   ├── __init__.py     <-- Re-export `my_package.core.session.MyClass`
+  │   ├── core                as `my_package.MyClass`
+  │   │   ├── __init__.py
+  │   │   ├── session.py  <-- Defines `MyClass`
+
+The content of ``my_package/__init__.py`` includes::
+
+  from .core.session import MyClass
+  __all__ = ['MyClass', 'etc.']
+
+Document part of your package
+-----------------------------
+
+Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.
+
+You can choose to document only a couple classes or modules with the following cumulative configuration option::
+
+  --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
+
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``. 
+The ``--html-subject`` argument acts like a filter.
+
+.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML pages.
+
 
 Publish your documentation
 --------------------------
@@ -53,7 +92,7 @@ Here is an exemple to automatically generate and publish your documentation with
           uses: actions/setup-python@v2
           with:
             python-version: 3.8
-        
+
         - name: Install package
           run: |
             python -m pip install --upgrade pip setuptools wheel
@@ -67,7 +106,6 @@ Here is an exemple to automatically generate and publish your documentation with
 
             # Run pydoctor build
             pydoctor \
-                --add-package=(packagedirectory) \
                 --project-name=(projectname) \
                 --project-url=https://github.com/$GITHUB_REPOSITORY \
                 --html-viewsource-base=https://github.com/$GITHUB_REPOSITORY/tree/$GITHUB_SHA \
@@ -75,7 +113,8 @@ Here is an exemple to automatically generate and publish your documentation with
                 --html-output=./apidocs \
                 --project-base-dir="$(pwd)" \
                 --docformat=restructuredtext \
-                --intersphinx=https://docs.python.org/3/objects.inv
+                --intersphinx=https://docs.python.org/3/objects.inv \
+                ./(packagedirectory)
 
         - name: Publish pydoctor documentation to the gh-pages branch
           uses: peaceiris/actions-gh-pages@v3
@@ -95,21 +134,6 @@ Here is an exemple to automatically generate and publish your documentation with
 .. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. .. note:: Documentation to come!
-
-Document part of your package
------------------------------
-
-Sometimes, only a couple classes or modules are part of your public API, not all classes and modules need to be documented.
-
-You can choose to document only a couple classes or modules with the following cumulative configuration option::
-
-  --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
-
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html`` and ``objects.inv`` (and CSS and JS files of course).
-The ``--add-package`` argument still needs to be passed, ``--html-subject`` will act like a filter.
-
-.. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML page.
-
 
 Sphinx Integration
 ------------------
@@ -189,7 +213,6 @@ way.::
 
     pydoctor_args = [
         '--quiet',
-        '--add-package=/absolute/path/to/your/project/package1',
         '--project-name=YOUR-PROJECT-NAME',
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
@@ -198,6 +221,7 @@ way.::
         '--html-viewsource-base=https://github.com/ORG/REPO/tree/default',
         '--html-output={outdir}/api',
         '--project-base-dir=/absolute/path/to/your/project',
+        '/absolute/path/to/your/project/package1'
         ]
 
 The `{outdir}` will replaced with the Sphinx build dir.
@@ -249,7 +273,7 @@ You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSys
 System class allows you to dynamically show/hide classes or methods.
 This is also used by the Twisted project to handle deprecation.
 
-See the `TwistedSystem custom class documentation <https://twistedmatrix.com/documents/current/api/twisted.python._pydoctor.TwistedSystem.html>`_. Naviguate to the source code for a better overview.
+See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation. Naviguate to the source code for a better overview.
 
 .. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
 

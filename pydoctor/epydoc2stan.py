@@ -600,7 +600,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", kind.lower(), " docstring; "
+            "No ", kind.lower(), " docstring; ",
             ', '.join(
                 f"{subdocstrings[k]}/{subcounts[k]} "
                 f"{plurals.get(k, k + 's')}"
@@ -618,7 +618,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(_EpydocLinker(obj)) # type: ignore[no-any-return]
+        return parsed_type.to_stan(_EpydocLinker(obj))
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type: Optional[ParsedDocstring] = getattr(obj, 'parsed_type', None)
