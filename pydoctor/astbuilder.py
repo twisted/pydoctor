@@ -483,6 +483,20 @@ class ModuleVistor(ast.NodeVisitor):
             attr.setLineNumber(lineno)
             if docstring is not None:
                 attr.setDocstring(docstring)
+                assert attr.docstring is not None
+                pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
+                other_fields = []
+                for field in pdoc.fields:
+                    tag = field.tag()
+                    if tag == 'return':
+                        if not pdoc.has_body:
+                            pdoc = field.body()
+                    elif tag == 'rtype':
+                        attr.parsed_type = field.body() # type: ignore[attr-defined]
+                    else:
+                        other_fields.append(field)
+                pdoc.fields = other_fields
+                attr.parsed_docstring = pdoc
             if node.returns is not None:
                 attr.annotation = self._unstring_annotation(node.returns)
             if is_classmethod:

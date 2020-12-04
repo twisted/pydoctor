@@ -51,7 +51,7 @@ from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import new_document
-from docutils.nodes import NodeVisitor, SkipNode
+from docutils.nodes import NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
 from docutils.parsers.rst import Directive, directives
 import docutils.nodes
@@ -132,6 +132,13 @@ class ParsedRstDocstring(ParsedDocstring):
             document.reporter.source, 'SEVERE', 'SEVERE', '')
 
         ParsedDocstring.__init__(self, fields)
+
+    @property
+    def has_body(self) -> bool:
+        return any(
+            isinstance(child, Text) or child.children
+            for child in self._document.children
+            )
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         # Inherit docs

@@ -10,6 +10,27 @@ def rst2html(s: str) -> str:
     assert not errors
     return flatten(parsed.to_stan(None))
 
+def test_rst_body_empty() -> None:
+    src = """
+    :return: a number
+    :rtype: int
+    """
+    errors: List[ParseError] = []
+    pdoc = parse_docstring(src, errors)
+    assert not errors
+    assert not pdoc.has_body
+    assert len(pdoc.fields) == 2
+
+def test_rst_body_nonempty() -> None:
+    src = """
+    Only body text, no fields.
+    """
+    errors: List[ParseError] = []
+    pdoc = parse_docstring(src, errors)
+    assert not errors
+    assert pdoc.has_body
+    assert len(pdoc.fields) == 0
+
 def test_rst_anon_link_target_missing() -> None:
     src = """
     This link's target is `not defined anywhere`__.

@@ -1168,13 +1168,32 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
         def prop(self) -> str:
             """For sale."""
             return 'seaside'
+        @property
+        def oldschool(self):
+            """
+            @return: For rent.
+            @rtype: string
+            @see: U{https://example.com/}
+            """
+            return 'downtown'
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
+
     prop = C.contents['prop']
     assert isinstance(prop, model.Attribute)
     assert prop.kind == 'Property'
     assert prop.docstring == """For sale."""
     assert type2str(prop.annotation) == 'str'
+
+    oldschool = C.contents['oldschool']
+    assert isinstance(oldschool, model.Attribute)
+    assert oldschool.kind == 'Property'
+    assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
+    assert unwrap(oldschool.parsed_docstring) == """For rent."""
+    assert str(unwrap(oldschool.parsed_type)) == 'string'  # type: ignore[attr-defined]
+    fields = oldschool.parsed_docstring.fields
+    assert len(fields) == 1
+    assert fields[0].tag() == 'see'
 
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
 @systemcls_param

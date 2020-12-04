@@ -59,7 +59,7 @@ class ParsedDocstring:
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{to_stan()}.
+    Subclasses must implement L{has_body()} and L{to_stan()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -68,6 +68,14 @@ class ParsedDocstring:
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
+
+    @property
+    def has_body(self) -> bool:
+        """Does this docstring have a non-empty body?
+        The body is the part of the docstring that remains after the fields
+        have been split off.
+        """
+        raise NotImplementedError()
 
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
