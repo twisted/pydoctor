@@ -32,5 +32,7 @@ Install pydoctor with ``restructuredtext`` support::
    :caption: Quick links
 
    api/index
+   api-epydoc-demo/index
+   api-rst-demo/index
    GitHub <https://github.com/twisted/pydoctor>
    PyPI <https://pypi.org/project/pydoctor>

@@ -7,6 +7,7 @@ Read The Docs build process.
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
   - C{pydoctor_args} - a list with all the pydoctor command line arguments used to trigger the build.
+                     - a dict with values as list of pydoctor command line arguments.
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
@@ -16,7 +17,7 @@ as otherwise any extra output is converted into Sphinx warnings.
 """
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -42,11 +43,29 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         'outdir': app.outdir,
         }
 
+    runs = config.pydoctor_args
+
+    if not isinstance(runs, dict):
+        # We have a single pydoctor call
+        runs = {'main': runs}
+
+    for key, value in runs.items():
+        _run_pydoctor(key, value, placeholders.copy())
+
+
+def _run_pydoctor(name: str, arguments: List[str], placeholders: Dict[str, str]) -> None:
+    """
+    Call pydoctor with arguments.
+
+    @param name: A human readable description of this pydoctor build name.
+    @param arguments: List of argument used to call pydoctor.
+    @param placeholders: Values that will be interpolated with the arguments.
+    """
     args = []
-    for argument in config.pydoctor_args:
+    for argument in arguments:
         args.append(argument.format(**placeholders))
 
-    logger.info("Bulding pydoctor API docs as:")
+    logger.info(f"Building '{name}' pydoctor API docs as:")
     logger.info('\n'.join(args))
 
     with StringIO() as stream:
@@ -64,7 +83,7 @@ def setup(app: Sphinx) ->  Dict[str, Any]:
     @return: The extension version and runtime options.
     """
     app.connect('build-finished', on_build_finished)
-    app.add_config_value("pydoctor_args", [], "env")
+    app.add_config_value("pydoctor_args", None, "env")
 
     return {
         'version': str(__version__),
