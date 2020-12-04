@@ -6,7 +6,9 @@ from functools import partial
 from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+)
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -24,7 +26,7 @@ else:
     _parse = ast.parse
 
 
-def node2dottedname(node):
+def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
     parts = []
     while isinstance(node, ast.Attribute):
         parts.append(node.attr)
@@ -41,7 +43,7 @@ def node2dottedname(node):
     return parts
 
 
-def node2fullname(expr, ctx):
+def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
