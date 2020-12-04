@@ -1,5 +1,7 @@
-from pydoctor.templatewriter import util
 from twisted.web.template import Element, XMLFile, renderer
+
+from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import format_decorators
 
 
 class AttributeChild(Element):
@@ -25,6 +27,10 @@ class AttributeChild(Element):
     @renderer
     def shortFunctionAnchor(self, request, tag):
         return self.ob.name
+
+    @renderer
+    def decorator(self, request, tag):
+        return list(format_decorators(self.ob))
 
     @renderer
     def attribute(self, request, tag):
