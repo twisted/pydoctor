@@ -1196,6 +1196,41 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert len(fields) == 1
     assert fields[0].tag() == 'see'
 
+@systemcls_param
+def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Property setter and deleter methods are renamed, so they don't replace
+    the property itself.
+    """
+    mod = fromText('''
+    class C:
+        @property
+        def prop(self):
+            """Getter."""
+        @prop.setter
+        def prop(self, value):
+            """Setter."""
+        @prop.deleter
+        def prop(self):
+            """Deleter."""
+    ''', modname='mod', systemcls=systemcls)
+    C = mod.contents['C']
+
+    getter = C.contents['prop']
+    assert isinstance(getter, model.Attribute)
+    assert getter.kind == 'Property'
+    assert getter.docstring == """Getter."""
+
+    setter = C.contents['prop.setter']
+    assert isinstance(setter, model.Function)
+    assert setter.kind == 'Method'
+    assert setter.docstring == """Setter."""
+
+    deleter = C.contents['prop.deleter']
+    assert isinstance(deleter, model.Function)
+    assert deleter.kind == 'Method'
+    assert deleter.docstring == """Deleter."""
+
+
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
 @systemcls_param
 def test_property_conflict(

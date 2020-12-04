@@ -465,6 +465,7 @@ class ModuleVistor(ast.NodeVisitor):
                               and isinstance(node.body[0].value, ast.Str):
             docstring = node.body[0].value
 
+        func_name = node.name
         is_property = False
         is_classmethod = False
         is_staticmethod = False
@@ -477,9 +478,14 @@ class ModuleVistor(ast.NodeVisitor):
                         is_classmethod = True
                     elif d.id == 'staticmethod':
                         is_staticmethod = True
+                elif isinstance(d, ast.Attribute):
+                    if d.attr in ('setter', 'deleter'):
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        func_name = f'{func_name}.{d.attr}'
 
         if is_property:
-            attr = self.builder.addAttribute(node.name, 'Property', parent)
+            attr = self.builder.addAttribute(func_name, 'Property', parent)
             attr.setLineNumber(lineno)
             if docstring is not None:
                 attr.setDocstring(docstring)
@@ -509,7 +515,7 @@ class ModuleVistor(ast.NodeVisitor):
             attr.decorators = node.decorator_list
             return
 
-        func = self.builder.pushFunction(node.name, lineno)
+        func = self.builder.pushFunction(func_name, lineno)
         func.is_async = is_async
         if docstring is not None:
             func.setDocstring(docstring)
