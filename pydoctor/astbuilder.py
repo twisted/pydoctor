@@ -555,8 +555,10 @@ class ModuleVistor(ast.NodeVisitor):
             docstring: Optional[ast.Str],
             lineno: int
             ) -> model.Attribute:
+
         attr = self.builder.addAttribute(node.name, 'Property', self.builder.current)
         attr.setLineNumber(lineno)
+
         if docstring is not None:
             attr.setDocstring(docstring)
             assert attr.docstring is not None
@@ -576,9 +578,11 @@ class ModuleVistor(ast.NodeVisitor):
                     other_fields.append(field)
             pdoc.fields = other_fields
             attr.parsed_docstring = pdoc
+
         if node.returns is not None:
             attr.annotation = self._unstring_annotation(node.returns)
         attr.decorators = node.decorator_list
+
         return attr
 
     def _annotation_from_attrib(self,
