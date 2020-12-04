@@ -491,6 +491,9 @@ class ModuleVistor(ast.NodeVisitor):
                     if tag == 'return':
                         if not pdoc.has_body:
                             pdoc = field.body()
+                            # Avoid format_summary() going back to the original
+                            # empty-body docstring.
+                            attr.docstring = ''
                     elif tag == 'rtype':
                         attr.parsed_type = field.body() # type: ignore[attr-defined]
                     else:

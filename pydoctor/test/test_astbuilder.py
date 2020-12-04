@@ -9,7 +9,7 @@ from twisted.python._pydoctor import TwistedSystem
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-from pydoctor.epydoc2stan import get_parsed_type
+from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, posonlyargs, typecomment
@@ -1190,6 +1190,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert oldschool.kind == 'Property'
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
+    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
     assert str(unwrap(oldschool.parsed_type)) == 'string'  # type: ignore[attr-defined]
     fields = oldschool.parsed_docstring.fields
     assert len(fields) == 1
