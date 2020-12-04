@@ -72,6 +72,7 @@ class ParsedDocstring:
     @property
     def has_body(self) -> bool:
         """Does this docstring have a non-empty body?
+
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
