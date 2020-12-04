@@ -62,6 +62,7 @@ def fromText(
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
+    assert epytext is not None
     assert epytext.tag == 'epytext'
     assert len(epytext.children) == 1
     para = epytext.children[0]

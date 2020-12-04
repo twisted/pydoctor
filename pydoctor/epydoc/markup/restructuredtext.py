@@ -43,6 +43,7 @@ the list.
 __docformat__ = 'epytext en'
 
 # Imports
+from typing import Sequence
 import re
 
 from docutils.core import publish_string
@@ -57,10 +58,10 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from twisted.web.template import tags
+from twisted.web.template import Tag, tags
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
-    Field, ParseError, ParsedDocstring, flatten, html2stan
+    DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
 )
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 
@@ -121,29 +122,25 @@ class ParsedRstDocstring(ParsedDocstring):
     An encoded version of a ReStructuredText docstring.  The contents
     of the docstring are encoded in the L{_document} instance
     variable.
-
-    @ivar _document: A ReStructuredText document, encoding the
-        docstring.
-    @type _document: C{docutils.nodes.document}
     """
-    def __init__(self, document, fields):
-        """
-        @type document: C{docutils.nodes.document}
-        """
+
+    def __init__(self, document: docutils.nodes.document, fields: Sequence[Field]):
         self._document = document
+        """A ReStructuredText document, encoding the docstring."""
 
         document.reporter = OptimizedReporter(
             document.reporter.source, 'SEVERE', 'SEVERE', '')
 
         ParsedDocstring.__init__(self, fields)
 
-    def to_stan(self, docstring_linker):
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         # Inherit docs
         visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
         self._document.walkabout(visitor)
         return html2stan(''.join(visitor.body))
 
-    def __repr__(self): return '<ParsedRstDocstring: ...>'
+    def __repr__(self) -> str:
+        return '<ParsedRstDocstring: ...>'
 
 class _EpydocReader(StandaloneReader):
     """
