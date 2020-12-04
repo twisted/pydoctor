@@ -485,34 +485,11 @@ class ModuleVistor(ast.NodeVisitor):
                         func_name = f'{func_name}.{d.attr}'
 
         if is_property:
-            attr = self.builder.addAttribute(func_name, 'Property', parent)
-            attr.setLineNumber(lineno)
-            if docstring is not None:
-                attr.setDocstring(docstring)
-                assert attr.docstring is not None
-                pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
-                other_fields = []
-                for field in pdoc.fields:
-                    tag = field.tag()
-                    if tag == 'return':
-                        if not pdoc.has_body:
-                            pdoc = field.body()
-                            # Avoid format_summary() going back to the original
-                            # empty-body docstring.
-                            attr.docstring = ''
-                    elif tag == 'rtype':
-                        attr.parsed_type = field.body() # type: ignore[attr-defined]
-                    else:
-                        other_fields.append(field)
-                pdoc.fields = other_fields
-                attr.parsed_docstring = pdoc
-            if node.returns is not None:
-                attr.annotation = self._unstring_annotation(node.returns)
+            attr = self._handlePropertyDef(node, docstring, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
-            attr.decorators = node.decorator_list
             return
 
         func = self.builder.pushFunction(func_name, lineno)
@@ -572,6 +549,37 @@ class ModuleVistor(ast.NodeVisitor):
         func.annotations = self._annotations_from_function(node)
         self.default(node)
         self.builder.popFunction()
+
+    def _handlePropertyDef(self,
+            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
+            docstring: Optional[ast.Str],
+            lineno: int
+            ) -> model.Attribute:
+        attr = self.builder.addAttribute(node.name, 'Property', self.builder.current)
+        attr.setLineNumber(lineno)
+        if docstring is not None:
+            attr.setDocstring(docstring)
+            assert attr.docstring is not None
+            pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
+            other_fields = []
+            for field in pdoc.fields:
+                tag = field.tag()
+                if tag == 'return':
+                    if not pdoc.has_body:
+                        pdoc = field.body()
+                        # Avoid format_summary() going back to the original
+                        # empty-body docstring.
+                        attr.docstring = ''
+                elif tag == 'rtype':
+                    attr.parsed_type = field.body() # type: ignore[attr-defined]
+                else:
+                    other_fields.append(field)
+            pdoc.fields = other_fields
+            attr.parsed_docstring = pdoc
+        if node.returns is not None:
+            attr.annotation = self._unstring_annotation(node.returns)
+        attr.decorators = node.decorator_list
+        return attr
 
     def _annotation_from_attrib(self,
             expr: ast.expr,
