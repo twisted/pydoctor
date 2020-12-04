@@ -26,20 +26,45 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
+class Nav(Element):
+    """
+    Common navigation header. 
+    """
+    def __init__(self, system):
+        self.system = system
+
+    @property
+    def loader(self):
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('nav.html'))
+
+    @renderer
+    def project(self, request, tag):
+        return self.system.projectname
+
+    @renderer
+    def projecthome(self, request, tag):
+        if self.system.options.projecturl:
+            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+        else:
+            return ''
+
 class BasePage(Element):
     """
-    
     Defines special placeholders that can be overwritten by users: 
         header.html, pageHeader.html and footer.html.
     """
     
-    def __init__(self, templatefile_lookup:util.TemplateFileLookup):
-        self.templatefile_lookup = templatefile_lookup
-        """Reference to the system's L{TemplateFileLookup} object"""
+    def __init__(self, system:model.System):
+        self.system = system
+        """Reference to the system object"""
+
+    @renderer
+    def nav(self, request, tag):
+        return Nav(self.system)
 
     @renderer
     def header(self, request, tag):
-        template = self.templatefile_lookup.get_templatefilepath('header.html')
+        template = self.system.templatefile_lookup.get_templatefilepath('header.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -47,7 +72,7 @@ class BasePage(Element):
 
     @renderer
     def pageHeader(self, request, tag):
-        template = self.templatefile_lookup.get_templatefilepath('pageHeader.html')
+        template = self.system.templatefile_lookup.get_templatefilepath('pageHeader.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -55,7 +80,7 @@ class BasePage(Element):
 
     @renderer
     def footer(self, request, tag):
-        template = self.templatefile_lookup.get_templatefilepath('footer.html')
+        template = self.system.templatefile_lookup.get_templatefilepath('footer.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -64,7 +89,7 @@ class BasePage(Element):
 class CommonPage(BasePage):
 
     def __init__(self, ob, docgetter=None):
-        super().__init__(templatefile_lookup = ob.system.templatefile_lookup)
+        super().__init__(system = ob.system)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
@@ -72,7 +97,7 @@ class CommonPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('common.html'))
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()
@@ -109,16 +134,6 @@ class CommonPage(BasePage):
             return 'Part of ', tags.code(self.namespace(parent))
         else:
             return []
-
-    def project(self):
-        return self.ob.system.projectname
-
-    @renderer
-    def projecthome(self, request, tag):
-        if self.ob.system.options.projecturl:
-            return tags.li(tags.a(href=self.ob.system.options.projecturl)('Project Home'), id="projecthome")
-        else:
-            return ''
 
     @renderer
     def deprecated(self, request, tag):
@@ -188,6 +203,7 @@ class CommonPage(BasePage):
     @renderer
     def all(self, request, tag):
         return tag.fillSlots(
+            project=self.system.projectname,
             title=self.title(),
             heading=self.heading(),
             category=self.category(),
@@ -197,7 +213,6 @@ class CommonPage(BasePage):
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            project=self.project(),
             version=__version__.public(),
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 

@@ -35,11 +35,7 @@ class ModuleIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
-
-    def __init__(self, system):
-        super().__init__(templatefile_lookup = system.templatefile_lookup)
-        self.system = system
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def project(self, request, tag):
@@ -129,11 +125,7 @@ class ClassIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
-
-    def __init__(self, system):
-        super().__init__(templatefile_lookup = system.templatefile_lookup)
-        self.system = system
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def title(self, request, tag):
@@ -229,11 +221,10 @@ class NameIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('nameIndex.html'))
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('nameIndex.html'))
 
     def __init__(self, system):
-        super().__init__(templatefile_lookup = system.templatefile_lookup)
-        self.system = system
+        super().__init__(system = system)
         self.initials = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
@@ -251,13 +242,6 @@ class NameIndexPage(BasePage):
     def project(self, request, tag):
         return self.system.projectname
 
-    # @renderer
-    # def projecthome(self):
-    #     if self.system.options.projecturl:
-    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
-    #     else:
-    #         return ''
-
     @renderer
     def index(self, request, tag):
         r = []
@@ -271,11 +255,7 @@ class IndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('index.html'))
-
-    def __init__(self, system):
-        super().__init__(templatefile_lookup = system.templatefile_lookup)
-        self.system = system
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('index.html'))
 
     @renderer
     def project_link(self, request, tag):
@@ -284,13 +264,6 @@ class IndexPage(BasePage):
                 self.system.projectname)
         else:
             return self.system.projectname
-
-    # @renderer
-    # def projecthome(self):
-    #     if self.system.options.projecturl:
-    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
-    #     else:
-    #         return ''
 
     @renderer
     def project(self, request, tag):
@@ -355,11 +328,7 @@ class UndocumentedSummaryPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.templatefile_lookup.get_templatefilepath('summary.html'))
-
-    def __init__(self, system):
-        super().__init__(templatefile_lookup = system.templatefile_lookup)
-        self.system = system
+        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def title(self, request, tag):
