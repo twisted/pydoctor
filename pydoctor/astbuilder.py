@@ -474,17 +474,27 @@ class ModuleVistor(ast.NodeVisitor):
         if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Name):
-                    if d.id == 'property':
+                    name = d.id
+                    if name == 'property':
                         is_property = True
-                    elif d.id == 'classmethod':
+                    elif name.endswith('property') or name.endswith('Property'):
+                        is_property = True
+                    elif name == 'classmethod':
                         is_classmethod = True
-                    elif d.id == 'staticmethod':
+                    elif name == 'staticmethod':
                         is_staticmethod = True
                 elif isinstance(d, ast.Attribute):
                     if d.attr in ('setter', 'deleter'):
                         # Rename the setter/deleter, so it doesn't replace
                         # the property object.
                         func_name = f'{func_name}.{d.attr}'
+                elif isinstance(d, ast.Call):
+                    deco_name = node2fullname(d.func, parent)
+                    if deco_name is not None and (
+                            deco_name.endswith('property') or
+                            deco_name.endswith('Property')
+                            ):
+                        is_property = True
 
         if is_property:
             attr = self._handlePropertyDef(node, docstring, lineno)
