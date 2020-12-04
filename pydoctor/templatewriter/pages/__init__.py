@@ -18,7 +18,8 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
             fn = node2fullname(dec.func, obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
-            if fn == "twisted.python.deprecate.deprecated":
+            if fn in ("twisted.python.deprecate.deprecated",
+                      "twisted.python.deprecate.deprecatedProperty"):
                 break
 
         text = '@' + astor.to_source(dec).strip()

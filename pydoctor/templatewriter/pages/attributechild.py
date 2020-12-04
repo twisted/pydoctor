@@ -1,4 +1,4 @@
-from twisted.web.template import Element, XMLFile, renderer
+from twisted.web.template import Element, XMLFile, renderer, tags
 
 from pydoctor.templatewriter import util
 from pydoctor.templatewriter.pages import format_decorators
@@ -50,3 +50,10 @@ class AttributeChild(Element):
     @renderer
     def functionBody(self, request, tag):
         return self.docgetter.get(self.ob)
+
+    @renderer
+    def functionDeprecated(self, request, tag):
+        if hasattr(self.ob, "_deprecated_info"):
+            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
+        else:
+            return ()
