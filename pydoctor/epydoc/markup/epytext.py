@@ -131,10 +131,12 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
+from typing import Any, Optional, Sequence, Union
 import re
+
 from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.doctest import colorize_doctest
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
 
 ##################################################
 ## DOM-Like Encoding
@@ -1319,16 +1321,20 @@ class ParsedEpytextDocstring(ParsedDocstring):
         '<=': 8804, '>=': 8805,
         }
 
-    def __init__(self, body, fields):
+    def __init__(self, body: Optional[Element], fields: Sequence['Field']):
         ParsedDocstring.__init__(self, fields)
         self._tree = body
         # Caching:
-        self._stan = None
+        self._stan: Optional[Tag] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._tree)
 
-    def to_stan(self, docstring_linker):
+    @property
+    def has_body(self) -> bool:
+        return self._tree is not None
+
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         if self._stan is not None:
             return self._stan
         if self._tree is None:
@@ -1337,7 +1343,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
             self._stan = self._to_stan(self._tree, docstring_linker)
         return self._stan
 
-    def _to_stan(self, tree, linker, seclevel=0):
+    def _to_stan(self,
+            tree: Union[Element, str],
+            linker: DocstringLinker,
+            seclevel: int = 0
+            ) -> Any:
         if isinstance(tree, str):
             return tree
 

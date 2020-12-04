@@ -141,7 +141,7 @@ tr.class, tr.classvariable, tr.baseclassvariable {
     background-color: #fffde7;
 }
 
-tr.instancevariable, tr.baseinstancevariable, tr.variable, tr.attribute {
+tr.instancevariable, tr.baseinstancevariable, tr.variable, tr.attribute, tr.property {
     background-color: #f3e5f5;
 }
 

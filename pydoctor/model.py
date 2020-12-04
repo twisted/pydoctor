@@ -495,6 +495,8 @@ class Function(Inheritable):
 
 class Attribute(Inheritable):
     kind: Optional[str] = "Attribute"
+    annotation: Optional[ast.expr]
+    decorators: Optional[Sequence[ast.expr]]
 
 
 # Work around the attributes of the same name within the System class.

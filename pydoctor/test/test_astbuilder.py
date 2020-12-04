@@ -9,7 +9,7 @@ from twisted.python._pydoctor import TwistedSystem
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-from pydoctor.epydoc2stan import get_parsed_type
+from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, posonlyargs, typecomment
@@ -62,6 +62,7 @@ def fromText(
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
+    assert epytext is not None
     assert epytext.tag == 'epytext'
     assert len(epytext.children) == 1
     para = epytext.children[0]
@@ -1157,6 +1158,98 @@ def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     a, b, c = range(3)
     ''', modname='test', systemcls=systemcls)
     assert sorted(mod.contents.keys()) == ['a', 'b', 'c']
+
+@systemcls_param
+def test_property_decorator(systemcls: Type[model.System]) -> None:
+    """A function decorated with '@property' is documented as an attribute."""
+    mod = fromText('''
+    class C:
+        @property
+        def prop(self) -> str:
+            """For sale."""
+            return 'seaside'
+        @property
+        def oldschool(self):
+            """
+            @return: For rent.
+            @rtype: string
+            @see: U{https://example.com/}
+            """
+            return 'downtown'
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+
+    prop = C.contents['prop']
+    assert isinstance(prop, model.Attribute)
+    assert prop.kind == 'Property'
+    assert prop.docstring == """For sale."""
+    assert type2str(prop.annotation) == 'str'
+
+    oldschool = C.contents['oldschool']
+    assert isinstance(oldschool, model.Attribute)
+    assert oldschool.kind == 'Property'
+    assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
+    assert unwrap(oldschool.parsed_docstring) == """For rent."""
+    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
+    assert str(unwrap(oldschool.parsed_type)) == 'string'  # type: ignore[attr-defined]
+    fields = oldschool.parsed_docstring.fields
+    assert len(fields) == 1
+    assert fields[0].tag() == 'see'
+
+@systemcls_param
+def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Property setter and deleter methods are renamed, so they don't replace
+    the property itself.
+    """
+    mod = fromText('''
+    class C:
+        @property
+        def prop(self):
+            """Getter."""
+        @prop.setter
+        def prop(self, value):
+            """Setter."""
+        @prop.deleter
+        def prop(self):
+            """Deleter."""
+    ''', modname='mod', systemcls=systemcls)
+    C = mod.contents['C']
+
+    getter = C.contents['prop']
+    assert isinstance(getter, model.Attribute)
+    assert getter.kind == 'Property'
+    assert getter.docstring == """Getter."""
+
+    setter = C.contents['prop.setter']
+    assert isinstance(setter, model.Function)
+    assert setter.kind == 'Method'
+    assert setter.docstring == """Setter."""
+
+    deleter = C.contents['prop.deleter']
+    assert isinstance(deleter, model.Function)
+    assert deleter.kind == 'Method'
+    assert deleter.docstring == """Deleter."""
+
+
+@pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
+@systemcls_param
+def test_property_conflict(
+        decoration: str, systemcls: Type[model.System], capsys: CapSys
+        ) -> None:
+    """Warn when a function is decorated as both property and class/staticmethod.
+    These decoration combinations do not create class/static properties.
+    """
+    mod = fromText(f'''
+    class C:
+        @{decoration}
+        @property
+        def prop():
+            raise NotImplementedError
+    ''', modname='mod', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['prop'].kind == 'Property'
+    captured = capsys.readouterr().out
+    assert captured == f"mod:3: mod.C.prop is both property and {decoration}\n"
 
 @systemcls_param
 def test_ignore_function_contents(systemcls: Type[model.System]) -> None:

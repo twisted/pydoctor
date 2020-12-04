@@ -11,9 +11,9 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from twisted.web.template import tags
+from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 
 def parse_docstring(docstring, errors):
     """
@@ -30,9 +30,13 @@ def parse_docstring(docstring, errors):
 
 class ParsedPlaintextDocstring(ParsedDocstring):
 
-    def __init__(self, text):
+    def __init__(self, text: str):
         ParsedDocstring.__init__(self, ())
         self._text = text
 
-    def to_stan(self, docstring_linker):
-        return tags.p(self._text, class_='pre')
+    @property
+    def has_body(self) -> bool:
+        return bool(self._text)
+
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+        return tags.p(self._text, class_='pre')  # type: ignore[no-any-return]
