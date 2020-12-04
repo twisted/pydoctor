@@ -26,7 +26,7 @@ As a reminder, here are some of the supported *restructuredtext* fields:
     - ``:type bar: str``
     - ``:return:``
     - ``:rtype: list``
-    - ``:raises ValueError:``
+    - ``:raises ValueError:`` (synonym ``:except ValueError:``)
     - ``:note:``
 
 In addition to the standard set of fields, the reStructruedText
