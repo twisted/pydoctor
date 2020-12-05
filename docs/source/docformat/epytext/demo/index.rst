@@ -1,5 +1,8 @@
-Epydoc API Demo
-===============
+:orphan:
+
+
+Epytext API Demo
+================
 
 This file will be overwritten by the pydoctor build triggered at the end
 of the Sphinx build.

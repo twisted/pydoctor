@@ -103,15 +103,9 @@ pydoctor_args = {
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
-        '--html-output={outdir}/api-epydoc-demo',
-        '--project-name=pydoctor-epydoc-demo',
+        '--html-output={outdir}/docformat/epytext/demo',
+        '--project-name=pydoctor-epytext-demo',
         '--docformat=epytext',
-        f'{_pydoctor_root}/docs/epydoc_demo',
-        ] + _common_args,
-    'rst_demo': [
-        '--html-output={outdir}/api-rst-demo',
-        '--project-name=pydoctor-rst-demo',
-        '--docformat=restructuredtext',
-        f'{_pydoctor_root}/docs/rst_demo',
+        f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     }
