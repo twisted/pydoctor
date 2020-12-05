@@ -128,11 +128,7 @@ def getparser() -> OptionParser:
         help=("Only generate the summary pages."))
     parser.add_option(
         '--html-write-function-pages', dest='htmlfunctionpages',
-        default=False, action='store_true',
-        help=("Make individual HTML files for every function and "
-              "method. They're not linked to in any pydoctor-"
-              "generated HTML, but they can be useful for third-party "
-              "linking."))
+        default=False, action='store_true', help=SUPPRESS_HELP)
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
@@ -259,13 +255,21 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
-              "the cache is now enabled by default.", file=sys.stderr)
+              "the cache is now enabled by default.",
+              file=sys.stderr, flush=True)
     if options.modules:
         print("The --add-module option is deprecated; "
-              "pass modules as positional arguments instead.", file=sys.stderr)
+              "pass modules as positional arguments instead.",
+              file=sys.stderr, flush=True)
     if options.packages:
         print("The --add-package option is deprecated; "
-              "pass packages as positional arguments instead.", file=sys.stderr)
+              "pass packages as positional arguments instead.",
+              file=sys.stderr, flush=True)
+    if options.htmlfunctionpages:
+        print("The --html-write-function-pages option is deprecated; "
+              "use the generated Intersphinx inventory (objects.inv) "
+              "for deep-linking your documentation.",
+              file=sys.stderr, flush=True)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
