@@ -259,13 +259,16 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
-              "the cache is now enabled by default.", file=sys.stderr)
+              "the cache is now enabled by default.",
+              file=sys.stderr, flush=True)
     if options.modules:
         print("The --add-module option is deprecated; "
-              "pass modules as positional arguments instead.", file=sys.stderr)
+              "pass modules as positional arguments instead.",
+              file=sys.stderr, flush=True)
     if options.packages:
         print("The --add-package option is deprecated; "
-              "pass packages as positional arguments instead.", file=sys.stderr)
+              "pass packages as positional arguments instead.",
+              file=sys.stderr, flush=True)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
