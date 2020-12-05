@@ -1196,6 +1196,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert len(fields) == 1
     assert fields[0].tag() == 'see'
 
+
 @systemcls_param
 def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
     """Property setter and deleter methods are renamed, so they don't replace
@@ -1229,6 +1230,31 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert isinstance(deleter, model.Function)
     assert deleter.kind == 'Method'
     assert deleter.docstring == """Deleter."""
+
+
+@systemcls_param
+def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Any custom decorator with a name ending in 'property' makes a method
+    into a property getter.
+    """
+    mod = fromText('''
+    class C:
+        @deprecate.deprecatedProperty(incremental.Version("Twisted", 18, 7, 0))
+        def processes(self):
+            return {}
+        @async_property
+        async def remote_value(self):
+            return await get_remote_value()
+    ''', modname='mod', systemcls=systemcls)
+    C = mod.contents['C']
+
+    deprecated = C.contents['processes']
+    assert isinstance(deprecated, model.Attribute)
+    assert deprecated.kind == 'Property'
+
+    async_prop = C.contents['remote_value']
+    assert isinstance(async_prop, model.Attribute)
+    assert async_prop.kind == 'Property'
 
 
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))

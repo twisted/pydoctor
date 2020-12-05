@@ -6,7 +6,9 @@ from functools import partial
 from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+)
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -24,7 +26,7 @@ else:
     _parse = ast.parse
 
 
-def node2dottedname(node):
+def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
     parts = []
     while isinstance(node, ast.Attribute):
         parts.append(node.attr)
@@ -41,7 +43,7 @@ def node2dottedname(node):
     return parts
 
 
-def node2fullname(expr, ctx):
+def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
@@ -472,17 +474,27 @@ class ModuleVistor(ast.NodeVisitor):
         if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Name):
-                    if d.id == 'property':
+                    name = d.id
+                    if name == 'property':
                         is_property = True
-                    elif d.id == 'classmethod':
+                    elif name.endswith('property') or name.endswith('Property'):
+                        is_property = True
+                    elif name == 'classmethod':
                         is_classmethod = True
-                    elif d.id == 'staticmethod':
+                    elif name == 'staticmethod':
                         is_staticmethod = True
                 elif isinstance(d, ast.Attribute):
                     if d.attr in ('setter', 'deleter'):
                         # Rename the setter/deleter, so it doesn't replace
                         # the property object.
                         func_name = f'{func_name}.{d.attr}'
+                elif isinstance(d, ast.Call):
+                    deco_name = node2fullname(d.func, parent)
+                    if deco_name is not None and (
+                            deco_name.endswith('property') or
+                            deco_name.endswith('Property')
+                            ):
+                        is_property = True
 
         if is_property:
             attr = self._handlePropertyDef(node, docstring, lineno)
@@ -555,8 +567,10 @@ class ModuleVistor(ast.NodeVisitor):
             docstring: Optional[ast.Str],
             lineno: int
             ) -> model.Attribute:
+
         attr = self.builder.addAttribute(node.name, 'Property', self.builder.current)
         attr.setLineNumber(lineno)
+
         if docstring is not None:
             attr.setDocstring(docstring)
             assert attr.docstring is not None
@@ -576,9 +590,11 @@ class ModuleVistor(ast.NodeVisitor):
                     other_fields.append(field)
             pdoc.fields = other_fields
             attr.parsed_docstring = pdoc
+
         if node.returns is not None:
             attr.annotation = self._unstring_annotation(node.returns)
         attr.decorators = node.decorator_list
+
         return attr
 
     def _annotation_from_attrib(self,
