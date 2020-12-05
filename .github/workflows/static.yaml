@@ -48,5 +48,4 @@ jobs:
         grep '\-\-project-url=PROJECTURL' build/docs/help.html
         # Check API docs is generated.
         grep 'moduleIndex.html' build/docs/api/index.html
-        grep 'pydoctor-epydoc-demo API Documentation' build/docs/api-epydoc-demo/index.html
-        grep 'pydoctor-rst-demo API Documentation' build/docs/api-rst-demo/index.html
+        grep 'pydoctor-epytext-demo API Documentation' build/docs/docformat/epytext/demo/index.html
