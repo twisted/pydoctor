@@ -1191,7 +1191,8 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
     assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
-    assert str(unwrap(oldschool.parsed_type)) == 'string'  # type: ignore[attr-defined]
+    assert isinstance(oldschool.parsed_type, ParsedEpytextDocstring)
+    assert str(unwrap(oldschool.parsed_type)) == 'string'
     fields = oldschool.parsed_docstring.fields
     assert len(fields) == 1
     assert fields[0].tag() == 'see'

@@ -763,7 +763,7 @@ def extract_fields(obj: model.Documentable) -> None:
                 obj.system.addObject(attrobj)
             attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
             if tag == 'type':
-                attrobj.parsed_type = field.body() # type: ignore[attr-defined]
+                attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_human_name[tag]

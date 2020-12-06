@@ -94,6 +94,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_type: ParsedDocstring
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
