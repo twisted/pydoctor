@@ -585,7 +585,7 @@ class ModuleVistor(ast.NodeVisitor):
                         # empty-body docstring.
                         attr.docstring = ''
                 elif tag == 'rtype':
-                    attr.parsed_type = field.body() # type: ignore[attr-defined]
+                    attr.parsed_type = field.body()
                 else:
                     other_fields.append(field)
             pdoc.fields = other_fields
