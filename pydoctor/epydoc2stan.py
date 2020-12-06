@@ -212,6 +212,7 @@ class Field:
             )
 
     def format(self) -> Tag:
+        """Present this field's body as HTML."""
         return self.body.to_stan(_EpydocLinker(self.source))
 
     def report(self, message: str) -> None:
@@ -321,7 +322,7 @@ class FieldHandler:
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
             if field.arg is not None:
-                field.report('Field in inline docstring should not include a name')
+                field.report('Field in variable docstring should not include a name')
             self.obj.parsed_type = field.body
             return
         elif isinstance(self.obj, model.Function):
