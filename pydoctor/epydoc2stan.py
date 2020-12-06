@@ -199,7 +199,7 @@ class Field:
     arg: Optional[str]
     source: model.Documentable
     lineno: int
-    body: Tag
+    body: ParsedDocstring
 
     @classmethod
     def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
@@ -208,8 +208,11 @@ class Field:
             arg=field.arg(),
             source=source,
             lineno=field.lineno,
-            body=field.body().to_stan(_EpydocLinker(source))
+            body=field.body()
             )
+
+    def format(self) -> Tag:
+        return self.body.to_stan(_EpydocLinker(self.source))
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -226,7 +229,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
         else:
             row = tags.tr()
             row(tags.td())
-        row(tags.td(colspan="2")(field.body))
+        row(tags.td(colspan="2")(field.format()))
         yield row
 
 
@@ -270,7 +273,7 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return')
-        self.return_desc.body = field.body
+        self.return_desc.body = field.format()
     handle_returns = handle_return
 
     def handle_returntype(self, field: Field) -> None:
@@ -278,7 +281,7 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return')
-        self.return_desc.type = field.body
+        self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
     def _handle_param_name(self, field: Field) -> Optional[str]:
@@ -313,7 +316,7 @@ class FieldHandler:
         field.report('Documented parameter "%s" does not exist' % (name,))
 
     def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
+        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Function):
@@ -332,7 +335,7 @@ class FieldHandler:
             #       inconsistencies.
             name = field.arg
         if name is not None:
-            self.types[name] = field.body
+            self.types[name] = field.format()
 
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
