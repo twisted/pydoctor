@@ -549,6 +549,47 @@ def test_methoddecorator(systemcls: Type[model.System], capsys: CapSys) -> None:
 
 
 @systemcls_param
+def test_assignment_to_method_in_class(systemcls: Type[model.System]) -> None:
+    """An assignment to a method in a class body does not change the type
+    of the documentable.
+    """
+    mod = fromText('''
+    class Base:
+        def base_method(): ...
+
+    class Sub(Base):
+        base_method = wrap_method(base_method)
+
+        def sub_method(): ...
+        sub_method = wrap_method(sub_method)
+    ''', systemcls=systemcls)
+    assert isinstance(mod.contents['Base'].contents['base_method'], model.Function)
+    assert mod.contents['Sub'].contents.get('base_method') is None
+    assert isinstance(mod.contents['Sub'].contents['sub_method'], model.Function)
+
+
+@systemcls_param
+def test_assignment_to_method_in_init(systemcls: Type[model.System]) -> None:
+    """An assignment to a method inside __init__() does not change the type
+    of the documentable.
+    """
+    mod = fromText('''
+    class Base:
+        def base_method(): ...
+
+    class Sub(Base):
+        def sub_method(): ...
+
+        def __init__(self):
+            self.base_method = wrap_method(self.base_method)
+            self.sub_method = wrap_method(self.sub_method)
+    ''', systemcls=systemcls)
+    assert isinstance(mod.contents['Base'].contents['base_method'], model.Function)
+    assert mod.contents['Sub'].contents.get('base_method') is None
+    assert isinstance(mod.contents['Sub'].contents['sub_method'], model.Function)
+
+
+@systemcls_param
 def test_import_star(systemcls: Type[model.System]) -> None:
     mod_a = fromText('''
     def f(): pass
