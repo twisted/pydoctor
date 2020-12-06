@@ -621,7 +621,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return parsed_type.to_stan(_EpydocLinker(obj))
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
-    parsed_type: Optional[ParsedDocstring] = getattr(obj, 'parsed_type', None)
+    parsed_type = obj.parsed_type
     if parsed_type is not None:
         return parsed_type
 
