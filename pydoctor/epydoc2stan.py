@@ -319,7 +319,12 @@ class FieldHandler:
         desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
 
     def handle_type(self, field: Field) -> None:
-        if isinstance(self.obj, model.Function):
+        if isinstance(self.obj, model.Attribute):
+            if field.arg is not None:
+                field.report('Field in inline docstring should not include a name')
+            self.obj.parsed_type = field.body
+            return
+        elif isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
             if name is not None and name not in self.types and not any(
                     # Don't warn about keywords or about parameters we already

@@ -6,8 +6,9 @@ from pytest import mark, raises
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker, flatten
+from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, unwrap
 
 from . import CapSys
 
@@ -420,6 +421,44 @@ def test_unknown_field_name(capsys: CapSys) -> None:
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
     assert captured == "test:5: Unknown field 'zap'\n"
+
+
+def test_inline_field_type(capsys: CapSys) -> None:
+    """The C{type} field in an inline docstring updates the C{parsed_type}
+    of the Attribute it documents.
+    """
+    mod = fromText('''
+    a = 2
+    """
+    Variable documented by inline docstring.
+    @type: number
+    """
+    ''', modname='test')
+    a = mod.contents['a']
+    assert isinstance(a, model.Attribute)
+    epydoc2stan.format_docstring(a)
+    assert isinstance(a.parsed_type, ParsedEpytextDocstring)
+    assert str(unwrap(a.parsed_type)) == 'number'
+    assert not capsys.readouterr().out
+
+
+def test_inline_field_name(capsys: CapSys) -> None:
+    """Warn if a name is given for a C{type} field in an inline docstring.
+    An inline docstring only documents a single attribute, so the name is
+    redundant at best and misleading at worst.
+    """
+    mod = fromText('''
+    a = 2
+    """
+    Variable documented by inline docstring.
+    @type a: number
+    """
+    ''', modname='test')
+    a = mod.contents['a']
+    assert isinstance(a, model.Attribute)
+    epydoc2stan.format_docstring(a)
+    captured = capsys.readouterr().out
+    assert captured == "test:5: Field in inline docstring should not include a name\n"
 
 
 def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
