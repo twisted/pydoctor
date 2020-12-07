@@ -179,7 +179,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr = self.builder.current.contents[target]
+        attr = self.builder.current.contents.get(target)
+        if attr is None:
+            return
         funcName = self.funcNameFromCall(expr)
         if funcName is None:
             return
