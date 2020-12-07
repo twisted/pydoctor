@@ -2,6 +2,7 @@
 
 from typing import Optional, List
 import os
+from bs4 import BeautifulSoup
 
 from pydoctor import model
 from twisted.python.filepath import FilePath
@@ -22,8 +23,6 @@ class TemplateFileLookup:
 
     Warning: While this object allow the customization of any templates, this can lead to errors 
     when upgrading pydoctor. 
-
-    Only customization of "footer.html", "header.html" and "pageHeader.html" is currently supported.
 
     """
     def __init__(self):
@@ -61,11 +60,36 @@ class TemplateFileLookup:
             if p_templatefile.isfile():
                 return p_templatefile
         raise FileNotFoundError(f"Cannot find template file: '{filename}' in template directories: {self.templatedirs}")
+    
+    def getall_templates_filenames(self) -> List[str]:
+        """
+        Get all templates FilePath. 
+        """
+        templates = []
+        for template in reversed(self.templatedirs):
+            for potential_template in template.children():
+                if potential_template.basename() not in [t.basename() for t in templates]:
+                    templates.append(potential_template)
+        return ([t.basename() for t in templates])
+
+    def get_template_version(self, filename: str) -> str:
+        """
+        All template files should have a meta tag indicating the version::
+
+            <meta name="template" content="pydoctor-default" version="1.0" />
+
+        @arg filename: Template file name
+        @return The template version or None
+        """
+        soup = BeautifulSoup(self.get_templatefilepath(filename).open('r').read(), 'html.parser')
+        res = soup.find_all("meta", attrs=dict(name="template"))
+        if res :
+            return res[0]['version']
 
 # Deprecated
 def templatefile(filename:str) -> str:
     warnings.warn(  "pydoctor.templatewriter.templatefile() and pydoctor.templatewriter.templatefilepath() " 
-                    "are deprecated since pydoctor 21.0. Please use templating system. ")
+                    "are deprecated since pydoctor 21. Please use the templating system. ")
     return TemplateFileLookup().get_templatefile(filename)
 # Deprecated
 def templatefilepath(filename:str) -> FilePath:

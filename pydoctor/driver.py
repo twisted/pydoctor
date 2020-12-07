@@ -380,7 +380,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
-            # Init writer
+            # Init writer with custom template directory
             if system.options.templatedir:
                 system.templatefile_lookup.add_templatedir(
                     system.options.templatedir)
@@ -388,11 +388,14 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     writer = writerclass(options.htmloutput, 
                         templatefile_lookup=system.templatefile_lookup) 
 
-                except TypeError:
+                except TypeError as err:
                     writer = writerclass(options.htmloutput)
                     warnings.warn(f"Your custom writer '{writerclass}' do not support template customization with --template-dir."
-                        "Please refer to the docs to update your code. ")
-            
+                        f" Please refer to the TemplateWriter class documentation. {err}")
+                
+                else:
+                    writer._checkTemplatesV()
+                
             else:
                 writer = writerclass(options.htmloutput)
 

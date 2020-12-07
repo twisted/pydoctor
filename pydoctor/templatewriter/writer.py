@@ -5,6 +5,8 @@ from typing import Type, Optional, List
 import os
 import shutil
 from typing import IO, Any
+from incremental import Version
+import warnings
 
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
@@ -109,3 +111,19 @@ class TemplateWriter(ABC):
         self.written_pages += 1
         ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         flattenToFile(fobj, page)
+
+    def _checkTemplatesV(self) -> None:
+        """
+        Issue warnings when custom templates are outdated. 
+        """
+        default_lookup = TemplateFileLookup()
+        for actual_template in self.templatefile_lookup.getall_templates_filenames():
+            if default_lookup.get_template_version(actual_template):
+                if self.templatefile_lookup.get_template_version(actual_template):
+                    if (Version('template', *self.templatefile_lookup.get_template_version(actual_template).split('.'), '0') 
+                    < Version('template', *default_lookup.get_template_version(actual_template).split('.'), '0')):
+                        warnings.warn(f"Your custom template '{actual_template}' is out of date, information might be missing."
+                                               " Latest templates are available to download from our github.")
+                else:
+                    warnings.warn(f"Your custom template '{actual_template}' do not have a version identifier."
+                                              " Latest templates are available to download from our github.")
