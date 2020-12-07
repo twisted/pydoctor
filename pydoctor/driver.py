@@ -120,6 +120,12 @@ def getparser() -> OptionParser:
         help=("Which epydoc-supported format docstrings are assumed "
               "to be in."))
     parser.add_option(
+        '--html-template-dir',
+        dest='templatedir',
+        default=None,
+        help=(  'Path to a folder containing custom HTML templates.'),
+    )
+    parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of object to generate API docs for"
               " (default: everything)."))
@@ -215,13 +221,7 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
-    parser.add_option(
-        '--template-dir',
-        dest='templatedir',
-        default=None,
-        help=(  'Path to a folder containing HTML templates.'
-                'Customizable files are header.html, pageHeader.html or footer.html'),
-    )
+    
 
     return parser
 
