@@ -94,6 +94,6 @@ pydoctor_args = [
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
-    f'--template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
+    f'--html-template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
     f'{_pydoctor_root}/pydoctor',
     ]

@@ -18,7 +18,7 @@ class TemplateFileLookup:
     A little bit like `mako.lookup.TemplateLookup` but more simple. 
 
     The location of the files depends wether the users set a template directory 
-    with the option `--template-dir`, custom files with matching names will be 
+    with the option `--html-template-dir`, custom files with matching names will be 
     loaded if present. 
 
     Warning: While this object allow the customization of any templates, this can lead to errors 

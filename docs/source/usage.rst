@@ -255,13 +255,12 @@ All empty by default.
 To overwrite a placeholder, write your cusom HTLM files to a folder 
 and use the following option::
 
-  --template-dir=./pydoctor_templates
+  --html-template-dir=./pydoctor_templates
 
 .. note::
 
   If you want more customization, you can overwrite the defaults 
   HTML and CSS templates in `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_ with the same method. 
-  But it's discouraged since the templates will change from a release to another. 
 
 Custom System class
 ~~~~~~~~~~~~~~~~~~~
