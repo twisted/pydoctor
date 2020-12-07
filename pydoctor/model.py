@@ -466,10 +466,9 @@ class Class(CanContainImportsDocumentable):
         # We assume that the constructor parameters are the same as the
         # __init__() parameters. This is incorrect if __new__() or the class
         # call have different parameters.
-        for base in self.allbases(include_self=True):
-            init = base.contents.get('__init__')
-            if isinstance(init, Function):
-                return init.annotations
+        init = self.find('__init__')
+        if isinstance(init, Function):
+            return init.annotations
         else:
             return {}
 
