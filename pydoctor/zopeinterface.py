@@ -160,6 +160,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             interface = self.builder.pushClass(target, lineno)
             interface.isinterface = True
             interface.implementedby_directly = []
+            interface.bases = []
+            interface.baseobjects = []
             self.builder.popClass()
             self.newAttr = interface
 
