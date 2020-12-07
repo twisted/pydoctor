@@ -330,10 +330,10 @@ class ModuleVistor(ast.NodeVisitor):
             self._handleModuleVar(target, annotation, lineno)
 
     def _handleClassVar(self, name: str, annotation: Optional[ast.expr], lineno: int) -> None:
-        parent = self.builder.current
-        obj = parent.contents.get(name)
+        cls = self.builder.current
+        obj = cls.contents.get(name)
         if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(name, None, parent)
+            obj = self.builder.addAttribute(name, None, cls)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
@@ -350,11 +350,12 @@ class ModuleVistor(ast.NodeVisitor):
         obj = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name, None, cls)
-        if isinstance(obj, model.Attribute):
-            obj.kind = 'Instance Variable'
-            obj.annotation = annotation
-            obj.setLineNumber(lineno)
-            self.newAttr = obj
+        elif not isinstance(obj, model.Attribute):
+            return
+        obj.kind = 'Instance Variable'
+        obj.annotation = annotation
+        obj.setLineNumber(lineno)
+        self.newAttr = obj
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):
