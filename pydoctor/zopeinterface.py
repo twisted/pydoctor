@@ -160,6 +160,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             interface = self.builder.pushClass(target, lineno)
             interface.isinterface = True
             interface.implementedby_directly = []
+            interface.bases = []
+            interface.baseobjects = []
             self.builder.popClass()
             self.newAttr = interface
 
@@ -179,7 +181,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr = self.builder.current.contents[target]
+        attr = self.builder.current.contents.get(target)
+        if attr is None:
+            return
         funcName = self.funcNameFromCall(expr)
         if funcName is None:
             return

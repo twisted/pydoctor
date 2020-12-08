@@ -329,32 +329,46 @@ class ModuleVistor(ast.NodeVisitor):
         if not self._handleAliasing(target, expr):
             self._handleModuleVar(target, annotation, lineno)
 
-    def _handleClassVar(self, target, annotation, lineno):
-        parent = self.builder.current
-        obj = parent.contents.get(target)
-        if not isinstance(obj, model.Attribute):
-            obj = self.builder.addAttribute(target, None, parent)
+    def _maybeAttribute(self, cls: model.Class, name: str) -> bool:
+        """Check whether a name is a potential attribute of the given class.
+        This is used to prevent an assignment that wraps a method from
+        creating an attribute that would overwrite or shadow that method.
+
+        @return: L{True} if the name does not exist or is an existing (possibly
+            inherited) attribute, L{False} otherwise
+        """
+        obj = cls.find(name)
+        return obj is None or isinstance(obj, model.Attribute)
+
+    def _handleClassVar(self, name: str, annotation: Optional[ast.expr], lineno: int) -> None:
+        cls = self.builder.current
+        if not self._maybeAttribute(cls, name):
+            return
+        obj = cls.contents.get(name)
+        if obj is None:
+            obj = self.builder.addAttribute(name, None, cls)
         if obj.kind is None:
             obj.kind = 'Class Variable'
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj
 
-    def _handleInstanceVar(self, target, annotation, lineno):
+    def _handleInstanceVar(self, name: str, annotation: Optional[ast.expr], lineno: int) -> None:
         func = self.builder.current
         if not isinstance(func, model.Function):
             return
         cls = func.parent
         if not isinstance(cls, model.Class):
             return
-        obj = cls.contents.get(target)
+        if not self._maybeAttribute(cls, name):
+            return
+        obj = cls.contents.get(name)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, cls)
-        if isinstance(obj, model.Attribute):
-            obj.kind = 'Instance Variable'
-            obj.annotation = annotation
-            obj.setLineNumber(lineno)
-            self.newAttr = obj
+            obj = self.builder.addAttribute(name, None, cls)
+        obj.kind = 'Instance Variable'
+        obj.annotation = annotation
+        obj.setLineNumber(lineno)
+        self.newAttr = obj
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
         if not self._handleAliasing(target, expr):

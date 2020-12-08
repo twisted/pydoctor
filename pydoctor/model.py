@@ -437,6 +437,17 @@ class Class(CanContainImportsDocumentable):
             if b is not None:
                 yield from b.allbases(True)
 
+    def find(self, name: str) -> Optional[Documentable]:
+        """Look up a name in this class and its base classes.
+
+        @return: the object with the given name, or L{None} if there isn't one
+        """
+        for base in self.allbases(include_self=True):
+            obj: Optional[Documentable] = base.contents.get(name)
+            if obj is not None:
+                return obj
+        return None
+
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
@@ -455,10 +466,9 @@ class Class(CanContainImportsDocumentable):
         # We assume that the constructor parameters are the same as the
         # __init__() parameters. This is incorrect if __new__() or the class
         # call have different parameters.
-        for base in self.allbases(include_self=True):
-            init = base.contents.get('__init__')
-            if isinstance(init, Function):
-                return init.annotations
+        init = self.find('__init__')
+        if isinstance(init, Function):
+            return init.annotations
         else:
             return {}
 
