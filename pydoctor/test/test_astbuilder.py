@@ -552,41 +552,61 @@ def test_methoddecorator(systemcls: Type[model.System], capsys: CapSys) -> None:
 def test_assignment_to_method_in_class(systemcls: Type[model.System]) -> None:
     """An assignment to a method in a class body does not change the type
     of the documentable.
+
+    If the name we assign to exists and it does not belong to an Attribute
+    (it's a Function instead, in this test case), the assignment will be
+    ignored.
     """
     mod = fromText('''
     class Base:
-        def base_method(): ...
+        def base_method():
+            """Base method docstring."""
 
     class Sub(Base):
         base_method = wrap_method(base_method)
+        """Overriding the docstring is not supported."""
 
-        def sub_method(): ...
+        def sub_method():
+            """Sub method docstring."""
         sub_method = wrap_method(sub_method)
+        """Overriding the docstring is not supported."""
     ''', systemcls=systemcls)
     assert isinstance(mod.contents['Base'].contents['base_method'], model.Function)
     assert mod.contents['Sub'].contents.get('base_method') is None
-    assert isinstance(mod.contents['Sub'].contents['sub_method'], model.Function)
+    sub_method = mod.contents['Sub'].contents['sub_method']
+    assert isinstance(sub_method, model.Function)
+    assert sub_method.docstring == """Sub method docstring."""
 
 
 @systemcls_param
 def test_assignment_to_method_in_init(systemcls: Type[model.System]) -> None:
     """An assignment to a method inside __init__() does not change the type
     of the documentable.
+
+    If the name we assign to exists and it does not belong to an Attribute
+    (it's a Function instead, in this test case), the assignment will be
+    ignored.
     """
     mod = fromText('''
     class Base:
-        def base_method(): ...
+        def base_method():
+            """Base method docstring."""
 
     class Sub(Base):
-        def sub_method(): ...
+        def sub_method():
+            """Sub method docstring."""
 
         def __init__(self):
             self.base_method = wrap_method(self.base_method)
+            """Overriding the docstring is not supported."""
             self.sub_method = wrap_method(self.sub_method)
+            """Overriding the docstring is not supported."""
     ''', systemcls=systemcls)
     assert isinstance(mod.contents['Base'].contents['base_method'], model.Function)
     assert mod.contents['Sub'].contents.get('base_method') is None
-    assert isinstance(mod.contents['Sub'].contents['sub_method'], model.Function)
+    sub_method = mod.contents['Sub'].contents['sub_method']
+    assert isinstance(sub_method, model.Function)
+    assert sub_method.docstring == """Sub method docstring."""
 
 
 @systemcls_param
