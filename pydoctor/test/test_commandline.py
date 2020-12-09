@@ -1,7 +1,6 @@
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
-import os
 import sys
 
 from pydoctor import driver
@@ -49,17 +48,20 @@ def test_invalid_systemclasses() -> None:
     assert 'is not a subclass' in err
 
 
-def test_projectbasedir_absolute() -> None:
+def test_projectbasedir_absolute(tmp_path: Path) -> None:
     """
     The --project-base-dir option, when given an absolute path, should set that
     path as the projectbasedirectory attribute on the options object.
+
+    Previous versions of this test tried using non-existing paths and compared
+    the string representations, but that was unreliable, since the input path
+    might contain a symlink that will be resolved, such as "/home" on macOS.
+    Using L{Path.samefile()} is reliable, but requires an existing path.
     """
-    if os.name == 'nt':
-        absolute = r"C:\Users\name\src\project"
-    else:
-        absolute = "/home/name/src/project"
-    options, args = driver.parse_args(["--project-base-dir", absolute])
-    assert str(options.projectbasedirectory) == absolute
+    assert tmp_path.is_absolute()
+    options, args = driver.parse_args(["--project-base-dir", str(tmp_path)])
+    assert options.projectbasedirectory.samefile(tmp_path)
+    assert options.projectbasedirectory.is_absolute()
 
 
 def test_projectbasedir_relative() -> None:
