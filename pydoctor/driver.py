@@ -53,17 +53,25 @@ def findClassFromDottedName(
 
 MAKE_HTML_DEFAULT = object()
 
-def parse_path(option: Option, opt: str, value: str) -> Path:
-    """Parse a path value given to an option to a L{Path} object.
+def resolve_path(path: str) -> Path:
+    """Parse a given path string to a L{Path} object.
+
     The path is converted to an absolute path, as required by
     L{System.setSourceHref()}.
     The path does not need to exist.
     """
+
+    # We explicitly make the path relative to the current working dir
+    # because on Windows resolve() does not produce an absolute path
+    # when operating on a non-existing path.
+    return Path(Path.cwd(), path).resolve()
+
+def parse_path(option: Option, opt: str, value: str) -> Path:
+    """Parse a path value given to an option to a L{Path} object
+    using L{resolve_path()}.
+    """
     try:
-        # We explicitly make the path relative to the current working dir
-        # because on Windows resolve() does not produce an absolute path
-        # when operating on a non-existing path.
-        return Path(Path.cwd(), value).resolve()
+        return resolve_path(value)
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
@@ -331,17 +339,24 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
             added_paths = set()
-            for path in args:
-                path = os.path.abspath(path)
+            for arg in args:
+                path = resolve_path(arg)
                 if path in added_paths:
                     continue
-                if os.path.isdir(path):
-                    system.msg('addPackage', 'adding directory ' + path)
-                    system.addPackage(path, prependedpackage)
-                elif os.path.isfile(path):
-                    system.msg('addModuleFromPath', 'adding module ' + path)
-                    system.addModuleFromPath(prependedpackage, path)
-                elif os.path.exists(path):
+                if options.projectbasedirectory is not None:
+                    # Note: Path.is_relative_to() was only added in Python 3.9,
+                    #       so we have to use this workaround for now.
+                    try:
+                        path.relative_to(options.projectbasedirectory)
+                    except ValueError as ex:
+                        error(f"Source path lies outside base directory: {ex}")
+                if path.is_dir():
+                    system.msg('addPackage', f"adding directory {path}")
+                    system.addPackage(str(path), prependedpackage)
+                elif path.is_file():
+                    system.msg('addModuleFromPath', f"adding module {path}")
+                    system.addModuleFromPath(prependedpackage, str(path))
+                elif path.exists():
                     error(f"Source path is neither file nor directory: {path}")
                 else:
                     error(f"Source path does not exist: {path}")
