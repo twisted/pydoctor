@@ -6,8 +6,8 @@ Read The Docs build process.
 
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-  - C{pydoctor_args} - a list with all the pydoctor command line arguments used to trigger the build.
-                     - a dict with values as list of pydoctor command line arguments.
+  - C{pydoctor_args} - an iterable with all the pydoctor command line arguments used to trigger the build.
+                     - (private usage) a mapping with values as iterables of pydoctor command line arguments.
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
@@ -17,7 +17,7 @@ as otherwise any extra output is converted into Sphinx warnings.
 """
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, List, Mapping
+from typing import Any, Iterable, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -50,15 +50,15 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         runs = {'main': runs}
 
     for key, value in runs.items():
-        _run_pydoctor(key, value, placeholders.copy())
+        _run_pydoctor(key, value, placeholders)
 
 
-def _run_pydoctor(name: str, arguments: List[str], placeholders: Mapping[str, str]) -> None:
+def _run_pydoctor(name: str, arguments: Iterable[str], placeholders: Mapping[str, str]) -> None:
     """
     Call pydoctor with arguments.
 
     @param name: A human-readable description of this pydoctor build.
-    @param arguments: List of arguments used to call pydoctor.
+    @param arguments: Iterable of arguments used to call pydoctor.
     @param placeholders: Values that will be interpolated with the arguments using L{str.format()}.
     """
     args = []
