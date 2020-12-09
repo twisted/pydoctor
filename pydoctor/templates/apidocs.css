@@ -204,9 +204,12 @@ or `bar` in restructuredtext
 
 - <a class="code"> links that are present in summary tables
 */
-a > code, a.code, .page-header > h1 > code {
+a > code, a.code {
     color:#c7254e;
     background-color:#f9f2f4;
+}
+.page-header > h1 > code {
+    color: #971c3a;
 }
 
 /*

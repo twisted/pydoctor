@@ -53,17 +53,25 @@ def findClassFromDottedName(
 
 MAKE_HTML_DEFAULT = object()
 
-def parse_path(option: Option, opt: str, value: str) -> Path:
-    """Parse a path value given to an option to a L{Path} object.
+def resolve_path(path: str) -> Path:
+    """Parse a given path string to a L{Path} object.
+
     The path is converted to an absolute path, as required by
     L{System.setSourceHref()}.
     The path does not need to exist.
     """
+
+    # We explicitly make the path relative to the current working dir
+    # because on Windows resolve() does not produce an absolute path
+    # when operating on a non-existing path.
+    return Path(Path.cwd(), path).resolve()
+
+def parse_path(option: Option, opt: str, value: str) -> Path:
+    """Parse a path value given to an option to a L{Path} object
+    using L{resolve_path()}.
+    """
     try:
-        # We explicitly make the path relative to the current working dir
-        # because on Windows resolve() does not produce an absolute path
-        # when operating on a non-existing path.
-        return Path(Path.cwd(), value).resolve()
+        return resolve_path(value)
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
@@ -128,11 +136,7 @@ def getparser() -> OptionParser:
         help=("Only generate the summary pages."))
     parser.add_option(
         '--html-write-function-pages', dest='htmlfunctionpages',
-        default=False, action='store_true',
-        help=("Make individual HTML files for every function and "
-              "method. They're not linked to in any pydoctor-"
-              "generated HTML, but they can be useful for third-party "
-              "linking."))
+        default=False, action='store_true', help=SUPPRESS_HELP)
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
@@ -259,13 +263,21 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
-              "the cache is now enabled by default.", file=sys.stderr)
+              "the cache is now enabled by default.",
+              file=sys.stderr, flush=True)
     if options.modules:
         print("The --add-module option is deprecated; "
-              "pass modules as positional arguments instead.", file=sys.stderr)
+              "pass modules as positional arguments instead.",
+              file=sys.stderr, flush=True)
     if options.packages:
         print("The --add-package option is deprecated; "
-              "pass packages as positional arguments instead.", file=sys.stderr)
+              "pass packages as positional arguments instead.",
+              file=sys.stderr, flush=True)
+    if options.htmlfunctionpages:
+        print("The --html-write-function-pages option is deprecated; "
+              "use the generated Intersphinx inventory (objects.inv) "
+              "for deep-linking your documentation.",
+              file=sys.stderr, flush=True)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
@@ -327,17 +339,24 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
             added_paths = set()
-            for path in args:
-                path = os.path.abspath(path)
+            for arg in args:
+                path = resolve_path(arg)
                 if path in added_paths:
                     continue
-                if os.path.isdir(path):
-                    system.msg('addPackage', 'adding directory ' + path)
-                    system.addPackage(path, prependedpackage)
-                elif os.path.isfile(path):
-                    system.msg('addModuleFromPath', 'adding module ' + path)
-                    system.addModuleFromPath(prependedpackage, path)
-                elif os.path.exists(path):
+                if options.projectbasedirectory is not None:
+                    # Note: Path.is_relative_to() was only added in Python 3.9,
+                    #       so we have to use this workaround for now.
+                    try:
+                        path.relative_to(options.projectbasedirectory)
+                    except ValueError as ex:
+                        error(f"Source path lies outside base directory: {ex}")
+                if path.is_dir():
+                    system.msg('addPackage', f"adding directory {path}")
+                    system.addPackage(str(path), prependedpackage)
+                elif path.is_file():
+                    system.msg('addModuleFromPath', f"adding module {path}")
+                    system.addModuleFromPath(prependedpackage, str(path))
+                elif path.exists():
                     error(f"Source path is neither file nor directory: {path}")
                 else:
                     error(f"Source path does not exist: {path}")

@@ -7,5 +7,5 @@ Provides pydoctor version information.
 
 from incremental import Version
 
-__version__ = Version('pydoctor', 20, 7, 1)
+__version__ = Version('pydoctor', 20, 12, 0)
 __all__ = ["__version__"]
