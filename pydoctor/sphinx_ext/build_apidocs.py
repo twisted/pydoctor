@@ -59,7 +59,7 @@ def _run_pydoctor(name: str, arguments: List[str], placeholders: Mapping[str, st
 
     @param name: A human-readable description of this pydoctor build.
     @param arguments: List of arguments used to call pydoctor.
-    @param placeholders: Values that will be interpolated with the arguments.
+    @param placeholders: Values that will be interpolated with the arguments using L{str.format()}.
     """
     args = []
     for argument in arguments:
