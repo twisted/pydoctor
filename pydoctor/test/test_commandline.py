@@ -173,3 +173,20 @@ def test_main_return_non_zero_on_warnings() -> None:
     assert exit_code == 3
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
     assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+
+
+def test_main_symlinked_paths(tmp_path: Path) -> None:
+    """
+    The project base directory and package/module directories are normalized
+    in the same way, such that System.setSourceHref() can call Path.relative_to()
+    on them.
+    """
+    link = tmp_path / 'src'
+    link.symlink_to(Path.cwd(), target_is_directory=True)
+
+    exit_code = driver.main(args=[
+        '--project-base-dir=.',
+        '--html-viewsource-base=http://example.com',
+        f'{link}/pydoctor/test/testpackages/basic/'
+        ])
+    assert exit_code == 0
