@@ -353,6 +353,9 @@ class Package(Documentable):
     def doctarget(self) -> Documentable:
         return self.contents['__init__'] # type: ignore[no-any-return]
     @property
+    def sourceHref(self) -> Optional[str]: # type: ignore[override]
+        return self.module.sourceHref
+    @property
     def module(self) -> 'Module':
         return self.contents['__init__'] # type: ignore[no-any-return]
     @property
