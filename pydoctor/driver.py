@@ -343,6 +343,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 path = resolve_path(arg)
                 if path in added_paths:
                     continue
+                if options.projectbasedirectory is not None:
+                    # Note: Path.is_relative_to() was only added in Python 3.9,
+                    #       so we have to use this workaround for now.
+                    try:
+                        path.relative_to(options.projectbasedirectory)
+                    except ValueError as ex:
+                        error(f"Source path lies outside base directory: {ex}")
                 if path.is_dir():
                     system.msg('addPackage', f"adding directory {path}")
                     system.addPackage(str(path), prependedpackage)

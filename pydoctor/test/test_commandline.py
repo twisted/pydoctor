@@ -3,6 +3,8 @@ from io import StringIO
 from pathlib import Path
 import sys
 
+from pytest import raises
+
 from pydoctor import driver
 
 from . import CapSys
@@ -190,3 +192,16 @@ def test_main_symlinked_paths(tmp_path: Path) -> None:
         f'{link}/pydoctor/test/testpackages/basic/'
         ])
     assert exit_code == 0
+
+
+def test_main_source_outside_basedir(capsys: CapSys) -> None:
+    """
+    If a --project-base-dir is given, all package and module paths must
+    be located inside that base directory.
+    """
+    with raises(SystemExit):
+        driver.main(args=[
+            '--project-base-dir=docs',
+            'pydoctor/test/testpackages/basic/'
+            ])
+    assert "Source path lies outside base directory:" in capsys.readouterr().err
