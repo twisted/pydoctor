@@ -27,11 +27,11 @@ Lists
 Epytext supports both ordered and unordered lists.
 A list consists of one or more consecutive list items with the same indentation.
 Each list item is marked by a bullet.
-The bullet for unordered list items is a single dash character (-).
+The bullet for unordered list items is a single dash character (C{-}).
 Bullets for ordered list items consist of a series of numbers followed by periods,
-such as 12. or 1.2.8..
+such as C{12.} or C{1.2.8.}.
 
-Example  of ordered list:
+Ordered list example:
 
     1. This is an ordered list item.
 
@@ -77,7 +77,7 @@ Everything within a literal block should be displayed exactly as it appears in p
     - Text is shown in a monospaced font.
     - Inline markup is not detected.
 
-Literal blocks are introduced by paragraphs ending in the special sequence "::".
+Literal blocks are introduced by paragraphs ending in the special sequence C{::}.
 Literal blocks end at the first line whose indentation is equal to or less than that of the paragraph that introduces them.
 
 The following is a literal block::
@@ -91,7 +91,7 @@ Doctest Blocks
 
     - contain examples consisting of Python expressions and their output.
     - can be used by the doctest module to test the documented object.
-    - begin with the special sequence ">>>".
+    - begin with the special sequence C{>>>}.
     - are delimited from surrounding blocks by blank lines.
     - may not contain blank lines.
 

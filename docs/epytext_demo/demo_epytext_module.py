@@ -14,7 +14,7 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     @type  m: number
     @param m: The slope of the line.
     @type  b: number
-    @param b: The y intercept of the line..
+    @param b: The y intercept of the line.
     @rtype:   number
     @return:  the x intercept of the line M{y=m*x+b}.
     """
@@ -23,13 +23,13 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
 
 def demo_typing_arguments(m: str, b: bytes) -> bool:
     """
-    Type documentation can be extracting from Python standard type hinging.
+    Type documentation can be extracted from standard Python type hints.
 
     @param m: The slope of the line.
     @param b: The y intercept of the line.
     @return:  the x intercept of the line M{y=m*x+b}.
     """
-    return bool(True)
+    return True
 
 
 def demo_cross_reference() -> None:
@@ -50,7 +50,7 @@ class _PrivateClass:
     This is the docstring of a private class.
     """
 
-    def method_inside_private(sels) -> bool:
+    def method_inside_private(self) -> bool:
         """
         A public method inside a private class.
 
@@ -59,7 +59,7 @@ class _PrivateClass:
         return True
 
 
-    def _private_inside_private(sels) -> bool:
+    def _private_inside_private(self) -> bool:
         """
         A private method inside a private class.
 

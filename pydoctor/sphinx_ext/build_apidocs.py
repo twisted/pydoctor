@@ -57,8 +57,8 @@ def _run_pydoctor(name: str, arguments: List[str], placeholders: Dict[str, str])
     """
     Call pydoctor with arguments.
 
-    @param name: A human readable description of this pydoctor build name.
-    @param arguments: List of argument used to call pydoctor.
+    @param name: A human-readable description of this pydoctor build.
+    @param arguments: List of arguments used to call pydoctor.
     @param placeholders: Values that will be interpolated with the arguments.
     """
     args = []
