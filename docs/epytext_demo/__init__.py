@@ -17,9 +17,9 @@ Try to keep the example as condensed as possible.
       To ensure we don't introduce regressions.
 
 
-General epytext formating markups are documented in the docstring of this packge.
+General epytext formating markups are documented in the docstring of this package.
 
-Epydoc code related formating are demonstrating in the modules of this package.
+Epydoc code related formating are demonstrated in the modules of this package.
 
 
 Lists
