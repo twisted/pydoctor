@@ -64,6 +64,22 @@ def test_projectbasedir_absolute(tmp_path: Path) -> None:
     assert options.projectbasedirectory.is_absolute()
 
 
+def test_projectbasedir_symlink(tmp_path: Path) -> None:
+    """
+    The --project-base-dir option, when given a path containing a symbolic link,
+    should resolve the path to the target directory.
+    """
+    target = tmp_path / 'target'
+    target.mkdir()
+    link = tmp_path / 'link'
+    link.symlink_to('target', target_is_directory=True)
+    assert link.samefile(target)
+
+    options, args = driver.parse_args(["--project-base-dir", str(link)])
+    assert options.projectbasedirectory.samefile(target)
+    assert options.projectbasedirectory.is_absolute()
+
+
 def test_projectbasedir_relative() -> None:
     """
     The --project-base-dir option, when given a relative path, should convert
