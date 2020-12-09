@@ -1,6 +1,6 @@
 """Badly named module that contains the driving code for the rendering."""
 
-from abc import ABC
+
 from typing import Type, Optional, List
 import os
 import shutil
@@ -8,6 +8,7 @@ from typing import IO, Any
 from incremental import Version
 import warnings
 
+from pydoctor.iwriter import IWriter
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
 from pydoctor.templatewriter.util import templatefile, TemplateFileLookup
@@ -28,7 +29,11 @@ def flattenToFile(fobj:IO[Any], page:pages.Element) -> None:
         raise err[0]
 
 
-class TemplateWriter(ABC):
+class TemplateWriter(IWriter):
+    """
+    HTML templates writer. 
+    """
+
     @classmethod
     def __subclasshook__(cls, subclass: Type[object]) -> bool:
         for name in dir(cls):
@@ -38,7 +43,8 @@ class TemplateWriter(ABC):
         return True
 
     def __init__(self, filebase:str, templatefile_lookup:Optional[TemplateFileLookup] = None):
-        self.base = filebase
+        
+        super().__init__(filebase)
         self.written_pages = 0
         self.total_pages = 0
         self.dry_run = False
@@ -48,7 +54,7 @@ class TemplateWriter(ABC):
 
     def prepOutputDirectory(self) -> None:
         """
-        Copy static CSS and JS files to build directory.
+        Copy static CSS and JS files to build directory and warn when custom templates are outdated. 
         """
         os.makedirs(self.base, exist_ok=True)
         self.templatefile_lookup.get_templatefilepath('apidocs.css').copyTo(
@@ -57,6 +63,7 @@ class TemplateWriter(ABC):
             FilePath(os.path.join(self.base, 'bootstrap.min.css')))
         self.templatefile_lookup.get_templatefilepath('pydoctor.js').copyTo(
             FilePath(os.path.join(self.base, 'pydoctor.js')))
+        self._checkTemplatesV()
 
     def writeIndividualFiles(self, obs:List[model.Documentable], functionpages:bool=False) -> None:
         """
@@ -120,10 +127,10 @@ class TemplateWriter(ABC):
         for actual_template in self.templatefile_lookup.getall_templates_filenames():
             if default_lookup.get_template_version(actual_template):
                 if self.templatefile_lookup.get_template_version(actual_template):
-                    if (Version('template', *self.templatefile_lookup.get_template_version(actual_template).split('.'), '0') 
-                    < Version('template', *default_lookup.get_template_version(actual_template).split('.'), '0')):
+                    if ( Version('template', *self.templatefile_lookup.get_template_version(actual_template).split('.'), '0',) 
+                         < Version('template', *default_lookup.get_template_version(actual_template).split('.'), '0', )):
                         warnings.warn(f"Your custom template '{actual_template}' is out of date, information might be missing."
                                                " Latest templates are available to download from our github.")
                 else:
-                    warnings.warn(f"Your custom template '{actual_template}' do not have a version identifier."
+                    warnings.warn(f"Your custom template '{actual_template}' do not have a version identifier, information might be missing."
                                               " Latest templates are available to download from our github.")

@@ -1,8 +1,9 @@
 from io import BytesIO
 from pathlib import Path
 from typing import Callable
-
+import shutil
 import pytest
+import warnings
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
@@ -156,6 +157,25 @@ def test_templatefile_lookup() -> None:
 
     assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
         == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
+
+    assert lookup.get_template_version('footer.html') == None
+
+    assert type(lookup.get_template_version('index.html')) == str
+
+    with warnings.catch_warnings(record=True) as catch_warnings:
+        # Cause all warnings to always be triggered.
+        warnings.simplefilter("always", category=UserWarning)
+        # Trigger a warning.
+        lookup = TemplateFileLookup()
+        lookup.add_templatedir((here / 'faketemplate'))
+        wr = templatewriter.TemplateWriter('./temp', templatefile_lookup=lookup)
+        wr._checkTemplatesV()
+        # Verify some things
+        assert len(catch_warnings) == 1
+        assert issubclass(catch_warnings[-1].category, UserWarning)
+        assert "Your custom template 'nav.html' is out of date" in str(catch_warnings[-1].message)
+        shutil.rmtree('./temp')
+
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:

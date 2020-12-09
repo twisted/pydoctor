@@ -9,6 +9,7 @@ import sys
 import warnings
 
 from pydoctor import model, zopeinterface, __version__
+from pydoctor.iwriter import IWriter
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -141,11 +142,11 @@ def getparser() -> OptionParser:
               "generated HTML, but they can be useful for third-party "
               "linking."))
     parser.add_option(
-        '--html-output', dest='htmloutput', default='apidocs',
-        help=("Directory to save HTML files to (default 'apidocs')"))
+        '--output-dir', '--html-output', dest='htmloutput', default='apidocs',
+        help=("Directory to save files to (default 'apidocs')"))
     parser.add_option(
-        '--html-writer', dest='htmlwriter',
-        help=("Dotted name of html writer class to use (default "
+        '--writer-class', '--html-writer', dest='htmlwriter',
+        help=("Dotted name of writer class to use (default "
               "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
@@ -371,8 +372,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer',
-                    templatewriter.TemplateWriter)
+                    options.htmlwriter, '--writer-class',
+                    IWriter)
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -380,7 +381,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
-            # Init writer with custom template directory
+            # Init writer
+            writer: IWriter
             if system.options.templatedir:
                 system.templatefile_lookup.add_templatedir(
                     system.options.templatedir)
@@ -390,12 +392,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
                 except TypeError as err:
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Your custom writer '{writerclass}' do not support template customization with --template-dir."
-                        f" Please refer to the TemplateWriter class documentation. {err}")
-                
-                else:
-                    writer._checkTemplatesV()
-                
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")
             else:
                 writer = writerclass(options.htmloutput)
 

@@ -21,8 +21,11 @@ class TemplateFileLookup:
     with the option `--html-template-dir`, custom files with matching names will be 
     loaded if present. 
 
-    Warning: While this object allow the customization of any templates, this can lead to errors 
-    when upgrading pydoctor. 
+    This object allow the customization of any templates, this can lead to warnings when upgrading pydoctor, then, please update your template.
+
+    :Note: The HTML templates versions are independent of the pydoctor version and are idependent from each other. 
+           They are all initialized to '1.0'.
+           Please upgrade the template version whenever making changes. 
 
     """
     def __init__(self):

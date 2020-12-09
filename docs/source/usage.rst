@@ -281,6 +281,7 @@ Custom writer
 
 You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` and pass your custom class dotted name with the following argument::
 
-  --html-writer=mylib._pydoctor.CustomTemplateWriter
+
+  --writer-class=mylib._pydoctor.CustomTemplateWriter
 
 .. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
