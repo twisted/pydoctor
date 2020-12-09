@@ -4,19 +4,20 @@ Scope and Purpose
 
 Sample package for demonstrating pydoctor HTML API rendering for RST based documentation.
 
+Many examples are copied from U{the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>}.
 
 Try to keep the example as condensed as possible.
 
     - Make  it easy to review HTML rendering.
 
-    - Cover all Epytext markup.
+    - Cover all epytext markup.
     Like the usage of list with various indentation types.
 
     - Have it build as part of our continuous integration tests.
       To ensure we don't introduce regressions.
 
 
-General Epytext formating markups are documented in the docstring of this packge.
+General epytext formating markups are documented in the docstring of this packge.
 
 Epydoc code related formating are demonstrating in the modules of this package.
 
@@ -89,11 +90,11 @@ The following is a literal block::
 Doctest Blocks
 ==============
 
-    - contain examples consisting of Python expressions and their output.
-    - can be used by the doctest module to test the documented object.
-    - begin with the special sequence C{>>>}.
-    - are delimited from surrounding blocks by blank lines.
-    - may not contain blank lines.
+    - contain examples consisting of Python expressions and their output
+    - can be used by the doctest module to test the documented object
+    - begin with the special sequence C{>>>}
+    - are delimited from surrounding blocks by blank lines
+    - may not contain blank lines
 
 The following is a doctest block:
 
@@ -168,7 +169,7 @@ where code is an escape code that specifies what character should be produced.
 
 If the escape code is a single character (other than '{' or '}'), then that character is produced.
 For example, to begin a paragraph with a dash (which would normally signal a list item), write 'E{-}'.
-In addition, two special escape codes are defined: 'E{lb}' produces a left curly brace ('{'); and 'E{rb}' produces a right curly brace ('}'). 
+In addition, two special escape codes are defined: 'E{lb}' produces a left curly brace ('{'); and 'E{rb}' produces a right curly brace ('}').
 
 This paragraph ends with two
 colons, but does not introduce

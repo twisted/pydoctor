@@ -17,7 +17,7 @@ as otherwise any extra output is converted into Sphinx warnings.
 """
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict, List
+from typing import Any, List, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -45,7 +45,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     runs = config.pydoctor_args
 
-    if not isinstance(runs, dict):
+    if not isinstance(runs, Mapping):
         # We have a single pydoctor call
         runs = {'main': runs}
 
@@ -53,7 +53,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         _run_pydoctor(key, value, placeholders.copy())
 
 
-def _run_pydoctor(name: str, arguments: List[str], placeholders: Dict[str, str]) -> None:
+def _run_pydoctor(name: str, arguments: List[str], placeholders: Mapping[str, str]) -> None:
     """
     Call pydoctor with arguments.
 
@@ -76,7 +76,7 @@ def _run_pydoctor(name: str, arguments: List[str], placeholders: Dict[str, str])
             logger.warning(line)
 
 
-def setup(app: Sphinx) ->  Dict[str, Any]:
+def setup(app: Sphinx) ->  Mapping[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 

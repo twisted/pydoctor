@@ -1,7 +1,7 @@
 """
-This is a module demonstrating Epydoc code documentation features.
+This is a module demonstrating epydoc code documentation features.
 
-Most part of this documetation is using Python type hinting.
+Most part of this documentation is using Python type hinting.
 """
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
@@ -21,24 +21,23 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     return -b/m
 
 
-def demo_typing_arguments(m: str, b: bytes) -> bool:
+def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
 
-    @param m: The slope of the line.
-    @param b: The y intercept of the line.
-    @return:  the x intercept of the line M{y=m*x+b}.
+    @param name: The human readable name for something.
+    @param size: How big the name should be.
+    @return: Always C{True}.
     """
     return True
 
 
 def demo_cross_reference() -> None:
     """
-
-    The inline markup construct LE{lb}text<object>E{rb} is used to create links to the documentation for other Python objects.
+    The inline markup construct C{LE{lb}text<object>E{rb}} is used to create links to the documentation for other Python objects.
     'text' is the text that should be displayed for the link, and 'object' is the name of the Python object that should be linked to.
 
-    If you wish to use the name of the Python object as the text for the link, you can simply write L{object}``.
+    If you wish to use the name of the Python object as the text for the link, you can simply write C{LE{lb}objectE{rb}}.
 
         - L{demo_typing_arguments}
         - L{Custom name <demo_typing_arguments>}
