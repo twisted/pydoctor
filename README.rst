@@ -60,8 +60,8 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
-pydoctor 20.12.1 (unreleased)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydoctor 20.12.1
+^^^^^^^^^^^^^^^^
 
 * Reject source directories outside the project base directory (if given), instead of crashing
 * Fixed bug where source directories containing symbolic links could appear to be outside of the project base directory, leading to a crash
