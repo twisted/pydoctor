@@ -23,9 +23,9 @@ class TemplateFileLookup:
 
     This object allow the customization of any templates, this can lead to warnings when upgrading pydoctor, then, please update your template.
 
-    @Note The HTML templates versions are independent of the pydoctor version and are idependent from each other. 
+    @Note: The HTML templates versions are independent of the pydoctor version and are idependent from each other. 
            They are all initialized to '1.0'.
-           Please upgrade the template version whenever making changes. 
+           Please upgrade the template version between releases if the template was changed. 
 
     """
     def __init__(self):

@@ -66,8 +66,8 @@ class Nav(Element):
 
 class BasePage(Element):
     """
-    Defines special placeholders that can be overwritten by users: 
-        header.html, pageHeader.html and footer.html.
+    Defines special placeholders that are designed to be overwritten by users: 
+    "header.html", "pageHeader.html" and "footer.html".
     """
     
     def __init__(self, system:model.System):
