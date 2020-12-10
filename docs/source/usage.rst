@@ -267,7 +267,7 @@ and use the following option::
 
 .. note::
 
-  If you want more customization, you can overwrite the defaults 
+  If you want more customization, you can override the defaults 
   HTML and CSS templates in `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_ with the same method. 
 
 Custom System class
