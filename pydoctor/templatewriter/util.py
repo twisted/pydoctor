@@ -14,7 +14,7 @@ def srclink(o: model.Documentable) -> Optional[str]:
 
 class TemplateFileLookup:
     """
-    The L{TemplateFileManager} handles the HTML template files locations. 
+    The L{TemplateFileLookup} handles the HTML template files locations. 
     A little bit like `mako.lookup.TemplateLookup` but more simple. 
 
     The location of the files depends wether the users set a template directory 
