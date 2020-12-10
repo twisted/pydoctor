@@ -199,7 +199,7 @@ class Field:
     arg: Optional[str]
     source: model.Documentable
     lineno: int
-    body: Tag
+    body: ParsedDocstring
 
     @classmethod
     def from_epydoc(cls, field: EpydocField, source: model.Documentable) -> 'Field':
@@ -208,8 +208,12 @@ class Field:
             arg=field.arg(),
             source=source,
             lineno=field.lineno,
-            body=field.body().to_stan(_EpydocLinker(source))
+            body=field.body()
             )
+
+    def format(self) -> Tag:
+        """Present this field's body as HTML."""
+        return self.body.to_stan(_EpydocLinker(self.source))
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -226,7 +230,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
         else:
             row = tags.tr()
             row(tags.td())
-        row(tags.td(colspan="2")(field.body))
+        row(tags.td(colspan="2")(field.format()))
         yield row
 
 
@@ -270,7 +274,7 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return')
-        self.return_desc.body = field.body
+        self.return_desc.body = field.format()
     handle_returns = handle_return
 
     def handle_returntype(self, field: Field) -> None:
@@ -278,7 +282,7 @@ class FieldHandler:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return')
-        self.return_desc.type = field.body
+        self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
     def _handle_param_name(self, field: Field) -> Optional[str]:
@@ -313,10 +317,15 @@ class FieldHandler:
         field.report('Documented parameter "%s" does not exist' % (name,))
 
     def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.body))
+        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
 
     def handle_type(self, field: Field) -> None:
-        if isinstance(self.obj, model.Function):
+        if isinstance(self.obj, model.Attribute):
+            if field.arg is not None:
+                field.report('Field in variable docstring should not include a name')
+            self.obj.parsed_type = field.body
+            return
+        elif isinstance(self.obj, model.Function):
             name = self._handle_param_name(field)
             if name is not None and name not in self.types and not any(
                     # Don't warn about keywords or about parameters we already
@@ -332,7 +341,7 @@ class FieldHandler:
             #       inconsistencies.
             name = field.arg
         if name is not None:
-            self.types[name] = field.body
+            self.types[name] = field.format()
 
     def handle_param(self, field: Field) -> None:
         name = self._handle_param_name(field)
@@ -621,7 +630,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
         return parsed_type.to_stan(_EpydocLinker(obj))
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
-    parsed_type: Optional[ParsedDocstring] = getattr(obj, 'parsed_type', None)
+    parsed_type = obj.parsed_type
     if parsed_type is not None:
         return parsed_type
 
@@ -763,7 +772,7 @@ def extract_fields(obj: model.Documentable) -> None:
                 obj.system.addObject(attrobj)
             attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
             if tag == 'type':
-                attrobj.parsed_type = field.body() # type: ignore[attr-defined]
+                attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_human_name[tag]

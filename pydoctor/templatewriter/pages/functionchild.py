@@ -1,9 +1,7 @@
-import ast
-
-import astor
-from pydoctor.templatewriter import util
-from pydoctor.templatewriter.pages import signature
 from twisted.web.template import Element, XMLFile, renderer, tags
+
+from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import format_decorators, signature
 
 
 class FunctionChild(Element):
@@ -34,27 +32,7 @@ class FunctionChild(Element):
 
     @renderer
     def decorator(self, request, tag):
-
-        decorators = []
-
-        if self.ob.decorators:
-            for dec in self.ob.decorators:
-                if isinstance(dec, ast.Call):
-                    if isinstance(dec.func, ast.Name):
-                        fn = self.ob.expandName(dec.func.id)
-                        # We don't want to show the deprecated decorator, it shows up
-                        # as an infobox
-                        if fn == "twisted.python.deprecate.deprecated":
-                            break
-
-                decorators.append(astor.to_source(dec).strip())
-
-        if decorators:
-            decorator = [('@' + dec, tags.br()) for dec in decorators]
-        else:
-            decorator = ()
-
-        return decorator
+        return list(format_decorators(self.ob))
 
     @renderer
     def functionDef(self, request, tag):
