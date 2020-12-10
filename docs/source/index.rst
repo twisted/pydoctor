@@ -10,7 +10,7 @@ Installation
 
    $ pip install -U pydoctor
 
-Install pydoctor with ``restructuredtext`` support::
+Install pydoctor with reStructuredText support::
 
    $ pip install -U pydoctor[rst]
 
