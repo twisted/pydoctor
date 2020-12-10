@@ -150,7 +150,9 @@ def test_templatefile_lookup() -> None:
 
     assert lookup.get_template_version('footer.html') == None
 
-    assert type(lookup.get_template_version('index.html')) == str
+    assert type(lookup.get_template_version('index.html')) == tuple
+
+    assert lookup.get_template_version('table.html') == (1,0)
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         # Cause all warnings to always be triggered.

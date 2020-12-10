@@ -1,6 +1,6 @@
 """Miscellaneous utilities."""
 
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 import os
 from bs4 import BeautifulSoup
 
@@ -78,19 +78,24 @@ class TemplateFileLookup:
                     templates.append(potential_template)
         return ([t.basename() for t in templates])
 
-    def get_template_version(self, filename: str) -> str:  # type: ignore
+    def get_template_version(self, filename: str) -> Tuple[int, int]: 
         """
         All template files should have a meta tag indicating the version::
 
-            <meta name="template" content="pydoctor-default" version="1.0" />
+            <meta name="template" content="pydoctor-default" major_version="1" minor_version="0" />
 
         @arg filename: Template file name
-        @return The template version or None
+        @return The template version as tuple[major, minor, micro] or None
         """
         soup = BeautifulSoup(self.get_templatefilepath(filename).open('r').read(), 'html.parser')
         res = soup.find_all("meta", attrs=dict(name="template"))
         if res :
-            return res[0]['version'] # type: ignore
+            try:
+                return (int(res[0]['major_version']), int(res[0]['minor_version']))
+            except (ValueError, KeyError):
+                return None
+        else:
+            return None
 
 # Deprecated
 def templatefile(filename:str) -> Union[bytes, str]:
