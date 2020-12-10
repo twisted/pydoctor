@@ -292,4 +292,4 @@ You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.Template
 
   --writer-class=mylib._pydoctor.CustomTemplateWriter
 
-.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
+.. warning:: Pydoctor does not have a stable API yet. Custom builds are prone to break.
