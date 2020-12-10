@@ -389,7 +389,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.options.templatedir)
                 try:
                     writer = writerclass(options.htmloutput, 
-                        templatefile_lookup=system.templatefile_lookup) 
+                        templatefile_lookup=system.templatefile_lookup) # type: ignore
 
                 except TypeError as err:
                     writer = writerclass(options.htmloutput)

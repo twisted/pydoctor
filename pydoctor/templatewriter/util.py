@@ -1,6 +1,6 @@
 """Miscellaneous utilities."""
 
-from typing import Optional, List
+from typing import Optional, List, Union
 import os
 from bs4 import BeautifulSoup
 
@@ -64,7 +64,7 @@ class TemplateFileLookup:
         for template in reversed(self.templatedirs):
             p_templatefile = template.child(filename)
             if p_templatefile.isfile():
-                return p_templatefile
+                return p_templatefile # type: ignore
         raise FileNotFoundError(f"Cannot find template file: '{filename}' in template directories: {self.templatedirs}")
     
     def getall_templates_filenames(self) -> List[str]:
@@ -78,7 +78,7 @@ class TemplateFileLookup:
                     templates.append(potential_template)
         return ([t.basename() for t in templates])
 
-    def get_template_version(self, filename: str) -> str:
+    def get_template_version(self, filename: str) -> Optional[str]:
         """
         All template files should have a meta tag indicating the version::
 
@@ -90,10 +90,10 @@ class TemplateFileLookup:
         soup = BeautifulSoup(self.get_templatefilepath(filename).open('r').read(), 'html.parser')
         res = soup.find_all("meta", attrs=dict(name="template"))
         if res :
-            return res[0]['version']
+            return res[0]['version'] # type: ignore
 
 # Deprecated
-def templatefile(filename:str) -> str:
+def templatefile(filename:str) -> Union[bytes, str]:
     return templatefilepath(filename).path
 # Deprecated
 def templatefilepath(filename:str) -> FilePath:
