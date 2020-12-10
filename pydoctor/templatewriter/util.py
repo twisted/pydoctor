@@ -14,16 +14,16 @@ def srclink(o: model.Documentable) -> Optional[str]:
 
 class TemplateFileLookup:
     """
-    The `TemplateFileManager` handles the HTML template files locations. 
+    The L{TemplateFileManager} handles the HTML template files locations. 
     A little bit like `mako.lookup.TemplateLookup` but more simple. 
 
     The location of the files depends wether the users set a template directory 
-    with the option `--html-template-dir`, custom files with matching names will be 
+    with the option C{--html-template-dir}, custom files with matching names will be 
     loaded if present. 
 
     This object allow the customization of any templates, this can lead to warnings when upgrading pydoctor, then, please update your template.
 
-    :Note: The HTML templates versions are independent of the pydoctor version and are idependent from each other. 
+    @Note The HTML templates versions are independent of the pydoctor version and are idependent from each other. 
            They are all initialized to '1.0'.
            Please upgrade the template version whenever making changes. 
 
@@ -48,6 +48,9 @@ class TemplateFileLookup:
         self.templatedirs.append(path)
 
     def clear_templates(self) -> None:
+        """
+        Reset templates to default values. 
+        """
         self.templatedirs = []
         self._init_default_template_dir()
 
@@ -59,7 +62,7 @@ class TemplateFileLookup:
         @param filename: File name, (ie 'index.html')
         """
         for template in reversed(self.templatedirs):
-            p_templatefile = FilePath(os.path.join(template.path, filename))
+            p_templatefile = template.child(filename)
             if p_templatefile.isfile():
                 return p_templatefile
         raise FileNotFoundError(f"Cannot find template file: '{filename}' in template directories: {self.templatedirs}")
@@ -68,7 +71,7 @@ class TemplateFileLookup:
         """
         Get all templates FilePath. 
         """
-        templates = []
+        templates : List[FilePath] = []
         for template in reversed(self.templatedirs):
             for potential_template in template.children():
                 if potential_template.basename() not in [t.basename() for t in templates]:
@@ -91,12 +94,12 @@ class TemplateFileLookup:
 
 # Deprecated
 def templatefile(filename:str) -> str:
-    warnings.warn(  "pydoctor.templatewriter.templatefile() and pydoctor.templatewriter.templatefilepath() " 
-                    "are deprecated since pydoctor 21. Please use the templating system. ")
-    return TemplateFileLookup().get_templatefile(filename)
+    return templatefilepath(filename).path
 # Deprecated
 def templatefilepath(filename:str) -> FilePath:
-    return FilePath(templatefile(filename))
+    warnings.warn(  "pydoctor.templatewriter.templatefile() and pydoctor.templatewriter.templatefilepath() " 
+                    "are deprecated since pydoctor 21. Please use the templating system. ")
+    return TemplateFileLookup().get_templatefilepath(filename)
 
 def taglink(o: model.Documentable, label: Optional[str] = None) -> Tag:
     if not o.isVisible:

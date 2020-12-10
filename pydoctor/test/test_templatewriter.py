@@ -130,7 +130,7 @@ def test_templatefile_lookup() -> None:
 
     assert lookup.get_templatefilepath('index.html').path == str(here.parent / 'templates' / 'index.html' )
 
-    lookup.add_templatedir((here / 'faketemplate'))
+    lookup.add_templatedir(str(here / 'faketemplate'))
 
     assert lookup.get_templatefilepath('footer.html').path == str(here / 'faketemplate' / 'footer.html' )
     
@@ -159,7 +159,7 @@ def test_templatefile_lookup() -> None:
         warnings.simplefilter("always", category=UserWarning)
         # Trigger a warning.
         lookup = TemplateFileLookup()
-        lookup.add_templatedir((here / 'faketemplate'))
+        lookup.add_templatedir(str(here / 'faketemplate'))
         wr = templatewriter.TemplateWriter('', templatefile_lookup=lookup)
         wr._checkTemplatesV()
         # Verify some things
