@@ -1,7 +1,5 @@
 from io import BytesIO
-from twisted.python.filepath import FilePath
 from typing import Callable
-import shutil
 import pytest
 import warnings
 from pathlib import Path

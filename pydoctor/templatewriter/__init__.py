@@ -5,12 +5,6 @@ DOCTYPE:bytes = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-import os
-
-from typing import List
 
 from pydoctor.templatewriter.writer import TemplateWriter
 TemplateWriter = TemplateWriter
-
-__all__ = ['TemplateWriter', 'IWriter']
-

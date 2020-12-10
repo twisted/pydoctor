@@ -3,7 +3,6 @@
 
 from typing import Type, Optional, List
 import os
-import shutil
 from typing import IO, Any
 from incremental import Version
 import warnings
@@ -11,7 +10,7 @@ import warnings
 from pydoctor.iwriter import IWriter
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import templatefile, TemplateFileLookup
+from pydoctor.templatewriter.util import TemplateFileLookup
 from twisted.python.filepath import FilePath
 from twisted.web.template import flattenString
 
