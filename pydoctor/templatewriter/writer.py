@@ -127,8 +127,8 @@ class TemplateWriter(IWriter):
         for actual_template in self.templatefile_lookup.getall_templates_filenames():
             if default_lookup.get_template_version(actual_template):
                 if self.templatefile_lookup.get_template_version(actual_template):
-                    if ( Version('template', *self.templatefile_lookup.get_template_version(actual_template).split('.'), '0',) 
-                         < Version('template', *default_lookup.get_template_version(actual_template).split('.'), '0', )):
+                    if ( Version('template', *self.templatefile_lookup.get_template_version(actual_template).split('.'), '0',)  # type: ignore
+                         < Version('template', *default_lookup.get_template_version(actual_template).split('.'), '0', )): # type: ignore
                         warnings.warn(f"Your custom template '{actual_template}' is out of date, information might be missing."
                                                " Latest templates are available to download from our github.")
                 else:

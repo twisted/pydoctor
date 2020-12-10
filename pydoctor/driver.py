@@ -393,7 +393,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
                 except TypeError as err:
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")  # type: ignore
             else:
                 writer = writerclass(options.htmloutput)
 
