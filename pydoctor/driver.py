@@ -373,8 +373,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--writer-class',
-                    IWriter)
+                    options.htmlwriter, '--writer-class', IWriter) # type: ignore
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -393,7 +392,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
                 except TypeError as err:
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")  # type: ignore
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")
             else:
                 writer = writerclass(options.htmloutput)
 
