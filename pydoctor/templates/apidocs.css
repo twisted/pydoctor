@@ -2,6 +2,10 @@
     margin-bottom: 0px;
 }
 
+.container {
+    overflow-wrap: break-word;
+}
+
 .page-header {
     margin-top: 22px;
     position: sticky;
@@ -128,12 +132,13 @@ ul ul ul ul ul ul ul {
 
 #splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
     border-left: none;
-    width: 150px;
+    width: 120px;
 }
 
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
-    width: 200px;
+    min-width: 100px;
+    max-width: 200px;
 }
 
 tr.package {
