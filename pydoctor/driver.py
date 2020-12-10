@@ -132,7 +132,7 @@ def getparser() -> OptionParser:
         '--html-template-dir',
         dest='templatedir',
         default=None,
-        help=(  'Path to a folder containing custom HTML templates.'),
+        help=("Directory containing custom HTML templates."),
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
