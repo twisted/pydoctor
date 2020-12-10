@@ -160,13 +160,12 @@ def test_templatefile_lookup() -> None:
         # Trigger a warning.
         lookup = TemplateFileLookup()
         lookup.add_templatedir((here / 'faketemplate'))
-        wr = templatewriter.TemplateWriter('./temp', templatefile_lookup=lookup)
+        wr = templatewriter.TemplateWriter('', templatefile_lookup=lookup)
         wr._checkTemplatesV()
         # Verify some things
         assert len(catch_warnings) == 1
         assert issubclass(catch_warnings[-1].category, UserWarning)
         assert "Your custom template 'nav.html' is out of date" in str(catch_warnings[-1].message)
-        shutil.rmtree('./temp')
 
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
