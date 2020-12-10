@@ -78,7 +78,7 @@ class TemplateFileLookup:
                     templates.append(potential_template)
         return ([t.basename() for t in templates])
 
-    def get_template_version(self, filename: str) -> Tuple[int, int]: 
+    def get_template_version(self, filename: str) -> Union[None, Tuple[int, int]]: 
         """
         All template files should have a meta tag indicating the version::
 
