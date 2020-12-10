@@ -238,6 +238,14 @@ the pydoctor `index.html` is hosted.
 The Sphinx index.html will be generated during the Sphinx build process and
 later overwritten the the pydoctor build process.
 
+It is possible to call pydoctor multiple times (with different arguments) as
+part of the same build process.
+For this you need to define `pydoctor_args` as a dict.
+The key is the human readable build name and the value for each dict member
+is the list of arguments.
+See pydoctor's own `conf.py <https://github.com/twisted/pydoctor/blob/master/docs/source/conf.py>`_
+for usage example.
+
 
 Customize builds
 ----------------

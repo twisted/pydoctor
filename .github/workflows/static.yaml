@@ -44,4 +44,8 @@ jobs:
     - name: Run docs and check extensions
       run: |
         tox -e docs
+        # Check a known `pydoctor --help` argument.
         grep '\-\-project-url=PROJECTURL' build/docs/help.html
+        # Check API docs is generated.
+        grep 'moduleIndex.html' build/docs/api/index.html
+        grep 'pydoctor-epytext-demo API Documentation' build/docs/docformat/epytext/demo/index.html
