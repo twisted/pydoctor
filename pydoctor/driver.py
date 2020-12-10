@@ -126,9 +126,8 @@ def getparser() -> OptionParser:
               "Can be used to document part of a package."))
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        help=("Which docstrings format are assumed "
-              "to be in. Currently, we are supporting: "
-              "'epytext' and 'restructuredtext'. "))
+        help=("Format used for parsing docstrings. "
+              "Supported values: 'epytext' and 'restructuredtext'."))
     parser.add_option(
         '--html-template-dir',
         dest='templatedir',
