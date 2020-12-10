@@ -6,7 +6,8 @@ Read The Docs build process.
 
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-  - C{pydoctor_args} - a list with all the pydoctor command line arguments used to trigger the build.
+  - C{pydoctor_args} - an iterable with all the pydoctor command line arguments used to trigger the build.
+                     - (private usage) a mapping with values as iterables of pydoctor command line arguments.
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
@@ -16,7 +17,7 @@ as otherwise any extra output is converted into Sphinx warnings.
 """
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Iterable, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -42,11 +43,29 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         'outdir': app.outdir,
         }
 
+    runs = config.pydoctor_args
+
+    if not isinstance(runs, Mapping):
+        # We have a single pydoctor call
+        runs = {'main': runs}
+
+    for key, value in runs.items():
+        _run_pydoctor(key, value, placeholders)
+
+
+def _run_pydoctor(name: str, arguments: Iterable[str], placeholders: Mapping[str, str]) -> None:
+    """
+    Call pydoctor with arguments.
+
+    @param name: A human-readable description of this pydoctor build.
+    @param arguments: Iterable of arguments used to call pydoctor.
+    @param placeholders: Values that will be interpolated with the arguments using L{str.format()}.
+    """
     args = []
-    for argument in config.pydoctor_args:
+    for argument in arguments:
         args.append(argument.format(**placeholders))
 
-    logger.info("Bulding pydoctor API docs as:")
+    logger.info(f"Building '{name}' pydoctor API docs as:")
     logger.info('\n'.join(args))
 
     with StringIO() as stream:
@@ -57,14 +76,14 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
             logger.warning(line)
 
 
-def setup(app: Sphinx) ->  Dict[str, Any]:
+def setup(app: Sphinx) ->  Mapping[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 
     @return: The extension version and runtime options.
     """
     app.connect('build-finished', on_build_finished)
-    app.add_config_value("pydoctor_args", [], "env")
+    app.add_config_value("pydoctor_args", None, "env")
 
     return {
         'version': str(__version__),

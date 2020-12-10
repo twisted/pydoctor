@@ -81,18 +81,31 @@ if os.environ.get('READTHEDOCS', '') == 'True':
         _git_reference = rtd_version
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
-pydoctor_args = [
-    '--html-output={outdir}/api',
-    f'--project-base-dir={_pydoctor_root}',
-    f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+_common_args = [
     '--quiet',
     '--make-html',
-    '--project-name=pydoctor',
+    f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+
     '--project-url=https://github.com/twisted/pydoctor/',
-    '--docformat=epytext',
+
+    f'--project-base-dir={_pydoctor_root}',
+
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
-    f'{_pydoctor_root}/pydoctor',
-    ]
+]
+pydoctor_args = {
+    'main': [
+        '--html-output={outdir}/api',
+        '--project-name=pydoctor',
+        '--docformat=epytext',
+        f'{_pydoctor_root}/pydoctor',
+        ] + _common_args,
+    'epydoc_demo': [
+        '--html-output={outdir}/docformat/epytext/demo',
+        '--project-name=pydoctor-epytext-demo',
+        '--docformat=epytext',
+        f'{_pydoctor_root}/docs/epytext_demo',
+        ] + _common_args,
+    }
