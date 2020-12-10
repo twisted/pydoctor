@@ -1,9 +1,10 @@
 from io import BytesIO
-from pathlib import Path
+from twisted.python.filepath import FilePath
 from typing import Callable
 import shutil
 import pytest
 import warnings
+from pathlib import Path
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
@@ -125,38 +126,29 @@ def test_templatefile_lookup() -> None:
     
     lookup = TemplateFileLookup()
 
-    here = Path(__file__).parent
+    here:Path = Path(__file__).parent
 
-    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
-        == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('index.html').path == str(here.parent / 'templates' / 'index.html' )
 
     lookup.add_templatedir((here / 'faketemplate'))
 
-    assert ( Path(lookup.get_templatefilepath('footer.html').path).as_uri() 
-        == (here / 'faketemplate' / 'footer.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('footer.html').path == str(here / 'faketemplate' / 'footer.html' )
     
-    assert ( Path(lookup.get_templatefilepath('header.html').path).as_uri() 
-        == (here / 'faketemplate' / 'header.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('header.html').path== str(here / 'faketemplate' / 'header.html' )
 
-    assert ( Path(lookup.get_templatefilepath('pageHeader.html').path).as_uri() 
-        == (here / 'faketemplate' / 'pageHeader.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('pageHeader.html').path== str(here / 'faketemplate' / 'pageHeader.html' )
 
-    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
-        == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('index.html').path== str(here.parent / 'templates' / 'index.html' )
 
     lookup.clear_templates()
 
-    assert ( Path(lookup.get_templatefilepath('footer.html').path).as_uri() 
-        == (here.parent / 'templates' / 'footer.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('footer.html').path== str(here.parent / 'templates' / 'footer.html' )
     
-    assert ( Path(lookup.get_templatefilepath('header.html').path).as_uri() 
-        == (here.parent / 'templates' / 'header.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('header.html').path== str(here.parent / 'templates' / 'header.html' )
 
-    assert ( Path(lookup.get_templatefilepath('pageHeader.html').path).as_uri() 
-        == (here.parent / 'templates' / 'pageHeader.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('pageHeader.html').path== str(here.parent / 'templates' / 'pageHeader.html' )
 
-    assert ( Path(lookup.get_templatefilepath('index.html').path).as_uri() 
-        == (here.parent / 'templates' / 'index.html').absolute().as_uri() )
+    assert lookup.get_templatefilepath('index.html').path== str(here.parent / 'templates' / 'index.html' )
 
     assert lookup.get_template_version('footer.html') == None
 
