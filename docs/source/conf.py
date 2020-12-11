@@ -18,7 +18,6 @@ import os
 import subprocess
 import pathlib
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'pydoctor'
@@ -51,7 +50,7 @@ exclude_patterns = []
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
-    'pydoctor': ('https://pydoctor.readthedocs.io/en/latest/api/', None),
+    #'pydoctor': (f'https://pydoctor.readthedocs.io/en/{_build_version}/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -83,7 +82,6 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     '--quiet',
-    '--make-html',
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
 
     '--project-url=https://github.com/twisted/pydoctor/',
@@ -109,3 +107,10 @@ pydoctor_args = {
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     }
+
+pydoctor_intersphinx_mapping = {
+    'pydoctor': (
+        'https://pydoctor.readthedocs.io/en/{rtd_version}/api/',
+        'api/objects.inv',
+        )
+}
