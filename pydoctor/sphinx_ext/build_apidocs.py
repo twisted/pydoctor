@@ -8,8 +8,10 @@ Inside the Sphinx conf.py file you need to define the following configuration op
 
   - C{pydoctor_intersphinx_mapping} is mapping similar to C{intersphinx_mapping} version 1.0.
     Version 1.3 format is not yet supported.
+
     As opposed to C{intersphinx_mapping}, the relative path is based on the output directory
     and not the source directory.
+
     In the target url you can use C{{rtd_version}} to have the URL automatically updated
     based on Read The Docs build.
 

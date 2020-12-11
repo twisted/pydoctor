@@ -8,6 +8,7 @@ If you like the project and think you could help with making it better, there ar
 - Triage old issues that needs a refresh
 - Implement existing issues (there are quite some of them, choose whatever you like)
 - Help with improving the documentation (We still have work to do!)
+- Help with improving the CLI documentation at :py:func:`pydoctor.driver.getparser`
 - Spread a word about the project to your colleagues, friends, blogs or any other channels
 - Any other things you could imagine
 

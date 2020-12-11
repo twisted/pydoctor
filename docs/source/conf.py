@@ -109,8 +109,5 @@ pydoctor_args = {
     }
 
 pydoctor_intersphinx_mapping = {
-    'pydoctor': (
-        'https://pydoctor.readthedocs.io/en/{rtd_version}/api/',
-        'api/objects.inv',
-        )
+    'pydoctor': ('/en/{rtd_version}/api/', 'api/objects.inv'),
 }
