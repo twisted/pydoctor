@@ -9,7 +9,7 @@ Inside the Sphinx conf.py file you need to define the following configuration op
   - C{pydoctor_args} - an iterable with all the pydoctor command line arguments used to trigger the build.
                      - (private usage) a mapping with values as iterables of pydoctor command line arguments.
 
-  - C{pydoctor_git_reference} - The branch name or SHA reference for current build.
+  - C{pydoctor_main_branch} - The name of the main branch name. Used on RTD for latest build.
   - C{pydoctor_debug} - C{True} if you want to see extra debug message for this extension.
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
@@ -45,10 +45,6 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     placeholders = {
         'outdir': app.outdir,
-        'git_reference': get_git_reference(
-            main_branch=config.pydoctor_main_branch,
-            debug=config.pydoctor_debug,
-            ),
         }
 
     runs = config.pydoctor_args
@@ -56,6 +52,21 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     if not isinstance(runs, Mapping):
         # We have a single pydoctor call
         runs = {'main': runs}
+
+    # Defer resolving the git reference for only when asked by
+    # end users.
+    is_git_needed = False
+    for key, value in runs.items():
+        for arg in value:
+            if '{git_reference}' in arg:
+                is_git_needed = True
+                break
+
+    if is_git_needed:
+        placeholders['git_reference'] = get_git_reference(
+            main_branch=config.pydoctor_main_branch,
+            debug=config.pydoctor_debug,
+            )
 
     for key, value in runs.items():
         _run_pydoctor(key, value, placeholders)
