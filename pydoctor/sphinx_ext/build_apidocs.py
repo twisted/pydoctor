@@ -9,8 +9,12 @@ Inside the Sphinx conf.py file you need to define the following configuration op
   - C{pydoctor_args} - an iterable with all the pydoctor command line arguments used to trigger the build.
                      - (private usage) a mapping with values as iterables of pydoctor command line arguments.
 
+  - C{pydoctor_git_reference} - The branch name or SHA reference for current build.
+  - C{pydoctor_debug} - C{True} if you want to see extra debug message for this extension.
+
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
+  - C{{git_reference}} - the Git reference that can be used for source code links.
 
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
@@ -26,7 +30,7 @@ from sphinx.util import logging
 
 from pydoctor import __version__
 from pydoctor.driver import main
-
+from pydoctor.sphinx_ext import get_git_reference
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,10 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     placeholders = {
         'outdir': app.outdir,
+        'git_reference': get_git_reference(
+            main_branch=config.pydoctor_main_branch,
+            debug=config.pydoctor_debug,
+            ),
         }
 
     runs = config.pydoctor_args
@@ -84,6 +92,8 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     """
     app.connect('build-finished', on_build_finished)
     app.add_config_value("pydoctor_args", None, "env")
+    app.add_config_value("pydoctor_main_branch", "main", "env")
+    app.add_config_value("pydoctor_debug", False, "env")
 
     return {
         'version': str(__version__),

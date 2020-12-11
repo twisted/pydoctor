@@ -66,15 +66,11 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
-# Try to find URL fragment for the GitHub source page based on current
-# branch or tag.
-_git_reference = _get_git_reference(main_branch='master', debug=True)
-
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     '--quiet',
     '--make-html',
-    f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{git_reference}',
 
     '--project-url=https://github.com/twisted/pydoctor/',
 
@@ -99,3 +95,5 @@ pydoctor_args = {
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     }
+pydoctor_main_branch = 'master'
+pydoctor_debug = True
