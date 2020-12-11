@@ -14,9 +14,9 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import os
-import subprocess
 import pathlib
+
+from pydoctor.sphinx_ext import get_git_reference as _get_git_reference
 
 
 # -- Project information -----------------------------------------------------
@@ -68,17 +68,7 @@ html_static_path = []
 
 # Try to find URL fragment for the GitHub source page based on current
 # branch or tag.
-_git_reference = subprocess.getoutput('git rev-parse --abbrev-ref HEAD')
-if _git_reference == 'HEAD':
-    # It looks like the branch has no name.
-    # Fallback to commit ID.
-    _git_reference = subprocess.getoutput('git rev-parse HEAD')
-
-if os.environ.get('READTHEDOCS', '') == 'True':
-    rtd_version = os.environ.get('READTHEDOCS_VERSION', '')
-    if '.' in rtd_version:
-        # It looks like we have a tag build.
-        _git_reference = rtd_version
+_git_reference = _get_git_reference(main_branch='master', debug=True)
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
