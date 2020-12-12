@@ -125,62 +125,40 @@ def test_project_version_default() -> None:
     assert options.projectversion == '0.1.0.dev0'
 
 
+st_ver_text = '3.4.0'
+
+
+def st_ver_call() -> str:
+    """
+    Used to test the version resolving as setuptools callable attr.
+    """
+    return '3.4.0'
+
+
+def test_project_version_meta_default(tmp_path: Path) -> None:
+    """
+    When no --project-version is provided, but we have a meta directory,
+    the version is extracted from the project's metadata.
+    """
+    setup_cfg = tmp_path / 'setup.cfg'
+
+    setup_cfg.write_text("""
+[metadata]
+name = acme-lib
+version = attr: pydoctor.test.test_commandline.st_ver_text
+""")
+
+    options, args = driver.parse_args(['--project-meta-dir', str(tmp_path)])
+
+    assert options.projectversion == '3.4.0.dev0'
+
+
 def test_project_version_string() -> None:
     """
     --project-version can be passed as a simple string.
     """
     options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
     assert options.projectversion == '1.2.3.rc1'
-
-
-class FixedStrObject:
-    """
-    Used to test the setuptools attr resolving as generic object.
-    """
-    def __str__() -> str:
-        return '2020.10.0'
-
-
-def st_ver_call() -> str:
-    """
-    Used to test the setuptools attr resolving as callable.
-    """
-    return '3.4.0'
-
-
-# Used to test the setuptools attr resolving as text.
-st_ver_text = '2.3.0.a1'
-# Used to test the setuptools attr resolving as iterable.
-st_ver_iter = iter([4, 8, 9, 'rc1'])
-# Used to test the setuptools attr resolving as any object.
-st_ver_o = FixedStrObject()
-
-
-def test_project_version_attr_text() -> None:
-    """
-    --project-version can be passed as a setuptools attr string.
-    """
-    options, args = driver.parse_args(
-        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_text'])
-    assert options.projectversion == '3.4.0'
-
-
-def test_project_version_attr_callable() -> None:
-    """
-    --project-version can be passed as a setuptools attr callable.
-    """
-    options, args = driver.parse_args(
-        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_call'])
-    assert options.projectversion == '3.4.0'
-
-
-def test_project_version_attr_iterable() -> None:
-    """
-    --project-version can be passed as a setuptools attr callable.
-    """
-    options, args = driver.parse_args(
-        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_iter'])
-    assert options.projectversion == '4.8.9.rc1'
 
 
 def test_main_project_name_guess(capsys: CapSys) -> None:
@@ -195,6 +173,23 @@ def test_main_project_name_guess(capsys: CapSys) -> None:
 
     assert exit_code == 0
     assert "Guessing 'basic' for project name." in capsys.readouterr().out
+
+
+def test_project_name_meta(tmp_path: Path) -> None:
+    """
+    When no --project-name is provided, but we have a meta directory,
+    the name is extracted from the project's metadata.
+    """
+    setup_cfg = tmp_path / 'setup.cfg'
+
+    setup_cfg.write_text("""
+[metadata]
+name = acme-lib
+""")
+
+    options, args = driver.parse_args(['--project-meta-dir', str(tmp_path)])
+
+    assert options.projectname == 'acme-lib'
 
 
 def test_main_project_name_option(capsys: CapSys) -> None:

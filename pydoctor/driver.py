@@ -94,14 +94,18 @@ def getparser() -> OptionParser:
         help=("A dotted name of the class to use to make a system."))
     parser.add_option(
         '--project-name', dest='projectname',
-        help=("The project name, appears in the html."))
+        help=(
+            "The project name, appears in the html. "
+            "Defaults to the name found in the project's metadata or "
+            "the name of the base directory."
+            ))
     parser.add_option(
         '--project-version',
         dest='projectversion',
         default='',
         help=(
             "The version of the project for which the API is generated. "
-            "Can be a text value, or a setuptools attr: to an object or callable."
+            "Defaults to the version found in the project's metadata."
             ))
     parser.add_option(
         '--project-url', dest='projecturl',
@@ -114,7 +118,7 @@ def getparser() -> OptionParser:
         '--project-meta-dir', dest='projectmetadirectory', type='path',
         help=(
             "Path to the directory of metadata files for the project. "
-            "Will default to the same value as --project-base-dir."
+            "Default to the same value as --project-base-dir."
             )
         )
     parser.add_option(
@@ -268,6 +272,10 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
     options.verbosity -= options.quietness
+
+    _warn_deprecated_options(options)
+    _sanitize_options(options)
+
     return options, args
 
 
@@ -303,13 +311,25 @@ def _sanitize_options(options) -> None:
     if not options.projectmetadirectory:
         options.projectmetadirectory = options.projectbasedirectory
 
-    meta = pep517_meta_load(options.projectmetadirectory)
+    meta = None
+    if options.projectmetadirectory:
+        try:
+            meta = pep517_meta_load(options.projectmetadirectory)
+        except RuntimeError:
+            """
+            PEP517 raises this ugly error when metadata file is not found.
+
+            It's ok if project has no meta data.
+            """
 
     if not options.projectversion:
-        options.projectversion = meta.version
+        if meta:
+            options.projectversion = meta.version
+        else:
+            options.projectversion = '0.1.0.dev0'
 
-    if not options.projectname:
-        options.projectname = meta.name
+    if not options.projectname and meta:
+        options.projectname = meta.metadata['name']
 
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
@@ -319,9 +339,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     if options.configfile:
         readConfigFile(options)
-
-    _warn_deprecated_options(options)
-    _sanitize_options(options)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
