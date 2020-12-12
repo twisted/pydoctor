@@ -7,6 +7,8 @@ import datetime
 import os
 import sys
 
+from twisted.python.reflect import namedObject
+
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
@@ -93,6 +95,14 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--project-name', dest='projectname',
         help=("The project name, appears in the html."))
+    parser.add_option(
+        '--project-version',
+        dest='projectversion',
+        default='0.1.0.dev0',
+        help=(
+            "The version of the project for which the API is generated. "
+            "Can be a text value, or a setuptools attr: to an object or callable."
+            ))
     parser.add_option(
         '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
@@ -251,7 +261,27 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
     options.verbosity -= options.quietness
+
+    if options.projectversion.lower().startswith('attr:'):
+        # Resolve version from object expression.
+        target = options.projectversion[5:].strip()
+
+        version = namedObject(target)
+
+        # This duplicates the behaviour of
+        # setuptools.config.ConfigMetaHandler._parse_version
+        if callable(version):
+            version = version()
+        if not isinstance(version, str):
+            if hasattr(version, '__iter__'):
+                version = '.'.join(map(str, version))
+            else:
+                version = '%s' % version
+
+        options.projectversion = version
+
     return options, args
+
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     options, args = parse_args(args)
@@ -425,6 +455,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             sphinx_inventory = SphinxInventoryWriter(
                 logger=system.msg,
                 project_name=system.projectname,
+                project_version=system.options.projectversion,
                 )
             if not os.path.exists(options.htmloutput):
                 os.makedirs(options.htmloutput)

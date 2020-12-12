@@ -116,6 +116,73 @@ def test_cli_warnings_on_error() -> None:
     assert options.warnings_as_errors == True
 
 
+def test_project_version_default() -> None:
+    """
+    When no --project-version is provided, it will default to a placeholder
+    version.
+    """
+    options, args = driver.parse_args([])
+    assert options.projectversion == '0.1.0.dev0'
+
+
+def test_project_version_string() -> None:
+    """
+    --project-version can be passed as a simple string.
+    """
+    options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
+    assert options.projectversion == '1.2.3.rc1'
+
+
+class FixedStrObject:
+    """
+    Used to test the setuptools attr resolving as generic object.
+    """
+    def __str__() -> str:
+        return '2020.10.0'
+
+
+def st_ver_call() -> str:
+    """
+    Used to test the setuptools attr resolving as callable.
+    """
+    return '3.4.0'
+
+
+# Used to test the setuptools attr resolving as text.
+st_ver_text = '2.3.0.a1'
+# Used to test the setuptools attr resolving as iterable.
+st_ver_iter = iter([4, 8, 9, 'rc1'])
+# Used to test the setuptools attr resolving as any object.
+st_ver_o = FixedStrObject()
+
+
+def test_project_version_attr_text() -> None:
+    """
+    --project-version can be passed as a setuptools attr string.
+    """
+    options, args = driver.parse_args(
+        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_text'])
+    assert options.projectversion == '3.4.0'
+
+
+def test_project_version_attr_callable() -> None:
+    """
+    --project-version can be passed as a setuptools attr callable.
+    """
+    options, args = driver.parse_args(
+        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_call'])
+    assert options.projectversion == '3.4.0'
+
+
+def test_project_version_attr_iterable() -> None:
+    """
+    --project-version can be passed as a setuptools attr callable.
+    """
+    options, args = driver.parse_args(
+        ['--project-version=attr:pydoctor.test.test_commandLine.st_ver_iter'])
+    assert options.projectversion == '4.8.9.rc1'
+
+
 def test_main_project_name_guess(capsys: CapSys) -> None:
     """
     When no project name is provided in the CLI arguments, a default name

@@ -182,10 +182,9 @@ class SphinxInventoryWriter:
     Sphinx inventory handler.
     """
 
-    version = (2, 0)
-
-    def __init__(self, logger: Callable[..., None], project_name: str):
+    def __init__(self, logger: Callable[..., None], project_name: str, project_version: str):
         self.project_name = project_name
+        self._project_version = project_version
         self._logger = logger
 
     def info(self, where: str, message: str) -> None:
@@ -218,7 +217,7 @@ class SphinxInventoryWriter:
         """
         return f"""# Sphinx inventory version 2
 # Project: {self.project_name}
-# Version: {'.'.join(str(part) for part in self.version)}
+# Version: {self._project_version}
 # The rest of this file is compressed with zlib.
 """.encode('utf-8')
 

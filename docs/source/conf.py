@@ -99,12 +99,14 @@ pydoctor_args = {
     'main': [
         '--html-output={outdir}/api',
         '--project-name=pydoctor',
+        '--project-version', 'attr: pydoctor._setuptools_version',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext/demo',
         '--project-name=pydoctor-epytext-demo',
+        '--project-version=1.2.3',
         '--docformat=epytext',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
