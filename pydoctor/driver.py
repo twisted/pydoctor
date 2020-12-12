@@ -317,9 +317,11 @@ def _sanitize_options(options: Values) -> None:
     if options.projectmetadirectory:
         try:
             meta = pep517_meta_load(options.projectmetadirectory)
-        except RuntimeError:
+        except (RuntimeError, FileNotFoundError):
             """
-            PEP517 raises this ugly error when metadata file is not found.
+            PEP517 raises  when metadata file is not found:
+            * py3.8 - RuntimeError
+            * py3.6 - FileNotFoundError
 
             It's ok if project has no meta data.
             """
