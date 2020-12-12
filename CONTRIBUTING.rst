@@ -14,6 +14,18 @@ If you like the project and think you could help with making it better, there ar
 Any contribution would be of great help and I will highly appreciate it! If you have any questions, please create a new issue.
 
 
+Pre-commit checks
+-----------------
+
+Make sure all the tests pass and the code pass the coding standard checks::
+
+    tox -p all
+
+That should be the minimum check to run on your local system.
+A pull request will trigger more tests and most probably there is a tox
+environment dedicated to that extra test.
+
+
 Releasing and publishing a new package
 --------------------------------------
 

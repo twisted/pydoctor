@@ -66,12 +66,20 @@ def inv_reader_nolog() -> sphinx.SphinxInventory:
 
 @pytest.fixture
 def inv_writer() -> InvWriter:
-    return InvWriter(logger=PydoctorLogger(), project_name='project_name')
+    return InvWriter(
+        logger=PydoctorLogger(),
+        project_name='project_name',
+        project_version='1.2.0.rc1',
+        )
 
 
 @pytest.fixture
 def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
-    return sphinx.SphinxInventoryWriter(logger=PydoctorNoLogger(), project_name='project_name')
+    return sphinx.SphinxInventoryWriter(
+        logger=PydoctorNoLogger(),
+        project_name='project_name',
+        project_version='2.3.0',
+        )
 
 
 IGNORE_SYSTEM = cast(model.System, 'ignore-system')
@@ -103,7 +111,7 @@ def test_generate_empty_functional(inv_writer: InvWriter) -> None:
 
     expected_ouput = b"""# Sphinx inventory version 2
 # Project: project_name
-# Version: 2.0
+# Version: 1.2.0.rc1
 # The rest of this file is compressed with zlib.
 x\x9c\x03\x00\x00\x00\x00\x01"""
     assert expected_ouput == output.getvalue()

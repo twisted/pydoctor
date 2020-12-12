@@ -125,14 +125,11 @@ def test_project_version_default() -> None:
     assert options.projectversion == '0.1.0.dev0'
 
 
-st_ver_text = '3.4.0'
-
-
 def st_ver_call() -> str:
     """
     Used to test the version resolving as setuptools callable attr.
     """
-    return '3.4.0'
+    return '3.4.0.dev0'
 
 
 def test_project_version_meta_default(tmp_path: Path) -> None:
@@ -145,7 +142,7 @@ def test_project_version_meta_default(tmp_path: Path) -> None:
     setup_cfg.write_text("""
 [metadata]
 name = acme-lib
-version = attr: pydoctor.test.test_commandline.st_ver_text
+version = attr: pydoctor.test.test_commandline.st_ver_call
 """)
 
     options, args = driver.parse_args(['--project-meta-dir', str(tmp_path)])

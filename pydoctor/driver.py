@@ -7,7 +7,7 @@ import datetime
 import os
 import sys
 
-from pep517.meta import load as pep517_meta_load
+from pep517.meta import load as pep517_meta_load  # type: ignore[import]
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
@@ -103,6 +103,7 @@ def getparser() -> OptionParser:
         '--project-version',
         dest='projectversion',
         default='',
+        metavar='VER',
         help=(
             "The version of the project for which the API is generated. "
             "Defaults to the version found in the project's metadata."
@@ -116,6 +117,7 @@ def getparser() -> OptionParser:
               "will be computed based on this value."))
     parser.add_option(
         '--project-meta-dir', dest='projectmetadirectory', type='path',
+        metavar='PATH',
         help=(
             "Path to the directory of metadata files for the project. "
             "Default to the same value as --project-base-dir."
@@ -279,7 +281,7 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     return options, args
 
 
-def _warn_deprecated_options(options) -> None:
+def _warn_deprecated_options(options: Values) -> None:
     """
     Check the CLI options and warn on deprecated options.
     """
@@ -302,7 +304,7 @@ def _warn_deprecated_options(options) -> None:
               file=sys.stderr, flush=True)
 
 
-def _sanitize_options(options) -> None:
+def _sanitize_options(options: Values) -> None:
     """
     Check current command line option and updated them for internal usage.
 
