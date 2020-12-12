@@ -98,8 +98,6 @@ _common_args = [
 pydoctor_args = {
     'main': [
         '--html-output={outdir}/api',
-        '--project-name=pydoctor',
-        '--project-version', 'attr: pydoctor._setuptools_version',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,

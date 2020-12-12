@@ -7,7 +7,7 @@ import datetime
 import os
 import sys
 
-from twisted.python.reflect import namedObject
+from pep517.meta import load as pep517_meta_load
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
@@ -98,7 +98,7 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--project-version',
         dest='projectversion',
-        default='0.1.0.dev0',
+        default='',
         help=(
             "The version of the project for which the API is generated. "
             "Can be a text value, or a setuptools attr: to an object or callable."
@@ -110,6 +110,13 @@ def getparser() -> OptionParser:
         '--project-base-dir', dest='projectbasedirectory', type='path',
         help=("Path to the base directory of the project.  Source links "
               "will be computed based on this value."))
+    parser.add_option(
+        '--project-meta-dir', dest='projectmetadirectory', type='path',
+        help=(
+            "Path to the directory of metadata files for the project. "
+            "Will default to the same value as --project-base-dir."
+            )
+        )
     parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
@@ -261,36 +268,13 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
     options.verbosity -= options.quietness
-
-    if options.projectversion.lower().startswith('attr:'):
-        # Resolve version from object expression.
-        target = options.projectversion[5:].strip()
-
-        version = namedObject(target)
-
-        # This duplicates the behaviour of
-        # setuptools.config.ConfigMetaHandler._parse_version
-        if callable(version):
-            version = version()
-        if not isinstance(version, str):
-            if hasattr(version, '__iter__'):
-                version = '.'.join(map(str, version))
-            else:
-                version = '%s' % version
-
-        options.projectversion = version
-
     return options, args
 
 
-def main(args: Sequence[str] = sys.argv[1:]) -> int:
-    options, args = parse_args(args)
-
-    exitcode = 0
-
-    if options.configfile:
-        readConfigFile(options)
-
+def _warn_deprecated_options(options) -> None:
+    """
+    Check the CLI options and warn on deprecated options.
+    """
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.",
@@ -308,6 +292,36 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
               "use the generated Intersphinx inventory (objects.inv) "
               "for deep-linking your documentation.",
               file=sys.stderr, flush=True)
+
+
+def _sanitize_options(options) -> None:
+    """
+    Check current command line option and updated them for internal usage.
+
+    For example resolve the default values.
+    """
+    if not options.projectmetadirectory:
+        options.projectmetadirectory = options.projectbasedirectory
+
+    meta = pep517_meta_load(options.projectmetadirectory)
+
+    if not options.projectversion:
+        options.projectversion = meta.version
+
+    if not options.projectname:
+        options.projectname = meta.name
+
+
+def main(args: Sequence[str] = sys.argv[1:]) -> int:
+    options, args = parse_args(args)
+
+    exitcode = 0
+
+    if options.configfile:
+        readConfigFile(options)
+
+    _warn_deprecated_options(options)
+    _sanitize_options(options)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
