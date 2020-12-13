@@ -30,7 +30,7 @@ It will add a link to the project website in all pages header, show a link to so
 ``__all__`` re-export
 ---------------------
 
-A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package`` 
+A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package``
 - in the ``__init__.py`` that it is imported into - will end up in the documentation of ``my_package``.
 
 For instance, in the following exemple, the documentation of ``MyClass`` will be moved to the root package, ``my_package``.
@@ -60,7 +60,7 @@ You can choose to document only a couple classes or modules with the following c
 
   --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
 
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``. 
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``.
 The ``--html-subject`` argument acts like a filter.
 
 .. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML pages.
@@ -175,6 +175,16 @@ To use this mapping in Sphinx, configure the `intersphinx extension`__::
 
 __ https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
 
+You can run pydoctor before building the Sphinx documentation
+and this will generate an up to date object inventory file.
+Then you will reference this file inside `intersphinx_mapping` using an abolute path.
+In this say, Sphinx will have access to all the development API and not
+only to the released API::
+
+    intersphinx_mapping = {
+        'twisted': ('https://twistedmatrix.com/documents/current/api/', '/home/johnd/work/twisted/apidocs/objects.inv'),
+    }
+
 Link to elements :py:func:`with custom text <twisted:twisted.web.client.urlunparse>` with::
 
     :py:func:`with custom text <twisted:twisted.web.client.urlunparse>`
@@ -195,8 +205,8 @@ Possible links are::
   :py:attr:`twisted:twisted.protocols.amp.BinaryBoxProtocol.boxReceiver`
 
 
-Building pydoctor together with Sphinx HTML build
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Building pydoctor together with Sphinx HTML build or on Read The Docs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running pydoctor with HTML generation it will generate a set of static
 HTML files that can be used any HTTP server.
@@ -217,20 +227,36 @@ way.::
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
         '--intersphinx=https://docs.python.org/3/objects.inv',
-        '--make-html',
         '--html-viewsource-base=https://github.com/ORG/REPO/tree/default',
         '--html-output={outdir}/api',
         '--project-base-dir=/absolute/path/to/your/project',
         '/absolute/path/to/your/project/package1'
         ]
 
-The `{outdir}` will replaced with the Sphinx build dir.
+    pydoctor_intersphinx_mapping = {
+        'YOUR-PROJECT': ('/en/{rtd_version}/api/', 'api/objects.inv'),
+    }
 
-You can pass any argument, in the same way you call `pydoctor` from the
+The `{outdir}` will replaced with the Sphinx build dir.
+`{rtd_version}` will be replaced with the Read The Docs version.
+
+You should not pass the `--make-html` argument.
+The extension will add it automatically.
+This is needed as the extension will run `pydoctor` before Sphinx generation
+just to create the object inventory and run it again at the end to generate
+the HTML files.
+
+You can pass any argument in the same way you call `pydoctor` from the
 command line.
 
 The `--quiet` argument is recommend, as any output produced by pydoctor is
 converted into Sphinx warnings.
+
+`pydoctor_intersphinx_mapping` is designed to help you link the current
+local development API when building the narrative Sphinx documentation.
+It has support for replacing the current Read The Docs version URL fragment
+and searching for inventory files, relative to the output directory
+(in contrast with `intersphinx_mapping` which searched the source directory).
 
 As a hack to integrate the pydoctor API docs `index.html` with the Sphinx TOC
 and document reference, you can create an `index.rst` at the location where
