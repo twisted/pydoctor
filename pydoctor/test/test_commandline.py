@@ -264,3 +264,26 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
             'pydoctor/test/testpackages/basic/'
             ])
     assert "Source path lies outside base directory:" in capsys.readouterr().err
+
+
+def test_make_intersphix(tmp_path: Path) -> None:
+    """
+    --make-interphinx will only produce the Sphinx inventory object.
+
+    This is also an integration test for Sphinx inventory writer.
+    """
+    inventory = tmp_path / 'objects.inv'
+    exit_code = driver.main(args=[
+        '--project-base-dir=.',
+        '--make-intersphinx',
+        '--project-name=acme-lib',
+        '--project-version=1.2.0',
+        '--html-output', str(tmp_path),
+        'pydoctor/test/testpackages/basic/'
+        ])
+
+    assert exit_code == 0
+    # No other files are created, other than the inventory.
+    assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
+    assert inventory.exists() == True
+    assert b'Project: acme-lib\n# Version: 1.2.0\n' in inventory.read_bytes()
