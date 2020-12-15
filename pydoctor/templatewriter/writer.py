@@ -46,13 +46,13 @@ class TemplateWriter(ABC):
         shutil.copyfile(templatefile('pydoctor.js'),
                         os.path.join(self.base, 'pydoctor.js'))
 
-    def writeIndividualFiles(self, obs, functionpages=False):
+    def writeIndividualFiles(self, obs):
         self.dry_run = True
         for ob in obs:
-            self._writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob)
         self.dry_run = False
         for ob in obs:
-            self._writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob)
 
     def writeModuleIndex(self, system):
         import time
@@ -65,10 +65,10 @@ class TemplateWriter(ABC):
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob, functionpages):
+    def _writeDocsFor(self, ob):
         if not ob.isVisible:
             return
-        if functionpages or ob.documentation_location is model.DocLocation.OWN_PAGE:
+        if ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
@@ -76,7 +76,7 @@ class TemplateWriter(ABC):
                 with path.open('wb') as out:
                     self._writeDocsForOne(ob, out)
         for o in ob.contents.values():
-            self._writeDocsFor(o, functionpages)
+            self._writeDocsFor(o)
 
     def _writeDocsForOne(self, ob, fobj):
         if not ob.isVisible:

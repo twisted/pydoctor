@@ -396,7 +396,3 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
-
-class FunctionPage(CommonPage):
-    def mediumName(self, ob):
-        return [super().mediumName(ob), signature(self.ob)]
