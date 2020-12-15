@@ -1,20 +1,21 @@
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
+from pydoctor.test import NotFoundLinker
 
 from bs4 import BeautifulSoup
 import pytest
 
 
-def rst2html(docstring: str) -> str:
+def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     Render a docstring to HTML.
     """
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
     assert not errors
-    return flatten(parsed.to_stan(None))
+    return flatten(parsed.to_stan(linker))
 
 def test_rst_body_empty() -> None:
     src = """

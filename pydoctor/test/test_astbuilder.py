@@ -12,7 +12,7 @@ from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import CapSys, posonlyargs, typecomment
+from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
 
@@ -72,17 +72,11 @@ def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     assert isinstance(value, str)
     return value
 
-class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        return None
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        raise LookupError(identifier)
-
-def to_html(parsed_docstring: ParsedDocstring) -> str:
-    return flatten(parsed_docstring.to_stan(NotFoundLinker()))
+def to_html(
+        parsed_docstring: ParsedDocstring,
+        linker: DocstringLinker = NotFoundLinker()
+        ) -> str:
+    return flatten(parsed_docstring.to_stan(linker))
 
 @overload
 def type2str(type_expr: None) -> None: ...
