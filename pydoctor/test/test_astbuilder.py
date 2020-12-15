@@ -8,7 +8,7 @@ from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
-from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
+from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
@@ -66,6 +66,7 @@ def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     assert epytext.tag == 'epytext'
     assert len(epytext.children) == 1
     para = epytext.children[0]
+    assert isinstance(para, Element)
     assert para.tag == 'para'
     assert len(para.children) == 1
     value = para.children[0]
