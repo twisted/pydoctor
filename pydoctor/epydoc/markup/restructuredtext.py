@@ -386,8 +386,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             self.__class__.settings = settings
         document.settings = self.settings
 
-        # Call the parent constructor.
-        HTMLTranslator.__init__(self, document)
+        super().__init__(document)
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node):
@@ -411,7 +410,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         if self.document.children == [node]:
             return True
         else:
-            return HTMLTranslator.should_be_compact_paragraph(self, node)
+            return super().should_be_compact_paragraph(node)
 
     def visit_document(self, node): pass
     def depart_document(self, node): pass
@@ -456,8 +455,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return HTMLTranslator.starttag(self, node, tagname, suffix,
-                                       **attributes)
+        return super().starttag(node, tagname, suffix, **attributes)
 
     def visit_doctest_block(self, node):
         pysrc = node[0].astext()
