@@ -7,9 +7,12 @@ from bs4 import BeautifulSoup
 import pytest
 
 
-def rst2html(s: str) -> str:
+def rst2html(docstring: str) -> str:
+    """
+    Render a docstring to HTML.
+    """
     errors: List[ParseError] = []
-    parsed = parse_docstring(s, errors)
+    parsed = parse_docstring(docstring, errors)
     assert not errors
     return flatten(parsed.to_stan(None))
 
@@ -51,17 +54,6 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
-def to_html(docstring: str) -> str:
-    """
-    Utility method to convert a docstring to html with pydoctor.
-    """
-    err: List[ParseError] = []
-    p = parse_docstring(docstring, err)
-    if err:
-        raise ValueError("\n".join(repr(e) for e in err))
-    html=flatten(p.to_stan(None))
-    return html
-
 def prettify(html: str) -> str:
     return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
 
@@ -69,7 +61,7 @@ def prettify(html: str) -> str:
 
 @pytest.mark.xfail
 def test_rst_directive_abnomitions() -> None:
-    html = to_html(".. warning:: Hey")
+    html = rst2html(".. warning:: Hey")
     expected_html="""
         <div class="admonition warning">
         <p class="admonition-title">Warning</p>
@@ -77,7 +69,7 @@ def test_rst_directive_abnomitions() -> None:
         </div>"""
     assert prettify(html) == prettify(expected_html)
 
-    html = to_html(".. note:: Hey")
+    html = rst2html(".. note:: Hey")
     expected_html = """
         <div class="admonition note">
         <p class="admonition-title">Note</p>
@@ -87,7 +79,7 @@ def test_rst_directive_abnomitions() -> None:
 
 @pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:
-    html = to_html(".. versionadded:: 0.6")
+    html = rst2html(".. versionadded:: 0.6")
     expected_html="""
         <div class="versionadded">
         <p><span class="versionmodified added">New in version 0.6.</span></p>
@@ -96,7 +88,7 @@ def test_rst_directive_versionadded() -> None:
 
 @pytest.mark.xfail
 def test_rst_directive_versionchanged() -> None:
-    html = to_html(""".. versionchanged:: 0.7
+    html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
     expected_html="""
         <div class="versionchanged">
@@ -106,7 +98,7 @@ def test_rst_directive_versionchanged() -> None:
 
 @pytest.mark.xfail
 def test_rst_directive_deprecated() -> None:
-    html = to_html(""".. deprecated:: 0.2
+    html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""
         <div class="deprecated">
