@@ -131,7 +131,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Optional, Sequence, Union
+from typing import Any, List, Optional, Sequence, Union
 import re
 
 from twisted.web.template import CharRef, Tag, tags
@@ -1230,16 +1230,14 @@ class ColorizingError(ParseError):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring, errors):
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using epytext; and
-    return a C{ParsedDocstring} representation of its contents.
+    return a L{ParsedDocstring} representation of its contents.
+
     @param docstring: The docstring to parse
-    @type docstring: C{string}
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @type errors: C{list} of L{ParseError}
-    @rtype: L{ParsedDocstring}
     """
     tree = parse(docstring, errors)
     if tree is None:

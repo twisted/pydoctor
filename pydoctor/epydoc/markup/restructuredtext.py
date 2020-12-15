@@ -43,7 +43,7 @@ the list.
 __docformat__ = 'epytext en'
 
 # Imports
-from typing import Sequence
+from typing import List, Sequence
 import re
 
 from docutils.core import publish_string
@@ -86,17 +86,15 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring, errors):
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
     of its contents.
+
     @param docstring: The docstring to parse
-    @type docstring: C{string}
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @type errors: C{list} of L{ParseError}
-    @rtype: L{ParsedDocstring}
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
