@@ -63,7 +63,7 @@ What's New?
 pydoctor dev
 ^^^^^^^^^^^^
 
-* Removed the ``--html-write-function-pages`` option. Please use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
+* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
 
 pydoctor 20.12.1
 ^^^^^^^^^^^^^^^^
