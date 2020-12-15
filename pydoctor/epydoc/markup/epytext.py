@@ -311,23 +311,23 @@ def parse(text, errors = None):
 
         # If Token has type PARA, colorize and add the new paragraph
         if token.tag == Token.PARA:
-            _add_para(doc, token, stack, indent_stack, errors)
+            _add_para(token, stack, indent_stack, errors)
 
         # If Token has type HEADING, add the new section
         elif token.tag == Token.HEADING:
-            _add_section(doc, token, stack, indent_stack, errors)
+            _add_section(token, stack, indent_stack, errors)
 
         # If Token has type LBLOCK, add the new literal block
         elif token.tag == Token.LBLOCK:
-            stack[-1].children.append(token.to_dom(doc))
+            stack[-1].children.append(token.to_dom())
 
         # If Token has type DTBLOCK, add the new doctest block
         elif token.tag == Token.DTBLOCK:
-            stack[-1].children.append(token.to_dom(doc))
+            stack[-1].children.append(token.to_dom())
 
         # If Token has type BULLET, add the new list/list item/field
         elif token.tag == Token.BULLET:
-            _add_list(doc, token, stack, indent_stack, errors)
+            _add_list(token, stack, indent_stack, errors)
         else:
             raise AssertionError(f"Unknown token type: {token.tag}")
 
@@ -382,7 +382,7 @@ def _pop_completed_blocks(token, stack, indent_stack):
             stack.pop()
             indent_stack.pop()
 
-def _add_para(doc, para_token, stack, indent_stack, errors):
+def _add_para(para_token, stack, indent_stack, errors):
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
     # when appropriate.
@@ -390,7 +390,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
         indent_stack[-1] = para_token.indent
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
-        para = _colorize(doc, para_token, errors)
+        para = _colorize(para_token, errors)
         if para_token.inline:
             para.attribs['inline'] = True
         stack[-1].children.append(para)
@@ -398,7 +398,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
         estr = "Improper paragraph indentation."
         errors.append(StructuringError(estr, para_token.startline))
 
-def _add_section(doc, heading_token, stack, indent_stack, errors):
+def _add_section(heading_token, stack, indent_stack, errors):
     """Add a new section to the DOM tree, with the given heading."""
     if indent_stack[-1] is None:
         indent_stack[-1] = heading_token.indent
@@ -422,7 +422,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
     indent_stack[heading_token.level+2:] = []
 
     # Colorize the heading
-    head = _colorize(doc, heading_token, errors, 'heading')
+    head = _colorize(heading_token, errors, 'heading')
 
     # Add the section's and heading's DOM elements.
     sec = Element('section')
@@ -431,7 +431,7 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
     sec.children.append(head)
     indent_stack.append(None)
 
-def _add_list(doc, bullet_token, stack, indent_stack, errors):
+def _add_list(bullet_token, stack, indent_stack, errors):
     """
     Add a new list item or field to the DOM tree, with the given
     bullet or field tag.  When necessary, create the associated
@@ -642,7 +642,7 @@ class Token:
         """
         return f'<Token: {self.tag} at line {self.startline}>'
 
-    def to_dom(self, doc):
+    def to_dom(self):
         """
         @return: a DOM representation of this C{Token}.
         @rtype: L{Element}
@@ -993,7 +993,7 @@ def _tokenize(text, errors):
 _BRACE_RE = re.compile(r'{|}')
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
-def _colorize(doc, token, errors, tagName='para'):
+def _colorize(token, errors, tagName='para'):
     """
     Given a string containing the contents of a paragraph, produce a
     DOM C{Element} encoding that paragraph.  Colorized regions are
@@ -1110,7 +1110,7 @@ def _colorize(doc, token, errors, tagName='para'):
 
             # Special handling for link-type elements:
             if stack[-1].tag in _LINK_COLORIZING_TAGS:
-                _colorize_link(doc, stack[-1], token, end, errors)
+                _colorize_link(stack[-1], token, end, errors)
 
             # Pop the completed element.
             openbrace_stack.pop()
@@ -1128,7 +1128,7 @@ def _colorize(doc, token, errors, tagName='para'):
 
     return stack[0]
 
-def _colorize_link(doc, link, token, end, errors):
+def _colorize_link(link, token, end, errors):
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
