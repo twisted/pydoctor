@@ -1,8 +1,11 @@
-import pytest
 from typing import List
-from pydoctor.epydoc.markup import ParseError, flatten, restructuredtext
+
+from pydoctor.epydoc.markup import ParseError, flatten
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
+
 from bs4 import BeautifulSoup
+import pytest
+
 
 def rst2html(s: str) -> str:
     errors: List[ParseError] = []
@@ -53,7 +56,7 @@ def to_html(docstring: str) -> str:
     Utility method to convert a docstring to html with pydoctor.
     """
     err: List[ParseError] = []
-    p = restructuredtext.parse_docstring(docstring, err)
+    p = parse_docstring(docstring, err)
     if err:
         raise ValueError("\n".join(repr(e) for e in err))
     html=flatten(p.to_stan(None))
