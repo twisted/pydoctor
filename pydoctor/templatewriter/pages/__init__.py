@@ -173,7 +173,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
-            version=__version__.public(),
+            version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 

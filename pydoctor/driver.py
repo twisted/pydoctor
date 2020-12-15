@@ -81,7 +81,7 @@ class CustomOption(Option):
 
 def getparser() -> OptionParser:
     parser = OptionParser(
-        option_class=CustomOption, version=__version__.public(),
+        option_class=CustomOption, version=__version__,
         usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',

@@ -86,7 +86,7 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     app.add_config_value("pydoctor_args", None, "env")
 
     return {
-        'version': str(__version__),
+        'version': __version__,
         'parallel_read_safe': True,
         'parallel_write_safe': True,
         }
