@@ -166,18 +166,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.newAttr = interface
 
     def _handleAssignmentInClass(self, target, annotation, expr, lineno):
-        super()._handleAssignmentInClass(
-                target, annotation, expr, lineno)
-
-        def handleSchemaField():
-            keywords = {arg.arg: arg.value for arg in expr.keywords}
-            descrNode = keywords.get('description')
-            if isinstance(descrNode, ast.Str):
-                attr.setDocstring(descrNode)
-            elif descrNode is not None:
-                attr.report(
-                    'description of field "%s" is not a string literal'
-                    % attr.name, section='zopeinterface')
+        super()._handleAssignmentInClass(target, annotation, expr, lineno)
 
         if not isinstance(expr, ast.Call):
             return
@@ -187,6 +176,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         funcName = self.funcNameFromCall(expr)
         if funcName is None:
             return
+
         if funcName == 'zope.interface.Attribute':
             attr.kind = 'Attribute'
             args = expr.args
@@ -197,14 +187,23 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     'definition of attribute "%s" should have docstring '
                     'as its sole argument' % attr.name,
                     section='zopeinterface')
-        elif schema_prog.match(funcName):
-            attr.kind = schema_prog.match(funcName).group(1)
-            handleSchemaField()
         else:
-            cls = self.builder.system.objForFullName(funcName)
-            if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
+            match = schema_prog.match(funcName)
+            if match:
+                attr.kind = match.group(1)
+            else:
+                cls = self.builder.system.objForFullName(funcName)
+                if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
+                    return
                 attr.kind = cls.name
-                handleSchemaField()
+            keywords = {arg.arg: arg.value for arg in expr.keywords}
+            descrNode = keywords.get('description')
+            if isinstance(descrNode, ast.Str):
+                attr.setDocstring(descrNode)
+            elif descrNode is not None:
+                attr.report(
+                    'description of field "%s" is not a string literal' % attr.name,
+                    section='zopeinterface')
 
     def visit_Call(self, node):
         base = self.funcNameFromCall(node)
