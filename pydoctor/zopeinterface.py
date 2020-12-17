@@ -281,6 +281,9 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         for ((dn, fn, o), args) in cls.decorators:
             if fn == 'zope.interface.implementer':
+                if args is None:
+                    cls.report('@implementer requires arguments')
+                    continue
                 addInterfaceInfoToClass(cls, args, False)
 
 

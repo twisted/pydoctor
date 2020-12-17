@@ -366,6 +366,20 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == "mod:5: probable interface mod.C not marked as such\n"
 
+def test_implementer_nocall(capsys: CapSys) -> None:
+    """
+    Report a warning when @implementer is used without calling it.
+    """
+    src = '''
+    import zope.interface
+    @zope.interface.implementer
+    class C:
+        pass
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == "mod:3: @implementer requires arguments\n"
+
 def test_classimplements_badarg(capsys: CapSys) -> None:
     """
     Report a warning when the arguments to classImplements() don't make sense.
