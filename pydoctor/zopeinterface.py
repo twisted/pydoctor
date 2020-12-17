@@ -230,6 +230,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def visit_Call_zope_interface_classImplements(self, funcName, node):
         parent = self.builder.current
+        if not node.args:
+            self.builder.system.msg(
+                'zopeinterface',
+                f'{parent.description}:{node.lineno}: '
+                f'required argument to classImplements() missing',
+                thresh=-1)
+            return
         clsname = parent.expandName(astor.to_source(node.args[0]).strip())
         cls = self.system.allobjects.get(clsname)
         if not isinstance(cls, ZopeInterfaceClass):

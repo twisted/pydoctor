@@ -376,12 +376,14 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
         pass
     def f():
         pass
+    classImplements()
     classImplements(f, IBar)
     classImplements(g, IBar)
     '''
     fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     captured = capsys.readouterr().out
     assert captured == (
-        'mod:7: argument "mod.f" to classImplements() is not a class\n'
-        'mod:8: argument "g" to classImplements() not found\n'
+        'mod:7: required argument to classImplements() missing\n'
+        'mod:8: argument "mod.f" to classImplements() is not a class\n'
+        'mod:9: argument "g" to classImplements() not found\n'
         )
