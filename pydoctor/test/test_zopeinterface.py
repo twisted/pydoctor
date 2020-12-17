@@ -365,3 +365,19 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == "mod:5: probable interface mod.C not marked as such\n"
+
+def test_classimplements_badarg(capsys: CapSys) -> None:
+    """
+    Report a warning when the arguments to classImplements() don't make sense.
+    """
+    src = '''
+    from zope.interface import Interface, classImplements
+    class IBar(Interface):
+        pass
+    def f():
+        pass
+    classImplements(f, IBar)
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:7: argument "mod.f" to classImplements() is not a class\n'
