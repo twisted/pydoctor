@@ -427,6 +427,10 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
+    decorators: Sequence[Tuple[
+        Tuple[str, str, Optional[Documentable]],
+        Optional[Sequence[Optional[Tuple[str, str, Optional[Documentable]]]]]
+        ]]
 
     def setup(self) -> None:
         super().setup()
