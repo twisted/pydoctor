@@ -232,16 +232,12 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         parent = self.builder.current
         clsname = parent.expandName(astor.to_source(node.args[0]).strip())
         cls = self.system.allobjects.get(clsname)
-        if cls is None:
-            self.builder.system.msg(
-                "parsing",
-                "classImplements on unknown class %r"%clsname)
-            return
         if not isinstance(cls, ZopeInterfaceClass):
+            problem = 'not found' if cls is None else 'is not a class'
             self.builder.system.msg(
                 'zopeinterface',
                 f'{parent.description}:{node.lineno}: '
-                f'argument "{clsname}" to classImplements() is not a class',
+                f'argument "{clsname}" to classImplements() {problem}',
                 thresh=-1)
             return
         addInterfaceInfoToClass(cls, node.args[1:],
