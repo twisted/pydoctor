@@ -135,7 +135,13 @@ class ModuleVistor(ast.NodeVisitor):
                 else:
                     base = node2data(decnode)
                     args = None
-                cls.decorators.append((base, args))
+                if base is None:  # pragma: no cover
+                    # There are expressions for which node2data() returns None,
+                    # but I cannot find any that don't lead to a SyntaxError
+                    # when used in a decorator.
+                    cls.report("cannot make sense of class decorator")
+                else:
+                    cls.decorators.append((base, args))
         cls.raw_decorators = node.decorator_list if node.decorator_list else []
 
         for b in cls.baseobjects:
