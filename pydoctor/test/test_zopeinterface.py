@@ -87,9 +87,7 @@ def implements_test(src: str) -> None:
     assert onlybar.allImplementedInterfaces == ['zi.IBar']
 
     assert ifoo.implementedby_directly == [foo]
-    assert ifoo.allImplementations == [foo, foobar]
     assert ibar.implementedby_directly == [foobar, onlybar]
-    assert ibar.allImplementations == [foobar, onlybar]
 
 
 def test_subclass_with_same_name() -> None:
@@ -304,7 +302,10 @@ def test_docsources_from_moduleprovides() -> None:
 def test_interfaceallgames() -> None:
     system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceallgames.interface']
-    assert [o.fullName() for o in mod.contents['IAnInterface'].allImplementations] == ['interfaceallgames.implementation.Implementation']
+    iface = mod.contents['IAnInterface']
+    assert [o.fullName() for o in iface.implementedby_directly] == [
+        'interfaceallgames.implementation.Implementation'
+        ]
 
 def test_implementer_with_none() -> None:
     """

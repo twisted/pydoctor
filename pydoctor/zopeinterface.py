@@ -46,20 +46,6 @@ class ZopeInterfaceClass(model.Class):
                     r.append(interface)
         return r
 
-    @property
-    def allImplementations(self):
-        r = list(self.implementedby_directly)
-        stack = list(r)
-        while stack:
-            c = stack.pop(0)
-            for sc in c.subclasses:
-                if sc.implementsOnly:
-                    continue
-                stack.append(sc)
-                if sc not in r:
-                    r.append(sc)
-        return r
-
 
 def _inheritedDocsources(obj):
     if not isinstance(obj.parent, (model.Class, model.Module)):
