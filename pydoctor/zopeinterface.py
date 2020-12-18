@@ -273,15 +273,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
         assert isinstance(cls, ZopeInterfaceClass)
 
-        bases = []
-
-        for base in cls.bases:
-            if isinstance(base, ast.Name):
-                bases.append(self.builder.current.expandName(base.id))
-            elif isinstance(base, str):
-                bases.append(self.builder.current.expandName(base))
-            else:
-                raise Exception(base)
+        bases = [self.builder.current.expandName(base) for base in cls.bases]
 
         if 'zope.interface.interface.InterfaceClass' in bases:
             cls.isinterfaceclass = True
