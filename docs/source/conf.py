@@ -93,7 +93,7 @@ _common_args = [
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
-    '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv'
+    '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
 ]
 pydoctor_args = {
     'main': [
