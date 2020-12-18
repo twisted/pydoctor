@@ -116,21 +116,12 @@ class ModuleVistor(ast.NodeVisitor):
             cls.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(cls)
 
-        def node2data(node):
-            dotted_name = node2dottedname(node)
-            if dotted_name is None:
-                return None
-            dotted_name = '.'.join(dotted_name)
-            full_name = self.builder.current.expandName(dotted_name)
-            obj = self.system.objForFullName(full_name)
-            return (dotted_name, full_name, obj)
-
         if node.decorator_list:
             for decnode in node.decorator_list:
                 if isinstance(decnode, ast.Call):
                     args = []
                     for arg in decnode.args:
-                        args.append(node2data(arg))
+                        args.append(node2fullname(arg, self.builder.current))
                     base = node2fullname(decnode.func, self.builder.current)
                 else:
                     base = node2fullname(decnode, self.builder.current)

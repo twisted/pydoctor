@@ -1,6 +1,6 @@
 """Support for Zope interfaces."""
 
-from typing import Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
@@ -79,10 +79,7 @@ class ZopeInterfaceAttribute(model.Attribute):
 
 def addInterfaceInfoToScope(
         scope: Union[ZopeInterfaceClass, ZopeInterfaceModule],
-        interfaceargs: Iterable[Optional[Union[
-            Tuple[str, str, Optional[model.Documentable]],
-            ast.expr
-            ]]]
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
         ) -> None:
     for arg in interfaceargs:
         # If you do implementer(*()), the argument ends up being None, which we
@@ -90,10 +87,10 @@ def addInterfaceInfoToScope(
         if arg is None:
             continue
 
-        if not isinstance(arg, tuple):
-            fullName = scope.expandName(astor.to_source(arg).strip())
+        if isinstance(arg, str):
+            fullName = arg
         else:
-            fullName = arg[1]
+            fullName = scope.expandName(astor.to_source(arg).strip())
         obj = scope.system.objForFullName(fullName)
         if isinstance(obj, ZopeInterfaceClass):
             scope.implements_directly.append(fullName)
@@ -112,19 +109,13 @@ def addInterfaceInfoToScope(
 
 def addInterfaceInfoToModule(
         module: ZopeInterfaceModule,
-        interfaceargs: Iterable[Optional[Union[
-            Tuple[str, str, Optional[model.Documentable]],
-            ast.expr
-            ]]]
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
         ) -> None:
     addInterfaceInfoToScope(module, interfaceargs)
 
 def addInterfaceInfoToClass(
         cls: ZopeInterfaceClass,
-        interfaceargs: Iterable[Optional[Union[
-            Tuple[str, str, Optional[model.Documentable]],
-            ast.expr
-            ]]],
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]],
         implementsOnly: bool
         ) -> None:
     cls.implementsOnly = implementsOnly
