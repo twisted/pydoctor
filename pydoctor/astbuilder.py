@@ -131,9 +131,9 @@ class ModuleVistor(ast.NodeVisitor):
                     args = []
                     for arg in decnode.args:
                         args.append(node2data(arg))
-                    base = node2data(decnode.func)
+                    base = node2fullname(decnode.func, self.builder.current)
                 else:
-                    base = node2data(decnode)
+                    base = node2fullname(decnode, self.builder.current)
                     args = None
                 if base is None:  # pragma: no cover
                     # There are expressions for which node2data() returns None,

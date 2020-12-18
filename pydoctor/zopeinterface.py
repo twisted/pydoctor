@@ -304,7 +304,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
 
-        for (dn_, fn, o_), args in cls.decorators:
+        for fn, args in cls.decorators:
             if fn == 'zope.interface.implementer':
                 if args is None:
                     cls.report('@implementer requires arguments')

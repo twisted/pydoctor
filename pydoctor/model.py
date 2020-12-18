@@ -428,7 +428,7 @@ class Class(CanContainImportsDocumentable):
     bases: List[str]
     baseobjects: List[Optional['Class']]
     decorators: Sequence[Tuple[
-        Tuple[str, str, Optional[Documentable]],
+        str,
         Optional[Sequence[Optional[Tuple[str, str, Optional[Documentable]]]]]
         ]]
 

@@ -500,8 +500,7 @@ def test_classdecorator(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
-      C.decorators
+    assert C.decorators == [('mod.cd', None)]
 
 
 @systemcls_param
@@ -513,11 +512,9 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
     class C:
         pass
     ''', modname='test', systemcls=systemcls)
-    cd = mod.contents['cd']
     A = mod.contents['A']
     C = mod.contents['C']
-    assert C.decorators == [(('cd', 'test.cd', cd), [('A', 'test.A', A)])], \
-      C.decorators
+    assert C.decorators == [('test.cd', [('A', 'test.A', A)])]
 
 
 @systemcls_param
