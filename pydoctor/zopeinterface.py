@@ -19,7 +19,7 @@ class ZopeInterfaceModule(model.Module):
     def allImplementedInterfaces(self) -> Iterable[str]:
         """Return all the interfaces provided by this module
         """
-        return list(self.implements_directly)
+        return self.implements_directly
 
 
 class ZopeInterfaceClass(model.Class):
@@ -44,9 +44,9 @@ class ZopeInterfaceClass(model.Class):
 
         This returns them in something like the classic class MRO.
         """
-        r = list(self.implements_directly)
         if self.implementsOnly:
-            return r
+            return self.implements_directly
+        r = list(self.implements_directly)
         for b in self.baseobjects:
             if b is None:
                 continue
