@@ -82,7 +82,7 @@ class ModuleVistor(ast.NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return
+            return None
 
         rawbases = []
         bases = []
@@ -140,6 +140,8 @@ class ModuleVistor(ast.NodeVisitor):
                 b.subclasses.append(cls)
         self.default(node)
         self.builder.popClass()
+
+        return cls
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):

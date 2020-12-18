@@ -266,11 +266,10 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                                 funcName == 'zope.interface.classImplementsOnly')
     visit_Call_zope_interface_classImplementsOnly = visit_Call_zope_interface_classImplements
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        super().visit_ClassDef(node)
-        cls = self.builder.current.contents.get(node.name)
+    def visit_ClassDef(self, node: ast.ClassDef) -> Optional[ZopeInterfaceClass]:
+        cls = super().visit_ClassDef(node)
         if cls is None:
-            return
+            return None
         assert isinstance(cls, ZopeInterfaceClass)
 
         bases = [self.builder.current.expandName(base) for base in cls.bases]
@@ -293,6 +292,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     cls.report('@implementer requires arguments')
                     continue
                 addInterfaceInfoToClass(cls, args, False)
+
+        return cls
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
