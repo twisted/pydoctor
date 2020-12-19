@@ -140,7 +140,7 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
 
 
     return {
-        'version': str(__version__),
+        'version': __version__,
         'parallel_read_safe': True,
         'parallel_write_safe': True,
         }

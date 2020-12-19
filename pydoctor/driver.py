@@ -81,7 +81,7 @@ class CustomOption(Option):
 
 def getparser() -> OptionParser:
     parser = OptionParser(
-        option_class=CustomOption, version=__version__.public(),
+        option_class=CustomOption, version=__version__,
         usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',
@@ -134,9 +134,6 @@ def getparser() -> OptionParser:
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
         help=("Only generate the summary pages."))
-    parser.add_option(
-        '--html-write-function-pages', dest='htmlfunctionpages',
-        default=False, action='store_true', help=SUPPRESS_HELP)
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
@@ -273,11 +270,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         print("The --add-package option is deprecated; "
               "pass packages as positional arguments instead.",
               file=sys.stderr, flush=True)
-    if options.htmlfunctionpages:
-        print("The --html-write-function-pages option is deprecated; "
-              "use the generated Intersphinx inventory (objects.inv) "
-              "for deep-linking your documentation.",
-              file=sys.stderr, flush=True)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
@@ -404,7 +396,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             else:
                 writer.writeModuleIndex(system)
                 subjects = system.rootobjects
-            writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+            writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:
                     system.msg('docstring-summary', msg, thresh=-1, topthresh=1)

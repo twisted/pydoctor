@@ -24,8 +24,7 @@ project = 'pydoctor'
 copyright = '2020, Michael Hudson-Doyle and various contributors (see Git history)'
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
-from pydoctor._version import __version__
-version = __version__.short()
+from pydoctor import __version__ as version
 
 # -- General configuration ---------------------------------------------------
 
