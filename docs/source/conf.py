@@ -106,6 +106,4 @@ pydoctor_args = {
         ] + _common_args,
     }
 
-pydoctor_intersphinx_mapping = {
-    'pydoctor': ('/en/{rtd_version}/api/', 'api/objects.inv'),
-}
+pydoctor_url_fragment = '/en/{rtd_version}/api/'
