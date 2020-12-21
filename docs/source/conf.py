@@ -79,12 +79,10 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
-    '--quiet',
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+    f'--project-base-dir={_pydoctor_root}',
 
     '--project-url=https://github.com/twisted/pydoctor/',
-
-    f'--project-base-dir={_pydoctor_root}',
 
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
