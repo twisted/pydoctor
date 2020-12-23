@@ -18,6 +18,7 @@ import os
 import subprocess
 import pathlib
 
+
 # -- Project information -----------------------------------------------------
 
 project = 'pydoctor'

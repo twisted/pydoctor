@@ -6,9 +6,9 @@ Read The Docs build process.
 
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-  - C{pydoctor_url_fragment} defined the URL path to the API documentation
-    You can use C{{rtd_version}} to have the URL automatically updated
-    based on Read The Docs build.
+  - C{pydoctor_url_path} - defined the URL path to the API documentation
+                           You can use C{{rtd_version}} to have the URL automatically updated
+                           based on Read The Docs build.
 
   - C{pydoctor_args} - an sequence with all the pydoctor command line arguments used to trigger the build.
                        Don't include the C{--make-html} argument, as it will be added automatically.
