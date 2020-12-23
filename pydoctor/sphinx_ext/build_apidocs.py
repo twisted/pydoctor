@@ -57,7 +57,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
         options, _ = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
-        sphinx_files = pathlib.Path(options.htmloutput + '_sphinx_files')
+        sphinx_files = output_path.with_suffix('.sphinx_files')
 
         temp_path = pathlib.Path(options.htmloutput + '_pydoctor_temp')
         shutil.rmtree(sphinx_files, ignore_errors=True)
@@ -95,10 +95,10 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         temp_path = pathlib.Path(options.htmloutput + '_pydoctor_temp')
 
         # Update intersphinx_mapping.
-        pydoctor_url_fragment = config.pydoctor_url_fragment
-        if pydoctor_url_fragment:
+        pydoctor_url_path = config.pydoctor_url_path
+        if pydoctor_url_path:
             intersphinx_mapping = config.intersphinx_mapping
-            url = pydoctor_url_fragment.format(**{'rtd_version': rtd_version})
+            url = pydoctor_url_path.format(**{'rtd_version': rtd_version})
             intersphinx_mapping[key + '-api-docs'] = (url, str(temp_path / 'objects.inv'))
 
         # Build the API docs in temporary path.
@@ -111,7 +111,7 @@ def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
     Call pydoctor with arguments.
 
     @param name: A human-readable description of this pydoctor build.
-    @param arguments: Sequence of arguments used to call pydoctor.
+    @param arguments: Command line arguments used to call pydoctor.
     """
     logger.info(f"Building '{name}' pydoctor API docs as:")
     logger.info('\n'.join(arguments))
@@ -146,7 +146,7 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     @return: The extension version and runtime options.
     """
     app.add_config_value("pydoctor_args", None, "env")
-    app.add_config_value("pydoctor_url_fragment", "", "env")
+    app.add_config_value("pydoctor_url_path", "", "env")
 
     # Make sure we have a lower priority than intersphinx extension.
     app.connect('config-inited', on_config_inited, priority=790)

@@ -104,4 +104,4 @@ pydoctor_args = {
         ] + _common_args,
     }
 
-pydoctor_url_fragment = '/en/{rtd_version}/api/'
+pydoctor_url_path = '/en/{rtd_version}/api/'

@@ -205,8 +205,8 @@ Possible links are::
   :py:attr:`twisted:twisted.protocols.amp.BinaryBoxProtocol.boxReceiver`
 
 
-Building pydoctor together with Sphinx HTML build or on Read The Docs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Building pydoctor together with Sphinx HTML build
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running pydoctor with HTML generation it will generate a set of static
 HTML files that can be used any HTTP server.
@@ -232,7 +232,7 @@ way.::
         'path/to/source/code/package1'
         ]
 
-    pydoctor_url_fragment = '/en/{rtd_version}/api/'
+    pydoctor_url_path = '/en/{rtd_version}/api/'
 
 You can pass almost any argument to `pydoctor_args`
 in the same way you call `pydoctor` from the command line.
@@ -241,9 +241,9 @@ You should not pass the `--make-html`, `--make-intersphinx` or `--quiet`
 arguments as this will break the build.
 The extension will add them automatically.
 
-The `pydoctor_url_fragment` is an URL fragment,
+The `pydoctor_url_path` is an URL path,
 relative to your public API documentation site.
-`{rtd_version}` will be replaced with the Read The Docs version.
+`{rtd_version}` will be replaced with the Read The Docs version (`stable` , `latest`, tag name).
 You only need to define this argument is you need to have intersphinx links
 from your Sphinx narrative documentation to your pydoctor API documentation.
 
