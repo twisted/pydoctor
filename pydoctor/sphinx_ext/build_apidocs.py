@@ -59,7 +59,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         output_path = pathlib.Path(options.htmloutput)
         sphinx_files = output_path.with_suffix('.sphinx_files')
 
-        temp_path = pathlib.Path(options.htmloutput + '_pydoctor_temp')
+        temp_path = output_path.with_suffix('.pydoctor_temp')
         shutil.rmtree(sphinx_files, ignore_errors=True)
         output_path.rename(sphinx_files)
         temp_path.rename(output_path)
@@ -92,7 +92,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
 
         options, _ = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
-        temp_path = pathlib.Path(options.htmloutput + '_pydoctor_temp')
+        temp_path = output_path.with_suffix('.pydoctor_temp')
 
         # Update intersphinx_mapping.
         pydoctor_url_path = config.pydoctor_url_path
@@ -105,6 +105,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         shutil.rmtree(temp_path, ignore_errors=True)
         _run_pydoctor(key,  arguments)
         output_path.rename(temp_path)
+
 
 def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
     """

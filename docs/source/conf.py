@@ -91,7 +91,7 @@ _common_args = [
 ]
 pydoctor_args = {
     'main': [
-        '--html-output={outdir}/api',
+        '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
