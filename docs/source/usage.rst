@@ -237,8 +237,8 @@ way.::
 You can pass almost any argument to `pydoctor_args`
 in the same way you call `pydoctor` from the command line.
 
-You should not pass the `--make-html`, `--make-intersphinx` or `--quiet`
-arguments as this can break the build.
+You don't need to pass the `--make-html`, `--make-intersphinx` or `--quiet`
+arguments.
 The extension will add them automatically.
 
 The `pydoctor_url_path` is an URL path,
