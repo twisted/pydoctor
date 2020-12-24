@@ -92,7 +92,7 @@ def getparser() -> OptionParser:
         help=("A dotted name of the class to use to make a system."))
     parser.add_option(
         '--project-name', dest='projectname',
-        help=("The project name, appears in the html."))
+        help=("The project name, shown at the top of each HTML page."))
     parser.add_option(
         '--project-version',
         dest='projectversion',
