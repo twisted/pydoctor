@@ -7,7 +7,6 @@ import datetime
 import os
 import sys
 
-from pep517.meta import load as pep517_meta_load  # type: ignore[import]
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
@@ -94,11 +93,7 @@ def getparser() -> OptionParser:
         help=("A dotted name of the class to use to make a system."))
     parser.add_option(
         '--project-name', dest='projectname',
-        help=(
-            "The project name, appears in the html. "
-            "Defaults to the name found in the project's metadata or "
-            "the name of the base directory."
-            ))
+        help=("The project name, appears in the html."))
     parser.add_option(
         '--project-version',
         dest='projectversion',
@@ -106,7 +101,7 @@ def getparser() -> OptionParser:
         metavar='VER',
         help=(
             "The version of the project for which the API is generated. "
-            "Defaults to the version found in the project's metadata."
+            "Defaults to empty string."
             ))
     parser.add_option(
         '--project-url', dest='projecturl',
@@ -115,14 +110,6 @@ def getparser() -> OptionParser:
         '--project-base-dir', dest='projectbasedirectory', type='path',
         help=("Path to the base directory of the project.  Source links "
               "will be computed based on this value."))
-    parser.add_option(
-        '--project-meta-dir', dest='projectmetadirectory', type='path',
-        metavar='PATH',
-        help=(
-            "Path to the directory of metadata files for the project. "
-            "Default to the same value as --project-base-dir."
-            )
-        )
     parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
@@ -273,7 +260,6 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     options.verbosity -= options.quietness
 
     _warn_deprecated_options(options)
-    _sanitize_options(options)
 
     return options, args
 
@@ -296,37 +282,6 @@ def _warn_deprecated_options(options: Values) -> None:
               file=sys.stderr, flush=True)
 
 
-def _sanitize_options(options: Values) -> None:
-    """
-    Check current command line option and updated them for internal usage.
-
-    For example resolve the default values.
-    """
-    if not options.projectmetadirectory:
-        options.projectmetadirectory = options.projectbasedirectory
-
-    meta = None
-    if options.projectmetadirectory:
-        try:
-            meta = pep517_meta_load(options.projectmetadirectory)
-        except (RuntimeError, FileNotFoundError, NotADirectoryError):
-            """
-            PEP517 raises  when metadata file is not found:
-            * py3.8 - RuntimeError
-            * py3.6 - FileNotFoundError Unix
-            * py3.6 - NotADirectoryError Windows
-
-            It's ok if project has no meta data.
-            """
-
-    if not options.projectversion:
-        if meta:
-            options.projectversion = meta.version
-        else:
-            options.projectversion = '0.1.0.dev0'
-
-    if not options.projectname and meta:
-        options.projectname = meta.metadata['name']
 
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:

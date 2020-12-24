@@ -13,6 +13,7 @@ It will add a link to the project website in all pages header, show a link to so
 
     pydoctor \
         --project-name=pydoctor \
+	--project-version=1.2.0 \
         --project-url=https://github.com/twisted/pydoctor/ \
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
         --make-html \
@@ -223,6 +224,7 @@ way.::
 
     pydoctor_args = [
         '--project-name=YOUR-PROJECT-NAME',
+	'--project-version=YOUR-PUBLIC-VERSION,
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
         '--intersphinx=https://docs.python.org/3/objects.inv',

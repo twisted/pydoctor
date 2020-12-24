@@ -122,32 +122,7 @@ def test_project_version_default() -> None:
     version.
     """
     options, args = driver.parse_args([])
-    assert options.projectversion == '0.1.0.dev0'
-
-
-def st_ver_call() -> str:
-    """
-    Used to test the version resolving as setuptools callable attr.
-    """
-    return '3.4.0.dev0'
-
-
-def test_project_version_meta_default(tmp_path: Path) -> None:
-    """
-    When no --project-version is provided, but we have a meta directory,
-    the version is extracted from the project's metadata.
-    """
-    setup_cfg = tmp_path / 'setup.cfg'
-
-    setup_cfg.write_text("""
-[metadata]
-name = acme-lib
-version = attr: pydoctor.test.test_commandline.st_ver_call
-""")
-
-    options, args = driver.parse_args(['--project-meta-dir', str(tmp_path)])
-
-    assert options.projectversion == '3.4.0.dev0'
+    assert options.projectversion == ''
 
 
 def test_project_version_string() -> None:
@@ -156,6 +131,8 @@ def test_project_version_string() -> None:
     """
     options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
     assert options.projectversion == '1.2.3.rc1'
+
+
 
 
 def test_main_project_name_guess(capsys: CapSys) -> None:
@@ -170,23 +147,6 @@ def test_main_project_name_guess(capsys: CapSys) -> None:
 
     assert exit_code == 0
     assert "Guessing 'basic' for project name." in capsys.readouterr().out
-
-
-def test_project_name_meta(tmp_path: Path) -> None:
-    """
-    When no --project-name is provided, but we have a meta directory,
-    the name is extracted from the project's metadata.
-    """
-    setup_cfg = tmp_path / 'setup.cfg'
-
-    setup_cfg.write_text("""
-[metadata]
-name = acme-lib
-""")
-
-    options, args = driver.parse_args(['--project-meta-dir', str(tmp_path)])
-
-    assert options.projectname == 'acme-lib'
 
 
 def test_main_project_name_option(capsys: CapSys) -> None:
