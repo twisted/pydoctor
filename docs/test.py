@@ -16,7 +16,9 @@ def test_help_output_extension():
     The help output extension will include the CLI help on the Sphinx page.
     """
     with open(BASE_DIR / 'help.html', 'r') as stream:
-        assert '--project-url=PROJECTURL' in stream.read()
+        text = stream.read()
+    print(text)
+    assert '--project-url=PROJECTURL' in text
 
 
 def test_rtd_pydoctor_call():
@@ -26,7 +28,9 @@ def test_rtd_pydoctor_call():
     """
     # The pydoctor index is generated and overwrites the Sphinx files.
     with open(API_DIR / 'index.html', 'r') as stream:
-        assert 'moduleIndex.html' in stream.read()
+        text = stream.read()
+    print(text)
+    assert 'moduleIndex.html' in text
 
 
 def test_rtd_pydoctor_multiple_call():
@@ -35,7 +39,9 @@ def test_rtd_pydoctor_multiple_call():
     API doc source.
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'index.html', 'r') as stream:
-        assert 'pydoctor-epytext-demo API Documentation' in stream.read()
+        text = stream.read()
+    print(text)
+    assert 'pydoctor-epytext-demo API Documentation' in text
 
 
 def test_rtd_extension_inventory():
@@ -43,4 +49,6 @@ def test_rtd_extension_inventory():
     The Sphinx inventory is available during normalsphinx-build.
     """
     with open(BASE_DIR / 'usage.html', 'rb') as stream:
-        assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in stream.read().decode()
+        text = stream.read().decode()
+    print(text)
+    assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in text
