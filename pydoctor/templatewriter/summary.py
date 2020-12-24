@@ -1,5 +1,7 @@
 """Classes that generate the summary pages."""
 
+from typing import Dict, List, Sequence, Tuple, Union, cast
+
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
@@ -10,6 +12,8 @@ def moduleSummary(modorpack):
         util.taglink(modorpack), ' - ',
         epydoc2stan.format_summary(modorpack)
         )
+    if modorpack.isPrivate:
+        r(class_='private')
     if not isinstance(modorpack, model.Package):
         return r
     contents = [m for m in modorpack.contents.values()
@@ -53,23 +57,50 @@ class ModuleIndexPage(Element):
     def heading(self, request, tag):
         return tag().clear()("Module Index")
 
-def findRootClasses(system):
-    roots = {}
+def findRootClasses(
+        system: model.System
+        ) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
+    roots: Dict[str, Union[model.Class, List[model.Class]]] = {}
     for cls in system.objectsOfType(model.Class):
         if ' ' in cls.name or not cls.isVisible:
             continue
         if cls.bases:
             for n, b in zip(cls.bases, cls.baseobjects):
                 if b is None or not b.isVisible:
-                    roots.setdefault(n, []).append(cls)
+                    cast(List[model.Class], roots.setdefault(n, [])).append(cls)
                 elif b.system is not system:
                     roots[b.fullName()] = b
         else:
             roots[cls.fullName()] = cls
     return sorted(roots.items(), key=lambda x:x[0].lower())
 
+def isPrivate(obj: model.Documentable) -> bool:
+    """Is the object itself private or does it live in a private context?"""
+
+    while not obj.isPrivate:
+        parent = obj.parent
+        if parent is None:
+            return False
+        obj = parent
+
+    return True
+
+def isClassNodePrivate(cls: model.Class) -> bool:
+    """Are a class and all its subclasses are private?"""
+
+    if not isPrivate(cls):
+        return False
+
+    for sc in cls.subclasses:
+        if not isClassNodePrivate(sc):
+            return False
+
+    return True
+
 def subclassesFrom(hostsystem, cls, anchors):
     r = tags.li()
+    if isClassNodePrivate(cls):
+        r(class_='private')
     name = cls.fullName()
     if name not in anchors:
         r(tags.a(name=name))
@@ -111,6 +142,10 @@ class ClassIndexPage(Element):
                 t(subclassesFrom(self.system, o, anchors))
             else:
                 item = tags.li(tags.code(b))
+                if all(isClassNodePrivate(sc) for sc in o):
+                    # This is an external class used only by private API;
+                    # mark the whole node private.
+                    item(class_='private')
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):
@@ -154,14 +189,21 @@ class LetterElement(Element):
             name2obs.setdefault(obj.name, []).append(obj)
         r = []
         for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
+            item = tag.clone()(name)
             obs = name2obs[name]
+            if all(isPrivate(ob) for ob in obs):
+                item(class_='private')
             if len(obs) == 1:
-                r.append(tag.clone()(name, ' - ', util.taglink(obs[0])))
+                item(' - ', util.taglink(obs[0]))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    ul(tags.li(util.taglink(ob)))
-                r.append(tag.clone()(name, ul))
+                    subitem = tags.li(util.taglink(ob))
+                    if isPrivate(ob):
+                        subitem(class_='private')
+                    ul(subitem)
+                item(ul)
+            r.append(item)
         return r
 
 
@@ -181,11 +223,11 @@ class NameIndexPage(Element):
 
     @renderer
     def title(self, request, tag):
-        return tag.clear()("Index Of Names")
+        return tag.clear()("Index of Names")
 
     @renderer
     def heading(self, request, tag):
-        return tag.clear()("Index Of Names")
+        return tag.clear()("Index of Names")
 
     @renderer
     def project(self, request, tag):
@@ -262,7 +304,7 @@ class IndexPage(Element):
 
     @renderer
     def version(self, request, tag):
-        return __version__.public()
+        return __version__
 
     @renderer
     def buildtime(self, request, tag):

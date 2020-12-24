@@ -21,7 +21,7 @@ class FakeOptions:
     """
     sourcehref = None
     projectbasedirectory: Path
-
+    docformat = 'epytext'
 
 
 class FakeDocumentable:
@@ -57,6 +57,31 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
+
+
+def test_package_sourceHref() -> None:
+    """
+    A package reports its __init__.py location as its source link.
+    """
+
+    project_dir = Path("/foo/bar/ProjectName")
+
+    options = FakeOptions()
+    options.projectbasedirectory = project_dir
+
+    system = model.System()
+    system.ensurePackage('pkg')
+    system.sourcebase = "https://git.example.org/proj/main"
+    system.options = cast(Values, options)
+
+    mod_init = fromText('''
+    """Docstring."""
+    ''', modname='__init__', parent_name='pkg', system=system)
+    system.setSourceHref(mod_init, project_dir / 'src' / 'pkg' / '__init__.py')
+
+    package = system.objForFullName('pkg')
+    assert isinstance(package, model.Package)
+    assert package.sourceHref == "https://git.example.org/proj/main/src/pkg/__init__.py"
 
 
 def test_initialization_default() -> None:

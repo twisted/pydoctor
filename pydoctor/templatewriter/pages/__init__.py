@@ -1,13 +1,29 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import List, Optional, Union
+from typing import Any, Iterator, List, Optional, Union
+import ast
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
+import astor
 
 from pydoctor import epydoc2stan, model, __version__
+from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 
+
+def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
+    for dec in obj.decorators or ():
+        if isinstance(dec, ast.Call):
+            fn = node2fullname(dec.func, obj)
+            # We don't want to show the deprecated decorator;
+            # it shows up as an infobox.
+            if fn in ("twisted.python.deprecate.deprecated",
+                      "twisted.python.deprecate.deprecatedProperty"):
+                break
+
+        text = '@' + astor.to_source(dec).strip()
+        yield text, tags.br()
 
 def signature(function: model.Function) -> str:
     """Return a nicely-formatted source-like function signature."""
@@ -157,7 +173,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
-            version=__version__.public(),
+            version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
@@ -380,7 +396,3 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
-
-class FunctionPage(CommonPage):
-    def mediumName(self, ob):
-        return [super().mediumName(ob), signature(self.ob)]

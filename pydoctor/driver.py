@@ -1,6 +1,6 @@
 """The command-line parsing and entry point."""
 
-from optparse import Option, OptionParser, OptionValueError, Values
+from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
@@ -53,17 +53,25 @@ def findClassFromDottedName(
 
 MAKE_HTML_DEFAULT = object()
 
-def parse_path(option: Option, opt: str, value: str) -> Path:
-    """Parse a path value given to an option to a L{Path} object.
+def resolve_path(path: str) -> Path:
+    """Parse a given path string to a L{Path} object.
+
     The path is converted to an absolute path, as required by
     L{System.setSourceHref()}.
     The path does not need to exist.
     """
+
+    # We explicitly make the path relative to the current working dir
+    # because on Windows resolve() does not produce an absolute path
+    # when operating on a non-existing path.
+    return Path(Path.cwd(), path).resolve()
+
+def parse_path(option: Option, opt: str, value: str) -> Path:
+    """Parse a path value given to an option to a L{Path} object
+    using L{resolve_path()}.
+    """
     try:
-        # We explicitly make the path relative to the current working dir
-        # because on Windows resolve() does not produce an absolute path
-        # when operating on a non-existing path.
-        return Path(Path.cwd(), value).resolve()
+        return resolve_path(value)
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
@@ -72,7 +80,9 @@ class CustomOption(Option):
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
 
 def getparser() -> OptionParser:
-    parser = OptionParser(option_class=CustomOption, version=__version__.public())
+    parser = OptionParser(
+        option_class=CustomOption, version=__version__,
+        usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',
         help=("Use config from this file (any command line"
@@ -104,13 +114,10 @@ def getparser() -> OptionParser:
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
     parser.add_option(
         '--add-package', action='append', dest='packages',
-        metavar='PACKAGEDIR', default=[],
-        help=("Add a package to the system.  Can be repeated "
-              "to add more than one package."))
+        metavar='PACKAGEDIR', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--add-module', action='append', dest='modules',
-        metavar='MODULE', default=[],
-        help=("Add a module to the system.  Can be repeated."))
+        metavar='MODULE', default=[], help=SUPPRESS_HELP)
     parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
@@ -127,13 +134,6 @@ def getparser() -> OptionParser:
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
         help=("Only generate the summary pages."))
-    parser.add_option(
-        '--html-write-function-pages', dest='htmlfunctionpages',
-        default=False, action='store_true',
-        help=("Make individual HTML files for every function and "
-              "method. They're not linked to in any pydoctor-"
-              "generated HTML, but they can be useful for third-party "
-              "linking."))
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
@@ -178,15 +178,22 @@ def getparser() -> OptionParser:
         '--intersphinx', action='append', dest='intersphinx',
         metavar='URL_TO_OBJECTS.INV', default=[],
         help=(
-            "Use Sphinx objects inventory to generate links to external"
-            "documetation. Can be repeated."))
+            "Use Sphinx objects inventory to generate links to external "
+            "documentation. Can be repeated."))
 
     parser.add_option(
         '--enable-intersphinx-cache',
-        dest='enable_intersphinx_cache',
+        dest='enable_intersphinx_cache_deprecated',
         action='store_true',
         default=False,
-        help="Enable Intersphinx cache."
+        help=SUPPRESS_HELP
+    )
+    parser.add_option(
+        '--disable-intersphinx-cache',
+        dest='enable_intersphinx_cache',
+        action='store_false',
+        default=True,
+        help="Disable Intersphinx cache."
     )
     parser.add_option(
         '--intersphinx-cache-path',
@@ -251,6 +258,19 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     if options.configfile:
         readConfigFile(options)
 
+    if options.enable_intersphinx_cache_deprecated:
+        print("The --enable-intersphinx-cache option is deprecated; "
+              "the cache is now enabled by default.",
+              file=sys.stderr, flush=True)
+    if options.modules:
+        print("The --add-module option is deprecated; "
+              "pass modules as positional arguments instead.",
+              file=sys.stderr, flush=True)
+    if options.packages:
+        print("The --add-package option is deprecated; "
+              "pass packages as positional arguments instead.",
+              file=sys.stderr, flush=True)
+
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
                          cachePath=options.intersphinx_cache_path,
@@ -310,23 +330,33 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.addObject(prependedpackage)
                     initmodule = system.Module(system, '__init__', prependedpackage)
                     system.addObject(initmodule)
-            for path in args:
-                path = os.path.abspath(path)
-                if path in system.packages:
+            added_paths = set()
+            for arg in args:
+                path = resolve_path(arg)
+                if path in added_paths:
                     continue
-                if os.path.isdir(path):
-                    system.msg('addPackage', 'adding directory ' + path)
-                    system.addPackage(path, prependedpackage)
+                if options.projectbasedirectory is not None:
+                    # Note: Path.is_relative_to() was only added in Python 3.9,
+                    #       so we have to use this workaround for now.
+                    try:
+                        path.relative_to(options.projectbasedirectory)
+                    except ValueError as ex:
+                        error(f"Source path lies outside base directory: {ex}")
+                if path.is_dir():
+                    system.msg('addPackage', f"adding directory {path}")
+                    system.addPackage(str(path), prependedpackage)
+                elif path.is_file():
+                    system.msg('addModuleFromPath', f"adding module {path}")
+                    system.addModuleFromPath(prependedpackage, str(path))
+                elif path.exists():
+                    error(f"Source path is neither file nor directory: {path}")
                 else:
-                    system.msg('addModuleFromPath', 'adding module ' + path)
-                    system.addModuleFromPath(prependedpackage, path)
-                system.packages.append(path)
+                    error(f"Source path does not exist: {path}")
+                added_paths.add(path)
+        else:
+            error("No source paths given.")
 
         # step 3: move the system to the desired state
-
-        if not system.packages:
-            error("The system does not contain any code, did you "
-                  "forget an --add-package?")
 
         if system.options.projectname is None:
             name = '/'.join(ro.name for ro in system.rootobjects)
@@ -366,7 +396,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             else:
                 writer.writeModuleIndex(system)
                 subjects = system.rootobjects
-            writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+            writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:
                     system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
@@ -376,7 +406,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 for fn in sorted(system.docstring_syntax_errors):
                     p('    '+fn)
 
-        if system.warnings and options.warnings_as_errors:
+        if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.
             exitcode = 3
 

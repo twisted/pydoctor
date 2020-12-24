@@ -6,7 +6,12 @@ Read The Docs build process.
 
 Inside the Sphinx conf.py file you need to define the following configuration options:
 
-  - C{pydoctor_args} - a list with all the pydoctor command line arguments used to trigger the build.
+  - C{pydoctor_url_path} - defined the URL path to the API documentation
+                           You can use C{{rtd_version}} to have the URL automatically updated
+                           based on Read The Docs build.
+
+  - C{pydoctor_args} - Sequence with all the pydoctor command line arguments used to trigger the build.
+                     - (private usage) a mapping with values as sequence of pydoctor command line arguments.
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
@@ -14,9 +19,12 @@ The following format placeholders are resolved for C{pydoctor_args} at runtime:
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
 """
+import os
+import pathlib
+import shutil
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Sequence, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -24,7 +32,7 @@ from sphinx.errors import ConfigError
 from sphinx.util import logging
 
 from pydoctor import __version__
-from pydoctor.driver import main
+from pydoctor.driver import main, parse_args
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +42,37 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
-    config: Config = app.config  # type: ignore[has-type]
+    runs = app.config.pydoctor_args
+    placeholders = {
+        'outdir': app.outdir,
+        }
+
+    if not isinstance(runs, Mapping):
+        # We have a single pydoctor call
+        runs = {'main': runs}
+
+    for key, value in runs.items():
+        arguments = _get_arguments(value, placeholders)
+
+        options, _ = parse_args(arguments)
+        output_path = pathlib.Path(options.htmloutput)
+        sphinx_files = output_path.with_suffix('.sphinx_files')
+
+        temp_path = output_path.with_suffix('.pydoctor_temp')
+        shutil.rmtree(sphinx_files, ignore_errors=True)
+        output_path.rename(sphinx_files)
+        temp_path.rename(output_path)
+
+
+def on_config_inited(app: Sphinx, config: Config) -> None:
+    """
+    Called to build the API documentation HTML  files
+    and inject our own intersphinx inventory object.
+    """
+    rtd_version = 'latest'
+    if os.environ.get('READTHEDOCS', '') == 'True':
+        rtd_version = os.environ.get('READTHEDOCS_VERSION', 'latest')
+
     if not config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
 
@@ -42,32 +80,81 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         'outdir': app.outdir,
         }
 
-    args = []
-    for argument in config.pydoctor_args:
-        args.append(argument.format(**placeholders))
+    runs = config.pydoctor_args
 
-    logger.info("Bulding pydoctor API docs as:")
-    logger.info('\n'.join(args))
+    if not isinstance(runs, Mapping):
+        # We have a single pydoctor call
+        runs = {'main': runs}
+
+    for key, value in runs.items():
+        arguments = _get_arguments(value, placeholders)
+
+        options, _ = parse_args(arguments)
+        output_path = pathlib.Path(options.htmloutput)
+        temp_path = output_path.with_suffix('.pydoctor_temp')
+
+        # Update intersphinx_mapping.
+        pydoctor_url_path = config.pydoctor_url_path
+        if pydoctor_url_path:
+            intersphinx_mapping = config.intersphinx_mapping
+            url = pydoctor_url_path.format(**{'rtd_version': rtd_version})
+            intersphinx_mapping[key + '-api-docs'] = (url, str(temp_path / 'objects.inv'))
+
+        # Build the API docs in temporary path.
+        shutil.rmtree(temp_path, ignore_errors=True)
+        _run_pydoctor(key,  arguments)
+        output_path.rename(temp_path)
+
+
+def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
+    """
+    Call pydoctor with arguments.
+
+    @param name: A human-readable description of this pydoctor build.
+    @param arguments: Command line arguments used to call pydoctor.
+    """
+    logger.info(f"Building '{name}' pydoctor API docs as:")
+    logger.info('\n'.join(arguments))
 
     with StringIO() as stream:
         with redirect_stdout(stream):
-            main(args=args)
+            main(args=arguments)
 
         for line in stream.getvalue().splitlines():
             logger.warning(line)
 
 
-def setup(app: Sphinx) ->  Dict[str, Any]:
+def _get_arguments(arguments: Sequence[str], placeholders: Mapping[str, str]) -> Sequence[str]:
+    """
+    Return the resolved arguments for pydoctor build.
+
+    @param arguments: Sequence of proto arguments used to call pydoctor.
+
+    @return: Sequence with actual acguments use to call pydoctor.
+    """
+    args = ['--make-html', '--quiet']
+    for argument in arguments:
+        args.append(argument.format(**placeholders))
+
+    return args
+
+
+def setup(app: Sphinx) ->  Mapping[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 
     @return: The extension version and runtime options.
     """
+    app.add_config_value("pydoctor_args", None, "env")
+    app.add_config_value("pydoctor_url_path", "", "env")
+
+    # Make sure we have a lower priority than intersphinx extension.
+    app.connect('config-inited', on_config_inited, priority=790)
     app.connect('build-finished', on_build_finished)
-    app.add_config_value("pydoctor_args", [], "env")
+
 
     return {
-        'version': str(__version__),
+        'version': __version__,
         'parallel_read_safe': True,
         'parallel_write_safe': True,
         }

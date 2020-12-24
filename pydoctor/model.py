@@ -94,6 +94,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
@@ -298,11 +299,19 @@ class Documentable:
 
     @property
     def isVisible(self) -> bool:
-        """Is this object is so private as to be not shown at all?
+        """Is this object so private as to be not shown at all?
 
         This is just a simple helper which defers to self.privacyClass.
         """
         return self.privacyClass is not PrivacyClass.HIDDEN
+
+    @property
+    def isPrivate(self) -> bool:
+        """Is this object considered private API?
+
+        This is just a simple helper which defers to self.privacyClass.
+        """
+        return self.privacyClass is not PrivacyClass.VISIBLE
 
     @property
     def module(self) -> 'Module':
@@ -344,6 +353,9 @@ class Package(Documentable):
     def doctarget(self) -> Documentable:
         return self.contents['__init__'] # type: ignore[no-any-return]
     @property
+    def sourceHref(self) -> Optional[str]: # type: ignore[override]
+        return self.module.sourceHref
+    @property
     def module(self) -> 'Module':
         return self.contents['__init__'] # type: ignore[no-any-return]
     @property
@@ -374,6 +386,13 @@ class Module(CanContainImportsDocumentable):
             return DocLocation.PARENT_PAGE
         else:
             return DocLocation.OWN_PAGE
+
+    @property
+    def privacyClass(self) -> PrivacyClass:
+        if self.name == '__main__':
+            return PrivacyClass.PRIVATE
+        else:
+            return super().privacyClass
 
     def setup(self) -> None:
         super().setup()
@@ -421,6 +440,17 @@ class Class(CanContainImportsDocumentable):
             if b is not None:
                 yield from b.allbases(True)
 
+    def find(self, name: str) -> Optional[Documentable]:
+        """Look up a name in this class and its base classes.
+
+        @return: the object with the given name, or L{None} if there isn't one
+        """
+        for base in self.allbases(include_self=True):
+            obj: Optional[Documentable] = base.contents.get(name)
+            if obj is not None:
+                return obj
+        return None
+
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
@@ -439,10 +469,9 @@ class Class(CanContainImportsDocumentable):
         # We assume that the constructor parameters are the same as the
         # __init__() parameters. This is incorrect if __new__() or the class
         # call have different parameters.
-        for base in self.allbases(include_self=True):
-            init = base.contents.get('__init__')
-            if isinstance(init, Function):
-                return init.annotations
+        init = self.find('__init__')
+        if isinstance(init, Function):
+            return init.annotations
         else:
             return {}
 
@@ -480,6 +509,8 @@ class Function(Inheritable):
 
 class Attribute(Inheritable):
     kind: Optional[str] = "Attribute"
+    annotation: Optional[ast.expr]
+    decorators: Optional[Sequence[ast.expr]] = None
 
 
 # Work around the attributes of the same name within the System class.
@@ -508,8 +539,13 @@ class System:
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[Documentable] = []
-        self.warnings: Dict[str, List[Tuple[str, str]]] = {}
-        self.packages: List[str] = []
+
+        self.violations = 0
+        """The number of docstring problems found.
+        This is used to determine whether to fail the build when using
+        the --warnings-as-errors option, so it should only be increased
+        for problems that the user can fix.
+        """
 
         if options:
             self.options = options
@@ -582,7 +618,7 @@ class System:
             # Apidoc build messages are generated using negative threshold
             # and we have separate reporting for them,
             # on top of the logging system.
-            self.warnings.setdefault(section, []).append((section, msg))
+            self.violations += 1
 
         if thresh <= self.verbosity(section) <= topthresh:
             if self.needsnl and wantsnl:
@@ -609,7 +645,6 @@ class System:
             fn = '<None>'
         if self.options.verbosity > 0:
             print(fn, message, detail)
-        self.warnings.setdefault(message, []).append((fn, detail))
 
     def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
         """Iterate over all instances of C{cls} present in the system. """
@@ -644,8 +679,7 @@ class System:
     # - that http://divmod.org/trac/browser/trunk is the trac URL to the
     #   above directory
     #
-    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an
-    #   "--add-package" argument
+    # - that ~/src/Divmod/Nevow/nevow is passed to pydoctor as an argument
     #
     # we want to work out the sourceHref for nevow.flat.ten.  the answer
     # is http://divmod.org/trac/browser/trunk/Nevow/nevow/flat/ten.py.
@@ -852,12 +886,11 @@ class System:
             head = self.processing_modules.pop()
             assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
-        num_warnings = sum(len(v) for v in self.warnings.values())
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
             self.module_count,
-            f"modules processed {num_warnings} warnings")
+            f"modules processed, {self.violations} warnings")
 
 
     def process(self) -> None:

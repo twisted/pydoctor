@@ -1,8 +1,9 @@
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
-import os
 import sys
+
+from pytest import raises
 
 from pydoctor import driver
 
@@ -34,7 +35,7 @@ def test_invalid_option() -> None:
 
 def test_cannot_advance_blank_system() -> None:
     err = geterrtext('--make-html')
-    assert 'forget an --add-package?' in err
+    assert 'No source paths given' in err
 
 def test_no_systemclasses_py3() -> None:
     err = geterrtext('--system-class')
@@ -49,17 +50,36 @@ def test_invalid_systemclasses() -> None:
     assert 'is not a subclass' in err
 
 
-def test_projectbasedir_absolute() -> None:
+def test_projectbasedir_absolute(tmp_path: Path) -> None:
     """
     The --project-base-dir option, when given an absolute path, should set that
     path as the projectbasedirectory attribute on the options object.
+
+    Previous versions of this test tried using non-existing paths and compared
+    the string representations, but that was unreliable, since the input path
+    might contain a symlink that will be resolved, such as "/home" on macOS.
+    Using L{Path.samefile()} is reliable, but requires an existing path.
     """
-    if os.name == 'nt':
-        absolute = r"C:\Users\name\src\project"
-    else:
-        absolute = "/home/name/src/project"
-    options, args = driver.parse_args(["--project-base-dir", absolute])
-    assert str(options.projectbasedirectory) == absolute
+    assert tmp_path.is_absolute()
+    options, args = driver.parse_args(["--project-base-dir", str(tmp_path)])
+    assert options.projectbasedirectory.samefile(tmp_path)
+    assert options.projectbasedirectory.is_absolute()
+
+
+def test_projectbasedir_symlink(tmp_path: Path) -> None:
+    """
+    The --project-base-dir option, when given a path containing a symbolic link,
+    should resolve the path to the target directory.
+    """
+    target = tmp_path / 'target'
+    target.mkdir()
+    link = tmp_path / 'link'
+    link.symlink_to('target', target_is_directory=True)
+    assert link.samefile(target)
+
+    options, args = driver.parse_args(["--project-base-dir", str(link)])
+    assert options.projectbasedirectory.samefile(target)
+    assert options.projectbasedirectory.is_absolute()
 
 
 def test_projectbasedir_relative() -> None:
@@ -75,13 +95,13 @@ def test_projectbasedir_relative() -> None:
     assert options.projectbasedirectory.parent == Path.cwd()
 
 
-def test_cache_disabled_by_default() -> None:
+def test_cache_enabled_by_default() -> None:
     """
-    Intersphinx object caching is disabled by default.
+    Intersphinx object caching is enabled by default.
     """
     parser = driver.getparser()
     (options, _) = parser.parse_args([])
-    assert not options.enable_intersphinx_cache
+    assert options.enable_intersphinx_cache
 
 
 def test_cli_warnings_on_error() -> None:
@@ -155,3 +175,33 @@ def test_main_return_non_zero_on_warnings() -> None:
     assert exit_code == 3
     assert "__init__.py:8: Unknown field 'bad_field'" in stream.getvalue()
     assert 'report_module.py:9: Cannot find link target for "BadLink"' in stream.getvalue()
+
+
+def test_main_symlinked_paths(tmp_path: Path) -> None:
+    """
+    The project base directory and package/module directories are normalized
+    in the same way, such that System.setSourceHref() can call Path.relative_to()
+    on them.
+    """
+    link = tmp_path / 'src'
+    link.symlink_to(Path.cwd(), target_is_directory=True)
+
+    exit_code = driver.main(args=[
+        '--project-base-dir=.',
+        '--html-viewsource-base=http://example.com',
+        f'{link}/pydoctor/test/testpackages/basic/'
+        ])
+    assert exit_code == 0
+
+
+def test_main_source_outside_basedir(capsys: CapSys) -> None:
+    """
+    If a --project-base-dir is given, all package and module paths must
+    be located inside that base directory.
+    """
+    with raises(SystemExit):
+        driver.main(args=[
+            '--project-base-dir=docs',
+            'pydoctor/test/testpackages/basic/'
+            ])
+    assert "Source path lies outside base directory:" in capsys.readouterr().err

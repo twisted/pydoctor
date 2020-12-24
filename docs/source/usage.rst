@@ -30,7 +30,7 @@ It will add a link to the project website in all pages header, show a link to so
 ``__all__`` re-export
 ---------------------
 
-A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package`` 
+A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package``
 - in the ``__init__.py`` that it is imported into - will end up in the documentation of ``my_package``.
 
 For instance, in the following exemple, the documentation of ``MyClass`` will be moved to the root package, ``my_package``.
@@ -60,7 +60,7 @@ You can choose to document only a couple classes or modules with the following c
 
   --html-subject=pydoctor.zopeinterface.ZopeInterfaceSystem
 
-This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``. 
+This will generate only ``pydoctor.zopeinterface.ZopeInterfaceSystem.html``.
 The ``--html-subject`` argument acts like a filter.
 
 .. warning:: The ``index.html`` and other index files won't be generated, you need to link to the specific HTML pages.
@@ -167,13 +167,23 @@ pydoctor's HTML generator will also generate a Sphinx objects inventory that can
 * methods -> ``:py:meth:``
 * attributes -> ``:py:attr:``
 
-To use this mapping in Sphinx, configure the `intersphinx extension`__::
-
-    intersphinx_mapping = {
-        'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
-    }
+Use this mapping in Sphinx by configure the `intersphinx extension`__.
 
 __ https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
+
+For an up to date lists of API links,
+run pydoctor before building the Sphinx documentation.
+
+You can use the `--make-intersphinx` option to only generate the object inventory file.
+
+You will then reference this file inside the Sphinx `intersphinx_mapping`.
+
+Note that relative paths are relative to the Sphinx source directory.
+You might need to exit the source and reference the build directory::
+
+    intersphinx_mapping = {
+        'twisted': ('https://twistedmatrix.com/documents/current/api/', '../../build/apidocs/objects.inv'),
+    }
 
 Link to elements :py:func:`with custom text <twisted:twisted.web.client.urlunparse>` with::
 
@@ -204,7 +214,7 @@ HTML files that can be used any HTTP server.
 Under some circumstances (ex Read The Docs) you might want to trigger the
 pydoctor API docs build together with the Sphinx build.
 
-This can be done by using the `pydoctor.sphinx_ext.build_apidocs` extension.
+This can be done by using the :py:mod:`pydoctor.sphinx_ext.build_apidocs` extension.
 
 Inside your Sphinx `conf.py` file enable and configure the extension in this
 way.::
@@ -212,31 +222,44 @@ way.::
     extensions.append("pydoctor.sphinx_ext.build_apidocs)
 
     pydoctor_args = [
-        '--quiet',
         '--project-name=YOUR-PROJECT-NAME',
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
         '--intersphinx=https://docs.python.org/3/objects.inv',
-        '--make-html',
         '--html-viewsource-base=https://github.com/ORG/REPO/tree/default',
         '--html-output={outdir}/api',
-        '--project-base-dir=/absolute/path/to/your/project',
-        '/absolute/path/to/your/project/package1'
+        '--project-base-dir=path/to/source/code',
+        'path/to/source/code/package1'
         ]
 
-The `{outdir}` will replaced with the Sphinx build dir.
+    pydoctor_url_path = '/en/{rtd_version}/api/'
 
-You can pass any argument, in the same way you call `pydoctor` from the
-command line.
+You can pass almost any argument to `pydoctor_args`
+in the same way you call `pydoctor` from the command line.
 
-The `--quiet` argument is recommend, as any output produced by pydoctor is
-converted into Sphinx warnings.
+You don't need to pass the `--make-html`, `--make-intersphinx` or `--quiet`
+arguments.
+The extension will add them automatically.
+
+The `pydoctor_url_path` is an URL path,
+relative to your public API documentation site.
+`{rtd_version}` will be replaced with the Read The Docs version (`stable` , `latest`, tag name).
+You only need to define this argument is you need to have intersphinx links
+from your Sphinx narrative documentation to your pydoctor API documentation.
 
 As a hack to integrate the pydoctor API docs `index.html` with the Sphinx TOC
 and document reference, you can create an `index.rst` at the location where
 the pydoctor `index.html` is hosted.
 The Sphinx index.html will be generated during the Sphinx build process and
-later overwritten the the pydoctor build process.
+later overwritten by the pydoctor build process.
+
+It is possible to call pydoctor multiple times (with different arguments) as
+part of the same build process.
+For this you need to define `pydoctor_args` as a dict.
+The key is the human readable build name and the value for each dict member
+is the list of arguments.
+See pydoctor's own `conf.py <https://github.com/twisted/pydoctor/blob/master/docs/source/conf.py>`_
+for usage example.
 
 
 Customize builds

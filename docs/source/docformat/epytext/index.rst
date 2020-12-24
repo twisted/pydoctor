@@ -3,7 +3,11 @@ Epytext
 
 Read the `epytext syntax reference <http://epydoc.sourceforge.net/manual-epytext.html>`_.
 
-The Epytext support has been herited from the ``epydoc`` software. So all markup should work. Except ``X{}`` tag, which has been removed.
+Check the :doc:`Epytext based demo <./demo/index>`.
+
+The Epytext support has been herited from the ``epydoc`` software.
+All markup should work except the indexed terms``X{}`` tag, which has been removed.
+
 
 Fields
 ^^^^^^

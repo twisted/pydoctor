@@ -25,8 +25,9 @@ project = 'pydoctor'
 copyright = '2020, Michael Hudson-Doyle and various contributors (see Git history)'
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
-from pydoctor._version import __version__
-version = __version__.short()
+from pydoctor import __version__ as version
+# Use the version to make pyflakes happy.
+version
 
 # -- General configuration ---------------------------------------------------
 
@@ -51,7 +52,6 @@ exclude_patterns = []
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
-    'pydoctor': ('https://pydoctor.readthedocs.io/en/latest/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -81,18 +81,30 @@ if os.environ.get('READTHEDOCS', '') == 'True':
         _git_reference = rtd_version
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
-pydoctor_args = [
-    f'--add-package={_pydoctor_root}/pydoctor',
-    '--html-output={outdir}/api',
-    f'--project-base-dir={_pydoctor_root}',
+_common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
-    '--quiet',
-    '--make-html',
-    '--project-name=pydoctor',
+    f'--project-base-dir={_pydoctor_root}',
+
     '--project-url=https://github.com/twisted/pydoctor/',
-    '--docformat=epytext',
+
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
-    ]
+]
+pydoctor_args = {
+    'main': [
+        '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
+        '--project-name=pydoctor',
+        '--docformat=epytext',
+        f'{_pydoctor_root}/pydoctor',
+        ] + _common_args,
+    'epydoc_demo': [
+        '--html-output={outdir}/docformat/epytext/demo',
+        '--project-name=pydoctor-epytext-demo',
+        '--docformat=epytext',
+        f'{_pydoctor_root}/docs/epytext_demo',
+        ] + _common_args,
+    }
+
+pydoctor_url_path = '/en/{rtd_version}/api/'
