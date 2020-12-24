@@ -26,6 +26,8 @@ copyright = '2020, Michael Hudson-Doyle and various contributors (see Git histor
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
 from pydoctor import __version__ as version
+# Use the version to make pyflakes happy.
+version
 
 # -- General configuration ---------------------------------------------------
 
