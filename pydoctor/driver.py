@@ -283,7 +283,12 @@ def _warn_deprecated_options(options: Values) -> None:
 
 
 
-def main(args: Sequence[str]) -> int:
+def main(args: Sequence[str] = sys.argv[1:]) -> int:
+    """
+    This is the console_scripts entry point for pydoctor CLI.
+
+    @param args: Command line arguments to run the CLI.
+    """
     options, args = parse_args(args)
 
     exitcode = 0
