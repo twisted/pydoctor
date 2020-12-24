@@ -64,7 +64,8 @@ pydoctor 20.13.0
 ^^^^^^^^^^^^^^^^
 
 * Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
-* The ``build_apidocs`` Sphinx extension builds the API docs early, such that the rest of the documentation can link to it via Intersphinx.
+* The ``build_apidocs`` Sphinx extension builds the API docs before Sphinx docs, such that the rest of the documentation can link to it via Intersphinx.
+* The ``build_apidocs`` Sphinx extension now has the `pydoctor_url_path` that will automatically update the `intersphinx_mapping` variable so that it uses the latest API inventory.
 * The ``build_apidocs`` Sphinx extension can be configured to build API docs for more than one package.
 * ``pydoctor.__version__`` is now a plain ``str`` instead of an ``incremental.Version`` object.
 
