@@ -7,7 +7,6 @@ import datetime
 import os
 import sys
 
-
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
@@ -284,7 +283,7 @@ def _warn_deprecated_options(options: Values) -> None:
 
 
 
-def main(args: Sequence[str] = sys.argv[1:]) -> int:
+def main(args: Sequence[str]) -> int:
     options, args = parse_args(args)
 
     exitcode = 0

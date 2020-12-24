@@ -183,7 +183,7 @@ class SphinxInventoryWriter:
     """
 
     def __init__(self, logger: Callable[..., None], project_name: str, project_version: str):
-        self.project_name = project_name
+        self._project_name = project_name
         self._project_version = project_version
         self._logger = logger
 
@@ -216,7 +216,7 @@ class SphinxInventoryWriter:
         Return header for project  with name.
         """
         return f"""# Sphinx inventory version 2
-# Project: {self.project_name}
+# Project: {self._project_name}
 # Version: {self._project_version}
 # The rest of this file is compressed with zlib.
 """.encode('utf-8')

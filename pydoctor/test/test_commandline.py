@@ -242,5 +242,5 @@ def test_make_intersphix(tmp_path: Path) -> None:
     assert exit_code == 0
     # No other files are created, other than the inventory.
     assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
-    assert inventory.exists() == True
+    assert inventory.is_file()
     assert b'Project: acme-lib\n# Version: 1.2.0\n' in inventory.read_bytes()
