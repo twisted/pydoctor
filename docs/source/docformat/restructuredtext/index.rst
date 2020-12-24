@@ -77,6 +77,7 @@ The following consolidated fields are currently supported by PyDoctor:
     ==============================      ==============================
     ``:Parameters:``                    ``:param:``
     ``:Keywords:``                      ``:keyword:``
+    ``:Exceptions:``                    ``:except:``
     ``:Variables:``                     ``:var:``
     ``:IVariables:``                    ``:ivar:``
     ``:CVariables:``                    ``:cvar:``
