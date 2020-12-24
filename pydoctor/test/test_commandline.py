@@ -118,8 +118,7 @@ def test_cli_warnings_on_error() -> None:
 
 def test_project_version_default() -> None:
     """
-    When no --project-version is provided, it will default to a placeholder
-    version.
+    When no --project-version is provided, it will default empty string.
     """
     options, args = driver.parse_args([])
     assert options.projectversion == ''
@@ -131,8 +130,6 @@ def test_project_version_string() -> None:
     """
     options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
     assert options.projectversion == '1.2.3.rc1'
-
-
 
 
 def test_main_project_name_guess(capsys: CapSys) -> None:
