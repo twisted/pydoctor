@@ -16,9 +16,6 @@
 
 import pathlib
 
-from pydoctor.sphinx_ext import get_git_reference as _get_git_reference
-
-
 # -- Project information -----------------------------------------------------
 
 project = 'pydoctor'
@@ -66,9 +63,10 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = []
 
+# From docs/source/config.py we got to root.
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
-    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{git_reference}',
+    '--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{source_reference}',
     f'--project-base-dir={_pydoctor_root}',
 
     '--project-url=https://github.com/twisted/pydoctor/',

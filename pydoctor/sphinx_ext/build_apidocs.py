@@ -17,7 +17,8 @@ Inside the Sphinx conf.py file you need to define the following configuration op
 
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
-  - C{{git_reference}} - the Git reference that can be used for source code links.
+  - C{{source_reference}} - the source reference that can be used for source code links.
+                            Only git is supported for now.
 
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
@@ -27,7 +28,8 @@ import pathlib
 import shutil
 from contextlib import redirect_stdout
 from io import StringIO
-from typing import Any, Sequence, Mapping
+from pprint import pprint
+from typing import Any, Dict, Sequence, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -36,9 +38,12 @@ from sphinx.util import logging
 
 from pydoctor import __version__
 from pydoctor.driver import main, parse_args
-from pydoctor.sphinx_ext import get_git_reference
+from pydoctor.sphinx_ext import get_source_reference
 
 logger = logging.getLogger(__name__)
+
+# Shared state between init and finish.
+_placeholders: Dict[str, str] = {}
 
 
 def on_build_finished(app: Sphinx, exception: Exception) -> None:
@@ -46,16 +51,13 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     Called when Sphinx build is done.
     """
     runs = app.config.pydoctor_args
-    placeholders = {
-        'outdir': app.outdir,
-        }
 
     if not isinstance(runs, Mapping):
         # We have a single pydoctor call
         runs = {'main': runs}
 
     for key, value in runs.items():
-        arguments = _get_arguments(value, placeholders)
+        arguments = _get_arguments(value, _placeholders)
 
         options, _ = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
@@ -91,18 +93,13 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
 
     # Defer resolving the git reference for only when asked by
     # end users.
-    is_git_needed = False
-    for key, value in runs.items():
-        for arg in value:
-            if '{git_reference}' in arg:
-                is_git_needed = True
-                break
+    is_source_reference_needed = any(
+        '{source_reference}' in arg
+        for value in runs.values() for arg in value
+        )
 
-    if is_git_needed:
-        placeholders['git_reference'] = get_git_reference(
-            main_branch=config.pydoctor_main_branch,
-            debug=config.pydoctor_debug,
-            )
+    if is_source_reference_needed:
+        placeholders['source_reference'] = get_source_reference()
 
     for key, value in runs.items():
         arguments = _get_arguments(value, placeholders)
@@ -122,6 +119,18 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         shutil.rmtree(temp_path, ignore_errors=True)
         _run_pydoctor(key,  arguments)
         output_path.rename(temp_path)
+
+    # Share placeholders between init and finish.
+    _placeholders.update(placeholders)
+
+    if config.pydoctor_debug:
+        print("== Environment dump ===")
+        pprint(dict(os.environ))
+        print("== Placeholders dump ===")
+        pprint(placeholders)
+        print("== intersphinx_mapping dump ===")
+        pprint(intersphinx_mapping)
+        print("======")
 
 
 def _run_pydoctor(name: str, arguments: Sequence[str]) -> None:
@@ -170,7 +179,6 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     # Make sure we have a lower priority than intersphinx extension.
     app.connect('config-inited', on_config_inited, priority=790)
     app.connect('build-finished', on_build_finished)
-
 
     return {
         'version': __version__,
