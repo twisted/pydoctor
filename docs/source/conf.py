@@ -98,13 +98,13 @@ pydoctor_args = {
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
-    'epydoc_demo': [
-        '--html-output={outdir}/docformat/epytext/demo',
-        '--project-name=pydoctor-epytext-demo',
-        '--project-version=1.2.0',
-        '--docformat=epytext',
-        f'{_pydoctor_root}/docs/epytext_demo',
-        ] + _common_args,
+    # 'epydoc_demo': [
+    #     '--html-output={outdir}/docformat/epytext/demo',
+    #     '--project-name=pydoctor-epytext-demo',
+    #     '--project-version=1.2.0',
+    #     '--docformat=epytext',
+    #     f'{_pydoctor_root}/docs/epytext_demo',
+    #     ] + _common_args,
     }
 
 pydoctor_url_path = '/en/{rtd_version}/api/'

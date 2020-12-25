@@ -30,13 +30,13 @@ def test_rtd_pydoctor_call():
         assert 'moduleIndex.html' in stream.read()
 
 
-def test_rtd_pydoctor_multiple_call():
-    """
-    With the pydoctor Sphinx extension can call pydoctor for more than one
-    API doc source.
-    """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'index.html', 'r') as stream:
-        assert 'pydoctor-epytext-demo API Documentation' in stream.read()
+# def test_rtd_pydoctor_multiple_call():
+#     """
+#     With the pydoctor Sphinx extension can call pydoctor for more than one
+#     API doc source.
+#     """
+#     with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'index.html', 'r') as stream:
+#         assert 'pydoctor-epytext-demo API Documentation' in stream.read()
 
 
 def test_rtd_extension_inventory():
@@ -61,11 +61,11 @@ def test_sphinx_object_inventory_version():
             b'# Version: ' + __version__.encode() + b'\n'
             ), data
 
-    # The demo/showcase inventor for which we have a fixed version.
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'objects.inv', 'rb') as stream:
-        data = stream.read()
-        assert data.startswith(
-            b'# Sphinx inventory version 2\n'
-            b'# Project: pydoctor-epytext-demo\n'
-            b'# Version: 1.2.0\n'
-            ), data
+    # # The demo/showcase inventor for which we have a fixed version.
+    # with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'objects.inv', 'rb') as stream:
+    #     data = stream.read()
+    #     assert data.startswith(
+    #         b'# Sphinx inventory version 2\n'
+    #         b'# Project: pydoctor-epytext-demo\n'
+    #         b'# Version: 1.2.0\n'
+    #         ), data
