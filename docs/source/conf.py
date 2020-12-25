@@ -91,21 +91,19 @@ _common_args = [
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
 ]
 pydoctor_args = {
-    'epydoc_demo': [
-        '--html-output={outdir}/docformat/epytext/demo',
-        '--project-name=pydoctor-epytext-demo',
-        '--project-version=1.2.0',
-        '--docformat=epytext',
-        f'{_pydoctor_root}/docs/epytext_demo',
-        ] + _common_args,
-    # FIXME:https://github.com/twisted/pydoctor/issues/339
-    # The main pydoctor API docs should be generated last.
     'main': [
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         f'--project-version={version}',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
+        ] + _common_args,
+    'epydoc_demo': [
+        '--html-output={outdir}/docformat/epytext/demo',
+        '--project-name=pydoctor-epytext-demo',
+        '--project-version=1.2.0',
+        '--docformat=epytext',
+        f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     }
 

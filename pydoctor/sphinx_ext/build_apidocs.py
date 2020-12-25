@@ -93,9 +93,10 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         output_path = pathlib.Path(options.htmloutput)
         temp_path = output_path.with_suffix('.pydoctor_temp')
 
-        # Update intersphinx_mapping.
         pydoctor_url_path = config.pydoctor_url_path
-        if pydoctor_url_path:
+        if pydoctor_url_path and key == "main":
+            # Update intersphinx_mapping only for the main API doc.
+            # FIXME:https://github.com/twisted/pydoctor/issues/339
             intersphinx_mapping = config.intersphinx_mapping
             url = pydoctor_url_path.format(**{'rtd_version': rtd_version})
             intersphinx_mapping[key + '-api-docs'] = (url, str(temp_path / 'objects.inv'))
