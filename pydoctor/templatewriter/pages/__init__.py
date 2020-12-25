@@ -173,7 +173,7 @@ class CommonPage(Element):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             project=self.project(),
-            version=__version__.public(),
+            version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
@@ -396,7 +396,3 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
-
-class FunctionPage(CommonPage):
-    def mediumName(self, ob):
-        return [super().mediumName(ob), signature(self.ob)]

@@ -49,7 +49,7 @@ class InMemoryWriter:
         Does nothing.
         """
 
-    def writeIndividualFiles(self, obs: Sequence[model.Documentable], functionpages: bool = False) -> None:
+    def writeIndividualFiles(self, obs: Sequence[model.Documentable]) -> None:
         """
         Trigger in memory rendering for all objects.
         """

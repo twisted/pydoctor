@@ -48,7 +48,7 @@ def setup(app: 'Sphinx') -> Dict[str, Any]:
     app.add_directive('help_output', HelpOutputDirective)
 
     return {
-        'version': str(__version__),
+        'version': __version__,
         'parallel_read_safe': True,
         'parallel_write_safe': True,
         }
