@@ -61,7 +61,12 @@ def test_sphinx_object_inventory_version():
             b'# Version: ' + __version__.encode() + b'\n'
             ), data
 
-    # The demo/showcase inventor for which we have a fixed version.
+
+def test_sphinx_object_inventory_version_epytext_demo():
+    """
+    The Sphinx inventory for demo/showcase code has a fixed version and name,
+    passed via docs/source/conf.py.
+    """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'objects.inv', 'rb') as stream:
         data = stream.read()
         assert data.startswith(

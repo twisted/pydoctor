@@ -98,6 +98,8 @@ pydoctor_args = {
         '--docformat=epytext',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
+    # FIXME:https://github.com/twisted/pydoctor/issues/339
+    # The main pydoctor API docs should be generated last.
     'main': [
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',

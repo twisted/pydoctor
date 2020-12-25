@@ -225,16 +225,16 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
 
 def test_make_intersphix(tmp_path: Path) -> None:
     """
-    --make-interphinx will only produce the Sphinx inventory object.
+    --make-intersphinx without --make-html will only produce the Sphinx inventory object.
 
-    This is also an integration test for Sphinx inventory writer.
+    This is also an integration test for the Sphinx inventory writer.
     """
     inventory = tmp_path / 'objects.inv'
     exit_code = driver.main(args=[
         '--project-base-dir=.',
         '--make-intersphinx',
         '--project-name=acme-lib',
-        '--project-version=1.2.0',
+        '--project-version=20.12.0-dev123',
         '--html-output', str(tmp_path),
         'pydoctor/test/testpackages/basic/'
         ])
@@ -243,4 +243,4 @@ def test_make_intersphix(tmp_path: Path) -> None:
     # No other files are created, other than the inventory.
     assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
     assert inventory.is_file()
-    assert b'Project: acme-lib\n# Version: 1.2.0\n' in inventory.read_bytes()
+    assert b'Project: acme-lib\n# Version: 20.12.0-dev123\n' in inventory.read_bytes()

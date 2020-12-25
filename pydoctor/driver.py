@@ -97,9 +97,9 @@ def getparser() -> OptionParser:
         '--project-version',
         dest='projectversion',
         default='',
-        metavar='VER',
+        metavar='VERSION',
         help=(
-            "The version of the project for which the API is generated. "
+            "The version of the project for which the API docs are generated. "
             "Defaults to empty string."
             ))
     parser.add_option(
