@@ -5,11 +5,13 @@
 #
 import os
 import pathlib
+
+from sphinx.ext.intersphinx import inspect_main
+
 from pydoctor import __version__
 
 
 BASE_DIR = pathlib.Path(os.environ.get('TOX_INI_DIR', os.getcwd())) / 'build' / 'docs'
-API_DIR = BASE_DIR / 'api'
 
 
 def test_help_output_extension():
@@ -26,7 +28,7 @@ def test_rtd_pydoctor_call():
     generated.
     """
     # The pydoctor index is generated and overwrites the Sphinx files.
-    with open(API_DIR / 'index.html', 'r') as stream:
+    with open(BASE_DIR / 'api' / 'index.html', 'r') as stream:
         assert 'moduleIndex.html' in stream.read()
 
 
@@ -48,18 +50,26 @@ def test_rtd_extension_inventory():
         assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in data, data
 
 
-def test_sphinx_object_inventory_version():
+def test_sphinx_object_inventory_version(capsys):
     """
     The Sphinx inventory is generated with the project version in the header.
     """
-    # The pydoctor own invetory.
-    with open(BASE_DIR / 'objects.inv', 'rb') as stream:
+    # The pydoctor own inventory.
+    apidocs_inv = BASE_DIR / 'api' / 'objects.inv'
+    with open(apidocs_inv, 'rb') as stream:
         data = stream.read()
         assert data.startswith(
             b'# Sphinx inventory version 2\n'
             b'# Project: pydoctor\n'
             b'# Version: ' + __version__.encode() + b'\n'
             ), data
+
+    # Check that inventory can be parsed by Sphinx own extension.
+    inspect_main([str(apidocs_inv)])
+    out, err = capsys.readouterr()
+
+    assert '' == err
+    assert 'pydoctor.driver.main' in out, out
 
 
 def test_sphinx_object_inventory_version_epytext_demo():
