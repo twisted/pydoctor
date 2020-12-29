@@ -107,4 +107,7 @@ pydoctor_args = {
         ] + _common_args,
     }
 
-pydoctor_url_path = '/en/{rtd_version}/api/'
+pydoctor_url_path = {
+    'main': '/en/{rtd_version}/api',
+    'epydoc_demo': '/en/{rtd_version}/docformat/epytext/demo/',
+    }
