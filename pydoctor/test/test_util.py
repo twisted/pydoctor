@@ -1,6 +1,8 @@
 """
 Tests for util code.
 """
+import pytest
+
 from pydoctor.util import get_source_reference
 from . import MonkeyPatch
 
@@ -32,3 +34,16 @@ def test_get_source_reference_RTD_latest(monkeypatch: MonkeyPatch) -> None:
     # value here.
     # On local build you get the branch name, on CI you might get the SHA.
     assert result != "latest"
+
+
+def test_get_source_reference_git_fail(monkeypatch: MonkeyPatch) -> None:
+    """
+    When getting the git reference fails, it raised RunntimeError.
+    """
+    monkeypatch.setenv("READTHEDOCS", "False")
+    monkeypatch.chdir('/')
+
+    with pytest.raises(RuntimeError) as exc_info:
+        get_source_reference()
+
+    exc_info.match('Failed to get git reference. ')
