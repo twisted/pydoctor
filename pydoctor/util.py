@@ -41,7 +41,8 @@ def _get_git_reference() -> str:
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         universal_newlines=True,
         encoding="utf8",
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         check=True,
     ).stdout.strip()
 
@@ -55,7 +56,8 @@ def _get_git_reference() -> str:
             ["git", "rev-parse", "HEAD"],
             universal_newlines=True,
             encoding="utf8",
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             check=True,
             ).stdout.strip()
 
