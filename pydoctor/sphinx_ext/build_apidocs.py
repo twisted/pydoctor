@@ -9,6 +9,8 @@ Inside the Sphinx conf.py file you need to define the following configuration op
   - C{pydoctor_url_path} - defined the URL path to the API documentation
                            You can use C{{rtd_version}} to have the URL automatically updated
                            based on Read The Docs build.
+                         - (private usage) a mapping with values URL path definition.
+                           Make sure each definition will produce a unique URL.
 
   - C{pydoctor_args} - Sequence with all the pydoctor command line arguments used to trigger the build.
                      - (private usage) a mapping with values as sequence of pydoctor command line arguments.
@@ -90,8 +92,14 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
     runs = config.pydoctor_args
 
     if not isinstance(runs, Mapping):
-        # We have a single pydoctor call
+        # We have a single pydoctor call.
         runs = {'main': runs}
+
+
+    pydoctor_url_path = config.pydoctor_url_path
+    if not isinstance(runs, Mapping):
+    # We have a single pydoctor inventory mapping.
+        pydoctor_url_path = {'main': pydoctor_url_path}
 
     # Defer resolving the git reference for only when asked by
     # end users.
@@ -111,10 +119,10 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         temp_path = output_path.with_suffix('.pydoctor_temp')
 
         # Update intersphinx_mapping.
-        pydoctor_url_path = config.pydoctor_url_path
-        if pydoctor_url_path:
+        url_path = pydoctor_url_path.get(key)
+        if url_path:
             intersphinx_mapping = config.intersphinx_mapping
-            url = pydoctor_url_path.format(**{'rtd_version': rtd_version})
+            url = url_path.format(**{'rtd_version': rtd_version})
             intersphinx_mapping[key + '-api-docs'] = (url, str(temp_path / 'objects.inv'))
 
         # Build the API docs in temporary path.
@@ -175,7 +183,7 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     @return: The extension version and runtime options.
     """
     app.add_config_value("pydoctor_args", None, "env")
-    app.add_config_value("pydoctor_url_path", "", "env")
+    app.add_config_value("pydoctor_url_path", None, "env")
     app.add_config_value("pydoctor_debug", False, "env")
 
     # Make sure we have a lower priority than intersphinx extension.

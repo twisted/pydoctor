@@ -8,6 +8,9 @@ source =
 
 [report]
 exclude_lines =
+    # Manually marked:
+    pragma: no cover
+
     # Intended to be unreachable:
     raise NotImplementedError$
     raise NotImplementedError\(
