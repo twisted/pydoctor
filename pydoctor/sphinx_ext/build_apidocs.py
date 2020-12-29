@@ -18,7 +18,8 @@ Inside the Sphinx conf.py file you need to define the following configuration op
 The following format placeholders are resolved for C{pydoctor_args} at runtime:
   - C{{outdir}} - the Sphinx output dir
   - C{{source_reference}} - the source reference that can be used for source code links.
-                            Only git is supported for now.
+                            It tried to extract the tag name from Read The Docs build environment.
+                            It falls back to git sha revision.
 
 You must call pydoctor with C{--quiet} argument
 as otherwise any extra output is converted into Sphinx warnings.
@@ -29,7 +30,7 @@ import shutil
 from contextlib import redirect_stdout
 from io import StringIO
 from pprint import pprint
-from typing import Any, Dict, Sequence, Mapping
+from typing import Any, cast, Sequence, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -38,18 +39,19 @@ from sphinx.util import logging
 
 from pydoctor import __version__
 from pydoctor.driver import main, parse_args
-from pydoctor.sphinx_ext import get_source_reference
+from pydoctor.util import get_source_reference
 
 logger = logging.getLogger(__name__)
-
-# Shared state between init and finish.
-_placeholders: Dict[str, str] = {}
 
 
 def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
+
+    # Share placeholders between init and finish.
+    placeholders = cast(Mapping[str, str], app.config['placeholders'])
+
     runs = app.config.pydoctor_args
 
     if not isinstance(runs, Mapping):
@@ -57,7 +59,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         runs = {'main': runs}
 
     for key, value in runs.items():
-        arguments = _get_arguments(value, _placeholders)
+        arguments = _get_arguments(value, placeholders)
 
         options, _ = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
@@ -121,7 +123,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         output_path.rename(temp_path)
 
     # Share placeholders between init and finish.
-    _placeholders.update(placeholders)
+    config['placeholders'] = placeholders
 
     if config.pydoctor_debug:
         print("== Environment dump ===")
