@@ -50,7 +50,7 @@ from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
-from docutils.utils import new_document
+from docutils.utils import Reporter, new_document
 from docutils.nodes import Node, NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
 from docutils.parsers.rst import Directive, directives
@@ -175,14 +175,10 @@ class _EpydocReader(StandaloneReader):
         return document
 
     def report(self, error: docutils.nodes.system_message) -> None:
-        try:
-            is_fatal = int(error['level']) > 2
-        except:
-            is_fatal = True
-        try:
-            linenum: Optional[int] = int(error['line'])
-        except:
-            linenum = None
+        level: int = error['level']
+        is_fatal = level >= Reporter.ERROR_LEVEL
+
+        linenum: Optional[int] = error.get('line')
 
         msg = ''.join(c.astext() for c in error)
 
