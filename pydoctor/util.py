@@ -16,7 +16,7 @@ def get_source_reference() -> str:
 
     Only git VSC is supported for now.
 
-    @raises: L{RuntimeError} if source reference couldn't be retrieved.
+    @raises RuntimeError: If source reference couldn't be retrieved.
     """
     if os.environ.get("READTHEDOCS", "") == "True":
         rtd_version = os.environ.get("READTHEDOCS_VERSION", "")
@@ -39,7 +39,7 @@ def _get_git_reference() -> str:
     """
     reference_name = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        text=True,
+        universal_newlines=True,
         encoding="utf8",
         capture_output=True,
         check=True,
@@ -53,7 +53,7 @@ def _get_git_reference() -> str:
         # Fallback to commit ID.
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            text=True,
+            universal_newlines=True,
             encoding="utf8",
             capture_output=True,
             check=True,
