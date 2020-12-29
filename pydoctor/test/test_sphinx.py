@@ -682,7 +682,7 @@ def cacheDirectory(request: FixtureRequest, tmp_path_factory: TempPathFactory) -
     maxAgeAmount=maxAgeAmounts,
     maxAgeUnit=maxAgeUnits,
 )
-@settings(max_examples=700)
+@settings(max_examples=700, deadline=None)
 def test_prepareCache(
         cacheDirectory: Path,
         clearCache: bool,

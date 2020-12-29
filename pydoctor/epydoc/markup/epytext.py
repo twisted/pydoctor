@@ -131,7 +131,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Optional, Sequence, Union
+from typing import Any, List, Optional, Sequence, Union, cast, overload
 import re
 
 from twisted.web.template import CharRef, Tag, tags
@@ -150,21 +150,17 @@ class Element:
     node is marked by a I{tag} and zero or more I{attributes}.  Each
     attribute is a mapping from a string key to a string value.
     """
-    def __init__(self, tag, *children, **attribs):
+    def __init__(self, tag: str, *children: Union[str, 'Element'], **attribs: Any):
         self.tag = tag
-        """A string tag indicating the type of this element.
-        @type: C{string}"""
+        """A string tag indicating the type of this element."""
 
         self.children = list(children)
-        """A list of the children of this element.
-        @type: C{list} of (C{string} or C{Element})"""
+        """A list of the children of this element."""
 
         self.attribs = attribs
-        """A dictionary mapping attribute names to attribute values
-        for this element.
-        @type: C{dict} from C{string} to C{string}"""
+        """A dictionary mapping attribute names to attribute values for this element."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a string representation of this element, using XML
         notation.
@@ -175,7 +171,7 @@ class Element:
         content = ''.join(str(child) for child in self.children)
         return f'<{self.tag}{attribs}>{content}</{self.tag}>'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attribs = ''.join(f', {k}={v!r}' for k, v in self.attribs.items())
         args = ''.join(f', {c!r}' for c in self.children)
         return f'Element({self.tag}{args}{attribs})'
@@ -249,20 +245,25 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-def parse(text, errors = None):
+@overload
+def parse(text: str) -> Element: ...
+
+@overload
+def parse(text: str, errors: List[ParseError]) -> Optional[Element]: ...
+
+def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Element]:
     """
     Return a DOM tree encoding the contents of an epytext string.  Any
     errors generated during parsing will be stored in C{errors}.
 
     @param text: The epytext string to parse.
-    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then fatal errors
         will generate exceptions, and non-fatal errors will be
         ignored.
-    @type errors: C{list} of L{ParseError}
-    @return: a DOM tree encoding the contents of an epytext string.
-    @rtype: C{Element}
+    @return: a DOM tree encoding the contents of an epytext string,
+        or C{None} if non-fatal errors were encountered and no C{errors}
+        accumulator was provided.
     @raise ParseError: If C{errors} is C{None} and an error is
         encountered while parsing.
     """
@@ -296,7 +297,7 @@ def parse(text, errors = None):
     # corresponds to).  No 2 consecutive indent_stack values will be
     # ever be "None."  Use initial dummy elements in the stack, so we
     # don't have to worry about bounds checking.
-    stack = [None, doc]
+    stack = [cast(Element, None), doc]
     indent_stack = [-1, None]
 
     for token in tokens:
@@ -311,23 +312,23 @@ def parse(text, errors = None):
 
         # If Token has type PARA, colorize and add the new paragraph
         if token.tag == Token.PARA:
-            _add_para(doc, token, stack, indent_stack, errors)
+            _add_para(token, stack, indent_stack, errors)
 
         # If Token has type HEADING, add the new section
         elif token.tag == Token.HEADING:
-            _add_section(doc, token, stack, indent_stack, errors)
+            _add_section(token, stack, indent_stack, errors)
 
         # If Token has type LBLOCK, add the new literal block
         elif token.tag == Token.LBLOCK:
-            stack[-1].children.append(token.to_dom(doc))
+            stack[-1].children.append(token.to_dom())
 
         # If Token has type DTBLOCK, add the new doctest block
         elif token.tag == Token.DTBLOCK:
-            stack[-1].children.append(token.to_dom(doc))
+            stack[-1].children.append(token.to_dom())
 
         # If Token has type BULLET, add the new list/list item/field
         elif token.tag == Token.BULLET:
-            _add_list(doc, token, stack, indent_stack, errors)
+            _add_list(token, stack, indent_stack, errors)
         else:
             raise AssertionError(f"Unknown token type: {token.tag}")
 
@@ -350,7 +351,11 @@ def parse(text, errors = None):
     # Return the top-level epytext DOM element.
     return doc
 
-def _pop_completed_blocks(token, stack, indent_stack):
+def _pop_completed_blocks(
+        token: 'Token',
+        stack: List[Element],
+        indent_stack: List[Optional[int]]
+        ) -> None:
     """
     Pop any completed blocks off the stack.  This includes any
     blocks that we have dedented past, as well as any list item
@@ -364,8 +369,10 @@ def _pop_completed_blocks(token, stack, indent_stack):
             pop = False
 
             # Dedent past a block
-            if indent_stack[-1]!=None and indent<indent_stack[-1]: pop = True
-            elif indent_stack[-1]==None and indent<indent_stack[-2]: pop = True
+            if indent_stack[-1] is not None and indent < indent_stack[-1]:
+                pop = True
+            elif indent_stack[-1] is None and indent < cast(int, indent_stack[-2]):
+                pop = True
 
             # Dedent to a list item, if it is follwed by another list
             # item with the same indentation.
@@ -382,7 +389,12 @@ def _pop_completed_blocks(token, stack, indent_stack):
             stack.pop()
             indent_stack.pop()
 
-def _add_para(doc, para_token, stack, indent_stack, errors):
+def _add_para(
+        para_token: 'Token',
+        stack: List[Element],
+        indent_stack: List[Optional[int]],
+        errors: List[ParseError]
+        ) -> None:
     """Colorize the given paragraph, and add it to the DOM tree."""
     # Check indentation, and update the parent's indentation
     # when appropriate.
@@ -390,7 +402,7 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
         indent_stack[-1] = para_token.indent
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
-        para = _colorize(doc, para_token, errors)
+        para = _colorize(para_token, errors)
         if para_token.inline:
             para.attribs['inline'] = True
         stack[-1].children.append(para)
@@ -398,7 +410,12 @@ def _add_para(doc, para_token, stack, indent_stack, errors):
         estr = "Improper paragraph indentation."
         errors.append(StructuringError(estr, para_token.startline))
 
-def _add_section(doc, heading_token, stack, indent_stack, errors):
+def _add_section(
+        heading_token: 'Token',
+        stack: List[Element],
+        indent_stack: List[Optional[int]],
+        errors: List[ParseError]
+        ) -> None:
     """Add a new section to the DOM tree, with the given heading."""
     if indent_stack[-1] is None:
         indent_stack[-1] = heading_token.indent
@@ -412,17 +429,18 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
             estr = "Headings must occur at the top level."
             errors.append(StructuringError(estr, heading_token.startline))
             break
-    if (heading_token.level+2) > len(stack):
+    index = cast(int, heading_token.level) + 2
+    if index > len(stack):
         estr = "Wrong underline character for heading."
         errors.append(StructuringError(estr, heading_token.startline))
 
     # Pop the appropriate number of headings so we're at the
     # correct level.
-    stack[heading_token.level+2:] = []
-    indent_stack[heading_token.level+2:] = []
+    stack[index:] = []
+    indent_stack[index:] = []
 
     # Colorize the heading
-    head = _colorize(doc, heading_token, errors, 'heading')
+    head = _colorize(heading_token, errors, 'heading')
 
     # Add the section's and heading's DOM elements.
     sec = Element('section')
@@ -431,7 +449,12 @@ def _add_section(doc, heading_token, stack, indent_stack, errors):
     sec.children.append(head)
     indent_stack.append(None)
 
-def _add_list(doc, bullet_token, stack, indent_stack, errors):
+def _add_list(
+        bullet_token: 'Token',
+        stack: List[Element],
+        indent_stack: List[Optional[int]],
+        errors: List[ParseError]
+        ) -> None:
     """
     Add a new list item or field to the DOM tree, with the given
     bullet or field tag.  When necessary, create the associated
@@ -452,8 +475,8 @@ def _add_list(doc, bullet_token, stack, indent_stack, errors):
     if stack[-1].tag != list_type:
         newlist = True
     elif list_type == 'olist' and stack[-1].tag == 'olist':
-        old_listitem = stack[-1].children[-1]
-        old_bullet = old_listitem.attribs.get('bullet').split('.')[:-1]
+        old_listitem = cast(Element, stack[-1].children[-1])
+        old_bullet = old_listitem.attribs['bullet'].split('.')[:-1]
         new_bullet = bullet_token.contents.split('.')[:-1]
         if (new_bullet[:-1] != old_bullet[:-1] or
             int(new_bullet[-1]) != int(old_bullet[-1])+1):
@@ -605,26 +628,26 @@ class Token:
     HEADING = 'heading'
     BULLET = 'bullet'
 
-    def __init__(self, tag, startline, contents, indent, level=None,
-                 inline=False):
+    def __init__(self,
+            tag: str,
+            startline: int,
+            contents: str,
+            indent: Optional[int],
+            level: Optional[int] = None,
+            inline: bool = False
+            ):
         """
         Create a new C{Token}.
 
         @param tag: The type of the new C{Token}.
-        @type tag: C{string}
         @param startline: The line on which the new C{Token} begins.
-        @type startline: C{int}
         @param contents: The normalized contents of the new C{Token}.
-        @type contents: C{string}
         @param indent: The indentation of the new C{Token} (in number
             of leading spaces).  A value of C{None} indicates an
             unknown indentation.
-        @type indent: C{int} or C{None}
         @param level: The heading-level of this C{Token} if it is a
             heading; C{None}, otherwise.
-        @type level: C{int} or C{None}
         @param inline: Is this C{Token} inline as a C{<span>}?.
-        @type inline: C{bool}
         """
         self.tag = tag
         self.startline = startline
@@ -633,7 +656,7 @@ class Token:
         self.level = level
         self.inline = inline
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         @rtype: C{string}
         @return: the formal representation of this C{Token}.
@@ -642,10 +665,9 @@ class Token:
         """
         return f'<Token: {self.tag} at line {self.startline}>'
 
-    def to_dom(self, doc):
+    def to_dom(self) -> Element:
         """
         @return: a DOM representation of this C{Token}.
-        @rtype: L{Element}
         """
         e = Element(self.tag)
         e.children.append(self.contents)
@@ -664,7 +686,13 @@ _LIST_BULLET_RE = re.compile(_ULIST_BULLET + '|' + _OLIST_BULLET)
 _FIELD_BULLET_RE = re.compile(_FIELD_BULLET)
 del _ULIST_BULLET, _OLIST_BULLET, _FIELD_BULLET
 
-def _tokenize_doctest(lines, start, block_indent, tokens, errors):
+def _tokenize_doctest(
+        lines: List[str],
+        start: int,
+        block_indent: int,
+        tokens: List[Token],
+        errors: List[ParseError]
+        ) -> int:
     """
     Construct a L{Token} containing the doctest block starting at
     C{lines[start]}, and append it to C{tokens}.  C{block_indent}
@@ -682,13 +710,6 @@ def _tokenize_doctest(lines, start, block_indent, tokens, errors):
         generate exceptions.
     @return: The line number of the first line following the doctest
         block.
-
-    @type lines: C{list} of C{string}
-    @type start: C{int}
-    @type block_indent: C{int}
-    @type tokens: C{list} of L{Token}
-    @type errors: C{list} of L{ParseError}
-    @rtype: C{int}
     """
     # If they dedent past block_indent, keep track of the minimum
     # indentation.  This is used when removing leading indentation
@@ -714,12 +735,17 @@ def _tokenize_doctest(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [ln[min_indent:] for ln in lines[start:linenum]]
-    contents = '\n'.join(contents)
+    contents = '\n'.join(ln[min_indent:] for ln in lines[start:linenum])
     tokens.append(Token(Token.DTBLOCK, start, contents, block_indent))
     return linenum
 
-def _tokenize_literal(lines, start, block_indent, tokens, errors):
+def _tokenize_literal(
+        lines: List[str],
+        start: int,
+        block_indent: int,
+        tokens: List[Token],
+        errors: List[ParseError]
+        ) -> int:
     """
     Construct a L{Token} containing the literal block starting at
     C{lines[start]}, and append it to C{tokens}.  C{block_indent}
@@ -737,13 +763,6 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
         will be appended to this list.
     @return: The line number of the first line following the literal
         block.
-
-    @type lines: C{list} of C{string}
-    @type start: C{int}
-    @type block_indent: C{int}
-    @type tokens: C{list} of L{Token}
-    @type errors: C{list} of L{ParseError}
-    @rtype: C{int}
     """
     linenum = start + 1
     while linenum < len(lines):
@@ -760,13 +779,18 @@ def _tokenize_literal(lines, start, block_indent, tokens, errors):
         linenum += 1
 
     # Add the token, and return the linenum after the token ends.
-    contents = [ln[block_indent:] for ln in lines[start:linenum]]
-    contents = '\n'.join(contents)
+    contents = '\n'.join(ln[block_indent:] for ln in lines[start:linenum])
     contents = re.sub(r'(\A[ \n]*\n)|(\n[ \n]*\Z)', '', contents)
     tokens.append(Token(Token.LBLOCK, start, contents, block_indent))
     return linenum
 
-def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
+def _tokenize_listart(
+        lines: List[str],
+        start: int,
+        bullet_indent: int,
+        tokens: List[Token],
+        errors: List[ParseError]
+        ) -> int:
     """
     Construct L{Token}s for the bullet and the first paragraph of the
     list item (or field) starting at C{lines[start]}, and append them
@@ -784,21 +808,16 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
         will be appended to this list.
     @return: The line number of the first line following the list
         item's first paragraph.
-
-    @type lines: C{list} of C{string}
-    @type start: C{int}
-    @type bullet_indent: C{int}
-    @type tokens: C{list} of L{Token}
-    @type errors: C{list} of L{ParseError}
-    @rtype: C{int}
     """
     linenum = start + 1
     para_indent = None
     doublecolon = lines[start].rstrip()[-2:] == '::'
 
     # Get the contents of the bullet.
-    para_start = _BULLET_RE.match(lines[start], bullet_indent).end()
-    bcontents = lines[start][bullet_indent:para_start].strip()
+    match = _BULLET_RE.match(lines[start], bullet_indent)
+    assert match is not None
+    para_start = match.end()
+    bcontents = lines[start][bullet_indent : para_start].strip()
 
     while linenum < len(lines):
         # Find the indentation of this line.
@@ -833,9 +852,10 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
                         inline=True))
 
     # Add the paragraph token.
-    pcontents = ([lines[start][para_start:].strip()] +
-                 [ln.strip() for ln in lines[start+1:linenum]])
-    pcontents = ' '.join(pcontents).strip()
+    pcontents = ' '.join(
+        [lines[start][para_start:].strip()] +
+        [ln.strip() for ln in lines[start+1:linenum]]
+        ).strip()
     if pcontents:
         tokens.append(Token(Token.PARA, start, pcontents, para_indent,
                             inline=True))
@@ -843,7 +863,13 @@ def _tokenize_listart(lines, start, bullet_indent, tokens, errors):
     # Return the linenum after the paragraph token ends.
     return linenum
 
-def _tokenize_para(lines, start, para_indent, tokens, errors):
+def _tokenize_para(
+        lines: List[str],
+        start: int,
+        para_indent: int,
+        tokens: List[Token],
+        errors: List[ParseError]
+        ) -> int:
     """
     Construct a L{Token} containing the paragraph starting at
     C{lines[start]}, and append it to C{tokens}.  C{para_indent}
@@ -861,13 +887,6 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
         will be appended to this list.
     @return: The line number of the first line following the
         paragraph.
-
-    @type lines: C{list} of C{string}
-    @type start: C{int}
-    @type para_indent: C{int}
-    @type tokens: C{list} of L{Token}
-    @type errors: C{list} of L{ParseError}
-    @rtype: C{int}
     """
     linenum = start + 1
     doublecolon = False
@@ -924,25 +943,21 @@ def _tokenize_para(lines, start, para_indent, tokens, errors):
             return start+2
 
     # Add the paragraph token, and return the linenum after it ends.
-    contents = ' '.join(contents)
-    tokens.append(Token(Token.PARA, start, contents, para_indent))
+    tokens.append(Token(Token.PARA, start, ' '.join(contents), para_indent))
     return linenum
 
-def _tokenize(text, errors):
+def _tokenize(text: str, errors: List[ParseError]) -> List[Token]:
     """
     Split a given formatted docstring into an ordered list of
-    C{Token}s, according to the epytext markup rules.
+    L{Token}s, according to the epytext markup rules.
 
     @param text: The epytext string
-    @type text: C{str}
     @param errors: A list where any errors generated during parsing
         will be stored.  If no list is specified, then errors will
         generate exceptions.
-    @type errors: C{list} of L{ParseError}
-    @return: a list of the C{Token}s that make up the given string.
-    @rtype: C{list} of L{Token}
+    @return: a list of the L{Token}s that make up the given string.
     """
-    tokens = []
+    tokens: List[Token] = []
     lines = text.split('\n')
 
     # Scan through the lines, determining what @type of token we're
@@ -993,7 +1008,7 @@ def _tokenize(text, errors):
 _BRACE_RE = re.compile(r'{|}')
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
-def _colorize(doc, token, errors, tagName='para'):
+def _colorize(token: Token, errors: List[ParseError], tagName: str = 'para') -> Element:
     """
     Given a string containing the contents of a paragraph, produce a
     DOM C{Element} encoding that paragraph.  Colorized regions are
@@ -1106,11 +1121,11 @@ def _colorize(doc, token, errors, tagName='para'):
 
             # Special handling for literal braces elements:
             if stack[-1].tag == 'litbrace':
-                stack[-2].children[-1:] = ['{'] + stack[-1].children + ['}']
+                stack[-2].children[-1:] = ['{'] + cast(List[str], stack[-1].children) + ['}']
 
             # Special handling for link-type elements:
             if stack[-1].tag in _LINK_COLORIZING_TAGS:
-                _colorize_link(doc, stack[-1], token, end, errors)
+                _colorize_link(stack[-1], token, end, errors)
 
             # Pop the completed element.
             openbrace_stack.pop()
@@ -1128,7 +1143,7 @@ def _colorize(doc, token, errors, tagName='para'):
 
     return stack[0]
 
-def _colorize_link(doc, link, token, end, errors):
+def _colorize_link(link: Element, token: Token, end: int, errors: List[ParseError]) -> None:
     variables = link.children[:]
 
     # If the last child isn't text, we know it's bad.
@@ -1144,7 +1159,7 @@ def _colorize_link(doc, link, token, end, errors):
         variables[-1] = text
     # Can we extract an implicit target?
     elif len(variables) == 1:
-        target = variables[0]
+        target = cast(str, variables[0])
     else:
         estr = f"Bad {link.tag} target."
         errors.append(ColorizingError(estr, token, end))
@@ -1196,24 +1211,21 @@ class ColorizingError(ParseError):
     """
     An error generated while colorizing a paragraph.
     """
-    def __init__(self, descr, token, charnum, is_fatal=True):
+    def __init__(self, descr: str, token: Token, charnum: int, is_fatal: bool = True):
         """
         Construct a new colorizing exception.
 
         @param descr: A short description of the error.
-        @type descr: C{string}
         @param token: The token where the error occured
-        @type token: L{Token}
         @param charnum: The character index of the position in
             C{token} where the error occured.
-        @type charnum: C{int}
         """
         ParseError.__init__(self, descr, token.startline, is_fatal)
         self.token = token
         self.charnum = charnum
 
     CONTEXT_RANGE = 20
-    def descr(self):
+    def descr(self) -> str:
         RANGE = self.CONTEXT_RANGE
         if self.charnum <= RANGE:
             left = self.token.contents[0:self.charnum]
@@ -1230,35 +1242,35 @@ class ColorizingError(ParseError):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring, errors):
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using epytext; and
-    return a C{ParsedDocstring} representation of its contents.
+    return a L{ParsedDocstring} representation of its contents.
+
     @param docstring: The docstring to parse
-    @type docstring: C{string}
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @type errors: C{list} of L{ParseError}
-    @rtype: L{ParsedDocstring}
     """
     tree = parse(docstring, errors)
     if tree is None:
         return ParsedEpytextDocstring(None, ())
 
-    fields = []
-    if tree.children and tree.children[-1].tag == 'fieldlist':
-        # Take field list out of the document tree.
-        field_list = tree.children.pop()
+    tree_children = cast(List[Element], tree.children)
 
-        for field in field_list.children:
+    fields = []
+    if tree_children and tree_children[-1].tag == 'fieldlist':
+        # Take field list out of the document tree.
+        field_list = tree_children.pop()
+        field_children = cast(List[Element], field_list.children)
+
+        for field in field_children:
             # Get the tag
-            tag = field.children[0].children[0].lower()
-            del field.children[0]
+            tag = cast(str, cast(Element, field.children.pop(0)).children[0]).lower()
 
             # Get the argument.
-            if field.children and field.children[0].tag == 'arg':
-                arg = field.children[0].children[0]
-                del field.children[0]
+            if field.children and cast(Element, field.children[0]).tag == 'arg':
+                arg: Optional[str] = \
+                    cast(str, cast(Element, field.children.pop(0)).children[0])
             else:
                 arg = None
 
@@ -1269,7 +1281,7 @@ def parse_docstring(docstring, errors):
             fields.append(Field(tag, arg, fieldDoc, lineno))
 
     # Save the remaining docstring as the description.
-    if tree.children and tree.children[0].children:
+    if tree_children and tree_children[0].children:
         return ParsedEpytextDocstring(tree, fields)
     else:
         return ParsedEpytextDocstring(None, fields)
@@ -1369,7 +1381,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
             label = tags.code(variables[0])
-            lineno = int(tree.children[1].attribs['lineno'])
+            lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
             try:
                 url = linker.resolve_identifier_xref(variables[1], lineno)
             except LookupError:
@@ -1401,13 +1413,13 @@ class ParsedEpytextDocstring(ParsedDocstring):
             variables.append('\n')
             return tags.pre('\n', *variables, class_='literalblock')
         elif tree.tag == 'doctestblock':
-            return colorize_doctest(tree.children[0].strip())
+            return colorize_doctest(cast(str, tree.children[0]).strip())
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag in ('epytext', 'section', 'name'):
             return Tag('')(*variables)
         elif tree.tag == 'symbol':
-            symbol = tree.children[0]
+            symbol = cast(str, tree.children[0])
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

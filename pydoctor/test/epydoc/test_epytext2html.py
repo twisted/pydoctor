@@ -12,15 +12,16 @@ one attribute per tag.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
+from pydoctor.test import NotFoundLinker
 
 
-def epytext2html(s: str) -> str:
+def epytext2html(s: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     errors: List[ParseError] = []
     parsed = parse_docstring(s, errors)
     assert not errors
-    return flatten(parsed.to_stan(None))
+    return flatten(parsed.to_stan(linker))
 
 def squash(s: str) -> str:
     return ''.join(
