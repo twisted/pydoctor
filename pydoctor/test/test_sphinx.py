@@ -64,26 +64,45 @@ def inv_reader_nolog() -> sphinx.SphinxInventory:
     return sphinx.SphinxInventory(logger=PydoctorNoLogger())
 
 
-@pytest.fixture
-def inv_writer() -> InvWriter:
-    return InvWriter(logger=PydoctorLogger(), project_name='project_name')
+def get_inv_writer_with_logger(name: str = 'project_name', version: str = '1.2') -> Tuple[InvWriter, PydoctorLogger]:
+    """
+    @return: Tuple of a Sphinx inventory writer connected to the logger.
+    """
+    logger = PydoctorLogger()
+    writer = InvWriter(
+        logger=logger,
+        project_name=name,
+        project_version=version,
+        )
+    return writer, logger
 
 
 @pytest.fixture
 def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
-    return sphinx.SphinxInventoryWriter(logger=PydoctorNoLogger(), project_name='project_name')
+    """
+    @return: A Sphinx inventory writer that is connected to a null logger.
+    """
+    return sphinx.SphinxInventoryWriter(
+        logger=PydoctorNoLogger(),
+        project_name='project_name',
+        project_version='2.3.0',
+        )
 
 
 IGNORE_SYSTEM = cast(model.System, 'ignore-system')
 """Passed as a System when we don't want the system to be accessed."""
 
 
-def test_generate_empty_functional(inv_writer: InvWriter) -> None:
+def test_generate_empty_functional() -> None:
     """
     Functional test for index generation of empty API.
 
     Header is plain text while content is compressed.
     """
+    inv_writer, logger = get_inv_writer_with_logger(
+        name='project-name',
+        version='1.2.0rc1',
+        )
 
     output = io.BytesIO()
     @contextmanager
@@ -99,11 +118,11 @@ def test_generate_empty_functional(inv_writer: InvWriter) -> None:
         f'Generating objects inventory at {inventory_path}',
         0
         )]
-    assert expected_log == inv_writer._logger.messages
+    assert expected_log == logger.messages
 
     expected_ouput = b"""# Sphinx inventory version 2
-# Project: project_name
-# Version: 2.0
+# Project: project-name
+# Version: 1.2.0rc1
 # The rest of this file is compressed with zlib.
 x\x9c\x03\x00\x00\x00\x00\x01"""
     assert expected_ouput == output.getvalue()
@@ -214,11 +233,12 @@ class UnknownType(model.Documentable):
     """
 
 
-def test_generateLine_unknown(inv_writer: InvWriter) -> None:
+def test_generateLine_unknown() -> None:
     """
     When object type is uknown a message is logged and is handled as
     generic object.
     """
+    inv_writer, logger = get_inv_writer_with_logger()
 
     result = inv_writer._generateLine(
         UnknownType(IGNORE_SYSTEM, 'unknown1'))
@@ -228,7 +248,7 @@ def test_generateLine_unknown(inv_writer: InvWriter) -> None:
         'sphinx',
         "Unknown type <class 'pydoctor.test.test_sphinx.UnknownType'> for unknown1.",
         -1
-        )] == inv_writer._logger.messages
+        )] == logger.messages
 
 
 def test_getPayload_empty(inv_reader_nolog: sphinx.SphinxInventory) -> None:

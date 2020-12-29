@@ -23,8 +23,6 @@ copyright = '2020, Michael Hudson-Doyle and various contributors (see Git histor
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
 from pydoctor import __version__ as version
-# Use the version to make pyflakes happy.
-version
 
 # -- General configuration ---------------------------------------------------
 
@@ -80,12 +78,14 @@ pydoctor_args = {
     'main': [
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
+        f'--project-version={version}',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext/demo',
         '--project-name=pydoctor-epytext-demo',
+        '--project-version=1.2.0',
         '--docformat=epytext',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
