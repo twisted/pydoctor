@@ -82,7 +82,7 @@ class ModuleVistor(ast.NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return
+            return None
 
         rawbases = []
         bases = []
@@ -116,26 +116,23 @@ class ModuleVistor(ast.NodeVisitor):
             cls.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(cls)
 
-        def node2data(node):
-            dotted_name = node2dottedname(node)
-            if dotted_name is None:
-                return None
-            dotted_name = '.'.join(dotted_name)
-            full_name = self.builder.current.expandName(dotted_name)
-            obj = self.system.objForFullName(full_name)
-            return (dotted_name, full_name, obj)
-
         if node.decorator_list:
             for decnode in node.decorator_list:
                 if isinstance(decnode, ast.Call):
                     args = []
                     for arg in decnode.args:
-                        args.append(node2data(arg))
-                    base = node2data(decnode.func)
+                        args.append(node2fullname(arg, parent))
+                    base = node2fullname(decnode.func, parent)
                 else:
-                    base = node2data(decnode)
+                    base = node2fullname(decnode, parent)
                     args = None
-                cls.decorators.append((base, args))
+                if base is None:  # pragma: no cover
+                    # There are expressions for which node2data() returns None,
+                    # but I cannot find any that don't lead to a SyntaxError
+                    # when used in a decorator.
+                    cls.report("cannot make sense of class decorator")
+                else:
+                    cls.decorators.append((base, args))
         cls.raw_decorators = node.decorator_list if node.decorator_list else []
 
         for b in cls.baseobjects:
@@ -143,6 +140,8 @@ class ModuleVistor(ast.NodeVisitor):
                 b.subclasses.append(cls)
         self.default(node)
         self.builder.popClass()
+
+        return cls
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
