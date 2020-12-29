@@ -9,8 +9,8 @@ Inside the Sphinx conf.py file you need to define the following configuration op
   - C{pydoctor_url_path} - defined the URL path to the API documentation
                            You can use C{{rtd_version}} to have the URL automatically updated
                            based on Read The Docs build.
-                        - (private usage) a mapping with values URL path definition.
-                          Make sure each definition will produce a unique URL.
+                         - (private usage) a mapping with values URL path definition.
+                           Make sure each definition will produce a unique URL.
 
   - C{pydoctor_args} - Sequence with all the pydoctor command line arguments used to trigger the build.
                      - (private usage) a mapping with values as sequence of pydoctor command line arguments.
