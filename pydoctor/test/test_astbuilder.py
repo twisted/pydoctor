@@ -8,11 +8,11 @@ from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
-from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
+from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import CapSys, posonlyargs, typecomment
+from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
 
@@ -66,23 +66,18 @@ def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     assert epytext.tag == 'epytext'
     assert len(epytext.children) == 1
     para = epytext.children[0]
+    assert isinstance(para, Element)
     assert para.tag == 'para'
     assert len(para.children) == 1
     value = para.children[0]
     assert isinstance(value, str)
     return value
 
-class NotFoundLinker(DocstringLinker):
-    """A DocstringLinker implementation that cannot find any links."""
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        return None
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        raise LookupError(identifier)
-
-def to_html(parsed_docstring: ParsedDocstring) -> str:
-    return flatten(parsed_docstring.to_stan(NotFoundLinker()))
+def to_html(
+        parsed_docstring: ParsedDocstring,
+        linker: DocstringLinker = NotFoundLinker()
+        ) -> str:
+    return flatten(parsed_docstring.to_stan(linker))
 
 @overload
 def type2str(type_expr: None) -> None: ...
@@ -500,8 +495,7 @@ def test_classdecorator(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.decorators == [(('cd', 'mod.cd', mod.contents['cd']), None)], \
-      C.decorators
+    assert C.decorators == [('mod.cd', None)]
 
 
 @systemcls_param
@@ -513,11 +507,8 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
     class C:
         pass
     ''', modname='test', systemcls=systemcls)
-    cd = mod.contents['cd']
-    A = mod.contents['A']
     C = mod.contents['C']
-    assert C.decorators == [(('cd', 'test.cd', cd), [('A', 'test.A', A)])], \
-      C.decorators
+    assert C.decorators == [('test.cd', ['test.A'])]
 
 
 @systemcls_param

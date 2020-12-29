@@ -87,9 +87,7 @@ def implements_test(src: str) -> None:
     assert onlybar.allImplementedInterfaces == ['zi.IBar']
 
     assert ifoo.implementedby_directly == [foo]
-    assert ifoo.allImplementations == [foo, foobar]
     assert ibar.implementedby_directly == [foobar, onlybar]
-    assert ibar.allImplementations == [foobar, onlybar]
 
 
 def test_subclass_with_same_name() -> None:
@@ -304,7 +302,10 @@ def test_docsources_from_moduleprovides() -> None:
 def test_interfaceallgames() -> None:
     system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceallgames.interface']
-    assert [o.fullName() for o in mod.contents['IAnInterface'].allImplementations] == ['interfaceallgames.implementation.Implementation']
+    iface = mod.contents['IAnInterface']
+    assert [o.fullName() for o in iface.implementedby_directly] == [
+        'interfaceallgames.implementation.Implementation'
+        ]
 
 def test_implementer_with_none() -> None:
     """
@@ -365,3 +366,39 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == "mod:5: probable interface mod.C not marked as such\n"
+
+def test_implementer_nocall(capsys: CapSys) -> None:
+    """
+    Report a warning when @implementer is used without calling it.
+    """
+    src = '''
+    import zope.interface
+    @zope.interface.implementer
+    class C:
+        pass
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == "mod:3: @implementer requires arguments\n"
+
+def test_classimplements_badarg(capsys: CapSys) -> None:
+    """
+    Report a warning when the arguments to classImplements() don't make sense.
+    """
+    src = '''
+    from zope.interface import Interface, classImplements
+    class IBar(Interface):
+        pass
+    def f():
+        pass
+    classImplements()
+    classImplements(f, IBar)
+    classImplements(g, IBar)
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'mod:7: required argument to classImplements() missing\n'
+        'mod:8: argument "mod.f" to classImplements() is not a class\n'
+        'mod:9: argument "g" to classImplements() not found\n'
+        )

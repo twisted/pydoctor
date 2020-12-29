@@ -19,7 +19,8 @@ def test_help_output_extension():
     The help output extension will include the CLI help on the Sphinx page.
     """
     with open(BASE_DIR / 'help.html', 'r') as stream:
-        assert '--project-url=PROJECTURL' in stream.read()
+        page = stream.read()
+        assert '--project-url=PROJECTURL' in page, page
 
 
 def test_rtd_pydoctor_call():
@@ -28,8 +29,9 @@ def test_rtd_pydoctor_call():
     generated.
     """
     # The pydoctor index is generated and overwrites the Sphinx files.
-    with open(BASE_DIR / 'api' / 'index.html', 'r') as stream:
-        assert 'moduleIndex.html' in stream.read()
+    with open(API_DIR / 'index.html', 'r') as stream:
+        page = stream.read()
+        assert 'moduleIndex.html' in page, page
 
 
 def test_rtd_pydoctor_multiple_call():
@@ -38,7 +40,8 @@ def test_rtd_pydoctor_multiple_call():
     API doc source.
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'index.html', 'r') as stream:
-        assert 'pydoctor-epytext-demo API Documentation' in stream.read()
+        page = stream.read()
+        assert 'pydoctor-epytext-demo API Documentation' in page, page
 
 
 def test_rtd_extension_inventory():
@@ -46,8 +49,8 @@ def test_rtd_extension_inventory():
     The Sphinx inventory is available during normals sphinx-build.
     """
     with open(BASE_DIR / 'usage.html', 'r') as stream:
-        data = stream.read()
-        assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in data, data
+        page = stream.read()
+        assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in page, page
 
 
 def test_sphinx_object_inventory_version(capsys):
@@ -57,12 +60,12 @@ def test_sphinx_object_inventory_version(capsys):
     # The pydoctor own inventory.
     apidocs_inv = BASE_DIR / 'api' / 'objects.inv'
     with open(apidocs_inv, 'rb') as stream:
-        data = stream.read()
-        assert data.startswith(
+        page = stream.read()
+        assert page.startswith(
             b'# Sphinx inventory version 2\n'
             b'# Project: pydoctor\n'
             b'# Version: ' + __version__.encode() + b'\n'
-            ), data
+            ), page
 
     # Check that inventory can be parsed by Sphinx own extension.
     inspect_main([str(apidocs_inv)])
@@ -78,9 +81,9 @@ def test_sphinx_object_inventory_version_epytext_demo():
     passed via docs/source/conf.py.
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'objects.inv', 'rb') as stream:
-        data = stream.read()
-        assert data.startswith(
+        page = stream.read()
+        assert page.startswith(
             b'# Sphinx inventory version 2\n'
             b'# Project: pydoctor-epytext-demo\n'
             b'# Version: 1.2.0\n'
-            ), data
+            ), page

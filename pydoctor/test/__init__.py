@@ -1,11 +1,13 @@
 """PyDoctor's test suite."""
 
 from logging import LogRecord
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 
 from pydoctor import epydoc2stan, model
+from pydoctor.epydoc.markup import DocstringLinker
+
 
 posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
@@ -73,3 +75,13 @@ class InMemoryWriter:
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
+
+
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        return None
+
+    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        raise LookupError(identifier)
