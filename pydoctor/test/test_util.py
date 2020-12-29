@@ -41,9 +41,8 @@ def test_get_source_reference_git_fail(monkeypatch: MonkeyPatch) -> None:
     When getting the git reference fails, it raised RunntimeError.
     """
     monkeypatch.setenv("READTHEDOCS", "False")
+    # Try to move to a dir that has not git parents.
     monkeypatch.chdir('/')
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match='Failed to get git reference. '):
         get_source_reference()
-
-    exc_info.match('Failed to get git reference. ')
