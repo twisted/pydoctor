@@ -28,16 +28,16 @@ On success you should get something like:
 
 .. raw:: html
 
-    <pre><font color="#4E9A06">✔ OK pyflakes in 17.925 seconds</font>
-    <font color="#4E9A06">✔ OK mypy in 18.428 seconds</font>
-    <font color="#4E9A06">✔ OK apidocs in 20.448 seconds</font>
-    <font color="#4E9A06">✔ OK docs in 28.342 seconds</font>
-    <font color="#4E9A06">✔ OK test in 35.263 seconds</font>
+    <pre><font color="#4E9A06">✔ OK apydocs in 3.501 seconds</font>
+    <font color="#4E9A06">✔ OK pyflakes in 4.887 seconds</font>
+    <font color="#4E9A06">✔ OK mypy in 4.982 seconds</font>
+    <font color="#4E9A06">✔ OK docs in 9.907 seconds</font>
+    <font color="#4E9A06">✔ OK test in 10.277 seconds</font>
     _________________ summary __________________
     <font color="#4E9A06">  test: commands succeeded</font>
     <font color="#4E9A06">  pyflakes: commands succeeded</font>
     <font color="#4E9A06">  mypy: commands succeeded</font>
-    <font color="#4E9A06">  apidocs: commands succeeded</font>
+    <font color="#4E9A06">  apydocs: commands succeeded</font>
     <font color="#4E9A06">  docs: commands succeeded</font>
     <font color="#4E9A06">  congratulations :)</font>
     </pre>
