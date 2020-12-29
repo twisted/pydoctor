@@ -26,6 +26,8 @@ copyright = '2020, Michael Hudson-Doyle and various contributors (see Git histor
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
 from pydoctor import __version__ as version
+# Use the version to make pyflakes happy.
+version
 
 # -- General configuration ---------------------------------------------------
 
@@ -50,7 +52,6 @@ exclude_patterns = []
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
-    'pydoctor': ('https://pydoctor.readthedocs.io/en/latest/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -81,13 +82,10 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
-    '--quiet',
-    '--make-html',
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+    f'--project-base-dir={_pydoctor_root}',
 
     '--project-url=https://github.com/twisted/pydoctor/',
-
-    f'--project-base-dir={_pydoctor_root}',
 
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
@@ -96,7 +94,7 @@ _common_args = [
 ]
 pydoctor_args = {
     'main': [
-        '--html-output={outdir}/api',
+        '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         '--docformat=epytext',
         f'{_pydoctor_root}/pydoctor',
@@ -107,4 +105,9 @@ pydoctor_args = {
         '--docformat=epytext',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
+    }
+
+pydoctor_url_path = {
+    'main': '/en/{rtd_version}/api',
+    'epydoc_demo': '/en/{rtd_version}/docformat/epytext/demo/',
     }
