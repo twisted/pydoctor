@@ -22,7 +22,25 @@ Pre-commit checks
 
 Make sure all the tests pass and the code pass the coding standard checks::
 
-    tox -p all
+    tox -qp all
+
+On success you should get something like:
+
+.. raw:: html
+
+    <pre><font color="#4E9A06">✔ OK pyflakes in 17.925 seconds</font>
+    <font color="#4E9A06">✔ OK mypy in 18.428 seconds</font>
+    <font color="#4E9A06">✔ OK apidocs in 20.448 seconds</font>
+    <font color="#4E9A06">✔ OK docs in 28.342 seconds</font>
+    <font color="#4E9A06">✔ OK test in 35.263 seconds</font>
+    _________________ summary __________________
+    <font color="#4E9A06">  test: commands succeeded</font>
+    <font color="#4E9A06">  pyflakes: commands succeeded</font>
+    <font color="#4E9A06">  mypy: commands succeeded</font>
+    <font color="#4E9A06">  apidocs: commands succeeded</font>
+    <font color="#4E9A06">  docs: commands succeeded</font>
+    <font color="#4E9A06">  congratulations :)</font>
+    </pre>
 
 That should be the minimum check to run on your local system.
 A pull request will trigger more tests and most probably there is a tox
@@ -36,7 +54,7 @@ Publishing to PyPI is done via a GitHub Actions workflow that is triggered when 
 
 First commit the version update to master and wait for tests to pass.
 
-You can push a tab by creating a `GitHub Release <https://github.com/twisted/pydoctor/releases/new>`
+You can push a tab by creating a `GitHub Release <https://github.com/twisted/pydoctor/releases/new>`_.
 
 You can also create a tag on local branch then push it::
 
