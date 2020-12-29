@@ -29,7 +29,7 @@ def test_rtd_pydoctor_call():
     generated.
     """
     # The pydoctor index is generated and overwrites the Sphinx files.
-    with open(API_DIR / 'index.html', 'r') as stream:
+    with open(BASE_DIR / 'api' / 'index.html', 'r') as stream:
         page = stream.read()
         assert 'moduleIndex.html' in page, page
 
@@ -46,7 +46,7 @@ def test_rtd_pydoctor_multiple_call():
 
 def test_rtd_extension_inventory():
     """
-    The Sphinx inventory is available during normals sphinx-build.
+    The Sphinx inventory is available during normal sphinx-build.
     """
     with open(BASE_DIR / 'usage.html', 'r') as stream:
         page = stream.read()
