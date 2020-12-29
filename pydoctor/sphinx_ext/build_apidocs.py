@@ -32,7 +32,7 @@ import shutil
 from contextlib import redirect_stdout
 from io import StringIO
 from pprint import pprint
-from typing import Any, cast, Sequence, Mapping
+from typing import Any, Sequence, Mapping
 
 from sphinx.application import Sphinx
 from sphinx.config import Config
@@ -52,7 +52,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
 
     # Share placeholders between init and finish.
-    placeholders = cast(Mapping[str, str], app.config['placeholders'])
+    placeholders: Mapping[str, str] = app.config._pydoctor_placeholders
 
     runs = app.config.pydoctor_args
 
@@ -131,7 +131,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         output_path.rename(temp_path)
 
     # Share placeholders between init and finish.
-    config['placeholders'] = placeholders
+    config['_pydoctor_placeholders'] = placeholders
 
     if config.pydoctor_debug:
         print("== Environment dump ===")
