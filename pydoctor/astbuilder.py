@@ -90,6 +90,13 @@ def bind_args(call: ast.Call, sig: Signature) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 
+def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
+    """Does this expression return an C{attr.ib}?"""
+    return isinstance(expr, ast.Call) and node2fullname(expr.func, ctx) in (
+        'attr.ib', 'attr.attrib', 'attr.attr'
+        )
+
+
 _attrib_signature = signature(attrib)
 
 def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArguments]:
@@ -400,17 +407,21 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleClassVar(self,
             name: str,
             annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
             lineno: int
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
             return
-        obj = cls.contents.get(name)
+        obj: Optional[model.Attribute] = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name, None, cls)
         if obj.kind is None:
-            obj.kind = 'Class Variable'
+            if is_attrib(expr, cls):
+                obj.kind = 'Instance Variable'
+            else:
+                obj.kind = 'Class Variable'
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj
@@ -445,7 +456,7 @@ class ModuleVistor(ast.NodeVisitor):
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, lineno)
+            self._handleClassVar(target, annotation, expr, lineno)
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,

@@ -1323,6 +1323,18 @@ def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
     assert type2str(C.contents['e'].annotation) == 'int'
 
 @systemcls_param
+def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
+    """An attr.ib attribute is classified as an instance variable."""
+    mod = fromText('''
+    import attr
+    @attr.s
+    class C:
+        a = attr.ib(type=int)
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['a'].kind == 'Instance Variable'
+
+@systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     a, b, c = range(3)
