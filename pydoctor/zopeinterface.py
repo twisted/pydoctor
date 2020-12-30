@@ -178,8 +178,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def _handleAssignmentInModule(self,
             target: str,
-            annotation: ast.expr,
-            expr: ast.expr,
+            annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
             lineno: int
             ) -> None:
         super()._handleAssignmentInModule(
@@ -203,8 +203,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def _handleAssignmentInClass(self,
             target: str,
-            annotation: ast.expr,
-            expr: ast.expr,
+            annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
             lineno: int
             ) -> None:
         super()._handleAssignmentInClass(target, annotation, expr, lineno)

@@ -47,20 +47,25 @@ def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional
 
 
 class ModuleVistor(ast.NodeVisitor):
+    currAttr: Optional[model.Attribute]
+    newAttr: Optional[model.Attribute]
+
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
         self.builder = builder
         self.system = builder.system
         self.module = module
 
-    def default(self, node):
-        self.currAttr = None
-        for child in node.body:
+    def default(self, node: ast.AST) -> None:
+        body: Optional[Sequence[ast.stmt]] = getattr(node, 'body', None)
+        if body is not None:
+            self.currAttr = None
+            for child in body:
+                self.newAttr = None
+                self.visit(child)
+                self.currAttr = self.newAttr
             self.newAttr = None
-            self.visit(child)
-            self.currAttr = self.newAttr
-        self.newAttr = None
 
-    def visit_Module(self, node):
+    def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
 
         self.builder.push(self.module, 0)
@@ -70,7 +75,7 @@ class ModuleVistor(ast.NodeVisitor):
         self.default(node)
         self.builder.pop(self.module)
 
-    def visit_ClassDef(self, node):
+    def visit_ClassDef(self, node: ast.ClassDef) -> Optional[model.Class]:
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
@@ -98,7 +103,7 @@ class ModuleVistor(ast.NodeVisitor):
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
-        cls = self.builder.pushClass(node.name, lineno)
+        cls: model.Class = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
         cls.bases = bases
@@ -110,6 +115,7 @@ class ModuleVistor(ast.NodeVisitor):
 
         if node.decorator_list:
             for decnode in node.decorator_list:
+                args: Optional[Sequence[ast.expr]]
                 if isinstance(decnode, ast.Call):
                     base = node2fullname(decnode.func, parent)
                     args = decnode.args
@@ -247,7 +253,7 @@ class ModuleVistor(ast.NodeVisitor):
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
 
-    def visit_Import(self, node):
+    def visit_Import(self, node: ast.Import) -> None:
         """Process an import statement.
 
         The grammar for the statement is roughly:
@@ -271,31 +277,30 @@ class ModuleVistor(ast.NodeVisitor):
                 _localNameToFullName[asname] = fullname
 
 
-    def _handleOldSchoolDecoration(self, target, expr):
+    def _handleOldSchoolDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
             return False
         func = expr.func
         if not isinstance(func, ast.Name):
             return False
-        func = func.id
+        func_name = func.id
         args = expr.args
         if len(args) != 1:
             return False
         arg, = args
         if not isinstance(arg, ast.Name):
             return False
-        arg = arg.id
-        if target == arg and func in ['staticmethod', 'classmethod']:
-            target = self.builder.current.contents.get(target)
-            if isinstance(target, model.Function):
-                if target.kind != 'Method':
+        if target == arg.id and func_name in ['staticmethod', 'classmethod']:
+            target_obj = self.builder.current.contents.get(target)
+            if isinstance(target_obj, model.Function):
+                if target_obj.kind != 'Method':
                     self.system.msg('ast', 'XXX')
                 else:
-                    target.kind = func.title().replace('m', ' M')
+                    target_obj.kind = func_name.title().replace('m', ' M')
                     return True
         return False
 
-    def _handleAliasing(self, target, expr):
+    def _handleAliasing(self, target: str, expr: Optional[ast.expr]) -> bool:
         if target in self.builder.current.contents:
             return False
         ctx = self.builder.current
@@ -305,7 +310,11 @@ class ModuleVistor(ast.NodeVisitor):
         ctx._localNameToFullName_map[target] = full_name
         return True
 
-    def _handleModuleVar(self, target, annotation, lineno):
+    def _handleModuleVar(self,
+            target: str,
+            annotation: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         if target == '__all__':
             # This is metadata, not a variable that needs to be documented.
             # It is handled by findAll(), which operates on the AST and
@@ -321,7 +330,12 @@ class ModuleVistor(ast.NodeVisitor):
             obj.setLineNumber(lineno)
             self.newAttr = obj
 
-    def _handleAssignmentInModule(self, target, annotation, expr, lineno):
+    def _handleAssignmentInModule(self,
+            target: str,
+            annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         if not self._handleAliasing(target, expr):
             self._handleModuleVar(target, annotation, lineno)
 
@@ -336,7 +350,11 @@ class ModuleVistor(ast.NodeVisitor):
         obj = cls.find(name)
         return obj is None or isinstance(obj, model.Attribute)
 
-    def _handleClassVar(self, name: str, annotation: Optional[ast.expr], lineno: int) -> None:
+    def _handleClassVar(self,
+            name: str,
+            annotation: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         cls = self.builder.current
         if not self._maybeAttribute(cls, name):
             return
@@ -349,7 +367,11 @@ class ModuleVistor(ast.NodeVisitor):
         obj.setLineNumber(lineno)
         self.newAttr = obj
 
-    def _handleInstanceVar(self, name: str, annotation: Optional[ast.expr], lineno: int) -> None:
+    def _handleInstanceVar(self,
+            name: str,
+            annotation: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         func = self.builder.current
         if not isinstance(func, model.Function):
             return
@@ -366,12 +388,21 @@ class ModuleVistor(ast.NodeVisitor):
         obj.setLineNumber(lineno)
         self.newAttr = obj
 
-    def _handleAssignmentInClass(self, target, annotation, expr, lineno):
+    def _handleAssignmentInClass(self,
+            target: str,
+            annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         if not self._handleAliasing(target, expr):
             self._handleClassVar(target, annotation, lineno)
 
-    def _handleDocstringUpdate(self, targetNode, expr, lineno):
-        def warn(msg):
+    def _handleDocstringUpdate(self,
+            targetNode: ast.expr,
+            expr: Optional[ast.expr],
+            lineno: int
+            ) -> None:
+        def warn(msg: str) -> None:
             self.system.msg('ast', "%s:%d: %s" % (
                     self.builder.currentMod.description, lineno, msg))
 
@@ -389,6 +420,10 @@ class ModuleVistor(ast.NodeVisitor):
 
         # Determine docstring value.
         try:
+            if expr is None:
+                # The expr is None for detupling assignments, which can
+                # be described as "too complex".
+                raise ValueError()
             docstring = ast.literal_eval(expr)
         except ValueError:
             warn("Unable to figure out value for __doc__ assignment, "
@@ -404,7 +439,12 @@ class ModuleVistor(ast.NodeVisitor):
             #       we have the final docstrings for all objects.
             obj.parsed_docstring = None
 
-    def _handleAssignment(self, targetNode, annotation, expr, lineno):
+    def _handleAssignment(self,
+            targetNode: ast.expr,
+            annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
+            lineno: int
+            ) -> None:
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
@@ -420,7 +460,7 @@ class ModuleVistor(ast.NodeVisitor):
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, lineno)
 
-    def visit_Assign(self, node):
+    def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
         expr = node.value
         annotation = self._annotation_from_attrib(expr, self.builder.current)
@@ -440,11 +480,11 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 self._handleAssignment(target, annotation, expr, lineno)
 
-    def visit_AnnAssign(self, node):
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         annotation = self._unstring_annotation(node.annotation)
         self._handleAssignment(node.target, annotation, node.value, node.lineno)
 
-    def visit_Expr(self, node):
+    def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
         if isinstance(value, ast.Str):
             attr = self.currAttr

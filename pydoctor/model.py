@@ -433,10 +433,11 @@ class Class(CanContainImportsDocumentable):
     bases: List[str]
     baseobjects: List[Optional['Class']]
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
+    raw_decorators: Sequence[ast.expr]
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[Class] = []
+        self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
 
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
