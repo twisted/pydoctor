@@ -1300,21 +1300,27 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
 
 @systemcls_param
-def test_type_from_attrib(systemcls: Type[model.System]) -> None:
+def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
+    """An attr.ib's "type" or "default" argument is used as an alternative
+    type annotation.
+    """
     mod = fromText('''
     import attr
     from attr import attrib
+    @attr.s
     class C:
         a = attr.ib(type=int)
         b = attrib(type=int)
         c = attr.ib(type='C')
         d = attr.ib(default=True)
+        e = attr.ib(123)
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert type2str(C.contents['a'].annotation) == 'int'
     assert type2str(C.contents['b'].annotation) == 'int'
     assert type2str(C.contents['c'].annotation) == 'C'
     assert type2str(C.contents['d'].annotation) == 'bool'
+    assert type2str(C.contents['e'].annotation) == 'int'
 
 @systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:

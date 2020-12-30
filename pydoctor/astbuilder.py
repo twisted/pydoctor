@@ -2,8 +2,9 @@
 
 import ast
 import sys
+from attr import attrib
 from functools import partial
-from inspect import Parameter, Signature
+from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
@@ -75,6 +76,38 @@ def _handleAliasing(
         return False
     ctx._localNameToFullName_map[target] = full_name
     return True
+
+
+def bind_args(call: ast.Call, sig: Signature) -> BoundArguments:
+    """Binds the arguments of a function call to that function's signature.
+    @raise TypeError: If the arguments do not match the signature.
+    """
+    kwargs = {
+        kw.arg: kw.value
+        for kw in call.keywords
+        if kw.arg is not None
+        }
+    return sig.bind(*call.args, **kwargs)
+
+
+_attrib_signature = signature(attrib)
+
+def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArguments]:
+    """Get the arguments passed to an C{attr.ib} definition.
+    @return: The arguments, or L{None} if C{expr} does not look like
+        an C{attr.ib} definition or the arguments passed to it are invalid.
+    """
+    if isinstance(expr, ast.Call) and node2fullname(expr.func, ctx) in (
+            'attr.ib', 'attr.attrib', 'attr.attr'
+            ):
+        try:
+            return bind_args(expr, _attrib_signature)
+        except TypeError as ex:
+            ctx.module.report(
+                f"Invalid arguments for attr.ib(): {ex}",
+                lineno_offset=expr.lineno
+                )
+    return None
 
 
 class ModuleVistor(ast.NodeVisitor):
@@ -678,13 +711,12 @@ class ModuleVistor(ast.NodeVisitor):
         @return: A type annotation, or None if the expression is not
                  an C{attr.ib} definition or contains no type information.
         """
-        if isinstance(expr, ast.Call) \
-                and node2fullname(expr.func, ctx) in ('attr.ib', 'attr.attrib'):
-            keywords = {kw.arg: kw.value for kw in expr.keywords}
-            typ = keywords.get('type')
+        args = attrib_args(expr, ctx)
+        if args is not None:
+            typ = args.arguments.get('type')
             if typ is not None:
                 return self._unstring_annotation(typ)
-            default = keywords.get('default')
+            default = args.arguments.get('default')
             if default is not None:
                 return _infer_type(default)
         return None
