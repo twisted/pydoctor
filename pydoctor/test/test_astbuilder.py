@@ -508,7 +508,12 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.decorators == [('test.cd', ['test.A'])]
+    assert len(C.decorators) == 1
+    (name, args), = C.decorators
+    assert name == 'test.cd'
+    assert len(args) == 1
+    arg, = args
+    assert astbuilder.node2fullname(arg, mod) == 'test.A'
 
 
 @systemcls_param

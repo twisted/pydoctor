@@ -79,7 +79,7 @@ class ZopeInterfaceAttribute(model.Attribute):
 
 def addInterfaceInfoToScope(
         scope: Union[ZopeInterfaceClass, ZopeInterfaceModule],
-        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
+        interfaceargs: Iterable[Optional[ast.expr]]
         ) -> None:
     for arg in interfaceargs:
         # If you do implementer(*()), the argument ends up being None, which we
@@ -87,10 +87,7 @@ def addInterfaceInfoToScope(
         if arg is None:
             continue
 
-        if isinstance(arg, str):
-            fullName = arg
-        else:
-            fullName = scope.expandName(astor.to_source(arg).strip())
+        fullName = scope.expandName(astor.to_source(arg).strip())
         obj = scope.system.objForFullName(fullName)
         if isinstance(obj, ZopeInterfaceClass):
             scope.implements_directly.append(fullName)
@@ -109,13 +106,13 @@ def addInterfaceInfoToScope(
 
 def addInterfaceInfoToModule(
         module: ZopeInterfaceModule,
-        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
+        interfaceargs: Iterable[Optional[ast.expr]]
         ) -> None:
     addInterfaceInfoToScope(module, interfaceargs)
 
 def addInterfaceInfoToClass(
         cls: ZopeInterfaceClass,
-        interfaceargs: Iterable[Optional[Union[str, ast.expr]]],
+        interfaceargs: Iterable[Optional[ast.expr]],
         implementsOnly: bool
         ) -> None:
     cls.implementsOnly = implementsOnly

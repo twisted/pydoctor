@@ -427,7 +427,7 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
-    decorators: Sequence[Tuple[str, Optional[Sequence[str]]]]
+    decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
 
     def setup(self) -> None:
         super().setup()

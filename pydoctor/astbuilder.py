@@ -119,10 +119,8 @@ class ModuleVistor(ast.NodeVisitor):
         if node.decorator_list:
             for decnode in node.decorator_list:
                 if isinstance(decnode, ast.Call):
-                    args = []
-                    for arg in decnode.args:
-                        args.append(node2fullname(arg, parent))
                     base = node2fullname(decnode.func, parent)
+                    args = decnode.args
                 else:
                     base = node2fullname(decnode, parent)
                     args = None
