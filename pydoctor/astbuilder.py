@@ -376,6 +376,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleModuleVar(self,
             target: str,
             annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
             lineno: int
             ) -> None:
         if target == '__all__':
@@ -389,6 +390,8 @@ class ModuleVistor(ast.NodeVisitor):
             obj = self.builder.addAttribute(target, None, parent)
         if isinstance(obj, model.Attribute):
             obj.kind = 'Variable'
+            if annotation is None and expr is not None:
+                annotation = _infer_type(expr)
             obj.annotation = annotation
             obj.setLineNumber(lineno)
             self.newAttr = obj
@@ -402,7 +405,7 @@ class ModuleVistor(ast.NodeVisitor):
         module = self.builder.current
         assert isinstance(module, model.Module)
         if not _handleAliasing(module, target, expr):
-            self._handleModuleVar(target, annotation, lineno)
+            self._handleModuleVar(target, annotation, expr, lineno)
 
     def _handleClassVar(self,
             name: str,
@@ -422,6 +425,11 @@ class ModuleVistor(ast.NodeVisitor):
                 obj.kind = 'Instance Variable'
             else:
                 obj.kind = 'Class Variable'
+        if expr is not None:
+            if annotation is None:
+                annotation = self._annotation_from_attrib(expr, cls)
+            if annotation is None:
+                annotation = _infer_type(expr)
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj
@@ -429,6 +437,7 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleInstanceVar(self,
             name: str,
             annotation: Optional[ast.expr],
+            expr: Optional[ast.expr],
             lineno: int
             ) -> None:
         func = self.builder.current
@@ -443,6 +452,8 @@ class ModuleVistor(ast.NodeVisitor):
         if obj is None:
             obj = self.builder.addAttribute(name, None, cls)
         obj.kind = 'Instance Variable'
+        if annotation is None and expr is not None:
+            annotation = _infer_type(expr)
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj
@@ -520,7 +531,7 @@ class ModuleVistor(ast.NodeVisitor):
             if targetNode.attr == '__doc__':
                 self._handleDocstringUpdate(value, expr, lineno)
             elif isinstance(value, ast.Name) and value.id == 'self':
-                self._handleInstanceVar(targetNode.attr, annotation, lineno)
+                self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -531,10 +542,6 @@ class ModuleVistor(ast.NodeVisitor):
             annotation = None
         else:
             annotation = self._unstring_annotation(ast.Str(type_comment, lineno=lineno))
-        if annotation is None:
-            annotation = self._annotation_from_attrib(expr, self.builder.current)
-        if annotation is None:
-            annotation = _infer_type(expr)
 
         for target in node.targets:
             if isinstance(target, ast.Tuple):
