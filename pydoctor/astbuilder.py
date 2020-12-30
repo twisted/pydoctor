@@ -481,14 +481,17 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
         expr = node.value
-        annotation = self._annotation_from_attrib(expr, self.builder.current)
+
+        type_comment: Optional[str] = getattr(node, 'type_comment', None)
+        if type_comment is None:
+            annotation = None
+        else:
+            annotation = self._unstring_annotation(ast.Str(type_comment, lineno=lineno))
         if annotation is None:
-            type_comment: Optional[str] = getattr(node, 'type_comment', None)
-            if type_comment is not None:
-                annotation = self._unstring_annotation(ast.Str(type_comment,
-                                                               lineno=lineno))
+            annotation = self._annotation_from_attrib(expr, self.builder.current)
         if annotation is None:
             annotation = _infer_type(expr)
+
         for target in node.targets:
             if isinstance(target, ast.Tuple):
                 for elem in target.elts:
