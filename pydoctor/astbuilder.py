@@ -58,6 +58,24 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     return obj is None or isinstance(obj, model.Attribute)
 
 
+def _handleAliasing(
+        ctx: model.CanContainImportsDocumentable,
+        target: str,
+        expr: Optional[ast.expr]
+        ) -> bool:
+    """If the given expression is a name assigned to a target that is not yet
+    in use, create an alias.
+    @return: L{True} iff an alias was created.
+    """
+    if target in ctx.contents:
+        return False
+    full_name = node2fullname(expr, ctx)
+    if full_name is None:
+        return False
+    ctx._localNameToFullName_map[target] = full_name
+    return True
+
+
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Attribute]
     newAttr: Optional[model.Attribute]
@@ -312,16 +330,6 @@ class ModuleVistor(ast.NodeVisitor):
                     return True
         return False
 
-    def _handleAliasing(self, target: str, expr: Optional[ast.expr]) -> bool:
-        if target in self.builder.current.contents:
-            return False
-        ctx = self.builder.current
-        full_name = node2fullname(expr, ctx)
-        if full_name is None:
-            return False
-        ctx._localNameToFullName_map[target] = full_name
-        return True
-
     def _handleModuleVar(self,
             target: str,
             annotation: Optional[ast.expr],
@@ -348,7 +356,7 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if not self._handleAliasing(target, expr):
+        if not _handleAliasing(self.builder.current, target, expr):
             self._handleModuleVar(target, annotation, lineno)
 
     def _handleClassVar(self,
@@ -395,7 +403,7 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if not self._handleAliasing(target, expr):
+        if not _handleAliasing(self.builder.current, target, expr):
             self._handleClassVar(target, annotation, lineno)
 
     def _handleDocstringUpdate(self,
