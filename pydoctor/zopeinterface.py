@@ -194,6 +194,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
             # TODO: Process 'bases' and '__doc__' arguments.
             interface = self.builder.pushClass(target, lineno)
+            assert isinstance(interface, ZopeInterfaceClass)
             interface.isinterface = True
             interface.implementedby_directly = []
             interface.bases = []

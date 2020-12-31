@@ -41,7 +41,7 @@ def fromAST(
         full_name = f'{parent_name}.{modname}'
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
-    mod: model.Module = builder._push(_system.Module, modname, None)
+    mod: model.Module = builder._push(_system.Module, modname, 0)
     builder._pop(_system.Module)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]

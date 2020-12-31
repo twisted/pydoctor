@@ -7,7 +7,8 @@ from inspect import Parameter, Signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Type, TypeVar, Union, cast
 )
 
 import astor
@@ -77,8 +78,8 @@ def _handleAliasing(
 
 
 class ModuleVistor(ast.NodeVisitor):
-    currAttr: Optional[model.Attribute]
-    newAttr: Optional[model.Attribute]
+    currAttr: Optional[model.Documentable]
+    newAttr: Optional[model.Documentable]
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
         self.builder = builder
@@ -419,8 +420,9 @@ class ModuleVistor(ast.NodeVisitor):
             lineno: int
             ) -> None:
         def warn(msg: str) -> None:
-            self.system.msg('ast', "%s:%d: %s" % (
-                    self.builder.currentMod.description, lineno, msg))
+            module = self.builder.currentMod
+            assert module is not None
+            module.report(msg, section='ast', lineno_offset=lineno)
 
         # Figure out target object.
         full_name = node2fullname(targetNode, self.builder.current)
@@ -440,7 +442,7 @@ class ModuleVistor(ast.NodeVisitor):
                 # The expr is None for detupling assignments, which can
                 # be described as "too complex".
                 raise ValueError()
-            docstring = ast.literal_eval(expr)
+            docstring: object = ast.literal_eval(expr)
         except ValueError:
             warn("Unable to figure out value for __doc__ assignment, "
                  "maybe too complex")
@@ -481,7 +483,7 @@ class ModuleVistor(ast.NodeVisitor):
         expr = node.value
         annotation = self._annotation_from_attrib(expr, self.builder.current)
         if annotation is None:
-            type_comment = getattr(node, 'type_comment', None)
+            type_comment: Optional[str] = getattr(node, 'type_comment', None)
             if type_comment is not None:
                 annotation = self._unstring_annotation(ast.Str(type_comment,
                                                                lineno=lineno))
@@ -730,9 +732,9 @@ class ModuleVistor(ast.NodeVisitor):
         try:
             expr = _AnnotationStringParser().visit(node)
         except SyntaxError as ex:
-            self.builder.currentMod.report(
-                    f'syntax error in annotation: {ex}',
-                    lineno_offset=node.lineno)
+            module = self.builder.currentMod
+            assert module is not None
+            module.report(f'syntax error in annotation: {ex}', lineno_offset=node.lineno)
             return node
         else:
             assert isinstance(expr, ast.expr), expr
@@ -823,7 +825,7 @@ def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """
 
     try:
-        value = ast.literal_eval(expr)
+        value: object = ast.literal_eval(expr)
     except ValueError:
         return None
     else:
@@ -869,31 +871,29 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
         return None
 
 
+DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
+
 class ASTBuilder:
     ModuleVistor = ModuleVistor
 
-    system: model.System
-    current: model.Documentable
-    ast_cache: Dict[Path, Optional[ast.Module]]
-
-    def __init__(self, system):
+    def __init__(self, system: model.System):
         self.system = system
-        self.current = None
-        self.currentMod = None
-        self._stack = []
-        self.ast_cache = {}
+        self.current = cast(model.Documentable, None)
+        self.currentMod: Optional[model.Module] = None
+        self._stack: List[model.Documentable] = []
+        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
-    def _push(self, cls, name, lineno):
+    def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
         return obj
 
-    def _pop(self, cls):
+    def _pop(self, cls: Type[model.Documentable]) -> None:
         assert isinstance(self.current, cls)
         self.pop(self.current)
 
-    def push(self, obj, lineno):
+    def push(self, obj: model.Documentable, lineno: int) -> None:
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -909,20 +909,20 @@ class ASTBuilder:
         if lineno:
             obj.setLineNumber(lineno)
 
-    def pop(self, obj):
+    def pop(self, obj: model.Documentable) -> None:
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
-    def pushClass(self, name, lineno):
+    def pushClass(self, name: str, lineno: int) -> model.Class:
         return self._push(self.system.Class, name, lineno)
-    def popClass(self):
+    def popClass(self) -> None:
         self._pop(self.system.Class)
 
-    def pushFunction(self, name, lineno):
+    def pushFunction(self, name: str, lineno: int) -> model.Function:
         return self._push(self.system.Function, name, lineno)
-    def popFunction(self):
+    def popFunction(self) -> None:
         self._pop(self.system.Function)
 
     def addAttribute(self,
@@ -936,7 +936,7 @@ class ASTBuilder:
         system.addObject(attr)
         return attr
 
-    def warning(self, message, detail):
+    def warning(self, message: str, detail: str) -> None:
         self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
@@ -978,7 +978,7 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
             names = []
             for idx, item in enumerate(items):
                 try:
-                    name = ast.literal_eval(item)
+                    name: object = ast.literal_eval(item)
                 except ValueError:
                     mod.report(
                         f'Cannot parse element {idx} of "__all__"',
