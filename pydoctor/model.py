@@ -280,12 +280,17 @@ class Documentable:
         obj: Documentable = self
         for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
+            if full_name == p and i != 0:
+                # The local name was not found.
+                # TODO: Instead of returning the input, _localNameToFullName()
+                #       should probably either return None or raise LookupError.
+                full_name = f'{obj.fullName()}.{p}'
+                break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
             obj = nxt
-        remaning = parts[i+1:]
-        return '.'.join([full_name] + remaning)
+        return '.'.join([full_name] + parts[i + 1:])
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in

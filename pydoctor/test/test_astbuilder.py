@@ -102,6 +102,34 @@ def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
     assert ann is not None
     return type2str(ann), ann.lineno
 
+def test_node2fullname() -> None:
+    """The node2fullname() function finds the full (global) name for
+    a name expression in the AST.
+    """
+
+    mod = fromText('''
+    class session:
+        from twisted.conch.interfaces import ISession
+    ''', modname='test')
+
+    def lookup(expr: str) -> Optional[str]:
+        node = ast.parse(expr, mode='eval')
+        assert isinstance(node, ast.Expression)
+        return astbuilder.node2fullname(node.body, mod)
+
+    # None is returned for non-name nodes.
+    assert lookup('123') is None
+    # Local names are returned with their full name.
+    assert lookup('session') == 'test.session'
+    # A name that has no match at the top level is returned as-is.
+    assert lookup('nosuchname') == 'nosuchname'
+    # Unknown names are resolved as far as possible.
+    assert lookup('session.nosuchname') == 'test.session.nosuchname'
+    # Aliases are resolved on local names.
+    assert lookup('session.ISession') == 'twisted.conch.interfaces.ISession'
+    # Aliases are resolved on global names.
+    assert lookup('test.session.ISession') == 'twisted.conch.interfaces.ISession'
+
 @systemcls_param
 def test_no_docstring(systemcls: Type[model.System]) -> None:
     # Inheritance of the docstring of an overridden method depends on

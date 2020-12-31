@@ -43,11 +43,7 @@ def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
-    base = ctx.expandName(dottedname[0])
-    if base:
-        return '.'.join([base] + dottedname[1:])
-    else:
-        return None
+    return ctx.expandName('.'.join(dottedname))
 
 
 class ModuleVistor(ast.NodeVisitor):
