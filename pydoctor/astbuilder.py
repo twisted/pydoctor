@@ -35,10 +35,6 @@ def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
         parts.append(node.id)
     else:
         return None
-    if len(parts) == 1 and parts[0] in ('True', 'False', 'None'):
-        # On Python 3, these are NameConstant nodes, but on Python 2
-        # they are Name nodes.
-        return None
     parts.reverse()
     return parts
 
