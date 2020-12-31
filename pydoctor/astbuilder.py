@@ -134,9 +134,9 @@ class ModuleVistor(ast.NodeVisitor):
         return cls
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context",
-                                 str(self.builder.current))
+        ctx = self.builder.current
+        if not isinstance(ctx, model.CanContainImportsDocumentable):
+            self.builder.warning("processing import statement in odd context", str(ctx))
             return
 
         modname = node.module
@@ -145,15 +145,19 @@ class ModuleVistor(ast.NodeVisitor):
 
         if node.level:
             # Relative import.
-            parent: Optional[model.Documentable] = self.builder.current.parentMod
+            parent: Optional[model.Documentable] = ctx.parentMod
             for _ in range(node.level):
                 if parent is None:
-                    self.builder.warning("relative import level too high",
-                                         str(node.level))
-                    return
+                    break
                 parent = parent.parent
-            if parent is not None:
-                modname = f'{parent.fullName()}.{modname}'
+            if parent is None:
+                assert ctx.parentMod is not None
+                ctx.parentMod.report(
+                    "relative import level (%d) too high" % node.level,
+                    lineno_offset=node.lineno
+                    )
+                return
+            modname = f'{parent.fullName()}.{modname}'
 
         if node.names[0].name == '*':
             self._importAll(modname)

@@ -287,13 +287,25 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
-def test_relative_import_past_root(systemcls: Type[model.System], capsys: CapSys) -> None:
-    src = '''
-    from ..X import A
-    '''
-    fromText(src, modname='mod')
+@pytest.mark.parametrize('level', (1, 2, 3, 4))
+def test_relative_import_past_top(
+        systemcls: Type[model.System],
+        level: int,
+        capsys: CapSys
+        ) -> None:
+    """A warning is logged when a relative import goes beyond the top-level
+    package.
+    """
+    system = systemcls()
+    system.ensurePackage('pkg')
+    fromText(f'''
+    from {'.' * level + 'X'} import A
+    ''', modname='mod', parent_name='pkg', system=system)
     captured = capsys.readouterr().out
-    assert "relative import level too high" in captured
+    if level == 1:
+        assert not captured
+    else:
+        assert f'pkg.mod:2: relative import level ({level}) too high\n' == captured
 
 @systemcls_param
 def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
