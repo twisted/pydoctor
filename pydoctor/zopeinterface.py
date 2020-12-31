@@ -174,15 +174,9 @@ def namesInterface(system: model.System, name: str) -> bool:
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def funcNameFromCall(self, node: ast.Call) -> Optional[str]:
-        if isinstance(node.func, ast.Name):
-            name = node.func.id
-        elif isinstance(node.func, ast.Attribute):
-            name = astor.to_source(node).strip().split("(")[0]
-        elif isinstance(node.func, ast.Call):
-            return self.funcNameFromCall(node.func)
-        else:
-            return None
-        return self.builder.current.expandName(name)  # type: ignore[no-any-return]
+        while isinstance(node.func, ast.Call):
+            node = node.func
+        return astbuilder.node2fullname(node.func, self.builder.current)
 
     def _handleAssignmentInModule(self,
             target: str,
