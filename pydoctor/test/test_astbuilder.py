@@ -492,24 +492,81 @@ def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System])
 
 @systemcls_param
 def test_all_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder._parse(textwrap.dedent('''
+    """The value assigned to __all__ is parsed to Module.all."""
+    mod = fromText('''
     def f():
         pass
     __all__ = ['f']
-    '''))
-    mod = fromAST(ast, systemcls=systemcls)
-    astbuilder.findAll(ast, mod)
+    ''', systemcls=systemcls)
     assert mod.all == ['f']
     assert '__all__' not in mod.contents
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder._parse(textwrap.dedent('''
+    """A class variable named __all__ is ignored."""
+    mod = fromText('''
     class C:
         __all__ = ['f']
-    '''))
-    mod = fromAST(ast, systemcls=systemcls)
-    astbuilder.findAll(ast, mod)
+    ''', systemcls=systemcls)
+    assert mod.all is None
+
+@systemcls_param
+def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """If there are multiple assignments to __all__, a warning is looged
+    and the last assignment takes effect.
+    """
+    mod = fromText('''
+    __all__ = ['f']
+    __all__ = ['g']
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:3: Multiple assignments to "__all__"\n'
+    assert mod.all == ['g']
+
+@systemcls_param
+def test_all_bad_sequence(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Values other than lists and tuples assigned to __all__ are ignored."""
+    mod = fromText('''
+    __all__ = {}
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__all__"\n'
+    assert mod.all is None
+
+@systemcls_param
+def test_all_nonliteral(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-literals in __all__ are ignored."""
+    mod = fromText('''
+    __all__ = ['a', 'b', '.'.join(['x', 'y']), 'c']
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse element 2 of "__all__"\n'
+    assert mod.all == ['a', 'b', 'c']
+
+@systemcls_param
+def test_all_nonstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-string literals in __all__ are ignored."""
+    mod = fromText('''
+    __all__ = ('a', 'b', 123, 'c', True)
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'mod:2: Element 2 of "__all__" has type "int", expected "str"\n'
+        'mod:2: Element 4 of "__all__" has type "bool", expected "str"\n'
+        )
+    assert mod.all == ['a', 'b', 'c']
+
+@systemcls_param
+def test_all_allbad(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """If no value in __all__ could be parsed, the assignment is ignored."""
+    mod = fromText('''
+    __all__ = (123, True)
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'mod:2: Element 0 of "__all__" has type "int", expected "str"\n'
+        'mod:2: Element 1 of "__all__" has type "bool", expected "str"\n'
+        )
     assert mod.all is None
 
 @systemcls_param
