@@ -227,6 +227,7 @@ class ModuleVistor(ast.NodeVisitor):
                 ]
 
         # Add imported names to our module namespace.
+        assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
         _localNameToFullName = self.builder.current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
@@ -251,6 +252,7 @@ class ModuleVistor(ast.NodeVisitor):
             if exports is None:
                 exports = []
         else:
+            assert isinstance(current, model.CanContainImportsDocumentable)
             # Don't export names imported inside classes or functions.
             exports = []
 
@@ -356,7 +358,9 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if not _handleAliasing(self.builder.current, target, expr):
+        module = self.builder.current
+        assert isinstance(module, model.Module)
+        if not _handleAliasing(module, target, expr):
             self._handleModuleVar(target, annotation, lineno)
 
     def _handleClassVar(self,
@@ -365,6 +369,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno: int
             ) -> None:
         cls = self.builder.current
+        assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
             return
         obj = cls.contents.get(name)
@@ -403,7 +408,9 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if not _handleAliasing(self.builder.current, target, expr):
+        cls = self.builder.current
+        assert isinstance(cls, model.Class)
+        if not _handleAliasing(cls, target, expr):
             self._handleClassVar(target, annotation, lineno)
 
     def _handleDocstringUpdate(self,
@@ -866,6 +873,7 @@ class ASTBuilder:
     ModuleVistor = ModuleVistor
 
     system: model.System
+    current: model.Documentable
     ast_cache: Dict[Path, Optional[ast.AST]]
 
     def __init__(self, system):
