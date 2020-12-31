@@ -307,7 +307,7 @@ def test_interfaceallgames() -> None:
         'interfaceallgames.implementation.Implementation'
         ]
 
-def test_implementer_with_none() -> None:
+def test_implementer_with_star() -> None:
     """
     If the implementer call contains a split out empty list, don't fail on
     attempting to process it.

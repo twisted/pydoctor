@@ -79,7 +79,7 @@ class ZopeInterfaceAttribute(model.Attribute):
 
 def addInterfaceInfoToScope(
         scope: Union[ZopeInterfaceClass, ZopeInterfaceModule],
-        interfaceargs: Iterable[Optional[ast.expr]],
+        interfaceargs: Iterable[ast.expr],
         ctx: model.Documentable
         ) -> None:
     """Mark the given class or module as implementing the given interfaces.
@@ -88,11 +88,6 @@ def addInterfaceInfoToScope(
     @param ctx: context in which C{interfaceargs} are looked up
     """
     for arg in interfaceargs:
-        # If you do implementer(*()), the argument ends up being None, which we
-        # should skip
-        if arg is None:
-            continue
-
         fullName = ctx.expandName(astor.to_source(arg).strip())
         obj = ctx.system.objForFullName(fullName)
         if isinstance(obj, ZopeInterfaceClass):
@@ -112,13 +107,13 @@ def addInterfaceInfoToScope(
 
 def addInterfaceInfoToModule(
         module: ZopeInterfaceModule,
-        interfaceargs: Iterable[Optional[ast.expr]]
+        interfaceargs: Iterable[ast.expr]
         ) -> None:
     addInterfaceInfoToScope(module, interfaceargs, module)
 
 def addInterfaceInfoToClass(
         cls: ZopeInterfaceClass,
-        interfaceargs: Iterable[Optional[ast.expr]],
+        interfaceargs: Iterable[ast.expr],
         ctx: model.Documentable,
         implementsOnly: bool
         ) -> None:
