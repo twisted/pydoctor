@@ -46,6 +46,10 @@ def fromAST(
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
+    if system is None:
+        # Assume that an implicit system will only contain one module,
+        # so post-process it as a convenience.
+        _system.postProcess()
     return mod
 
 def fromText(

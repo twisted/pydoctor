@@ -269,18 +269,6 @@ def test_implementer_decoration() -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_decoration_nonclass() -> None:
-    src = '''
-    from zope.interface import implementer
-    var = 0
-    @implementer(var)
-    class Implementation:
-        pass
-    '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    impl = mod.contents['Implementation']
-    assert impl.implements_directly == []
-
 def test_docsources_from_moduleprovides() -> None:
     src = '''
     from zope import interface
@@ -328,14 +316,13 @@ def test_implementer_with_star() -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_nonclass(capsys: CapSys) -> None:
+def test_implementer_nonname(capsys: CapSys) -> None:
     """
-    Check rejection of non-class arguments passed to @implementer.
+    Non-name arguments passed to @implementer are warned about and then ignored.
     """
     src = '''
-    from zope.interface import Interface, implementer
-    var = 'not a class'
-    @implementer(var)
+    from zope.interface import implementer
+    @implementer(123)
     class Implementation:
         pass
     '''
@@ -343,14 +330,33 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == []
     captured = capsys.readouterr().out
-    assert captured == "mod:4: probable interface mod.var not detected as a class\n"
+    assert captured == 'mod:3: Interface argument 1 does not look like a name\n'
+
+def test_implementer_nonclass(capsys: CapSys) -> None:
+    """
+    Non-class arguments passed to @implementer are warned about but are stored
+    as implemented interfaces.
+    """
+    src = '''
+    from zope.interface import implementer
+    var = 'not a class'
+    @implementer(var)
+    class Implementation:
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == ['mod.var']
+    captured = capsys.readouterr().out
+    assert captured == 'mod:4: Probable interface "mod.var" not detected as a class\n'
 
 def test_implementer_plainclass(capsys: CapSys) -> None:
     """
-    Check patching of non-interface classes passed to @implementer.
+    A non-interface class passed to @implementer will be automatically upgraded
+    to an interface.
     """
     src = '''
-    from zope.interface import Interface, implementer
+    from zope.interface import implementer
     class C:
         pass
     @implementer(C)
@@ -365,7 +371,23 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     assert C.implementedby_directly == [impl]
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
-    assert captured == "mod:5: probable interface mod.C not marked as such\n"
+    assert captured == 'mod:5: Probable interface "mod.C" not marked as such\n'
+
+def test_implementer_not_found(capsys: CapSys) -> None:
+    """
+    An unknown class passed to @implementer is warned about if its full name
+    is part of our system.
+    """
+    src = '''
+    from zope.interface import implementer
+    from twisted.logger import ILogObserver
+    @implementer(ILogObserver, mod.INoSuchInterface)
+    class Implementation:
+        pass
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:4: Probable interface "mod.INoSuchInterface" not found\n'
 
 def test_implementer_nocall(capsys: CapSys) -> None:
     """

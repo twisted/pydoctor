@@ -903,6 +903,17 @@ class System:
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
+        self.postProcess()
+
+
+    def postProcess(self) -> None:
+        """Called when there are no more unprocessed modules.
+
+        Analysis of relations between documentables can be done here,
+        without the risk of drawing incorrect conclusions because modules
+        were not fully processed yet.
+        """
+        pass
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:

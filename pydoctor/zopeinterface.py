@@ -87,23 +87,58 @@ def addInterfaceInfoToScope(
     @param interfaceargs: AST expressions of interface objects
     @param ctx: context in which C{interfaceargs} are looked up
     """
-    for arg in interfaceargs:
-        fullName = ctx.expandName(astor.to_source(arg).strip())
-        obj = ctx.system.objForFullName(fullName)
-        if isinstance(obj, ZopeInterfaceClass):
-            scope.implements_directly.append(fullName)
-            if not obj.isinterface:
-                scope.report(
-                    'probable interface %s not marked as such' % fullName,
-                    section='zopeinterface')
-                obj.isinterface = True
-                obj.kind = "Interface"
-                obj.implementedby_directly = []
-            obj.implementedby_directly.append(scope)
-        elif obj is not None:
+    for idx, arg in enumerate(interfaceargs):
+        if isinstance(arg, ast.Starred):
+            # We don't support star arguments at the moment.
+            # But these are valid, so we shouldn't warn about them either.
+            continue
+
+        fullName = astbuilder.node2fullname(arg, ctx)
+        if fullName is None:
             scope.report(
-                'probable interface %s not detected as a class' % fullName,
+                'Interface argument %d does not look like a name' % (idx + 1),
                 section='zopeinterface')
+        else:
+            scope.implements_directly.append(fullName)
+
+def _handle_implemented(
+        full_name: str,
+        implementer: Union[ZopeInterfaceClass, ZopeInterfaceModule]
+        ) -> None:
+    """This is the counterpart to addInterfaceInfoToScope(), which is called
+    during post-processing.
+    """
+    system = implementer.system
+    iface = system.objForFullName(full_name)
+    if iface is None:
+        # The interface might have been reparented, in which case there will
+        # be an alias at the original location; look for it using expandName().
+        name_parts = full_name.split('.', 1)
+        for root_obj in system.rootobjects:
+            if root_obj.name == name_parts[0]:
+                if len(name_parts) == 1:
+                    iface = root_obj
+                    break
+                iface = system.objForFullName(root_obj.expandName(name_parts[1]))
+                if iface is None:
+                    implementer.report(
+                        'Probable interface "%s" not found' % full_name,
+                        section='zopeinterface')
+                    return
+
+    if isinstance(iface, ZopeInterfaceClass):
+        if not iface.isinterface:
+            implementer.report(
+                'Probable interface "%s" not marked as such' % full_name,
+                section='zopeinterface')
+            iface.isinterface = True
+            iface.kind = "Interface"
+            iface.implementedby_directly = []
+        iface.implementedby_directly.append(implementer)
+    elif iface is not None:
+        implementer.report(
+            'Probable interface "%s" not detected as a class' % full_name,
+            section='zopeinterface')
 
 def addInterfaceInfoToModule(
         module: ZopeInterfaceModule,
@@ -306,3 +341,14 @@ class ZopeInterfaceSystem(model.System):
     Function = ZopeInterfaceFunction
     Attribute = ZopeInterfaceAttribute
     defaultBuilder = ZopeInterfaceASTBuilder
+
+    def postProcess(self) -> None:
+        super().postProcess()
+
+        for mod in self.objectsOfType(ZopeInterfaceModule):
+            for implemented in mod.implements_directly:
+                _handle_implemented(implemented, mod)
+
+        for cls in self.objectsOfType(ZopeInterfaceClass):
+            for implemented in cls.implements_directly:
+                _handle_implemented(implemented, cls)
