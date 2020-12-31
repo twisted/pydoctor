@@ -666,11 +666,13 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
         package a
           module __init__
             defines function 'f'
+          module c
+            imports function 'f'
         module b
           imports function 'f'
 
-    We verify that when module C{b} imports the name C{f} from package C{a},
-    it imports the function C{f} from the module C{a.__init__}.
+    We verify that when module C{b} and C{c} import the name C{f} from
+    package C{a}, they import the function C{f} from the module C{a.__init__}.
     """
     system = systemcls()
     system.ensurePackage('a')
@@ -680,7 +682,11 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
+    mod_c = fromText('''
+    from . import f
+    ''', modname='c', parent_name='a', system=system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
+    assert mod_c.resolveName('f') == mod_a.contents['f']
 
 
 @systemcls_param

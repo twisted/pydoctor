@@ -140,9 +140,6 @@ class ModuleVistor(ast.NodeVisitor):
             return
 
         modname = node.module
-        if modname is None:
-            return
-
         if node.level:
             # Relative import.
             parent: Optional[model.Documentable] = ctx.parentMod
@@ -157,7 +154,13 @@ class ModuleVistor(ast.NodeVisitor):
                     lineno_offset=node.lineno
                     )
                 return
-            modname = f'{parent.fullName()}.{modname}'
+            if modname is None:
+                modname = parent.fullName()
+            else:
+                modname = f'{parent.fullName()}.{modname}'
+        else:
+            # The module name can only be omitted on relative imports.
+            assert modname is not None
 
         if node.names[0].name == '*':
             self._importAll(modname)
