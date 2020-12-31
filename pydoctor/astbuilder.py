@@ -966,15 +966,21 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
                isinstance(node.targets[0], ast.Name) and \
                node.targets[0].id == '__all__':
             if mod.all is not None:
-                mod.system.msg('all', "multiple assignments to %s.__all__ ??"%(mod.fullName(),))
+                mod.report(
+                    'Multiple assignments to "__all__"',
+                    section='all', lineno_offset=node.lineno)
             if not isinstance(node.value, (ast.List, ast.Tuple)):
-                mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                mod.report(
+                    'Cannot parse value assigned to "__all__"',
+                    section='all', lineno_offset=node.lineno)
                 continue
             items = node.value.elts
             names = []
-            for item in items:
+            for idx, item in enumerate(items):
                 if not isinstance(item, ast.Str):
-                    mod.system.msg('all', "couldn't parse %s.__all__"%(mod.fullName(),))
+                    mod.report(
+                        f'Cannot parse element {idx} of "__all__"',
+                        section='all', lineno_offset=node.lineno)
                     continue
                 names.append(item.s)
                 mod.all = names
