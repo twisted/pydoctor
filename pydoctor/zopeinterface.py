@@ -4,8 +4,6 @@ from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
-import astor
-
 from pydoctor import astbuilder, model
 
 
@@ -281,14 +279,19 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 f'required argument to classImplements() missing',
                 thresh=-1)
             return
-        clsname = parent.expandName(astor.to_source(node.args[0]).strip())
-        cls = self.system.allobjects.get(clsname)
+        clsname = astbuilder.node2fullname(node.args[0], parent)
+        cls = None if clsname is None else self.system.allobjects.get(clsname)
         if not isinstance(cls, ZopeInterfaceClass):
-            problem = 'not found' if cls is None else 'is not a class'
+            if clsname is None:
+                argdesc = '1'
+                problem = 'is not a class name'
+            else:
+                argdesc = f'"{clsname}"'
+                problem = 'not found' if cls is None else 'is not a class'
             self.builder.system.msg(
                 'zopeinterface',
                 f'{parent.description}:{node.lineno}: '
-                f'argument "{clsname}" to classImplements() {problem}',
+                f'argument {argdesc} to classImplements() {problem}',
                 thresh=-1)
             return
         addInterfaceInfoToClass(cls, node.args[1:], parent,
