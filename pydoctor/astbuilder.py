@@ -14,7 +14,7 @@ import astor
 from pydoctor import epydoc2stan, model
 
 
-def parseFile(path: Path) -> ast.AST:
+def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
     with open(path, 'rb') as f:
         src = f.read() + b'\n'
@@ -874,7 +874,7 @@ class ASTBuilder:
 
     system: model.System
     current: model.Documentable
-    ast_cache: Dict[Path, Optional[ast.AST]]
+    ast_cache: Dict[Path, Optional[ast.Module]]
 
     def __init__(self, system):
         self.system = system
@@ -939,16 +939,16 @@ class ASTBuilder:
     def warning(self, message, detail):
         self.system._warning(self.current, message, detail)
 
-    def processModuleAST(self, ast, mod):
-        findAll(ast, mod)
+    def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
+        findAll(mod_ast, mod)
 
-        self.ModuleVistor(self, mod).visit(ast)
+        self.ModuleVistor(self, mod).visit(mod_ast)
 
-    def parseFile(self, path: Path) -> Optional[ast.AST]:
+    def parseFile(self, path: Path) -> Optional[ast.Module]:
         try:
             return self.ast_cache[path]
         except KeyError:
-            mod: Optional[ast.AST] = None
+            mod: Optional[ast.Module] = None
             try:
                 mod = parseFile(path)
             except (SyntaxError, ValueError):
@@ -958,9 +958,9 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def findAll(modast, mod):
+def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
     """Find and attempt to parse into a list of names the __all__ of a module's AST."""
-    for node in modast.body:
+    for node in mod_ast.body:
         if isinstance(node, ast.Assign) and \
                len(node.targets) == 1 and \
                isinstance(node.targets[0], ast.Name) and \
