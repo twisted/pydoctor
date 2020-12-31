@@ -977,10 +977,11 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
             items = node.value.elts
             names = []
             for idx, item in enumerate(items):
-                if not isinstance(item, ast.Str):
+                if isinstance(item, ast.Str):
+                    names.append(item.s)
+                else:
                     mod.report(
                         f'Cannot parse element {idx} of "__all__"',
                         section='all', lineno_offset=node.lineno)
-                    continue
-                names.append(item.s)
+            if names or not items:
                 mod.all = names
