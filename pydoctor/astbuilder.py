@@ -2,7 +2,7 @@
 
 import ast
 import sys
-from attr import attrib
+from attr import attrs, attrib
 from functools import partial
 from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
@@ -88,6 +88,50 @@ def bind_args(call: ast.Call, sig: Signature) -> BoundArguments:
         if kw.arg is not None
         }
     return sig.bind(*call.args, **kwargs)
+
+
+_attrs_signature = signature(attrs)
+
+def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
+    """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
+    @param call: AST of the call to L{attr.s()}.
+        This function will assume that L{attr.s()} is called without
+        verifying that.
+    @param module: Module that contains the call, used for error reporting.
+    @return: L{True} if L{True} is passed for C{auto_attribs},
+        L{False} in all other cases: if C{auto_attribs} is not passed,
+        if an explicit L{False} is passed or if an error was reported.
+    """
+    try:
+        args = bind_args(call, _attrs_signature)
+    except TypeError as ex:
+        module.report(
+            f"Invalid arguments for attr.s(): {ex}",
+            lineno_offset=call.lineno
+            )
+        return False
+    else:
+        auto_attribs_expr = args.arguments.get('auto_attribs')
+        if auto_attribs_expr is None:
+            return False
+        try:
+            value = ast.literal_eval(auto_attribs_expr)
+        except ValueError:
+            module.report(
+                'Unable to figure out value for "auto_attribs" argument '
+                'to attr.s(), maybe too complex',
+                lineno_offset=call.lineno
+                )
+            return False
+        if isinstance(value, bool):
+            return value
+        else:
+            module.report(
+                f'Value for "auto_attribs" argument to attr.s() '
+                f'has type "{type(value).__name__}", expected "bool"',
+                lineno_offset=call.lineno
+                )
+            return False
 
 
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
@@ -190,6 +234,8 @@ class ModuleVistor(ast.NodeVisitor):
                 if isinstance(decnode, ast.Call):
                     base = node2fullname(decnode.func, parent)
                     args = decnode.args
+                    if base in ('attr.s', 'attr.attrs', 'attr.attributes'):
+                        cls.auto_attribs |= _uses_auto_attribs(decnode, parent.module)
                 else:
                     base = node2fullname(decnode, parent)
                     args = None
@@ -421,10 +467,13 @@ class ModuleVistor(ast.NodeVisitor):
         if obj is None:
             obj = self.builder.addAttribute(name, None, cls)
         if obj.kind is None:
-            if is_attrib(expr, cls):
-                obj.kind = 'Instance Variable'
-            else:
-                obj.kind = 'Class Variable'
+            instance = is_attrib(expr, cls) or (
+                cls.auto_attribs and annotation is not None and not (
+                    isinstance(annotation, ast.Subscript) and
+                    node2fullname(annotation.value, cls) == 'typing.ClassVar'
+                    )
+                )
+            obj.kind = 'Instance Variable' if instance else 'Class Variable'
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)

@@ -1335,6 +1335,25 @@ def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
     assert C.contents['a'].kind == 'Instance Variable'
 
 @systemcls_param
+def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
+    """Attrs auto-attributes are classified as instance variables."""
+    mod = fromText('''
+    from typing import ClassVar
+    import attr
+    @attr.s(auto_attribs=True)
+    class C:
+        a: int
+        b: bool = False
+        c: ClassVar[str]  # explicit class variable
+        d = 123  # ignored by auto_attribs because no annotation
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['a'].kind == 'Instance Variable'
+    assert C.contents['b'].kind == 'Instance Variable'
+    assert C.contents['c'].kind == 'Class Variable'
+    assert C.contents['d'].kind == 'Class Variable'
+
+@systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     a, b, c = range(3)
