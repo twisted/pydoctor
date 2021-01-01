@@ -528,8 +528,13 @@ class ModuleVistor(ast.NodeVisitor):
             assert module is not None
             module.report(msg, section='ast', lineno_offset=lineno)
 
+        # Ignore docstring updates in functions.
+        scope = self.builder.current
+        if isinstance(scope, model.Function):
+            return
+
         # Figure out target object.
-        full_name = node2fullname(targetNode, self.builder.current)
+        full_name = node2fullname(targetNode, scope)
         if full_name is None:
             warn("Unable to figure out target for __doc__ assignment")
             # Don't return yet: we might have to warn about the value too.
