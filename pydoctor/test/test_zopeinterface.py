@@ -352,8 +352,8 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
 
 def test_implementer_plainclass(capsys: CapSys) -> None:
     """
-    A non-interface class passed to @implementer will be automatically upgraded
-    to an interface.
+    A non-interface class passed to @implementer will be warned about but
+    will be stored as an implemented interface.
     """
     src = '''
     from zope.interface import implementer
@@ -366,9 +366,8 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     C = mod.contents['C']
     impl = mod.contents['Implementation']
-    assert C.isinterface
-    assert C.kind == "Interface"
-    assert C.implementedby_directly == [impl]
+    assert not C.isinterface
+    assert C.kind == "Class"
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == 'mod:5: Probable interface "mod.C" not marked as such\n'

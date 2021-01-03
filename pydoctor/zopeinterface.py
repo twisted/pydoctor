@@ -125,14 +125,12 @@ def _handle_implemented(
                     return
 
     if isinstance(iface, ZopeInterfaceClass):
-        if not iface.isinterface:
+        if iface.isinterface:
+            iface.implementedby_directly.append(implementer)
+        else:
             implementer.report(
                 'Probable interface "%s" not marked as such' % full_name,
                 section='zopeinterface')
-            iface.isinterface = True
-            iface.kind = "Interface"
-            iface.implementedby_directly = []
-        iface.implementedby_directly.append(implementer)
     elif iface is not None:
         implementer.report(
             'Probable interface "%s" not detected as a class' % full_name,
