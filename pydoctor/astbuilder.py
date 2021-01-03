@@ -78,13 +78,15 @@ def _handleAliasing(
     return True
 
 
-def bind_args(call: ast.Call, sig: Signature) -> BoundArguments:
+def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """Binds the arguments of a function call to that function's signature.
     @raise TypeError: If the arguments do not match the signature.
     """
     kwargs = {
         kw.arg: kw.value
         for kw in call.keywords
+        # When keywords are passed using '**kwargs', the 'arg' field will
+        # be None. We don't currently support keywords passed that way.
         if kw.arg is not None
         }
     return sig.bind(*call.args, **kwargs)
@@ -103,7 +105,7 @@ def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
         if an explicit L{False} is passed or if an error was reported.
     """
     try:
-        args = bind_args(call, _attrs_signature)
+        args = bind_args(_attrs_signature, call)
     except TypeError as ex:
         module.report(
             f"Invalid arguments for attr.s(): {ex}",
@@ -152,7 +154,7 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
             'attr.ib', 'attr.attrib', 'attr.attr'
             ):
         try:
-            return bind_args(expr, _attrib_signature)
+            return bind_args(_attrib_signature, expr)
         except TypeError as ex:
             ctx.module.report(
                 f"Invalid arguments for attr.ib(): {ex}",
