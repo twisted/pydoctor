@@ -433,6 +433,8 @@ class Class(CanContainImportsDocumentable):
     bases: List[str]
     baseobjects: List[Optional['Class']]
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
+    # Note: While unused in pydoctor itself, raw_decorators is still in use
+    #       by Twisted's custom System class, to find deprecations.
     raw_decorators: Sequence[ast.expr]
 
     auto_attribs: bool = False
