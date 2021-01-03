@@ -1104,5 +1104,4 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
                             f'Element {idx} of "__all__" has '
                             f'type "{type(name).__name__}", expected "str"',
                             section='all', lineno_offset=node.lineno)
-            if names or not items:
-                mod.all = names
+            mod.all = names

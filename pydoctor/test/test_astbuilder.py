@@ -560,7 +560,7 @@ def test_all_nonstring(systemcls: Type[model.System], capsys: CapSys) -> None:
 
 @systemcls_param
 def test_all_allbad(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """If no value in __all__ could be parsed, the assignment is ignored."""
+    """If no value in __all__ could be parsed, the result is an empty list."""
     mod = fromText('''
     __all__ = (123, True)
     ''', modname='mod', systemcls=systemcls)
@@ -569,7 +569,7 @@ def test_all_allbad(systemcls: Type[model.System], capsys: CapSys) -> None:
         'mod:2: Element 0 of "__all__" has type "int", expected "str"\n'
         'mod:2: Element 1 of "__all__" has type "bool", expected "str"\n'
         )
-    assert mod.all is None
+    assert mod.all == []
 
 @systemcls_param
 def test_classmethod(systemcls: Type[model.System]) -> None:
