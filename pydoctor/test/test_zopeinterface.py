@@ -348,7 +348,7 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == ['mod.var']
     captured = capsys.readouterr().out
-    assert captured == 'mod:4: Probable interface "mod.var" not detected as a class\n'
+    assert captured == 'mod:4: Supposed interface "mod.var" not detected as a class\n'
 
 def test_implementer_plainclass(capsys: CapSys) -> None:
     """
@@ -370,7 +370,7 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     assert C.kind == "Class"
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
-    assert captured == 'mod:5: Probable interface "mod.C" not marked as such\n'
+    assert captured == 'mod:5: Class "mod.C" is not an interface\n'
 
 def test_implementer_not_found(capsys: CapSys) -> None:
     """
@@ -386,7 +386,7 @@ def test_implementer_not_found(capsys: CapSys) -> None:
     '''
     fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     captured = capsys.readouterr().out
-    assert captured == 'mod:4: Probable interface "mod.INoSuchInterface" not found\n'
+    assert captured == 'mod:4: Interface "mod.INoSuchInterface" not found\n'
 
 def test_implementer_nocall(capsys: CapSys) -> None:
     """

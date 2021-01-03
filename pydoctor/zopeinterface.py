@@ -120,7 +120,7 @@ def _handle_implemented(
                 iface = system.objForFullName(root_obj.expandName(name_parts[1]))
                 if iface is None:
                     implementer.report(
-                        'Probable interface "%s" not found' % full_name,
+                        'Interface "%s" not found' % full_name,
                         section='zopeinterface')
                     return
 
@@ -129,11 +129,11 @@ def _handle_implemented(
             iface.implementedby_directly.append(implementer)
         else:
             implementer.report(
-                'Probable interface "%s" not marked as such' % full_name,
+                'Class "%s" is not an interface' % full_name,
                 section='zopeinterface')
     elif iface is not None:
         implementer.report(
-            'Probable interface "%s" not detected as a class' % full_name,
+            'Supposed interface "%s" not detected as a class' % full_name,
             section='zopeinterface')
 
 def addInterfaceInfoToModule(
