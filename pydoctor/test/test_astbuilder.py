@@ -512,7 +512,7 @@ def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """If there are multiple assignments to __all__, a warning is looged
+    """If there are multiple assignments to __all__, a warning is logged
     and the last assignment takes effect.
     """
     mod = fromText('''
@@ -525,7 +525,9 @@ def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
 
 @systemcls_param
 def test_all_bad_sequence(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """Values other than lists and tuples assigned to __all__ are ignored."""
+    """Values other than lists and tuples assigned to __all__ have no effect
+    and a warning is logged.
+    """
     mod = fromText('''
     __all__ = {}
     ''', modname='mod', systemcls=systemcls)
