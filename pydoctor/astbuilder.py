@@ -113,28 +113,30 @@ def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
             lineno_offset=call.lineno
             )
         return False
-    else:
-        auto_attribs_expr = args.arguments.get('auto_attribs')
-        if auto_attribs_expr is None:
-            return False
-        try:
-            value = ast.literal_eval(auto_attribs_expr)
-        except ValueError:
-            module.report(
-                'Unable to figure out value for "auto_attribs" argument '
-                'to attr.s(), maybe too complex',
-                lineno_offset=call.lineno
-                )
-            return False
-        if isinstance(value, bool):
-            return value
-        else:
-            module.report(
-                f'Value for "auto_attribs" argument to attr.s() '
-                f'has type "{type(value).__name__}", expected "bool"',
-                lineno_offset=call.lineno
-                )
-            return False
+
+    auto_attribs_expr = args.arguments.get('auto_attribs')
+    if auto_attribs_expr is None:
+        return False
+
+    try:
+        value = ast.literal_eval(auto_attribs_expr)
+    except ValueError:
+        module.report(
+            'Unable to figure out value for "auto_attribs" argument '
+            'to attr.s(), maybe too complex',
+            lineno_offset=call.lineno
+            )
+        return False
+
+    if not isinstance(value, bool):
+        module.report(
+            f'Value for "auto_attribs" argument to attr.s() '
+            f'has type "{type(value).__name__}", expected "bool"',
+            lineno_offset=call.lineno
+            )
+        return False
+
+    return value
 
 
 def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
