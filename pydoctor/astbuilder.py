@@ -92,7 +92,8 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 
-_attrs_signature = signature(attrs)
+_attrs_decorator_signature = signature(attrs)
+"""Signature of the L{attr.s} class decorator."""
 
 def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
     """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
@@ -105,7 +106,7 @@ def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
         if an explicit L{False} is passed or if an error was reported.
     """
     try:
-        args = bind_args(_attrs_signature, call)
+        args = bind_args(_attrs_decorator_signature, call)
     except TypeError as ex:
         module.report(
             f"Invalid arguments for attr.s(): {ex}",
@@ -144,6 +145,7 @@ def is_attrib(expr: Optional[ast.expr], ctx: model.Documentable) -> bool:
 
 
 _attrib_signature = signature(attrib)
+"""Signature of the L{attr.ib} function for defining class attributes."""
 
 def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArguments]:
     """Get the arguments passed to an C{attr.ib} definition.
