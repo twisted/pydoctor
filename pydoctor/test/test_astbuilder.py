@@ -503,12 +503,16 @@ def test_all_recognition(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
-    """A class variable named __all__ is ignored."""
+    """A class variable named __all__ is just an ordinary variable and
+    does not affect Module.all.
+    """
     mod = fromText('''
     class C:
         __all__ = ['f']
     ''', systemcls=systemcls)
     assert mod.all is None
+    assert '__all__' not in mod.contents
+    assert '__all__' in mod.contents['C'].contents
 
 @systemcls_param
 def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
