@@ -388,6 +388,43 @@ def test_implementer_not_found(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'mod:4: Interface "mod.INoSuchInterface" not found\n'
 
+def test_implementer_reparented() -> None:
+    """
+    A class passed to @implementer can be found even when it is moved
+    to a different module.
+    """
+
+    system = ZopeInterfaceSystem()
+
+    mod_iface = fromText('''
+    from zope.interface import Interface
+    class IMyInterface(Interface):
+        pass
+    ''', modname='_private', system=system)
+
+    mod_export = fromText('', modname='public', system=system)
+
+    mod_impl = fromText('''
+    from zope.interface import implementer
+    from _private import IMyInterface
+    @implementer(IMyInterface)
+    class Implementation:
+        pass
+    ''', modname='app', system=system)
+
+    iface = mod_iface.contents['IMyInterface']
+    iface.reparent(mod_export, 'IMyInterface')
+    assert iface.fullName() == 'public.IMyInterface'
+    assert 'IMyInterface' not in mod_iface.contents
+
+    impl = mod_impl.contents['Implementation']
+    assert impl.implements_directly == ['_private.IMyInterface']
+    assert iface.implementedby_directly == []
+
+    system.postProcess()
+    assert impl.implements_directly == ['_private.IMyInterface']
+    assert iface.implementedby_directly == [impl]
+
 def test_implementer_nocall(capsys: CapSys) -> None:
     """
     Report a warning when @implementer is used without calling it.
