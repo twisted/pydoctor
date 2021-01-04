@@ -114,9 +114,6 @@ def _handle_implemented(
         name_parts = full_name.split('.', 1)
         for root_obj in system.rootobjects:
             if root_obj.name == name_parts[0]:
-                if len(name_parts) == 1:
-                    iface = root_obj
-                    break
                 iface = system.objForFullName(root_obj.expandName(name_parts[1]))
                 if iface is None:
                     implementer.report(
