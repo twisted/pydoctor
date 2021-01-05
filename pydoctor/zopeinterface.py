@@ -106,7 +106,7 @@ def _handle_implemented(
     during post-processing.
     """
 
-    for iface_name in implementer.implements_directly:
+    for idx, iface_name in enumerate(implementer.implements_directly):
         try:
             iface = implementer.system.find_object(iface_name)
         except LookupError:
@@ -114,6 +114,12 @@ def _handle_implemented(
                 'Interface "%s" not found' % iface_name,
                 section='zopeinterface')
             continue
+
+        # Update names of reparented interfaces.
+        if iface is not None:
+            full_name = iface.fullName()
+            if full_name != iface_name:
+                implementer.implements_directly[idx] = full_name
 
         if isinstance(iface, ZopeInterfaceClass):
             if iface.isinterface:

@@ -422,7 +422,7 @@ def test_implementer_reparented() -> None:
     assert iface.implementedby_directly == []
 
     system.postProcess()
-    assert impl.implements_directly == ['_private.IMyInterface']
+    assert impl.implements_directly == ['public.IMyInterface']
     assert iface.implementedby_directly == [impl]
 
 def test_implementer_nocall(capsys: CapSys) -> None:
