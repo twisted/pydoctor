@@ -1078,18 +1078,14 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
                len(node.targets) == 1 and \
                isinstance(node.targets[0], ast.Name) and \
                node.targets[0].id == '__all__':
-            if mod.all is not None:
-                mod.report(
-                    'Multiple assignments to "__all__"',
-                    section='all', lineno_offset=node.lineno)
             if not isinstance(node.value, (ast.List, ast.Tuple)):
                 mod.report(
                     'Cannot parse value assigned to "__all__"',
                     section='all', lineno_offset=node.lineno)
                 continue
-            items = node.value.elts
+
             names = []
-            for idx, item in enumerate(items):
+            for idx, item in enumerate(node.value.elts):
                 try:
                     name: object = ast.literal_eval(item)
                 except ValueError:
@@ -1104,4 +1100,9 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
                             f'Element {idx} of "__all__" has '
                             f'type "{type(name).__name__}", expected "str"',
                             section='all', lineno_offset=node.lineno)
+
+            if mod.all is not None:
+                mod.report(
+                    'Assignment to "__all__" overrides previous assignment',
+                    section='all', lineno_offset=node.lineno)
             mod.all = names

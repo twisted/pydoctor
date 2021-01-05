@@ -524,7 +524,7 @@ def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
     __all__ = ['g']
     ''', modname='mod', systemcls=systemcls)
     captured = capsys.readouterr().out
-    assert captured == 'mod:3: Multiple assignments to "__all__"\n'
+    assert captured == 'mod:3: Assignment to "__all__" overrides previous assignment\n'
     assert mod.all == ['g']
 
 @systemcls_param
