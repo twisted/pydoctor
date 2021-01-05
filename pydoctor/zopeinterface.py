@@ -120,6 +120,7 @@ def _handle_implemented(
                         'Interface "%s" not found' % full_name,
                         section='zopeinterface')
                     return
+                break
 
     if isinstance(iface, ZopeInterfaceClass):
         if iface.isinterface:
