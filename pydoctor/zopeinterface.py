@@ -106,21 +106,13 @@ def _handle_implemented(
     """This is the counterpart to addInterfaceInfoToScope(), which is called
     during post-processing.
     """
-    system = implementer.system
-    iface = system.objForFullName(full_name)
-    if iface is None:
-        # The interface might have been reparented, in which case there will
-        # be an alias at the original location; look for it using expandName().
-        name_parts = full_name.split('.', 1)
-        for root_obj in system.rootobjects:
-            if root_obj.name == name_parts[0]:
-                iface = system.objForFullName(root_obj.expandName(name_parts[1]))
-                if iface is None:
-                    implementer.report(
-                        'Interface "%s" not found' % full_name,
-                        section='zopeinterface')
-                    return
-                break
+    try:
+        iface = implementer.system.find_object(full_name)
+    except LookupError:
+        implementer.report(
+            'Interface "%s" not found' % full_name,
+            section='zopeinterface')
+        return
 
     if isinstance(iface, ZopeInterfaceClass):
         if iface.isinterface:

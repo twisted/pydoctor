@@ -648,6 +648,36 @@ class System:
     def objForFullName(self, fullName: str) -> Optional[Documentable]:
         return self.allobjects.get(fullName)
 
+    def find_object(self, full_name: str) -> Optional[Documentable]:
+        """Look up an object using a potentially outdated full name.
+
+        A name can become outdated if the object is reparented:
+        L{objForFullName()} will only be able to find it under its new name,
+        but we might still have references to the old name.
+
+        @param full_name: The fully qualified name of the object.
+        @return: The object, or L{None} if the name is external (it does not
+            match any of the roots of this system).
+        @raise LookupError: If the object is not found, while its name does
+            match one of the roots of this system.
+        """
+        obj = self.objForFullName(full_name)
+        if obj is not None:
+            return obj
+
+        # The object might have been reparented, in which case there will
+        # be an alias at the original location; look for it using expandName().
+        name_parts = full_name.split('.', 1)
+        for root_obj in self.rootobjects:
+            if root_obj.name == name_parts[0]:
+                obj = self.objForFullName(root_obj.expandName(name_parts[1]))
+                if obj is not None:
+                    return obj
+                raise LookupError(full_name)
+
+        return None
+
+
     def _warning(self,
             current: Optional[Documentable],
             message: str,
