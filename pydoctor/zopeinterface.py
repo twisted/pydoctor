@@ -100,31 +100,32 @@ def addInterfaceInfoToScope(
             scope.implements_directly.append(fullName)
 
 def _handle_implemented(
-        full_name: str,
         implementer: Union[ZopeInterfaceClass, ZopeInterfaceModule]
         ) -> None:
     """This is the counterpart to addInterfaceInfoToScope(), which is called
     during post-processing.
     """
-    try:
-        iface = implementer.system.find_object(full_name)
-    except LookupError:
-        implementer.report(
-            'Interface "%s" not found' % full_name,
-            section='zopeinterface')
-        return
 
-    if isinstance(iface, ZopeInterfaceClass):
-        if iface.isinterface:
-            iface.implementedby_directly.append(implementer)
-        else:
+    for iface_name in implementer.implements_directly:
+        try:
+            iface = implementer.system.find_object(iface_name)
+        except LookupError:
             implementer.report(
-                'Class "%s" is not an interface' % full_name,
+                'Interface "%s" not found' % iface_name,
                 section='zopeinterface')
-    elif iface is not None:
-        implementer.report(
-            'Supposed interface "%s" not detected as a class' % full_name,
-            section='zopeinterface')
+            continue
+
+        if isinstance(iface, ZopeInterfaceClass):
+            if iface.isinterface:
+                iface.implementedby_directly.append(implementer)
+            else:
+                implementer.report(
+                    'Class "%s" is not an interface' % iface_name,
+                    section='zopeinterface')
+        elif iface is not None:
+            implementer.report(
+                'Supposed interface "%s" not detected as a class' % iface_name,
+                section='zopeinterface')
 
 def addInterfaceInfoToModule(
         module: ZopeInterfaceModule,
@@ -332,9 +333,7 @@ class ZopeInterfaceSystem(model.System):
         super().postProcess()
 
         for mod in self.objectsOfType(ZopeInterfaceModule):
-            for implemented in mod.implements_directly:
-                _handle_implemented(implemented, mod)
+            _handle_implemented(mod)
 
         for cls in self.objectsOfType(ZopeInterfaceClass):
-            for implemented in cls.implements_directly:
-                _handle_implemented(implemented, cls)
+            _handle_implemented(cls)
