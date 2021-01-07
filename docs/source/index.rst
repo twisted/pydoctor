@@ -22,6 +22,7 @@ Install pydoctor with ``restructuredtext`` support::
    readme
    usage
    help
+   codedoc
    docformat/index
    faq
    transition
