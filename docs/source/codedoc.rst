@@ -1,6 +1,47 @@
 How to Document Your Code
 =========================
 
+Docstrings
+----------
+
+In Python, a string at the top of a module, class or function is called a *docstring*. For example::
+
+    """This docstring describes the purpose of this module."""
+
+    class C:
+        """This docstring describes the purpose of this class."""
+
+        def m(self):
+            """This docstring describes the purpose of this method."""
+
+As an extension, pydoctor also supports *attribute docstrings*::
+
+    CONST = 123
+    """This docstring describes a module level variable/constant."""
+
+    class C:
+        cvar = None
+        """This docstring describes a class variable."""
+
+        def __init__(self):
+            self.ivar = []
+            """This docstring describes an instance variable."""
+
+For long docstrings, start with a short summary, followed by an empty line::
+
+    def f():
+        """This line is used as the summary.
+
+        More detail about the workings of this function can be added here.
+        They will be displayed in the documentation of the function itself
+        but omitted from the summary table.
+        """
+
+Further reading:
+
+- `Python Tutorial: Documentation Strings <https://docs.python.org/3/tutorial/controlflow.html#documentation-strings>`_
+- `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
+
 ``__all__`` re-export
 ---------------------
 
