@@ -42,6 +42,39 @@ Further reading:
 - `Python Tutorial: Documentation Strings <https://docs.python.org/3/tutorial/controlflow.html#documentation-strings>`_
 - `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
 
+Type annotations
+----------------
+
+Type annotations in your source code will be included in the API documentation that pydoctor generates. For example::
+
+    colors: dict[str, int] = {
+        'red': 0xFF0000, 'green': 0x00FF00, 'blue': 0x0000FF
+    }
+
+    def inverse(name: str) -> int:
+        return colors[name] ^ 0xFFFFFF
+
+If your project still supports Python versions prior to 3.6, you can also use type comments::
+
+    from typing import Optional
+
+    favorite_color = None  # type: Optional[str]
+
+However, the ability to extract type comments only exists in the parser of Python 3.8 and later, so make sure you run pydoctor using a recent Python version, or the type comments will be ignored.
+
+There is basic type inference support for variables/constants that are assigned literal values. But pydoctor cannot infer the type for computed values, unlike for example mypy::
+
+    FIBONACCI = [1, 1, 2, 3, 5, 8, 13]
+    # pydoctor will automatically determine the type: list[int]
+
+    SQUARES = [n ** 2 for n in range(10)]
+    # pydoctor needs an annotation to document this type
+
+Further reading:
+
+- `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
+- `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
+
 ``__all__`` re-export
 ---------------------
 
