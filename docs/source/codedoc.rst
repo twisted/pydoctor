@@ -75,6 +75,36 @@ Further reading:
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
 - `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
 
+Using ``attrs``
+---------------
+
+If you use the ``attrs`` library to define attributes on your classes, you can use inline docstrings combined with type annotations to provide pydoctor with all the information it needs to document those attributes::
+
+    import attr
+
+    @attr.s(auto_attribs=True)
+    class SomeClass:
+
+        a_number: int = 42
+        """One number."""
+
+        list_of_numbers: list[int]
+        """Multiple numbers."""
+
+If you are using explicit ``attr.ib`` definitions instead of ``auto_attribs``, pydoctor will try to infer the type of the attribute from the default value, but will need help in the form of type annotations or comments for collections and custom types::
+
+    from typing import List
+    import attr
+
+    @attr.s
+    class SomeClass:
+
+        a_number = attr.ib(default=42)
+        """One number."""
+
+        list_of_numbers = attr.ib(factory=list)  # type: List[int]
+        """Multiple numbers."""
+
 ``__all__`` re-export
 ---------------------
 
