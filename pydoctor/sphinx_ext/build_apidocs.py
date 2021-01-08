@@ -89,7 +89,6 @@ def on_builder_inited(app: Sphinx) -> None:
         }
 
     runs = config.pydoctor_args
-
     if not isinstance(runs, Mapping):
         # We have a single pydoctor call
         runs = {'main': runs}
@@ -152,7 +151,7 @@ def _get_arguments(arguments: Sequence[str], placeholders: Mapping[str, str]) ->
     return args
 
 
-def setup(app: Sphinx) ->  Mapping[str, Any]:
+def setup(app: Sphinx) -> Mapping[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 
