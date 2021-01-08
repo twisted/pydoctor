@@ -49,10 +49,10 @@ Design Notes
 
 I guess I've always been interested in more-or-less static analysis of
 Python code and have over time developed some fairly strong opinions
-on the Right Way (tm) to do it.
+on the Right Way\ |trade| to do it.
 
 The first of these is that pydoctor works on an entire *system* of
-packages and modules, not just a .py file at a time.
+packages and modules, not just a ``.py`` file at a time.
 
 The second, and this only struck me with full force as I have written
 pydoctor, is that it's much the best approach to proceed
@@ -69,3 +69,6 @@ Finally, pydoctor should never crash, no matter what code you feed it
 that universally applied, it seems).  Missing information is OK,
 crashing out is not.  This probably isn't as true as it should be at
 the moment.
+
+
+.. include:: <isonum.txt>

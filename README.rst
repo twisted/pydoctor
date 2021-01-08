@@ -49,7 +49,7 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language used by Sphinx.
     More expressive than epytext, but also slightly more complex and verbose.
 
-plaintext
+``plaintext``
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
@@ -60,10 +60,10 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
-pydoctor dev
-^^^^^^^^^^^^
+in development
+^^^^^^^^^^^^^^
 
-* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
+* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (``objects.inv``) for deep-linking your documentation.
 
 pydoctor 20.12.1
 ^^^^^^^^^^^^^^^^

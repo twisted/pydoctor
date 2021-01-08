@@ -227,7 +227,7 @@ from your Sphinx narrative documentation to your pydoctor API documentation.
 As a hack to integrate the pydoctor API docs `index.html` with the Sphinx TOC
 and document reference, you can create an `index.rst` at the location where
 the pydoctor `index.html` is hosted.
-The Sphinx index.html will be generated during the Sphinx build process and
+The Sphinx `index.html` will be generated during the Sphinx build process and
 later overwritten by the pydoctor build process.
 
 It is possible to call pydoctor multiple times (with different arguments) as
