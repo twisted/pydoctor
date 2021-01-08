@@ -5,12 +5,12 @@ reStructuredText
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
-Cross references
+Cross-references
 ^^^^^^^^^^^^^^^^
 
 PyDoctor replaces the Docutils' default `interpreted text role <http://docutils.sourceforge.net/docs/ref/rst/roles.html>`_ with the creation of
-`documentation crossreference links <http://epydoc.sourceforge.net/epydoc.html#documentation-crossreference-links>`_. If you want to create a crossreference link
-to the ``module.Example`` class, simply put backquotes around it, typing::
+`documentation cross-reference links <http://epydoc.sourceforge.net/epydoc.html#documentation-crossreference-links>`_. If you want to create a cross-reference link
+to the ``module.Example`` class, simply put backticks around it, typing::
 
     `module.Example`
 
@@ -29,7 +29,7 @@ As a reminder, here are some of the supported *restructuredtext* fields:
     - ``:raises ValueError:`` (synonym ``:except ValueError:``)
     - ``:note:``
 
-In addition to the standard set of fields, the reStructruedText
+In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation
 for several objects into a single field.
 
@@ -114,4 +114,4 @@ If the Python prompt gets in your way when you try to copy and paste and you are
 
 .. note:: HTML Classes *restructuredtext* markup creates have a ``"rst-"`` prefix
 
-.. note:: In any case, *plaintext* docformat will be used if docstrings can't be parsed with *restructuredtext* parser.
+.. note:: In any case, *plaintext* docstring format will be used if docstrings can't be parsed with *restructuredtext* parser.

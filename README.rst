@@ -47,7 +47,7 @@ pydoctor currently supports the following markup languages in docstrings:
 
 `restructuredtext`__
     The markup language used by Sphinx.
-    More expressive than epytext, but also slighly more complex and verbose.
+    More expressive than epytext, but also slightly more complex and verbose.
 
 plaintext
     Text without any markup.

@@ -6,7 +6,7 @@ Usage
 Most common options
 -------------------
 
-The following exemple uses all most common options to generate ``pydoctor``'s own API docs under the ``docs/api`` folder.
+The following example uses all most common options to generate ``pydoctor``'s own API docs under the ``docs/api`` folder.
 It will add a link to the project website in all pages header, show a link to source code aside every documented elements and resolve links to standard library objects.
 
 ::
@@ -23,10 +23,9 @@ It will add a link to the project website in all pages header, show a link to so
         --intersphinx=https://docs.python.org/3/objects.inv \
         ./pydoctor
 
-.. note:: This exemple assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
+.. note:: This example assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
 
-.. warning:: The ``--html-viewsource-base`` argument  should point to a tag or a commit SHA rather than a branch since line
-    numbers aren't going to match otherwise when commits are added to the branch after the documentation has been published.
+.. warning:: The ``--html-viewsource-base`` argument should point to a tag or a commit SHA rather than a branch since line numbers are not going to match otherwise when commits are added to the branch after the documentation has been published.
 
 Document part of your package
 -----------------------------
@@ -51,7 +50,7 @@ Publish your documentation
 With GitHub Actions
 ~~~~~~~~~~~~~~~~~~~
 
-Here is an exemple to automatically generate and publish your documentation with GitHub Actions and publish the documentation to the default GitHub Pages website.
+Here is an example to automatically generate and publish your documentation with GitHub Actions and publish the documentation to the default GitHub Pages website.
 
 ::
 
@@ -100,8 +99,8 @@ Here is an exemple to automatically generate and publish your documentation with
             publish_dir: ./apidocs
             commit_message: "Generate pydoctor documentation"
 
-.. note:: As mentionned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to GitHub Pages.
-    GitHub Pages needs to be enabled afterwards in the repo settings, select ``gh-pages`` branch, then re-run your workflow.
+.. note:: As mentioned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to GitHub Pages.
+    GitHub Pages needs to be enabled afterwards in the repository settings, select ``gh-pages`` branch, then re-run your workflow.
 
     The website we'll be at https://(user).github.io/(repo)/
 
@@ -127,7 +126,7 @@ with the following cumulative configuration option::
 
     --intersphinx=https://docs.python.org/3/objects.inv
 
-Then, your interpreted text, with backtics (`````) using `restructuredtext` and with ``L{}`` tag using `epytext`, will be linked to the Python element. Exemple::
+Then, your interpreted text, with backticks (`````) using `restructuredtext` and with ``L{}`` tag using `epytext`, will be linked to the Python element. Example::
 
   `datetime.datetime`
   L{datetime.datetime}
@@ -255,7 +254,7 @@ You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSys
 System class allows you to dynamically show/hide classes or methods.
 This is also used by the Twisted project to handle deprecation.
 
-See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation. Naviguate to the source code for a better overview.
+See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation. Navigate to the source code for a better overview.
 
 .. note:: Not fully documented, prone to break
 
@@ -264,7 +263,7 @@ Use custom HTML templates
 
 Currently, custom HTLM templates needs to be handled with some "monkeypatch" that will selectively use the appropriate templates.
 
-See the Twisted :py:class:`twisted:twisted.python._release.APIBuilder` custom class documentation . Naviguate to the source code for a better overview.
+See the Twisted :py:class:`twisted:twisted.python._release.APIBuilder` custom class documentation. Navigate to the source code for a better overview.
 The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build.
 
 .. note:: Not fully documented, prone to break

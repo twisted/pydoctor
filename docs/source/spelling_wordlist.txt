@@ -7,9 +7,17 @@ epydoc
 epytext
 freenode
 Intersphinx
+jml
+Lange
+monkeypatch
 msiempy
+mth
+mwhudson
 mypy
+pre
 pydoctor
+readme
 reStructuredText
+subclassing
 tox
 Wokkel

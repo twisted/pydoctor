@@ -5,7 +5,7 @@ Read the `epytext syntax reference <http://epydoc.sourceforge.net/manual-epytext
 
 Check the :doc:`Epytext API Demo <./demo/index>`.
 
-The epytext support has been herited from the ``epydoc`` software.
+The epytext support has been inherited from the ``epydoc`` software.
 All markup should work except the indexed terms ``X{}`` tag, which has been removed.
 
 
