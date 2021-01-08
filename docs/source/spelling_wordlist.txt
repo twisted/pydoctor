@@ -1,0 +1,15 @@
+backticks
+coroutine
+docstring
+docstrings
+Docutils
+epydoc
+epytext
+freenode
+Intersphinx
+msiempy
+mypy
+pydoctor
+reStructuredText
+tox
+Wokkel
