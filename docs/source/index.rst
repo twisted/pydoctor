@@ -6,7 +6,7 @@ Welcome to ``pydoctor``'s documentation!
 Installation
 ------------
 
-``pydoctor`` can be installed from PyPi::
+``pydoctor`` can be installed from PyPI::
 
    $ pip install -U pydoctor
 

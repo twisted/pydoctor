@@ -48,10 +48,10 @@ Publish your documentation
 
 ``pydoctor`` output are static HTML pages without no extra server-side support.
 
-With Github actions
+With GitHub Actions
 ~~~~~~~~~~~~~~~~~~~
 
-Here is an exemple to automatically generate and publish your documentation with Github actions and publish the documentation to the default Github pages website.
+Here is an exemple to automatically generate and publish your documentation with GitHub Actions and publish the documentation to the default GitHub Pages website.
 
 ::
 
@@ -100,8 +100,8 @@ Here is an exemple to automatically generate and publish your documentation with
             publish_dir: ./apidocs
             commit_message: "Generate pydoctor documentation"
 
-.. note:: As mentionned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to Github pages.
-    Github pages needs to be enabled afterwards in the repo settings, select ``gh-pages`` branch, then re-run your workflow.
+.. note:: As mentionned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to GitHub Pages.
+    GitHub Pages needs to be enabled afterwards in the repo settings, select ``gh-pages`` branch, then re-run your workflow.
 
     The website we'll be at https://(user).github.io/(repo)/
 
@@ -144,7 +144,7 @@ pydoctor's HTML generator will also generate a Sphinx objects inventory that can
 * methods -> ``:py:meth:``
 * attributes -> ``:py:attr:``
 
-Use this mapping in Sphinx by configure the `intersphinx extension`__.
+Use this mapping in Sphinx by configure the `Intersphinx extension`__.
 
 __ https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
 
@@ -222,7 +222,7 @@ The extension will add them automatically.
 The `pydoctor_url_path` is an URL path,
 relative to your public API documentation site.
 `{rtd_version}` will be replaced with the Read The Docs version (`stable` , `latest`, tag name).
-You only need to define this argument is you need to have intersphinx links
+You only need to define this argument is you need to have Intersphinx links
 from your Sphinx narrative documentation to your pydoctor API documentation.
 
 As a hack to integrate the pydoctor API docs `index.html` with the Sphinx TOC

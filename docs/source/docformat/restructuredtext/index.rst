@@ -1,4 +1,4 @@
-ReStructuredText
+reStructuredText
 ----------------
 
 ``pydoctor`` needs ``docutils`` to offer *restructuredtext* support.

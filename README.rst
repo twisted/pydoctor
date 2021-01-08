@@ -99,9 +99,9 @@ pydoctor 20.12.0
 
 * New option ``-W``/``--warnings-as-errors`` to fail your build on documentation errors
 
-* Linking to the standard library documentation is more accurate now, but does require the use of an intersphinx inventory (``--intersphinx=https://docs.python.org/3/objects.inv``)
+* Linking to the standard library documentation is more accurate now, but does require the use of an Intersphinx inventory (``--intersphinx=https://docs.python.org/3/objects.inv``)
 
-* Caching of intersphinx inventories is now enabled by default
+* Caching of Intersphinx inventories is now enabled by default
 
 * Added a `Sphinx extension`__ for embedding pydoctor's output in a project's Sphinx documentation
 

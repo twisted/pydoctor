@@ -36,7 +36,7 @@ Publishing to PyPI is done via a GitHub Actions workflow that is triggered when 
 
 First commit the version update to master and wait for tests to pass.
 
-You can push a tab by creating a `GitHub Release <https://github.com/twisted/pydoctor/releases/new>`
+You can push a tag by creating a `GitHub release <https://github.com/twisted/pydoctor/releases/new>`.
 
 You can also create a tag on local branch then push it::
 
