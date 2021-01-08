@@ -89,7 +89,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         runs = {'main': runs}
 
     pydoctor_url_path = config.pydoctor_url_path
-    if not isinstance(runs, Mapping):
+    if not isinstance(pydoctor_url_path, Mapping):
         pydoctor_url_path = {'main': pydoctor_url_path}
 
     for key, value in runs.items():
