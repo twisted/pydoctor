@@ -105,6 +105,29 @@ If you are using explicit ``attr.ib`` definitions instead of ``auto_attribs``, p
         list_of_numbers = attr.ib(factory=list)  # type: List[int]
         """Multiple numbers."""
 
+Private API
+-----------
+
+Modules, classes and functions of which the name starts with an underscore are considered *private*. These will not be shown by default, but there is a button in the generated documentation to reveal them. An exception to this rule is *dunders*: names that start and end with double underscores, like ``__str__`` and ``__eq__``, which are always considered public::
+
+    class _Private:
+        """This class won't be shown unless explicitly revealed."""
+
+    class Public:
+        """This class is public, but some of its methods are private."""
+
+        def public(self):
+            """This is a public method."""
+
+        def _private(self):
+            """For internal use only."""
+
+        def __eq__(self, other):
+            """Is this object equal to 'other'?
+
+            This method is public.
+            """
+
 ``__all__`` re-export
 ---------------------
 
