@@ -128,26 +128,24 @@ Modules, classes and functions of which the name starts with an underscore are c
             This method is public.
             """
 
-``__all__`` re-export
----------------------
+Re-exporting
+------------
 
-A documented element which is defined in ``my_package.core.session`` module and included in the ``__all__`` special variable of ``my_package``
-- in the ``__init__.py`` that it is imported into - will end up in the documentation of ``my_package``.
+If your project is a library or framework of significant size, you might want to split the implementation over multiple private modules while keeping the public API importable from a single module. This is supported using pydoctor's re-export feature.
 
-For instance, in the following exemple, the documentation of ``MyClass`` will be moved to the root package, ``my_package``.
+A documented element which is defined in one (typically private) module can be imported into another module and re-exported by naming it in the ``__all__`` special variable. Doing so will move its documentation to the module from where it was re-exported, which is where users of your project will be importing it from.
 
-::
+In the following example, the documentation of ``MyClass`` is written in the ``my_project.core._impl`` module, which is imported into the top-level ``__init__.py`` and then re-exported by including ``"MyClass"`` in the value of ``__all__``. As a result, the documentation for ``MyClass`` can be read in the documentation of the top-level ``my_project`` package::
 
-  ├── CONTRIBUTING.rst
-  ├── LICENSE.txt
   ├── README.rst
-  ├── my_package
-  │   ├── __init__.py     <-- Re-export `my_package.core.session.MyClass`
-  │   ├── core                as `my_package.MyClass`
+  ├── my_project
+  │   ├── __init__.py      <-- Re-export my_project.core._impl.MyClass
+  │   ├── core                 as my_project.MyClass
   │   │   ├── __init__.py
-  │   │   ├── session.py  <-- Defines `MyClass`
+  │   │   ├── _impl.py     <-- Defines and documents MyClass
 
-The content of ``my_package/__init__.py`` includes::
+The content of ``my_project/__init__.py`` includes::
 
-  from .core.session import MyClass
-  __all__ = ['MyClass', 'etc.']
+    from .core._impl import MyClass
+
+    __all__ = ["MyClass"]
