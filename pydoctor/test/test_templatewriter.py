@@ -69,7 +69,7 @@ def test_basic_package(tmp_path: Path) -> None:
     system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
-    w._writeDocsFor(root, False)
+    w._writeDocsFor(root)
     w.writeModuleIndex(system)
     for ob in system.allobjects.values():
         url = ob.url

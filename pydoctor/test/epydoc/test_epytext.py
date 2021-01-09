@@ -1,11 +1,12 @@
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, epytext, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, epytext, flatten
+from pydoctor.test import NotFoundLinker
 
 
-def epytext2html(s: str) -> str:
+def epytext2html(s: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     errs: List[ParseError] = []
-    v = flatten(epytext.parse_docstring(s, errs).to_stan(None))
+    v = flatten(epytext.parse_docstring(s, errs).to_stan(linker))
     if errs:
         raise errs[0]
     return (v or '').rstrip()

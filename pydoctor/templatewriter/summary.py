@@ -310,7 +310,7 @@ class IndexPage(BasePage):
 
     @renderer
     def version(self, request, tag):
-        return __version__.public()
+        return __version__
 
     @renderer
     def buildtime(self, request, tag):

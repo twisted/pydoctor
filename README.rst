@@ -60,8 +60,13 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
-pydoctor 20.12.1 (unreleased)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydoctor dev
+^^^^^^^^^^^^
+
+* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
+
+pydoctor 20.12.1
+^^^^^^^^^^^^^^^^
 
 * Reject source directories outside the project base directory (if given), instead of crashing
 * Fixed bug where source directories containing symbolic links could appear to be outside of the project base directory, leading to a crash

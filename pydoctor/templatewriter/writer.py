@@ -63,16 +63,16 @@ class TemplateWriter(IWriter):
             FilePath(os.path.join(self.base, 'pydoctor.js')))
         self._checkTemplatesV()
 
-    def writeIndividualFiles(self, obs:List[model.Documentable], functionpages:bool=False) -> None:
+    def writeIndividualFiles(self, obs:List[model.Documentable]) -> None:
         """
         Iterate trought ``obs`` and call `_writeDocsFor` method for each `Documentable`. 
         """
         self.dry_run = True
         for ob in obs:
-            self._writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob)
         self.dry_run = False
         for ob in obs:
-            self._writeDocsFor(ob, functionpages=functionpages)
+            self._writeDocsFor(ob)
 
     def writeModuleIndex(self, system:model.System) -> None:
         import time
@@ -86,10 +86,10 @@ class TemplateWriter(IWriter):
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob:model.Documentable, functionpages:bool) -> None:
+    def _writeDocsFor(self, ob:model.Documentable) -> None:
         if not ob.isVisible:
             return
-        if functionpages or ob.documentation_location is model.DocLocation.OWN_PAGE:
+        if ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
@@ -97,7 +97,7 @@ class TemplateWriter(IWriter):
                 with path.open('wb') as out:
                     self._writeDocsForOne(ob, out)
         for o in ob.contents.values():
-            self._writeDocsFor(o, functionpages)
+            self._writeDocsFor(o)
 
     def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[Any]) -> None:
         if not ob.isVisible:
