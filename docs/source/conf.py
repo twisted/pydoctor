@@ -48,6 +48,11 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Definitions that will be made available to every document.
+rst_epilog = """
+.. include:: <isonum.txt>
+"""
+
 # Configure spell checker.
 spelling_word_list_filename = 'spelling_wordlist.txt'
 

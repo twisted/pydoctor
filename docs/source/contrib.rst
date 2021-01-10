@@ -69,6 +69,3 @@ Finally, pydoctor should never crash, no matter what code you feed it
 that universally applied, it seems).  Missing information is OK,
 crashing out is not.  This probably isn't as true as it should be at
 the moment.
-
-
-.. include:: <isonum.txt>
