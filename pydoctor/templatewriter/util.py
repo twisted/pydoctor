@@ -2,6 +2,7 @@
 
 from typing import Optional, List, Union, Tuple
 import os
+import attr
 from bs4 import BeautifulSoup
 
 from pydoctor import model
@@ -12,13 +13,30 @@ import warnings
 def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref
 
-class TemplateFileLookup:
+@attr.s
+class Template:
     """
-    The L{TemplateFileLookup} handles the HTML template files locations. 
+    """
+
+@attr.s
+class HtmlTemplate:
+    """
+    """
+    pass
+
+@attr.s
+class RstTemplate:
+    """
+    """
+    pass
+
+class TemplateLookup:
+    """
+    The L{TemplateLookup} handles the HTML template files locations. 
     A little bit like `mako.lookup.TemplateLookup` but more simple. 
 
     The location of the files depends wether the users set a template directory 
-    with the option C{--html-template-dir}, custom files with matching names will be 
+    with the option C{--template-dir}, custom files with matching names will be 
     loaded if present. 
 
     This object allow the customization of any templates, this can lead to warnings when upgrading pydoctor, then, please update your template.
@@ -28,15 +46,18 @@ class TemplateFileLookup:
            Please upgrade the template version between releases if the template was changed. 
 
     """
+    _default_dir = 'templates'
+
     def __init__(self):
         self.templatedirs:List[FilePath] = []
         # Add default template dir
-        self._init_default_template_dir()
+        self.templatedirs.append(
+            self._get_default_template_dir(self._default_dir))
 
-    def _init_default_template_dir(self) -> None:
+    def _get_default_template_dir(self, dirname) -> FilePath:
         abspath = os.path.abspath(__file__)
         pydoctordir = os.path.dirname(os.path.dirname(abspath))
-        self.templatedirs.append(FilePath(os.path.join(pydoctordir, 'templates')))
+        return FilePath(os.path.join(pydoctordir, dirname))
 
     def add_templatedir(self, folderpath:str) -> None:
         """
@@ -46,13 +67,6 @@ class TemplateFileLookup:
         if not path.isdir():
             raise FileNotFoundError(f"Cannot find the template directory: '{path}'")
         self.templatedirs.append(path)
-
-    def clear_templates(self) -> None:
-        """
-        Reset templates to default values. 
-        """
-        self.templatedirs = []
-        self._init_default_template_dir()
 
     def get_templatefilepath(self, filename:str) -> FilePath:
         """
@@ -97,6 +111,7 @@ class TemplateFileLookup:
         else:
             return None
 
+
 # Deprecated
 def templatefile(filename:str) -> Union[bytes, str]:
     return templatefilepath(filename).path
@@ -104,7 +119,7 @@ def templatefile(filename:str) -> Union[bytes, str]:
 def templatefilepath(filename:str) -> FilePath:
     warnings.warn(  "pydoctor.templatewriter.templatefile() and pydoctor.templatewriter.templatefilepath() " 
                     "are deprecated since pydoctor 21. Please use the templating system. ")
-    return TemplateFileLookup().get_templatefilepath(filename)
+    return TemplateLookup().get_templatefilepath(filename)
 
 def taglink(o: model.Documentable, label: Optional[str] = None) -> Tag:
     if not o.isVisible:

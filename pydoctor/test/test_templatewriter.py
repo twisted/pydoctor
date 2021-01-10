@@ -5,13 +5,14 @@ import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import pages, writer
+from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
-from pydoctor.templatewriter.util import TemplateFileLookup
+from pydoctor.templatewriter.util import TemplateLookup
 
 
-def flatten(t: pages.ChildTable) -> str:
+def flatten(t: ChildTable) -> str:
     io = BytesIO()
     writer.flattenToFile(io, t)
     return io.getvalue().decode()
@@ -35,13 +36,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = pages.ChildTable(pages.DocGetter(), mod, [])
+    t = ChildTable(pages.DocGetter(), mod, [], TemplateLookup())
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = pages.ChildTable(pages.DocGetter(), mod, mod.contents.values())
+    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), TemplateLookup())
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -122,7 +123,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 
 def test_templatefile_lookup() -> None:
     
-    lookup = TemplateFileLookup()
+    lookup = TemplateLookup()
 
     here:Path = Path(__file__).parent
 
@@ -138,7 +139,7 @@ def test_templatefile_lookup() -> None:
 
     assert lookup.get_templatefilepath('index.html').path== str(here.parent / 'templates' / 'index.html' )
 
-    lookup.clear_templates()
+    lookup = TemplateLookup()
 
     assert lookup.get_templatefilepath('footer.html').path== str(here.parent / 'templates' / 'footer.html' )
     
@@ -158,10 +159,10 @@ def test_templatefile_lookup() -> None:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always", category=UserWarning)
         # Trigger a warning.
-        lookup = TemplateFileLookup()
+        lookup = TemplateLookup()
         lookup.add_templatedir(str(here / 'faketemplate'))
-        wr = templatewriter.TemplateWriter('', templatefile_lookup=lookup)
-        wr._checkTemplatesV()
+        wr = templatewriter.TemplateWriter('', template_lookup=lookup)
+        wr._checkTemplatesVersions()
         # Verify some things
         assert len(catch_warnings) == 1
         assert issubclass(catch_warnings[-1].category, UserWarning)

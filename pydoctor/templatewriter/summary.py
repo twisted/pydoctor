@@ -1,10 +1,11 @@
 """Classes that generate the summary pages."""
 
+import sys
 from typing import Dict, List, Sequence, Tuple, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
-from pydoctor.templatewriter.pages import BasePage
+from pydoctor.templatewriter.pages import BasePage, BaseElement
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
 
@@ -35,7 +36,7 @@ class ModuleIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def project(self, request, tag):
@@ -125,7 +126,7 @@ class ClassIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def title(self, request, tag):
@@ -168,9 +169,9 @@ class ClassIndexPage(BasePage):
         return tag.clear()("Class Hierarchy")
 
 
-class LetterElement(Element):
+class LetterElement(BaseElement):
     def __init__(self, loader, initials, letter):
-        Element.__init__(self, loader)
+        super().__init__(loader=loader, system=None, template_lookup=None)
         self.initials = initials
         self.my_letter = letter
 
@@ -221,10 +222,10 @@ class NameIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('nameIndex.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('nameIndex.html'))
 
-    def __init__(self, system):
-        super().__init__(system = system)
+    def __init__(self, system, template_lookup):
+        super().__init__(system=system, template_lookup=template_lookup)
         self.initials = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
@@ -255,7 +256,7 @@ class IndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('index.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('index.html'))
 
     @renderer
     def project_link(self, request, tag):
@@ -328,7 +329,7 @@ class UndocumentedSummaryPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('summary.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
 
     @renderer
     def title(self, request, tag):

@@ -7,9 +7,11 @@ import datetime
 import os
 import sys
 import warnings
+from inspect import signature
 
+from pydoctor.templatewriter.util import TemplateLookup
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.iwriter import IWriter
+from pydoctor.templatewriter import IWriter
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -138,9 +140,8 @@ def getparser() -> OptionParser:
         help=("Format used for parsing docstrings. "
               "Supported values: 'epytext' and 'restructuredtext'."))
     parser.add_option(
-        '--html-template-dir',
+        '--template-dir',
         dest='templatedir',
-        default=None,
         help=("Directory containing custom HTML templates."),
     )
     parser.add_option(
@@ -408,7 +409,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--writer-class', IWriter) # type: ignore
+                    options.htmlwriter, '--writer-class', IWriter)
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -419,15 +420,19 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             # Init writer
             writer: IWriter
             if system.options.templatedir:
-                system.templatefile_lookup.add_templatedir(
-                    system.options.templatedir)
-                try:
-                    writer = writerclass(options.htmloutput, 
-                        templatefile_lookup=system.templatefile_lookup) # type: ignore
+                
+                if 'template_lookup' in signature(writerclass).parameters:
+                    # writer class is up o date
+                    custom_template_lookup = TemplateLookup()
+                    custom_template_lookup.add_templatedir(
+                        system.options.templatedir)
 
-                except TypeError as err:
+                    writer = writerclass(options.htmloutput, 
+                        template_lookup=custom_template_lookup)
+                else:
+                    # old custom class is not do not cotain 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
             else:
                 writer = writerclass(options.htmloutput)
 

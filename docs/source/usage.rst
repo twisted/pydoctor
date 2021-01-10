@@ -277,10 +277,10 @@ All empty by default.
 - ``pageHeader.html``: After the main header, before the page title
 - ``footer.html``: At the very end of the body
 
-To overwrite a placeholder, write your cusom HTLM files to a folder 
+To override a placeholder, write your custom HTLM files to a folder 
 and use the following option::
 
-  --html-template-dir=./pydoctor_templates
+  --template-dir=./pydoctor_templates
 
 .. note::
 
@@ -299,7 +299,7 @@ This is also used by the Twisted project to handle deprecation.
 
 See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation. Naviguate to the source code for a better overview.
 
-.. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
+.. warning:: Pydoctor does not have a stable API yet. Custom builds are prone to break.
 
 Custom writer
 ~~~~~~~~~~~~~

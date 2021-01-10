@@ -6,10 +6,10 @@ import os
 from typing import IO, Any
 import warnings
 
-from pydoctor.iwriter import IWriter
+from pydoctor.templatewriter import IWriter
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import TemplateFileLookup
+from pydoctor.templatewriter.util import TemplateLookup
 from twisted.python.filepath import FilePath
 from twisted.web.template import flattenString
 
@@ -40,28 +40,31 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, filebase:str, templatefile_lookup:Optional[TemplateFileLookup] = None):
-        
-        super().__init__(filebase)
+    def __init__(self, filebase:str, template_lookup:Optional[TemplateLookup] = None):
+        """
+        @arg filebase: Output directory. 
+        @arg template_lookup: Custom L{TemplateLookup} object. 
+        """
+        self.base = filebase
         self.written_pages = 0
         self.total_pages = 0
         self.dry_run = False
-        self.templatefile_lookup:TemplateFileLookup = ( 
-            templatefile_lookup if templatefile_lookup else TemplateFileLookup() )
-        """Reference to the system's L{TemplateFileLookup} object"""
+        self.template_lookup:TemplateLookup = ( 
+            template_lookup if template_lookup else TemplateLookup() )
+        """Writer's L{TemplateLookup} object"""
 
     def prepOutputDirectory(self) -> None:
         """
         Copy static CSS and JS files to build directory and warn when custom templates are outdated. 
         """
         os.makedirs(self.base, exist_ok=True)
-        self.templatefile_lookup.get_templatefilepath('apidocs.css').copyTo(
+        self.template_lookup.get_templatefilepath('apidocs.css').copyTo(
             FilePath(os.path.join(self.base, 'apidocs.css')))
-        self.templatefile_lookup.get_templatefilepath('bootstrap.min.css').copyTo(
+        self.template_lookup.get_templatefilepath('bootstrap.min.css').copyTo(
             FilePath(os.path.join(self.base, 'bootstrap.min.css')))
-        self.templatefile_lookup.get_templatefilepath('pydoctor.js').copyTo(
+        self.template_lookup.get_templatefilepath('pydoctor.js').copyTo(
             FilePath(os.path.join(self.base, 'pydoctor.js')))
-        self._checkTemplatesV()
+        self._checkTemplatesVersions()
 
     def writeIndividualFiles(self, obs:List[model.Documentable]) -> None:
         """
@@ -79,7 +82,7 @@ class TemplateWriter(IWriter):
         for i, pclass in enumerate(summary.summarypages):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
-            page = pclass(system)
+            page = pclass(system=system, template_lookup=self.template_lookup)
             # Mypy gets a error: "Type[Element]" has no attribute "filename"
             f = open(os.path.join(self.base, pclass.filename), 'wb') # type: ignore
             flattenToFile(f, page)
@@ -112,19 +115,19 @@ class TemplateWriter(IWriter):
         else:
             pclass = pages.CommonPage
         ob.system.msg('html', str(ob), thresh=1)
-        page = pclass(ob)
+        page = pclass(ob=ob, template_lookup=self.template_lookup)
         self.written_pages += 1
         ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         flattenToFile(fobj, page)
 
-    def _checkTemplatesV(self) -> None:
+    def _checkTemplatesVersions(self) -> None:
         """
         Issue warnings when custom templates are outdated. 
         """
-        default_lookup = TemplateFileLookup()
-        for actual_template in self.templatefile_lookup.getall_templates_filenames():
+        default_lookup = TemplateLookup()
+        for actual_template in self.template_lookup.getall_templates_filenames():
             default_version = default_lookup.get_template_version(actual_template)
-            template_version = self.templatefile_lookup.get_template_version(actual_template)
+            template_version = self.template_lookup.get_template_version(actual_template)
             if default_version:
                 if template_version:
                     if ( template_version[0] < default_version[0] or ( template_version[0] == default_version[0]

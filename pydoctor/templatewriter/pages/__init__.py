@@ -8,7 +8,6 @@ import astor
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter import util
 from pydoctor.epydoc.markup import html2stan
 
@@ -42,16 +41,25 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class Nav(Element):
+class BaseElement(Element):
+    """
+    Common base element that olds reference to template lookup. 
+    C{system} and C{template_lookup} can be none in special cases like for L{LetterElement}. 
+    """
+    def __init__(self, system:Optional[model.System]=None, 
+      template_lookup:Optional[util.TemplateLookup]=None, loader=None, ):
+        self.system = system
+        self.template_lookup = template_lookup
+        super().__init__(loader)
+
+class Nav(BaseElement):
     """
     Common navigation header. 
     """
-    def __init__(self, system):
-        self.system = system
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('nav.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('nav.html'))
 
     @renderer
     def project(self, request, tag):
@@ -64,23 +72,21 @@ class Nav(Element):
         else:
             return ''
 
-class BasePage(Element):
+class BasePage(BaseElement):
     """
-    Defines special placeholders that are designed to be overwritten by users: 
+    Base page element. 
+
+    Defines special placeholders that are designed to be overriden by users: 
     "header.html", "pageHeader.html" and "footer.html".
     """
-    
-    def __init__(self, system:model.System):
-        self.system = system
-        """Reference to the system object"""
 
     @renderer
     def nav(self, request, tag):
-        return Nav(self.system)
+        return Nav(self.system, self.template_lookup)
 
     @renderer
     def header(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('header.html')
+        template = self.template_lookup.get_templatefilepath('header.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -88,7 +94,7 @@ class BasePage(Element):
 
     @renderer
     def pageHeader(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('pageHeader.html')
+        template = self.template_lookup.get_templatefilepath('pageHeader.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -96,7 +102,7 @@ class BasePage(Element):
 
     @renderer
     def footer(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('footer.html')
+        template = self.template_lookup.get_templatefilepath('footer.html')
         if template.getsize()>0:
             return html2stan(template.open('r').read().decode())
         else:
@@ -104,8 +110,8 @@ class BasePage(Element):
 
 class CommonPage(BasePage):
 
-    def __init__(self, ob, docgetter=None):
-        super().__init__(system = ob.system)
+    def __init__(self, ob, template_lookup:util.TemplateLookup, docgetter=None):
+        super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
@@ -113,7 +119,7 @@ class CommonPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('common.html'))
+        return XMLFile(self.template_lookup.get_templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()
@@ -188,9 +194,10 @@ class CommonPage(BasePage):
         return ()
 
     def mainTable(self):
+        from pydoctor.templatewriter.pages.table import ChildTable
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children)
+            return ChildTable(self.docgetter, self.ob, children, self.template_lookup)
         else:
             return ()
 
@@ -205,9 +212,9 @@ class CommonPage(BasePage):
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
         return r
 
     def functionExtras(self, data):
@@ -251,6 +258,7 @@ class PackagePage(ModulePage):
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
+        from pydoctor.templatewriter.pages.table import ChildTable
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.contents.values() if o.isVisible],
@@ -258,7 +266,7 @@ class PackagePage(ModulePage):
         if children:
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children)]
+                    ChildTable(self.docgetter, init, children, self.template_lookup)]
         else:
             return ()
 
@@ -322,8 +330,9 @@ def assembleList(system, label, lst, idbase):
 
 
 class ClassPage(CommonPage):
-    def __init__(self, ob, docgetter=None):
-        CommonPage.__init__(self, ob, docgetter)
+    def __init__(self, ob, template_lookup:util.TemplateLookup, 
+      docgetter=None):
+        super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
         for baselist in nested_bases(self.ob):
             attrs = unmasked_attrs(baselist)
@@ -374,6 +383,7 @@ class ClassPage(CommonPage):
 
     @renderer
     def baseTables(self, request, item):
+        from pydoctor.templatewriter.pages.table import ChildTable
         baselists = self.baselists[:]
         if not baselists:
             return []
@@ -382,7 +392,8 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value)))
+                                               sorted(attrs, key=lambda o:-o.privacyClass.value), 
+                                                self.template_lookup))
                 for b, attrs in baselists]
 
     def baseName(self, data):
