@@ -1,6 +1,7 @@
 How to Document Your Code
 =========================
 
+
 Docstrings
 ----------
 
@@ -41,6 +42,7 @@ Further reading:
 
 - `Python Tutorial: Documentation Strings <https://docs.python.org/3/tutorial/controlflow.html#documentation-strings>`_
 - `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
+
 
 Type annotations
 ----------------
@@ -105,6 +107,7 @@ If you are using explicit ``attr.ib`` definitions instead of ``auto_attribs``, p
         list_of_numbers = attr.ib(factory=list)  # type: List[int]
         """Multiple numbers."""
 
+
 Private API
 -----------
 
@@ -127,6 +130,7 @@ Modules, classes and functions of which the name starts with an underscore are c
 
             This method is public.
             """
+
 
 Re-exporting
 ------------

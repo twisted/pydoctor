@@ -1,6 +1,7 @@
 Frequently Asked Questions
 ==========================
 
+
 Why?
 ----
 
@@ -11,6 +12,7 @@ In addition, development on Epydoc seemed to have halted.
 The needs of the Twisted project are still the main driving force for ``pydoctor``'s
 development, but it is getting to the point where there's some chance that it is
 useful for your project too.
+
 
 Who wrote ``pydoctor``?
 ------------------------
@@ -23,11 +25,13 @@ people who hang out in #twisted on freenode.
 More recently, Maarten ter Huurne ("mth"), took the lead.
 Always backed with `numerous contributors <https://github.com/twisted/pydoctor/graphs/contributors>`_.
 
+
 Why would I use it?
 -------------------
 
 ``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing.
 It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en/latest/>`_, and can recognize interfaces and classes which implement such interfaces.
+
 
 How is it different from ``sphinx-autodoc``
 -------------------------------------------
@@ -36,6 +40,7 @@ How is it different from ``sphinx-autodoc``
 one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables.
 
 It can be integrated to your Sphinx prose documentation seamlessly to link to your API documentation, please refer to `Usage <usage.html>`_ section.
+
 
 What does the output look like?
 -------------------------------
@@ -48,6 +53,7 @@ As a bonus here are other projects using ``pydoctor``:
     - Wokkel
     - msiempy
     - An many others!
+
 
 How do I use it?
 ----------------

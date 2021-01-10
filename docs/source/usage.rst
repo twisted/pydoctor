@@ -3,6 +3,7 @@ Usage
 
 .. contents::
 
+
 Most common options
 -------------------
 
@@ -26,6 +27,7 @@ It will add a link to the project website in all pages header, show a link to so
 .. note:: This example assume that you have cloned and installed ``pydoctor`` and you are running the ``pydoctor`` build from Unix and the current directory is the root folder of the Python project.
 
 .. warning:: The ``--html-viewsource-base`` argument should point to a tag or a commit SHA rather than a branch since line numbers are not going to match otherwise when commits are added to the branch after the documentation has been published.
+
 
 Document part of your package
 -----------------------------
@@ -110,6 +112,7 @@ Here is an example to automatically generate and publish your documentation with
 .. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. .. note:: Documentation to come!
+
 
 Sphinx Integration
 ------------------
@@ -244,6 +247,7 @@ Customize builds
 
 .. warning:: PyDoctor does not have a stable API yet. Custom builds are prone to break.
 
+
 Use a custom System class
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -258,6 +262,7 @@ See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class 
 
 .. note:: Not fully documented, prone to break
 
+
 Use custom HTML templates
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -267,6 +272,7 @@ See the Twisted :py:class:`twisted:twisted.python._release.APIBuilder` custom cl
 The key thing is to apply a patch to the :py:func:`pydoctor:pydoctor.templatewriter.util.templatefile` function before the build.
 
 .. note:: Not fully documented, prone to break
+
 
 Use a custom HTML writer
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -5,6 +5,7 @@ reStructuredText
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
+
 Cross-references
 ^^^^^^^^^^^^^^^^
 
@@ -13,6 +14,7 @@ PyDoctor replaces the Docutils' default `interpreted text role <http://docutils.
 to the ``module.Example`` class, simply put backticks around it, typing::
 
     `module.Example`
+
 
 Fields
 ^^^^^^
@@ -85,6 +87,7 @@ The following consolidated fields are currently supported by PyDoctor:
     ==============================      ==============================
 
 Fields are case *insensitive*.
+
 
 Directives
 ^^^^^^^^^^
