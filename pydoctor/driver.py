@@ -9,9 +9,8 @@ import sys
 import warnings
 from inspect import signature
 
-from pydoctor.templatewriter.util import TemplateLookup
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.templatewriter import IWriter
+from pydoctor.templatewriter import IWriter, TemplateLookup
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -419,18 +418,20 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             # Init writer
             writer: IWriter
+
+            # Handle custom HTML templates
             if system.options.templatedir:
                 
                 if 'template_lookup' in signature(writerclass).parameters:
                     # writer class is up o date
                     custom_template_lookup = TemplateLookup()
                     custom_template_lookup.add_templatedir(
-                        system.options.templatedir)
+                        Path(system.options.templatedir))
 
                     writer = writerclass(options.htmloutput, 
                         template_lookup=custom_template_lookup)
                 else:
-                    # old custom class is not do not cotain 'template_lookup' argument. 
+                    # old custom class is not do not contain 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput)
                     warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
             else:

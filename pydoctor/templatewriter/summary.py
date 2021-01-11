@@ -36,7 +36,7 @@ class ModuleIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
+        return self.template_lookup.get_template('summary.html').load()
 
     @renderer
     def project(self, request, tag):
@@ -126,7 +126,7 @@ class ClassIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
+        return self.template_lookup.get_template('summary.html').load()
 
     @renderer
     def title(self, request, tag):
@@ -222,7 +222,7 @@ class NameIndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('nameIndex.html'))
+        return self.template_lookup.get_template('nameIndex.html').load()
 
     def __init__(self, system, template_lookup):
         super().__init__(system=system, template_lookup=template_lookup)
@@ -256,7 +256,7 @@ class IndexPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('index.html'))
+        return self.template_lookup.get_template('index.html').load()
 
     @renderer
     def project_link(self, request, tag):
@@ -329,7 +329,7 @@ class UndocumentedSummaryPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('summary.html'))
+        return self.template_lookup.get_template('summary.html').load()
 
     @renderer
     def title(self, request, tag):

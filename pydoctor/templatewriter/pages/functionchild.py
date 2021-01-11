@@ -7,7 +7,7 @@ class FunctionChild(BaseElement):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('function-child.html'))
+        return self.template_lookup.get_template('function-child.html').load()
 
     def __init__(self, docgetter, ob, functionExtras, template_lookup):
         super().__init__(ob.system, template_lookup)

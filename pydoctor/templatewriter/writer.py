@@ -3,14 +3,14 @@
 
 from typing import Type, Optional, List
 import os
+import shutil
 from typing import IO, Any
 import warnings
+from pathlib import Path
 
 from pydoctor.templatewriter import IWriter
 from pydoctor import model
-from pydoctor.templatewriter import DOCTYPE, pages, summary
-from pydoctor.templatewriter.util import TemplateLookup
-from twisted.python.filepath import FilePath
+from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
 from twisted.web.template import flattenString
 
 
@@ -58,13 +58,15 @@ class TemplateWriter(IWriter):
         Copy static CSS and JS files to build directory and warn when custom templates are outdated. 
         """
         os.makedirs(self.base, exist_ok=True)
-        self.template_lookup.get_templatefilepath('apidocs.css').copyTo(
-            FilePath(os.path.join(self.base, 'apidocs.css')))
-        self.template_lookup.get_templatefilepath('bootstrap.min.css').copyTo(
-            FilePath(os.path.join(self.base, 'bootstrap.min.css')))
-        self.template_lookup.get_templatefilepath('pydoctor.js').copyTo(
-            FilePath(os.path.join(self.base, 'pydoctor.js')))
-        self._checkTemplatesVersions()
+        shutil.copy(
+            self.template_lookup.get_template('apidocs.css').path,
+            Path(os.path.join(self.base, 'apidocs.css')))
+        shutil.copy(
+            self.template_lookup.get_template('bootstrap.min.css').path,
+            Path(os.path.join(self.base, 'bootstrap.min.css')))
+        shutil.copy(
+            self.template_lookup.get_template('pydoctor.js').path,
+            Path(os.path.join(self.base, 'pydoctor.js')))
 
     def writeIndividualFiles(self, obs:List[model.Documentable]) -> None:
         """
@@ -96,7 +98,7 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                path = FilePath(self.base).child(f'{ob.fullName()}.html')
+                path = (Path(self.base) / f'{ob.fullName()}.html')
                 with path.open('wb') as out:
                     self._writeDocsForOne(ob, out)
         for o in ob.contents.values():
@@ -119,21 +121,3 @@ class TemplateWriter(IWriter):
         self.written_pages += 1
         ob.system.progress('html', self.written_pages, self.total_pages, 'pages written')
         flattenToFile(fobj, page)
-
-    def _checkTemplatesVersions(self) -> None:
-        """
-        Issue warnings when custom templates are outdated. 
-        """
-        default_lookup = TemplateLookup()
-        for actual_template in self.template_lookup.getall_templates_filenames():
-            default_version = default_lookup.get_template_version(actual_template)
-            template_version = self.template_lookup.get_template_version(actual_template)
-            if default_version:
-                if template_version:
-                    if ( template_version[0] < default_version[0] or ( template_version[0] == default_version[0]
-                         and template_version[1] < default_version[1] )): 
-                        warnings.warn(f"Your custom template '{actual_template}' is out of date, information might be missing."
-                                               " Latest templates are available to download from our github.")
-                else:
-                    warnings.warn(f"Your custom template '{actual_template}' do not have a version identifier, information might be missing."
-                                              " Latest templates are available to download from our github.")

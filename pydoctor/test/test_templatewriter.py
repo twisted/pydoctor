@@ -4,12 +4,11 @@ import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import pages, writer
+from pydoctor.templatewriter import pages, writer, TemplateLookup
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
-from pydoctor.templatewriter.util import TemplateLookup
 
 
 def flatten(t: ChildTable) -> str:
@@ -127,44 +126,52 @@ def test_templatefile_lookup() -> None:
 
     here:Path = Path(__file__).parent
 
-    assert lookup.get_templatefilepath('index.html').path == str(here.parent / 'templates' / 'index.html' )
+    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
 
-    lookup.add_templatedir(str(here / 'faketemplate'))
+    lookup.add_templatedir((here / 'faketemplate'))
 
-    assert lookup.get_templatefilepath('footer.html').path == str(here / 'faketemplate' / 'footer.html' )
+    assert str(lookup.get_template('footer.html').path) == str(here / 'faketemplate' / 'footer.html' )
     
-    assert lookup.get_templatefilepath('header.html').path== str(here / 'faketemplate' / 'header.html' )
+    assert str(lookup.get_template('header.html').path) == str(here / 'faketemplate' / 'header.html' )
 
-    assert lookup.get_templatefilepath('pageHeader.html').path== str(here / 'faketemplate' / 'pageHeader.html' )
+    assert str(lookup.get_template('pageHeader.html').path) == str(here / 'faketemplate' / 'pageHeader.html' )
 
-    assert lookup.get_templatefilepath('index.html').path== str(here.parent / 'templates' / 'index.html' )
+    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
 
     lookup = TemplateLookup()
 
-    assert lookup.get_templatefilepath('footer.html').path== str(here.parent / 'templates' / 'footer.html' )
+    assert str(lookup.get_template('footer.html').path) == str(here.parent / 'templates' / 'footer.html' )
     
-    assert lookup.get_templatefilepath('header.html').path== str(here.parent / 'templates' / 'header.html' )
+    assert str(lookup.get_template('header.html').path) == str(here.parent / 'templates' / 'header.html' )
 
-    assert lookup.get_templatefilepath('pageHeader.html').path== str(here.parent / 'templates' / 'pageHeader.html' )
+    assert str(lookup.get_template('pageHeader.html').path) == str(here.parent / 'templates' / 'pageHeader.html' )
 
-    assert lookup.get_templatefilepath('index.html').path== str(here.parent / 'templates' / 'index.html' )
+    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
 
-    assert lookup.get_template_version('footer.html') == None
+    assert lookup.get_template_version('footer.html') == -1
 
-    assert type(lookup.get_template_version('index.html')) == tuple
+    assert type(lookup.get_template_version('index.html')) == int
 
-    assert lookup.get_template_version('table.html') == (1,0)
+    assert lookup.get_template_version('table.html') == 1
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always", category=UserWarning)
         # Trigger a warning.
         lookup = TemplateLookup()
-        lookup.add_templatedir(str(here / 'faketemplate'))
-        wr = templatewriter.TemplateWriter('', template_lookup=lookup)
-        wr._checkTemplatesVersions()
+        lookup.add_templatedir((here / 'faketemplate'))
         # Verify some things
-        assert len(catch_warnings) == 1
+        try:
+            assert len(catch_warnings) == 1
+            
+        except AssertionError as e:
+            string = "Warnings:\n"
+            for w in catch_warnings:
+                string += str(w.message)
+                string += '\n'
+            
+            raise AssertionError(string) from e
+        
         assert issubclass(catch_warnings[-1].category, UserWarning)
         assert "Your custom template 'nav.html' is out of date" in str(catch_warnings[-1].message)
 

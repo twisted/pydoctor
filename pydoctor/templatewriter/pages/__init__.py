@@ -8,7 +8,7 @@ import astor
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter import util
+from pydoctor.templatewriter import util, TemplateLookup
 from pydoctor.epydoc.markup import html2stan
 
 
@@ -47,7 +47,7 @@ class BaseElement(Element):
     C{system} and C{template_lookup} can be none in special cases like for L{LetterElement}. 
     """
     def __init__(self, system:Optional[model.System]=None, 
-      template_lookup:Optional[util.TemplateLookup]=None, loader=None, ):
+      template_lookup:Optional[TemplateLookup]=None, loader=None, ):
         self.system = system
         self.template_lookup = template_lookup
         super().__init__(loader)
@@ -59,7 +59,7 @@ class Nav(BaseElement):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('nav.html'))
+        return self.template_lookup.get_template('nav.html').load()
 
     @renderer
     def project(self, request, tag):
@@ -86,31 +86,33 @@ class BasePage(BaseElement):
 
     @renderer
     def header(self, request, tag):
-        template = self.template_lookup.get_templatefilepath('header.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
+        template = self.template_lookup.get_template('header.html')
+        if template.content:
+            return html2stan(template.content)
         else:
             return ''
 
     @renderer
     def pageHeader(self, request, tag):
-        template = self.template_lookup.get_templatefilepath('pageHeader.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
+        template = self.template_lookup.get_template('pageHeader.html')
+        if template.content:
+            return html2stan(template.content)
         else:
             return ''
+
 
     @renderer
     def footer(self, request, tag):
-        template = self.template_lookup.get_templatefilepath('footer.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
+        template = self.template_lookup.get_template('footer.html')
+        if template.content:
+            return html2stan(template.content)
         else:
             return ''
 
+
 class CommonPage(BasePage):
 
-    def __init__(self, ob, template_lookup:util.TemplateLookup, docgetter=None):
+    def __init__(self, ob, template_lookup:TemplateLookup, docgetter=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
@@ -119,7 +121,7 @@ class CommonPage(BasePage):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('common.html'))
+        return self.template_lookup.get_template('common.html').load()
 
     def title(self):
         return self.ob.fullName()
@@ -330,7 +332,7 @@ def assembleList(system, label, lst, idbase):
 
 
 class ClassPage(CommonPage):
-    def __init__(self, ob, template_lookup:util.TemplateLookup, 
+    def __init__(self, ob, template_lookup:TemplateLookup, 
       docgetter=None):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []

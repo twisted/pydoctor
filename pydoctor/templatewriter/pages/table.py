@@ -47,7 +47,7 @@ class ChildTable(BaseElement):
 
     @property
     def loader(self):
-        return XMLFile(self.template_lookup.get_templatefilepath('table.html'))
+        return self.template_lookup.get_template('table.html').load()
 
     def __init__(self, docgetter, ob, children, template_lookup):
         super().__init__( 
