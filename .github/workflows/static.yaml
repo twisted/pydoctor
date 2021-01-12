@@ -43,4 +43,4 @@ jobs:
 
     - name: Run docs and check extensions
       run: |
-        tox -e docs
+        tox -e testdocs
