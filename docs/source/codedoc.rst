@@ -5,7 +5,8 @@ How to Document Your Code
 Docstrings
 ----------
 
-In Python, a string at the top of a module, class or function is called a *docstring*. For example::
+In Python, a string at the top of a module, class or function is called a *docstring*.
+For example::
 
     """This docstring describes the purpose of this module."""
 
@@ -15,7 +16,7 @@ In Python, a string at the top of a module, class or function is called a *docst
         def m(self):
             """This docstring describes the purpose of this method."""
 
-As an extension, pydoctor also supports *attribute docstrings*::
+Pydoctor also supports *attribute docstrings*::
 
     CONST = 123
     """This docstring describes a module level variable/constant."""
@@ -27,6 +28,8 @@ As an extension, pydoctor also supports *attribute docstrings*::
         def __init__(self):
             self.ivar = []
             """This docstring describes an instance variable."""
+
+Attribute docstrings are not part of the Python language itself (`PEP 224 <https://www.python.org/dev/peps/pep-0224/>`_ was rejected), so these docstrings are not available at runtime.
 
 For long docstrings, start with a short summary, followed by an empty line::
 
@@ -47,7 +50,8 @@ Further reading:
 Type annotations
 ----------------
 
-Type annotations in your source code will be included in the API documentation that pydoctor generates. For example::
+Type annotations in your source code will be included in the API documentation that pydoctor generates.
+For example::
 
     colors: dict[str, int] = {
         'red': 0xFF0000, 'green': 0x00FF00, 'blue': 0x0000FF
@@ -64,7 +68,8 @@ If your project still supports Python versions prior to 3.6, you can also use ty
 
 However, the ability to extract type comments only exists in the parser of Python 3.8 and later, so make sure you run pydoctor using a recent Python version, or the type comments will be ignored.
 
-There is basic type inference support for variables/constants that are assigned literal values. But pydoctor cannot infer the type for computed values, unlike for example mypy::
+There is basic type inference support for variables/constants that are assigned literal values.
+Unlike for example mypy, pydoctor cannot infer the type for computed values::
 
     FIBONACCI = [1, 1, 2, 3, 5, 8, 13]
     # pydoctor will automatically determine the type: list[int]
@@ -143,7 +148,7 @@ In the following example, the documentation of ``MyClass`` is written in the ``m
 
   ├── README.rst
   ├── my_project
-  │   ├── __init__.py      <-- Re-export my_project.core._impl.MyClass
+  │   ├── __init__.py      <-- Re-exports my_project.core._impl.MyClass
   │   ├── core                 as my_project.MyClass
   │   │   ├── __init__.py
   │   │   ├── _impl.py     <-- Defines and documents MyClass
