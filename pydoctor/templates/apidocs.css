@@ -16,14 +16,6 @@
     box-shadow: 0px 0px 8px 8px #fff;
 }
 
-/* Add a centerdot before fields */ 
-
-.fieldArg:before {
-    content: "\00B7";
-    margin-right: 6px;
-}
-
-
 .navlinks li {
     padding: 0;
     display: inline-block;

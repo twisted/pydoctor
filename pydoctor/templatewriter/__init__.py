@@ -10,6 +10,7 @@ from typing import Any, List, Optional, Dict
 import abc
 from pathlib import Path
 import warnings
+from twisted.web.iweb import ITemplateLoader
 
 from twisted.web.template import XMLFile
 from twisted.python.filepath import FilePath
@@ -45,11 +46,16 @@ class IWriter(ABC):
 
 class Template(abc.ABC):
     """
-    Base class for a template files used to generate output documents. 
+    Represents a pydoctor template file. 
+    
+    It holds references to template data. 
     """
 
     def __init__(self, path:Path):
-        self._content: Optional[str] = None
+        """
+        Template is constructed using a Path that should point to a file. 
+        """
+        self._text: Optional[str] = None
         self.path: Path = path
         if not self.path.is_file():
             raise FileNotFoundError(f"Cannot find the template file: '{self.path}'")
@@ -57,34 +63,34 @@ class Template(abc.ABC):
     @property
     def name(self) -> str:
         """
-        Filename
+        Template filename
         """
         return self.path.name
 
     @property
-    def content(self) -> str:
+    def text(self) -> str:
         """
-        Raw content of the template file
+        Raw file text 
         """
-        if not self._content:
-            self._content = self.path.open('r').read()
-        return self._content
+        if not self._text:
+            self._text = self.path.open('r').read()
+        return self._text
 
-    @abc.abstractmethod
+    @abc.abstractproperty
     def version(self) -> int:
         """
-        Template version, returns C{-1} if no version. 
+        Template version, C{-1} if no version. 
         """
         pass
 
-    @abc.abstractmethod
-    def load(self) -> Any:
+    @abc.abstractproperty
+    def renderable(self) -> Any:
         """
-        Get the object that is used to render the final file with a templating system. 
+        Object that is used to render the final file. 
 
-        For HTML templates, this will return a L{XMLFile}. 
+        For HTML templates, this will return a L{ITemplateLoader}. 
 
-        For CSS and JS templates, this will return None 
+        For CSS and JS templates, this will return C{None} 
         as there is no rendering to do with those, it's already the final file.  
         """
         pass
@@ -93,9 +99,11 @@ class SimpleTemplate(Template):
     """
     Simple template file with no rendering for CSS and JS templates. 
     """
+    @property
     def version(self) -> int:
         return -1
-    def load(self) -> None:
+    @property
+    def renderable(self) -> None:
         return None
 
 class HtmlTemplate(Template):
@@ -108,12 +116,13 @@ class HtmlTemplate(Template):
         self._xmlfile:Optional[XMLFile] = None
         self._version:Optional[int] = None
 
+    @property
     def version(self) -> int:
         """
         @returns The template version as L{int}, C{-1} if no version was detected.
         """
         if self._version == None:
-            soup = BeautifulSoup(self.content, 'html.parser')
+            soup = BeautifulSoup(self.text, 'html.parser')
             res = soup.find_all("meta", attrs=dict(name="pydoctor-template-version"))
             if res:
                 try:
@@ -127,8 +136,9 @@ class HtmlTemplate(Template):
         # It's ok to ignore mypy error because the version is parsed if it's None
         return self._version # type: ignore 
 
-    def load(self) -> XMLFile:
-        """Get the L{XMLFile} """
+    @property
+    def renderable(self) -> ITemplateLoader:
+        """Get the L{ITemplateLoader} """
         if not self._xmlfile:
             self._xmlfile = XMLFile(FilePath(self.path.as_posix()))
         return self._xmlfile
@@ -199,7 +209,7 @@ class TemplateLookup:
         try:
             default_version = self.get_template_version(template.name)
 
-            template_version = template.version()
+            template_version = template.version
             if default_version:
                 if template_version < default_version: 
                     warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing."
@@ -244,7 +254,7 @@ class TemplateLookup:
         @return: The template version as int
         @raises FileNotFoundError: If the template file do not exist
         """
-        return self.get_template(filename).version()
+        return self.get_template(filename).version
 
 from pydoctor.templatewriter.writer import TemplateWriter
 TemplateWriter = TemplateWriter

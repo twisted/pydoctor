@@ -1,10 +1,10 @@
 """Classes that generate the summary pages."""
 
 import sys
-from typing import Dict, List, Sequence, Tuple, Union, cast
+from typing import Dict, List, Sequence, Tuple, Union, Optional, cast
 
 from pydoctor import epydoc2stan, model, __version__
-from pydoctor.templatewriter import util
+from pydoctor.templatewriter import util, TemplateLookup
 from pydoctor.templatewriter.pages import BasePage, BaseElement
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
@@ -32,14 +32,17 @@ def _lckey(x):
 
 
 class ModuleIndexPage(BasePage):
+
     filename = 'moduleIndex.html'
 
-    @property
-    def loader(self):
-        """
-        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
-        """
-        return self.template_lookup.get_template('summary.html').load()
+    def __init__(self, 
+        system:Optional[model.System]=None, 
+        template_lookup:Optional[TemplateLookup]=None, ):
+
+        # Override L{BasePage.loader} because here the page L{filename} 
+        # does not equal the template filename. 
+        super().__init__(system=system, template_lookup=template_lookup, 
+            loader=template_lookup.get_template('summary.html').renderable )
 
     @renderer
     def project(self, request, tag):
@@ -118,14 +121,17 @@ def subclassesFrom(hostsystem, cls, anchors):
     return r
 
 class ClassIndexPage(BasePage):
+
     filename = 'classIndex.html'
 
-    @property
-    def loader(self):
-        """
-        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
-        """
-        return self.template_lookup.get_template('summary.html').load()
+    def __init__(self, 
+        system:Optional[model.System]=None, 
+        template_lookup:Optional[TemplateLookup]=None, ):
+
+        # Override L{BasePage.loader} because here the page L{filename} 
+        # does not equal the template filename. 
+        super().__init__(system=system, template_lookup=template_lookup, 
+            loader=template_lookup.get_template('summary.html').renderable )
 
     @renderer
     def title(self, request, tag):
@@ -314,14 +320,17 @@ def hasdocstring(ob):
     return False
 
 class UndocumentedSummaryPage(BasePage):
+    
     filename = 'undoccedSummary.html'
 
-    @property
-    def loader(self):
-        """
-        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
-        """
-        return self.template_lookup.get_template('summary.html').load()
+    def __init__(self, 
+        system:Optional[model.System]=None, 
+        template_lookup:Optional[TemplateLookup]=None, ):
+
+        # Override L{BasePage.loader} because here the page L{filename} 
+        # does not equal the template filename. 
+        super().__init__(system=system, template_lookup=template_lookup, 
+            loader=template_lookup.get_template('summary.html').renderable )
 
     @renderer
     def title(self, request, tag):

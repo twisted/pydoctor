@@ -4,14 +4,13 @@ from typing import Any, Iterator, List, Optional, Union
 import ast
 import abc
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLFile
+from twisted.web.template import tags, Element, renderer, Tag, XMLString
 import astor
 
 from twisted.web.iweb import ITemplateLoader
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup
-from pydoctor.epydoc.markup import html2stan
 
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
@@ -61,8 +60,15 @@ class BaseElement(Element, abc.ABC):
         """
         self.system = system
         self.template_lookup = template_lookup
-        self._loader = None
-        super().__init__(loader=loader)
+        if loader:
+            self._loader = loader  
+        elif self.filename:
+            self._loader = self.template_lookup.get_template(
+                self.filename).renderable
+        else:
+            RuntimeError(f"Cannot create HTML element {self} because no template \
+                filename nor ITemplateLoader is provided. ")
+        super().__init__()
 
     @abc.abstractproperty
     def filename(self) -> Optional[str]:
@@ -75,14 +81,7 @@ class BaseElement(Element, abc.ABC):
 
     @property
     def loader(self) -> ITemplateLoader:
-        if not self.filename:
-            return self._loader
-        else:
-            return self.template_lookup.get_template(self.filename).load()
-    
-    @loader.setter
-    def loader(self, value:ITemplateLoader) -> None:
-        self._loader = value
+        return self._loader
 
 class Nav(BaseElement):
     """
@@ -118,27 +117,17 @@ class BasePage(BaseElement):
     @renderer
     def header(self, request, tag):
         template = self.template_lookup.get_template('header.html')
-        if template.content:
-            return html2stan(template.content)
-        else:
-            return ''
+        return template.renderable.load() if template.text else ''
 
     @renderer
     def pageHeader(self, request, tag):
         template = self.template_lookup.get_template('pageHeader.html')
-        if template.content:
-            return html2stan(template.content)
-        else:
-            return ''
-
+        return template.renderable.load() if template.text else ''
 
     @renderer
     def footer(self, request, tag):
         template = self.template_lookup.get_template('footer.html')
-        if template.content:
-            return html2stan(template.content)
-        else:
-            return ''
+        return template.renderable.load() if template.text else ''
 
 
 class CommonPage(BasePage):
