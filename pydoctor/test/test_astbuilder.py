@@ -1005,6 +1005,22 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     assert len(lines) == 5 and lines[-1] == ''
 
 @systemcls_param
+def test_docstring_assignment_detuple(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """We currently don't trace values for detupling assignments, so when
+    assigning to __doc__ we get a warning about the unknown value.
+    """
+    fromText('''
+    def fun():
+        pass
+
+    fun.__doc__, other = 'Detupling to __doc__', 'is not supported'
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        "test:5: Unable to figure out value for __doc__ assignment, maybe too complex\n"
+        )
+
+@systemcls_param
 def test_variable_scopes(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     l = 1
