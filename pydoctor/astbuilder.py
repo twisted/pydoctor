@@ -161,8 +161,9 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
         try:
             return bind_args(_attrib_signature, expr)
         except TypeError as ex:
+            message = str(ex).replace("'", '"')
             ctx.module.report(
-                f"Invalid arguments for attr.ib(): {ex}",
+                f"Invalid arguments for attr.ib(): {message}",
                 lineno_offset=expr.lineno
                 )
     return None

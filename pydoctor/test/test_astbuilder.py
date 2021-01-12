@@ -1341,6 +1341,20 @@ def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
     assert C.contents['a'].kind == 'Instance Variable'
 
 @systemcls_param
+def test_attrs_attrib_badargs(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """."""
+    fromText('''
+    import attr
+    @attr.s
+    class C:
+        a = attr.ib(nosuchargument='bad')
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'test:5: Invalid arguments for attr.ib(): got an unexpected keyword argument "nosuchargument"\n'
+        )
+
+@systemcls_param
 def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
     """Attrs auto-attributes are classified as instance variables."""
     mod = fromText('''
