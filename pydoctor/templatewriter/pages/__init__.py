@@ -57,30 +57,39 @@ class BaseElement(Element, abc.ABC):
         The C{loader} is usually got from the L{TemplateLookup} 
         object but can also be set by argument, again for the special 
         case of L{LetterElement}. 
+
+        @raises RuntimeError: If not enought information is provided 
+        to create the template loader. i.e. missing C{template_lookup} or C{loader} arguments. 
         """
         self.system = system
         self.template_lookup = template_lookup
         if loader:
             self._loader = loader  
         elif self.filename:
-            self._loader = self.template_lookup.get_template(
-                self.filename).renderable
+            if self.template_lookup:
+                self._loader = self.template_lookup.get_template(
+                    self.filename).renderable
+            else:
+                RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup \
+                    object is passed to BaseElement's 'template_lookup' init argument.")
         else:
-            RuntimeError(f"Cannot create HTML element {self} because no template \
-                filename nor ITemplateLoader is provided. ")
+            RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader \
+                object is passed to BaseElement's 'loader' init argument.")
         super().__init__()
 
     @abc.abstractproperty
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str:
         """
         Associated filename. 
         
-        Can be none in special cases. 
+        Can be empty string in special cases (like L{LetterElement}). 
         """
         pass
 
     @property
-    def loader(self) -> ITemplateLoader:
+    def loader(self) -> ITemplateLoader: # type: ignore
+        # mypy error: Signature of "loader" incompatible with supertype "Element"  [override]
+        # It's ok to ignore because it's actually a property, so we can disregard signature
         return self._loader
 
 class Nav(BaseElement):
@@ -134,10 +143,10 @@ class CommonPage(BasePage):
 
     filename = 'common.html'
 
-    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:DocGetter=None):
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:Optional[DocGetter]=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
-        if docgetter is None:
+        if docgetter == None:
             docgetter = DocGetter()
         self.docgetter = docgetter
 
@@ -153,7 +162,7 @@ class CommonPage(BasePage):
             )
 
     def category(self) -> str:
-        return f"{self.ob.kind.lower()} documentation"
+        return f"{str(self.ob.kind).lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
         parts: List[Union[Tag, str]] = []
@@ -351,7 +360,7 @@ def assembleList(system, label, lst, idbase):
 
 class ClassPage(CommonPage):
     def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, 
-      docgetter=None):
+      docgetter:Optional[DocGetter]=None):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
         for baselist in nested_bases(self.ob):

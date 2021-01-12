@@ -1,7 +1,7 @@
 """Classes that generate the summary pages."""
 
 import sys
-from typing import Dict, List, Sequence, Tuple, Union, Optional, cast
+from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, Optional, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util, TemplateLookup
@@ -36,8 +36,8 @@ class ModuleIndexPage(BasePage):
     filename = 'moduleIndex.html'
 
     def __init__(self, 
-        system:Optional[model.System]=None, 
-        template_lookup:Optional[TemplateLookup]=None, ):
+        system:model.System, 
+        template_lookup:TemplateLookup, ):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -125,8 +125,8 @@ class ClassIndexPage(BasePage):
     filename = 'classIndex.html'
 
     def __init__(self, 
-        system:Optional[model.System]=None, 
-        template_lookup:Optional[TemplateLookup]=None, ):
+        system:model.System, 
+        template_lookup:TemplateLookup, ):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -169,7 +169,7 @@ class ClassIndexPage(BasePage):
 
 class LetterElement(BaseElement):
 
-    filename = None
+    filename = ''
 
     def __init__(self, loader, initials, letter):
         super().__init__(loader=loader, system=None, template_lookup=None)
@@ -324,8 +324,8 @@ class UndocumentedSummaryPage(BasePage):
     filename = 'undoccedSummary.html'
 
     def __init__(self, 
-        system:Optional[model.System]=None, 
-        template_lookup:Optional[TemplateLookup]=None, ):
+        system:model.System, 
+        template_lookup:TemplateLookup, ):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -353,7 +353,7 @@ class UndocumentedSummaryPage(BasePage):
             tag(tags.li(o.kind, " - ", util.taglink(o)))
         return tag
 
-summarypages = [
+summarypages: Iterable[Type[BasePage]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

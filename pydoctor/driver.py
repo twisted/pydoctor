@@ -401,6 +401,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
+        subjects: List[model.Documentable] = []
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -408,7 +409,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--writer-class', IWriter)
+                    # https://github.com/python/mypy/issues/4717
+                    # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
+                    options.htmlwriter, '--writer-class', IWriter) # type: ignore
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -438,17 +441,16 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writer = writerclass(options.htmloutput)
 
             writer.prepOutputDirectory()
-
+            
             if options.htmlsubjects:
-                subjects = []
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
                 writer.writeModuleIndex(system)
-                subjects = []
+
             else:
                 writer.writeModuleIndex(system)
-                subjects = system.rootobjects
+                subjects.extend(system.rootobjects)
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:

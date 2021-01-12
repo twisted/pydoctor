@@ -6,7 +6,7 @@ DOCTYPE = b'''\
           "DTD/xhtml1-strict.dtd">
 '''
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Dict
+from typing import Any, Iterable, Optional, Dict
 import abc
 from pathlib import Path
 import warnings
@@ -24,6 +24,10 @@ class IWriter(ABC):
     """
 
     @abstractmethod
+    def __init__(self, filebase:str, template_lookup:Optional['TemplateLookup'] = None):
+        pass
+
+    @abstractmethod
     def prepOutputDirectory(self) -> None:
         """
         Called first.
@@ -38,7 +42,7 @@ class IWriter(ABC):
         pass
 
     @abstractmethod
-    def writeIndividualFiles(self, obs:List['Documentable']) -> None:
+    def writeIndividualFiles(self, obs:Iterable['Documentable']) -> None:
         """
         Called last.
         """
@@ -53,17 +57,32 @@ class Template(abc.ABC):
     It's an additionnal level of abstraction to hook to the 
     rendering system, it stores the renderable object that 
     is going to be reused for each output file using this template. 
+
+    Use L{Template.fromfile} to create Templates. 
     """
 
     def __init__(self, path:Path):
         """
         Template is constructed using a Path that should point to a file. 
-        @raises FileNotFoundError: If the C{Path} do not exist or is not a file. 
         """
         self._text: Optional[str] = None
         self.path: Path = path
-        if not self.path.is_file():
-            raise FileNotFoundError(f"Cannot find the template file: '{self.path}'")
+
+    @classmethod
+    def fromfile(cls, path:Path) -> Optional['Template']:
+        """
+        Create a concrete template object. Type depends on the file extension. 
+        @returns: the template object or None if file is invalid. 
+        """
+        if not path.is_file():
+            warnings.warn(f"Cannot create Template: {path.as_posix()} is not a file.")
+        elif path.suffix.lower() == '.html':
+            return _HtmlTemplate(path)
+        elif path.suffix.lower() in ['.css', '.js']:
+            return _SimpleTemplate(path)
+        else:
+            warnings.warn(f"Cannot create Template: {path.as_posix()} is not a template file.")
+        return None
 
     @property
     def name(self) -> str:
@@ -75,7 +94,7 @@ class Template(abc.ABC):
     @property
     def text(self) -> str:
         """
-        Raw file text 
+        File text 
         """
         if not self._text:
             self._text = self.path.open('r').read()
@@ -85,6 +104,12 @@ class Template(abc.ABC):
     def version(self) -> int:
         """
         Template version, C{-1} if no version. 
+
+        HTML Templates should have a version identifier as follow::
+    
+            <meta name="pydoctor-template-version" content="1" />
+
+        CSS and JS templates have to version handling and version always return C{-1}. 
         """
         pass
 
@@ -100,7 +125,7 @@ class Template(abc.ABC):
         """
         pass
 
-class SimpleTemplate(Template):
+class _SimpleTemplate(Template):
     """
     Simple template with no rendering for CSS and JS templates. 
     """
@@ -111,13 +136,9 @@ class SimpleTemplate(Template):
     def renderable(self) -> None:
         return None
 
-class HtmlTemplate(Template):
+class _HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system. 
-
-    Templates should have a version identifier as follow::
-    
-        <meta name="pydoctor-template-version" content="1" />
     """
 
     def __init__(self, path:Path):
@@ -158,35 +179,6 @@ class HtmlTemplate(Template):
             self._xmlfile = XMLFile(FilePath(self.path.as_posix()))
         return self._xmlfile
 
-class TemplateCollection(List[Template]):
-    """
-    List container to reflect the content of templates directory.
-    """
-
-    @classmethod
-    def fromdir(cls, dir:Path) -> 'TemplateCollection':
-        """
-        Scan a directory and create concrete Template objects 
-        depending on the file extensions. 
-        """
-        collection = cls()
-        for path in dir.iterdir():
-            if path.is_file():
-                if path.suffix.lower() == '.html':
-                    collection.append(HtmlTemplate(
-                        path=path
-                    ))
-                elif path.suffix.lower() in ['.css', '.js']:
-                    collection.append(SimpleTemplate(
-                        path=path
-                    ))
-                else:
-                    warnings.warn(f"Ignored file in template directory: {path.as_posix()}")
-            else:
-                warnings.warn(f"Ignored not-file in template directory: {path.as_posix()}")
-        return collection
-            
-
 class TemplateLookup:
     """
     The L{TemplateLookup} handles the HTML template files locations. 
@@ -207,10 +199,10 @@ class TemplateLookup:
     _default_template_dir = 'templates'
 
     def __init__(self) -> None:
-        templates = TemplateCollection.fromdir(
-          Path(__file__).parent.parent.joinpath(
-            self._default_template_dir))
-        self._templates: Dict[str, Template] = {t.name:t for t in templates}
+        # Dict comprehension to init templates to whats in pydoctor/templates
+        self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
+                Path(__file__).parent.parent.joinpath(
+                    self._default_template_dir).iterdir()) if t }
 
 
     def add_template(self, template:Template) -> None:
@@ -242,8 +234,10 @@ class TemplateLookup:
         """
         Add all templates in the given directory to the lookup. 
         """
-        for template in TemplateCollection.fromdir(dir):
-            self.add_template(template)
+        for path in dir.iterdir():
+            template = Template.fromfile(path)
+            if template:
+                self.add_template(template)
 
 
     def get_template(self, filename:str) -> Template:

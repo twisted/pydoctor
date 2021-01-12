@@ -1,21 +1,22 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
-from typing import Type, Optional, List
+from typing import Iterable, Type, Optional, List
 import os
 import shutil
-from typing import IO, Any
+from typing import IO
 from pathlib import Path
 
 from pydoctor.templatewriter import IWriter
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
-from twisted.web.template import flattenString
+from twisted.web.template import flattenString, Element
 from twisted.python.failure import Failure
 
-def flattenToFile(fobj:IO[bytes], page:pages.BasePage) -> None:
+def flattenToFile(fobj:IO[bytes], page:Element) -> None:
     """
-    This method writes a page to a HTML file. 
+    This method writes a page to a HTML file.
+    @raises Exception: If any failure during L{flattenString} call. 
     """
     fobj.write(DOCTYPE)
     err: List[Failure] = []
@@ -65,7 +66,7 @@ class TemplateWriter(IWriter):
             self.template_lookup.get_template('pydoctor.js').path,
             self.base.joinpath('pydoctor.js'))
 
-    def writeIndividualFiles(self, obs:List[model.Documentable]) -> None:
+    def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """
         Iterate trought C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
         """
@@ -82,7 +83,8 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            f = self.base.joinpath(pclass.filename).open('wb')
+            # mypy get error: Argument 1 to "joinpath" of "PurePath" has incompatible type "Callable[[BaseElement], str]"; expected "Union[str, _PathLike[str]]"  [arg-type]
+            f = self.base.joinpath(pclass.filename).open('wb') # type: ignore
             flattenToFile(f, page)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)

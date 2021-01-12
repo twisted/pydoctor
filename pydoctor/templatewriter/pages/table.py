@@ -7,7 +7,7 @@ from pydoctor.templatewriter.pages import BaseElement
 
 class TableRow(BaseElement):
 
-    filename = None
+    filename = ''
 
     def __init__(self, loader, docgetter, ob, child, template_lookup):
         super().__init__(
