@@ -1,6 +1,6 @@
 """Miscellaneous utilities."""
 
-from typing import Optional, List, Any
+from typing import Optional
 
 from pydoctor.model import Documentable
 from twisted.web.template import Tag, tags

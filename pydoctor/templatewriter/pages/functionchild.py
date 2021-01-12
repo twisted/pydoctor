@@ -1,4 +1,4 @@
-from twisted.web.template import Element, XMLFile, renderer, tags
+from twisted.web.template import renderer, tags
 
 from pydoctor.templatewriter.pages import format_decorators, signature, BaseElement
 

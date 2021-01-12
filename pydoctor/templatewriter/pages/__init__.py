@@ -4,7 +4,7 @@ from typing import Any, Iterator, List, Optional, Union
 import ast
 import abc
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLString
+from twisted.web.template import tags, Element, renderer, Tag
 import astor
 
 from twisted.web.iweb import ITemplateLoader

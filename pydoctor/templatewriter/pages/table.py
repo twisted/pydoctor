@@ -1,4 +1,4 @@
-from twisted.web.template import Element, TagLoader, XMLFile, renderer
+from twisted.web.template import TagLoader, renderer
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import util

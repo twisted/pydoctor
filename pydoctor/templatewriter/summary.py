@@ -1,12 +1,11 @@
 """Classes that generate the summary pages."""
 
-import sys
-from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, Optional, cast
+from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util, TemplateLookup
 from pydoctor.templatewriter.pages import BasePage, BaseElement
-from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
+from twisted.web.template import TagLoader, renderer, tags
 
 
 def moduleSummary(modorpack):

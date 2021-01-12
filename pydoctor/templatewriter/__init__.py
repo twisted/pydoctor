@@ -109,7 +109,7 @@ class Template(abc.ABC):
     
             <meta name="pydoctor-template-version" content="1" />
 
-        CSS and JS templates have to version handling and version always return C{-1}. 
+        This is always C{-1} for CSS and JS templates. 
         """
         pass
 
