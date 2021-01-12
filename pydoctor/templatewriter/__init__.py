@@ -48,12 +48,17 @@ class Template(abc.ABC):
     """
     Represents a pydoctor template file. 
     
-    It holds references to template data. 
+    It holds references to template information. 
+
+    It's an additionnal level of abstraction to hook to the 
+    rendering system, it stores the renderable object that 
+    is going to be reused for each output file using this template. 
     """
 
     def __init__(self, path:Path):
         """
         Template is constructed using a Path that should point to a file. 
+        @raises FileNotFoundError: If the C{Path} do not exist or is not a file. 
         """
         self._text: Optional[str] = None
         self.path: Path = path
@@ -88,16 +93,16 @@ class Template(abc.ABC):
         """
         Object that is used to render the final file. 
 
-        For HTML templates, this will return a L{ITemplateLoader}. 
+        For HTML templates, this is a L{ITemplateLoader}. 
 
-        For CSS and JS templates, this will return C{None} 
-        as there is no rendering to do with those, it's already the final file.  
+        For CSS and JS templates, this is C{None} 
+        because there is no rendering to do, it's already the final file.  
         """
         pass
 
 class SimpleTemplate(Template):
     """
-    Simple template file with no rendering for CSS and JS templates. 
+    Simple template with no rendering for CSS and JS templates. 
     """
     @property
     def version(self) -> int:
@@ -109,6 +114,10 @@ class SimpleTemplate(Template):
 class HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system. 
+
+    Templates should have a version identifier as follow::
+    
+        <meta name="pydoctor-template-version" content="1" />
     """
 
     def __init__(self, path:Path):
@@ -118,27 +127,33 @@ class HtmlTemplate(Template):
 
     @property
     def version(self) -> int:
-        """
-        @returns The template version as L{int}, C{-1} if no version was detected.
-        """
         if self._version == None:
-            soup = BeautifulSoup(self.text, 'html.parser')
-            res = soup.find_all("meta", attrs=dict(name="pydoctor-template-version"))
-            if res:
-                try:
-                    self._version = int(res[0]['content'])
-                except (ValueError, KeyError):
-                    self._version = -1
-            else:
+            if not self.text:
                 self._version = -1
+            else:
+                soup = BeautifulSoup(self.text, 'html.parser')
+                res = soup.find_all("meta", attrs=dict(name="pydoctor-template-version"))
+                try:
+                    meta = res.pop()
+                    version_str = meta['content']
+                    self._version = int(version_str)
+                except IndexError:
+                    # No meta pydoctor-template-version tag found, 
+                    # most probably a placeholder template. 
+                    self._version = -1
+                except KeyError as e:
+                    warnings.warn(f"Cannot get meta pydoctor-template-version tag content: {e}")
+                    self._version = -1
+                except ValueError as e:
+                    warnings.warn(f"Cannot cast template version to int: {e}")
+                    self._version = -1
 
         # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
-        # It's ok to ignore mypy error because the version is parsed if it's None
+        # It's ok to ignore mypy error because the version is set to an int if it's None
         return self._version # type: ignore 
 
     @property
     def renderable(self) -> ITemplateLoader:
-        """Get the L{ITemplateLoader} """
         if not self._xmlfile:
             self._xmlfile = XMLFile(FilePath(self.path.as_posix()))
         return self._xmlfile
