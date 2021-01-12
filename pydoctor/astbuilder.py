@@ -108,8 +108,9 @@ def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
     try:
         args = bind_args(_attrs_decorator_signature, call)
     except TypeError as ex:
+        message = str(ex).replace("'", '"')
         module.report(
-            f"Invalid arguments for attr.s(): {ex}",
+            f"Invalid arguments for attr.s(): {message}",
             lineno_offset=call.lineno
             )
         return False

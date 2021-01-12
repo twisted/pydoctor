@@ -1360,6 +1360,36 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
     assert C.contents['d'].kind == 'Class Variable'
 
 @systemcls_param
+def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-existing arguments and invalid values to recognized arguments are
+    rejected with a warning.
+    """
+    fromText('''
+    import attr
+
+    @attr.s()
+    class C0: ...
+
+    @attr.s(repr=False)
+    class C1: ...
+
+    @attr.s(auto_attribzzz=True)
+    class C2: ...
+
+    @attr.s(auto_attribs=not False)
+    class C3: ...
+
+    @attr.s(auto_attribs=1)
+    class C4: ...
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
+        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
+        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
+        )
+
+@systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     a, b, c = range(3)
