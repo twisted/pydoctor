@@ -6,7 +6,7 @@ DOCTYPE = b'''\
           "DTD/xhtml1-strict.dtd">
 '''
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 import abc
 from pathlib import Path
 import warnings
@@ -45,7 +45,7 @@ class IWriter(ABC):
 
 class Template(abc.ABC):
     """
-    Generic interface for a template file used to generate documents. 
+    Base class for a template files used to generate output documents. 
     """
 
     def __init__(self, path:Path):
@@ -179,9 +179,11 @@ class TemplateLookup:
     _default_template_dir = 'templates'
 
     def __init__(self):
-        self._templates: TemplateCollection = TemplateCollection.fromdir(
+        templates = TemplateCollection.fromdir(
           Path(__file__).parent.parent.joinpath(
             self._default_template_dir))
+
+        self._templates: Dict[str, Template] = {t.name:t for t in templates}
 
 
     def add_template(self, template:Template) -> None:
@@ -202,11 +204,11 @@ class TemplateLookup:
                                             " Latest templates are available to download from our github.")
                 elif template_version > default_version:
                     raise RuntimeError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                            " Latest version of pydoctor is available to download from PyPI.")
+                                            "Rendering will most probably fail, so we're crashing now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except FileNotFoundError as e:
             raise RuntimeError(f"Invalid template filename '{template.name}'. Valid names are: {[t.name for t in self._templates]}") from e
         
-        self._templates.append(template)
+        self._templates[template.name] = template
 
 
     def add_templatedir(self, dir:Path) -> None:
@@ -224,21 +226,21 @@ class TemplateLookup:
         Return the custom template if provided, else the default template.
 
         @param filename: File name, (ie 'index.html')
-        @return The Template object
-        @raises FileNotFoundError If the template file do not exist
+        @return: The Template object
+        @raises FileNotFoundError: If the template file do not exist
         """
-        for template in reversed(self._templates):
-            if filename == template.name:
-                return template
-        raise FileNotFoundError(f"Cannot find template: '{filename}' in template collection: {self._templates}")
+        t = self._templates.get(filename, None)
+        if not t:
+            raise FileNotFoundError(f"Cannot find template: '{filename}' in template lookup: {self._templates}")
+        return t
 
     def get_template_version(self, filename: str) -> int: 
         """
         Get a template version. 
 
         @arg filename: Template file name
-        @return The template version as int
-        @raises FileNotFoundError If the template file do not exist
+        @return: The template version as int
+        @raises FileNotFoundError: If the template file do not exist
         """
         return self.get_template(filename).version()
 
