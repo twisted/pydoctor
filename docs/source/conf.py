@@ -96,7 +96,6 @@ pydoctor_args = {
         '--project-name=pydoctor',
         f'--project-version={version}',
         '--docformat=epytext',
-        f'--template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
