@@ -3,10 +3,11 @@ Introduction
 
 Welcome to ``pydoctor``'s documentation!
 
+
 Installation
 ------------
 
-``pydoctor`` can be installed from PyPi::
+``pydoctor`` can be installed from PyPI::
 
    $ pip install -U pydoctor
 
@@ -22,6 +23,7 @@ Install pydoctor with ``restructuredtext`` support::
    readme
    usage
    help
+   codedoc
    docformat/index
    faq
    transition
