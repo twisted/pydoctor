@@ -5,9 +5,7 @@ from pydoctor.templatewriter.pages import format_decorators, signature, BaseElem
 
 class FunctionChild(BaseElement):
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('function-child.html').load()
+    filename = 'function-child.html'
 
     def __init__(self, docgetter, ob, functionExtras, template_lookup):
         super().__init__(ob.system, template_lookup)

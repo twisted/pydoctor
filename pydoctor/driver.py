@@ -424,12 +424,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 
                 if 'template_lookup' in signature(writerclass).parameters:
                     # writer class is up o date
-                    custom_template_lookup = TemplateLookup()
-                    custom_template_lookup.add_templatedir(
+                    custom_lookup = TemplateLookup()
+                    custom_lookup.add_templatedir(
                         Path(system.options.templatedir))
 
                     writer = writerclass(options.htmloutput, 
-                        template_lookup=custom_template_lookup)
+                        template_lookup=custom_lookup)
                 else:
                     # old custom class is not do not contain 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput)

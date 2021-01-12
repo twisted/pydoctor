@@ -5,26 +5,23 @@ from typing import Type, Optional, List
 import os
 import shutil
 from typing import IO, Any
-import warnings
 from pathlib import Path
 
 from pydoctor.templatewriter import IWriter
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
 from twisted.web.template import flattenString
+from twisted.python.failure import Failure
 
-
-def flattenToFile(fobj:IO[Any], page:pages.Element) -> None:
+def flattenToFile(fobj:IO[bytes], page:pages.BasePage) -> None:
     """
     This method writes a page to a HTML file. 
     """
     fobj.write(DOCTYPE)
-    err = []
-    def e(r:Any) -> None:
-        err.append(r.value)
-    flattenString(None, page).addCallback(fobj.write).addErrback(e)
+    err: List[Failure] = []
+    flattenString(None, page).addCallback(fobj.write).addErrback(err.append)
     if err:
-        raise err[0]
+        raise err.pop().value
 
 
 class TemplateWriter(IWriter):
@@ -45,10 +42,10 @@ class TemplateWriter(IWriter):
         @arg filebase: Output directory. 
         @arg template_lookup: Custom L{TemplateLookup} object. 
         """
-        self.base = filebase
-        self.written_pages = 0
-        self.total_pages = 0
-        self.dry_run = False
+        self.base: Path = Path(filebase)
+        self.written_pages: int = 0
+        self.total_pages: int = 0
+        self.dry_run: bool = False
         self.template_lookup:TemplateLookup = ( 
             template_lookup if template_lookup else TemplateLookup() )
         """Writer's L{TemplateLookup} object"""
@@ -60,17 +57,17 @@ class TemplateWriter(IWriter):
         os.makedirs(self.base, exist_ok=True)
         shutil.copy(
             self.template_lookup.get_template('apidocs.css').path,
-            Path(os.path.join(self.base, 'apidocs.css')))
+            self.base.joinpath('apidocs.css'))
         shutil.copy(
             self.template_lookup.get_template('bootstrap.min.css').path,
-            Path(os.path.join(self.base, 'bootstrap.min.css')))
+            self.base.joinpath('bootstrap.min.css'))
         shutil.copy(
             self.template_lookup.get_template('pydoctor.js').path,
-            Path(os.path.join(self.base, 'pydoctor.js')))
+            self.base.joinpath('pydoctor.js'))
 
     def writeIndividualFiles(self, obs:List[model.Documentable]) -> None:
         """
-        Iterate trought ``obs`` and call `_writeDocsFor` method for each `Documentable`. 
+        Iterate trought C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
         """
         self.dry_run = True
         for ob in obs:
@@ -85,8 +82,7 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            # Mypy gets a error: "Type[Element]" has no attribute "filename"
-            f = open(os.path.join(self.base, pclass.filename), 'wb') # type: ignore
+            f = self.base.joinpath(pclass.filename).open('wb')
             flattenToFile(f, page)
             f.close()
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
@@ -98,13 +94,13 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                path = (Path(self.base) / f'{ob.fullName()}.html')
+                path = (self.base / f'{ob.fullName()}.html')
                 with path.open('wb') as out:
                     self._writeDocsForOne(ob, out)
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
-    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[Any]) -> None:
+    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
         if not ob.isVisible:
             return
         # Dynalmically list all known page subclasses

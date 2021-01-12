@@ -2,10 +2,12 @@
 
 from typing import Any, Iterator, List, Optional, Union
 import ast
+import abc
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
 import astor
 
+from twisted.web.iweb import ITemplateLoader
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup
@@ -41,25 +43,53 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class BaseElement(Element):
+class BaseElement(Element, abc.ABC):
     """
-    Common base element that olds reference to template lookup. 
-    C{system} and C{template_lookup} can be none in special cases like for L{LetterElement}. 
+    Common base element 
     """
-    def __init__(self, system:Optional[model.System]=None, 
-      template_lookup:Optional[TemplateLookup]=None, loader=None, ):
+    def __init__(self, 
+        system:Optional[model.System]=None, 
+        template_lookup:Optional[TemplateLookup]=None, 
+        loader:Optional[ITemplateLoader]=None, ) -> None:
+        """
+        C{system} and C{template_lookup} can be none in special 
+        cases like for L{LetterElement}. 
+
+        The C{loader} is usually got from the L{TemplateLookup} 
+        object but can also be set by argument, again for the special 
+        case of L{LetterElement}. 
+        """
         self.system = system
         self.template_lookup = template_lookup
-        super().__init__(loader)
+        self._loader = None
+        super().__init__(loader=loader)
+
+    @abc.abstractproperty
+    def filename(self) -> Optional[str]:
+        """
+        Associated filename. 
+        
+        Can be none in special cases. 
+        """
+        pass
+
+    @property
+    def loader(self) -> ITemplateLoader:
+        if not self.filename:
+            return self._loader
+        else:
+            return self.template_lookup.get_template(self.filename).load()
+    
+    @loader.setter
+    def loader(self, value:ITemplateLoader) -> None:
+        self._loader = value
 
 class Nav(BaseElement):
     """
     Common navigation header. 
     """
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('nav.html').load()
+    filename = 'nav.html'
 
     @renderer
     def project(self, request, tag):
@@ -68,7 +98,8 @@ class Nav(BaseElement):
     @renderer
     def projecthome(self, request, tag):
         if self.system.options.projecturl:
-            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), 
+                id="projecthome")
         else:
             return ''
 
@@ -112,16 +143,14 @@ class BasePage(BaseElement):
 
 class CommonPage(BasePage):
 
-    def __init__(self, ob, template_lookup:TemplateLookup, docgetter=None):
+    filename = 'common.html'
+
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:DocGetter=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
-
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('common.html').load()
 
     def title(self):
         return self.ob.fullName()
@@ -332,7 +361,7 @@ def assembleList(system, label, lst, idbase):
 
 
 class ClassPage(CommonPage):
-    def __init__(self, ob, template_lookup:TemplateLookup, 
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, 
       docgetter=None):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []

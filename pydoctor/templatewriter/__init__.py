@@ -80,7 +80,7 @@ class Template(abc.ABC):
     @abc.abstractmethod
     def load(self) -> Any:
         """
-        Get whatever object that is used to render the final file with wathever system. 
+        Get the object that is used to render the final file with a templating system. 
 
         For HTML templates, this will return a L{XMLFile}. 
 
@@ -122,7 +122,10 @@ class HtmlTemplate(Template):
                     self._version = -1
             else:
                 self._version = -1
-        return self._version
+
+        # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
+        # It's ok to ignore mypy error because the version is parsed if it's None
+        return self._version # type: ignore 
 
     def load(self) -> XMLFile:
         """Get the L{XMLFile} """
@@ -178,11 +181,10 @@ class TemplateLookup:
 
     _default_template_dir = 'templates'
 
-    def __init__(self):
+    def __init__(self) -> None:
         templates = TemplateCollection.fromdir(
           Path(__file__).parent.parent.joinpath(
             self._default_template_dir))
-
         self._templates: Dict[str, Template] = {t.name:t for t in templates}
 
 
@@ -206,7 +208,7 @@ class TemplateLookup:
                     raise RuntimeError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
                                             "Rendering will most probably fail, so we're crashing now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except FileNotFoundError as e:
-            raise RuntimeError(f"Invalid template filename '{template.name}'. Valid names are: {[t.name for t in self._templates]}") from e
+            raise RuntimeError(f"Invalid template filename '{template.name}'. Valid names are: {list(self._templates)}") from e
         
         self._templates[template.name] = template
 

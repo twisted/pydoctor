@@ -7,6 +7,8 @@ from pydoctor.templatewriter.pages import BaseElement
 
 class TableRow(BaseElement):
 
+    filename = None
+
     def __init__(self, loader, docgetter, ob, child, template_lookup):
         super().__init__(
             system = ob.system,
@@ -45,9 +47,7 @@ class TableRow(BaseElement):
 class ChildTable(BaseElement):
     last_id = 0
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('table.html').load()
+    filename = 'table.html'
 
     def __init__(self, docgetter, ob, children, template_lookup):
         super().__init__( 

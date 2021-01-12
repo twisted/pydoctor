@@ -36,18 +36,14 @@ class ModuleIndexPage(BasePage):
 
     @property
     def loader(self):
+        """
+        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
+        """
         return self.template_lookup.get_template('summary.html').load()
 
     @renderer
     def project(self, request, tag):
         return self.system.projectname
-
-    # @renderer
-    # def projecthome(self):
-    #     if self.system.options.projecturl:
-    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
-    #     else:
-    #         return ''
 
     @renderer
     def title(self, request, tag):
@@ -126,6 +122,9 @@ class ClassIndexPage(BasePage):
 
     @property
     def loader(self):
+        """
+        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
+        """
         return self.template_lookup.get_template('summary.html').load()
 
     @renderer
@@ -135,13 +134,6 @@ class ClassIndexPage(BasePage):
     @renderer
     def project(self, request, tag):
         return self.system.projectname
-
-    # @renderer
-    # def projecthome(self):
-    #     if self.system.options.projecturl:
-    #         return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
-    #     else:
-    #         return ''
 
     @renderer
     def stuff(self, request, tag):
@@ -170,6 +162,9 @@ class ClassIndexPage(BasePage):
 
 
 class LetterElement(BaseElement):
+
+    filename = None
+
     def __init__(self, loader, initials, letter):
         super().__init__(loader=loader, system=None, template_lookup=None)
         self.initials = initials
@@ -218,11 +213,8 @@ class LetterElement(BaseElement):
 
 
 class NameIndexPage(BasePage):
-    filename = 'nameIndex.html'
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('nameIndex.html').load()
+    filename = 'nameIndex.html'
 
     def __init__(self, system, template_lookup):
         super().__init__(system=system, template_lookup=template_lookup)
@@ -252,11 +244,8 @@ class NameIndexPage(BasePage):
 
 
 class IndexPage(BasePage):
-    filename = 'index.html'
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('index.html').load()
+    filename = 'index.html'
 
     @renderer
     def project_link(self, request, tag):
@@ -329,6 +318,9 @@ class UndocumentedSummaryPage(BasePage):
 
     @property
     def loader(self):
+        """
+        Override L{BasePage.loader} because here the page L{filename} does not equal the template filename. 
+        """
         return self.template_lookup.get_template('summary.html').load()
 
     @renderer

@@ -5,9 +5,7 @@ from pydoctor.templatewriter.pages import format_decorators, BaseElement
 
 class AttributeChild(BaseElement):
 
-    @property
-    def loader(self):
-        return self.template_lookup.get_template('attribute-child.html').load()
+    filename = 'attribute-child.html'
 
     def __init__(self, docgetter, ob, functionExtras, template_lookup):
         super().__init__(ob.system, template_lookup)
