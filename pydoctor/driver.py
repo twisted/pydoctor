@@ -155,7 +155,7 @@ def getparser() -> OptionParser:
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_option(
-        '--writer-class', '--html-writer', dest='htmlwriter',
+        '--html-writer', dest='htmlwriter',
         help=("Dotted name of writer class to use (default "
               "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
