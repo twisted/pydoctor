@@ -47,6 +47,30 @@ Further reading:
 - `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
 
 
+Docstring assignments
+---------------------
+
+Simple assignments to the ``__doc__`` attribute of a class or function are recognized by pydoctor::
+
+    class CustomException(Exception):
+        __doc__ = MESSAGE = "Oops!"
+
+Non-trivial assignments to ``__doc__`` are not supported. A warning will be logged by pydoctor as a reminder that the assignment will not be part of the generated API documentation::
+
+    if LOUD_DOCS:
+        f.__doc__ = f.__doc__.upper()
+
+Assignments to ``__doc__`` inside functions are ignored by pydoctor. This can be used to avoid warnings when you want to modify runtime docstrings without affecting the generated API documentation::
+
+    def mark_unavailable(func):
+        func.__doc__ = func.__doc__ + '\n\nUnavailable on this system.'
+
+    if not is_supported('thing'):
+        mark_unavailable(do_the_thing)
+
+Augmented assignments like ``+=`` are currently ignored as well, but that is an implementation limitation rather than a design decision, so this might change in the future.
+
+
 Type annotations
 ----------------
 

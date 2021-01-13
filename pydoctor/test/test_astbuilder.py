@@ -41,11 +41,15 @@ def fromAST(
         full_name = f'{parent_name}.{modname}'
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
-    mod: model.Module = builder._push(_system.Module, modname, None)
+    mod: model.Module = builder._push(_system.Module, modname, 0)
     builder._pop(_system.Module)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
+    if system is None:
+        # Assume that an implicit system will only contain one module,
+        # so post-process it as a convenience.
+        _system.postProcess()
     return mod
 
 def fromText(
@@ -101,6 +105,34 @@ def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
     ann = obj.annotation # type: ignore[attr-defined]
     assert ann is not None
     return type2str(ann), ann.lineno
+
+def test_node2fullname() -> None:
+    """The node2fullname() function finds the full (global) name for
+    a name expression in the AST.
+    """
+
+    mod = fromText('''
+    class session:
+        from twisted.conch.interfaces import ISession
+    ''', modname='test')
+
+    def lookup(expr: str) -> Optional[str]:
+        node = ast.parse(expr, mode='eval')
+        assert isinstance(node, ast.Expression)
+        return astbuilder.node2fullname(node.body, mod)
+
+    # None is returned for non-name nodes.
+    assert lookup('123') is None
+    # Local names are returned with their full name.
+    assert lookup('session') == 'test.session'
+    # A name that has no match at the top level is returned as-is.
+    assert lookup('nosuchname') == 'nosuchname'
+    # Unknown names are resolved as far as possible.
+    assert lookup('session.nosuchname') == 'test.session.nosuchname'
+    # Aliases are resolved on local names.
+    assert lookup('session.ISession') == 'twisted.conch.interfaces.ISession'
+    # Aliases are resolved on global names.
+    assert lookup('test.session.ISession') == 'twisted.conch.interfaces.ISession'
 
 @systemcls_param
 def test_no_docstring(systemcls: Type[model.System]) -> None:
@@ -259,13 +291,25 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
-def test_relative_import_past_root(systemcls: Type[model.System], capsys: CapSys) -> None:
-    src = '''
-    from ..X import A
-    '''
-    fromText(src, modname='mod')
+@pytest.mark.parametrize('level', (1, 2, 3, 4))
+def test_relative_import_past_top(
+        systemcls: Type[model.System],
+        level: int,
+        capsys: CapSys
+        ) -> None:
+    """A warning is logged when a relative import goes beyond the top-level
+    package.
+    """
+    system = systemcls()
+    system.ensurePackage('pkg')
+    fromText(f'''
+    from {'.' * level + 'X'} import A
+    ''', modname='mod', parent_name='pkg', system=system)
     captured = capsys.readouterr().out
-    assert "relative import level too high" in captured
+    if level == 1:
+        assert not captured
+    else:
+        assert f'pkg.mod:2: relative import level ({level}) too high\n' == captured
 
 @systemcls_param
 def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
@@ -448,25 +492,88 @@ def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System])
 
 @systemcls_param
 def test_all_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder._parse(textwrap.dedent('''
+    """The value assigned to __all__ is parsed to Module.all."""
+    mod = fromText('''
     def f():
         pass
     __all__ = ['f']
-    '''))
-    mod = fromAST(ast, systemcls=systemcls)
-    astbuilder.findAll(ast, mod)
+    ''', systemcls=systemcls)
     assert mod.all == ['f']
     assert '__all__' not in mod.contents
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
-    ast = astbuilder._parse(textwrap.dedent('''
+    """A class variable named __all__ is just an ordinary variable and
+    does not affect Module.all.
+    """
+    mod = fromText('''
     class C:
         __all__ = ['f']
-    '''))
-    mod = fromAST(ast, systemcls=systemcls)
-    astbuilder.findAll(ast, mod)
+    ''', systemcls=systemcls)
     assert mod.all is None
+    assert '__all__' not in mod.contents
+    assert '__all__' in mod.contents['C'].contents
+
+@systemcls_param
+def test_all_multiple(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """If there are multiple assignments to __all__, a warning is logged
+    and the last assignment takes effect.
+    """
+    mod = fromText('''
+    __all__ = ['f']
+    __all__ = ['g']
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:3: Assignment to "__all__" overrides previous assignment\n'
+    assert mod.all == ['g']
+
+@systemcls_param
+def test_all_bad_sequence(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Values other than lists and tuples assigned to __all__ have no effect
+    and a warning is logged.
+    """
+    mod = fromText('''
+    __all__ = {}
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__all__"\n'
+    assert mod.all is None
+
+@systemcls_param
+def test_all_nonliteral(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-literals in __all__ are ignored."""
+    mod = fromText('''
+    __all__ = ['a', 'b', '.'.join(['x', 'y']), 'c']
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse element 2 of "__all__"\n'
+    assert mod.all == ['a', 'b', 'c']
+
+@systemcls_param
+def test_all_nonstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-string literals in __all__ are ignored."""
+    mod = fromText('''
+    __all__ = ('a', 'b', 123, 'c', True)
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'mod:2: Element 2 of "__all__" has type "int", expected "str"\n'
+        'mod:2: Element 4 of "__all__" has type "bool", expected "str"\n'
+        )
+    assert mod.all == ['a', 'b', 'c']
+
+@systemcls_param
+def test_all_allbad(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """If no value in __all__ could be parsed, the result is an empty list."""
+    mod = fromText('''
+    __all__ = (123, True)
+    ''', modname='mod', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'mod:2: Element 0 of "__all__" has type "int", expected "str"\n'
+        'mod:2: Element 1 of "__all__" has type "bool", expected "str"\n'
+        )
+    assert mod.all == []
 
 @systemcls_param
 def test_classmethod(systemcls: Type[model.System]) -> None:
@@ -508,7 +615,12 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.decorators == [('test.cd', ['test.A'])]
+    assert len(C.decorators) == 1
+    (name, args), = C.decorators
+    assert name == 'test.cd'
+    assert len(args) == 1
+    arg, = args
+    assert astbuilder.node2fullname(arg, mod) == 'test.A'
 
 
 @systemcls_param
@@ -621,11 +733,13 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
         package a
           module __init__
             defines function 'f'
+          module c
+            imports function 'f'
         module b
           imports function 'f'
 
-    We verify that when module C{b} imports the name C{f} from package C{a},
-    it imports the function C{f} from the module C{a.__init__}.
+    We verify that when module C{b} and C{c} import the name C{f} from
+    package C{a}, they import the function C{f} from the module C{a.__init__}.
     """
     system = systemcls()
     system.ensurePackage('a')
@@ -635,7 +749,11 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
+    mod_c = fromText('''
+    from . import f
+    ''', modname='c', parent_name='a', system=system)
     assert mod_b.resolveName('f') == mod_a.contents['f']
+    assert mod_c.resolveName('f') == mod_a.contents['f']
 
 
 @systemcls_param
@@ -836,7 +954,7 @@ def test_inline_docstring_annotated_instancevar(systemcls: Type[model.System]) -
 
 @systemcls_param
 def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> None:
-    mod = fromText('''
+    mod = fromText(r'''
     def fun():
         pass
 
@@ -859,6 +977,10 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     real.__doc__ = "Second breakfast"
     fun.__doc__ = codecs.encode('Pnrfne fnynq', 'rot13')
     CLS.method1.__doc__ = 4
+
+    def mark_unavailable(func):
+        # No warning: docstring updates in functions are ignored.
+        func.__doc__ = func.__doc__ + '\n\nUnavailable on this system.'
     ''', systemcls=systemcls)
     fun = mod.contents['fun']
     assert fun.kind == 'Function'
@@ -885,6 +1007,22 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     assert len(lines) > 3 and lines[3] == \
         "<test>:23: Ignoring value assigned to __doc__: not a string"
     assert len(lines) == 5 and lines[-1] == ''
+
+@systemcls_param
+def test_docstring_assignment_detuple(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """We currently don't trace values for detupling assignments, so when
+    assigning to __doc__ we get a warning about the unknown value.
+    """
+    fromText('''
+    def fun():
+        pass
+
+    fun.__doc__, other = 'Detupling to __doc__', 'is not supported'
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        "test:5: Unable to figure out value for __doc__ assignment, maybe too complex\n"
+        )
 
 @systemcls_param
 def test_variable_scopes(systemcls: Type[model.System]) -> None:
@@ -1188,21 +1326,102 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
 
 @systemcls_param
-def test_type_from_attrib(systemcls: Type[model.System]) -> None:
+def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
+    """An attr.ib's "type" or "default" argument is used as an alternative
+    type annotation.
+    """
     mod = fromText('''
     import attr
     from attr import attrib
+    @attr.s
     class C:
         a = attr.ib(type=int)
         b = attrib(type=int)
         c = attr.ib(type='C')
         d = attr.ib(default=True)
+        e = attr.ib(123)
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
     assert type2str(C.contents['a'].annotation) == 'int'
     assert type2str(C.contents['b'].annotation) == 'int'
     assert type2str(C.contents['c'].annotation) == 'C'
     assert type2str(C.contents['d'].annotation) == 'bool'
+    assert type2str(C.contents['e'].annotation) == 'int'
+
+@systemcls_param
+def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
+    """An attr.ib attribute is classified as an instance variable."""
+    mod = fromText('''
+    import attr
+    @attr.s
+    class C:
+        a = attr.ib(type=int)
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['a'].kind == 'Instance Variable'
+
+@systemcls_param
+def test_attrs_attrib_badargs(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """."""
+    fromText('''
+    import attr
+    @attr.s
+    class C:
+        a = attr.ib(nosuchargument='bad')
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'test:5: Invalid arguments for attr.ib(): got an unexpected keyword argument "nosuchargument"\n'
+        )
+
+@systemcls_param
+def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
+    """Attrs auto-attributes are classified as instance variables."""
+    mod = fromText('''
+    from typing import ClassVar
+    import attr
+    @attr.s(auto_attribs=True)
+    class C:
+        a: int
+        b: bool = False
+        c: ClassVar[str]  # explicit class variable
+        d = 123  # ignored by auto_attribs because no annotation
+    ''', modname='test', systemcls=systemcls)
+    C = mod.contents['C']
+    assert C.contents['a'].kind == 'Instance Variable'
+    assert C.contents['b'].kind == 'Instance Variable'
+    assert C.contents['c'].kind == 'Class Variable'
+    assert C.contents['d'].kind == 'Class Variable'
+
+@systemcls_param
+def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """Non-existing arguments and invalid values to recognized arguments are
+    rejected with a warning.
+    """
+    fromText('''
+    import attr
+
+    @attr.s()
+    class C0: ...
+
+    @attr.s(repr=False)
+    class C1: ...
+
+    @attr.s(auto_attribzzz=True)
+    class C2: ...
+
+    @attr.s(auto_attribs=not False)
+    class C3: ...
+
+    @attr.s(auto_attribs=1)
+    class C4: ...
+    ''', modname='test', systemcls=systemcls)
+    captured = capsys.readouterr().out
+    assert captured == (
+        'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
+        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
+        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
+        )
 
 @systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
