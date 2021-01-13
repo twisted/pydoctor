@@ -110,14 +110,17 @@ ul ul ul ul ul ul ul {
     border: 0;
 }
 
-#splitTables > table {
+#splitTables > table, .fieldTable {
     border: 1px solid #eee;
+    width: 100%;
+    table-layout: fixed;
 }
 
 #splitTables > table tr {
     border-bottom-color: #eee;
     border-bottom-width: 1px;
     border-bottom-style: solid;
+    width: 100%;
 }
 
 #splitTables > table tr td, .fieldTable tr td {
@@ -130,15 +133,39 @@ ul ul ul ul ul ul ul {
     border-left-style: solid;
 }
 
+
+/* For desktop: */
+/* Kind column table  */
 #splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
     border-left: none;
-    width: 120px;
+    width: 150px;
 }
 
+/* Attr name column table  */
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
-    min-width: 100px;
-    max-width: 200px;
+    width: 250px;
+}
+
+@media only screen and (max-width: 600px) {
+    
+    /* For mobile phones: */
+    /* Kind column table  */
+    #splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
+        border-left: none;
+        width: 20%;
+    }
+
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+        font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+        width: 35%;
+    }
+
+    /* Summary column table  */
+    #splitTables > table tr td:nth-child(3), .fieldTable tr td:nth-child(3){
+        width: 45%;
+    }
 }
 
 tr.package {
