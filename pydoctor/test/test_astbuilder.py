@@ -954,7 +954,7 @@ def test_inline_docstring_annotated_instancevar(systemcls: Type[model.System]) -
 
 @systemcls_param
 def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> None:
-    mod = fromText('''
+    mod = fromText(r'''
     def fun():
         pass
 
@@ -977,6 +977,10 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
     real.__doc__ = "Second breakfast"
     fun.__doc__ = codecs.encode('Pnrfne fnynq', 'rot13')
     CLS.method1.__doc__ = 4
+
+    def mark_unavailable(func):
+        # No warning: docstring updates in functions are ignored.
+        func.__doc__ = func.__doc__ + '\n\nUnavailable on this system.'
     ''', systemcls=systemcls)
     fun = mod.contents['fun']
     assert fun.kind == 'Function'
