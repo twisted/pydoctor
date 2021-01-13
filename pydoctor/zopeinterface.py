@@ -166,9 +166,6 @@ def namesInterface(system: model.System, name: str) -> bool:
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
-    def funcNameFromCall(self, node: ast.Call) -> Optional[str]:
-        return astbuilder.node2fullname(node.func, self.builder.current)
-
     def _handleAssignmentInModule(self,
             target: str,
             annotation: Optional[ast.expr],
@@ -180,7 +177,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        funcName = self.funcNameFromCall(expr)
+        funcName = astbuilder.node2fullname(expr.func, self.builder.current)
         if funcName is None:
             return
         ob = self.system.objForFullName(funcName)
@@ -208,7 +205,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         attr = self.builder.current.contents.get(target)
         if attr is None:
             return
-        funcName = self.funcNameFromCall(expr)
+        funcName = astbuilder.node2fullname(expr.func, self.builder.current)
         if funcName is None:
             return
 
@@ -241,7 +238,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     section='zopeinterface')
 
     def visit_Call(self, node: ast.Call) -> None:
-        base = self.funcNameFromCall(node)
+        base = astbuilder.node2fullname(node.func, self.builder.current)
         if base is None:
             return
         meth = getattr(self, "visit_Call_" + base.replace('.', '_'), None)
