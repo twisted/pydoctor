@@ -101,15 +101,10 @@ class Nav(BaseElement):
 
     @renderer
     def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
-    def projecthome(self, request, tag):
         if self.system.options.projecturl:
-            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), 
-                id="projecthome")
+            return tags.a(href=self.system.options.projecturl, id="projecthome")(self.system.projectname)
         else:
-            return ''
+            return tags.span(self.system.projectname)
 
 class BasePage(BaseElement):
     """

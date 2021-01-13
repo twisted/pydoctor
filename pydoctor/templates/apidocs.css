@@ -16,6 +16,34 @@
     box-shadow: 0px 0px 8px 8px #fff;
 }
 
+.navbar-brand {
+    padding: 0px;
+}
+
+.navbar-brand a, .navbar-brand span {
+    color:#777777;
+    padding: 15px;
+    display: inline-block;
+}
+
+.navbar-brand *:nth-child(1) {
+    padding-right: 0px;
+}
+
+.navbar-brand *:last-child {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+.navbar-brand a:hover {
+    color: #444444;
+    text-decoration: none;
+}
+
+#projecthome:hover {
+    color: #23527c;
+}
+
 .navlinks li {
     padding: 0;
     display: inline-block;
