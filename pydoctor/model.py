@@ -427,6 +427,7 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
+    decorators: Sequence[Tuple[str, Optional[Sequence[str]]]]
 
     def setup(self) -> None:
         super().setup()
@@ -568,9 +569,6 @@ class System:
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
-        from pydoctor.templatewriter.util import TemplateFileLookup
-        self.templatefile_lookup = TemplateFileLookup()
-        """System's L{TemplateFileLookup} object"""
 
     @property
     def root_names(self) -> Collection[str]:

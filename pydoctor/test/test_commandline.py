@@ -116,6 +116,22 @@ def test_cli_warnings_on_error() -> None:
     assert options.warnings_as_errors == True
 
 
+def test_project_version_default() -> None:
+    """
+    When no --project-version is provided, it will default empty string.
+    """
+    options, args = driver.parse_args([])
+    assert options.projectversion == ''
+
+
+def test_project_version_string() -> None:
+    """
+    --project-version can be passed as a simple string.
+    """
+    options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
+    assert options.projectversion == '1.2.3.rc1'
+
+
 def test_main_project_name_guess(capsys: CapSys) -> None:
     """
     When no project name is provided in the CLI arguments, a default name
@@ -205,3 +221,26 @@ def test_main_source_outside_basedir(capsys: CapSys) -> None:
             'pydoctor/test/testpackages/basic/'
             ])
     assert "Source path lies outside base directory:" in capsys.readouterr().err
+
+
+def test_make_intersphix(tmp_path: Path) -> None:
+    """
+    --make-intersphinx without --make-html will only produce the Sphinx inventory object.
+
+    This is also an integration test for the Sphinx inventory writer.
+    """
+    inventory = tmp_path / 'objects.inv'
+    exit_code = driver.main(args=[
+        '--project-base-dir=.',
+        '--make-intersphinx',
+        '--project-name=acme-lib',
+        '--project-version=20.12.0-dev123',
+        '--html-output', str(tmp_path),
+        'pydoctor/test/testpackages/basic/'
+        ])
+
+    assert exit_code == 0
+    # No other files are created, other than the inventory.
+    assert [p.name for p in tmp_path.iterdir()] == ['objects.inv']
+    assert inventory.is_file()
+    assert b'Project: acme-lib\n# Version: 20.12.0-dev123\n' in inventory.read_bytes()

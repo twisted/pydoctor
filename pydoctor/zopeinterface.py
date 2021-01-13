@@ -1,22 +1,25 @@
 """Support for Zope interfaces."""
 
+from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
 import astor
+
 from pydoctor import astbuilder, model
 
 
 class ZopeInterfaceModule(model.Module):
-    def setup(self):
+
+    def setup(self) -> None:
         super().setup()
-        self.implements_directly = [] # [name of interface]
+        self.implements_directly: List[str] = []
 
     @property
-    def allImplementedInterfaces(self):
+    def allImplementedInterfaces(self) -> Iterable[str]:
         """Return all the interfaces provided by this module
         """
-        return list(self.implements_directly)
+        return self.implements_directly
 
 
 class ZopeInterfaceClass(model.Class):
@@ -24,20 +27,26 @@ class ZopeInterfaceClass(model.Class):
     isschemafield = False
     isinterfaceclass = False
     implementsOnly = False
-    implementedby_directly = None # [objects], when isinterface == True
-    def setup(self):
+
+    implementedby_directly: List[Union['ZopeInterfaceClass', ZopeInterfaceModule]]
+    """Only defined when isinterface == True."""
+
+    baseobjects: List[Optional['ZopeInterfaceClass']]  # type: ignore[assignment]
+    subclasses: List['ZopeInterfaceClass']  # type: ignore[assignment]
+
+    def setup(self) -> None:
         super().setup()
-        self.implements_directly = [] # [name of interface]
+        self.implements_directly: List[str] = []
 
     @property
-    def allImplementedInterfaces(self):
+    def allImplementedInterfaces(self) -> Iterable[str]:
         """Return all the interfaces implemented by this class.
 
         This returns them in something like the classic class MRO.
         """
-        r = list(self.implements_directly)
         if self.implementsOnly:
-            return r
+            return self.implements_directly
+        r = list(self.implements_directly)
         for b in self.baseobjects:
             if b is None:
                 continue
@@ -46,53 +55,42 @@ class ZopeInterfaceClass(model.Class):
                     r.append(interface)
         return r
 
-    @property
-    def allImplementations(self):
-        r = list(self.implementedby_directly)
-        stack = list(r)
-        while stack:
-            c = stack.pop(0)
-            for sc in c.subclasses:
-                if sc.implementsOnly:
-                    continue
-                stack.append(sc)
-                if sc not in r:
-                    r.append(sc)
-        return r
-
-
-def _inheritedDocsources(obj):
-    if not isinstance(obj.parent, (model.Class, model.Module)):
+def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable]:
+    if not isinstance(obj.parent, (ZopeInterfaceClass, ZopeInterfaceModule)):
         return
     name = obj.name
     for interface in obj.parent.allImplementedInterfaces:
         io = obj.system.objForFullName(interface)
         if io is not None:
+            assert isinstance(io, ZopeInterfaceClass)
             for io2 in io.allbases(include_self=True):
                 if name in io2.contents:
                     yield io2.contents[name]
 
 class ZopeInterfaceFunction(model.Function):
-    def docsources(self):
+    def docsources(self) -> Iterator[model.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
 
 class ZopeInterfaceAttribute(model.Attribute):
-    def docsources(self):
+    def docsources(self) -> Iterator[model.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
 
-def addInterfaceInfoToScope(scope, interfaceargs):
+def addInterfaceInfoToScope(
+        scope: Union[ZopeInterfaceClass, ZopeInterfaceModule],
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
+        ) -> None:
     for arg in interfaceargs:
         # If you do implementer(*()), the argument ends up being None, which we
         # should skip
         if arg is None:
             continue
 
-        if not isinstance(arg, tuple):
-            fullName = scope.expandName(astor.to_source(arg).strip())
+        if isinstance(arg, str):
+            fullName = arg
         else:
-            fullName = arg[1]
+            fullName = scope.expandName(astor.to_source(arg).strip())
         obj = scope.system.objForFullName(fullName)
         if isinstance(obj, ZopeInterfaceClass):
             scope.implements_directly.append(fullName)
@@ -109,10 +107,17 @@ def addInterfaceInfoToScope(scope, interfaceargs):
                 'probable interface %s not detected as a class' % fullName,
                 section='zopeinterface')
 
-def addInterfaceInfoToModule(module, interfaceargs):
+def addInterfaceInfoToModule(
+        module: ZopeInterfaceModule,
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]]
+        ) -> None:
     addInterfaceInfoToScope(module, interfaceargs)
 
-def addInterfaceInfoToClass(cls, interfaceargs, implementsOnly):
+def addInterfaceInfoToClass(
+        cls: ZopeInterfaceClass,
+        interfaceargs: Iterable[Optional[Union[str, ast.expr]]],
+        implementsOnly: bool
+        ) -> None:
     cls.implementsOnly = implementsOnly
     if implementsOnly:
         cls.implements_directly = []
@@ -124,17 +129,17 @@ interface_prog = re.compile(
     r'zope\.schema\.interfaces\.([a-zA-Z_][a-zA-Z0-9_]*)'
     r'|zope\.interface\.Interface')
 
-def namesInterface(system, name):
+def namesInterface(system: model.System, name: str) -> bool:
     if interface_prog.match(name):
         return True
     obj = system.objForFullName(name)
-    if not obj or not isinstance(obj, model.Class):
+    if not isinstance(obj, ZopeInterfaceClass):
         return False
     return obj.isinterface
 
 class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
-    def funcNameFromCall(self, node):
+    def funcNameFromCall(self, node: ast.Call) -> Optional[str]:
         if isinstance(node.func, ast.Name):
             name = node.func.id
         elif isinstance(node.func, ast.Attribute):
@@ -143,9 +148,14 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return self.funcNameFromCall(node.func)
         else:
             return None
-        return self.builder.current.expandName(name)
+        return self.builder.current.expandName(name)  # type: ignore[no-any-return]
 
-    def _handleAssignmentInModule(self, target, annotation, expr, lineno):
+    def _handleAssignmentInModule(self,
+            target: str,
+            annotation: ast.expr,
+            expr: ast.expr,
+            lineno: int
+            ) -> None:
         super()._handleAssignmentInModule(
                 target, annotation, expr, lineno)
 
@@ -155,7 +165,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if funcName is None:
             return
         ob = self.system.objForFullName(funcName)
-        if isinstance(ob, model.Class) and ob.isinterfaceclass:
+        if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
             # TODO: Process 'bases' and '__doc__' arguments.
             interface = self.builder.pushClass(target, lineno)
             interface.isinterface = True
@@ -165,19 +175,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             self.builder.popClass()
             self.newAttr = interface
 
-    def _handleAssignmentInClass(self, target, annotation, expr, lineno):
-        super()._handleAssignmentInClass(
-                target, annotation, expr, lineno)
-
-        def handleSchemaField():
-            keywords = {arg.arg: arg.value for arg in expr.keywords}
-            descrNode = keywords.get('description')
-            if isinstance(descrNode, ast.Str):
-                attr.setDocstring(descrNode)
-            elif descrNode is not None:
-                attr.report(
-                    'description of field "%s" is not a string literal'
-                    % attr.name, section='zopeinterface')
+    def _handleAssignmentInClass(self,
+            target: str,
+            annotation: ast.expr,
+            expr: ast.expr,
+            lineno: int
+            ) -> None:
+        super()._handleAssignmentInClass(target, annotation, expr, lineno)
 
         if not isinstance(expr, ast.Call):
             return
@@ -187,6 +191,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         funcName = self.funcNameFromCall(expr)
         if funcName is None:
             return
+
         if funcName == 'zope.interface.Attribute':
             attr.kind = 'Attribute'
             args = expr.args
@@ -197,16 +202,25 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     'definition of attribute "%s" should have docstring '
                     'as its sole argument' % attr.name,
                     section='zopeinterface')
-        elif schema_prog.match(funcName):
-            attr.kind = schema_prog.match(funcName).group(1)
-            handleSchemaField()
         else:
-            cls = self.builder.system.objForFullName(funcName)
-            if isinstance(cls, ZopeInterfaceClass) and cls.isschemafield:
+            match = schema_prog.match(funcName)
+            if match:
+                attr.kind = match.group(1)
+            else:
+                cls = self.builder.system.objForFullName(funcName)
+                if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
+                    return
                 attr.kind = cls.name
-                handleSchemaField()
+            keywords = {arg.arg: arg.value for arg in expr.keywords}
+            descrNode = keywords.get('description')
+            if isinstance(descrNode, ast.Str):
+                attr.setDocstring(descrNode)
+            elif descrNode is not None:
+                attr.report(
+                    'description of field "%s" is not a string literal' % attr.name,
+                    section='zopeinterface')
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.Call) -> None:
         base = self.funcNameFromCall(node)
         if base is None:
             return
@@ -214,49 +228,51 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         if meth is not None:
             meth(base, node)
 
-    def visit_Call_zope_interface_moduleProvides(self, funcName, node):
-        if not isinstance(self.builder.current, model.Module):
+    def visit_Call_zope_interface_moduleProvides(self, funcName: str, node: ast.Call) -> None:
+        if not isinstance(self.builder.current, ZopeInterfaceModule):
             self.default(node)
             return
 
         addInterfaceInfoToModule(self.builder.current, node.args)
 
-    def visit_Call_zope_interface_implements(self, funcName, node):
-        if not isinstance(self.builder.current, model.Class):
+    def visit_Call_zope_interface_implements(self, funcName: str, node: ast.Call) -> None:
+        if not isinstance(self.builder.current, ZopeInterfaceClass):
             self.default(node)
             return
         addInterfaceInfoToClass(self.builder.current, node.args,
                                 funcName == 'zope.interface.implementsOnly')
     visit_Call_zope_interface_implementsOnly = visit_Call_zope_interface_implements
 
-    def visit_Call_zope_interface_classImplements(self, funcName, node):
-        clsname = self.builder.current.expandName(
-            astor.to_source(node.args[0]).strip())
-        if clsname not in self.system.allobjects:
+    def visit_Call_zope_interface_classImplements(self, funcName: str, node: ast.Call) -> None:
+        parent = self.builder.current
+        if not node.args:
             self.builder.system.msg(
-                "parsing",
-                "classImplements on unknown class %r"%clsname)
+                'zopeinterface',
+                f'{parent.description}:{node.lineno}: '
+                f'required argument to classImplements() missing',
+                thresh=-1)
             return
-        cls = self.system.allobjects[clsname]
+        clsname = parent.expandName(astor.to_source(node.args[0]).strip())
+        cls = self.system.allobjects.get(clsname)
+        if not isinstance(cls, ZopeInterfaceClass):
+            problem = 'not found' if cls is None else 'is not a class'
+            self.builder.system.msg(
+                'zopeinterface',
+                f'{parent.description}:{node.lineno}: '
+                f'argument "{clsname}" to classImplements() {problem}',
+                thresh=-1)
+            return
         addInterfaceInfoToClass(cls, node.args[1:],
                                 funcName == 'zope.interface.classImplementsOnly')
     visit_Call_zope_interface_classImplementsOnly = visit_Call_zope_interface_classImplements
 
-    def visit_ClassDef(self, node):
-        super().visit_ClassDef(node)
-        cls = self.builder.current.contents.get(node.name)
+    def visit_ClassDef(self, node: ast.ClassDef) -> Optional[ZopeInterfaceClass]:
+        cls = super().visit_ClassDef(node)
         if cls is None:
-            return
+            return None
+        assert isinstance(cls, ZopeInterfaceClass)
 
-        bases = []
-
-        for base in cls.bases:
-            if isinstance(base, ast.Name):
-                bases.append(self.builder.current.expandName(base.id))
-            elif isinstance(base, str):
-                bases.append(self.builder.current.expandName(base))
-            else:
-                raise Exception(base)
+        bases = [self.builder.current.expandName(base) for base in cls.bases]
 
         if 'zope.interface.interface.InterfaceClass' in bases:
             cls.isinterfaceclass = True
@@ -270,9 +286,14 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             if schema_prog.match(n) or (o and o.isschemafield):
                 cls.isschemafield = True
 
-        for ((dn, fn, o), args) in cls.decorators:
+        for fn, args in cls.decorators:
             if fn == 'zope.interface.implementer':
+                if args is None:
+                    cls.report('@implementer requires arguments')
+                    continue
                 addInterfaceInfoToClass(cls, args, False)
+
+        return cls
 
 
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):

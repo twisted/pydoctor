@@ -2,15 +2,15 @@
 
 from typing import Any, Iterator, List, Optional, Union
 import ast
+import abc
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLFile
+from twisted.web.template import tags, Element, renderer, Tag
 import astor
 
+from twisted.web.iweb import ITemplateLoader
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter import util
-from pydoctor.epydoc.markup import html2stan
+from pydoctor.templatewriter import util, TemplateLookup
 
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
@@ -42,16 +42,62 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class Nav(Element):
+class BaseElement(Element, abc.ABC):
+    """
+    Common base element 
+    """
+    def __init__(self, 
+        system:Optional[model.System]=None, 
+        template_lookup:Optional[TemplateLookup]=None, 
+        loader:Optional[ITemplateLoader]=None, ) -> None:
+        """
+        C{system} and C{template_lookup} can be none in special 
+        cases like for L{LetterElement}. 
+
+        The C{loader} is usually got from the L{TemplateLookup} 
+        object but can also be set by argument, again for the special 
+        case of L{LetterElement}. 
+
+        @raises RuntimeError: If not enought information is provided 
+        to create the template loader. i.e. missing C{template_lookup} or C{loader} arguments. 
+        """
+        self.system = system
+        self.template_lookup = template_lookup
+        if loader:
+            self._loader = loader  
+        elif self.filename:
+            if self.template_lookup:
+                self._loader = self.template_lookup.get_template(
+                    self.filename).renderable
+            else:
+                RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup \
+                    object is passed to BaseElement's 'template_lookup' init argument.")
+        else:
+            RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader \
+                object is passed to BaseElement's 'loader' init argument.")
+        super().__init__()
+
+    @abc.abstractproperty
+    def filename(self) -> str:
+        """
+        Associated filename. 
+        
+        Can be empty string in special cases (like L{LetterElement}). 
+        """
+        pass
+
+    @property
+    def loader(self) -> ITemplateLoader: # type: ignore
+        # mypy error: Signature of "loader" incompatible with supertype "Element"  [override]
+        # It's ok to ignore because it's actually a property, so we can disregard signature
+        return self._loader
+
+class Nav(BaseElement):
     """
     Common navigation header. 
     """
-    def __init__(self, system):
-        self.system = system
 
-    @property
-    def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('nav.html'))
+    filename = 'nav.html'
 
     @renderer
     def project(self, request, tag):
@@ -60,60 +106,49 @@ class Nav(Element):
     @renderer
     def projecthome(self, request, tag):
         if self.system.options.projecturl:
-            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), id="projecthome")
+            return tags.li(tags.a(href=self.system.options.projecturl)('Project Home'), 
+                id="projecthome")
         else:
             return ''
 
-class BasePage(Element):
+class BasePage(BaseElement):
     """
-    Defines special placeholders that are designed to be overwritten by users: 
+    Base page element. 
+
+    Defines special placeholders that are designed to be overriden by users: 
     "header.html", "pageHeader.html" and "footer.html".
     """
-    
-    def __init__(self, system:model.System):
-        self.system = system
-        """Reference to the system object"""
 
     @renderer
     def nav(self, request, tag):
-        return Nav(self.system)
+        return Nav(self.system, self.template_lookup)
 
     @renderer
     def header(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('header.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
-        else:
-            return ''
+        template = self.template_lookup.get_template('header.html')
+        return template.renderable.load() if template.text else ''
 
     @renderer
     def pageHeader(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('pageHeader.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
-        else:
-            return ''
+        template = self.template_lookup.get_template('pageHeader.html')
+        return template.renderable.load() if template.text else ''
 
     @renderer
     def footer(self, request, tag):
-        template = self.system.templatefile_lookup.get_templatefilepath('footer.html')
-        if template.getsize()>0:
-            return html2stan(template.open('r').read().decode())
-        else:
-            return ''
+        template = self.template_lookup.get_template('footer.html')
+        return template.renderable.load() if template.text else ''
+
 
 class CommonPage(BasePage):
 
-    def __init__(self, ob, docgetter=None):
-        super().__init__(system = ob.system)
+    filename = 'common.html'
+
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:Optional[DocGetter]=None):
+        super().__init__(ob.system, template_lookup)
         self.ob = ob
-        if docgetter is None:
+        if docgetter == None:
             docgetter = DocGetter()
         self.docgetter = docgetter
-
-    @property
-    def loader(self):
-        return XMLFile(self.system.templatefile_lookup.get_templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()
@@ -127,7 +162,7 @@ class CommonPage(BasePage):
             )
 
     def category(self) -> str:
-        return f"{self.ob.kind.lower()} documentation"
+        return f"{str(self.ob.kind).lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
         parts: List[Union[Tag, str]] = []
@@ -188,9 +223,10 @@ class CommonPage(BasePage):
         return ()
 
     def mainTable(self):
+        from pydoctor.templatewriter.pages.table import ChildTable
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children)
+            return ChildTable(self.docgetter, self.ob, children, self.template_lookup)
         else:
             return ()
 
@@ -205,9 +241,9 @@ class CommonPage(BasePage):
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
         return r
 
     def functionExtras(self, data):
@@ -229,7 +265,7 @@ class CommonPage(BasePage):
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            version=__version__.public(),
+            version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
 
@@ -251,6 +287,7 @@ class PackagePage(ModulePage):
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
+        from pydoctor.templatewriter.pages.table import ChildTable
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.contents.values() if o.isVisible],
@@ -258,7 +295,7 @@ class PackagePage(ModulePage):
         if children:
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children)]
+                    ChildTable(self.docgetter, init, children, self.template_lookup)]
         else:
             return ()
 
@@ -322,8 +359,9 @@ def assembleList(system, label, lst, idbase):
 
 
 class ClassPage(CommonPage):
-    def __init__(self, ob, docgetter=None):
-        CommonPage.__init__(self, ob, docgetter)
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, 
+      docgetter:Optional[DocGetter]=None):
+        super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
         for baselist in nested_bases(self.ob):
             attrs = unmasked_attrs(baselist)
@@ -374,6 +412,7 @@ class ClassPage(CommonPage):
 
     @renderer
     def baseTables(self, request, item):
+        from pydoctor.templatewriter.pages.table import ChildTable
         baselists = self.baselists[:]
         if not baselists:
             return []
@@ -382,7 +421,8 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value)))
+                                               sorted(attrs, key=lambda o:-o.privacyClass.value), 
+                                                self.template_lookup))
                 for b, attrs in baselists]
 
     def baseName(self, data):
@@ -452,7 +492,3 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
-
-class FunctionPage(CommonPage):
-    def mediumName(self, ob):
-        return [super().mediumName(ob), signature(self.ob)]

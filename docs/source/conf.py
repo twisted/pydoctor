@@ -25,8 +25,7 @@ project = 'pydoctor'
 copyright = '2020, Michael Hudson-Doyle and various contributors (see Git history)'
 author = 'Michael Hudson-Doyle and various contributors (see Git history)'
 
-from pydoctor._version import __version__
-version = __version__.short()
+from pydoctor import __version__ as version
 
 # -- General configuration ---------------------------------------------------
 
@@ -38,6 +37,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "pydoctor.sphinx_ext._help_output",
     "pydoctor.sphinx_ext.build_apidocs",
+    "sphinxcontrib.spelling",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -48,10 +48,17 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Definitions that will be made available to every document.
+rst_epilog = """
+.. include:: <isonum.txt>
+"""
+
+# Configure spell checker.
+spelling_word_list_filename = 'spelling_wordlist.txt'
+
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
-    'pydoctor': ('https://pydoctor.readthedocs.io/en/latest/api/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -82,13 +89,10 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
-    '--quiet',
-    '--make-html',
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
+    f'--project-base-dir={_pydoctor_root}',
 
     '--project-url=https://github.com/twisted/pydoctor/',
-
-    f'--project-base-dir={_pydoctor_root}',
 
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
@@ -97,16 +101,22 @@ _common_args = [
 ]
 pydoctor_args = {
     'main': [
-        '--html-output={outdir}/api',
+        '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
+        f'--project-version={version}',
         '--docformat=epytext',
-        f'--html-template-dir={_pydoctor_root}/docs/source/pydoctor_templates/pydoctor',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext/demo',
         '--project-name=pydoctor-epytext-demo',
+        '--project-version=1.2.0',
         '--docformat=epytext',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
+    }
+
+pydoctor_url_path = {
+    'main': '/en/{rtd_version}/api',
+    'epydoc_demo': '/en/{rtd_version}/docformat/epytext/demo/',
     }

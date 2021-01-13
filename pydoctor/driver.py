@@ -7,9 +7,10 @@ import datetime
 import os
 import sys
 import warnings
+from inspect import signature
 
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.iwriter import IWriter
+from pydoctor.templatewriter import IWriter, TemplateLookup
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -83,7 +84,7 @@ class CustomOption(Option):
 
 def getparser() -> OptionParser:
     parser = OptionParser(
-        option_class=CustomOption, version=__version__.public(),
+        option_class=CustomOption, version=__version__,
         usage="usage: %prog [options] SOURCEPATH...")
     parser.add_option(
         '-c', '--config', dest='configfile',
@@ -94,7 +95,16 @@ def getparser() -> OptionParser:
         help=("A dotted name of the class to use to make a system."))
     parser.add_option(
         '--project-name', dest='projectname',
-        help=("The project name, appears in the html."))
+        help=("The project name, shown at the top of each HTML page."))
+    parser.add_option(
+        '--project-version',
+        dest='projectversion',
+        default='',
+        metavar='VERSION',
+        help=(
+            "The version of the project for which the API docs are generated. "
+            "Defaults to empty string."
+            ))
     parser.add_option(
         '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
@@ -126,14 +136,12 @@ def getparser() -> OptionParser:
               "Can be used to document part of a package."))
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        help=("Which docstrings format are assumed "
-              "to be in. Currently, we are supporting: "
-              "'epytext' and 'restructuredtext'. "))
+        help=("Format used for parsing docstrings. "
+              "Supported values: 'epytext' and 'restructuredtext'."))
     parser.add_option(
-        '--html-template-dir',
+        '--template-dir',
         dest='templatedir',
-        default=None,
-        help=(  'Path to a folder containing custom HTML templates.'),
+        help=("Directory containing custom HTML templates."),
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
@@ -144,11 +152,8 @@ def getparser() -> OptionParser:
         action='store_true', default=False,
         help=("Only generate the summary pages."))
     parser.add_option(
-        '--html-write-function-pages', dest='htmlfunctionpages',
-        default=False, action='store_true', help=SUPPRESS_HELP)
-    parser.add_option(
-        '--output-dir', '--html-output', dest='htmloutput', default='apidocs',
-        help=("Directory to save files to (default 'apidocs')"))
+        '--html-output', dest='htmloutput', default='apidocs',
+        help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_option(
         '--writer-class', '--html-writer', dest='htmlwriter',
         help=("Dotted name of writer class to use (default "
@@ -261,16 +266,16 @@ def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
     options.verbosity -= options.quietness
+
+    _warn_deprecated_options(options)
+
     return options, args
 
-def main(args: Sequence[str] = sys.argv[1:]) -> int:
-    options, args = parse_args(args)
 
-    exitcode = 0
-
-    if options.configfile:
-        readConfigFile(options)
-
+def _warn_deprecated_options(options: Values) -> None:
+    """
+    Check the CLI options and warn on deprecated options.
+    """
     if options.enable_intersphinx_cache_deprecated:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.",
@@ -283,11 +288,22 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         print("The --add-package option is deprecated; "
               "pass packages as positional arguments instead.",
               file=sys.stderr, flush=True)
-    if options.htmlfunctionpages:
-        print("The --html-write-function-pages option is deprecated; "
-              "use the generated Intersphinx inventory (objects.inv) "
-              "for deep-linking your documentation.",
-              file=sys.stderr, flush=True)
+
+
+
+
+def main(args: Sequence[str] = sys.argv[1:]) -> int:
+    """
+    This is the console_scripts entry point for pydoctor CLI.
+
+    @param args: Command line arguments to run the CLI.
+    """
+    options, args = parse_args(args)
+
+    exitcode = 0
+
+    if options.configfile:
+        readConfigFile(options)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
@@ -385,6 +401,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
+        subjects: List[model.Documentable] = []
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -392,6 +409,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
+                    # https://github.com/python/mypy/issues/4717
+                    # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
                     options.htmlwriter, '--writer-class', IWriter) # type: ignore
             else:
                 writerclass = templatewriter.TemplateWriter
@@ -402,32 +421,37 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             # Init writer
             writer: IWriter
-            if system.options.templatedir:
-                system.templatefile_lookup.add_templatedir(
-                    system.options.templatedir)
-                try:
-                    writer = writerclass(options.htmloutput, 
-                        templatefile_lookup=system.templatefile_lookup) # type: ignore
 
-                except TypeError as err:
+            # Handle custom HTML templates
+            if system.options.templatedir:
+                
+                if 'template_lookup' in signature(writerclass).parameters:
+                    # writer class is up o date
+                    custom_lookup = TemplateLookup()
+                    custom_lookup.add_templatedir(
+                        Path(system.options.templatedir))
+
+                    writer = writerclass(options.htmloutput, 
+                        template_lookup=custom_lookup)
+                else:
+                    # old custom class is not do not contain 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --html-template-dir. {err}")
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
             else:
                 writer = writerclass(options.htmloutput)
 
             writer.prepOutputDirectory()
-
+            
             if options.htmlsubjects:
-                subjects = []
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
                 writer.writeModuleIndex(system)
-                subjects = []
+
             else:
                 writer.writeModuleIndex(system)
-                subjects = system.rootobjects
-            writer.writeIndividualFiles(subjects, options.htmlfunctionpages)
+                subjects.extend(system.rootobjects)
+            writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:
                     system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
@@ -448,6 +472,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             sphinx_inventory = SphinxInventoryWriter(
                 logger=system.msg,
                 project_name=system.projectname,
+                project_version=system.options.projectversion,
                 )
             if not os.path.exists(options.htmloutput):
                 os.makedirs(options.htmloutput)
