@@ -5,11 +5,11 @@ DOCTYPE = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from abc import ABC, abstractmethod
 from typing import Any, Iterable, Optional, Dict
 import abc
 from pathlib import Path
 import warnings
+import copy
 from twisted.web.iweb import ITemplateLoader
 
 from twisted.web.template import XMLFile
@@ -18,30 +18,30 @@ from bs4 import BeautifulSoup
 
 from pydoctor.model import System, Documentable
 
-class IWriter(ABC):
+class IWriter(abc.ABC):
     """
     Interface class for pydoctor output writer. 
     """
 
-    @abstractmethod
+    @abc.abstractmethod
     def __init__(self, filebase:str, template_lookup:Optional['TemplateLookup'] = None):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def prepOutputDirectory(self) -> None:
         """
         Called first.
         """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def writeModuleIndex(self, system:'System') -> None: 
         """
         Called second.
         """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def writeIndividualFiles(self, obs:Iterable['Documentable']) -> None:
         """
         Called last.
@@ -67,6 +67,7 @@ class Template(abc.ABC):
         """
         self._text: Optional[str] = None
         self.path: Path = path
+        """L{Path} object"""
 
     @classmethod
     def fromfile(cls, path:Path) -> Optional['Template']:
@@ -97,7 +98,8 @@ class Template(abc.ABC):
         File text 
         """
         if not self._text:
-            self._text = self.path.open('r').read()
+            with self.path.open('r') as f:
+                self._text = f.read()
         return self._text
 
     @abc.abstractproperty
@@ -138,7 +140,8 @@ class _SimpleTemplate(Template):
 
 class _HtmlTemplate(Template):
     """
-    HTML template that works with the Twisted templating system. 
+    HTML template that works with the Twisted templating system 
+    and use BeautifulSoup to parse the pydoctor-template-version meta tag. 
     """
 
     def __init__(self, path:Path):
@@ -163,10 +166,10 @@ class _HtmlTemplate(Template):
                     # most probably a placeholder template. 
                     self._version = -1
                 except KeyError as e:
-                    warnings.warn(f"Cannot get meta pydoctor-template-version tag content: {e}")
+                    warnings.warn(f"Could not read '{self.name}' template version: can't get meta pydoctor-template-version tag content: {e}")
                     self._version = -1
                 except ValueError as e:
-                    warnings.warn(f"Cannot cast template version to int: {e}")
+                    warnings.warn(f"Could not read '{self.name}' template version: can't cast template version to int: {e}")
                     self._version = -1
 
         # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
@@ -191,8 +194,8 @@ class TemplateLookup:
     This object allow the customization of any templates, this can lead to warnings 
     when upgrading pydoctor, then, please update your template.
 
-    @Note: The HTML templates versions are independent of the pydoctor version
-           and are idependent from each other. They are all initialized to '1.0'.
+    @note: The HTML templates versions are independent of the pydoctor version
+           and are idependent from each other.
 
     """
 
@@ -203,36 +206,39 @@ class TemplateLookup:
         self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
                 Path(__file__).parent.parent.joinpath(
                     self._default_template_dir).iterdir()) if t }
+        
+        self._default_templates = copy.deepcopy(self._templates)
 
 
     def add_template(self, template:Template) -> None:
         """
         Add a custom template to the lookup. 
 
-        Check the template version against current template, 
-        issue warnings when custom templates are outdated.
+        Compare the passed Template version with default template, 
+        issue warnings if template are outdated.
+
+        @raises RuntimeError: If the custom template is designed for a newer version of pydoctor
         """
         
         try:
-            default_version = self.get_template_version(template.name)
-
+            default_version = self._default_templates[template.name].version
             template_version = template.version
-            if default_version:
+            if default_version and template_version != -1:
                 if template_version < default_version: 
-                    warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing."
-                                            " Latest templates are available to download from our github.")
+                    warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
+                                   "Latest templates are available to download from our github.")
                 elif template_version > default_version:
                     raise RuntimeError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                            "Rendering will most probably fail, so we're crashing now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
-        except FileNotFoundError as e:
-            raise RuntimeError(f"Invalid template filename '{template.name}'. Valid names are: {list(self._templates)}") from e
+                                        "Rendering will most probably fail, so we're crashing now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
+        except KeyError:
+            warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
         
         self._templates[template.name] = template
 
 
     def add_templatedir(self, dir:Path) -> None:
         """
-        Add all templates in the given directory to the lookup. 
+        Scan a directory and add all templates in the given directory to the lookup. 
         """
         for path in dir.iterdir():
             template = Template.fromfile(path)
@@ -248,22 +254,14 @@ class TemplateLookup:
 
         @param filename: File name, (ie 'index.html')
         @return: The Template object
-        @raises FileNotFoundError: If the template file do not exist
+        @raises KeyError: If no template file is found with the given name
         """
-        t = self._templates.get(filename, None)
-        if not t:
-            raise FileNotFoundError(f"Cannot find template: '{filename}' in template lookup: {self._templates}")
+        try:
+            t = self._templates[filename]
+        except KeyError as e:
+            raise KeyError(f"Cannot find template '{filename}' in template lookup: {self}. "
+                f"Valid filenames are: {list(self._templates)}") from e
         return t
-
-    def get_template_version(self, filename: str) -> int: 
-        """
-        Get a template version. 
-
-        @arg filename: Template file name
-        @return: The template version as int
-        @raises FileNotFoundError: If the template file do not exist
-        """
-        return self.get_template(filename).version
 
 from pydoctor.templatewriter.writer import TemplateWriter
 TemplateWriter = TemplateWriter
