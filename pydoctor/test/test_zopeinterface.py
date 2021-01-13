@@ -450,6 +450,7 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
     def f():
         pass
     classImplements()
+    classImplements(None, IBar)
     classImplements(f, IBar)
     classImplements(g, IBar)
     '''
@@ -457,6 +458,7 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == (
         'mod:7: required argument to classImplements() missing\n'
-        'mod:8: argument "mod.f" to classImplements() is not a class\n'
-        'mod:9: argument "g" to classImplements() not found\n'
+        'mod:8: argument 1 to classImplements() is not a class name\n'
+        'mod:9: argument "mod.f" to classImplements() is not a class\n'
+        'mod:10: argument "g" to classImplements() not found\n'
         )
