@@ -26,7 +26,7 @@
     display: inline-block;
 }
 
-.navbar-brand *:nth-child(1) {
+.navbar-brand *:first-child {
     padding-right: 0px;
 }
 
@@ -136,12 +136,7 @@ ul ul ul ul ul ul ul {
     margin-bottom: 20px;
     width: 100%;
     border: 0;
-}
-
-#splitTables > table, .fieldTable {
-    border: 1px solid #eee;
-    width: 100%;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 #splitTables > table tr {
@@ -172,11 +167,15 @@ ul ul ul ul ul ul ul {
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
-    width: 250px;
+    /* We do not specify width so the last two columns will be automatically
+    sized depending of the content for desktops. */
 }
 
 @media only screen and (max-width: 600px) {
-    
+
+    #splitTables > table, .fieldTable {
+        table-layout: fixed;
+    }
     /* For mobile phones: */
     /* Kind column table  */
     #splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
@@ -351,15 +350,27 @@ body.private-hidden #summaryTree .private {
     position: fixed;
     bottom: 0;
     left: 0;
-    padding: 5px;
-    opacity: 0.7;
-    margin-bottom: 40px;
+    padding: 0px;
+    opacity: 0.6;
+    margin-bottom: 55px;
     background-color: #efefef;
     border-radius: 1px;
 }
 
 #showPrivate:hover {
     opacity: 1;
+    text-decoration: none;
+}
+
+#showPrivate button {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-right: 15px;
+    padding-left: 15px;
+}
+
+#showPrivate button:hover {
+    text-decoration: none;
 }
 
 #current-docs-container {
