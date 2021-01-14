@@ -2,10 +2,6 @@
     margin-bottom: 0px;
 }
 
-.container {
-    overflow-wrap: break-word;
-}
-
 .page-header {
     margin-top: 22px;
     position: sticky;

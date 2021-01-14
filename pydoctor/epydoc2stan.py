@@ -695,7 +695,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
             if first:
                 first = False
             else:
-                tag(', ')
+                tag(', ', tags.wbr) # Add an potential line break for long types
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
@@ -723,7 +723,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
     def visit_Subscript(self, node: ast.Subscript) -> Tag:
         tag: Tag = tags.transparent
         tag(self.visit(node.value))
-        tag('[')
+        tag('[', tags.wbr) 
         sub: ast.AST = node.slice
         if isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
@@ -737,7 +737,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
     def visit_List(self, node: ast.List) -> Tag:
         tag: Tag = tags.transparent
-        tag('[')
+        tag('[', tags.wbr) 
         self._handle_sequence(tag, node.elts)
         tag(']')
         return tag

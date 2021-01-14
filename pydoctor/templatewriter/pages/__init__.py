@@ -164,7 +164,7 @@ class CommonPage(BasePage):
         while ob:
             if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 if parts:
-                    parts.append('.')
+                    parts.extend(['.', tags.wbr])
                 parts.append(util.taglink(ob, ob.name))
             ob = ob.parent
         parts.reverse()
