@@ -106,6 +106,29 @@ Further reading:
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
 - `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
 
+
+Properties
+----------
+
+A method with a decoration ending in ``property`` or ``Property`` will be included in the generated API documentation as an attribute rather than a method::
+
+    class Knight:
+
+        @property
+        def name(self):
+            return self._name
+
+        @abc.abstractproperty
+        def age(self):
+            raise NotImplementedError
+
+        @customProperty
+        def quest(self):
+            return f'Find the {self._object}'
+
+All you have to do for pydoctor to recognize your custom properties is stick to this naming convention.
+
+
 Using ``attrs``
 ---------------
 
