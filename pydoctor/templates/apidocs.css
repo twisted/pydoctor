@@ -156,6 +156,13 @@ ul ul ul ul ul ul ul {
     border-left-style: solid;
 }
 
+.fieldTable {
+    table-layout: fixed;
+}
+
+.fieldTable tr td:nth-child(2) {
+    width: 25%;
+}
 
 /* For desktop: */
 /* Kind column table  */
@@ -165,7 +172,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* Attr name column table  */
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+#splitTables > table tr td:nth-child(2), .fieldTable tr .fieldArg {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
     /* We do not specify width so the last two columns will be automatically
     sized depending of the content for desktops. */
@@ -173,7 +180,7 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 600px) {
 
-    #splitTables > table, .fieldTable {
+    #splitTables > table {
         table-layout: fixed;
     }
     /* For mobile phones: */
@@ -184,7 +191,7 @@ ul ul ul ul ul ul ul {
     }
 
     /* Attr name column table  */
-    #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+    #splitTables > table tr td:nth-child(2), .fieldTable tr .fieldArg {
         font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
         width: 35%;
     }
