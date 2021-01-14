@@ -156,32 +156,33 @@ ul ul ul ul ul ul ul {
     table-layout: fixed;
 }
 
-.fieldTable tr td:nth-child(2) {
-    width: 25%;
+/* For desktop: */
+/* argument docs column table  */
+.fieldTable tr td:nth-child(3) {
+    width: 60%;
 }
 
-/* For desktop: */
 /* Kind column table  */
-#splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
+#splitTables > table tr td:first-child {
     border-left: none;
     width: 150px;
 }
 
-/* Attr name column table  */
+/* Attr name + type column table  */
 #splitTables > table tr td:nth-child(2), .fieldTable tr .fieldArg {
     font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
-    /* We do not specify width so the last two columns will be automatically
-    sized depending of the content for desktops. */
+    /* We do not specify width so the type columns will be automatically
+    sized depending of the space left. */
 }
 
-@media only screen and (max-width: 600px) {
+@media only screen and (max-width: 1000px) {
 
     #splitTables > table {
         table-layout: fixed;
     }
     /* For mobile phones: */
     /* Kind column table  */
-    #splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
+    #splitTables > table tr td:first-child, .fieldTable tr td:first-child {
         border-left: none;
         width: 20%;
     }
@@ -192,7 +193,7 @@ ul ul ul ul ul ul ul {
         width: 35%;
     }
 
-    /* Summary column table  */
+    /* Summary column table and argument docs  */
     #splitTables > table tr td:nth-child(3), .fieldTable tr td:nth-child(3){
         width: 45%;
     }
@@ -232,6 +233,7 @@ tr.private {
 
 .fieldName {
     font-weight: bold;
+    width: 150px;
 }
 
 
