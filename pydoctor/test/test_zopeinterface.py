@@ -269,18 +269,6 @@ def test_implementer_decoration() -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_decoration_nonclass() -> None:
-    src = '''
-    from zope.interface import implementer
-    var = 0
-    @implementer(var)
-    class Implementation:
-        pass
-    '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    impl = mod.contents['Implementation']
-    assert impl.implements_directly == []
-
 def test_docsources_from_moduleprovides() -> None:
     src = '''
     from zope import interface
@@ -307,7 +295,7 @@ def test_interfaceallgames() -> None:
         'interfaceallgames.implementation.Implementation'
         ]
 
-def test_implementer_with_none() -> None:
+def test_implementer_with_star() -> None:
     """
     If the implementer call contains a split out empty list, don't fail on
     attempting to process it.
@@ -328,14 +316,13 @@ def test_implementer_with_none() -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_nonclass(capsys: CapSys) -> None:
+def test_implementer_nonname(capsys: CapSys) -> None:
     """
-    Check rejection of non-class arguments passed to @implementer.
+    Non-name arguments passed to @implementer are warned about and then ignored.
     """
     src = '''
-    from zope.interface import Interface, implementer
-    var = 'not a class'
-    @implementer(var)
+    from zope.interface import implementer
+    @implementer(123)
     class Implementation:
         pass
     '''
@@ -343,14 +330,33 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
     impl = mod.contents['Implementation']
     assert impl.implements_directly == []
     captured = capsys.readouterr().out
-    assert captured == "mod:4: probable interface mod.var not detected as a class\n"
+    assert captured == 'mod:3: Interface argument 1 does not look like a name\n'
+
+def test_implementer_nonclass(capsys: CapSys) -> None:
+    """
+    Non-class arguments passed to @implementer are warned about but are stored
+    as implemented interfaces.
+    """
+    src = '''
+    from zope.interface import implementer
+    var = 'not a class'
+    @implementer(var)
+    class Implementation:
+        pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    impl = mod.contents['Implementation']
+    assert impl.implements_directly == ['mod.var']
+    captured = capsys.readouterr().out
+    assert captured == 'mod:4: Supposed interface "mod.var" not detected as a class\n'
 
 def test_implementer_plainclass(capsys: CapSys) -> None:
     """
-    Check patching of non-interface classes passed to @implementer.
+    A non-interface class passed to @implementer will be warned about but
+    will be stored as an implemented interface.
     """
     src = '''
-    from zope.interface import Interface, implementer
+    from zope.interface import implementer
     class C:
         pass
     @implementer(C)
@@ -360,12 +366,64 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     C = mod.contents['C']
     impl = mod.contents['Implementation']
-    assert C.isinterface
-    assert C.kind == "Interface"
-    assert C.implementedby_directly == [impl]
+    assert not C.isinterface
+    assert C.kind == "Class"
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
-    assert captured == "mod:5: probable interface mod.C not marked as such\n"
+    assert captured == 'mod:5: Class "mod.C" is not an interface\n'
+
+def test_implementer_not_found(capsys: CapSys) -> None:
+    """
+    An unknown class passed to @implementer is warned about if its full name
+    is part of our system.
+    """
+    src = '''
+    from zope.interface import implementer
+    from twisted.logger import ILogObserver
+    @implementer(ILogObserver, mod.INoSuchInterface)
+    class Implementation:
+        pass
+    '''
+    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    captured = capsys.readouterr().out
+    assert captured == 'mod:4: Interface "mod.INoSuchInterface" not found\n'
+
+def test_implementer_reparented() -> None:
+    """
+    A class passed to @implementer can be found even when it is moved
+    to a different module.
+    """
+
+    system = ZopeInterfaceSystem()
+
+    mod_iface = fromText('''
+    from zope.interface import Interface
+    class IMyInterface(Interface):
+        pass
+    ''', modname='_private', system=system)
+
+    mod_export = fromText('', modname='public', system=system)
+
+    mod_impl = fromText('''
+    from zope.interface import implementer
+    from _private import IMyInterface
+    @implementer(IMyInterface)
+    class Implementation:
+        pass
+    ''', modname='app', system=system)
+
+    iface = mod_iface.contents['IMyInterface']
+    iface.reparent(mod_export, 'IMyInterface')
+    assert iface.fullName() == 'public.IMyInterface'
+    assert 'IMyInterface' not in mod_iface.contents
+
+    impl = mod_impl.contents['Implementation']
+    assert impl.implements_directly == ['_private.IMyInterface']
+    assert iface.implementedby_directly == []
+
+    system.postProcess()
+    assert impl.implements_directly == ['public.IMyInterface']
+    assert iface.implementedby_directly == [impl]
 
 def test_implementer_nocall(capsys: CapSys) -> None:
     """
@@ -392,6 +450,7 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
     def f():
         pass
     classImplements()
+    classImplements(None, IBar)
     classImplements(f, IBar)
     classImplements(g, IBar)
     '''
@@ -399,6 +458,7 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == (
         'mod:7: required argument to classImplements() missing\n'
-        'mod:8: argument "mod.f" to classImplements() is not a class\n'
-        'mod:9: argument "g" to classImplements() not found\n'
+        'mod:8: argument 1 to classImplements() is not a class name\n'
+        'mod:9: argument "mod.f" to classImplements() is not a class\n'
+        'mod:10: argument "g" to classImplements() not found\n'
         )

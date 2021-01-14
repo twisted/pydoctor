@@ -280,12 +280,17 @@ class Documentable:
         obj: Documentable = self
         for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
+            if full_name == p and i != 0:
+                # The local name was not found.
+                # TODO: Instead of returning the input, _localNameToFullName()
+                #       should probably either return None or raise LookupError.
+                full_name = f'{obj.fullName()}.{p}'
+                break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
             obj = nxt
-        remaning = parts[i+1:]
-        return '.'.join([full_name] + remaning)
+        return '.'.join([full_name] + parts[i + 1:])
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in
@@ -427,11 +432,19 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
-    decorators: Sequence[Tuple[str, Optional[Sequence[str]]]]
+    decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
+    # Note: While unused in pydoctor itself, raw_decorators is still in use
+    #       by Twisted's custom System class, to find deprecations.
+    raw_decorators: Sequence[ast.expr]
+
+    auto_attribs: bool = False
+    """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
+    library to automatically convert annotated fields into attributes.
+    """
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[Class] = []
+        self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
 
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
@@ -635,6 +648,36 @@ class System:
 
     def objForFullName(self, fullName: str) -> Optional[Documentable]:
         return self.allobjects.get(fullName)
+
+    def find_object(self, full_name: str) -> Optional[Documentable]:
+        """Look up an object using a potentially outdated full name.
+
+        A name can become outdated if the object is reparented:
+        L{objForFullName()} will only be able to find it under its new name,
+        but we might still have references to the old name.
+
+        @param full_name: The fully qualified name of the object.
+        @return: The object, or L{None} if the name is external (it does not
+            match any of the roots of this system).
+        @raise LookupError: If the object is not found, while its name does
+            match one of the roots of this system.
+        """
+        obj = self.objForFullName(full_name)
+        if obj is not None:
+            return obj
+
+        # The object might have been reparented, in which case there will
+        # be an alias at the original location; look for it using expandName().
+        name_parts = full_name.split('.', 1)
+        for root_obj in self.rootobjects:
+            if root_obj.name == name_parts[0]:
+                obj = self.objForFullName(root_obj.expandName(name_parts[1]))
+                if obj is not None:
+                    return obj
+                raise LookupError(full_name)
+
+        return None
+
 
     def _warning(self,
             current: Optional[Documentable],
@@ -899,6 +942,17 @@ class System:
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
+        self.postProcess()
+
+
+    def postProcess(self) -> None:
+        """Called when there are no more unprocessed modules.
+
+        Analysis of relations between documentables can be done here,
+        without the risk of drawing incorrect conclusions because modules
+        were not fully processed yet.
+        """
+        pass
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
