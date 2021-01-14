@@ -1517,6 +1517,9 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
         @async_property
         async def remote_value(self):
             return await get_remote_value()
+        @abc.abstractproperty
+        def name(self):
+            raise NotImplementedError
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
 
@@ -1527,6 +1530,10 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
     async_prop = C.contents['remote_value']
     assert isinstance(async_prop, model.Attribute)
     assert async_prop.kind == 'Property'
+
+    abstract_prop = C.contents['name']
+    assert isinstance(abstract_prop, model.Attribute)
+    assert abstract_prop.kind == 'Property'
 
 
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
