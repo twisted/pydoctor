@@ -110,7 +110,7 @@ Further reading:
 Properties
 ----------
 
-A method with a decoration ending in ``property`` will be included in the generated API documentation as an attribute rather than a method::
+A method with a decoration ending in ``property`` or ``Property`` will be included in the generated API documentation as an attribute rather than a method::
 
     class Knight:
 
