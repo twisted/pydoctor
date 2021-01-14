@@ -352,7 +352,15 @@ class UndocumentedSummaryPage(BasePage):
             tag(tags.li(o.kind, " - ", util.taglink(o)))
         return tag
 
-summarypages: Iterable[Type[BasePage]] = [
+
+AnySummaryPage = Union[
+                ModuleIndexPage, 
+                ClassIndexPage,
+                NameIndexPage,
+                IndexPage,
+                UndocumentedSummaryPage]
+
+summarypages: Iterable[Type[AnySummaryPage]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

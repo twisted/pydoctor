@@ -79,14 +79,12 @@ class TemplateWriter(IWriter):
 
     def writeModuleIndex(self, system:model.System) -> None:
         import time
-        for i, pclass in enumerate(summary.summarypages):
+        for pclass in summary.summarypages:
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            # mypy get error: Argument 1 to "joinpath" of "PurePath" has incompatible type "Callable[[BaseElement], str]"; expected "Union[str, _PathLike[str]]"  [arg-type]
-            f = self.base.joinpath(pclass.filename).open('wb') # type: ignore
-            flattenToFile(f, page)
-            f.close()
+            with self.base.joinpath(pclass.filename).open('wb') as fobj: 
+                flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def _writeDocsFor(self, ob:model.Documentable) -> None:
@@ -96,24 +94,25 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                path = (self.base / f'{ob.fullName()}.html')
-                with path.open('wb') as out:
-                    self._writeDocsForOne(ob, out)
+                with self.base.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                    self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
     def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
         if not ob.isVisible:
             return
-        # Dynalmically list all known page subclasses
-        page_clses = { k:v for k,v in pages.__dict__.items() if 'Page' in k }
+        pclass: Type[pages.AnyClassPage] = pages.CommonPage
         for parent in ob.__class__.__mro__:
-            potential_page_cls = parent.__name__ + 'Page'
-            if potential_page_cls in page_clses:
-                pclass = page_clses[potential_page_cls]
+            # This implementation relies on 'pages.classpages' dict that ties 
+            # documentable class name (i.e. 'Class') with the 
+            # page class used for rendering: pages.ClassPage
+            try:
+                pclass = pages.classpages[f"{parent.__name__}"]
+            except KeyError:
+                continue
+            else:
                 break
-        else:
-            pclass = pages.CommonPage
         ob.system.msg('html', str(ob), thresh=1)
         page = pclass(ob=ob, template_lookup=self.template_lookup)
         self.written_pages += 1

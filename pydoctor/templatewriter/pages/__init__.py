@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Union
+from typing import Any, Iterator, List, Mapping, Optional, Union, Type
 import ast
 import abc
 
@@ -11,7 +11,6 @@ from twisted.web.iweb import ITemplateLoader
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup
-
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -80,7 +79,7 @@ class BaseElement(Element, abc.ABC):
     @abc.abstractproperty
     def filename(self) -> str:
         """
-        Associated filename. 
+        Associated output filename. 
         
         Can be empty string in special cases (like L{LetterElement}). 
         """
@@ -487,3 +486,21 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
+        
+# Type alias for HTML page: to use in type checking. 
+# It's necessary because L{BasePage} doesn't have the same C{__init__} siganture as concrete pages classes. 
+
+AnyClassPage = Union[ClassPage, 
+                ZopeInterfaceClassPage, 
+                ModulePage,
+                PackagePage, 
+                CommonPage]
+
+classpages: Mapping[str, Type[AnyClassPage]] = { 
+    'Module': ModulePage,
+    'Package': PackagePage, 
+    'Class': ClassPage, 
+    'ZopeInterfaceClass': ZopeInterfaceClassPage, 
+}
+"""List all page classes: ties documentable class name with the page class used for rendering"""
+
