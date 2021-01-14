@@ -117,8 +117,8 @@ def test_func_arg_and_ret_annotation() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
-    classic_fmt = docstring2html(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_and_ret_annotation_with_override() -> None:
@@ -142,8 +142,8 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
-    classic_fmt = docstring2html(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_when_doc_missing() -> None:
@@ -162,8 +162,8 @@ def test_func_arg_when_doc_missing() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f'])
-    classic_fmt = docstring2html(classic_mod.contents['f'])
+    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
     assert annotation_fmt == classic_fmt
 
 def test_func_param_duplicate(capsys: CapSys) -> None:
@@ -717,4 +717,4 @@ def test_annotation_formatter(annotation: str) -> None:
     assert html.startswith('<code>')
     assert html.endswith('</code>')
     text= html[6:-7]
-    assert text == expected_text
+    assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
