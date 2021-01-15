@@ -96,7 +96,7 @@ Here is a list of the supported ReST directives by package of origin:
 
 - `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, ``.. role::``, ``.. table::``, etc.
 - `epydoc`: None
-- `Sphinx`: None
+- `Sphinx`: ``.. warning::``, ``.. note::`` and other admonitions. 
 - `pydoctor`: ``.. python::``.
 
 Colorized snippets directive
