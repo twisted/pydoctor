@@ -544,20 +544,6 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
-
-    # To be integrated later
-
-    # def visit_seealso(self, node: Node) -> None:
-    #     self.visit_admonition(node, 'seealso')
-
-    # def depart_seealso(self, node: Node) -> None:
-    #     self.depart_admonition(node)
-
-    # def visit_versionmodified(self, node: Node, name: str) -> None:
-    #     self.body.append(self.starttag(node, 'div', CLASS=('versionmodified ' + name)))
-
-    # def depart_versionmodified(self, node: Node) -> None:
-    #     self.body.append('</div>\n')
     
     
 class PythonCodeDirective(Directive):
