@@ -480,6 +480,10 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     
     # this part of the HTMLTranslator is stolen from sphinx: 
     #   https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
+    # Othe ressources on how to extend docutils: 
+    # https://docutils.sourceforge.io/docs/user/tools.html
+    # https://docutils.sourceforge.io/docs/dev/hacking.html
+    # https://docutils.sourceforge.io/docs/howto/rst-directives.html
 
     # overwritten
     def visit_admonition(self, node: Node, name: str = '') -> None:
@@ -545,7 +549,6 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
     
-    
 class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
@@ -565,9 +568,3 @@ class PythonCodeDirective(Directive):
         return [ node ]
 
 directives.register_directive('python', PythonCodeDirective)
-
-# https://docutils.sourceforge.io/docs/user/tools.html
-
-# https://docutils.sourceforge.io/docs/dev/hacking.html
-
-# https://docutils.sourceforge.io/docs/howto/rst-directives.html
