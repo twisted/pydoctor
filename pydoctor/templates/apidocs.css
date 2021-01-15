@@ -333,3 +333,60 @@ pre.py-doctest {
 .py-output {
     color: #c7254e;
 }
+
+/* Admonitions */
+
+div.rst-admonition p.rst-admonition-title:after {
+    content: ":";
+}
+
+div.rst-admonition p.rst-admonition-title {
+    margin: 0;
+    padding: 0.1em 0 0.35em 0.5em;
+    font-weight: bold;
+}
+
+div.rst-admonition p.rst-admonition-title {
+    color: #333333;
+}
+
+div.rst-admonition {
+    padding: 8px;
+    margin-bottom: 20px;
+    background-color: #eeeeeec0;
+    border: 1px solid #cccccc; 
+    border-radius: 4px;
+}
+
+div.warning {
+    background-color: #fff59cb0;
+    border: 1px solid #ffddaa;
+}
+
+div.tip p.rst-admonition-title {
+    color: #468847;
+}
+
+div.tip {
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+}
+
+div.danger p.rst-admonition-title, div.error p.rst-admonition-title, div.caution p.rst-admonition-title {
+    color: #b94a48;
+}
+
+div.danger, div.error, div.caution {
+
+    background-color: #f2dede;
+    border-color: #eed3d7;
+}
+
+div.hint p.rst-admonition-title, div.important p.rst-admonition-title{
+    color: #3a87ad;
+} 
+
+div.hint, div.important {
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+}
