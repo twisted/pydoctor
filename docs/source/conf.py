@@ -91,7 +91,6 @@ _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
     f'--project-base-dir={_pydoctor_root}',
-    '--project-url=../index.html',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
@@ -104,6 +103,7 @@ pydoctor_args = {
         '--project-name=pydoctor',
         f'--project-version={version}',
         '--docformat=epytext',
+        '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
