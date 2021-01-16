@@ -1,7 +1,12 @@
 Documentation Formats
 =====================
 
-.. toctree::
+The following sections roughtly documents the supported docstrings formatting. 
 
-    epytext/index
-    restructuredtext/index
+As an additionnal reference, small python packages demonstrates how docstrings are rendereded. 
+
+.. toctree::
+    :maxdepth: 1
+
+    epytext
+    restructuredtext

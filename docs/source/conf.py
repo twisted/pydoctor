@@ -91,9 +91,7 @@ _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
     f'--project-base-dir={_pydoctor_root}',
-
-    '--project-url=https://github.com/twisted/pydoctor/',
-
+    '--project-url=../index.html',
     '--intersphinx=https://docs.python.org/3/objects.inv',
     '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
@@ -109,15 +107,25 @@ pydoctor_args = {
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
-        '--html-output={outdir}/docformat/epytext/demo',
+        '--html-output={outdir}/docformat/epytext',
         '--project-name=pydoctor-epytext-demo',
-        '--project-version=1.2.0',
+        '--project-version=1.3.0',
         '--docformat=epytext',
+        '--project-url=../epytext.html',
         f'{_pydoctor_root}/docs/epytext_demo',
+        ] + _common_args,
+    'restructuredtext_demo': [
+        '--html-output={outdir}/docformat/restructuredtext',
+        '--project-name=pydoctor-restructuredtext-demo',
+        '--project-version=1.0.0',
+        '--docformat=restructuredtext',
+        '--project-url=../restructuredtext.html',
+        f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,
     }
 
 pydoctor_url_path = {
     'main': '/en/{rtd_version}/api',
-    'epydoc_demo': '/en/{rtd_version}/docformat/epytext/demo/',
+    'epydoc_demo': '/en/{rtd_version}/docformat/epytext/',
+    'restructuredtext_demo': '/en/{rtd_version}/docformat/restructuredtext/',
     }
