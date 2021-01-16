@@ -1,9 +1,9 @@
 Documentation Formats
 =====================
 
-The following sections roughtly documents the supported docstrings formatting. 
+The following sections roughly documents the supported docstrings formatting. 
 
-As an additionnal reference, small python packages demonstrates how docstrings are rendereded. 
+As an additional reference, small python packages demonstrates how docstrings are rendered. 
 
 .. toctree::
     :maxdepth: 1
