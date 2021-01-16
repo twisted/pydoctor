@@ -20,6 +20,18 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     return -b/m
 
+def demo_consolidated_fields(a:float, b):  # type: ignore
+    """
+    Fields can be condensed into one "consolidated" field. Looks better in plain text. 
+
+    :Parameters:
+        - `a`: The size of the fox (in meters)
+        - `b`: The weight of the fox (in stones)
+    :rtype: str
+    :return: The number of foxes
+    """
+    return -b/a
+
 def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
@@ -41,36 +53,6 @@ def demo_cross_reference() -> None:
     - `demo_typing_arguments`
     """
 
-def demo_consolidated_fields(a:float, b):  # type: ignore
-    """
-    Fields are used to describe specific properties of a documented object.
-
-    This function can be used in conjuction with `demo_typing_arguments` to
-    find an arbitrary function's zeros.
-
-    :Parameters:
-        - `a`: The size of the fox (in meters)
-        - `b`: The weight of the fox (in stones)
-    :rtype: str
-    :return: The number of foxes
-    """
-    return -b/a
-
-def demo_fields_docstring_arguments(m, b):  # type: ignore
-    """
-    Fields are used to describe specific properties of a documented object.
-
-    This function can be used in conjuction with L{demo_typing_arguments} to
-    find an arbitrary function's zeros.
-
-    :type  m: number
-    :param m: The slope of the line.
-    :type  b: number
-    :param b: The y intercept of the line.
-    :rtype:   number
-    :return:  the x intercept of the line M{y=m*x+b}.
-    """
-    return -b/m
 
 
 class _PrivateClass:
