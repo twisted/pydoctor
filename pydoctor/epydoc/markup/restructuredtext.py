@@ -478,73 +478,75 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
     
-    # this part of the HTMLTranslator is stolen from sphinx: 
-    #   https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    # Othe ressources on how to extend docutils: 
+
+    # Other ressources on how to extend docutils: 
     # https://docutils.sourceforge.io/docs/user/tools.html
     # https://docutils.sourceforge.io/docs/dev/hacking.html
     # https://docutils.sourceforge.io/docs/howto/rst-directives.html
+    # docutils apidocs: 
+    # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
 
-    # overwritten
-    def visit_admonition(self, node: Node, name: str = '') -> None:
+    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
+    # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
+    def _visit_admonition(self, node: Node, name: str = '') -> None:
         if name:
             self.body.append(self.starttag(
                 node, 'div', CLASS=('admonition ' + name)))
             node.insert(0, docutils.nodes.title(name, name.title()))
             self.set_first_last(node)
         else:
-            super().visit_admonition(node)
+            self.visit_admonition(node)
 
     def visit_note(self, node: Node) -> None:
-        self.visit_admonition(node, 'note')
+        self._visit_admonition(node, 'note')
 
     def depart_note(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_warning(self, node: Node) -> None:
-        self.visit_admonition(node, 'warning')
+        self._visit_admonition(node, 'warning')
 
     def depart_warning(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_attention(self, node: Node) -> None:
-        self.visit_admonition(node, 'attention')
+        self._visit_admonition(node, 'attention')
 
     def depart_attention(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_caution(self, node: Node) -> None:
-        self.visit_admonition(node, 'caution')
+        self._visit_admonition(node, 'caution')
 
     def depart_caution(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_danger(self, node: Node) -> None:
-        self.visit_admonition(node, 'danger')
+        self._visit_admonition(node, 'danger')
 
     def depart_danger(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_error(self, node: Node) -> None:
-        self.visit_admonition(node, 'error')
+        self._visit_admonition(node, 'error')
 
     def depart_error(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_hint(self, node: Node) -> None:
-        self.visit_admonition(node, 'hint')
+        self._visit_admonition(node, 'hint')
 
     def depart_hint(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_important(self, node: Node) -> None:
-        self.visit_admonition(node, 'important')
+        self._visit_admonition(node, 'important')
 
     def depart_important(self, node: Node) -> None:
         self.depart_admonition(node)
 
     def visit_tip(self, node: Node) -> None:
-        self.visit_admonition(node, 'tip')
+        self._visit_admonition(node, 'tip')
 
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
