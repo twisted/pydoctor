@@ -39,7 +39,7 @@ def test_rtd_pydoctor_multiple_call():
     With the pydoctor Sphinx extension can call pydoctor for more than one
     API doc source.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'index.html', 'r') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
         page = stream.read()
         assert 'pydoctor-epytext-demo API Documentation' in page, page
 
