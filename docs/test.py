@@ -85,5 +85,5 @@ def test_sphinx_object_inventory_version_epytext_demo():
         assert page.startswith(
             b'# Sphinx inventory version 2\n'
             b'# Project: pydoctor-epytext-demo\n'
-            b'# Version: 1.2.0\n'
+            b'# Version: 1.3.0\n'
             ), page
