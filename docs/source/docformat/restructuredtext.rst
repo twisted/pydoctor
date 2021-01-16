@@ -112,3 +112,21 @@ Here is a list of the supported ReST directives by package of origin:
 - `pydoctor`: ``.. python::``
 
 `Full list of supported and unsupported directives <list-restructuredtext-support.rst>`_
+
+Colorized snippets directive
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using reStructuredText markup it is possible to specify Python snippets in a 
+`doctest block <https://docutils.sourceforge.io/docs/user/rst/quickref.html#doctest-blocks>`_.
+
+If the Python prompt gets in your way when you try to copy and paste and you are not interested 
+in self-testing docstrings, the python directive will let you obtain a simple block of colorized text::
+
+    .. python::
+
+        def fib(n):
+            """Print a Fibonacci series."""
+            a, b = 0, 1
+            while b < n:
+                print b,
+                a, b = b, a+b
