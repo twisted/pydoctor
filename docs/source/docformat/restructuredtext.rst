@@ -111,7 +111,7 @@ Here is a list of the supported ReST directives by package of origin:
 - `Sphinx`: None
 - `pydoctor`: ``.. python::``
 
-`Full list of supported and unsupported directives <list-restructuredtext-support.rst>`_
+`Full list of supported and unsupported directives <list-restructuredtext-support.html>`_
 
 Colorized snippets directive
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
