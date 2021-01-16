@@ -80,7 +80,7 @@ def test_sphinx_object_inventory_version_epytext_demo():
     The Sphinx inventory for demo/showcase code has a fixed version and name,
     passed via docs/source/conf.py.
     """
-    with open(BASE_DIR / 'docformat' / 'epytext' / 'demo' / 'objects.inv', 'rb') as stream:
+    with open(BASE_DIR / 'docformat' / 'epytext' / 'objects.inv', 'rb') as stream:
         page = stream.read()
         assert page.startswith(
             b'# Sphinx inventory version 2\n'
