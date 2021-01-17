@@ -12,6 +12,7 @@ from textwrap import dedent
 from unittest import TestCase
 
 from pydoctor.epydoc.markup.napoleon.docstring import GoogleDocstring
+from pydoctor.epydoc.markup.napoleon import Config
 
 class BaseDocstringTest(TestCase):
     pass
@@ -20,47 +21,39 @@ class BaseDocstringTest(TestCase):
 class InlineAttributeTest(BaseDocstringTest):
 
     def test_class_data_member(self):
-        config = Config()
         docstring = dedent("""\
         data member description:
         - a: b
         """)
-        actual = str(GoogleDocstring(docstring, config=config, app=None,
-                     what='attribute', name='some_data', obj=0))
+        actual = str(GoogleDocstring(docstring))
         expected = dedent("""\
         data member description:
         - a: b""")
 
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline(self):
-        config = Config()
         docstring = """b: data member description with :ref:`reference`"""
-        actual = str(GoogleDocstring(docstring, config=config, app=None,
-                     what='attribute', name='some_data', obj=0))
+        actual = str(GoogleDocstring(docstring))
         expected = dedent("""\
         data member description with :ref:`reference`
         :type: b""")
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_no_type(self):
-        config = Config()
         docstring = """data with ``a : in code`` and :ref:`reference` and no type"""
-        actual = str(GoogleDocstring(docstring, config=config, app=None,
-                     what='attribute', name='some_data', obj=0))
+        actual = str(GoogleDocstring(docstring))
         expected = """data with ``a : in code`` and :ref:`reference` and no type"""
 
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_ref_in_type(self):
-        config = Config()
         docstring = """:class:`int`: data member description"""
-        actual = str(GoogleDocstring(docstring, config=config, app=None,
-                     what='attribute', name='some_data', obj=0))
+        actual = str(GoogleDocstring(docstring))
         expected = dedent("""\
         data member description
         :type: :class:`int`""")
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
 
 class GoogleDocstringTest(BaseDocstringTest):
@@ -69,189 +62,191 @@ class GoogleDocstringTest(BaseDocstringTest):
         """Single line summary"""
     ), (
         """
-        Single line summary
-        Extended description
-        """,
+Single line summary
+Extended description
+""",
+"""
+Single line summary
+Extended description
+"""
+    ), (
         """
-        Single line summary
-        Extended description
+Single line summary
+Args:
+    arg1(str):Extended
+        description of arg1
+""",
+"""
+Single line summary
+:Parameters: **arg1** (*str*) -- Extended
+             description of arg1
         """
     ), (
         """
-        Single line summary
-        Args:
-          arg1(str):Extended
-            description of arg1
-        """,
+Single line summary
+Args:
+    arg1(str):Extended
+        description of arg1
+    arg2 ( int ) : Extended
+        description of arg2
+Keyword Args:
+    kwarg1(str):Extended
+        description of kwarg1
+    kwarg2 ( int ) : Extended
+        description of kwarg2""",
+"""
+Single line summary
+:Parameters: * **arg1** (*str*) -- Extended
+               description of arg1
+             * **arg2** (*int*) -- Extended
+               description of arg2
+
+:Keyword Arguments: * **kwarg1** (*str*) -- Extended
+                      description of kwarg1
+                    * **kwarg2** (*int*) -- Extended
+                      description of kwarg2
+"""
+    ), (
         """
-        Single line summary
-        :Parameters: **arg1** (*str*) -- Extended
-                     description of arg1
+Single line summary
+Arguments:
+    arg1(str):Extended
+        description of arg1
+    arg2 ( int ) : Extended
+        description of arg2
+Keyword Arguments:
+    kwarg1(str):Extended
+        description of kwarg1
+    kwarg2 ( int ) : Extended
+        description of kwarg2""",
+"""
+Single line summary
+:Parameters: * **arg1** (*str*) -- Extended
+               description of arg1
+             * **arg2** (*int*) -- Extended
+               description of arg2
+
+:Keyword Arguments: * **kwarg1** (*str*) -- Extended
+                      description of kwarg1
+                    * **kwarg2** (*int*) -- Extended
+                      description of kwarg2
         """
     ), (
         """
-        Single line summary
-        Args:
-          arg1(str):Extended
-            description of arg1
-          arg2 ( int ) : Extended
-            description of arg2
-        Keyword Args:
-          kwarg1(str):Extended
-            description of kwarg1
-          kwarg2 ( int ) : Extended
-            description of kwarg2""",
-        """
-        Single line summary
-        :Parameters: * **arg1** (*str*) -- Extended
-                       description of arg1
-                     * **arg2** (*int*) -- Extended
-                       description of arg2
-        :Keyword Arguments: * **kwarg1** (*str*) -- Extended
-                              description of kwarg1
-                            * **kwarg2** (*int*) -- Extended
-                              description of kwarg2
-        """
-    ), (
-        """
-        Single line summary
-        Arguments:
-          arg1(str):Extended
-            description of arg1
-          arg2 ( int ) : Extended
-            description of arg2
-        Keyword Arguments:
-          kwarg1(str):Extended
-            description of kwarg1
-          kwarg2 ( int ) : Extended
-            description of kwarg2""",
-        """
-        Single line summary
-        :Parameters: * **arg1** (*str*) -- Extended
-                       description of arg1
-                     * **arg2** (*int*) -- Extended
-                       description of arg2
-        :Keyword Arguments: * **kwarg1** (*str*) -- Extended
-                              description of kwarg1
-                            * **kwarg2** (*int*) -- Extended
-                              description of kwarg2
-        """
-    ), (
-        """
-        Single line summary
-        Return:
-          str:Extended
+Single line summary
+Return:
+    str:Extended
+    description of return value
+""",
+"""
+Single line summary
+:returns: *str* -- Extended
           description of return value
-        """,
-        """
-        Single line summary
-        :returns: *str* -- Extended
-                  description of return value
-        """
+"""
     ), (
         """
-        Single line summary
-        Returns:
-          str:Extended
+Single line summary
+Returns:
+    str:Extended
+    description of return value
+""",
+"""
+Single line summary
+:returns: *str* -- Extended
           description of return value
-        """,
-        """
-        Single line summary
-        :returns: *str* -- Extended
-                  description of return value
-        """
+"""
     ), (
         """
-        Single line summary
-        Returns:
-          Extended
+Single line summary
+Returns:
+    Extended
+    description of return value
+""",
+"""
+Single line summary
+:returns: Extended
           description of return value
-        """,
-        """
-        Single line summary
-        :returns: Extended
-                  description of return value
-        """
+"""
     ), (
         """
-        Single line summary
-        Args:
-          arg1(str):Extended
-            description of arg1
-          *args: Variable length argument list.
-          **kwargs: Arbitrary keyword arguments.
-        """,
-        """
-        Single line summary
-        :Parameters: * **arg1** (*str*) -- Extended
-                       description of arg1
-                     * **\\*args** -- Variable length argument list.
-                     * **\\*\\*kwargs** -- Arbitrary keyword arguments.
-        """
+Single line summary
+Args:
+    arg1(str):Extended
+        description of arg1
+    *args: Variable length argument list.
+    **kwargs: Arbitrary keyword arguments.
+""",
+"""
+Single line summary
+:Parameters: * **arg1** (*str*) -- Extended
+               description of arg1
+             * **\\*args** -- Variable length argument list.
+             * **\\*\\*kwargs** -- Arbitrary keyword arguments.
+"""
     ), (
         """
-        Single line summary
-        Args:
-          arg1 (list(int)): Description
-          arg2 (list[int]): Description
-          arg3 (dict(str, int)): Description
-          arg4 (dict[str, int]): Description
-        """,
-        """
-        Single line summary
-        :Parameters: * **arg1** (*list(int)*) -- Description
-                     * **arg2** (*list[int]*) -- Description
-                     * **arg3** (*dict(str, int)*) -- Description
-                     * **arg4** (*dict[str, int]*) -- Description
-        """
+Single line summary
+Args:
+    arg1 (list(int)): Description
+    arg2 (list[int]): Description
+    arg3 (dict(str, int)): Description
+    arg4 (dict[str, int]): Description
+""",
+"""
+Single line summary
+:Parameters: * **arg1** (*list(int)*) -- Description
+             * **arg2** (*list[int]*) -- Description
+             * **arg3** (*dict(str, int)*) -- Description
+             * **arg4** (*dict[str, int]*) -- Description
+"""
     ), (
         """
-        Single line summary
-        Receive:
-          arg1 (list(int)): Description
-          arg2 (list[int]): Description
-        """,
-        """
-        Single line summary
-        :Receives: * **arg1** (*list(int)*) -- Description
-                   * **arg2** (*list[int]*) -- Description
-        """
+Single line summary
+Receive:
+    arg1 (list(int)): Description
+    arg2 (list[int]): Description
+""",
+"""
+Single line summary
+:Receives: * **arg1** (*list(int)*) -- Description
+           * **arg2** (*list[int]*) -- Description
+"""
     ), (
         """
-        Single line summary
-        Receives:
-          arg1 (list(int)): Description
-          arg2 (list[int]): Description
-        """,
-        """
-        Single line summary
-        :Receives: * **arg1** (*list(int)*) -- Description
-                   * **arg2** (*list[int]*) -- Description
-        """
+Single line summary
+Receives:
+    arg1 (list(int)): Description
+    arg2 (list[int]): Description
+""",
+"""
+Single line summary
+:Receives: * **arg1** (*list(int)*) -- Description
+           * **arg2** (*list[int]*) -- Description
+"""
     ), (
         """
-        Single line summary
-        Yield:
-          str:Extended
-          description of yielded value
-        """,
-        """
-        Single line summary
-        :Yields: *str* -- Extended
-                 description of yielded value
-        """
+Single line summary
+Yield:
+    str:Extended
+    description of yielded value
+""",
+"""
+Single line summary
+:Yields: *str* -- Extended
+         description of yielded value
+"""
     ), (
         """
-        Single line summary
-        Yields:
-          Extended
-          description of yielded value
-        """,
-        """
-        Single line summary
-        :Yields: Extended
-                 description of yielded value
-        """
+Single line summary
+Yields:
+    Extended
+    description of yielded value
+""",
+"""
+Single line summary
+:Yields: Extended
+         description of yielded value
+"""
     )]
 
     def test_sphinx_admonitions(self):
@@ -282,7 +277,7 @@ class GoogleDocstringTest(BaseDocstringTest):
                       "   \n"
                       "   and this is the second line\n"
                       ).format(admonition)
-            self.assertEqual(expect, actual)
+            self.assertEqual(expect.rstrip(), actual)
 
             # Single line
             actual = str(GoogleDocstring(("{}:\n"
@@ -290,7 +285,7 @@ class GoogleDocstringTest(BaseDocstringTest):
                                           ).format(section), config))
             expect = (".. {}:: this is a single line\n"
                       ).format(admonition)
-            self.assertEqual(expect, actual)
+            self.assertEqual(expect.rstrip(), actual)
 
     def test_docstrings(self):
         config = Config(
@@ -299,9 +294,9 @@ class GoogleDocstringTest(BaseDocstringTest):
             napoleon_use_keyword=False
         )
         for docstring, expected in self.docstrings:
-            actual = str(GoogleDocstring(dedent(docstring), config))
-            expected = dedent(expected)
-            self.assertEqual(expected, actual)
+            actual = str(GoogleDocstring(docstring, config))
+            expected = expected
+            self.assertEqual(expected.rstrip(), actual)
 
     def test_parameters_with_class_reference(self):
         docstring = """\
@@ -330,7 +325,7 @@ This class should only be used by runtimes.
 :param scope_ids: Identifiers needed to resolve scopes.
 :type scope_ids: :class:`ScopeIds`
 """
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_attributes_with_class_reference(self):
         docstring = """\
@@ -340,11 +335,10 @@ Attributes:
 
         actual = str(GoogleDocstring(docstring))
         expected = """\
-.. attribute:: in_attr
-   super-dooper attribute
-   :type: :class:`numpy.ndarray`
+:ivar in_attr: super-dooper attribute
+:type in_attr: :class:`numpy.ndarray`
 """
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
         docstring = """\
 Attributes:
@@ -353,11 +347,10 @@ Attributes:
 
         actual = str(GoogleDocstring(docstring))
         expected = """\
-.. attribute:: in_attr
-   super-dooper attribute
-   :type: numpy.ndarray
+:ivar in_attr: super-dooper attribute
+:type in_attr: numpy.ndarray
 """
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_code_block_in_returns_section(self):
         docstring = """
@@ -374,7 +367,7 @@ Returns:
 :rtype: foobar
 """
         actual = str(GoogleDocstring(docstring))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_colon_in_return_type(self):
         docstring = """Example property.
@@ -388,7 +381,7 @@ Returns:
 :rtype: :py:class:`~.module.submodule.SomeClass`
 """
         actual = str(GoogleDocstring(docstring))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_xrefs_in_return_type(self):
         docstring = """Example Function
@@ -402,7 +395,7 @@ Returns:
 :rtype: :class:`numpy.ndarray`
 """
         actual = str(GoogleDocstring(docstring))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_raises_types(self):
         docstrings = [("""
@@ -536,7 +529,7 @@ Example Function
 """)]
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring))
-            self.assertEqual(expected, actual)
+            self.assertEqual(expected.rstrip(), actual)
 
     def test_kwargs_in_arguments(self):
         docstring = """Allows to create attributes binded to this device.
@@ -559,7 +552,7 @@ Code sample for usage::
                    example above.
 """
         actual = str(GoogleDocstring(docstring))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_section_header_formatting(self):
         docstrings = [("""
@@ -569,9 +562,10 @@ Example:
     literal code block
 """, """
 Summary line
-.. rubric:: Example
-Multiline reStructuredText
-literal code block
+.. admonition:: Example
+
+   Multiline reStructuredText
+   literal code block
 """),
                       ################################
                       ("""
@@ -599,7 +593,7 @@ Summary line
 """)]
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring))
-            self.assertEqual(expected, actual)
+            self.assertEqual(expected.rstrip(), actual)
 
     def test_list_in_parameter_description(self):
         docstring = """One line summary.
@@ -759,7 +753,7 @@ Parameters:
 """
         config = Config(napoleon_use_param=True)
         actual = str(GoogleDocstring(docstring, config))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
         expected = """One line summary.
 :Parameters: * **no_list** (*int*)
@@ -830,15 +824,16 @@ Parameters:
 """
         config = Config(napoleon_use_param=False)
         actual = str(GoogleDocstring(docstring, config))
-        self.assertEqual(expected, actual)
+        self.assertEqual(expected.rstrip(), actual)
 
     def test_custom_generic_sections(self):
 
         docstrings = (("""\
 Really Important Details:
     You should listen to me!
-""", """.. rubric:: Really Important Details
-You should listen to me!
+""", """.. admonition:: Really Important Details
+
+   You should listen to me!
 """),
                       ("""\
 Sooper Warning:
@@ -851,62 +846,27 @@ Sooper Warning:
 
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring, testConfig))
-            self.assertEqual(expected, actual)
+            self.assertEqual(expected.rstrip(), actual)
 
-    def test_noindex(self):
+    def test_nothing(self):
         docstring = """
 Attributes:
-    arg
-        description
+    arg : description
+
 Methods:
-    func(i, j)
-        description
+    func(i, j): description
 """
 
         expected = """
-.. attribute:: arg
-   :noindex:
-   description
+:ivar arg: description
+
 .. method:: func(i, j)
-   :noindex:
-   
+
    description
 """  # NOQA
         config = Config()
-        actual = str(GoogleDocstring(docstring, config=config, app=None, what='module',
-                                     options={'noindex': True}))
-        self.assertEqual(expected, actual)
+        actual = str(GoogleDocstring(docstring, config=config))
+        self.assertEqual(expected.rstrip(), actual)
 
-    def test_keywords_with_types(self):
-        docstring = """\
-Do as you please
-Keyword Args:
-    gotham_is_yours (None): shall interfere.
-"""
-        actual = str(GoogleDocstring(docstring))
-        expected = """\
-Do as you please
-:keyword gotham_is_yours: shall interfere.
-:kwtype gotham_is_yours: None
-"""
-        self.assertEqual(expected, actual)
 
-    def test_pep526_annotations(self):
-        if sys.version_info >= (3, 6):
-            # Test class attributes annotations
-            config = Config(
-                napoleon_attr_annotations=True
-            )
-            actual = str(GoogleDocstring(cleandoc(PEP526GoogleClass.__doc__), config, app=None, what="class",
-                                         obj=PEP526GoogleClass))
-            expected = """\
-Sample class with PEP 526 annotations and google docstring
-.. attribute:: attr1
-   Attr1 description.
-   :type: int
-.. attribute:: attr2
-   Attr2 description.
-   :type: str
-"""
-            self.assertEqual(expected, actual)
 
