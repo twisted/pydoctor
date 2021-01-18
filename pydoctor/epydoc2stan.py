@@ -276,6 +276,8 @@ class FieldHandler:
             self.return_desc = FieldDesc(kind='return')
         self.return_desc.body = field.format()
     handle_returns = handle_return
+    handle_yields = handle_return
+    handle_yield = handle_return
 
     def handle_returntype(self, field: Field) -> None:
         if field.arg is not None:
