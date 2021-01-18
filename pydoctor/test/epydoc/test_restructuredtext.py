@@ -60,23 +60,22 @@ def prettify(html: str) -> str:
 
 # TESTS FOR NOT IMPLEMENTTED FEATURES
 
-@pytest.mark.xfail
 def test_rst_directive_abnomitions() -> None:
     html = rst2html(".. warning:: Hey")
     expected_html="""
-        <div class="admonition warning">
-        <p class="admonition-title">Warning</p>
-        <p>Hey</p>
+        <div class="rst-admonition warning">
+        <p class="rst-first rst-admonition-title">Warning</p>
+        <p class="rst-last">Hey</p>
         </div>"""
-    assert prettify(html) == prettify(expected_html)
+    assert prettify(html).strip() == prettify(expected_html).strip(), html
 
     html = rst2html(".. note:: Hey")
     expected_html = """
-        <div class="admonition note">
-        <p class="admonition-title">Note</p>
-        <p>Hey</p>
+        <div class="rst-admonition note">
+        <p class="rst-first rst-admonition-title">Note</p>
+        <p class="rst-last">Hey</p>
         </div>"""
-    assert prettify(html) == prettify(expected_html)
+    assert prettify(html).strip() == prettify(expected_html).strip(), html
 
 @pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:

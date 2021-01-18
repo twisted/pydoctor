@@ -1,5 +1,5 @@
 #
-# rst.py: ReStructuredText docstring parsing
+# restructuredtext.py: ReStructuredText docstring parsing
 # Edward Loper
 #
 # Created [06/28/03 02:52 AM]
@@ -15,8 +15,7 @@ defined by L{ParsedDocstring}.
 L{ParsedRstDocstring} is basically just a L{ParsedDocstring} wrapper
 for the C{docutils.nodes.document} class.
 
-Creating C{ParsedRstDocstring}s
-===============================
+B{Creating C{ParsedRstDocstring}s}:
 
 C{ParsedRstDocstring}s are created by the C{parse_document} function,
 using the C{docutils.core.publish_string()} method, with the following
@@ -485,7 +484,80 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         else:
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
+    
 
+    # Other ressources on how to extend docutils: 
+    # https://docutils.sourceforge.io/docs/user/tools.html
+    # https://docutils.sourceforge.io/docs/dev/hacking.html
+    # https://docutils.sourceforge.io/docs/howto/rst-directives.html
+    # docutils apidocs: 
+    # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
+
+    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
+    # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
+    def _visit_admonition(self, node: Node, name: str = '') -> None:
+        if name:
+            self.body.append(self.starttag(
+                node, 'div', CLASS=('admonition ' + name)))
+            node.insert(0, docutils.nodes.title(name, name.title()))
+            self.set_first_last(node)
+        else:
+            self.visit_admonition(node)
+
+    def visit_note(self, node: Node) -> None:
+        self._visit_admonition(node, 'note')
+
+    def depart_note(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_warning(self, node: Node) -> None:
+        self._visit_admonition(node, 'warning')
+
+    def depart_warning(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_attention(self, node: Node) -> None:
+        self._visit_admonition(node, 'attention')
+
+    def depart_attention(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_caution(self, node: Node) -> None:
+        self._visit_admonition(node, 'caution')
+
+    def depart_caution(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_danger(self, node: Node) -> None:
+        self._visit_admonition(node, 'danger')
+
+    def depart_danger(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_error(self, node: Node) -> None:
+        self._visit_admonition(node, 'error')
+
+    def depart_error(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_hint(self, node: Node) -> None:
+        self._visit_admonition(node, 'hint')
+
+    def depart_hint(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_important(self, node: Node) -> None:
+        self._visit_admonition(node, 'important')
+
+    def depart_important(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_tip(self, node: Node) -> None:
+        self._visit_admonition(node, 'tip')
+
+    def depart_tip(self, node: Node) -> None:
+        self.depart_admonition(node)
+    
 class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
