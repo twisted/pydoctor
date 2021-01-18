@@ -8,10 +8,13 @@ Forked from sphinx.ext.napoleon.iterators.
 """
 
 import collections
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Deque, Iterable, Iterator, Optional, TypeVar, Generic, Union
 
+__docformat__ = "googlestyle en" # for future usage 
 
-class peek_iter:
+T = TypeVar("T")
+
+class peek_iter(Generic[T]):
     """An iterator object that supports peeking ahead.
     Parameters
     ----------
@@ -37,19 +40,23 @@ class peek_iter:
         was not given when the `peek_iter` was instantiated, then it will
         be set to a new object instance: ``object()``.
     """
-    def __init__(self, *args: Any) -> None:
+    def __init__(self, *args: Union[Callable[[], Union[T, object]], Iterable[T], object]) -> None:
         """__init__(o, sentinel=None)"""
-        self._iterable = iter(*args)        # type: Iterable
-        self._cache = collections.deque()   # type: collections.deque
+        # mypy get  error: Argument 1 to "iter" has incompatible type
+        # "*Tuple[Union[Callable[[], Iterable[T]], Iterable[T], object], ...]"; expected "Iterable[T]"  [arg-type]
+        self._iterable : Iterator[T] = iter(*args) # type: ignore
+        self._cache : Deque[Union[T, object]] = collections.deque()
         if len(args) == 2:
             self.sentinel = args[1]
         else:
             self.sentinel = object()
 
-    def __iter__(self) -> "peek_iter":
+    def __iter__(self) -> "peek_iter[T]":
         return self
 
-    def __next__(self, n: int = None) -> Any:
+    def __next__(self, n: Optional[int] = None) -> Any: 
+        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
+        # because it's interpreted as Iterable[T] all the time even if n = None. 
         return self.next(n)
 
     def _fillcache(self, n: Optional[int]) -> None:
@@ -58,7 +65,7 @@ class peek_iter:
             n = 1
         try:
             while len(self._cache) < n:
-                self._cache.append(next(self._iterable))  # type: ignore
+                self._cache.append(next(self._iterable))
         except StopIteration:
             while len(self._cache) < n:
                 self._cache.append(self.sentinel)
@@ -73,9 +80,12 @@ class peek_iter:
         ----
         Will never raise :exc:`StopIteration`.
         """
-        return self.peek() != self.sentinel
+        # error: Returning Any from function declared to return "bool"  [no-any-return]
+        return self.peek() != self.sentinel # type: ignore
 
-    def next(self, n: int = None) -> Any:
+    def next(self, n: Optional[int] = None) -> Any: 
+        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
+        # because it's interpreted as Iterable[T] all the time even if n = None. 
         """Get the next item or `n` items of the iterator.
         Parameters
         ----------
@@ -92,21 +102,27 @@ class peek_iter:
         StopIteration
             Raised if the iterator is exhausted, even if `n` is 0.
         """
+        result: Union[T, Iterable[T]]
         self._fillcache(n)
         if not n:
             if self._cache[0] == self.sentinel:
                 raise StopIteration
             if n is None:
-                result = self._cache.popleft()
+                #  error: Incompatible types in assignment (expression has type "object", variable has type "Union[T, Iterable[T]]")  [assignment]
+                # object type is only for the sentinel, and it's rasing StopIteration if encoumtered, so we can ignore this. 
+                result = self._cache.popleft() # type: ignore
             else:
-                result = []
+                result = [] 
         else:
             if self._cache[n - 1] == self.sentinel:
                 raise StopIteration
-            result = [self._cache.popleft() for i in range(n)]
+            #  error: List comprehension has incompatible type List[object]; expected List[T]  [misc]
+            result = [self._cache.popleft() for i in range(n)] # type: ignore
         return result
 
-    def peek(self, n: Optional[int] = None) -> Any:
+    def peek(self, n: Optional[int] = None) -> Any: 
+        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
+        # because it's interpreted as Iterable[T] all the time even if n = None. 
         """Preview the next item or `n` items of the iterator.
         The iterator is not advanced when peek is called.
         Returns
@@ -127,9 +143,10 @@ class peek_iter:
         else:
             result = [self._cache[i] for i in range(n)]
         return result
+        
 
 
-class modify_iter(peek_iter):
+class modify_iter(peek_iter[T]):
     """An iterator object that supports modifying items as they are returned.
     Parameters
     ----------
@@ -197,7 +214,7 @@ class modify_iter(peek_iter):
             n = 1
         try:
             while len(self._cache) < n:
-                self._cache.append(self.modifier(next(self._iterable)))  # type: ignore
+                self._cache.append(self.modifier(next(self._iterable)))
         except StopIteration:
             while len(self._cache) < n:
                 self._cache.append(self.sentinel)

@@ -1,23 +1,21 @@
 """
-This package is a fork (`commit 
-<https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>`_) 
-of `sphinx.ext.napoleon <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>`_ 
+This package is a fork of {sphinx.ext.napoleon 
+<https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
+(U{commit 
+<https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>}))
 adapted for the pydoctor usage. 
 
-Support only `Google style`_ docstrings for now. 
-
-.. _Google style:
-    https://google.github.io/styleguide/pyguide.html
+Supports only U{Google style <https://google.github.io/styleguide/pyguide.html>} docstrings for now. 
 
 Not all settings are supported in this version. 
 
-@note: Sphinx license::
+@note: Original package license::
 
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
-from typing import Dict, Iterable, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 import attr
 
 @attr.s(auto_attribs=True)
@@ -83,7 +81,7 @@ class Config:
     :attr:`napoleon_use_param`
 
     """
-    napoleon_custom_sections:Iterable[Union[str, Tuple[str, str]]] = None
+    napoleon_custom_sections:Optional[Iterable[Union[str, Tuple[str, str]]]] = None
     """
     (Defaults to None)
     Add a list of custom sections to include, expanding the list of parsed sections.

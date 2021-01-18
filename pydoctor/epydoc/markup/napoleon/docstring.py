@@ -95,14 +95,14 @@ class GoogleDocstring:
             lines = docstring.splitlines()
         else:
             lines = docstring
-        self._line_iter = modify_iter(lines, modifier=lambda s: s.rstrip())
+        self._line_iter: modify_iter[str] = modify_iter(lines, modifier=lambda s: s.rstrip())
         self._parsed_lines = []  # type: List[str]
         self._is_in_section = False
         self._section_indent = 0
         if not hasattr(self, '_directive_sections'):
             self._directive_sections = []  # type: List[str]
         if not hasattr(self, '_sections'):
-            self._sections : Callable[[str], List[str]]= {
+            self._sections : Dict[str, Callable[[str], List[str]]]= {
                 'args': self._parse_parameters_section,
                 'arguments': self._parse_parameters_section,
                 'attention': partial(self._parse_admonition, 'attention'),
@@ -261,7 +261,8 @@ class GoogleDocstring:
         stripped_section = section.strip(':')
         if stripped_section.lower() in self._sections:
             section = stripped_section
-        return section
+        # error: Returning Any from function declared to return "str"  [no-any-return]
+        return section # type: ignore
 
     def _consume_to_end(self) -> List[str]:
         lines = []
@@ -428,7 +429,8 @@ class GoogleDocstring:
                 indent = self._get_indent(line)
                 if min_indent is None:
                     min_indent = indent
-                elif indent < min_indent:
+                # mypy get error: Statement is unreachable  [unreachable]
+                elif indent < min_indent: # type: ignore
                     min_indent = indent
         return min_indent or 0
 
