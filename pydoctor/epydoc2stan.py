@@ -269,15 +269,18 @@ class FieldHandler:
             if not _is_none_literal(ann_ret):
                 self.return_desc = FieldDesc(kind='return', type=ret_type)
 
-    def handle_return(self, field: Field) -> None:
+    def handle_return(self, field: Field, name:str='Returns') -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc(kind='return', name=name)
         self.return_desc.body = field.format()
     handle_returns = handle_return
-    handle_yields = handle_return
-    handle_yield = handle_return
+
+    def handle_yield(self, field: Field) -> None:
+        self.handle_return(field, name="Yields")
+
+    handle_yields = handle_yield
 
     def handle_returntype(self, field: Field) -> None:
         if field.arg is not None:
@@ -437,7 +440,7 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
+            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")(self.return_desc.name or "Returns"),
                                tags.td(colspan="2")(self.return_desc.format())))
         r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
