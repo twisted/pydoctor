@@ -11,7 +11,7 @@
 
 from unittest import TestCase
 
-from pydoctor.epydoc.markup.napoleon.iterators import modify_iter, peek_iter
+from pydoctor.napoleon.iterators import modify_iter, peek_iter
 
 
 class BaseIteratorsTest(TestCase):

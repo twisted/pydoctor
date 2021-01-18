@@ -13,7 +13,8 @@ from typing import Callable, List
 
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring as parse_restructuredtext_docstring
-from pydoctor.epydoc.markup.napoleon.docstring import GoogleDocstring
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.napoleon.docstring import GoogleDocstring
 from pydoctor.model import Attribute, Documentable
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
@@ -26,7 +27,10 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
         will be stored.
     """
     rst_docstring = str(GoogleDocstring(docstring))
-    return parse_restructuredtext_docstring(rst_docstring, errors)
+    # error: Argument 1 to "ParsedGstyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
+    return ParsedGstyleDocstring(
+            parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
+            docstring, rst_docstring)
 
 def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -39,12 +43,30 @@ def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -
         will be stored.
     """
     rst_docstring = str(GoogleDocstring(docstring, is_attribute = True))
-    return parse_restructuredtext_docstring(rst_docstring, errors)
+    # error: Argument 1 to "ParsedGstyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
+    return ParsedGstyleDocstring(
+            parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
+            docstring, rst_docstring)
 
-def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
     Returns the `parse_docstring` function or the `parse_inline_attribute_docstring` 
-    function depending if the documentable is an attribute or not. 
+    function depending on the documentable type. 
     """
     return parse_inline_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
 
+class ParsedGstyleDocstring(ParsedRstDocstring):
+    """
+    Just like L{ParsedRstDocstring} but it stores references to the original 
+    docstring text as well as the napoleon processed docstring. 
+
+    This values are only used for testing purposes. 
+    """
+
+    def __init__(self, parsed_rst_docstring: ParsedRstDocstring, 
+                original_docstring: str, 
+                napoleon_processed_docstring: str):
+
+        super().__init__(parsed_rst_docstring._document, parsed_rst_docstring.fields)
+        self._original_docstring = original_docstring
+        self._napoleon_processed_docstring = napoleon_processed_docstring

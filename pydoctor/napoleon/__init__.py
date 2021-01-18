@@ -1,5 +1,5 @@
 """
-This package is a fork of {sphinx.ext.napoleon 
+This package is a fork of U{sphinx.ext.napoleon 
 <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
 (U{commit 
 <https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>}))

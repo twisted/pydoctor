@@ -1,5 +1,5 @@
 """
-Classes for google-style and numpy docstring parsing and formatting. 
+Classes for google-style and numpy docstring conversion. 
 
 Forked from sphinx.ext.napoleon.docstring. 
 
@@ -11,8 +11,8 @@ import re
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from pydoctor.epydoc.markup.napoleon import Config
-from pydoctor.epydoc.markup.napoleon.iterators import modify_iter
+from pydoctor.napoleon import Config
+from pydoctor.napoleon.iterators import modify_iter
 
 _directive_regex = re.compile(r'\.\. \S+::')
 _google_section_regex = re.compile(r'^(\s|\w)+:\s*$')

@@ -52,7 +52,7 @@ from twisted.web.template import Tag, XMLString, flattenString
 ##################################################
 ## ParsedDocstring
 ##################################################
-class ParsedDocstring:
+class ParsedDocstring():
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
@@ -91,6 +91,7 @@ class ParsedDocstring:
         @return: The docstring presented as a tree.
         """
         raise NotImplementedError()
+
 
 _RE_CONTROL = re.compile((
     '[' + ''.join(
