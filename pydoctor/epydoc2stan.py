@@ -30,7 +30,7 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], Par
             formatname, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         mod = pydoctor.epydoc.markup.plaintext
-    return mod.parse_docstring # type: ignore[attr-defined, no-any-return]
+    return mod.get_parser(obj) # type: ignore[attr-defined, no-any-return]
 
 
 def get_docstring(

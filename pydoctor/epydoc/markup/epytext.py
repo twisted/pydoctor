@@ -131,12 +131,13 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, List, Optional, Sequence, Union, cast, overload
+from typing import Any, Callable, List, Optional, Sequence, Union, cast, overload
 import re
 
 from twisted.web.template import CharRef, Tag, tags
 from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
+from pydoctor.model import Documentable
 
 ##################################################
 ## DOM-Like Encoding
@@ -1286,6 +1287,11 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
+def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+    """
+    Just return the `parse_docstring` function. 
+    """
+    return parse_docstring
 
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {

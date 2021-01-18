@@ -42,7 +42,7 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set
+from typing import Any, Callable, ClassVar, Iterable, List, Optional, Sequence, Set
 import optparse
 import re
 
@@ -65,6 +65,7 @@ from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
 )
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
+from pydoctor.model import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -109,6 +110,12 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     document.walk(visitor)
 
     return ParsedRstDocstring(document, visitor.fields)
+
+def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+    """
+    Just return the `parse_docstring` function. 
+    """
+    return parse_docstring
 
 class OptimizedReporter(docutils.utils.Reporter):
     """A reporter that ignores all debug messages.  This is used to

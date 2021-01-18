@@ -21,38 +21,40 @@ class BaseDocstringTest(TestCase):
 class InlineAttributeTest(BaseDocstringTest):
 
     def test_class_data_member(self):
-        docstring = dedent("""\
-        data member description:
-        - a: b
-        """)
-        actual = str(GoogleDocstring(docstring))
-        expected = dedent("""\
-        data member description:
-        - a: b""")
+        docstring = """\
+data member description:
+- a: b
+"""
+        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        expected = """\
+data member description:
+- a: b"""   
 
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline(self):
         docstring = """b: data member description with :ref:`reference`"""
-        actual = str(GoogleDocstring(docstring))
-        expected = dedent("""\
-        data member description with :ref:`reference`
-        :type: b""")
+        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        expected = ("""\
+data member description with :ref:`reference`
+
+:type: b""")
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_no_type(self):
         docstring = """data with ``a : in code`` and :ref:`reference` and no type"""
-        actual = str(GoogleDocstring(docstring))
+        actual = str(GoogleDocstring(docstring, is_attribute = True))
         expected = """data with ``a : in code`` and :ref:`reference` and no type"""
 
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_ref_in_type(self):
         docstring = """:class:`int`: data member description"""
-        actual = str(GoogleDocstring(docstring))
-        expected = dedent("""\
-        data member description
-        :type: :class:`int`""")
+        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        expected = ("""\
+data member description
+
+:type: :class:`int`""")
         self.assertEqual(expected.rstrip(), actual)
 
 

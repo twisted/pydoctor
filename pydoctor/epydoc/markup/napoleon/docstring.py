@@ -53,6 +53,9 @@ class GoogleDocstring:
         The configuration settings to use. If not given, defaults to the
         config object on `app`; or if `app` is not given defaults to the
         a new `pydoctor.epydoc.markup.napoleon.Config` object.
+    is_attribute: `bool`
+        If the documented object is an attribute, 
+        it will use the `_parse_attribute_docstring` method. 
     Example
     -------
     >>> from pydoctor.epydoc.markup.napoleon import Config
@@ -85,12 +88,14 @@ class GoogleDocstring:
     _name_rgx = re.compile(r"^\s*((?::(?P<role>\S+):)?`(?P<name>~?[a-zA-Z0-9_.-]+)`|"
                            r" (?P<name2>~?[a-zA-Z0-9_.-]+))\s*", re.X)
 
-    # overriden to drop some configuration options and sphinx app arguments
+    # overriden
     def __init__(   self, 
                     docstring: Union[str, List[str]],
-                    config: Optional[Config] = None     ) -> None:
+                    config: Optional[Config] = None,
+                    is_attribute: bool = False          ) -> None:
 
         self._config = config or Config()
+        self._is_attribute = is_attribute
         if isinstance(docstring, str):
             lines = docstring.splitlines()
         else:
@@ -499,26 +504,19 @@ class GoogleDocstring:
                         self._sections.get(entry[1].lower(),
                                            self._parse_custom_generic_section)
 
-    # overriden: pydoctor design limitation
-    # cannot call self._parse_attribute_docstring programatically because we don't know if the
-    # documented object is in ('attribute', 'data', 'property'), we just have the docstring...
-    # so this cannot work YET:
-    # module_level_variable2 = 98765
-    # """int: Module level variable documented inline.
-    # The docstring may span multiple lines. The type may optionally be specified
-    # on the first line, separated by a colon.
-    # """
+    # overriden: call _parse_attribute_docstring if self._is_attribute is True
     def _parse(self) -> None:
         self._parsed_lines = self._consume_empty()
 
-        # # Implicit stop using StopIteration no longer allowed in
-        # # Python 3.7; see PEP 479
-        # res = []  # type: List[str]
-        # try:
-        #     res = self._parse_attribute_docstring()
-        # except StopIteration:
-        #     pass
-        # self._parsed_lines.extend(res)
+        if self._is_attribute:
+            # Implicit stop using StopIteration no longer allowed in
+            # Python 3.7; see PEP 479
+            res = []  # type: List[str]
+            try:
+                res = self._parse_attribute_docstring()
+            except StopIteration:
+                pass
+            self._parsed_lines.extend(res)
 
         while self._line_iter.has_next():
             if self._is_section_header():
