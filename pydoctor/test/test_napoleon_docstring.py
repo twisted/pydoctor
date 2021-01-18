@@ -4,7 +4,7 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-
+import unittest
 from unittest import TestCase
 
 from pydoctor.napoleon.docstring import GoogleDocstring
@@ -12,9 +12,7 @@ from pydoctor.napoleon import Config
 
 
 class BaseDocstringTest(TestCase):
-    pass
-
-
+    maxDiff = None
 class InlineAttributeTest(BaseDocstringTest):
 
     def test_class_data_member(self):
@@ -258,7 +256,6 @@ Single line summary
             'Important': 'important',
             'Note': 'note',
             'Tip': 'tip',
-            'Todo': 'todo',
             'Warning': 'warning',
             'Warnings': 'warning',
         }
@@ -847,7 +844,7 @@ Sooper Warning:
             actual = str(GoogleDocstring(docstring, testConfig))
             self.assertEqual(expected.rstrip(), actual)
 
-    def test_nothing(self):
+    def test_attr_with_method(self):
         docstring = """
 Attributes:
     arg : description
@@ -867,5 +864,49 @@ Methods:
         actual = str(GoogleDocstring(docstring, config=config))
         self.assertEqual(expected.rstrip(), actual)
 
+    def test_return_formatting_indentation(self):
 
+        docstring = """
+Returns:
+    bool: True if successful, False otherwise.
 
+    The return type is optional and may be specified at the beginning of
+    the ``Returns`` section followed by a colon.
+
+    The ``Returns`` section may span multiple lines and paragraphs.
+    Following lines should be indented to match the first line.
+
+    The ``Returns`` section supports any reStructuredText formatting,
+    including literal blocks::
+
+        {
+            'param1': param1,
+            'param2': param2
+        }
+"""
+
+        expected = """
+:returns: True if successful, False otherwise.
+
+          The return type is optional and may be specified at the beginning of
+          the ``Returns`` section followed by a colon.
+
+          The ``Returns`` section may span multiple lines and paragraphs.
+          Following lines should be indented to match the first line.
+
+          The ``Returns`` section supports any reStructuredText formatting,
+          including literal blocks::
+
+              {
+                  'param1': param1,
+                  'param2': param2
+              }
+:rtype: bool
+""" 
+
+        config = Config()
+        actual = str(GoogleDocstring(docstring, config=config))
+        self.assertEqual(expected.rstrip(), actual)
+
+if __name__ == "__main__":
+    unittest.main()

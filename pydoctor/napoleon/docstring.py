@@ -135,7 +135,7 @@ class GoogleDocstring:
                 'references': self._parse_references_section,
                 'see also': self._parse_see_also_section,
                 'tip': partial(self._parse_admonition, 'tip'),
-                'todo': partial(self._parse_admonition, 'todo'),
+                'todo': self._parse_generic_section, # todos are just rendered as admonition
                 'warning': partial(self._parse_admonition, 'warning'),
                 'warnings': partial(self._parse_admonition, 'warning'),
                 'warn': self._parse_warns_section,
@@ -322,7 +322,11 @@ class GoogleDocstring:
             return ['.. %s::' % admonition, '']
 
     # overriden to avoid extra unecessary whitespace 
+
     def _format_block(self, prefix: str, lines: List[str], padding: str = '') -> List[str]:
+        # remove the last line of the block if it's empty
+        if not lines[-1]: 
+            lines.pop(-1)
         if lines:
             if not padding:
                 padding = ' ' * len(prefix)
@@ -333,7 +337,7 @@ class GoogleDocstring:
                 elif line:
                     result_lines.append(padding + line)
                 else:
-                    continue
+                    result_lines.append('')
             return result_lines
         else:
             return [prefix]
@@ -381,7 +385,8 @@ class GoogleDocstring:
             if _desc[0]:
                 return [field + _desc[0]] + _desc[1:]
             elif field:
-                return [field] + _desc
+                # Ignore the first line of the field description if if't empty
+                return [field] + _desc[1:] 
             else:
                 return _desc
         else:
