@@ -75,9 +75,10 @@ Args:
 """,
 """
 Single line summary
-:Parameters: **arg1** (*str*) -- Extended
+:param arg1: Extended
              description of arg1
-        """
+:type arg1: str
+"""
     ), (
         """
 Single line summary
@@ -93,15 +94,19 @@ Keyword Args:
         description of kwarg2""",
 """
 Single line summary
-:Parameters: * **arg1** (*str*) -- Extended
-               description of arg1
-             * **arg2** (*int*) -- Extended
-               description of arg2
+:param arg1: Extended
+             description of arg1
+:type arg1: str
+:param arg2: Extended
+             description of arg2
+:type arg2: int
 
-:Keyword Arguments: * **kwarg1** (*str*) -- Extended
-                      description of kwarg1
-                    * **kwarg2** (*int*) -- Extended
-                      description of kwarg2
+:keyword kwarg1: Extended
+                 description of kwarg1
+:type kwarg1: str
+:keyword kwarg2: Extended
+                 description of kwarg2
+:type kwarg2: int
 """
     ), (
         """
@@ -118,15 +123,19 @@ Keyword Arguments:
         description of kwarg2""",
 """
 Single line summary
-:Parameters: * **arg1** (*str*) -- Extended
-               description of arg1
-             * **arg2** (*int*) -- Extended
-               description of arg2
+:param arg1: Extended
+             description of arg1
+:type arg1: str
+:param arg2: Extended
+             description of arg2
+:type arg2: int
 
-:Keyword Arguments: * **kwarg1** (*str*) -- Extended
-                      description of kwarg1
-                    * **kwarg2** (*int*) -- Extended
-                      description of kwarg2
+:keyword kwarg1: Extended
+                 description of kwarg1
+:type kwarg1: str
+:keyword kwarg2: Extended
+                 description of kwarg2
+:type kwarg2: int
         """
     ), (
         """
@@ -137,8 +146,9 @@ Return:
 """,
 """
 Single line summary
-:returns: *str* -- Extended
+:returns: Extended
           description of return value
+:rtype: str
 """
     ), (
         """
@@ -149,8 +159,9 @@ Returns:
 """,
 """
 Single line summary
-:returns: *str* -- Extended
+:returns: Extended
           description of return value
+:rtype: str
 """
     ), (
         """
@@ -175,10 +186,11 @@ Args:
 """,
 """
 Single line summary
-:Parameters: * **arg1** (*str*) -- Extended
-               description of arg1
-             * **\\*args** -- Variable length argument list.
-             * **\\*\\*kwargs** -- Arbitrary keyword arguments.
+:param arg1: Extended
+             description of arg1
+:type arg1: str
+:param \\*args: Variable length argument list.
+:param \\*\\*kwargs: Arbitrary keyword arguments.
 """
     ), (
         """
@@ -191,10 +203,14 @@ Args:
 """,
 """
 Single line summary
-:Parameters: * **arg1** (*list(int)*) -- Description
-             * **arg2** (*list[int]*) -- Description
-             * **arg3** (*dict(str, int)*) -- Description
-             * **arg4** (*dict[str, int]*) -- Description
+:param arg1: Description
+:type arg1: list(int)
+:param arg2: Description
+:type arg2: list[int]
+:param arg3: Description
+:type arg3: dict(str, int)
+:param arg4: Description
+:type arg4: dict[str, int]
 """
     ), (
         """
@@ -205,8 +221,10 @@ Receive:
 """,
 """
 Single line summary
-:Receives: * **arg1** (*list(int)*) -- Description
-           * **arg2** (*list[int]*) -- Description
+:param arg1: Description
+:type arg1: list(int)
+:param arg2: Description
+:type arg2: list[int]
 """
     ), (
         """
@@ -217,8 +235,10 @@ Receives:
 """,
 """
 Single line summary
-:Receives: * **arg1** (*list(int)*) -- Description
-           * **arg2** (*list[int]*) -- Description
+:param arg1: Description
+:type arg1: list(int)
+:param arg2: Description
+:type arg2: list[int]
 """
     ), (
         """
@@ -244,7 +264,23 @@ Single line summary
 :Yields: Extended
          description of yielded value
 """
-    )]
+    ), (
+        """
+Single line summary
+Args:
+    arg1 (list(int)):
+        desc arg1. 
+    arg2 (list[int]):
+        desc arg2.
+""",
+"""
+Single line summary
+:param arg1: desc arg1.
+:type arg1: list(int)
+:param arg2: desc arg2.
+:type arg2: list[int]
+"""
+    ), ]
 
     def test_sphinx_admonitions(self):
         admonition_map = {
@@ -284,13 +320,8 @@ Single line summary
             self.assertEqual(expect.rstrip(), actual)
 
     def test_docstrings(self):
-        config = Config(
-            napoleon_use_param=False,
-            napoleon_use_rtype=False,
-            napoleon_use_keyword=False
-        )
         for docstring, expected in self.docstrings:
-            actual = str(GoogleDocstring(docstring, config))
+            actual = str(GoogleDocstring(docstring))
             expected = expected
             self.assertEqual(expected.rstrip(), actual)
 
@@ -747,79 +778,7 @@ Parameters:
                                          first line
 :type definition_after_normal_text: int
 """
-        config = Config(napoleon_use_param=True)
-        actual = str(GoogleDocstring(docstring, config))
-        self.assertEqual(expected.rstrip(), actual)
-
-        expected = """One line summary.
-:Parameters: * **no_list** (*int*)
-             * **one_bullet_empty** (*int*) --
-               *
-             * **one_bullet_single_line** (*int*) --
-               - first line
-             * **one_bullet_two_lines** (*int*) --
-               +   first line
-                   continued
-             * **two_bullets_single_line** (*int*) --
-               -  first line
-               -  second line
-             * **two_bullets_two_lines** (*int*) --
-               * first line
-                 continued
-               * second line
-                 continued
-             * **one_enumeration_single_line** (*int*) --
-               1.  first line
-             * **one_enumeration_two_lines** (*int*) --
-               1)   first line
-                    continued
-             * **two_enumerations_one_line** (*int*) --
-               (iii) first line
-               (iv) second line
-             * **two_enumerations_two_lines** (*int*) --
-               a. first line
-                  continued
-               b. second line
-                  continued
-             * **one_definition_one_line** (*int*) --
-               item 1
-                   first line
-             * **one_definition_two_lines** (*int*) --
-               item 1
-                   first line
-                   continued
-             * **two_definitions_one_line** (*int*) --
-               item 1
-                   first line
-               item 2
-                   second line
-             * **two_definitions_two_lines** (*int*) --
-               item 1
-                   first line
-                   continued
-               item 2
-                   second line
-                   continued
-             * **one_definition_blank_line** (*int*) --
-               item 1
-                   first line
-                   extra first line
-             * **two_definitions_blank_lines** (*int*) --
-               item 1
-                   first line
-                   extra first line
-               item 2
-                   second line
-                   extra second line
-             * **definition_after_inline_text** (*int*) -- text line
-               item 1
-                   first line
-             * **definition_after_normal_text** (*int*) -- text line
-               item 1
-                   first line
-"""
-        config = Config(napoleon_use_param=False)
-        actual = str(GoogleDocstring(docstring, config))
+        actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_custom_generic_sections(self):
@@ -834,11 +793,11 @@ Really Important Details:
                       ("""\
 Sooper Warning:
     Stop hitting yourself!
-""", """:Warns: **Stop hitting yourself!**
+""", """.. warning:: Stop hitting yourself!
 """))
 
         testConfig = Config(napoleon_custom_sections=['Really Important Details',
-                                                      ('Sooper Warning', 'warns')])
+                                                      ('Sooper Warning', 'warning')])
 
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring, testConfig))
