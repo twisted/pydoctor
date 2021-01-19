@@ -23,64 +23,7 @@ class Config:
     """
     Supported Napoleon config values. 
     """
-    # config values 
 
-    napoleon_use_param:bool = True
-    """
-    (Defaults to True)
-    True to use a ``:param:`` role for each function parameter. False to
-    use a single ``:parameters:`` role for all the parameters.
-    This `NumPy style`_ snippet will be converted as follows::
-        Parameters
-        ----------
-        arg1 : str
-            Description of `arg1`
-        arg2 : int, optional
-            Description of `arg2`, defaults to 0
-    **If True**::
-        :param arg1: Description of `arg1`
-        :type arg1: str
-        :param arg2: Description of `arg2`, defaults to 0
-        :type arg2: int, optional
-    **If False**::
-        :parameters: * **arg1** (*str*) --
-                        Description of `arg1`
-                     * **arg2** (*int, optional*) --
-                        Description of `arg2`, defaults to 0
-    """
-    napoleon_use_rtype:bool = True
-    """
-    (Defaults to True)
-    True to use the ``:rtype:`` role for the return type. False to output
-    the return type inline with the description.
-    This `NumPy style`_ snippet will be converted as follows::
-        Returns
-        -------
-        bool
-            True if successful, False otherwise
-    **If True**::
-        :returns: True if successful, False otherwise
-        :rtype: bool
-    **If False**::
-        :returns: *bool* -- True if successful, False otherwise
-    """
-
-    napoleon_use_keyword:bool = True
-    """
-    (Defaults to True)
-    True to use a ``:keyword:`` role for each function keyword argument.
-    False to use a single ``:keyword arguments:`` role for all the
-    keywords.
-    This behaves similarly to  :attr:`napoleon_use_param`. Note unlike
-    docutils, ``:keyword:`` and ``:param:`` will not be treated the same
-    way - there will be a separate "Keyword Arguments" section, rendered
-    in the same fashion as "Parameters" section (type links created if
-    possible)
-    See Also
-    --------
-    :attr:`napoleon_use_param`
-
-    """
     napoleon_custom_sections:Optional[Iterable[Union[str, Tuple[str, str]]]] = None
     """
     (Defaults to None)
