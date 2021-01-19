@@ -22,6 +22,9 @@ import pydoctor.epydoc.markup.plaintext
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
+    """
+    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function. 
+    """
     formatname = obj.system.options.docformat
     try:
         mod = import_module('pydoctor.epydoc.markup.' + formatname)
@@ -161,8 +164,14 @@ class FieldDesc:
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     kind: str
+    """Field tag, i.e. C{:<tag>:} """
+
     name: Optional[str] = None
+    """Field name, i.e. C{:param <name>:}"""
+
     type: Optional[Tag] = None
+    """Formatted type"""
+
     body: Optional[Tag] = None
 
     def format(self) -> Tag:
@@ -196,7 +205,9 @@ class Field:
     """
 
     tag: str
+    """Field tag, i.e. C{:<tag>:} """
     arg: Optional[str]
+    """Field name, i.e. C{:param <name>:}"""
     source: model.Documentable
     lineno: int
     body: ParsedDocstring
@@ -243,13 +254,15 @@ class FieldHandler:
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
+        self.yields_desc: Optional[FieldDesc] = None 
         self.raise_descs: List[FieldDesc] = []
+        self.warns_desc: List[FieldDesc] = [] 
         self.seealsos: List[Field] = []
         self.notes: List[Field] = []
         self.authors: List[Field] = []
         self.sinces: List[Field] = []
         self.unknowns: List[FieldDesc] = []
-
+        
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
@@ -269,22 +282,31 @@ class FieldHandler:
             if not _is_none_literal(ann_ret):
                 self.return_desc = FieldDesc(kind='return', type=ret_type)
 
-    def handle_return(self, field: Field, name:str='Returns') -> None:
+    @staticmethod
+    def _report_unexpected_argument(field:Field):
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
+
+    def handle_return(self, field: Field, name:str='Returns') -> None:
+        self._report_unexpected_argument(field)
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return', name=name)
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
+    # TODO support types for yields section
+    # Currently, type will be shown as it's included in napoleon processed strings
+    # but not it's note "the right place". 
+    # Either we support ':yields <Type>:' or we add ':ytype:'. Both ways needs modifications to napoleon. 
     def handle_yield(self, field: Field) -> None:
-        self.handle_return(field, name="Yields")
-
+        self._report_unexpected_argument(field)
+        if not self.yields_desc:
+            self.yields_desc = FieldDesc(kind='yields', name='Yields')
+        self.yields_desc.body = field.format()
     handle_yields = handle_yield
 
     def handle_returntype(self, field: Field) -> None:
-        if field.arg is not None:
-            field.report('Unexpected argument in %s field' % (field.tag,))
+        self._report_unexpected_argument(field)
         if not self.return_desc:
             self.return_desc = FieldDesc(kind='return')
         self.return_desc.type = field.format()
@@ -383,6 +405,12 @@ class FieldHandler:
         self.add_info(self.raise_descs, name, field)
     handle_raise = handle_raises
     handle_except = handle_raises
+
+    # Warns is just like raises but the syntax is more relax. 
+    def handle_warns(self, field: Field) -> None:
+        self.add_info(self.warns_desc, field.arg, field)
+
+    handle_warn = handle_warns
     
     def handle_seealso(self, field: Field) -> None:
         self.seealsos.append(field)
@@ -440,9 +468,13 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")(self.return_desc.name or "Returns"),
+            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")("Returns"),
                                tags.td(colspan="2")(self.return_desc.format())))
+        if self.yields_desc:
+            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")("Yields"),
+                               tags.td(colspan="2")(self.yields_desc.format())))
         r += format_desc_list("Raises", self.raise_descs)
+        r += format_desc_list("Warns", self.warns_desc)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
                       ('Present Since', 'Present Since', self.sinces),

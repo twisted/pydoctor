@@ -58,8 +58,7 @@ class GoogleDocstring:
         it will use the `_parse_attribute_docstring` method. 
     Example
     -------
-    >>> from pydoctor.epydoc.markup.napoleon import Config
-    >>> config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
+    >>> from pydoctor.napoleon import GoogleDocstring
     >>> docstring = '''One line summary.
     ...
     ... Extended description.
@@ -70,7 +69,7 @@ class GoogleDocstring:
     ... Returns:
     ...   str: Description of return value.
     ... '''
-    >>> print(GoogleDocstring(docstring, config))
+    >>> print(GoogleDocstring(docstring))
     One line summary.
     <BLANKLINE>
     Extended description.
@@ -124,7 +123,7 @@ class GoogleDocstring:
                 'methods': self._parse_methods_section,
                 'note': partial(self._parse_admonition, 'note'),
                 'notes': self._parse_notes_section,
-                'other parameters': self._parse_other_parameters_section,
+                'other parameters': self._parse_parameters_section, # merge other parameters with main parameters (for now at least). 
                 'parameters': self._parse_parameters_section,
                 'receive': self._parse_receives_section,
                 'receives': self._parse_receives_section,
@@ -132,16 +131,20 @@ class GoogleDocstring:
                 'returns': self._parse_returns_section,
                 'raise': self._parse_raises_section,
                 'raises': self._parse_raises_section,
+                'except': self._parse_raises_section, # add same restructuredtext headers 
+                'exceptions': self._parse_raises_section, # add same restructuredtext headers 
                 'references': self._parse_references_section,
                 'see also': self._parse_see_also_section,
+                'see': self._parse_see_also_section, # add "@see:" equivalent
                 'tip': partial(self._parse_admonition, 'tip'),
                 'todo': self._parse_generic_section, # todos are just rendered as admonition
                 'warning': partial(self._parse_admonition, 'warning'),
                 'warnings': partial(self._parse_admonition, 'warning'),
                 'warn': self._parse_warns_section,
-                'warns': self._parse_warns_section,
+                'warns': self._parse_warns_section, 
                 'yield': self._parse_yields_section,
                 'yields': self._parse_yields_section,
+                'usage': self._parse_usage_section,
             } 
 
             self._load_custom_sections()
@@ -149,7 +152,8 @@ class GoogleDocstring:
         self._parse()
 
     # overriden to enforce rstrip() to value because the result sometime had 
-    # empty blank line at the end and sometimes not
+    # empty blank line at the end and sometimes not? 
+    # (probably a inconsistency introduced while porting napoleon to pydoctor)
     def __str__(self) -> str:
         """Return the parsed docstring in reStructuredText format.
         Returns
@@ -322,7 +326,6 @@ class GoogleDocstring:
             return ['.. %s::' % admonition, '']
 
     # overriden to avoid extra unecessary whitespace 
-
     def _format_block(self, prefix: str, lines: List[str], padding: str = '') -> List[str]:
         # remove the last line of the block if it's empty
         if not lines[-1]: 
@@ -585,10 +588,10 @@ class GoogleDocstring:
 
     # overriden: admonition are the default
     def _parse_usage_section(self, section: str) -> List[str]:
-        header = ['.. admonition:: Usage:', '']
-        block = ['.. python::', '']
+        header = ['.. admonition:: Usage', '']
+        block = ['   .. python::', '']
         lines = self._consume_usage_section()
-        lines = self._indent(lines, 3)
+        lines = self._indent(lines, 6)
         return header + block + lines + ['']
 
     # overriden: admonition are the default
@@ -603,17 +606,16 @@ class GoogleDocstring:
             return [header, '']
 
     # overriden 'kwtype' is not a pydoctor field, we just use 'type' everywhere
+    # + enforce napoleon_use_keyword = True
     def _parse_keyword_arguments_section(self, section: str) -> List[str]:
         fields = self._consume_fields()
-        if self._config.napoleon_use_keyword:
-            return self._format_docutils_params(
-                fields,
-                field_role="keyword",
-                type_role="type")
-        else:
-            return self._format_fields('Keyword Arguments', fields)
+        return self._format_docutils_params(
+            fields,
+            field_role="keyword",
+            type_role="type")
+        
 
-    # overriden: ignore noindox options. 
+    # overriden: ignore noindex options. 
     def _parse_methods_section(self, section: str) -> List[str]:
         lines = []  # type: List[str]
         for _name, _type, _desc in self._consume_fields(parse_type=False):
@@ -627,21 +629,18 @@ class GoogleDocstring:
     def _parse_notes_section(self, section: str) -> List[str]:
         return self._parse_generic_section('Notes')
 
-    # overriden: no translation
-    def _parse_other_parameters_section(self, section: str) -> List[str]:
-        return self._format_fields('Other Parameters', self._consume_fields())
 
-    # overriden: no translation
+    # overriden: no translation + enforce napoleon_use_param = True
     def _parse_parameters_section(self, section: str) -> List[str]:
-        if self._config.napoleon_use_param:
             # Allow to declare multiple parameters at once (ex: x, y: int)
             fields = self._consume_fields(multiple=True)
             return self._format_docutils_params(fields)
-        else:
-            fields = self._consume_fields()
-            return self._format_fields('Parameters', fields)
-
-    def _parse_raises_section(self, section: str) -> List[str]:
+    
+    # overriden: use the same syntax in Warns section as in Raises section
+    # Allow to pass prefer_type (false for Warns section to make compatible with raises syntax BUT not mandatory). 
+    # If something in the type place of the type
+    # but no description, assume type contains the description 
+    def _parse_raises_section(self, section: str, tag_name: str = 'raises', prefer_type=True) -> List[str]:
         fields = self._consume_fields(parse_type=False, prefer_type=True)
         lines = []  # type: List[str]
         for _name, _type, _desc in fields:
@@ -654,20 +653,19 @@ class GoogleDocstring:
             _type = ' ' + _type if _type else ''
             _desc = self._strip_empty(_desc)
             _descs = ' ' + '\n    '.join(_desc) if any(_desc) else ''
-            lines.append(':raises%s:%s' % (_type, _descs))
+            if _type and not _descs and not prefer_type: 
+                _descs, _type = _type, _descs
+            lines.append(':%s%s:%s' % (tag_name, _type, _descs))
         if lines:
             lines.append('')
         return lines
 
-    # overriden: no translation
+    # overriden: no translation + enforce napoleon_use_param = True
     def _parse_receives_section(self, section: str) -> List[str]:
-        if self._config.napoleon_use_param:
             # Allow to declare multiple parameters at once (ex: x, y: int)
             fields = self._consume_fields(multiple=True)
             return self._format_docutils_params(fields)
-        else:
-            fields = self._consume_fields()
-            return self._format_fields('Receives', fields)
+
 
     # overriden: no translation
     def _parse_references_section(self, section: str) -> List[str]:
@@ -679,7 +677,7 @@ class GoogleDocstring:
         if multi:
             use_rtype = False
         else:
-            use_rtype = self._config.napoleon_use_rtype
+            use_rtype = True
 
         lines = []  # type: List[str]
         for _name, _type, _desc in fields:
@@ -704,9 +702,9 @@ class GoogleDocstring:
     def _parse_see_also_section(self, section: str) -> List[str]:
         return self._parse_admonition('seealso', section)
 
-    # overriden: no translation
+    # overriden: no translation + use compatible syntax with raises, but as well as standard field syntax. 
     def _parse_warns_section(self, section: str) -> List[str]:
-        return self._format_fields('Warns', self._consume_fields())
+        return self._parse_raises_section(section, tag_name='warns', prefer_type=False)
 
     # overriden: no translation
     def _parse_yields_section(self, section: str) -> List[str]:
