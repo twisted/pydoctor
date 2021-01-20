@@ -5,9 +5,16 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :license: BSD, see LICENSE for details.
 """
 import unittest
+import pytest
+import re
+import warnings
 from unittest import TestCase
+from textwrap import dedent
+from contextlib import contextmanager
 
-from pydoctor.napoleon.docstring import GoogleDocstring
+from pydoctor.napoleon.docstring import (  GoogleDocstring, NumpyDocstring, 
+                                           _convert_numpy_type_spec, _recombine_set_tokens,
+                                           _token_type, _tokenize_type_spec )
 from pydoctor.napoleon import Config
 
 
@@ -866,6 +873,1128 @@ Returns:
         config = Config()
         actual = str(GoogleDocstring(docstring, config=config))
         self.assertEqual(expected.rstrip(), actual)
+
+    def test_sphinx_napoleon_issue_4016(self):
+        # test https://github.com/sphinx-doc/sphinx/issues/4016
+
+        docstring = """Get time formated as ``HH:MM:SS``."""
+
+        expected = """Get time formated as ``HH:MM:SS``."""
+
+        actual = str(GoogleDocstring(docstring))
+        self.assertEqual(expected.rstrip(), actual)
+
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring2 = """Put *key* and *value* into a dictionary.
+
+Returns:
+    A dictionary ``{key: value}``
+"""
+        expected2 = """Put *key* and *value* into a dictionary.
+
+:returns: A dictionary ``{key: value}``
+"""
+
+        actual = str(GoogleDocstring(docstring2))
+        self.assertEqual(expected2.rstrip(), actual)
+
+        actual = str(GoogleDocstring(docstring2, is_attribute=True))
+        self.assertEqual(expected2.rstrip(), actual)
+
+# other issues to watch for - apparently numpy docs imporse a rtype tag, this would a blocking for us
+# since type annotation are verty important and they get overriden with a rtype tag
+# https://github.com/sphinx-doc/sphinx/issues/5887
+
+# also what out that the warns edits didnot break mupy docs 
+# Here is the only real life exemple of warn section that I found
+# https://github.com/McSinyx/palace/blob/c5861833ab55f19acffb9db76245dfe9bee439f4/src/palace.pyx#L470
+
+class NumpyDocstringTest(BaseDocstringTest):
+    docstrings = [(
+        """Single line summary""",
+        """Single line summary"""
+    ), (
+        """
+        Single line summary
+        Extended description
+        """,
+        """
+        Single line summary
+        Extended description
+        """
+    ), (
+        """
+        Single line summary
+        Parameters
+        ----------
+        arg1:str
+            Extended
+            description of arg1
+        """,
+        """
+        Single line summary
+        :param arg1: Extended
+                     description of arg1
+        :type arg1: `str`
+        """
+    ), (
+        """
+        Single line summary
+        Parameters
+        ----------
+        arg1:str
+            Extended
+            description of arg1
+        arg2 : int
+            Extended
+            description of arg2
+        Keyword Arguments
+        -----------------
+          kwarg1:str
+              Extended
+              description of kwarg1
+          kwarg2 : int
+              Extended
+              description of kwarg2
+        """,
+        """
+        Single line summary
+        :param arg1: Extended
+                     description of arg1
+        :type arg1: `str`
+        :param arg2: Extended
+                     description of arg2
+        :type arg2: `int`
+
+        :keyword kwarg1: Extended
+                         description of kwarg1
+        :type kwarg1: `str`
+        :keyword kwarg2: Extended
+                         description of kwarg2
+        :type kwarg2: `int`
+        """
+    ), (
+        """
+        Single line summary
+        Return
+        ------
+        str
+            Extended
+            description of return value
+        """,
+        """
+        Single line summary
+        :returns: Extended
+                  description of return value
+        :rtype: `str`
+        """
+    ), (
+        """
+        Single line summary
+        Returns
+        -------
+        str
+            Extended
+            description of return value
+        """,
+        """
+        Single line summary
+        :returns: Extended
+                  description of return value
+        :rtype: `str`
+        """
+    ), (
+        """
+        Single line summary
+        Parameters
+        ----------
+        arg1:str
+             Extended description of arg1
+        *args:
+            Variable length argument list.
+        **kwargs:
+            Arbitrary keyword arguments.
+        """,
+        """
+        Single line summary
+        :param arg1: Extended description of arg1
+        :type arg1: `str`
+        :param \\*args: Variable length argument list.
+        :param \\*\\*kwargs: Arbitrary keyword arguments.
+        """
+    ), (
+        """
+        Single line summary
+        Parameters
+        ----------
+        arg1:str
+             Extended description of arg1
+        *args, **kwargs:
+            Variable length argument list and arbitrary keyword arguments.
+        """,
+        """
+        Single line summary
+        :param arg1: Extended description of arg1
+        :type arg1: `str`
+        :param \\*args: Variable length argument list and arbitrary keyword arguments.
+        :param \\*\\*kwargs: Variable length argument list and arbitrary keyword arguments.
+        """
+    ), (
+        """
+        Single line summary
+        Receive
+        -------
+        arg1:str
+            Extended
+            description of arg1
+        arg2 : int
+            Extended
+            description of arg2
+        """,
+        """
+        Single line summary
+        :param arg1: Extended
+                     description of arg1
+        :type arg1: `str`
+        :param arg2: Extended
+                     description of arg2
+        :type arg2: `int`
+        """
+    ), (
+        """
+        Single line summary
+        Receives
+        --------
+        arg1:str
+            Extended
+            description of arg1
+        arg2 : int
+            Extended
+            description of arg2
+        """,
+        """
+        Single line summary
+        :param arg1: Extended
+                     description of arg1
+        :type arg1: `str`
+        :param arg2: Extended
+                     description of arg2
+        :type arg2: `int`
+        """
+    ), (
+        """
+        Single line summary
+        Yield
+        -----
+        str
+            Extended
+            description of yielded value
+        """,
+        """
+        Single line summary
+        :Yields: `str` -- Extended
+                 description of yielded value
+        """
+    ), (
+        """
+        Single line summary
+        Yields
+        ------
+        str
+            Extended
+            description of yielded value
+        """,
+        """
+        Single line summary
+        :Yields: `str` -- Extended
+                 description of yielded value
+        """
+    )]
+
+    def test_sphinx_admonitions(self):
+        admonition_map = {
+            'Attention': 'attention',
+            'Caution': 'caution',
+            'Danger': 'danger',
+            'Error': 'error',
+            'Hint': 'hint',
+            'Important': 'important',
+            'Note': 'note',
+            'Tip': 'tip',
+            'Warning': 'warning',
+            'Warnings': 'warning',
+        }
+        config = Config()
+        for section, admonition in admonition_map.items():
+            # Multiline
+            actual = str(NumpyDocstring(("{}\n"
+                                         "{}\n"
+                                         "    this is the first line\n"
+                                         "\n"
+                                         "    and this is the second line\n"
+                                         ).format(section, '-' * len(section)), config))
+            expected = (".. {}::\n"
+                      "\n"
+                      "   this is the first line\n"
+                      "   \n"
+                      "   and this is the second line\n"
+                      ).format(admonition)
+            self.assertEqual(expected.rstrip(), actual)
+
+            # Single line
+            actual = str(NumpyDocstring(("{}\n"
+                                         "{}\n"
+                                         "    this is a single line\n"
+                                         ).format(section, '-' * len(section)), config))
+            expected = (".. {}:: this is a single line\n"
+                      ).format(admonition)
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_docstrings(self):
+        config = Config()
+        for docstring, expected in self.docstrings:
+            actual = str(NumpyDocstring(dedent(docstring), config))
+            expected = dedent(expected)
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_parameters_with_class_reference(self):
+        docstring = """\
+Parameters
+----------
+param1 : :class:`MyClass <name.space.MyClass>` instance
+"""
+
+        config = Config()
+        actual = str(NumpyDocstring(docstring, config))
+        expected = """\
+:param param1:
+:type param1: :class:`MyClass <name.space.MyClass>` instance
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_multiple_parameters(self):
+        docstring = """\
+Parameters
+----------
+x1, x2 : array_like
+    Input arrays, description of ``x1``, ``x2``.
+"""
+
+        config = Config()
+        actual = str(NumpyDocstring(dedent(docstring), config))
+        expected = """\
+:param x1: Input arrays, description of ``x1``, ``x2``.
+:type x1: `array_like`
+:param x2: Input arrays, description of ``x1``, ``x2``.
+:type x2: `array_like`
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_parameters_without_class_reference(self):
+        docstring = """\
+Parameters
+----------
+param1 : MyClass instance
+"""
+
+        config = Config()
+        actual = str(NumpyDocstring(dedent(docstring), config))
+        expected = """\
+:param param1:
+:type param1: `MyClass instance`
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_see_also_refs(self):
+        docstring = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+See Also
+--------
+some, other, funcs
+otherfunc : relationship
+"""
+
+        actual = str(NumpyDocstring(docstring))
+
+        expected = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+.. seealso::
+
+   `some`, `other`, `funcs`
+   
+   `otherfunc`
+       relationship
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+See Also
+--------
+some, other, funcs
+otherfunc : relationship
+"""
+
+        config = Config()
+        actual = str(NumpyDocstring(docstring, config))
+
+        expected = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+.. seealso::
+
+   `some`, `other`, `funcs`
+   
+   `otherfunc`
+       relationship
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+See Also
+--------
+some, other, :func:`funcs`
+otherfunc : relationship
+"""
+        translations = {
+            "other": "MyClass.other",
+            "otherfunc": ":anyroleherewillbescraped:`my_package.otherfunc`",
+        }
+        config = Config(napoleon_type_aliases=translations)
+
+        actual = str(NumpyDocstring(docstring, config))
+
+        expected = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+.. seealso::
+
+   `some`, `MyClass.other`, `funcs`
+   
+   `my_package.otherfunc`
+       relationship
+"""
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_colon_in_return_type(self):
+        docstring = """
+Summary
+Returns
+-------
+:py:class:`~my_mod.my_class`
+    an instance of :py:class:`~my_mod.my_class`
+"""
+
+        expected = """
+Summary
+:returns: an instance of :py:class:`~my_mod.my_class`
+:rtype: :py:class:`~my_mod.my_class`
+"""
+
+        config = Config()
+
+        actual = str(NumpyDocstring(docstring, config))
+
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_underscore_in_attribute(self):
+        docstring = """
+Attributes
+----------
+arg_ : type
+    some description
+"""
+
+        expected = """
+:ivar arg_: some description
+:type arg_: `type`
+"""
+
+        config = Config()
+
+        actual = str(NumpyDocstring(docstring, config))
+
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_return_types(self):
+        docstring = dedent("""
+            Returns
+            -------
+            df
+                a dataframe
+        """)
+        expected = dedent("""
+           :returns: a dataframe
+           :rtype: `pandas.DataFrame`
+        """)
+        translations = {
+            "df": "pandas.DataFrame",
+        }
+        config = Config(
+            napoleon_type_aliases=translations,
+        )
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_yield_types(self):
+        docstring = dedent("""
+            Example Function
+            Yields
+            ------
+            scalar or array-like
+                The result of the computation
+        """)
+        expected = dedent("""
+            Example Function
+            :Yields: :term:`scalar` or :class:`array-like <numpy.ndarray>` -- The result of the computation
+        """)
+        translations = {
+            "scalar": ":term:`scalar`",
+            "array-like": ":class:`array-like <numpy.ndarray>`",
+        }
+        config = Config(napoleon_type_aliases=translations)
+
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_raises_types(self):
+        docstrings = [("""
+Example Function
+Raises
+------
+  RuntimeError
+      A setting wasn't specified, or was invalid.
+  ValueError
+      Something something value error.
+""", """
+Example Function
+:raises RuntimeError: A setting wasn't specified, or was invalid.
+:raises ValueError: Something something value error.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+InvalidDimensionsError
+""", """
+Example Function
+:raises InvalidDimensionsError:
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+Invalid Dimensions Error
+""", """
+Example Function
+:raises Invalid Dimensions Error:
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+Invalid Dimensions Error
+    With description
+""", """
+Example Function
+:raises Invalid Dimensions Error: With description
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+InvalidDimensionsError
+    If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises InvalidDimensionsError: If the dimensions couldn't be parsed.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+Invalid Dimensions Error
+    If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises Invalid Dimensions Error: If the dimensions couldn't be parsed.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises If the dimensions couldn't be parsed.:
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+:class:`exc.InvalidDimensionsError`
+""", """
+Example Function
+:raises exc.InvalidDimensionsError:
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+:class:`exc.InvalidDimensionsError`
+    If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+:class:`exc.InvalidDimensionsError`
+    If the dimensions couldn't be parsed,
+    then a :class:`exc.InvalidDimensionsError` will be raised.
+""", """
+Example Function
+:raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed,
+    then a :class:`exc.InvalidDimensionsError` will be raised.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+:class:`exc.InvalidDimensionsError`
+    If the dimensions couldn't be parsed.
+:class:`exc.InvalidArgumentsError`
+    If the arguments are invalid.
+""", """
+Example Function
+:raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
+:raises exc.InvalidArgumentsError: If the arguments are invalid.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+CustomError
+    If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises package.CustomError: If the dimensions couldn't be parsed.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+AnotherError
+    If the dimensions couldn't be parsed.
+""", """
+Example Function
+:raises ~package.AnotherError: If the dimensions couldn't be parsed.
+"""),
+                      ################################
+                      ("""
+Example Function
+Raises
+------
+:class:`exc.InvalidDimensionsError`
+:class:`exc.InvalidArgumentsError`
+""", """
+Example Function
+:raises exc.InvalidDimensionsError:
+:raises exc.InvalidArgumentsError:
+""")]
+        for docstring, expected in docstrings:
+            translations = {
+                "CustomError": "package.CustomError",
+                "AnotherError": ":py:exc:`~package.AnotherError`",
+            }
+            config = Config(napoleon_type_aliases=translations)
+
+            actual = str(NumpyDocstring(docstring, config))
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_xrefs_in_return_type(self):
+        docstring = """
+Example Function
+Returns
+-------
+:class:`numpy.ndarray`
+    A :math:`n \\times 2` array containing
+    a bunch of math items
+"""
+        expected = """
+Example Function
+:returns: A :math:`n \\times 2` array containing
+          a bunch of math items
+:rtype: :class:`numpy.ndarray`
+"""
+        config = Config()
+
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_section_header_underline_length(self):
+        docstrings = [("""
+Summary line
+Example
+-
+Multiline example
+body
+""", """
+Summary line
+Example
+-
+Multiline example
+body
+"""),
+                      ################################
+                      ("""
+Summary line
+Example
+--
+Multiline example
+body
+""", """
+Summary line
+.. admonition:: Example
+
+   Multiline example
+   body
+"""),
+                      ################################
+                      ("""
+Summary line
+Example
+-------
+Multiline example
+body
+""", """
+Summary line
+.. admonition:: Example
+
+   Multiline example
+   body
+"""),
+                      ################################
+                      ("""
+Summary line
+Example
+------------
+Multiline example
+body
+""", """
+Summary line
+.. admonition:: Example
+
+   Multiline example
+   body
+""")]
+        for docstring, expected in docstrings:
+            actual = str(NumpyDocstring(docstring))
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_list_in_parameter_description(self):
+        docstring = """One line summary.
+Parameters
+----------
+no_list : int
+one_bullet_empty : int
+    *
+one_bullet_single_line : int
+    - first line
+one_bullet_two_lines : int
+    +   first line
+        continued
+two_bullets_single_line : int
+    -  first line
+    -  second line
+two_bullets_two_lines : int
+    * first line
+      continued
+    * second line
+      continued
+one_enumeration_single_line : int
+    1.  first line
+one_enumeration_two_lines : int
+    1)   first line
+         continued
+two_enumerations_one_line : int
+    (iii) first line
+    (iv) second line
+two_enumerations_two_lines : int
+    a. first line
+       continued
+    b. second line
+       continued
+one_definition_one_line : int
+    item 1
+        first line
+one_definition_two_lines : int
+    item 1
+        first line
+        continued
+two_definitions_one_line : int
+    item 1
+        first line
+    item 2
+        second line
+two_definitions_two_lines : int
+    item 1
+        first line
+        continued
+    item 2
+        second line
+        continued
+one_definition_blank_line : int
+    item 1
+        first line
+        extra first line
+two_definitions_blank_lines : int
+    item 1
+        first line
+        extra first line
+    item 2
+        second line
+        extra second line
+definition_after_normal_text : int
+    text line
+    item 1
+        first line
+"""
+
+        expected = """One line summary.
+:param no_list:
+:type no_list: `int`
+:param one_bullet_empty:
+                         *
+:type one_bullet_empty: `int`
+:param one_bullet_single_line:
+                               - first line
+:type one_bullet_single_line: `int`
+:param one_bullet_two_lines:
+                             +   first line
+                                 continued
+:type one_bullet_two_lines: `int`
+:param two_bullets_single_line:
+                                -  first line
+                                -  second line
+:type two_bullets_single_line: `int`
+:param two_bullets_two_lines:
+                              * first line
+                                continued
+                              * second line
+                                continued
+:type two_bullets_two_lines: `int`
+:param one_enumeration_single_line:
+                                    1.  first line
+:type one_enumeration_single_line: `int`
+:param one_enumeration_two_lines:
+                                  1)   first line
+                                       continued
+:type one_enumeration_two_lines: `int`
+:param two_enumerations_one_line:
+                                  (iii) first line
+                                  (iv) second line
+:type two_enumerations_one_line: `int`
+:param two_enumerations_two_lines:
+                                   a. first line
+                                      continued
+                                   b. second line
+                                      continued
+:type two_enumerations_two_lines: `int`
+:param one_definition_one_line:
+                                item 1
+                                    first line
+:type one_definition_one_line: `int`
+:param one_definition_two_lines:
+                                 item 1
+                                     first line
+                                     continued
+:type one_definition_two_lines: `int`
+:param two_definitions_one_line:
+                                 item 1
+                                     first line
+                                 item 2
+                                     second line
+:type two_definitions_one_line: `int`
+:param two_definitions_two_lines:
+                                  item 1
+                                      first line
+                                      continued
+                                  item 2
+                                      second line
+                                      continued
+:type two_definitions_two_lines: `int`
+:param one_definition_blank_line:
+                                  item 1
+                                      first line
+                                      extra first line
+:type one_definition_blank_line: `int`
+:param two_definitions_blank_lines:
+                                    item 1
+                                        first line
+                                        extra first line
+                                    item 2
+                                        second line
+                                        extra second line
+:type two_definitions_blank_lines: `int`
+:param definition_after_normal_text: text line
+                                     item 1
+                                         first line
+:type definition_after_normal_text: `int`
+"""
+        config = Config()
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_token_type(self):
+        tokens = (
+            ("1", "literal"),
+            ("-4.6", "literal"),
+            ("2j", "literal"),
+            ("'string'", "literal"),
+            ('"another_string"', "literal"),
+            ("{1, 2}", "literal"),
+            ("{'va{ue', 'set'}", "literal"),
+            ("optional", "control"),
+            ("default", "control"),
+            (", ", "delimiter"),
+            (" of ", "delimiter"),
+            (" or ", "delimiter"),
+            (": ", "delimiter"),
+            ("True", "obj"),
+            ("None", "obj"),
+            ("name", "obj"),
+            (":py:class:`Enum`", "reference"),
+        )
+
+        for token, expected in tokens:
+            actual = _token_type(token)
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_tokenize_type_spec(self):
+        specs = (
+            "str",
+            "defaultdict",
+            "int, float, or complex",
+            "int or float or None, optional",
+            '{"F", "C", "N"}',
+            "{'F', 'C', 'N'}, default: 'F'",
+            "{'F', 'C', 'N or C'}, default 'F'",
+            "str, default: 'F or C'",
+            "int, default: None",
+            "int, default None",
+            "int, default :obj:`None`",
+            '"ma{icious"',
+            r"'with \'quotes\''",
+        )
+
+        tokens = (
+            ["str"],
+            ["defaultdict"],
+            ["int", ", ", "float", ", or ", "complex"],
+            ["int", " or ", "float", " or ", "None", ", ", "optional"],
+            ["{", '"F"', ", ", '"C"', ", ", '"N"', "}"],
+            ["{", "'F'", ", ", "'C'", ", ", "'N'", "}", ", ", "default", ": ", "'F'"],
+            ["{", "'F'", ", ", "'C'", ", ", "'N or C'", "}", ", ", "default", " ", "'F'"],
+            ["str", ", ", "default", ": ", "'F or C'"],
+            ["int", ", ", "default", ": ", "None"],
+            ["int", ", ", "default", " ", "None"],
+            ["int", ", ", "default", " ", ":obj:`None`"],
+            ['"ma{icious"'],
+            [r"'with \'quotes\''"],
+        )
+
+        for spec, expected in zip(specs, tokens):
+            actual = _tokenize_type_spec(spec)
+            self.assertEqual(expected, actual)
+
+    def test_recombine_set_tokens(self):
+        tokens = (
+            ["{", "1", ", ", "2", "}"],
+            ["{", '"F"', ", ", '"C"', ", ", '"N"', "}", ", ", "optional"],
+            ["{", "'F'", ", ", "'C'", ", ", "'N'", "}", ", ", "default", ": ", "None"],
+            ["{", "'F'", ", ", "'C'", ", ", "'N'", "}", ", ", "default", " ", "None"],
+        )
+
+        combined_tokens = (
+            ["{1, 2}"],
+            ['{"F", "C", "N"}', ", ", "optional"],
+            ["{'F', 'C', 'N'}", ", ", "default", ": ", "None"],
+            ["{'F', 'C', 'N'}", ", ", "default", " ", "None"],
+        )
+
+        for tokens_, expected in zip(tokens, combined_tokens):
+            actual = _recombine_set_tokens(tokens_)
+            self.assertEqual(expected, actual)
+
+    def test_recombine_set_tokens_invalid(self):
+        tokens = (
+            ["{", "1", ", ", "2"],
+            ['"F"', ", ", '"C"', ", ", '"N"', "}", ", ", "optional"],
+            ["{", "1", ", ", "2", ", ", "default", ": ", "None"],
+        )
+        combined_tokens = (
+            ["{1, 2"],
+            ['"F"', ", ", '"C"', ", ", '"N"', "}", ", ", "optional"],
+            ["{1, 2", ", ", "default", ": ", "None"],
+        )
+
+        for tokens_, expected in zip(tokens, combined_tokens):
+            actual = _recombine_set_tokens(tokens_)
+            self.assertEqual(expected, actual)
+
+    def test_convert_numpy_type_spec(self):
+        translations = {
+            "DataFrame": "pandas.DataFrame",
+        }
+
+        specs = (
+            "",
+            "optional",
+            "str, optional",
+            "int or float or None, default: None",
+            "int, default None",
+            '{"F", "C", "N"}',
+            "{'F', 'C', 'N'}, default: 'N'",
+            "{'F', 'C', 'N'}, default 'N'",
+            "DataFrame, optional",
+        )
+
+        converted = (
+            "",
+            "*optional*",
+            "`str`, *optional*",
+            "`int` or `float` or `None`, *default*: `None`",
+            "`int`, *default* `None`",
+            '``{"F", "C", "N"}``',
+            "``{'F', 'C', 'N'}``, *default*: ``'N'``",
+            "``{'F', 'C', 'N'}``, *default* ``'N'``",
+            "`pandas.DataFrame`, *optional*",
+        )
+
+        for spec, expected in zip(specs, converted):
+            actual = _convert_numpy_type_spec(spec, translations=translations)
+            self.assertEqual(expected.rstrip(), actual)
+
+    def test_parameter_types(self):
+        docstring = dedent("""\
+            Parameters
+            ----------
+            param1 : DataFrame
+                the data to work on
+            param2 : int or float or None, optional
+                a parameter with different types
+            param3 : dict-like, optional
+                a optional mapping
+            param4 : int or float or None, optional
+                a optional parameter with different types
+            param5 : {"F", "C", "N"}, optional
+                a optional parameter with fixed values
+            param6 : int, default None
+                different default format
+            param7 : mapping of hashable to str, optional
+                a optional mapping
+            param8 : ... or Ellipsis
+                ellipsis
+        """)
+        expected = dedent("""\
+            :param param1: the data to work on
+            :type param1: `DataFrame`
+            :param param2: a parameter with different types
+            :type param2: `int` or `float` or `None`, *optional*
+            :param param3: a optional mapping
+            :type param3: :term:`dict-like <mapping>`, *optional*
+            :param param4: a optional parameter with different types
+            :type param4: `int` or `float` or `None`, *optional*
+            :param param5: a optional parameter with fixed values
+            :type param5: ``{"F", "C", "N"}``, *optional*
+            :param param6: different default format
+            :type param6: `int`, *default* `None`
+            :param param7: a optional mapping
+            :type param7: :term:`mapping` of :term:`hashable` to `str`, *optional*
+            :param param8: ellipsis
+            :type param8: `...` or `Ellipsis`
+        """)
+        translations = {
+            "dict-like": ":term:`dict-like <mapping>`",
+            "mapping": ":term:`mapping`",
+            "hashable": ":term:`hashable`",
+        }
+        config = Config(
+            napoleon_type_aliases=translations,
+        )
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual)
+
+
+# @contextmanager
+# def warns(warning, match):
+    
+
+#     raw_warnings = warning.getvalue()
+#     warnings = [w for w in raw_warnings.split("\n") if w.strip()]
+
+    
+
+
+
+class TestNumpyDocstring:
+    def test_token_type_invalid(self):
+        tokens = (
+            "{1, 2",
+            "}",
+            "'abc",
+            "def'",
+            '"ghi',
+            'jkl"',
+        )
+        errors = (
+            r".+: invalid value set \(missing closing brace\):",
+            r".+: invalid value set \(missing opening brace\):",
+            r".+: malformed string literal \(missing closing quote\):",
+            r".+: malformed string literal \(missing opening quote\):",
+            r".+: malformed string literal \(missing closing quote\):",
+            r".+: malformed string literal \(missing opening quote\):",
+        )
+        for token, error in zip(tokens, errors):
+            
+             with warnings.catch_warnings(record=True) as catch_warnings:
+                warnings.simplefilter("always", )
+                _token_type(token)
+                match_re = re.compile(error)
+                assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
+                assert match_re.match(str(catch_warnings.pop().message))
+
+                
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        (
+            ("x, y, z", "x, y, z"),
+            ("*args, **kwargs", r"\*args, \*\*kwargs"),
+            ("*x, **y", r"\*x, \*\*y"),
+        ),
+    )
+    def test_escape_args_and_kwargs(self, name, expected):
+        numpy_docstring = NumpyDocstring("")
+        actual = numpy_docstring._escape_args_and_kwargs(name)
+
+        assert actual == expected
 
 if __name__ == "__main__":
     unittest.main()
