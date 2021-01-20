@@ -221,7 +221,6 @@ class _EpydocLinker(DocstringLinker):
 class FieldDesc:
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
-    kind: str
     name: Optional[str] = None
     type: Optional[Tag] = None
     body: Optional[Tag] = None
@@ -309,7 +308,7 @@ class FieldHandler:
         self.notes: List[Field] = []
         self.authors: List[Field] = []
         self.sinces: List[Field] = []
-        self.unknowns: List[FieldDesc] = []
+        self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
@@ -328,13 +327,13 @@ class FieldHandler:
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
             if not _is_none_literal(ann_ret):
-                self.return_desc = FieldDesc(kind='return', type=ret_type)
+                self.return_desc = FieldDesc(type=ret_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -342,7 +341,7 @@ class FieldHandler:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
@@ -378,7 +377,7 @@ class FieldHandler:
         field.report('Documented parameter "%s" does not exist' % (name,))
 
     def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
+        desc_list.append(FieldDesc(name=name, body=field.format()))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
@@ -454,8 +453,9 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field: Field) -> None:
-        field.report(f"Unknown field '{field.tag}'" )
-        self.add_info(self.unknowns, field.arg, field)
+        name = field.tag
+        field.report(f"Unknown field '{name}'" )
+        self.add_info(self.unknowns[name], field.arg, field)
 
     def handle(self, field: Field) -> None:
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
@@ -476,7 +476,7 @@ class FieldHandler:
             except KeyError:
                 if index == 0 and name in ('self', 'cls'):
                     continue
-                param = FieldDesc(kind='param', name=name, type=type_doc)
+                param = FieldDesc(name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
                 param.type = type_doc
@@ -504,10 +504,7 @@ class FieldHandler:
                       ('Present Since', 'Present Since', self.sinces),
                       ('Note', 'Notes', self.notes)):
             r += format_field_list(*s_p_l)
-        unknowns: Dict[str, List[FieldDesc]] = {}
-        for fieldinfo in self.unknowns:
-            unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
-        for kind, fieldlist in unknowns.items():
+        for kind, fieldlist in self.unknowns.items():
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
