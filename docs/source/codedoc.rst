@@ -41,10 +41,23 @@ For long docstrings, start with a short summary, followed by an empty line::
         but omitted from the summary table.
         """
 
+Since docstrings are Python strings, escape sequences such as ``\n`` will be parsed as if the corresponding character---for example a newline---occurred at the position of the escape sequence in the source code.
+
+To have the text ``\n`` in a docstring at runtime and in the generated documentation, you either have escape it twice in the source: ``\\n`` or use the ``r`` prefix for a raw string literal.
+The following example shows the raw string approach::
+
+    def iter_lines(stream):
+        r"""Iterate through the lines in the given text stream,
+        with newline characters (\n) removed.
+        """
+        for line in stream:
+            yield line.rstrip('\n')
+
 Further reading:
 
 - `Python Tutorial: Documentation Strings <https://docs.python.org/3/tutorial/controlflow.html#documentation-strings>`_
 - `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
+- `Python Language Reference: String and Bytes literals <https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals>`_
 
 
 Docstring assignments
