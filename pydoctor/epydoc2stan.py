@@ -376,9 +376,6 @@ class FieldHandler:
                 return
         field.report('Documented parameter "%s" does not exist' % (name,))
 
-    def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(name=name, body=field.format()))
-
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
             if field.arg is not None:
@@ -408,7 +405,7 @@ class FieldHandler:
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
                 field.report('Parameter "%s" was already documented' % (name,))
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name not in self.types:
                 self._handle_param_not_found(name, field)
 
@@ -418,7 +415,7 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
@@ -435,7 +432,7 @@ class FieldHandler:
         name = field.arg
         if name is None:
             field.report('Exception type missing')
-        self.add_info(self.raise_descs, name, field)
+        self.raise_descs.append(FieldDesc(name=name, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
     
@@ -455,7 +452,7 @@ class FieldHandler:
     def handleUnknownField(self, field: Field) -> None:
         name = field.tag
         field.report(f"Unknown field '{name}'" )
-        self.add_info(self.unknowns[name], field.arg, field)
+        self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
