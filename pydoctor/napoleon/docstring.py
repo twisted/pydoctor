@@ -10,7 +10,7 @@ should be checked once in a while to make sure we don't miss any important updat
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-
+import attr
 import collections
 import re
 import warnings
@@ -47,6 +47,9 @@ _default_regex = re.compile(
 )
 _SINGLETONS = ("None", "True", "False", "Ellipsis")
 
+@attr.s(auto_attribs=True)
+class ConsumeFieldsAsFreeForm(Exception):
+    lines: List[str]
 
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
@@ -225,12 +228,18 @@ class GoogleDocstring:
         _descs = self.__class__(_descs, self._config).lines()
         return _name, _type, _descs
 
+    # overriden: allow white lines in fields def, this was preventing to add white 
+    # lines in a numpy section
+    # Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False,
-                        multiple: bool = False) -> List[Tuple[str, str, List[str]]]:
+                        multiple: bool = False, **kwargs) -> List[Tuple[str, str, List[str]]]:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
-            _name, _type, _desc = self._consume_field(parse_type, prefer_type)
+            if not self._line_iter.peek():
+                next(self._line_iter)
+                continue
+            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs)
             if multiple and _name:
                 for name in _name.split(","):
                     fields.append((name.strip(), _type, _desc))
@@ -368,7 +377,10 @@ class GoogleDocstring:
                 lines.append(':%s %s: %s' % (type_role, _name, _type))
         return lines + ['']
 
-    # overriden not to return empty line if not field name is found
+    # overriden not to return useless empty lines 
+    # This method should be used as little as posible in pydoctor
+    # since it won't generate sections in a consistent manner with other styling
+    # But it's still used by multiple returns values for exemple 
     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
@@ -565,12 +577,10 @@ class GoogleDocstring:
         return lines
 
     # overriden: enforce napoleon_use_ivar=True and ignore noindex option
-    # Skip _qualify_name call
+    # Skip annotations handling
     def _parse_attributes_section(self, section: str) -> List[str]:
         lines = []
         for _name, _type, _desc in self._consume_fields():
-            if not _type:
-                _type = self._lookup_annotation(_name)
             field = ':ivar %s: ' % _name
             lines.extend(self._format_block(field, _desc))
             if _type:
@@ -642,11 +652,13 @@ class GoogleDocstring:
             fields = self._consume_fields(multiple=True)
             return self._format_docutils_params(fields)
     
-    # overriden: use the same syntax in Warns section as in Raises section
-    # Allow to pass prefer_type (false for Warns section to make compatible with raises syntax BUT not mandatory). 
-    # If something in the type place of the type
-    # but no description, assume type contains the description 
-    def _parse_raises_section(self, section: str, tag_name: str = 'raises', prefer_type=True) -> List[str]:
+    # overriden: This function has now the ability to pass prefer_type=False
+    # This is used by Warns section, so the warns section can be like::
+    #   :warns RuntimeWarning: If whatever 
+    # This allows sections to have compatible syntax as raises syntax BUT not mandatory). 
+    # If prefer_type=False: If something in the type place of the type
+    #   but no description, assume type contains the description, and there is not type in the docs. 
+    def _parse_raises_section(self, section: str, field_type: str = 'raises', prefer_type=True) -> List[str]:
         fields = self._consume_fields(parse_type=False, prefer_type=True)
         lines = []  # type: List[str]
         for _name, _type, _desc in fields:
@@ -661,7 +673,7 @@ class GoogleDocstring:
             _descs = ' ' + '\n    '.join(_desc) if any(_desc) else ''
             if _type and not _descs and not prefer_type: 
                 _descs, _type = _type, _descs
-            lines.append(':%s%s:%s' % (tag_name, _type, _descs))
+            lines.append(':%s%s:%s' % (field_type, _type, _descs))
         if lines:
             lines.append('')
         return lines
@@ -677,6 +689,7 @@ class GoogleDocstring:
     def _parse_references_section(self, section: str) -> List[str]:
         return self._parse_generic_section('References')
 
+    # overridden: add if any(field): condition not to display empty returns sections
     def _parse_returns_section(self, section: str) -> List[str]:
         fields = self._consume_returns_section()
         multi = len(fields) > 1
@@ -698,7 +711,8 @@ class GoogleDocstring:
                 else:
                     lines.extend(self._format_block(':returns: * ', field))
             else:
-                lines.extend(self._format_block(':returns: ', field))
+                if any(field): 
+                    lines.extend(self._format_block(':returns: ', field))
                 if _type and use_rtype:
                     lines.extend([':rtype: %s' % _type, ''])
         if lines and lines[-1]:
@@ -710,7 +724,7 @@ class GoogleDocstring:
 
     # overriden: no translation + use compatible syntax with raises, but as well as standard field syntax. 
     def _parse_warns_section(self, section: str) -> List[str]:
-        return self._parse_raises_section(section, tag_name='warns', prefer_type=False)
+        return self._parse_raises_section(section, field_type='warns', prefer_type=False)
 
     # overriden: no translation
     def _parse_yields_section(self, section: str) -> List[str]:
@@ -759,10 +773,6 @@ class GoogleDocstring:
                 lines = lines[start:end + 1]
         return lines
 
-    # overriden: it's not the place to looks for annotations here
-    def _lookup_annotation(self, _name: str) -> str:
-        # No annotation found
-        return ""
 
 # preprocessing numpydoc types: https://github.com/sphinx-doc/sphinx/pull/7690
 def _recombine_set_tokens(tokens: List[str]) -> List[str]:
@@ -892,7 +902,7 @@ def _token_type(token: str, location: str = None) -> str:
 
     return type_
 
-
+# overriden: just use simple backticks for cross ref
 def _convert_numpy_type_spec(_type: str, location: str = None, translations: dict = {}) -> str:
     def convert_obj(obj, translations, default_translation):
         translation = translations.get(obj, obj)
@@ -1016,8 +1026,36 @@ class NumpyDocstring(GoogleDocstring):
         else:
             return func(name)
 
-    def _consume_field(self, parse_type: bool = True, prefer_type: bool = False
-                       ) -> Tuple[str, str, List[str]]:
+    # overriden: remove lookup annotations and resolving sphinx/issues/7077
+    def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, 
+                       allow_free_form: bool = False) -> Tuple[str, str, List[str]]:
+
+        def convert_type(_type: str) -> str:
+            return _convert_numpy_type_spec(
+                    _type,
+                    location=None,
+                    translations=self._config.napoleon_type_aliases or {},
+                )
+
+        def is_obvious_type(_type: str) -> bool:
+
+            return ( _type.isidentifier() or 
+                _xref_regex.match(_type) )
+
+        def figure_type(_name: str, _type: str) -> str:
+            # Here we "guess" if _type contains the type
+            if is_obvious_type(_type):
+                _type = convert_type(_type)
+                return _type
+
+            elif allow_free_form: # Else we consider it as free form
+                _desc = self.__class__(self._consume_to_next_section(), self._config).lines()
+                raise ConsumeFieldsAsFreeForm(lines=[_name + _type] + _desc)
+            
+            else:
+                _type = convert_type(_type)
+                return _type
+                
         line = next(self._line_iter)
         if parse_type:
             _name, _, _type = self._partition_field_on_colon(line)
@@ -1026,26 +1064,45 @@ class NumpyDocstring(GoogleDocstring):
         _name, _type = _name.strip(), _type.strip()
         _name = self._escape_args_and_kwargs(_name)
 
-        if parse_type and not _type:
-            _type = self._lookup_annotation(_name)
-
-        if prefer_type and not _type:
+        if _name and not _type and prefer_type:
             _type, _name = _name, _type
         
-        _type = _convert_numpy_type_spec(
-            _type,
-            location=None,
-            translations=self._config.napoleon_type_aliases or {},
-        )
 
         indent = self._get_indent(line) + 1
-        _desc = self._dedent(self._consume_indented_block(indent))
-        _desc = self.__class__(_desc, self._config).lines()
-        return _name, _type, _desc
+
+        # Solving this https://github.com/sphinx-doc/sphinx/issues/7077 only if allow_free_form = True
+        # to properly solve this issue we need to determine if the section is
+        # formatted with types or not, for that we check if the second line of the field is indented 
+        # (that would be the description)
+
+        next_line = self._line_iter.peek()
+
+        if next_line != self._line_iter.sentinel:
+            next_line_indent = self._get_indent(next_line) + 1
+            if next_line_indent > indent:
+                _desc = self._dedent(self._consume_indented_block(indent))
+                _desc = self.__class__(_desc, self._config).lines()
+                _type = convert_type(_type)
+                # Normal case
+                return _name, _type, _desc
+            
+        return _name, figure_type(_name, _type), ['']
+
+
+    def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False, 
+                        multiple: bool = False, allow_free_form: bool = False ) -> List[Tuple[str, str, List[str]]]:
+        try:
+            return super()._consume_fields(parse_type=parse_type, 
+                prefer_type=prefer_type, multiple=multiple, allow_free_form=allow_free_form)
+        except ConsumeFieldsAsFreeForm as e:
+            return [('', '', e.lines)]
 
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
-        return self._consume_fields(prefer_type=True)
+        return self._consume_fields(prefer_type=True, allow_free_form=True)
 
+    def _consume_raises_section(self) -> List[Tuple[str, str, List[str]]]:
+        return self._consume_fields(prefer_type=True)
+        
     def _consume_section_header(self) -> str:
         section = next(self._line_iter)
         if not _directive_regex.match(section):

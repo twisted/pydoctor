@@ -27,7 +27,7 @@ class InlineAttributeTest(BaseDocstringTest):
 data member description:
 - a: b
 """
-        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
         expected = """\
 data member description:
 - a: b"""   
@@ -36,7 +36,7 @@ data member description:
 
     def test_class_data_member_inline(self):
         docstring = """b: data member description with :ref:`reference`"""
-        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
         expected = ("""\
 data member description with :ref:`reference`
 
@@ -45,14 +45,14 @@ data member description with :ref:`reference`
 
     def test_class_data_member_inline_no_type(self):
         docstring = """data with ``a : in code`` and :ref:`reference` and no type"""
-        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
         expected = """data with ``a : in code`` and :ref:`reference` and no type"""
 
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_ref_in_type(self):
         docstring = """:class:`int`: data member description"""
-        actual = str(GoogleDocstring(docstring, is_attribute = True))
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
         expected = ("""\
 data member description
 
@@ -874,7 +874,7 @@ Returns:
         actual = str(GoogleDocstring(docstring, config=config))
         self.assertEqual(expected.rstrip(), actual)
 
-    def test_sphinx_napoleon_issue_4016(self):
+    def test_column_summary_lines_sphinx_issue_4016(self):
         # test https://github.com/sphinx-doc/sphinx/issues/4016
 
         docstring = """Get time formated as ``HH:MM:SS``."""
@@ -1941,19 +1941,7 @@ definition_after_normal_text : int
         actual = str(NumpyDocstring(docstring, config))
         self.assertEqual(expected.rstrip(), actual)
 
-
-# @contextmanager
-# def warns(warning, match):
-    
-
-#     raw_warnings = warning.getvalue()
-#     warnings = [w for w in raw_warnings.split("\n") if w.strip()]
-
-    
-
-
-
-class TestNumpyDocstring:
+class DocstringsTestEdges(BaseDocstringTest):
     def test_token_type_invalid(self):
         tokens = (
             "{1, 2",
@@ -1995,6 +1983,273 @@ class TestNumpyDocstring:
         actual = numpy_docstring._escape_args_and_kwargs(name)
 
         assert actual == expected
+
+    # https://github.com/sphinx-contrib/napoleon/issues/12
+    # https://github.com/sphinx-doc/sphinx/issues/7077
+    def test_return_no_type_sphinx_issue_7077(self):
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        list of strings
+            Sequence of arguments, in the order in
+            which they should be called.
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: Sequence of arguments, in the order in
+                  which they should be called.
+        :rtype: `list` of `strings`
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        Sequence of arguments, in the order in
+        which they should be called.
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: Sequence of arguments, in the order in
+                  which they should be called.
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        str
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :rtype: `str`
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        str
+            A URL string
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: A URL string
+        :rtype: `str`
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        a string, can you believe it?
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: a string, can you believe it?
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        a string, can you believe it?
+
+        Raises
+        --
+        UserError
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: a string, can you believe it?
+
+        :raises UserError: 
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        str
+
+        Raises
+        --
+        UserError
+
+        Warns
+        ---
+        RuntimeWarning
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :rtype: `str`
+
+        :raises UserError:
+
+        :warns: RuntimeWarning
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        str
+            Description of return value
+
+        Raises
+        --
+        UserError
+            Description of raised exception
+
+        Warns
+        --------
+        RuntimeWarning
+            Description of raised warnings
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: Description of return value
+        :rtype: `str`
+
+        :raises UserError: Description of raised exception
+
+        :warns RuntimeWarning: Description of raised warnings
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent(r"""
+        Summary line.
+
+        Returns
+        -------
+        list(str)
+            The lines of the docstring in a list.
+            Note
+            ----
+            You can join lines with ``'\n'.join(lines)``.
+        """)
+
+        expected = dedent(r"""
+        Summary line.
+
+        :returns: The lines of the docstring in a list.
+                  .. note:: You can join lines with ``'\n'.join(lines)``.
+        :rtype: `list(str)`
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = dedent(r"""
+        Summary line.
+
+        Returns
+        -------
+        List[str]
+            Note
+            ----
+            You can join lines with ``'\n'.join(lines)``.
+        """)
+
+        expected = dedent(r"""
+        Summary line.
+
+        :returns: .. note:: You can join lines with ``'\n'.join(lines)``.
+        :rtype: `List[str]`
+        """)
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+    @pytest.mark.xfail
+    def test_return_no_tyoe_sphinx_issue_7077_wip(self):
+        docstring = dedent("""
+        Summary line.
+
+        Returns
+        -------
+        List[str]
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :rtype: `List[str]`
+        """)
+
+        # But getting :returns: List[str]
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+
+    def test_return_no_type_sphinx_issue_7077_gstyle(self):
+        # No issue with google style
+
+        docstring = dedent("""
+        Summary line.
+
+        Returns:
+            Sequence of arguments with, in the order in
+            which they should be called.
+        """)
+
+        expected = dedent("""
+        Summary line.
+
+        :returns: Sequence of arguments with, in the order in
+                  which they should be called.
+        """)
+
+        actual = str(GoogleDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
 
 if __name__ == "__main__":
     unittest.main()
