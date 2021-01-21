@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Union
+from typing import Any, Iterator, List, Optional, Sequence, Union
 import ast
 
 from twisted.web.template import tags, Element, renderer, Tag, XMLFile
@@ -64,7 +64,7 @@ class CommonPage(Element):
     def category(self) -> str:
         return f"{self.ob.kind.lower()} documentation"
 
-    def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
+    def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
         parts: List[Union[Tag, str]] = []
         ob: Optional[model.Documentable] = obj
         while ob:
@@ -295,19 +295,21 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def classSignature(self):
+    def classSignature(self) -> Sequence[Union[Tag, str]]:
         r = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
-            for i, (n, m, o) in enumerate(zipped):
-                if o is None:
+            for idx, (name, full_name, base) in enumerate(zipped):
+                if idx != 0:
+                    r.append(', ')
+                if base is None:
+                    # External class.
                     tag = tags.span
                 else:
-                    tag = tags.a(href=o.url, **{"data-type": "Class"})
-                r.append(tag(n, title=m))
-                if i != len(zipped)-1:
-                    r.append(', ')
+                    # Internal class.
+                    tag = tags.a(href=base.url, **{"data-type": "Class"})
+                r.append(tag(name, title=full_name))
             r.append(')')
         return r
 
