@@ -76,7 +76,6 @@ ul ul ul ul ul ul ul {
 
 .pre {
     white-space: pre;
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
 }
 
 .undocumented {
@@ -125,7 +124,6 @@ ul ul ul ul ul ul ul {
 }
 
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
     width: 200px;
 }
 
@@ -203,7 +201,17 @@ This is inline docstring content marked up as code, for example L{foo} in epytex
 or `bar` in restructuredtext
 
 - <a class="code"> links that are present in summary tables
+
+- 'functionHeader' is used for lines like `def func():` and `var =`
 */
+code, .code, .pre, #childList > div .functionHeader,
+#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+code, .code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+    font-size: 90%;
+    color: #222222;
+}
 a > code, a.code {
     color:#c7254e;
     background-color:#f9f2f4;
@@ -218,10 +226,7 @@ This defines  the "code" class, it's black on light gray,
 It also overwrite the default values inherited from bootstrap min
 */
 code, .code {
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
     padding:2px 4px;
-    font-size:90%;
-    color: #222222;
     background-color: #f4f4f4;
     border-radius:4px
 }
@@ -242,15 +247,6 @@ a.functionSourceLink {
     border-left-width: 1px;
     border-left-style: solid;
     background: #fafafa;
-}
-
-/* Function definitions `def func():` and `var =` */
-
-#childList > div .functionHeader {
-    font-family: monospace;
-    font-weight: bold;
-    color: #222222;
-
 }
 
 .moduleDocstring {
