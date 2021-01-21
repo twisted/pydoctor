@@ -5,6 +5,7 @@ Most part of this documentation is using Python type hinting.
 """
 
 from abc import ABC
+from somelib import SomeInterface
 
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
@@ -70,7 +71,7 @@ class _PrivateClass:
         return True
 
 
-class DemoClass(ABC):
+class DemoClass(ABC, SomeInterface, _PrivateClass):
     """
     This is the docstring of this class.
     """
