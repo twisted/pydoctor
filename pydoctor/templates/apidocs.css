@@ -208,7 +208,8 @@ code, .code, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, .code, #childList > div .functionHeader {
+code, .code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+    font-size: 90%;
     color: #222222;
 }
 a > code, a.code {
@@ -226,7 +227,6 @@ It also overwrite the default values inherited from bootstrap min
 */
 code, .code {
     padding:2px 4px;
-    font-size:90%;
     background-color: #f4f4f4;
     border-radius:4px
 }
