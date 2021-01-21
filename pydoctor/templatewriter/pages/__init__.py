@@ -282,7 +282,7 @@ class ClassPage(CommonPage):
             source = tags.transparent
         r.append(tags.p(tags.code(
             tags.span("class", class_='py-keyword'), " ",
-            self.ob.fullName(),
+            tags.span(self.ob.name, class_='py-defname'),
             self.classSignature(), ":", source
             )))
 
