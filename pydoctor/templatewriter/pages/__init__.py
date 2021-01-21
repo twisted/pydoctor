@@ -304,7 +304,7 @@ class ClassPage(CommonPage):
                 if o is None:
                     r.append(tags.span(title=m)(n))
                 else:
-                    r.append(util.taglink(o, n))
+                    r.append(tags.a(href=o.url, **{"data-type": "Class"})(n))
                 if i != len(zipped)-1:
                     r.append(', ')
             r.append(')')
