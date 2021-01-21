@@ -4,6 +4,9 @@ This is a module demonstrating epydoc code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
+from abc import ABC
+
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
@@ -67,7 +70,7 @@ class _PrivateClass:
         return True
 
 
-class DemoClass:
+class DemoClass(ABC):
     """
     This is the docstring of this class.
     """
