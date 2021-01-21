@@ -56,9 +56,6 @@ class CommonPage(Element):
     def title(self):
         return self.ob.fullName()
 
-    def mediumName(self, obj):
-        return self.ob.fullName()
-
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
             tags.code(self.namespace(self.ob))
@@ -285,7 +282,8 @@ class ClassPage(CommonPage):
             source = tags.transparent
         r.append(tags.p(tags.code(
             tags.span("class", class_='py-keyword'), " ",
-            self.mediumName(self.ob), ":", source
+            self.ob.fullName(),
+            self.classSignature(), ":", source
             )))
 
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
@@ -297,8 +295,8 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def mediumName(self, ob):
-        r = [super().mediumName(ob)]
+    def classSignature(self):
+        r = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
