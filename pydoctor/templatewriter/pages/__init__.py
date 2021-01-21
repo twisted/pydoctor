@@ -302,9 +302,10 @@ class ClassPage(CommonPage):
             r.append('(')
             for i, (n, m, o) in enumerate(zipped):
                 if o is None:
-                    r.append(tags.span(title=m)(n))
+                    tag = tags.span
                 else:
-                    r.append(tags.a(href=o.url, **{"data-type": "Class"})(n))
+                    tag = tags.a(href=o.url, **{"data-type": "Class"})
+                r.append(tag(n, title=m))
                 if i != len(zipped)-1:
                     r.append(', ')
             r.append(')')
