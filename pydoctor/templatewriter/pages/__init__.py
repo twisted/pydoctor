@@ -303,12 +303,18 @@ class ClassPage(CommonPage):
             for idx, (name, full_name, base) in enumerate(zipped):
                 if idx != 0:
                     r.append(', ')
+
                 if base is None:
                     # External class.
-                    tag = tags.span
+                    url = self.ob.system.intersphinx.getLink(full_name)
                 else:
                     # Internal class.
-                    tag = tags.a(href=base.url, **{"data-type": "Class"})
+                    url = base.url
+
+                if url is None:
+                    tag = tags.span
+                else:
+                    tag = tags.a(href=url, **{"data-type": "Class"})
                 r.append(tag(name, title=full_name))
             r.append(')')
         return r
