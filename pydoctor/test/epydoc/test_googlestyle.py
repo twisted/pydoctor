@@ -4,7 +4,7 @@ from pydoctor.epydoc.markup.googlestyle import get_parser
 
 class TestGetParser(TestCase):
 
-    def test_get_parser_attribute(self):
+    def test_get_parser_attribute(self) -> None:
 
         obj = Attribute(system = System(), name='attr1')
 
@@ -25,7 +25,7 @@ super-dooper attribute
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
 
-    def test_get_parser_other(self):
+    def test_get_parser_other(self) -> None:
 
         obj = Function(system = System(), name='whatever')
 

@@ -296,7 +296,7 @@ class FieldHandler:
 
     # TODO support types for yields section
     # Currently, type will be shown as it's included in napoleon processed strings
-    # but not it's note "the right place". 
+    # but not it's not "the right place". https://github.com/sphinx-doc/sphinx/issues/8004
     # Either we support ':yields <Type>:' or we add ':ytype:'. Both ways needs modifications to napoleon. 
     def handle_yield(self, field: Field) -> None:
         self._report_unexpected_argument(field)

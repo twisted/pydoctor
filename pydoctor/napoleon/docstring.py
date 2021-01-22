@@ -1044,7 +1044,7 @@ class NumpyDocstring(GoogleDocstring):
                 # chances are it's a type annotation like type. 
                 # Let's say 2048 is the maximum number of caracters 
                 # that we'll try to parse here since 99% of the time it will 
-                # suffice, and we don't want to add too much of expensive processing here. 
+                # suffice, and we don't want to add too much of expensive processing. 
                 ast.parse(_type[:2048])
             except SyntaxError:
                 return False
