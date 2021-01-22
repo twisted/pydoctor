@@ -1,9 +1,3 @@
-#
-# google.py: google-style docstring parsing
-#
-# Created [16/01/2021]
-#
-
 """
 Parser for google-style docstrings. 
 
@@ -27,24 +21,25 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
         will be stored.
     """
     rst_docstring = str(GoogleDocstring(docstring))
-    # error: Argument 1 to "ParsedGstyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedGstyleDocstring(
+    # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
+    return ParsedGoogleStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
             docstring, rst_docstring)
 
-def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Napoleon google-style docstrings processing was designed to be working with a reference to
-    the actual live object. So it could check wheither or not the object was an attribute. We can't do that
-    here, so there is another function to parse attribute docstrings. 
+    the actual live object. So it could check if the object was an attribute. We can't do that
+    here, so there is another function to parse attribute docstrings. Attribute docstring have 
+    a different syntax. 
 
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
     rst_docstring = str(GoogleDocstring(docstring, is_attribute = True))
-    # error: Argument 1 to "ParsedGstyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedGstyleDocstring(
+    # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
+    return ParsedGoogleStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
             docstring, rst_docstring)
 
@@ -53,9 +48,9 @@ def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocs
     Returns the `parse_docstring` function or the `parse_inline_attribute_docstring` 
     function depending on the documentable type. 
     """
-    return parse_inline_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
+    return parse_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
 
-class ParsedGstyleDocstring(ParsedRstDocstring):
+class ParsedGoogleStyleDocstring(ParsedRstDocstring):
     """
     Just like L{ParsedRstDocstring} but it stores references to the original 
     docstring text as well as the napoleon processed docstring. 
