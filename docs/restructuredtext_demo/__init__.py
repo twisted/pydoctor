@@ -197,7 +197,7 @@ Admonitions
 .. admonition:: Purple
 
    This needs additionnal CSS for the new "rst-admonition-purple" class. 
-   Include additional CSS by customizing the ``apidocs.css`` temlate file or by defining a raw block::
+   Include additional CSS by defining a raw block::
 
     .. raw:: html
 
