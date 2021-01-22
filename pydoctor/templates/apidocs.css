@@ -10,6 +10,10 @@ body {
     margin-top: 22px;
     position: sticky;
     top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
@@ -279,15 +283,7 @@ body.private-hidden #summaryTree .private {
 }
 
 #showPrivate {
-    position: fixed;
-    bottom: 0;
-    left: 0;
     padding: 10px;
-    opacity: 0.7;
-}
-
-#showPrivate:hover {
-    opacity: 1;
 }
 
 #current-docs-container {
