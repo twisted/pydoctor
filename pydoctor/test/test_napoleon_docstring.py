@@ -5,6 +5,7 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :license: BSD, see LICENSE for details.
 """
 import unittest
+from _pytest.outcomes import xfail
 import pytest
 import re
 import warnings
@@ -1941,7 +1942,6 @@ definition_after_normal_text : int
         actual = str(NumpyDocstring(docstring, config))
         self.assertEqual(expected.rstrip(), actual)
 
-class DocstringsTestEdges(BaseDocstringTest):
     def test_token_type_invalid(self):
         tokens = (
             "{1, 2",
@@ -1970,19 +1970,20 @@ class DocstringsTestEdges(BaseDocstringTest):
 
                 
 
-    @pytest.mark.parametrize(
-        ("name", "expected"),
-        (
-            ("x, y, z", "x, y, z"),
+    
+    # name, expected
+    escape_kwargs_tests_cases = [("x, y, z", "x, y, z"),
             ("*args, **kwargs", r"\*args, \*\*kwargs"),
-            ("*x, **y", r"\*x, \*\*y"),
-        ),
-    )
-    def test_escape_args_and_kwargs(self, name, expected):
-        numpy_docstring = NumpyDocstring("")
-        actual = numpy_docstring._escape_args_and_kwargs(name)
+            ("*x, **y", r"\*x, \*\*y") ]
 
-        assert actual == expected
+    def test_escape_args_and_kwargs(self):
+        
+        for name, expected in self.escape_kwargs_tests_cases:
+
+            numpy_docstring = NumpyDocstring("")
+            actual = numpy_docstring._escape_args_and_kwargs(name)
+
+            assert actual == expected
 
     # https://github.com/sphinx-contrib/napoleon/issues/12
     # https://github.com/sphinx-doc/sphinx/issues/7077
@@ -2165,7 +2166,7 @@ class DocstringsTestEdges(BaseDocstringTest):
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
 
-        docstring = dedent(r"""
+        docstring = dedent("""
         Summary line.
 
         Returns
@@ -2174,82 +2175,87 @@ class DocstringsTestEdges(BaseDocstringTest):
             The lines of the docstring in a list.
             Note
             ----
-            You can join lines with ``'\n'.join(lines)``.
+            Nested markup works.
         """)
 
-        expected = dedent(r"""
+        expected = dedent("""
         Summary line.
 
         :returns: The lines of the docstring in a list.
-                  .. note:: You can join lines with ``'\n'.join(lines)``.
+                  .. note:: Nested markup works.
         :rtype: `list(str)`
         """)
 
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
 
-        docstring = dedent(r"""
+        docstring = dedent("""
         Summary line.
 
         Returns
         -------
         List[str]
+            The lines of the docstring in a list.
             Note
             ----
-            You can join lines with ``'\n'.join(lines)``.
+            Nested markup works.
         """)
 
-        expected = dedent(r"""
+        expected = dedent("""
         Summary line.
 
-        :returns: .. note:: You can join lines with ``'\n'.join(lines)``.
+        :returns: The lines of the docstring in a list.
+                  .. note:: Nested markup works.
         :rtype: `List[str]`
         """)
 
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
 
+        docstring = dedent("""
+        Summary line.
+
+        Methods
+        -------
+        __str__()
+            Returns
+            -------
+            The lines of the docstring in a list.
+            Note
+            ----
+            Nested markup works.
+        """)
+
+        expected = ("""
+Summary line.
+
+.. method:: __str__()
+
+   :returns: The lines of the docstring in a list.
+   
+   .. note:: Nested markup works.
+""")
+
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
+        
     @pytest.mark.xfail
-    def test_return_no_tyoe_sphinx_issue_7077_wip(self):
+    def test_return_type_annotation_style(self):
+        # FIXME: 
+        # the code needs a update to 
+        # understand square braquets : [ ]
         docstring = dedent("""
         Summary line.
 
         Returns
         -------
-        List[str]
+        List[Union[str, bytes, typing.Pattern]]
         """)
 
         expected = dedent("""
         Summary line.
 
-        :rtype: `List[str]`
+        :rtype: `List`[`Union`[`str`, `bytes`, `typing.Pattern`]]
         """)
-
-        # But getting :returns: List[str]
-
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
-
-    def test_return_no_type_sphinx_issue_7077_gstyle(self):
-        # No issue with google style
-
-        docstring = dedent("""
-        Summary line.
-
-        Returns:
-            Sequence of arguments with, in the order in
-            which they should be called.
-        """)
-
-        expected = dedent("""
-        Summary line.
-
-        :returns: Sequence of arguments with, in the order in
-                  which they should be called.
-        """)
-
-        actual = str(GoogleDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
-
-if __name__ == "__main__":
-    unittest.main()

@@ -10,12 +10,14 @@ should be checked once in a while to make sure we don't miss any important updat
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-import attr
+import ast
 import collections
 import re
 import warnings
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, Union
+
+import attr
 
 from pydoctor.napoleon import Config
 from pydoctor.napoleon.iterators import modify_iter
@@ -236,9 +238,6 @@ class GoogleDocstring:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
-            if not self._line_iter.peek():
-                next(self._line_iter)
-                continue
             _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs)
             if multiple and _name:
                 for name in _name.split(","):
@@ -815,7 +814,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
             if open_braces == 0:
                 break
 
-    def combine_set(tokens):
+    def combine_set(tokens:Deque):
         while True:
             try:
                 token = tokens.popleft()
@@ -1038,9 +1037,19 @@ class NumpyDocstring(GoogleDocstring):
                 )
 
         def is_obvious_type(_type: str) -> bool:
-
-            return ( _type.isidentifier() or 
-                _xref_regex.match(_type) )
+            if _type.isidentifier() or _xref_regex.match(_type) :
+                return True
+            try:
+                # We simply try to load the string object with AST, if it's working 
+                # chances are it's a type annotation like type. 
+                # Let's say 2048 is the maximum number of caracters 
+                # that we'll try to parse here since 99% of the time it will 
+                # suffice, and we don't want to add too much of expensive processing here. 
+                ast.parse(_type[:2048])
+            except SyntaxError:
+                return False
+            else:
+                return True
 
         def figure_type(_name: str, _type: str) -> str:
             # Here we "guess" if _type contains the type
@@ -1086,7 +1095,7 @@ class NumpyDocstring(GoogleDocstring):
                 # Normal case
                 return _name, _type, _desc
             
-        return _name, figure_type(_name, _type), ['']
+        return _name, figure_type(_name, _type), []
 
 
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False, 
