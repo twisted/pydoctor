@@ -991,6 +991,53 @@ class NumpyDocstringTest(BaseDocstringTest):
                   description of return value
         :rtype: `str`
         """
+    ),(
+        """
+        Single line summary
+        Return
+        ------
+        a complicated string
+            Extended
+            description of return value
+        int 
+            Extended
+            description of return value
+        the tuple of your life: tuple
+            Extended
+            description of return value
+        """,
+        """
+        Single line summary
+        :returns: * `a complicated string` -- Extended
+                    description of return value
+                  * `int` -- Extended
+                    description of return value
+                  * **the tuple of your life** (`tuple`) -- Extended
+                    description of return value
+        """
+    ),(
+        """
+        Single line summary
+        Return
+        ------
+        the string of your life
+        """,
+        """
+        Single line summary
+        :returns: the string of your life
+        """
+    ),(
+        """
+        Single line summary
+        Return
+        ------
+        the string of your life: str
+        """,
+        """
+        Single line summary
+        :returns: **the string of your life**
+        :rtype: `str`
+        """
     ), (
         """
         Single line summary
@@ -1985,248 +2032,225 @@ definition_after_normal_text : int
 
             assert actual == expected
 
-    # https://github.com/sphinx-contrib/napoleon/issues/12
-    # https://github.com/sphinx-doc/sphinx/issues/7077
-    def test_return_no_type_sphinx_issue_7077(self):
-        docstring = dedent("""
-        Summary line.
+    docstrings_returns = [(
+        """
+Single line summary
+Return
+------
+the string of your life: `a complicated string`
+the str of your life: {"foo", "bob", "bar"}
+the int of your life: int
+the tuple of your life: tuple
+""",
 
-        Returns
-        -------
-        list of strings
-            Sequence of arguments, in the order in
-            which they should be called.
-        """)
+# FIXME: In the case of natural language type expression 
+# It needs to have a followup description to be parsed as tokenized type
+# The "workaround" is to use backticks to tell napoleon to consider this string as the type. 
+"""
+Single line summary
+:returns: * **the string of your life** (`a complicated string`)
+          * **the str of your life** (``{"foo", "bob", "bar"}``)
+          * **the int of your life** (`int`)
+          * **the tuple of your life** (`tuple`)
+        """
+    ),
+    
+    ("""
+Summary line.
 
-        expected = dedent("""
-        Summary line.
+Returns
+-------
+list of strings
+    Sequence of arguments, in the order in
+    which they should be called.
+""",
+"""
+Summary line.
 
-        :returns: Sequence of arguments, in the order in
-                  which they should be called.
-        :rtype: `list` of `strings`
-        """)
+:returns: Sequence of arguments, in the order in
+          which they should be called.
+:rtype: `list` of `strings`
+        """),
+        
+        ("""
+Summary line.
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+Returns
+-------
+Sequence of arguments, in the order in
+which they should be called.
+""", 
+"""
+Summary line.
 
-        docstring = dedent("""
-        Summary line.
+:returns: Sequence of arguments, in the order in
+          which they should be called.
+        """), 
+        ("""
+Summary line.
 
-        Returns
-        -------
-        Sequence of arguments, in the order in
-        which they should be called.
-        """)
+Returns
+-------
+str
+""", 
+"""
+Summary line.
 
-        expected = dedent("""
-        Summary line.
+:rtype: `str`
+        """),(
+"""
+Summary line.
 
-        :returns: Sequence of arguments, in the order in
-                  which they should be called.
-        """)
+Returns
+-------
+str
+    A URL string
+""",
+"""
+Summary line.
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+:returns: A URL string
+:rtype: `str`
+        """
+        ), (
+        """
+Summary line.
 
-        docstring = dedent("""
-        Summary line.
+Returns
+-------
+a string, can you believe it?
+""",
+"""
+Summary line.
 
-        Returns
-        -------
-        str
-        """)
+:returns: a string, can you believe it?
+        """
+        ), (
+        """
+Summary line.
 
-        expected = dedent("""
-        Summary line.
+Returns
+-------
+a string, can you believe it?
 
-        :rtype: `str`
-        """)
+Raises
+--
+UserError
+        """,
+        """
+Summary line.
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+:returns: a string, can you believe it?
 
-        docstring = dedent("""
-        Summary line.
+:raises UserError: 
+        """
+        ),(
+        """
+Summary line.
 
-        Returns
-        -------
-        str
-            A URL string
-        """)
+Returns
+-------
+str
 
-        expected = dedent("""
-        Summary line.
+Raises
+--
+UserError
 
-        :returns: A URL string
-        :rtype: `str`
-        """)
+Warns
+---
+RuntimeWarning
+        """,
+        """
+Summary line.
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+:rtype: `str`
 
-        docstring = dedent("""
-        Summary line.
+:raises UserError:
 
-        Returns
-        -------
-        a string, can you believe it?
-        """)
+:warns: RuntimeWarning
+        """
+        ),(
+        """
+Summary line.
 
-        expected = dedent("""
-        Summary line.
+Returns
+-------
+str
+    Description of return value
 
-        :returns: a string, can you believe it?
-        """)
+Raises
+--
+UserError
+    Description of raised exception
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+Warns
+--------
+RuntimeWarning
+    Description of raised warnings
+        """,
+        """
+Summary line.
 
-        docstring = dedent("""
-        Summary line.
+:returns: Description of return value
+:rtype: `str`
 
-        Returns
-        -------
-        a string, can you believe it?
+:raises UserError: Description of raised exception
 
-        Raises
-        --
-        UserError
-        """)
+:warns RuntimeWarning: Description of raised warnings
+        """
+        ), (
+        """
+Summary line.
 
-        expected = dedent("""
-        Summary line.
+Returns
+-------
+list(str)
+    The lines of the docstring in a list.
+    Note
+    ----
+    Nested markup works.
+        """,
+        """
+Summary line.
 
-        :returns: a string, can you believe it?
+:returns: The lines of the docstring in a list.
+          .. note:: Nested markup works.
+:rtype: `list(str)`
+        """
+        ), (
+        """
+Summary line.
 
-        :raises UserError: 
-        """)
+Returns
+-------
+List[str]
+    The lines of the docstring in a list.
+    Note
+    ----
+    Nested markup works.
+        """,
+        """
+Summary line.
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+:returns: The lines of the docstring in a list.
+          .. note:: Nested markup works.
+:rtype: `List[str]`
+        """
+        ), (
+        """
+Summary line.
 
-        docstring = dedent("""
-        Summary line.
-
-        Returns
-        -------
-        str
-
-        Raises
-        --
-        UserError
-
-        Warns
-        ---
-        RuntimeWarning
-        """)
-
-        expected = dedent("""
-        Summary line.
-
-        :rtype: `str`
-
-        :raises UserError:
-
-        :warns: RuntimeWarning
-        """)
-
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
-
-        docstring = dedent("""
-        Summary line.
-
-        Returns
-        -------
-        str
-            Description of return value
-
-        Raises
-        --
-        UserError
-            Description of raised exception
-
-        Warns
-        --------
-        RuntimeWarning
-            Description of raised warnings
-        """)
-
-        expected = dedent("""
-        Summary line.
-
-        :returns: Description of return value
-        :rtype: `str`
-
-        :raises UserError: Description of raised exception
-
-        :warns RuntimeWarning: Description of raised warnings
-        """)
-
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
-
-        docstring = dedent("""
-        Summary line.
-
-        Returns
-        -------
-        list(str)
-            The lines of the docstring in a list.
-            Note
-            ----
-            Nested markup works.
-        """)
-
-        expected = dedent("""
-        Summary line.
-
-        :returns: The lines of the docstring in a list.
-                  .. note:: Nested markup works.
-        :rtype: `list(str)`
-        """)
-
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
-
-        docstring = dedent("""
-        Summary line.
-
-        Returns
-        -------
-        List[str]
-            The lines of the docstring in a list.
-            Note
-            ----
-            Nested markup works.
-        """)
-
-        expected = dedent("""
-        Summary line.
-
-        :returns: The lines of the docstring in a list.
-                  .. note:: Nested markup works.
-        :rtype: `List[str]`
-        """)
-
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
-
-        docstring = dedent("""
-        Summary line.
-
-        Methods
-        -------
-        __str__()
-            Returns
-            -------
-            The lines of the docstring in a list.
-            Note
-            ----
-            Nested markup works.
-        """)
-
-        expected = ("""
+Methods
+-------
+__str__()
+    Returns
+    -------
+    The lines of the docstring in a list.
+    Note
+    ----
+    Nested markup works.
+        """,
+        """
 Summary line.
 
 .. method:: __str__()
@@ -2234,10 +2258,17 @@ Summary line.
    :returns: The lines of the docstring in a list.
    
    .. note:: Nested markup works.
-""")
+        """
+        )] 
+    
+    # https://github.com/sphinx-contrib/napoleon/issues/12
+    # https://github.com/sphinx-doc/sphinx/issues/7077
+    def test_return_no_type_sphinx_issue_7077(self):
+        
+        for docstring, expected in self.docstrings_returns:
 
-        actual = str(NumpyDocstring(docstring, ))
-        self.assertEqual(expected.rstrip(), actual)
+            actual = str(NumpyDocstring(docstring, ))
+            self.assertEqual(expected.rstrip(), actual)
         
     @pytest.mark.xfail
     def test_return_type_annotation_style(self):
