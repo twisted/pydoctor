@@ -8,7 +8,7 @@ from typing import Callable, List
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring as parse_restructuredtext_docstring
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-from pydoctor.napoleon.docstring import GoogleDocstring
+from pydoctor.napoleon.docstring import NumpyDocstring
 from pydoctor.model import Attribute, Documentable
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
@@ -20,7 +20,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(GoogleDocstring(docstring))
+    rst_docstring = str(NumpyDocstring(docstring))
     # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedNumpyStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
@@ -37,7 +37,7 @@ def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(GoogleDocstring(docstring, is_attribute = True))
+    rst_docstring = str(NumpyDocstring(docstring, is_attribute = True))
     # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedNumpyStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
