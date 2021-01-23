@@ -2290,3 +2290,23 @@ Summary line.
         """)
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
+
+    @pytest.mark.xfail
+    def test_return_type_list_free_style_do_desc(self):
+        docstring = dedent("""
+        Return
+        ------
+        the list of your life: list of str
+        the str of your life: {"foo", "bob", "bar"}
+        the int of your life: int
+        the tuple of your life: tuple
+        """)
+
+        expected = dedent("""
+        :returns: * **the list of your life** (`list` of `str`)
+                  * **the str of your life** (``{"foo", "bob", "bar"}``)
+                  * **the int of your life** (`int`)
+                  * **the tuple of your life** (`tuple`)
+        """)
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual)
