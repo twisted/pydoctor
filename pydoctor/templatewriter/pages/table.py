@@ -31,7 +31,7 @@ class TableRow(Element):
 
     @renderer
     def name(self, request, tag):
-        return tag.clear()(util.taglink(self.child, self.child.name))
+        return tag.clear()(util.taglink(self.child, self.ob.url, self.child.name))
 
     @renderer
     def summaryDoc(self, request, tag):
