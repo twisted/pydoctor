@@ -1,8 +1,8 @@
 """
-This package is a fork of U{sphinx.ext.napoleon 
+`This package is a fork of U{sphinx.ext.napoleon 
 <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
 (U{commit 
-<https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>}))
+<https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>})
 adapted for the pydoctor usage. 
 
 Supports both U{Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>} 
@@ -31,6 +31,7 @@ class Config:
     types in the returns clause docstrings but as well as specify them when it's needed. 
     
     All of the following return clauses will be interpreted as expected::
+
         Returns
         -------
         Description of return value
@@ -44,15 +45,15 @@ class Config:
         -------
         subprocess.Popen
 
-    .. warnings:: This come with a little issue: in the case of a natural language 
-       type like ``"list of int"``, it needs a follow-up indented description 
+    For more discussion: U{sphinx/issues/7077 <https://github.com/sphinx-doc/sphinx/issues/7077>} 
+
+    @note: This come with a little issue: in the case of a natural language 
+       type like C{"list of int"}, it needs a follow-up indented description 
        in order to be recognized as type:: 
            Returns
            -------
            list of str
-                My supper list ;-)
-
-    For more discussion: https://github.com/sphinx-doc/sphinx/issues/7077
+                Description of the list
     """
 
 
@@ -61,9 +62,9 @@ class Config:
     Add a list of custom sections to include, expanding the list of parsed sections.
     The entries can either be strings or tuples, depending on the intention:
 
-        * To create a custom "generic" section, just pass a string.
-        * To create an alias for an existing section, pass a tuple containing the
-          alias name and the original, in that order.
+    * To create a custom "generic" section, just pass a string.
+    * To create an alias for an existing section, pass a tuple containing the
+      alias name and the original, in that order.
 
     If an entry is just a string, it is interpreted as a header for a generic
     section. If the entry is a tuple/list/indexed container, the first entry
@@ -72,14 +73,14 @@ class Config:
 
     napoleon_type_aliases: Optional[Mapping[str, str]] = None
     """
-    A mapping to translate type names to other names or references. Works
-    only when ``napoleon_use_param = True``. *Defaults to None.*
+    A mapping to translate type names to other names or references. 
+    *Defaults to None.*
 
     With::
 
         napoleon_type_aliases = {
             "CustomType": "mypackage.CustomType",
-            "dict-like": "`Mapping`",
+            "dict-like": "Mapping",
         }
 
     This NumPy style snippet::
@@ -94,7 +95,7 @@ class Config:
     becomes::
 
         :param arg1: Description of `arg1`
-        :type arg1: mypackage.CustomType
+        :type arg1: `mypackage.CustomType`
         :param arg2: Description of `arg2`
         :type arg2: `Mapping`
 

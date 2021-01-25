@@ -3,8 +3,8 @@ Classes for google-style and numpy docstring conversion.
 
 Forked from sphinx.ext.napoleon.docstring. 
 
-This file's `upstream history 
-<https://github.com/sphinx-doc/sphinx/commits/3.x/sphinx/ext/napoleon/docstring.py>`_
+Napoleon U{upstream  
+<https://github.com/sphinx-doc/sphinx/pulls?q=is%3Apr+napoleon>}
 should be checked once in a while to make sure we don't miss any important updates. 
 
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
