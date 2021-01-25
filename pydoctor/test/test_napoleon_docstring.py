@@ -85,7 +85,7 @@ Args:
 Single line summary
 :param arg1: Extended
              description of arg1
-:type arg1: str
+:type arg1: `str`
 """
     ), (
         """
@@ -104,17 +104,17 @@ Keyword Args:
 Single line summary
 :param arg1: Extended
              description of arg1
-:type arg1: str
+:type arg1: `str`
 :param arg2: Extended
              description of arg2
-:type arg2: int
+:type arg2: `int`
 
 :keyword kwarg1: Extended
                  description of kwarg1
-:type kwarg1: str
+:type kwarg1: `str`
 :keyword kwarg2: Extended
                  description of kwarg2
-:type kwarg2: int
+:type kwarg2: `int`
 """
     ), (
         """
@@ -133,17 +133,17 @@ Keyword Arguments:
 Single line summary
 :param arg1: Extended
              description of arg1
-:type arg1: str
+:type arg1: `str`
 :param arg2: Extended
              description of arg2
-:type arg2: int
+:type arg2: `int`
 
 :keyword kwarg1: Extended
                  description of kwarg1
-:type kwarg1: str
+:type kwarg1: `str`
 :keyword kwarg2: Extended
                  description of kwarg2
-:type kwarg2: int
+:type kwarg2: `int`
         """
     ), (
         """
@@ -156,7 +156,7 @@ Return:
 Single line summary
 :returns: Extended
           description of return value
-:rtype: str
+:rtype: `str`
 """
     ), (
         """
@@ -169,7 +169,7 @@ Returns:
 Single line summary
 :returns: Extended
           description of return value
-:rtype: str
+:rtype: `str`
 """
     ), (
         """
@@ -196,7 +196,7 @@ Args:
 Single line summary
 :param arg1: Extended
              description of arg1
-:type arg1: str
+:type arg1: `str`
 :param \\*args: Variable length argument list.
 :param \\*\\*kwargs: Arbitrary keyword arguments.
 """
@@ -212,13 +212,13 @@ Args:
 """
 Single line summary
 :param arg1: Description
-:type arg1: list(int)
+:type arg1: `list(int)`
 :param arg2: Description
-:type arg2: list[int]
+:type arg2: `list[int]`
 :param arg3: Description
-:type arg3: dict(str, int)
+:type arg3: `dict(str, int)`
 :param arg4: Description
-:type arg4: dict[str, int]
+:type arg4: `dict[str, int]`
 """
     ), (
         """
@@ -230,9 +230,9 @@ Receive:
 """
 Single line summary
 :param arg1: Description
-:type arg1: list(int)
+:type arg1: `list(int)`
 :param arg2: Description
-:type arg2: list[int]
+:type arg2: `list[int]`
 """
     ), (
         """
@@ -244,9 +244,9 @@ Receives:
 """
 Single line summary
 :param arg1: Description
-:type arg1: list(int)
+:type arg1: `list(int)`
 :param arg2: Description
-:type arg2: list[int]
+:type arg2: `list[int]`
 """
     ), (
         """
@@ -257,7 +257,7 @@ Yield:
 """,
 """
 Single line summary
-:Yields: *str* -- Extended
+:Yields: `str` -- Extended
          description of yielded value
 """
     ), (
@@ -284,9 +284,9 @@ Args:
 """
 Single line summary
 :param arg1: desc arg1.
-:type arg1: list(int)
+:type arg1: `list(int)`
 :param arg2: desc arg2.
-:type arg2: list[int]
+:type arg2: `list[int]`
 """
     ), ]
 
@@ -383,7 +383,7 @@ Attributes:
         actual = str(GoogleDocstring(docstring))
         expected = """\
 :ivar in_attr: super-dooper attribute
-:type in_attr: numpy.ndarray
+:type in_attr: `numpy.ndarray`
 """
         self.assertEqual(expected.rstrip(), actual)
 
@@ -399,7 +399,7 @@ Returns:
           foo::
               codecode
               codecode
-:rtype: foobar
+:rtype: `foobar`
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -703,59 +703,59 @@ Parameters:
 
         expected = """One line summary.
 :param no_list:
-:type no_list: int
+:type no_list: `int`
 :param one_bullet_empty:
                          *
-:type one_bullet_empty: int
+:type one_bullet_empty: `int`
 :param one_bullet_single_line:
                                - first line
-:type one_bullet_single_line: int
+:type one_bullet_single_line: `int`
 :param one_bullet_two_lines:
                              +   first line
                                  continued
-:type one_bullet_two_lines: int
+:type one_bullet_two_lines: `int`
 :param two_bullets_single_line:
                                 -  first line
                                 -  second line
-:type two_bullets_single_line: int
+:type two_bullets_single_line: `int`
 :param two_bullets_two_lines:
                               * first line
                                 continued
                               * second line
                                 continued
-:type two_bullets_two_lines: int
+:type two_bullets_two_lines: `int`
 :param one_enumeration_single_line:
                                     1.  first line
-:type one_enumeration_single_line: int
+:type one_enumeration_single_line: `int`
 :param one_enumeration_two_lines:
                                   1)   first line
                                        continued
-:type one_enumeration_two_lines: int
+:type one_enumeration_two_lines: `int`
 :param two_enumerations_one_line:
                                   (iii) first line
                                   (iv) second line
-:type two_enumerations_one_line: int
+:type two_enumerations_one_line: `int`
 :param two_enumerations_two_lines:
                                    a. first line
                                       continued
                                    b. second line
                                       continued
-:type two_enumerations_two_lines: int
+:type two_enumerations_two_lines: `int`
 :param one_definition_one_line:
                                 item 1
                                     first line
-:type one_definition_one_line: int
+:type one_definition_one_line: `int`
 :param one_definition_two_lines:
                                  item 1
                                      first line
                                      continued
-:type one_definition_two_lines: int
+:type one_definition_two_lines: `int`
 :param two_definitions_one_line:
                                  item 1
                                      first line
                                  item 2
                                      second line
-:type two_definitions_one_line: int
+:type two_definitions_one_line: `int`
 :param two_definitions_two_lines:
                                   item 1
                                       first line
@@ -763,12 +763,12 @@ Parameters:
                                   item 2
                                       second line
                                       continued
-:type two_definitions_two_lines: int
+:type two_definitions_two_lines: `int`
 :param one_definition_blank_line:
                                   item 1
                                       first line
                                       extra first line
-:type one_definition_blank_line: int
+:type one_definition_blank_line: `int`
 :param two_definitions_blank_lines:
                                     item 1
                                         first line
@@ -776,15 +776,15 @@ Parameters:
                                     item 2
                                         second line
                                         extra second line
-:type two_definitions_blank_lines: int
+:type two_definitions_blank_lines: `int`
 :param definition_after_inline_text: text line
                                      item 1
                                          first line
-:type definition_after_inline_text: int
+:type definition_after_inline_text: `int`
 :param definition_after_normal_text: text line
                                      item 1
                                          first line
-:type definition_after_normal_text: int
+:type definition_after_normal_text: `int`
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -868,7 +868,7 @@ Returns:
                   'param1': param1,
                   'param2': param2
               }
-:rtype: bool
+:rtype: `bool`
 """ 
 
         config = Config()
@@ -1014,17 +1014,6 @@ class NumpyDocstringTest(BaseDocstringTest):
                     description of return value
                   * **the tuple of your life** (`tuple`) -- Extended
                     description of return value
-        """
-    ),(
-        """
-        Single line summary
-        Return
-        ------
-        the string of your life
-        """,
-        """
-        Single line summary
-        :returns: the string of your life
         """
     ),(
         """
@@ -2125,7 +2114,18 @@ Summary line.
 
 :returns: a string, can you believe it?
         """
-        ), (
+        ),(
+        """
+Single line summary
+Return
+------
+the string of your life
+""",
+"""
+Single line summary
+:returns: the string of your life
+"""
+    ) ,(
         """
 Summary line.
 
@@ -2266,8 +2266,9 @@ Summary line.
     def test_return_no_type_sphinx_issue_7077(self):
         
         for docstring, expected in self.docstrings_returns:
-
-            actual = str(NumpyDocstring(docstring, ))
+            
+            config = Config(napoleon_numpy_returns_allow_free_from=True)
+            actual = str(NumpyDocstring(docstring, config=config))
             self.assertEqual(expected.rstrip(), actual)
         
     @pytest.mark.xfail
@@ -2308,5 +2309,6 @@ Summary line.
                   * **the int of your life** (`int`)
                   * **the tuple of your life** (`tuple`)
         """)
-        actual = str(NumpyDocstring(docstring, ))
+        config = Config(napoleon_numpy_returns_allow_free_from=True)
+        actual = str(NumpyDocstring(docstring, config=config))
         self.assertEqual(expected.rstrip(), actual)

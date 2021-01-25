@@ -25,6 +25,37 @@ class Config:
     Supported Napoleon config values. 
     """
 
+    napoleon_numpy_returns_allow_free_from: bool = False
+    """
+    Allow users who have type annotations in their pure python code to omit 
+    types in the returns clause docstrings but as well as specify them when it's needed. 
+    
+    All of the following return clauses will be interpreted as expected::
+        Returns
+        -------
+        Description of return value
+
+        Returns
+        -------
+        subprocess.Popen
+            Description of return value
+
+        Returns
+        -------
+        subprocess.Popen
+
+    .. warnings:: This come with a little issue: in the case of a natural language 
+       type like ``"list of int"``, it needs a follow-up indented description 
+       in order to be recognized as type:: 
+           Returns
+           -------
+           list of str
+                My supper list ;-)
+
+    For more discussion: https://github.com/sphinx-doc/sphinx/issues/7077
+    """
+
+
     napoleon_custom_sections: Optional[Iterable[Union[str, Tuple[str, str]]]] = None
     """
     Add a list of custom sections to include, expanding the list of parsed sections.
@@ -33,7 +64,7 @@ class Config:
         * To create a custom "generic" section, just pass a string.
         * To create an alias for an existing section, pass a tuple containing the
           alias name and the original, in that order.
-          
+
     If an entry is just a string, it is interpreted as a header for a generic
     section. If the entry is a tuple/list/indexed container, the first entry
     is the name of the section, the second is the section key to emulate.

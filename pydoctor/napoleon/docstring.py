@@ -15,7 +15,7 @@ import collections
 import re
 import warnings
 from functools import partial
-from typing import Any, Callable, Deque, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, List, Mapping, Optional, Tuple, Union
 
 import attr
 
@@ -52,6 +52,15 @@ _SINGLETONS = ("None", "True", "False", "Ellipsis")
 @attr.s(auto_attribs=True)
 class ConsumeFieldsAsFreeForm(Exception):
     lines: List[str]
+
+def _convert_type_spec(_type: str, translations: Mapping[str, str] = {}) -> str:
+    """Convert type specification to reference in reST."""
+    if _type in translations:
+        return translations[_type]
+    elif _xref_regex.match(_type):
+        return _type
+    else:
+        return f'`{_type}`'
 
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
@@ -208,6 +217,7 @@ class GoogleDocstring:
             line = self._line_iter.peek()
         return lines
 
+    # overriden: enforce type proprocessing: add backtics over the type if not present
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False
                        ) -> Tuple[str, str, List[str]]:
         line = next(self._line_iter)
@@ -225,6 +235,10 @@ class GoogleDocstring:
 
         if prefer_type and not _type:
             _type, _name = _name, _type
+
+        if _type:
+            _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
+
         indent = self._get_indent(line) + 1
         _descs = [_desc] + self._dedent(self._consume_indented_block(indent))
         _descs = self.__class__(_descs, self._config).lines()
@@ -256,6 +270,7 @@ class GoogleDocstring:
         _descs = self.__class__(_descs, self._config).lines()
         return _type, _descs
 
+    # overriden: enforce type proprocessing: add backtics over the type if not present
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         lines = self._dedent(self._consume_to_next_section())
         if lines:
@@ -269,6 +284,9 @@ class GoogleDocstring:
                     _desc = lines[1:]
 
                 _type = before
+
+            if _type:
+                _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
 
             _desc = self.__class__(_desc, self._config).lines()
             return [(_name, _type, _desc,)]
@@ -722,6 +740,7 @@ class GoogleDocstring:
         return self._parse_admonition('seealso', section)
 
     # overriden: no translation + use compatible syntax with raises, but as well as standard field syntax. 
+    # This mean the the :warns: field can have an argument like: :warns RessourceWarning:
     def _parse_warns_section(self, section: str) -> List[str]:
         return self._parse_raises_section(section, field_type='warns', prefer_type=False)
 
@@ -1052,6 +1071,15 @@ class NumpyDocstring(GoogleDocstring):
                 return True
 
         def figure_type(_name: str, _type: str) -> str:
+            """
+            Tokenize the string type and convert it with additional markup and auto linking. 
+
+            Raise
+            -----
+            ConsumeFieldsAsFreeForm
+                If the type is not obvious and _consume_field(allow_free_form=True), only used for the returns section. 
+                
+            """
             # Here we "guess" if _type contains the type
             if is_obvious_type(_type):
                 _type = convert_type(_type)
@@ -1094,7 +1122,7 @@ class NumpyDocstring(GoogleDocstring):
                 _type = convert_type(_type)
                 # Normal case
                 return _name, _type, _desc
-            
+        
         return _name, figure_type(_name, _type), []
 
 
@@ -1107,7 +1135,8 @@ class NumpyDocstring(GoogleDocstring):
             return [('', '', e.lines)]
 
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
-        return self._consume_fields(prefer_type=True, allow_free_form=True)
+        return self._consume_fields(prefer_type=True, 
+            allow_free_form=self._config.napoleon_numpy_returns_allow_free_from)
 
     def _consume_raises_section(self) -> List[Tuple[str, str, List[str]]]:
         return self._consume_fields(prefer_type=True)
