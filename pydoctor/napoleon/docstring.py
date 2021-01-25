@@ -260,6 +260,7 @@ class GoogleDocstring:
                 fields.append((_name, _type, _desc,))
         return fields
 
+    #overriden: add type pre-processing 
     def _consume_inline_attribute(self) -> Tuple[str, List[str]]:
         line = next(self._line_iter)
         _type, colon, _desc = self._partition_field_on_colon(line)
@@ -268,6 +269,8 @@ class GoogleDocstring:
             _desc += colon
         _descs = [_desc] + self._dedent(self._consume_to_end())
         _descs = self.__class__(_descs, self._config).lines()
+        if _type:
+            _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
         return _type, _descs
 
     # overriden: enforce type proprocessing: add backtics over the type if not present
@@ -1043,6 +1046,18 @@ class NumpyDocstring(GoogleDocstring):
             return ", ".join(func(param) for param in name.split(", "))
         else:
             return func(name)
+    
+    # new function to parse attribute in a coherent way with the rest of the numpy style. 
+    def _consume_inline_attribute(self) -> Tuple[str, List[str]]:
+        try:
+            _name, _type, _desc = self._consume_field(prefer_type=True, allow_free_form=True)
+        except ConsumeFieldsAsFreeForm as e:
+            _name, _type, _desc = ('', '', e.lines)
+        if _name:
+            _type = f"{_name}: {_type}"
+        _descs = _desc + self._dedent(self._consume_to_end())
+        _descs = self.__class__(_descs, self._config).lines()
+        return _type, _descs
 
     # overriden: remove lookup annotations and resolving sphinx/issues/7077
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, 
