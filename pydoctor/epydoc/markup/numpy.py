@@ -26,7 +26,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
             parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
             docstring, rst_docstring)
 
-def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Napoleon google-style docstrings processing was designed to be working with a reference to
     the actual live object. So it could check if the object was an attribute. We can't do that
@@ -45,10 +45,10 @@ def parse_inline_attribute_docstring(docstring: str, errors: List[ParseError]) -
 
 def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
-    Returns the `parse_docstring` function or the `parse_inline_attribute_docstring` 
+    Returns the `parse_docstring` function or the `parse_attribute_docstring` 
     function depending on the documentable type. 
     """
-    return parse_inline_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
+    return parse_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
 
 class ParsedNumpyStyleDocstring(ParsedRstDocstring):
     """
