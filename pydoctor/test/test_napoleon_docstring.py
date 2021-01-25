@@ -41,7 +41,7 @@ data member description:
         expected = ("""\
 data member description with :ref:`reference`
 
-:type: b""")
+:type: `b`""")
         self.assertEqual(expected.rstrip(), actual)
 
     def test_class_data_member_inline_no_type(self):
