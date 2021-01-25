@@ -39,6 +39,8 @@ class peek_iter(Generic[T]):
         The value used to indicate the iterator is exhausted. If `sentinel`
         was not given when the `peek_iter` was instantiated, then it will
         be set to a new object instance: ``object()``.
+    counter
+        Store and increment line number to report correct lines!
     """
     def __init__(self, *args: Union[Callable[[], Union[T, object]], Iterable[T], object]) -> None:
         """__init__(o, sentinel=None)"""
@@ -50,6 +52,8 @@ class peek_iter(Generic[T]):
             self.sentinel = args[1]
         else:
             self.sentinel = object()
+        # store line number to report correct lines!
+        self.counter = 0
 
     def __iter__(self) -> "peek_iter[T]":
         return self
@@ -118,6 +122,7 @@ class peek_iter(Generic[T]):
                 raise StopIteration
             #  error: List comprehension has incompatible type List[object]; expected List[T]  [misc]
             result = [self._cache.popleft() for i in range(n)] # type: ignore
+        self.counter += n or 1
         return result
 
     def peek(self, n: Optional[int] = None) -> Any: 

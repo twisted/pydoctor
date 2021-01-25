@@ -302,6 +302,19 @@ class PeekIterTest(BaseIteratorsTest):
         self.assertTrueTwice(it.has_next)
         self.assertEqualTwice([], it.peek, 0)
 
+    def test_line_counter(self):
+        a = ['1', '2', '3', '4']
+        it = peek_iter(a)
+        self.assertEqual(it.counter, 0)
+        it.peek(2)
+        self.assertEqual(it.counter, 0)
+        it.next(2)
+        self.assertEqual(it.counter, 2)
+        it.next()
+        self.assertEqual(it.counter, 3)
+        it.next()
+        self.assertEqual(it.counter, 4)
+        self.assertFalseTwice(it.has_next)
 
 class ModifyIterTest(BaseIteratorsTest):
     def test_init_with_sentinel_args(self):
