@@ -22,6 +22,8 @@ import attr
 from pydoctor.napoleon import Config
 from pydoctor.napoleon.iterators import modify_iter
 
+__docformat__ = "numpy en"
+
 _directive_regex = re.compile(r'\.\. \S+::')
 _google_section_regex = re.compile(r'^(\s|\w)+:\s*$')
 _google_typed_arg_regex = re.compile(r'(.+?)\(\s*(.*[^\s]+)\s*\)')
@@ -196,7 +198,10 @@ class GoogleDocstring:
         """
         return self._parsed_lines
 
-    def warnings(self):
+    def warnings(self) -> List[Tuple[str, int]]:
+        """Return the triggered warnings during the conversion. 
+        Currently only used in numpy-style parsing implementation. 
+        """
         return self._warnings
 
     def _consume_indented_block(self, indent: int = 1) -> List[str]:
@@ -224,7 +229,7 @@ class GoogleDocstring:
             line = self._line_iter.peek()
         return lines
 
-    # overriden: enforce type proprocessing: add backtics over the type if not present
+    # overriden: enforce type pre-processing: add backtics over the type if not present
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False
                        ) -> Tuple[str, str, List[str]]:
         line = next(self._line_iter)
@@ -280,7 +285,7 @@ class GoogleDocstring:
             _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
         return _type, _descs
 
-    # overriden: enforce type proprocessing: add backtics over the type if not present
+    # overriden: enforce type pre-processing: add backtics over the type if not present
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         lines = self._dedent(self._consume_to_next_section())
         if lines:

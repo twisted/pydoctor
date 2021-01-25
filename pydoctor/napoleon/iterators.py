@@ -10,7 +10,7 @@ Forked from sphinx.ext.napoleon.iterators.
 import collections
 from typing import Any, Callable, Deque, Iterable, Iterator, Optional, TypeVar, Generic, Union
 
-__docformat__ = "googlestyle en" # for future usage 
+__docformat__ = "numpy en" # for future usage 
 
 T = TypeVar("T")
 

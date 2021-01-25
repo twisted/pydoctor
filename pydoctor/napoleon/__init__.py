@@ -1,14 +1,18 @@
 """
+Convert docstrings from numpy or google style format to reST. 
+
 `This package is a fork of U{sphinx.ext.napoleon 
 <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
 (U{commit 
 <https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>})
-adapted for the pydoctor usage. 
+adapted for the ``pydoctor`` usage. 
 
 Supports both U{Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>} 
 and U{NumpyDoc <https://numpydoc.readthedocs.io/en/latest/format.html>} docstrings. 
 
 Not all settings are supported in this version. 
+
+There is also a new setting: C{napoleon_numpy_returns_allow_free_from}. See L{Config} for more informations. 
 
 @note: Original package license::
 
@@ -62,9 +66,9 @@ class Config:
     Add a list of custom sections to include, expanding the list of parsed sections.
     The entries can either be strings or tuples, depending on the intention:
 
-    * To create a custom "generic" section, just pass a string.
-    * To create an alias for an existing section, pass a tuple containing the
-      alias name and the original, in that order.
+        - To create a custom "generic" section, just pass a string.
+        - To create an alias for an existing section, pass a tuple containing the
+        alias name and the original, in that order.
 
     If an entry is just a string, it is interpreted as a header for a generic
     section. If the entry is a tuple/list/indexed container, the first entry
