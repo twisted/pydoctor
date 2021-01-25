@@ -523,13 +523,13 @@ def parse_docstring(
     parser = get_parser(obj)
     errs: List[ParseError] = []
     try:
-        pdoc = parser(doc, errs)
+        parsed_doc = parser(doc, errs)
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
-        pdoc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+        parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
     if errs:
         reportErrors(source, errs)
-    return pdoc
+    return parsed_doc
 
 
 def format_docstring(obj: model.Documentable) -> Tag:
@@ -538,11 +538,11 @@ def format_docstring(obj: model.Documentable) -> Tag:
     doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
-    pdoc = obj.parsed_docstring
+    parsed_doc = obj.parsed_docstring
 
     if source is None:
-        if pdoc is None:
-            # We don't use 'source' if pdoc is None, but mypy is not that
+        if parsed_doc is None:
+            # We don't use 'source' if parsed_doc is None, but mypy is not that
             # sophisticated, so we fool it by assigning a dummy object.
             source = obj
         else:
@@ -550,23 +550,23 @@ def format_docstring(obj: model.Documentable) -> Tag:
             source = obj.parent
             assert source is not None
 
-    if pdoc is None and doc is not None:
-        pdoc = parse_docstring(obj, doc, source)
-        obj.parsed_docstring = pdoc
+    if parsed_doc is None and doc is not None:
+        parsed_doc = parse_docstring(obj, doc, source)
+        obj.parsed_docstring = parsed_doc
 
     ret: Tag = tags.div
-    if pdoc is None:
+    if parsed_doc is None:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         try:
-            stan = pdoc.to_stan(_EpydocLinker(source))
+            stan = parsed_doc.to_stan(_EpydocLinker(source))
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if doc is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
-                pdoc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-                stan = pdoc_plain.to_stan(_EpydocLinker(source))
+                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+                stan = parsed_doc_plain.to_stan(_EpydocLinker(source))
             reportErrors(source, errs)
         if stan.tagName:
             ret(stan)
@@ -576,8 +576,8 @@ def format_docstring(obj: model.Documentable) -> Tag:
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    if pdoc is not None:
-        for field in pdoc.fields:
+    if parsed_doc is not None:
+        for field in parsed_doc.fields:
             fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
         fh.resolve_types()
@@ -592,10 +592,10 @@ def format_summary(obj: model.Documentable) -> Tag:
     if doc is None:
         # Attributes can be documented as fields in their parent's docstring.
         if isinstance(obj, model.Attribute):
-            pdoc = obj.parsed_docstring
+            parsed_doc = obj.parsed_docstring
         else:
-            pdoc = None
-        if pdoc is None:
+            parsed_doc = None
+        if parsed_doc is None:
             return format_undocumented(obj)
         source = obj.parent
         # Since obj is an Attribute, it has a parent.
@@ -613,10 +613,10 @@ def format_summary(obj: model.Documentable) -> Tag:
             ]
         if len(lines) > 3:
             return tags.span(class_='undocumented')("No summary") # type: ignore[no-any-return]
-        pdoc = parse_docstring(obj, ' '.join(lines), source)
+        parsed_doc = parse_docstring(obj, ' '.join(lines), source)
 
     try:
-        stan = pdoc.to_stan(_EpydocLinker(source))
+        stan = parsed_doc.to_stan(_EpydocLinker(source))
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
@@ -791,10 +791,10 @@ def extract_fields(obj: model.Documentable) -> None:
 
     doc = obj.docstring
     assert doc is not None, obj
-    pdoc = parse_docstring(obj, doc, obj)
-    obj.parsed_docstring = pdoc
+    parsed_doc = parse_docstring(obj, doc, obj)
+    obj.parsed_docstring = parsed_doc
 
-    for field in pdoc.fields:
+    for field in parsed_doc.fields:
         tag = field.tag()
         if tag in ['ivar', 'cvar', 'var', 'type']:
             arg = field.arg()
