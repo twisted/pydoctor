@@ -86,3 +86,31 @@ numpy.ndarray: super-dooper attribute"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
+
+
+class TestWarnings(TestCase):
+
+    def test_numpy_warnings(self) -> None:
+        
+        obj = Function(system = System(), name='func')
+
+        parse_docstring = get_numpy_parser(obj)
+
+        docstring = """
+Description of the function. 
+
+Args
+----
+my attr: hey"
+        super-dooper attribute"""
+
+        errors = []
+
+        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        
+        self.assertEqual(len(errors), 1)
+
+        error = errors.pop()
+
+        self.assertEqual(error.linenum(), 6)
+        self.assertIn("malformed string literal (missing opening quote)", error.descr())

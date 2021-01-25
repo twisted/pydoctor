@@ -2004,8 +2004,41 @@ definition_after_normal_text : int
                 assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
                 assert match_re.match(str(catch_warnings.pop().message))
 
-                
+    def test_docstring_token_type_invalid_warnings_with_linenum(self):
 
+        docstring = """
+Description of the function. 
+
+Args
+----
+param1: {1,2
+param2: }
+param3: 'abc
+param4: def'
+
+Returns
+-------
+list of int
+"""
+
+
+        errors = (
+            r".+: invalid value set \(missing closing brace\):",
+            r".+: invalid value set \(missing opening brace\):",
+            r".+: malformed string literal \(missing closing quote\):",
+            r".+: malformed string literal \(missing opening quote\):",
+        )
+        
+            
+        config = Config(napoleon_numpy_returns_allow_free_from=True)
+        numpy_docstring = NumpyDocstring(docstring, config=config)
+        numpy_warnings = numpy_docstring.warnings()
+        self.assertEqual(len(numpy_warnings), 4)
+        for i, error in enumerate(errors):
+            warn = numpy_warnings.pop(0)
+            match_re = re.compile(error)
+            self.assertTrue(bool(match_re.match(warn[0])), f"{error} \n do not match \n {warn[0]}")
+            self.assertEqual(i+5, warn[1])
     
     # name, expected
     escape_kwargs_tests_cases = [("x, y, z", "x, y, z"),

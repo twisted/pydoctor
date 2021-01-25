@@ -53,6 +53,9 @@ _SINGLETONS = ("None", "True", "False", "Ellipsis")
 class ConsumeFieldsAsFreeForm(Exception):
     lines: List[str]
 
+class NumpyStyleWarning(SyntaxWarning):
+    pass
+
 def _convert_type_spec(_type: str, translations: Mapping[str, str] = {}) -> str:
     """Convert type specification to reference in reST."""
     if _type in translations:
@@ -169,6 +172,7 @@ class GoogleDocstring:
 
             self._load_custom_sections()
 
+        self._warnings: List[Tuple[str, int]] = []
         self._parse()
 
     # overriden to enforce rstrip() to value because the result sometime had 
@@ -191,6 +195,9 @@ class GoogleDocstring:
             The lines of the docstring in a list.
         """
         return self._parsed_lines
+
+    def warnings(self):
+        return self._warnings
 
     def _consume_indented_block(self, indent: int = 1) -> List[str]:
         lines = []
@@ -873,7 +880,7 @@ def _tokenize_type_spec(spec: str) -> List[str]:
     return tokens
 
 
-def _token_type(token: str, location: str = None) -> str:
+def _token_type(token: str) -> str:
     def is_numeric(token):
         try:
             # use complex to make sure every numeric value is detected as literal
@@ -894,22 +901,26 @@ def _token_type(token: str, location: str = None) -> str:
         type_ = "literal"
     elif token.startswith("{"):
         warnings.warn(
-            "numpy-style: invalid value set (missing closing brace): %s"%token,
+            "numpy-style: invalid value set (missing closing brace): %s"%token, 
+            category=NumpyStyleWarning, 
         )
         type_ = "literal"
     elif token.endswith("}"):
         warnings.warn(
-            "numpy-style: invalid value set (missing opening brace): %s"%token,
+            "numpy-style: invalid value set (missing opening brace): %s"%token, 
+            category=NumpyStyleWarning, 
         )
         type_ = "literal"
     elif token.startswith("'") or token.startswith('"'):
         warnings.warn(
-            "numpy-style: malformed string literal (missing closing quote): %s"%token,
+            "numpy-style: malformed string literal (missing closing quote): %s"%token, 
+            category=NumpyStyleWarning, 
         )
         type_ = "literal"
     elif token.endswith("'") or token.endswith('"'):
         warnings.warn(
-            "numpy-style: malformed string literal (missing opening quote): %s"%token,
+            "numpy-style: malformed string literal (missing opening quote): %s"%token, 
+            category=NumpyStyleWarning, 
         )
         type_ = "literal"
     elif token in ("optional", "default"):
@@ -924,7 +935,7 @@ def _token_type(token: str, location: str = None) -> str:
     return type_
 
 # overriden: just use simple backticks for cross ref
-def _convert_numpy_type_spec(_type: str, location: str = None, translations: dict = {}) -> str:
+def _convert_numpy_type_spec(_type: str, translations: dict = {}) -> str:
     def convert_obj(obj, translations, default_translation):
         translation = translations.get(obj, obj)
 
@@ -936,7 +947,7 @@ def _convert_numpy_type_spec(_type: str, location: str = None, translations: dic
     tokens = _tokenize_type_spec(_type)
     combined_tokens = _recombine_set_tokens(tokens)
     types = [
-        (token, _token_type(token, location))
+        (token, _token_type(token))
         for token in combined_tokens
     ]
 
@@ -1033,11 +1044,16 @@ class NumpyDocstring(GoogleDocstring):
         -------
         list(str)
             The lines of the docstring in a list.
+    warnings()
+        List of generated numpy-style warnings. 
+        Returns
+        -------
+        list of tuple[str, int]
+            List of tuples (description, linenum)
     """
     def __init__(self, docstring: Union[str, List[str]], config: Optional[Config] = None, is_attribute: bool = False) -> None:
-        self._directive_sections = ['.. index::']
         super().__init__(docstring, config, is_attribute)
-
+    
 
     def _escape_args_and_kwargs(self, name: str) -> str:
         func = super()._escape_args_and_kwargs
@@ -1064,12 +1080,19 @@ class NumpyDocstring(GoogleDocstring):
                        allow_free_form: bool = False) -> Tuple[str, str, List[str]]:
 
         def convert_type(_type: str) -> str:
-            return _convert_numpy_type_spec(
-                    _type,
-                    location=None,
-                    translations=self._config.napoleon_type_aliases or {},
-                )
-
+            # handle warnings line number
+            linenum=self._line_iter.counter - 1
+            # note: the context manager is modifying global state and therefore is not thread-safe.
+            with warnings.catch_warnings(record=True) as catch_warnings:
+                warnings.simplefilter("always", category=NumpyStyleWarning)
+                # convert
+                _type = _convert_numpy_type_spec(_type, 
+                        translations=self._config.napoleon_type_aliases or {},)
+                # append warnings
+                for warning in catch_warnings:
+                    self._warnings.append((str(warning.message), linenum))
+            return _type
+            
         def is_obvious_type(_type: str) -> bool:
             if _type.isidentifier() or _xref_regex.match(_type) :
                 return True
@@ -1093,7 +1116,6 @@ class NumpyDocstring(GoogleDocstring):
             -----
             ConsumeFieldsAsFreeForm
                 If the type is not obvious and _consume_field(allow_free_form=True), only used for the returns section. 
-                
             """
             # Here we "guess" if _type contains the type
             if is_obvious_type(_type):

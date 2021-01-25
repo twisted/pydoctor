@@ -20,7 +20,10 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(NumpyDocstring(docstring))
+    np_docstring = NumpyDocstring(docstring)
+    for warn, linenum in np_docstring.warnings():
+        errors.append(ParseError(warn, linenum-1))
+    rst_docstring = str(np_docstring)
     # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedNumpyStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
@@ -37,7 +40,10 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(NumpyDocstring(docstring, is_attribute = True))
+    np_docstring = NumpyDocstring(docstring, is_attribute = True)
+    for warn, linenum in np_docstring.warnings():
+        errors.append(ParseError(warn, linenum-1))
+    rst_docstring = str(np_docstring)
     # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedNumpyStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
