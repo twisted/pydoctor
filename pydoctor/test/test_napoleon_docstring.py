@@ -14,7 +14,7 @@ from textwrap import dedent
 from contextlib import contextmanager
 
 from pydoctor.napoleon.docstring import (  GoogleDocstring, NumpyDocstring, 
-                                           _convert_numpy_type_spec, _recombine_set_tokens,
+                                           _convert_type_spec, _recombine_set_tokens,
                                            _token_type, _tokenize_type_spec )
 from pydoctor.napoleon import Config
 
@@ -212,13 +212,13 @@ Args:
 """
 Single line summary
 :param arg1: Description
-:type arg1: `list(int)`
+:type arg1: `list`\ *(*\ `int`\ *)*
 :param arg2: Description
-:type arg2: `list[int]`
+:type arg2: `list`\ *[*\ `int`\ *]*
 :param arg3: Description
-:type arg3: `dict(str, int)`
+:type arg3: `dict`\ *(*\ `str`, `int`\ *)*
 :param arg4: Description
-:type arg4: `dict[str, int]`
+:type arg4: `dict`\ *[*\ `str`, `int`\ *]*
 """
     ), (
         """
@@ -230,9 +230,9 @@ Receive:
 """
 Single line summary
 :param arg1: Description
-:type arg1: `list(int)`
+:type arg1: `list`\ *(*\ `int`\ *)*
 :param arg2: Description
-:type arg2: `list[int]`
+:type arg2: `list`\ *[*\ `int`\ *]*
 """
     ), (
         """
@@ -244,9 +244,9 @@ Receives:
 """
 Single line summary
 :param arg1: Description
-:type arg1: `list(int)`
+:type arg1: `list`\ *(*\ `int`\ *)*
 :param arg2: Description
-:type arg2: `list[int]`
+:type arg2: `list`\ *[*\ `int`\ *]*
 """
     ), (
         """
@@ -284,9 +284,9 @@ Args:
 """
 Single line summary
 :param arg1: desc arg1.
-:type arg1: `list(int)`
+:type arg1: `list`\ *(*\ `int`\ *)*
 :param arg2: desc arg2.
-:type arg2: `list[int]`
+:type arg2: `list`\ *[*\ `int`\ *]*
 """
     ), ]
 
@@ -334,6 +334,8 @@ Single line summary
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameters_with_class_reference(self):
+        # mot sure why this test include back slash in the type spec...
+        # users should not write type like that in pydoctor anyway.
         docstring = """\
 Construct a new XBlock.
 This class should only be used by runtimes.
@@ -347,13 +349,12 @@ Arguments:
 """
 
         actual = str(GoogleDocstring(docstring))
-        expected = """\
-Construct a new XBlock.
+        expected = r"""Construct a new XBlock.
 This class should only be used by runtimes.
 :param runtime: Use it to
                 access the environment. It is available in XBlock code
                 as ``self.runtime``.
-:type runtime: :class:`~typing.Dict`\\[:class:`int`,:class:`str`\\]
+:type runtime: :class:`~typing.Dict`\\ *[*:class:`int`,:class:`str`\\ *]*
 :param field_data: Interface used by the XBlock
                    fields to access their data from wherever it is persisted.
 :type field_data: :class:`FieldData`
@@ -1925,7 +1926,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, converted):
-            actual = _convert_numpy_type_spec(spec, translations=translations)
+            actual = _convert_type_spec(spec, translations=translations)
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameter_types(self):
@@ -2243,12 +2244,12 @@ list(str)
     ----
     Nested markup works.
         """,
-        """
+        r"""
 Summary line.
 
 :returns: The lines of the docstring in a list.
           .. note:: Nested markup works.
-:rtype: `list(str)`
+:rtype: `list`\ *(*\ `str`\ *)*
         """
         ), (
         """
@@ -2262,12 +2263,12 @@ List[str]
     ----
     Nested markup works.
         """,
-        """
+        r"""
 Summary line.
 
 :returns: The lines of the docstring in a list.
           .. note:: Nested markup works.
-:rtype: `List[str]`
+:rtype: `List`\ *[*\ `str`\ *]*
         """
         ), (
         """
@@ -2304,11 +2305,7 @@ Summary line.
             actual = str(NumpyDocstring(docstring, config=config))
             self.assertEqual(expected.rstrip(), actual)
         
-    @pytest.mark.xfail
     def test_return_type_annotation_style(self):
-        # FIXME: 
-        # the code needs a update to 
-        # understand square braquets : [ ]
         docstring = dedent("""
         Summary line.
 
@@ -2317,10 +2314,10 @@ Summary line.
         List[Union[str, bytes, typing.Pattern]]
         """)
 
-        expected = dedent("""
+        expected = dedent(r"""
         Summary line.
 
-        :rtype: `List`[`Union`[`str`, `bytes`, `typing.Pattern`]]
+        :rtype: `List`\ *[*\ `Union`\ *[*\ `str`, `bytes`, `typing.Pattern`\ *]*\ *]*
         """)
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)

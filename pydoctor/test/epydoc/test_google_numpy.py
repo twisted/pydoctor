@@ -90,7 +90,7 @@ numpy.ndarray: super-dooper attribute"""
 
 class TestWarnings(TestCase):
 
-    def test_numpy_warnings(self) -> None:
+    def test_warnings(self) -> None:
         
         obj = Function(system = System(), name='func')
 
@@ -106,7 +106,7 @@ my attr: hey"
 
         errors = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        parse_docstring(docstring, errors)
         
         self.assertEqual(len(errors), 1)
 

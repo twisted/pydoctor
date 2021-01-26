@@ -1,5 +1,5 @@
 """
-Classes for google-style and numpy docstring conversion. 
+Classes for google-style and numpy-style docstring conversion. 
 
 Forked from sphinx.ext.napoleon.docstring. 
 
@@ -19,8 +19,8 @@ from typing import Any, Callable, Deque, Dict, List, Mapping, Optional, Tuple, U
 
 import attr
 
-from pydoctor.napoleon import Config
-from pydoctor.napoleon.iterators import modify_iter
+from . import Config
+from .iterators import modify_iter
 
 __docformat__ = "numpy en"
 
@@ -43,6 +43,8 @@ _enumerated_list_regex = re.compile(
 _token_regex = re.compile(
     r"(,\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s|,\s"
     r"|[{]|[}]"
+    r"|[\[]|[\]]"
+    r"|[\(|\)]"
     r'|"(?:\\"|[^"])*"'
     r"|'(?:\\'|[^'])*')"
 )
@@ -55,17 +57,8 @@ _SINGLETONS = ("None", "True", "False", "Ellipsis")
 class ConsumeFieldsAsFreeForm(Exception):
     lines: List[str]
 
-class NumpyStyleWarning(SyntaxWarning):
+class NapoleonWarning(SyntaxWarning):
     pass
-
-def _convert_type_spec(_type: str, translations: Mapping[str, str] = {}) -> str:
-    """Convert type specification to reference in reST."""
-    if _type in translations:
-        return translations[_type]
-    elif _xref_regex.match(_type):
-        return _type
-    else:
-        return f'`{_type}`'
 
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
@@ -249,7 +242,7 @@ class GoogleDocstring:
             _type, _name = _name, _type
 
         if _type:
-            _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
+            _type = self._convert_type(_type)
 
         indent = self._get_indent(line) + 1
         _descs = [_desc] + self._dedent(self._consume_indented_block(indent))
@@ -282,7 +275,7 @@ class GoogleDocstring:
         _descs = [_desc] + self._dedent(self._consume_to_end())
         _descs = self.__class__(_descs, self._config).lines()
         if _type:
-            _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
+            _type = self._convert_type(_type)
         return _type, _descs
 
     # overriden: enforce type pre-processing: add backtics over the type if not present
@@ -301,7 +294,7 @@ class GoogleDocstring:
                 _type = before
 
             if _type:
-                _type = _convert_type_spec(_type, self._config.napoleon_type_aliases or {})
+                _type = self._convert_type(_type)
 
             _desc = self.__class__(_desc, self._config).lines()
             return [(_name, _type, _desc,)]
@@ -332,6 +325,21 @@ class GoogleDocstring:
         while not self._is_section_break():
             lines.append(next(self._line_iter))
         return lines + self._consume_empty()
+
+    #new method: handle type pre-processing the same way for google and numpy style. 
+    def _convert_type(self, _type:str) -> str:
+        # handle warnings line number
+        linenum=self._line_iter.counter - 1
+        # note: the context manager is modifying global state and therefore is not thread-safe.
+        with warnings.catch_warnings(record=True) as catch_warnings:
+            warnings.simplefilter("always", category=NapoleonWarning)
+            # convert
+            _type = _convert_type_spec(_type, 
+                    translations=self._config.napoleon_type_aliases or {},)
+            # append warnings
+            for warning in catch_warnings:
+                self._warnings.append((str(warning.message), linenum))
+        return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
         if full:
@@ -868,10 +876,8 @@ def _tokenize_type_spec(spec: str) -> List[str]:
     def postprocess(item):
         if _default_regex.match(item):
             default = item[:7]
-            # can't be separated by anything other than a single space
-            # for now
+            # the default value can't be separated by anything other than a single space
             other = item[8:]
-
             return [default, " ", other]
         else:
             return [item]
@@ -906,29 +912,29 @@ def _token_type(token: str) -> str:
         type_ = "literal"
     elif token.startswith("{"):
         warnings.warn(
-            "numpy-style: invalid value set (missing closing brace): %s"%token, 
-            category=NumpyStyleWarning, 
+            "type pre-processing warning: invalid value set (missing closing brace): %s"%token, 
+            category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.endswith("}"):
         warnings.warn(
-            "numpy-style: invalid value set (missing opening brace): %s"%token, 
-            category=NumpyStyleWarning, 
+            "type pre-processing warning: invalid value set (missing opening brace): %s"%token, 
+            category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.startswith("'") or token.startswith('"'):
         warnings.warn(
-            "numpy-style: malformed string literal (missing closing quote): %s"%token, 
-            category=NumpyStyleWarning, 
+            "type pre-processing warning: malformed string literal (missing closing quote): %s"%token, 
+            category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.endswith("'") or token.endswith('"'):
         warnings.warn(
-            "numpy-style: malformed string literal (missing opening quote): %s"%token, 
-            category=NumpyStyleWarning, 
+            "type pre-processing warning: malformed string literal (missing opening quote): %s"%token, 
+            category=NapoleonWarning, 
         )
         type_ = "literal"
-    elif token in ("optional", "default"):
+    elif token in ("optional", "default", "[", "]",  "(", ")"):
         # default is not a official keyword (yet) but supported by the
         # reference implementation (numpydoc) and widely used
         type_ = "control"
@@ -939,15 +945,30 @@ def _token_type(token: str) -> str:
 
     return type_
 
-# overriden: just use simple backticks for cross ref
-def _convert_numpy_type_spec(_type: str, translations: dict = {}) -> str:
-    def convert_obj(obj, translations, default_translation):
-        translation = translations.get(obj, obj)
-
+# overriden: just use simple backticks for cross ref and add espaced space when necessary 
+# to able to split on braquets carcaters. 
+# also use this function to pre-process google-style types. 
+def _convert_type_spec(_type: str, translations: Dict[str, str] = {}) -> str:
+    
+    def convert_obj(_token:str, translations:Dict[str, str], default_translation:str, _last_token:str):
+        translation = translations.get(_token, _token)
         if _xref_regex.match(translation) is None:
             translation = default_translation % translation
-
+        if _last_token and not _last_token.endswith(" "):
+            translation = f"\\ {translation}"
         return translation
+
+    def convert_literal(_token:str, _last_token:str):
+        _token = "``%s``" % _token
+        if _last_token and not _last_token.endswith(" "):
+            _token = f"\\ {_token}"
+        return _token    
+
+    def convert_control(_token:str, _last_token:str):
+        _token = "*%s*" % _token
+        if _last_token and not _last_token.endswith(" "):
+            _token = f"\\ {_token}"
+        return _token    
 
     tokens = _tokenize_type_spec(_type)
     combined_tokens = _recombine_set_tokens(tokens)
@@ -957,14 +978,19 @@ def _convert_numpy_type_spec(_type: str, translations: dict = {}) -> str:
     ]
 
     converters = {
-        "literal": lambda x: "``%s``" % x,
-        "obj": lambda x: convert_obj(x, translations, "`%s`"),
-        "control": lambda x: "*%s*" % x,
-        "delimiter": lambda x: x,
-        "reference": lambda x: x,
+        "literal": lambda _token, _last_token: convert_literal(_token, _last_token),
+        "obj": lambda _token, _last_token: convert_obj(_token, translations, r"`%s`", _last_token),
+        "control": lambda _token, _last_token: convert_control(_token, _last_token),
+        "delimiter": lambda _token, _: _token,
+        "reference": lambda _token, _: _token,
     }
 
-    converted = "".join(converters.get(type_)(token) for token, type_ in types)
+    converted = ""
+    last_token = ""
+    for token, type_ in types:
+        converted_token = converters.get(type_)(token, last_token)
+        converted += converted_token
+        last_token = converted_token
 
     return converted
 
@@ -1084,20 +1110,6 @@ class NumpyDocstring(GoogleDocstring):
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, 
                        allow_free_form: bool = False) -> Tuple[str, str, List[str]]:
 
-        def convert_type(_type: str) -> str:
-            # handle warnings line number
-            linenum=self._line_iter.counter - 1
-            # note: the context manager is modifying global state and therefore is not thread-safe.
-            with warnings.catch_warnings(record=True) as catch_warnings:
-                warnings.simplefilter("always", category=NumpyStyleWarning)
-                # convert
-                _type = _convert_numpy_type_spec(_type, 
-                        translations=self._config.napoleon_type_aliases or {},)
-                # append warnings
-                for warning in catch_warnings:
-                    self._warnings.append((str(warning.message), linenum))
-            return _type
-            
         def is_obvious_type(_type: str) -> bool:
             if _type.isidentifier() or _xref_regex.match(_type) :
                 return True
@@ -1124,7 +1136,7 @@ class NumpyDocstring(GoogleDocstring):
             """
             # Here we "guess" if _type contains the type
             if is_obvious_type(_type):
-                _type = convert_type(_type)
+                _type = self._convert_type(_type)
                 return _type
 
             elif allow_free_form: # Else we consider it as free form
@@ -1132,7 +1144,7 @@ class NumpyDocstring(GoogleDocstring):
                 raise ConsumeFieldsAsFreeForm(lines=[_name + _type] + _desc)
             
             else:
-                _type = convert_type(_type)
+                _type = self._convert_type(_type)
                 return _type
                 
         line = next(self._line_iter)
@@ -1161,7 +1173,7 @@ class NumpyDocstring(GoogleDocstring):
             if next_line_indent > indent:
                 _desc = self._dedent(self._consume_indented_block(indent))
                 _desc = self.__class__(_desc, self._config).lines()
-                _type = convert_type(_type)
+                _type = self._convert_type(_type)
                 # Normal case
                 return _name, _type, _desc
         

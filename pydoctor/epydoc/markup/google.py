@@ -20,7 +20,10 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(GoogleDocstring(docstring))
+    g_docstring = GoogleDocstring(docstring)
+    for warn, linenum in g_docstring.warnings():
+        errors.append(ParseError(warn, linenum-1))
+    rst_docstring = str(g_docstring)
     # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedGoogleStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
@@ -37,7 +40,10 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    rst_docstring = str(GoogleDocstring(docstring, is_attribute = True))
+    g_docstring = GoogleDocstring(docstring)
+    for warn, linenum in g_docstring.warnings():
+        errors.append(ParseError(warn, linenum-1))
+    rst_docstring = str(g_docstring)
     # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
     return ParsedGoogleStyleDocstring(
             parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
@@ -45,7 +51,7 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
 
 def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
-    Returns the `parse_docstring` function or the `parse_inline_attribute_docstring` 
+    Returns the `parse_docstring` function or the `parse_attribute_docstring` 
     function depending on the documentable type. 
     """
     return parse_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
