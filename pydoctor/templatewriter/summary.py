@@ -4,7 +4,7 @@ from typing import Dict, List, Sequence, Tuple, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
-from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
+from twisted.web.template import Element, Tag, TagLoader, XMLFile, renderer, tags
 
 
 def moduleSummary(modorpack, page_url):
@@ -184,7 +184,12 @@ class LetterElement(Element):
 
     @renderer
     def names(self, request, tag):
-        page_url = NameIndexPage.filename
+        def link(obj: model.Documentable) -> Tag:
+            tag = util.taglink(obj, NameIndexPage.filename)
+            # The "data-type" attribute helps doc2dash figure out what
+            # category (class, method, etc.) an object belongs to.
+            tag(**{"data-type": obj.kind})
+            return tag
         name2obs = {}
         for obj in self.initials[self.my_letter]:
             name2obs.setdefault(obj.name, []).append(obj)
@@ -195,11 +200,11 @@ class LetterElement(Element):
             if all(isPrivate(ob) for ob in obs):
                 item(class_='private')
             if len(obs) == 1:
-                item(' - ', util.taglink(obs[0], page_url))
+                item(' - ', link(obs[0]))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    subitem = tags.li(util.taglink(ob, page_url))
+                    subitem = tags.li(link(ob))
                     if isPrivate(ob):
                         subitem(class_='private')
                     ul(subitem)

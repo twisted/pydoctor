@@ -324,7 +324,7 @@ class ClassPage(CommonPage):
                 if url is None:
                     tag = tags.span
                 else:
-                    tag = tags.a(href=url, **{"data-type": "Class"})
+                    tag = tags.a(href=url)
                 r.append(tag(name, title=full_name))
             r.append(')')
         return r

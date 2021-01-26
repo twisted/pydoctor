@@ -33,8 +33,5 @@ def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -
         # if the query string is non-empty.
         url = url[len(page_url):]
 
-    # Create a link to the object, with a "data-type" attribute which says what
-    # kind of object it is (class, etc). This helps doc2dash figure out what it
-    # is.
-    ret: Tag = tags.a(href=url, class_="code", **{"data-type": o.kind})(label)
+    ret: Tag = tags.a(href=url, class_="code")(label)
     return ret
