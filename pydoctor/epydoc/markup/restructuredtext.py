@@ -41,12 +41,14 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Sequence, Set
+from typing import Any, Callable, ClassVar, Dict, Iterable, List, Optional, Sequence, Set, cast
 import optparse
 import re
+from docutils import nodes
 
 from docutils.core import publish_string
 from docutils.writers import Writer
+from docutils.parsers.rst.directives.admonitions import BaseAdmonition
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
@@ -498,7 +500,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     def _visit_admonition(self, node: Node, name: str = '') -> None:
         if name:
             self.body.append(self.starttag(
-                node, 'div', CLASS=('admonition ' + name)))
+                node, 'div', CLASS=('admonition ' + name.replace(' ', ''))))
             node.insert(0, docutils.nodes.title(name, name.title()))
             self.set_first_last(node)
         else:
@@ -557,7 +559,93 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
-    
+
+    def visit_seealso(self, node: Node) -> None:
+        self._visit_admonition(node, 'see also')
+
+    def depart_seealso(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_versionmodified(self, node: Node) -> None:
+        self.body.append(self.starttag(node, 'div', CLASS=node['type']))
+
+    def depart_versionmodified(self, node: Node) -> None:
+        self.body.append('</div>\n')
+
+versionlabels = {
+    'versionadded':   'New in version %s',
+    'versionchanged': 'Changed in version %s',
+    'deprecated':     'Deprecated since version %s',
+}
+
+versionlabel_classes = {
+    'versionadded':     'added',
+    'versionchanged':   'changed',
+    'deprecated':       'deprecated',
+}
+
+class seealso(nodes.Admonition, nodes.Element):
+    """Custom "see also" admonition node."""
+
+class versionmodified(nodes.Admonition, nodes.TextElement):
+        """Node for version change entries.
+        Currently used for "versionadded", "versionchanged" and "deprecated"
+        directives.
+        """
+        pass
+
+class SeeAlso(BaseAdmonition):
+    """
+    An admonition mentioning things to look at as reference.
+    """
+    node_class = seealso
+
+class VersionChange(Directive):
+    """
+    Directive to describe a change/addition/deprecation in a specific version.
+    """
+    has_content = True
+    required_arguments = 1
+    optional_arguments = 1
+    final_argument_whitespace = True
+    option_spec = {}  # type: Dict
+
+    def run(self) -> List[Node]:
+        node = versionmodified()
+        node.document = self.state.document
+        node['type'] = self.name
+        node['version'] = self.arguments[0]
+        text = versionlabels[self.name] % self.arguments[0]
+        if len(self.arguments) == 2:
+            inodes, messages = self.state.inline_text(self.arguments[1],
+                                                      self.lineno + 1)
+            para = nodes.paragraph(self.arguments[1], '', *inodes, translatable=False)
+            node.append(para)
+        else:
+            messages = []
+        if self.content:
+            self.state.nested_parse(self.content, self.content_offset, node)
+        classes = ['versionmodified', versionlabel_classes[self.name]]
+        if len(node):
+            if isinstance(node[0], nodes.paragraph) and node[0].rawsource:
+                content = nodes.inline(node[0].rawsource)
+                content.source = node[0].source
+                content.line = node[0].line
+                content += node[0].children
+                node[0].replace_self(nodes.paragraph('', '', content))
+
+            para = cast(nodes.paragraph, node[0])
+            para.insert(0, nodes.inline('', '%s: ' % text, classes=classes))
+        else:
+            para = nodes.paragraph('', '',
+                                   nodes.inline('', '%s.' % text,
+                                                classes=classes), )
+            node.append(para)
+
+        ret = [node]  # type: List[Node]
+        ret += messages
+        return ret
+
 class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
@@ -577,3 +665,7 @@ class PythonCodeDirective(Directive):
         return [ node ]
 
 directives.register_directive('python', PythonCodeDirective)
+directives.register_directive('versionadded', VersionChange)
+directives.register_directive('versionchanged', VersionChange)
+directives.register_directive('deprecated', VersionChange)
+directives.register_directive('seealso', SeeAlso)

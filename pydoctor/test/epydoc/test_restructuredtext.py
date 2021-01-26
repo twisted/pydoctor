@@ -14,7 +14,7 @@ def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
-    assert not errors
+    assert not errors, [e.descr() for e in errors]
     return flatten(parsed.to_stan(linker))
 
 def test_rst_body_empty() -> None:
@@ -58,8 +58,6 @@ def test_rst_anon_link_email() -> None:
 def prettify(html: str) -> str:
     return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
 
-# TESTS FOR NOT IMPLEMENTTED FEATURES
-
 def test_rst_directive_abnomitions() -> None:
     html = rst2html(".. warning:: Hey")
     expected_html="""
@@ -77,31 +75,54 @@ def test_rst_directive_abnomitions() -> None:
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
 
-@pytest.mark.xfail
+def test_rst_directive_seealso() -> None:
+
+    html = rst2html(".. seealso:: Hey")
+    expected_html = """
+        <div class="rst-admonition seealso">
+        <p class="rst-first rst-admonition-title">See Also</p>
+        <p class="rst-last">Hey</p>
+        </div>"""
+    assert prettify(html).strip() == prettify(expected_html).strip(), html
+
+
 def test_rst_directive_versionadded() -> None:
     html = rst2html(".. versionadded:: 0.6")
     expected_html="""
-        <div class="versionadded">
-        <p><span class="versionmodified added">New in version 0.6.</span></p>
-        </div>"""
+        <div class="rst-versionadded">
+        <p><span class="rst-versionmodified rst-added">New in version 0.6.</span></p>
+        </div>
+"""
     assert prettify(html) == prettify(expected_html)
 
-@pytest.mark.xfail
+
 def test_rst_directive_versionchanged() -> None:
     html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
     expected_html="""
-        <div class="versionchanged">
-        <p><span class="versionmodified changed">Changed in version 0.7: Add extras</span></p>
-        </div>"""
+        <div class="rst-versionchanged">
+        <p><span class="rst-versionmodified rst-changed">Changed in version 0.7:
+        </span>
+        <span>
+         Add extras
+        </span>
+        </p>
+        </div>
+"""
     assert prettify(html) == prettify(expected_html)
 
-@pytest.mark.xfail
+
 def test_rst_directive_deprecated() -> None:
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""
-        <div class="deprecated">
-        <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
+        <div class="rst-deprecated">
+        <p><span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: 
+        </span>
+        <span>
+         For security reasons
+        </span>
+        </p>
+        </div>
         </div>"""
     assert prettify(html) == prettify(expected_html)
