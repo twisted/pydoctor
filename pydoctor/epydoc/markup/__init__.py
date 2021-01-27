@@ -37,7 +37,7 @@ from typing import List, Optional, Sequence, Union
 import re
 
 from twisted.python.failure import Failure
-from twisted.web.template import Tag, XMLString, flattenString, tags
+from twisted.web.template import Tag, XMLString, flattenString
 
 ##################################################
 ## Contents
@@ -202,14 +202,7 @@ class DocstringLinker:
         @return: The link, or just the label if the target was not found.
             In either case, the returned top-level tag will be C{<code>}.
         """
-        try:
-            url = self._resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            xref = tags.a(label, href=url)
-        ret: Tag = tags.code(xref)
-        return ret
+        raise NotImplementedError()
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         """
@@ -219,21 +212,6 @@ class DocstringLinker:
         @param identifier: The name of the Python identifier that
             should be linked to.
         @return: The URL of the target, or L{None} if not found.
-        """
-        raise NotImplementedError()
-
-    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        """
-        Resolve a crossreference link to a Python identifier.
-        This will resolve the identifier to any reasonable target,
-        even if it has to look in places where Python itself would not.
-
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @param lineno: The line number within the docstring at which the
-            crossreference is located.
-        @return: The URL of the target.
-        @raise LookupError: If C{identifier} could not be resolved.
         """
         raise NotImplementedError()
 

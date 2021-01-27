@@ -82,6 +82,16 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        try:
+            url = self._resolve_identifier_xref(target, lineno)
+        except LookupError:
+            xref = label
+        else:
+            xref = tags.a(label, href=url)
+        ret: Tag = tags.code(xref)
+        return ret
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         fullID = self.obj.expandName(identifier)
 
@@ -92,6 +102,18 @@ class _EpydocLinker(DocstringLinker):
         return self.look_for_intersphinx(fullID)
 
     def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+        """
+        Resolve a crossreference link to a Python identifier.
+        This will resolve the identifier to any reasonable target,
+        even if it has to look in places where Python itself would not.
+
+        @param identifier: The name of the Python identifier that
+            should be linked to.
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The URL of the target.
+        @raise LookupError: If C{identifier} could not be resolved.
+        """
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
