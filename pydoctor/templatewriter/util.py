@@ -33,5 +33,5 @@ def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -
         # if the query string is non-empty.
         url = url[len(page_url):]
 
-    ret: Tag = tags.a(href=url, class_="code")(label)
+    ret: Tag = tags.code(tags.a(label, href=url))
     return ret

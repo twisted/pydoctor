@@ -667,7 +667,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
         if url is None:
             tag = tags.transparent(identifier)
         else:
-            tag = tags.a(identifier, href=url, class_='code')
+            tag = tags.a(identifier, href=url)
         return tag
 
     def _handle_constant(self, node: ast.expr, value: object) -> Tag:

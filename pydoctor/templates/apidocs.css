@@ -202,47 +202,39 @@ tr.private {
 }
 
 /*
-- <h1><code></code></h1> : This is for the main top navagation bar
-
-- <a><code></code><a> for links in docstrings texts
-This is inline docstring content marked up as code, for example L{foo} in epytext
-or `bar` in restructuredtext
-
-- <a class="code"> links that are present in summary tables
-
+- Links to class/function/etc names are nested like this:
+    <code><a>label</a></code>
+  This applies to inline docstring content marked up as code,
+  for example L{foo} in epytext or `bar` in restructuredtext,
+  but also to links that are present in summary tables.
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
-code, .code, .pre, #childList > div .functionHeader,
+code, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, .code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
     font-size: 90%;
     color: #222222;
 }
-a > code, a.code {
+code > a {
     color:#c7254e;
     background-color:#f9f2f4;
 }
+/* top navagation bar */
 .page-header > h1 > code {
     color: #971c3a;
 }
 
 /*
-This defines  the "code" class, it's black on light gray,
-
+This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min
 */
-code, .code {
+code {
     padding:2px 4px;
     background-color: #f4f4f4;
     border-radius:4px
 }
-
-code > .code {
-    padding: 0px;
-}
-
 
 
 a.functionSourceLink {
