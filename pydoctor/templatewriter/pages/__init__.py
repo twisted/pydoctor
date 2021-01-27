@@ -79,7 +79,7 @@ class CommonPage(Element):
             if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 if parts:
                     parts.append('.')
-                parts.append(util.taglink(ob, page_url, ob.name))
+                parts.append(epydoc2stan.taglink(ob, page_url, ob.name))
             ob = ob.parent
         parts.reverse()
         return parts
@@ -255,7 +255,7 @@ def assembleList(system, label, lst, idbase, page_url):
         return None
     def one(item):
         if item in system.allobjects:
-            return util.taglink(system.allobjects[item], page_url)
+            return epydoc2stan.taglink(system.allobjects[item], page_url)
         else:
             return item
     def commasep(items):
@@ -350,12 +350,12 @@ class ClassPage(CommonPage):
         page_url = self.page_url
         r = []
         source_base = data[0]
-        r.append(util.taglink(source_base, page_url, source_base.name))
+        r.append(epydoc2stan.taglink(source_base, page_url, source_base.name))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
             for b in reversed(bases_to_mention):
-                tail.append(util.taglink(b, page_url, b.name))
+                tail.append(epydoc2stan.taglink(b, page_url, b.name))
                 tail.append(', ')
             del tail[-1]
             r.extend([' (via ', tail, ')'])
@@ -369,7 +369,7 @@ class ClassPage(CommonPage):
                 continue
             overridden = b.contents[data.name]
             r.append(tags.div(class_="interfaceinfo")(
-                'overrides ', util.taglink(overridden, page_url)))
+                'overrides ', epydoc2stan.taglink(overridden, page_url)))
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
@@ -415,6 +415,6 @@ class ZopeInterfaceClassPage(ClassPage):
         r = []
         if imeth:
             r.append(tags.div(class_="interfaceinfo")(
-                'from ', util.taglink(imeth, self.page_url, imeth.parent.fullName())))
+                'from ', epydoc2stan.taglink(imeth, self.page_url, imeth.parent.fullName())))
         r.extend(super().functionExtras(data))
         return r
