@@ -40,7 +40,7 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
-    g_docstring = GoogleDocstring(docstring)
+    g_docstring = GoogleDocstring(docstring, is_attribute=True)
     for warn, linenum in g_docstring.warnings():
         errors.append(ParseError(warn, linenum-1))
     rst_docstring = str(g_docstring)
