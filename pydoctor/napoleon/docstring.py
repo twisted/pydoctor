@@ -15,12 +15,12 @@ import collections
 import re
 import warnings
 from functools import partial
-from typing import Any, Callable, Deque, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Generator, List, Mapping, Optional, Tuple, Union
 
 import attr
 
 from . import Config
-from .iterators import modify_iter
+from .iterators import modify_iter, peek_iter
 
 __docformat__ = "numpy en"
 
@@ -192,8 +192,7 @@ class GoogleDocstring:
         return self._parsed_lines
 
     def warnings(self) -> List[Tuple[str, int]]:
-        """Return the triggered warnings during the conversion. 
-        Currently only used in numpy-style parsing implementation. 
+        """Return any triggered warnings during the conversion. 
         """
         return self._warnings
 
@@ -253,11 +252,12 @@ class GoogleDocstring:
     # lines in a numpy section
     # Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False,
-                        multiple: bool = False, **kwargs) -> List[Tuple[str, str, List[str]]]:
+                        multiple: bool = False, **kwargs:Any) -> List[Tuple[str, str, List[str]]]:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
-            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs)
+            # error: Too many arguments for "_consume_field" of "GoogleDocstring"  [call-arg]
+            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs) # type: ignore
             if multiple and _name:
                 for name in _name.split(","):
                     fields.append((name.strip(), _type, _desc))
@@ -328,6 +328,9 @@ class GoogleDocstring:
 
     #new method: handle type pre-processing the same way for google and numpy style. 
     def _convert_type(self, _type:str) -> str:
+        """
+        Tokenize the string type and convert it with additional markup and auto linking. 
+        """
         # handle warnings line number
         linenum=self._line_iter.counter - 1
         # note: the context manager is modifying global state and therefore is not thread-safe.
@@ -335,7 +338,7 @@ class GoogleDocstring:
             warnings.simplefilter("always", category=NapoleonWarning)
             # convert
             _type = _convert_type_spec(_type, 
-                    translations=self._config.napoleon_type_aliases or {},)
+                    aliases=self._config.napoleon_type_aliases or {},)
             # append warnings
             for warning in catch_warnings:
                 self._warnings.append((str(warning.message), linenum))
@@ -671,13 +674,20 @@ class GoogleDocstring:
             type_role="type")
         
 
-    # overriden: ignore noindex options. 
+    # overriden: ignore noindex options + assign a custom role to display methods as others
     def _parse_methods_section(self, section: str) -> List[str]:
+    
+        def _init_methods_section():
+            if not lines:
+                # lines.extend(['.. role:: meth','   :class: code py-defname', ])
+                lines.extend(['.. admonition:: Methods', ''])
+
         lines = []  # type: List[str]
-        for _name, _type, _desc in self._consume_fields(parse_type=False):
-            lines.append('.. method:: %s' % _name)
+        for _name, _, _desc in self._consume_fields(parse_type=False):
+            _init_methods_section()
+            lines.append('    - %s' % self._convert_type(_name))
             if _desc:
-                lines.extend([''] + self._indent(_desc, 3))
+                lines.extend(self._indent(_desc, 6))
             lines.append('')
         return lines
 
@@ -698,7 +708,7 @@ class GoogleDocstring:
     # This allows sections to have compatible syntax as raises syntax BUT not mandatory). 
     # If prefer_type=False: If something in the type place of the type
     #   but no description, assume type contains the description, and there is not type in the docs. 
-    def _parse_raises_section(self, section: str, field_type: str = 'raises', prefer_type=True) -> List[str]:
+    def _parse_raises_section(self, section: str, field_type: str = 'raises', prefer_type: bool = True) -> List[str]:
         fields = self._consume_fields(parse_type=False, prefer_type=True)
         lines = []  # type: List[str]
         for _name, _type, _desc in fields:
@@ -820,7 +830,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
     token_queue = collections.deque(tokens)
     keywords = ("optional", "default")
 
-    def takewhile_set(tokens):
+    def takewhile_set(tokens: Deque) -> Generator:
         open_braces = 0
         previous_token = None
         while True:
@@ -856,7 +866,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
             if open_braces == 0:
                 break
 
-    def combine_set(tokens:Deque):
+    def combine_set(tokens: Deque):
         while True:
             try:
                 token = tokens.popleft()
@@ -901,40 +911,40 @@ def _token_type(token: str) -> str:
         else:
             return True
 
-    if token.startswith(" ") or token.endswith(" "):
+    if token.startswith(" ") or token.endswith(" ") or token in ["[", "]", "(", ")"]:
         type_ = "delimiter"
     elif (
             is_numeric(token) or
             (token.startswith("{") and token.endswith("}")) or
             (token.startswith('"') and token.endswith('"')) or
-            (token.startswith("'") and token.endswith("'"))
+            (token.startswith("'") and token.endswith("'")) 
     ):
         type_ = "literal"
     elif token.startswith("{"):
         warnings.warn(
-            "type pre-processing warning: invalid value set (missing closing brace): %s"%token, 
+            "type pre-processing: invalid value set (missing closing brace): %s"%token, 
             category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.endswith("}"):
         warnings.warn(
-            "type pre-processing warning: invalid value set (missing opening brace): %s"%token, 
+            "type pre-processing: invalid value set (missing opening brace): %s"%token, 
             category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.startswith("'") or token.startswith('"'):
         warnings.warn(
-            "type pre-processing warning: malformed string literal (missing closing quote): %s"%token, 
+            "type pre-processing: malformed string literal (missing closing quote): %s"%token, 
             category=NapoleonWarning, 
         )
         type_ = "literal"
     elif token.endswith("'") or token.endswith('"'):
         warnings.warn(
-            "type pre-processing warning: malformed string literal (missing opening quote): %s"%token, 
+            "type pre-processing: malformed string literal (missing opening quote): %s"%token, 
             category=NapoleonWarning, 
         )
         type_ = "literal"
-    elif token in ("optional", "default", "[", "]",  "(", ")"):
+    elif token in ("optional", "default", ):
         # default is not a official keyword (yet) but supported by the
         # reference implementation (numpydoc) and widely used
         type_ = "control"
@@ -946,29 +956,38 @@ def _token_type(token: str) -> str:
     return type_
 
 # overriden: just use simple backticks for cross ref and add espaced space when necessary 
-# to able to split on braquets carcaters. 
+# to able to split on braquets carcaters: need escaped spaces handling to separate reST markup. 
 # also use this function to pre-process google-style types. 
-def _convert_type_spec(_type: str, translations: Dict[str, str] = {}) -> str:
-    
-    def convert_obj(_token:str, translations:Dict[str, str], default_translation:str, _last_token:str):
-        translation = translations.get(_token, _token)
-        if _xref_regex.match(translation) is None:
-            translation = default_translation % translation
-        if _last_token and not _last_token.endswith(" "):
-            translation = f"\\ {translation}"
-        return translation
+def _convert_type_spec(_type: str, aliases: Mapping[str, str] = {}) -> str:
 
-    def convert_literal(_token:str, _last_token:str):
-        _token = "``%s``" % _token
-        if _last_token and not _last_token.endswith(" "):
-            _token = f"\\ {_token}"
-        return _token    
+    def _get_alias(_token:str, aliases:Mapping[str, str]):
+        alias = aliases.get(_token, _token)
+        return alias
 
-    def convert_control(_token:str, _last_token:str):
-        _token = "*%s*" % _token
-        if _last_token and not _last_token.endswith(" "):
-            _token = f"\\ {_token}"
-        return _token    
+    def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], _next_token:Tuple[str, str], _translation:str=None):
+        translation = _translation or "%s"
+        if _xref_regex.match(_token[0]) is None:
+            converted_token = translation % _token[0]
+        else:
+            converted_token = _token[0]
+        need_escaped_space = False
+        
+        if _last_token[1] in token_type_using_rest_markup:
+            # the last token has reST markup: 
+            #   only those three types defines additionnal markup, see `converters`
+            # we might have to escape
+
+            if not converted_token.startswith(" ") and not converted_token.endswith(" "):
+                if _next_token != iter_types.sentinel:
+                    if _next_token[1] in token_type_using_rest_markup:
+                        need_escaped_space = True
+            
+            if _token[1] in token_type_using_rest_markup:
+                need_escaped_space = True
+
+        if need_escaped_space:
+            converted_token = f"\\ {converted_token}"
+        return converted_token
 
     tokens = _tokenize_type_spec(_type)
     combined_tokens = _recombine_set_tokens(tokens)
@@ -978,19 +997,24 @@ def _convert_type_spec(_type: str, translations: Dict[str, str] = {}) -> str:
     ]
 
     converters = {
-        "literal": lambda _token, _last_token: convert_literal(_token, _last_token),
-        "obj": lambda _token, _last_token: convert_obj(_token, translations, r"`%s`", _last_token),
-        "control": lambda _token, _last_token: convert_control(_token, _last_token),
-        "delimiter": lambda _token, _: _token,
-        "reference": lambda _token, _: _token,
+        "literal": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
+        "obj": lambda _token, _last_token, _next_token: _convert((_get_alias(_token[0], aliases), _token[1]), _last_token, _next_token, "`%s`"),
+        "control": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
+        "delimiter": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
+        "reference": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
     }
 
+    token_type_using_rest_markup = ["literal", "obj", "control"]
+
     converted = ""
-    last_token = ""
-    for token, type_ in types:
-        converted_token = converters.get(type_)(token, last_token)
+    last_token = ("", "")
+
+    iter_types: peek_iter[Tuple[str, str]] = peek_iter(types)
+    for token, type_ in iter_types:
+        next_token = iter_types.peek()
+        converted_token = converters.get(type_)((token, type_), last_token, next_token)
         converted += converted_token
-        last_token = converted_token
+        last_token = (converted_token, type_)
 
     return converted
 
@@ -1093,23 +1117,16 @@ class NumpyDocstring(GoogleDocstring):
             return ", ".join(func(param) for param in name.split(", "))
         else:
             return func(name)
-    
-    # new function to parse attribute in a coherent way with the rest of the numpy style. 
-    def _consume_inline_attribute(self) -> Tuple[str, List[str]]:
-        try:
-            _name, _type, _desc = self._consume_field(prefer_type=True, allow_free_form=True)
-        except ConsumeFieldsAsFreeForm as e:
-            _name, _type, _desc = ('', '', e.lines)
-        if _name:
-            _type = f"{_name}: {_type}"
-        _descs = _desc + self._dedent(self._consume_to_end())
-        _descs = self.__class__(_descs, self._config).lines()
-        return _type, _descs
 
     # overriden: remove lookup annotations and resolving sphinx/issues/7077
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, 
                        allow_free_form: bool = False) -> Tuple[str, str, List[str]]:
-
+        """
+        Raise
+        -----
+        ConsumeFieldsAsFreeForm
+            If the type is not obvious and _consume_field(allow_free_form=True), only used for the returns section. 
+        """
         def is_obvious_type(_type: str) -> bool:
             if _type.isidentifier() or _xref_regex.match(_type) :
                 return True
@@ -1126,14 +1143,6 @@ class NumpyDocstring(GoogleDocstring):
                 return True
 
         def figure_type(_name: str, _type: str) -> str:
-            """
-            Tokenize the string type and convert it with additional markup and auto linking. 
-
-            Raise
-            -----
-            ConsumeFieldsAsFreeForm
-                If the type is not obvious and _consume_field(allow_free_form=True), only used for the returns section. 
-            """
             # Here we "guess" if _type contains the type
             if is_obvious_type(_type):
                 _type = self._convert_type(_type)
@@ -1158,7 +1167,6 @@ class NumpyDocstring(GoogleDocstring):
         if _name and not _type and prefer_type:
             _type, _name = _name, _type
         
-
         indent = self._get_indent(line) + 1
 
         # Solving this https://github.com/sphinx-doc/sphinx/issues/7077 only if allow_free_form = True

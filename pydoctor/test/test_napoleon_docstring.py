@@ -12,6 +12,7 @@ import warnings
 from unittest import TestCase
 from textwrap import dedent
 from contextlib import contextmanager
+from pydoctor.napoleon import docstring
 
 from pydoctor.napoleon.docstring import (  GoogleDocstring, NumpyDocstring, 
                                            _convert_type_spec, _recombine_set_tokens,
@@ -192,13 +193,13 @@ Args:
     *args: Variable length argument list.
     **kwargs: Arbitrary keyword arguments.
 """,
-"""
+r"""
 Single line summary
 :param arg1: Extended
              description of arg1
 :type arg1: `str`
-:param \\*args: Variable length argument list.
-:param \\*\\*kwargs: Arbitrary keyword arguments.
+:param \*args: Variable length argument list.
+:param \*\*kwargs: Arbitrary keyword arguments.
 """
     ), (
         """
@@ -209,16 +210,16 @@ Args:
     arg3 (dict(str, int)): Description
     arg4 (dict[str, int]): Description
 """,
-"""
+r"""
 Single line summary
 :param arg1: Description
-:type arg1: `list`\ *(*\ `int`\ *)*
+:type arg1: `list`\ (`int`)
 :param arg2: Description
-:type arg2: `list`\ *[*\ `int`\ *]*
+:type arg2: `list`\ [`int`]
 :param arg3: Description
-:type arg3: `dict`\ *(*\ `str`, `int`\ *)*
+:type arg3: `dict`\ (`str`, `int`)
 :param arg4: Description
-:type arg4: `dict`\ *[*\ `str`, `int`\ *]*
+:type arg4: `dict`\ [`str`, `int`]
 """
     ), (
         """
@@ -227,12 +228,12 @@ Receive:
     arg1 (list(int)): Description
     arg2 (list[int]): Description
 """,
-"""
+r"""
 Single line summary
 :param arg1: Description
-:type arg1: `list`\ *(*\ `int`\ *)*
+:type arg1: `list`\ (`int`)
 :param arg2: Description
-:type arg2: `list`\ *[*\ `int`\ *]*
+:type arg2: `list`\ [`int`]
 """
     ), (
         """
@@ -241,12 +242,12 @@ Receives:
     arg1 (list(int)): Description
     arg2 (list[int]): Description
 """,
-"""
+r"""
 Single line summary
 :param arg1: Description
-:type arg1: `list`\ *(*\ `int`\ *)*
+:type arg1: `list`\ (`int`)
 :param arg2: Description
-:type arg2: `list`\ *[*\ `int`\ *]*
+:type arg2: `list`\ [`int`]
 """
     ), (
         """
@@ -281,12 +282,12 @@ Args:
     arg2 (list[int]):
         desc arg2.
 """,
-"""
+r"""
 Single line summary
 :param arg1: desc arg1.
-:type arg1: `list`\ *(*\ `int`\ *)*
+:type arg1: `list`\ (`int`)
 :param arg2: desc arg2.
-:type arg2: `list`\ *[*\ `int`\ *]*
+:type arg2: `list`\ [`int`]
 """
     ), ]
 
@@ -354,7 +355,7 @@ This class should only be used by runtimes.
 :param runtime: Use it to
                 access the environment. It is available in XBlock code
                 as ``self.runtime``.
-:type runtime: :class:`~typing.Dict`\\ *[*:class:`int`,:class:`str`\\ *]*
+:type runtime: :class:`~typing.Dict`\[:class:`int`,:class:`str`\]
 :param field_data: Interface used by the XBlock
                    fields to access their data from wherever it is persisted.
 :type field_data: :class:`FieldData`
@@ -818,15 +819,16 @@ Attributes:
     arg : description
 
 Methods:
-    func(i, j): description
+    func(abc, def): description
 """
 
-        expected = """
+        expected = r"""
 :ivar arg: description
 
-.. method:: func(i, j)
+.. admonition:: Methods
 
-   description
+    - `func`\ (`abc`, `def`)
+      description
 """  # NOQA
         config = Config()
         actual = str(GoogleDocstring(docstring, config=config))
@@ -1296,11 +1298,11 @@ See Also
 some, other, :func:`funcs`
 otherfunc : relationship
 """
-        translations = {
+        aliases = {
             "other": "MyClass.other",
             "otherfunc": ":anyroleherewillbescraped:`my_package.otherfunc`",
         }
-        config = Config(napoleon_type_aliases=translations)
+        config = Config(napoleon_type_aliases=aliases)
 
         actual = str(NumpyDocstring(docstring, config))
 
@@ -1366,11 +1368,11 @@ arg_ : type
            :returns: a dataframe
            :rtype: `pandas.DataFrame`
         """)
-        translations = {
+        aliases = {
             "df": "pandas.DataFrame",
         }
         config = Config(
-            napoleon_type_aliases=translations,
+            napoleon_type_aliases=aliases,
         )
         actual = str(NumpyDocstring(docstring, config))
         self.assertEqual(expected.rstrip(), actual)
@@ -1387,11 +1389,11 @@ arg_ : type
             Example Function
             :Yields: :term:`scalar` or :class:`array-like <numpy.ndarray>` -- The result of the computation
         """)
-        translations = {
+        aliases = {
             "scalar": ":term:`scalar`",
             "array-like": ":class:`array-like <numpy.ndarray>`",
         }
-        config = Config(napoleon_type_aliases=translations)
+        config = Config(napoleon_type_aliases=aliases)
 
         actual = str(NumpyDocstring(docstring, config))
         self.assertEqual(expected.rstrip(), actual)
@@ -1556,11 +1558,11 @@ Example Function
 :raises exc.InvalidArgumentsError:
 """)]
         for docstring, expected in docstrings:
-            translations = {
+            aliases = {
                 "CustomError": "package.CustomError",
                 "AnotherError": ":py:exc:`~package.AnotherError`",
             }
-            config = Config(napoleon_type_aliases=translations)
+            config = Config(napoleon_type_aliases=aliases)
 
             actual = str(NumpyDocstring(docstring, config))
             self.assertEqual(expected.rstrip(), actual)
@@ -1897,7 +1899,7 @@ definition_after_normal_text : int
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
-        translations = {
+        aliases = {
             "DataFrame": "pandas.DataFrame",
         }
 
@@ -1926,7 +1928,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, converted):
-            actual = _convert_type_spec(spec, translations=translations)
+            actual = _convert_type_spec(spec, aliases=aliases)
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameter_types(self):
@@ -1968,13 +1970,13 @@ definition_after_normal_text : int
             :param param8: ellipsis
             :type param8: `...` or `Ellipsis`
         """)
-        translations = {
+        aliases = {
             "dict-like": ":term:`dict-like <mapping>`",
             "mapping": ":term:`mapping`",
             "hashable": ":term:`hashable`",
         }
         config = Config(
-            napoleon_type_aliases=translations,
+            napoleon_type_aliases=aliases,
         )
         actual = str(NumpyDocstring(docstring, config))
         self.assertEqual(expected.rstrip(), actual)
@@ -2055,6 +2057,7 @@ list of int
 
             assert actual == expected
 
+    # test docstrings for the napoleon_numpy_returns_allow_free_from=True option
     docstrings_returns = [(
         """
 Single line summary
@@ -2066,9 +2069,10 @@ the int of your life: int
 the tuple of your life: tuple
 """,
 
-# FIXME: In the case of natural language type expression 
+# BUG: In the case of natural language type expression 
 # It needs to have a followup description to be parsed as tokenized type
-# The "workaround" is to use backticks to tell napoleon to consider this string as the type. 
+# The "workaround" to keep single line syntax is to use backticks to tell 
+#   napoleon to consider this string as the type: but it won't be tokenized. 
 """
 Single line summary
 :returns: * **the string of your life** (`a complicated string`)
@@ -2249,7 +2253,7 @@ Summary line.
 
 :returns: The lines of the docstring in a list.
           .. note:: Nested markup works.
-:rtype: `list`\ *(*\ `str`\ *)*
+:rtype: `list`\ (`str`)
         """
         ), (
         """
@@ -2268,7 +2272,7 @@ Summary line.
 
 :returns: The lines of the docstring in a list.
           .. note:: Nested markup works.
-:rtype: `List`\ *[*\ `str`\ *]*
+:rtype: `List`\ [`str`]
         """
         ), (
         """
@@ -2287,11 +2291,12 @@ __str__()
         """
 Summary line.
 
-.. method:: __str__()
+.. admonition:: Methods
 
-   :returns: The lines of the docstring in a list.
-   
-   .. note:: Nested markup works.
+    - `__str__`()
+      :returns: The lines of the docstring in a list.
+      
+      .. note:: Nested markup works.
         """
         )] 
     
@@ -2317,10 +2322,37 @@ Summary line.
         expected = dedent(r"""
         Summary line.
 
-        :rtype: `List`\ *[*\ `Union`\ *[*\ `str`, `bytes`, `typing.Pattern`\ *]*\ *]*
+        :rtype: `List`\ [`Union`\ [`str`, `bytes`, `typing.Pattern`]]
         """)
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
+
+    def test_issue_with_link_end_of_section(self):
+        # section breaks needs two white spaces with numpy-style docstrings, 
+        # even if footnotes are following-up 
+        docstring = """`PEP 484`_ type annotations are supported.
+Returns
+-------
+bool
+    True if successful, False otherwise.
+
+
+.. _PEP 484:
+    https://www.python.org/dev/peps/pep-0484/
+        """
+        expected = """`PEP 484`_ type annotations are supported.
+:returns: True if successful, False otherwise.
+:rtype: `bool`
+
+.. _PEP 484:
+    https://www.python.org/dev/peps/pep-0484/
+        """
+        actual = str(NumpyDocstring(docstring, ))
+        self.assertEqual(expected.rstrip(), actual, str(actual))
+
+        config = Config(napoleon_numpy_returns_allow_free_from=True)
+        actual = str(NumpyDocstring(docstring, config))
+        self.assertEqual(expected.rstrip(), actual, str(actual)) 
 
     @pytest.mark.xfail
     def test_return_type_list_free_style_do_desc(self):
