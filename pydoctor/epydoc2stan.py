@@ -91,7 +91,7 @@ class _EpydocLinker(DocstringLinker):
 
         return self.look_for_intersphinx(fullID)
 
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.

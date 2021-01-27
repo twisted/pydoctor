@@ -83,5 +83,5 @@ class NotFoundLinker(DocstringLinker):
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None
 
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
         raise LookupError(identifier)

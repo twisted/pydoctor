@@ -24,8 +24,8 @@ The C{ParsedDocstring} output generation method
 (L{to_stan()<ParsedDocstring.to_stan>}) uses a
 L{DocstringLinker} to link the docstring output with the rest of
 the documentation that epydoc generates.  C{DocstringLinker}s are
-responsible for resolving identifier crossreferences
-(L{resolve_identifier_xref() <DocstringLinker.resolve_identifier_xref>}).
+responsible for formatting cross-references
+(L{link_xref() <DocstringLinker.link_xref>}).
 
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
@@ -203,7 +203,7 @@ class DocstringLinker:
             In either case, the returned top-level tag will be C{<code>}.
         """
         try:
-            url = self.resolve_identifier_xref(target, lineno)
+            url = self._resolve_identifier_xref(target, lineno)
         except LookupError:
             xref = label
         else:
@@ -222,7 +222,7 @@ class DocstringLinker:
         """
         raise NotImplementedError()
 
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
         """
         Resolve a crossreference link to a Python identifier.
         This will resolve the identifier to any reasonable target,

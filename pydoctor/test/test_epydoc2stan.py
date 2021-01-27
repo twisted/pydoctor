@@ -504,7 +504,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('base.module.other')
-    url_xref = sut.resolve_identifier_xref('base.module.other', 0)
+    url_xref = sut._resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -530,7 +530,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.resolve_identifier('ext_module')
-    url_xref = sut.resolve_identifier_xref('ext_module', 0)
+    url_xref = sut._resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -556,7 +556,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert sut.resolve_identifier('ext_module') is None
     assert not capsys.readouterr().out
     with raises(LookupError):
-        sut.resolve_identifier_xref('ext_module', 0)
+        sut._resolve_identifier_xref('ext_module', 0)
 
     captured = capsys.readouterr().out
     expected = (
@@ -592,7 +592,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier('socket.socket')
-    url_xref = linker.resolve_identifier_xref('socket.socket', 0)
+    url_xref = linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
@@ -614,7 +614,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('internal_module.C')
-    url_xref = sut.resolve_identifier_xref('internal_module.C', 0)
+    url_xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
     assert "internal_module.C.html" == url_xref
@@ -679,7 +679,7 @@ class RecordingAnnotationLinker(DocstringLinker):
         self.requests.append(identifier)
         return None
 
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
         assert False
 
 @mark.parametrize('annotation', (
