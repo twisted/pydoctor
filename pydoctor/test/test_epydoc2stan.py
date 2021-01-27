@@ -615,10 +615,10 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('internal_module.C')
-    url_xref = sut._resolve_identifier_xref('internal_module.C', 0)
+    xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
-    assert "internal_module.C.html" == url_xref
+    assert int_mod.contents['C'] is xref
 
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:

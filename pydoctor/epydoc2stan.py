@@ -6,7 +6,7 @@ from collections import defaultdict
 from importlib import import_module
 from typing import (
     Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Tuple
+    Optional, Sequence, Tuple, Union
 )
 import ast
 import itertools
@@ -84,10 +84,14 @@ class _EpydocLinker(DocstringLinker):
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         try:
-            url = self._resolve_identifier_xref(target, lineno)
+            resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:
             xref = label
         else:
+            if isinstance(resolved, str):
+                url = resolved
+            else:
+                url = resolved.url
             xref = tags.a(label, href=url)
         ret: Tag = tags.code(xref)
         return ret
@@ -101,7 +105,10 @@ class _EpydocLinker(DocstringLinker):
 
         return self.look_for_intersphinx(fullID)
 
-    def _resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self,
+            identifier: str,
+            lineno: int
+            ) -> Union[str, model.Documentable]:
         """
         Resolve a crossreference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
@@ -111,7 +118,8 @@ class _EpydocLinker(DocstringLinker):
             should be linked to.
         @param lineno: The line number within the docstring at which the
             crossreference is located.
-        @return: The URL of the target.
+        @return: The referenced object within our system, or the URL of
+            an external target (found via Intersphinx).
         @raise LookupError: If C{identifier} could not be resolved.
         """
 
@@ -121,7 +129,7 @@ class _EpydocLinker(DocstringLinker):
         # Check if 'identifier' is the fullName of an object.
         target = self.obj.system.objForFullName(identifier)
         if target is not None:
-            return target.url
+            return target
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
@@ -144,7 +152,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = src.resolveName(identifier)
             if target is not None:
-                return target.url
+                return target
             src = src.parent
 
         # Walk up the object tree again and see if 'identifier' refers to an
@@ -155,7 +163,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = self.look_for_name(identifier, src.contents.values(), lineno)
             if target is not None:
-                return target.url
+                return target
             src = src.parent
 
         # Examine every module and package in the system and see if 'identifier'
@@ -166,7 +174,7 @@ class _EpydocLinker(DocstringLinker):
             self.obj.system.objectsOfType(model.Package)),
             lineno)
         if target is not None:
-            return target.url
+            return target
 
         message = f'Cannot find link target for "{fullID}"'
         if identifier != fullID:
