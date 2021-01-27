@@ -106,11 +106,9 @@ class _EpydocLinker(DocstringLinker):
         except LookupError:
             xref = label
         else:
-            if isinstance(resolved, str):
-                url = resolved
-            else:
-                url = resolved.url
-            xref = tags.a(label, href=url)
+            if isinstance(resolved, model.Documentable):
+                return taglink(resolved, self.obj.page_object.url, label)
+            xref = tags.a(label, href=resolved)
         ret: Tag = tags.code(xref)
         return ret
 
