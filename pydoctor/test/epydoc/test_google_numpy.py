@@ -46,6 +46,8 @@ numpy.ndarray: super-dooper attribute"""
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
 
+    # the numpy inline attribute parsing is the same as google-style
+    # as shown in the example_numpy.py  from Sphinx docs
     def test_get_numpy_parser_attribute(self) -> None:
 
         obj = Attribute(system = System(), name='attr1')
@@ -53,8 +55,7 @@ numpy.ndarray: super-dooper attribute"""
         parse_docstring = get_numpy_parser(obj)
 
         docstring = """\
-numpy.ndarray
-        super-dooper attribute"""
+numpy.ndarray: super-dooper attribute"""
 
         errors = []
 
