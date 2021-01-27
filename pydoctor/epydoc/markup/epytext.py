@@ -1382,13 +1382,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'link':
             label, target = variables
             lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
-            try:
-                url = linker.resolve_identifier_xref(target, lineno)
-            except LookupError:
-                xref = label
-            else:
-                xref = tags.a(label, href=url)
-            return tags.code(xref)
+            return linker.link_xref(target, label, lineno)
         elif tree.tag == 'target':
             value, = variables
             return value

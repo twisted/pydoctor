@@ -37,7 +37,7 @@ from typing import List, Optional, Sequence, Union
 import re
 
 from twisted.python.failure import Failure
-from twisted.web.template import Tag, XMLString, flattenString
+from twisted.web.template import Tag, XMLString, flattenString, tags
 
 ##################################################
 ## Contents
@@ -187,6 +187,29 @@ class DocstringLinker:
     C{DocstringLinker} is used by C{ParsedDocstring} to look up the
     target URL for crossreference links.
     """
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        """
+        Format a cross-reference link to a Python identifier.
+        This will resolve the identifier to any reasonable target,
+        even if it has to look in places where Python itself would not.
+
+        @param target: The name of the Python identifier that
+            should be linked to.
+        @param label: The label to show for the link.
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The link, or just the label if the target was not found.
+            In either case, the returned top-level tag will be C{<code>}.
+        """
+        try:
+            url = self.resolve_identifier_xref(target, lineno)
+        except LookupError:
+            xref = label
+        else:
+            xref = tags.a(label, href=url)
+        ret: Tag = tags.code(xref)
+        return ret
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         """
