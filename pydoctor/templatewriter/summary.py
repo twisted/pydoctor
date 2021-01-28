@@ -9,7 +9,7 @@ from twisted.web.template import Element, Tag, TagLoader, XMLFile, renderer, tag
 
 def moduleSummary(modorpack, page_url):
     r = tags.li(
-        epydoc2stan.taglink(modorpack, page_url), ' - ',
+        tags.code(epydoc2stan.taglink(modorpack, page_url)), ' - ',
         epydoc2stan.format_summary(modorpack)
         )
     if modorpack.isPrivate:
@@ -105,7 +105,8 @@ def subclassesFrom(hostsystem, cls, anchors, page_url):
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(epydoc2stan.taglink(cls, page_url), ' - ', epydoc2stan.format_summary(cls))
+    r(tags.code(epydoc2stan.taglink(cls, page_url)), ' - ',
+      epydoc2stan.format_summary(cls))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
@@ -185,10 +186,12 @@ class LetterElement(Element):
     @renderer
     def names(self, request, tag):
         def link(obj: model.Documentable) -> Tag:
-            tag = epydoc2stan.taglink(obj, NameIndexPage.filename)
             # The "data-type" attribute helps doc2dash figure out what
             # category (class, method, etc.) an object belongs to.
-            tag(**{"data-type": obj.kind})
+            tag: Tag = tags.code(
+                epydoc2stan.taglink(obj, NameIndexPage.filename),
+                **{"data-type": obj.kind}
+                )
             return tag
         name2obs = {}
         for obj in self.initials[self.my_letter]:
@@ -284,7 +287,7 @@ class IndexPage(Element):
         else:
             root, = self.system.rootobjects
             return tag.clear()(
-                "Start at ", epydoc2stan.taglink(root, self.filename),
+                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
                 ", the root ", root.kind.lower(), ".")
 
     @renderer
@@ -298,7 +301,9 @@ class IndexPage(Element):
     def roots(self, request, tag):
         r = []
         for o in self.system.rootobjects:
-            r.append(tag.clone().fillSlots(root=epydoc2stan.taglink(o, self.filename)))
+            r.append(tag.clone().fillSlots(root=tags.code(
+                epydoc2stan.taglink(o, self.filename)
+                )))
         return r
 
     @renderer
@@ -351,7 +356,7 @@ class UndocumentedSummaryPage(Element):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", epydoc2stan.taglink(o, self.filename)))
+            tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
 summarypages = [

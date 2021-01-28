@@ -60,7 +60,7 @@ def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -
         # if the query string is non-empty.
         url = url[len(page_url):]
 
-    ret: Tag = tags.code(tags.a(label, href=url))
+    ret: Tag = tags.a(label, href=url)
     return ret
 
 
@@ -101,14 +101,16 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        xref: Union[Tag, str]
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:
             xref = label
         else:
             if isinstance(resolved, model.Documentable):
-                return taglink(resolved, self.obj.page_object.url, label)
-            xref = tags.a(label, href=resolved)
+                xref = taglink(resolved, self.obj.page_object.url, label)
+            else:
+                xref = tags.a(label, href=resolved)
         ret: Tag = tags.code(xref)
         return ret
 
