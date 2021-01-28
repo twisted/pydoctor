@@ -11,7 +11,7 @@ Pydoctor now support `Google style <https://google.github.io/styleguide/pyguide.
 and `NumpyDoc style <https://numpydoc.readthedocs.io/en/latest/format.html>`_  docstrings. 
 
 Docstrings will be first converted to reStructuredText and then parsed with ``docutils``. 
-This means any supported `reST markup <restructuredtext>`_ can be use to supplement google-style or numpy-style markup. 
+This means any supported `reST markup <restructuredtext.html>`_ can be use to supplement google-style or numpy-style markup. 
 
 Please refer to the appropriate references documentation for markup details. 
 
@@ -29,8 +29,8 @@ List of supported sections:
     - ``Note(s)``,  ``Warning(s)`` and other admonitions
 
 .. note:: 
-   Pydoctor has forked the `napoleon Sphinx extension 
-   <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>`_.  
+   Pydoctor has forked and enhance the `napoleon Sphinx extension 
+   <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>`_.
 
-   ReST syntax violations might be reported with a slightly incorrect 
-   line number because of this pre-processing. 
+.. ReST syntax violations might be reported with a slightly incorrect 
+   line number because of this pre-processing. (uncommented this when pydoctor/issues/237 is solved)

@@ -2,7 +2,8 @@
 Pydoctor pre-process Google-style docstrings to convert them to reStructuredText. 
 **All standard reStructuredText formatting will still works as expected**. 
 
-Please see `restructuredtext_demo` for general reStructuredText formmating exemple. 
+Please see `restructuredtext_demo <../restructuredtext/restructuredtext_demo.html>`_ 
+for general reStructuredText formmating exemple. 
 
 Example Google style docstrings.
 
@@ -124,7 +125,7 @@ def module_level_function(param1, param2=None, *args, **kwargs):
     Raises:
         AttributeError: The ``Raises`` section is a list of all exceptions
             that are relevant to the interface.
-        ValueError: If `param2` is equal to `param1`.
+        ValueError: If ``param2`` is equal to ``param1``.
 
     """
     if param1 == param2:
@@ -136,10 +137,10 @@ def example_generator(n):
     """Generators have a ``Yields`` section instead of a ``Returns`` section.
 
     Args:
-        n (int): The upper limit of the range to generate, from 0 to `n` - 1.
+        n (int): The upper limit of the range to generate, from 0 to ``n`` - 1.
 
     Yields:
-        int: The next number in the range of 0 to `n` - 1.
+        int: The next number in the range of 0 to ``n`` - 1.
 
     Examples:
         Examples should be written in doctest format, and should illustrate how
@@ -159,7 +160,7 @@ class ExampleError(Exception):
     The __init__ method should be documented as a docstring on the __init__ method.
 
     Note:
-        Do not include the `self` parameter in the ``Args`` section.
+        Do not include the ``self`` parameter in the ``Args`` section.
 
     Args:
         msg (str): Human readable string describing the exception.
@@ -209,13 +210,13 @@ class ExampleClass:
         convention to document the __init__ method and be consistent with it.
 
         Note:
-            Do not include the `self` parameter in the ``Args`` section.
+            Do not include the ``self`` parameter in the ``Args`` section.
 
         Args:
-            param1 (str): Description of `param1`.
-            param2 (`int`, optional): Description of `param2`. Multiple
+            param1 (str): Description of ``param1``.
+            param2 (`int`, optional): Description of ``param2``. Multiple
                 lines are supported.
-            param3 (list(str)): Description of `param3`.
+            param3 (list(str)): Description of ``param3``.
 
         """
         self.attr1 = param1
@@ -251,7 +252,7 @@ class ExampleClass:
         """Class methods are similar to regular functions.
 
         Note:
-            Do not include the `self` parameter in the ``Args`` section.
+            Do not include the ``self`` parameter in the ``Args`` section.
 
         Args:
             param1: The first parameter.

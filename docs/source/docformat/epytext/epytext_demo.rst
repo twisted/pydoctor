@@ -1,4 +1,2 @@
 Epytext demo package
 ====================
-
-:orphan: 

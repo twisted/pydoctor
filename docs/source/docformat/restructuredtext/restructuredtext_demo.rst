@@ -1,4 +1,2 @@
 reStructuredText demo package
 =============================
-
-:orphan: 

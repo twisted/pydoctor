@@ -2,7 +2,8 @@
 Pydoctor pre-process Numpy-style docstrings to convert them to reStructuredText. 
 **All standard reStructuredText formatting will still works as expected**. 
 
-Please see `restructuredtext_demo` for general reStructuredText formmating exemple. 
+Please see `restructuredtext_demo <../restructuredtext/restructuredtext_demo.html>`_ 
+for general reStructuredText formmating exemple. 
 
 Example NumPy style docstrings.
 
@@ -162,7 +163,7 @@ def module_level_function(param1, param2=None, *args, **kwargs):
         The ``Raises`` section is a list of all exceptions
         that are relevant to the interface.
     ValueError
-        If `param2` is equal to `param1`.
+        If ``param2`` is equal to ``param1``.
 
     """
     if param1 == param2:
@@ -176,12 +177,12 @@ def example_generator(n):
     Parameters
     ----------
     n : int
-        The upper limit of the range to generate, from 0 to `n` - 1.
+        The upper limit of the range to generate, from 0 to ``n`` - 1.
 
     Yields
     ------
     int
-        The next number in the range of 0 to `n` - 1.
+        The next number in the range of 0 to ``n`` - 1.
 
     Examples
     --------
@@ -203,7 +204,7 @@ class ExampleError(Exception):
 
     Note
     ----
-    Do not include the `self` parameter in the ``Parameters`` section.
+    Do not include the ``self`` parameter in the ``Parameters`` section.
 
     Parameters
     ----------
@@ -270,17 +271,17 @@ class ExampleClass:
 
         Note
         ----
-        Do not include the `self` parameter in the ``Parameters`` section.
+        Do not include the ``self`` parameter in the ``Parameters`` section.
 
         Parameters
         ----------
         param1 : str
-            Description of `param1`.
+            Description of ``param1``.
         param2 : list(str)
-            Description of `param2`. Multiple
+            Description of ``param2``. Multiple
             lines are supported.
         param3 : `int`, optional
-            Description of `param3`.
+            Description of ``param3``.
 
         """
         self.attr1 = param1
@@ -317,7 +318,7 @@ class ExampleClass:
 
         Note
         ----
-        Do not include the `self` parameter in the ``Parameters`` section.
+        Do not include the ``self`` parameter in the ``Parameters`` section.
 
         Parameters
         ----------
