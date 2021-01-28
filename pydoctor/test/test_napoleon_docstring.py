@@ -4,7 +4,6 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-import unittest
 from _pytest.outcomes import xfail
 import pytest
 import re
@@ -12,7 +11,6 @@ import warnings
 from unittest import TestCase
 from textwrap import dedent
 from contextlib import contextmanager
-from pydoctor.napoleon import docstring
 
 from pydoctor.napoleon.docstring import (  GoogleDocstring, NumpyDocstring, 
                                            _convert_type_spec, _recombine_set_tokens,
