@@ -56,7 +56,7 @@ def test_rst_anon_link_email() -> None:
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
 def prettify(html: str) -> str:
-    return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
+    return BeautifulSoup(html, 'html.parser').prettify()  # type: ignore[no-any-return]
 
 def test_rst_directive_abnomitions() -> None:
     html = rst2html(".. warning:: Hey")
@@ -88,41 +88,25 @@ def test_rst_directive_seealso() -> None:
 
 def test_rst_directive_versionadded() -> None:
     html = rst2html(".. versionadded:: 0.6")
-    expected_html="""
-        <div class="rst-versionadded">
-        <p><span class="rst-versionmodified rst-added">New in version 0.6.</span></p>
-        </div>
+    expected_html="""<div class="rst-versionadded">
+<span class="rst-versionmodified rst-added">New in version 0.6.</span></div>
 """
-    assert prettify(html) == prettify(expected_html)
+    assert html==expected_html, html
 
 
 def test_rst_directive_versionchanged() -> None:
     html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
-    expected_html="""
-        <div class="rst-versionchanged">
-        <p><span class="rst-versionmodified rst-changed">Changed in version 0.7:
-        </span>
-        <span>
-         Add extras
-        </span>
-        </p>
-        </div>
+    expected_html="""<div class="rst-versionchanged">
+<span class="rst-versionmodified rst-changed">Changed in version 0.7: </span><span>Add extras</span></div>
 """
-    assert prettify(html) == prettify(expected_html)
+    assert html==expected_html, html
 
 
 def test_rst_directive_deprecated() -> None:
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
-    expected_html="""
-        <div class="rst-deprecated">
-        <p><span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: 
-        </span>
-        <span>
-         For security reasons
-        </span>
-        </p>
-        </div>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    expected_html="""<div class="rst-deprecated">
+<span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: </span><span>For security reasons</span></div>
+"""
+    assert html==expected_html, html
