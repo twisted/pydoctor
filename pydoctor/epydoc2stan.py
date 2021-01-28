@@ -100,6 +100,19 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
+    def link_to(self, identifier: str, label: str) -> Tag:
+        fullID = self.obj.expandName(identifier)
+
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return taglink(target, self.obj.page_object.url, label)
+
+        url = self.look_for_intersphinx(fullID)
+        if url is not None:
+            return tags.a(label, href=url)  # type: ignore[no-any-return]
+
+        return tags.transparent(label)  # type: ignore[no-any-return]
+
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         xref: Union[Tag, str]
         try:
@@ -709,14 +722,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
         self.linker = linker
 
     def _handle_name(self, identifier: str) -> Tag:
-        url = self.linker.resolve_identifier(identifier)
-
-        tag: Tag
-        if url is None:
-            tag = tags.transparent(identifier)
-        else:
-            tag = tags.a(identifier, href=url)
-        return tag
+        return self.linker.link_to(identifier, identifier)
 
     def _handle_constant(self, node: ast.expr, value: object) -> Tag:
         if value in (False, True, None, NotImplemented):

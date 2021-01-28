@@ -188,6 +188,18 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
+    def link_to(self, target: str, label: str) -> Tag:
+        """
+        Format a link to a Python identifier.
+        This will resolve the identifier like Python itself would.
+
+        @param target: The name of the Python identifier that
+            should be linked to.
+        @param label: The label to show for the link.
+        @return: The link, or just the label if the target was not found.
+        """
+        raise NotImplementedError()
+
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         """
         Format a cross-reference link to a Python identifier.

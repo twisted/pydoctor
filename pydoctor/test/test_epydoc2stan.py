@@ -3,7 +3,7 @@ import re
 import textwrap
 
 from pytest import mark, raises
-from twisted.web.template import Tag
+from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker, flatten
@@ -675,6 +675,10 @@ class RecordingAnnotationLinker(DocstringLinker):
 
     def __init__(self) -> None:
         self.requests: List[str] = []
+
+    def link_to(self, target: str, label: str) -> Tag:
+        self.resolve_identifier(target)
+        return tags.transparent(label)  # type: ignore[no-any-return]
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         assert False
