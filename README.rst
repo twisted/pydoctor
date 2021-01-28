@@ -49,11 +49,19 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language used by Sphinx.
     More expressive than epytext, but also slightly more complex and verbose.
 
+`google`__
+    Popular markup language used by Google.
+
+`numpy`__
+    Popular markup language used by Numpy. 
+
 ``plaintext``
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
 __ https://docutils.sourceforge.io/rst.html
+__ https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings
+__ https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
 You can select a different format using the ``--docformat`` option.
 
