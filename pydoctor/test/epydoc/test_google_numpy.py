@@ -1,3 +1,5 @@
+from typing import List
+from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
 from pydoctor.model import Attribute, System, Function
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
@@ -15,9 +17,9 @@ class TestGetParser(TestCase):
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
 
-        errors = []
+        errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
         
         expected = """\
 super-dooper attribute
@@ -36,9 +38,9 @@ super-dooper attribute
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
 
-        errors = []
+        errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
         
         expected = """\
 numpy.ndarray: super-dooper attribute"""
@@ -47,7 +49,7 @@ numpy.ndarray: super-dooper attribute"""
         self.assertEqual(errors, [])
 
     # the numpy inline attribute parsing is the same as google-style
-    # as shown in the example_numpy.py  from Sphinx docs
+    # as shown in the example_numpy.py from Sphinx docs
     def test_get_numpy_parser_attribute(self) -> None:
 
         obj = Attribute(system = System(), name='attr1')
@@ -57,9 +59,9 @@ numpy.ndarray: super-dooper attribute"""
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
 
-        errors = []
+        errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
         
         expected = """\
 super-dooper attribute
@@ -78,9 +80,9 @@ super-dooper attribute
         docstring = """\
 numpy.ndarray: super-dooper attribute"""
 
-        errors = []
+        errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring
+        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
         
         expected = """\
 numpy.ndarray: super-dooper attribute"""
@@ -105,7 +107,7 @@ Args
 my attr: hey"
         super-dooper attribute"""
 
-        errors = []
+        errors: List[ParseError] = []
 
         parse_docstring(docstring, errors)
         
