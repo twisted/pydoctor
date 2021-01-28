@@ -8,7 +8,7 @@ Forked from sphinx.ext.napoleon.iterators.
 """
 
 import collections
-from typing import Any, Callable, Deque, Iterable, Iterator, Optional, TypeVar, Generic, Union
+from typing import Any, Callable, Deque, Iterable, Iterator, Optional, Sequence, TypeVar, Generic, Union, overload, cast
 
 __docformat__ = "numpy en" # for future usage 
 
@@ -27,7 +27,7 @@ class peek_iter(Generic[T]):
     sentinel : any value, optional
         If given, the iterator will call `o` with no arguments for each
         call to its `next` method; if the value returned is equal to
-        `sentinel`, :exc:`StopIteration` will be raised, otherwise the
+        `sentinel`, `StopIteration` will be raised, otherwise the
         value will be returned.
     See Also
     --------
@@ -42,14 +42,19 @@ class peek_iter(Generic[T]):
     counter
         Store and increment line number to report correct lines!
     """
-    def __init__(self, *args: Union[Callable[[], Union[T, object]], Iterable[T], object]) -> None:
-        """__init__(o, sentinel=None)"""
-        # mypy get  error: Argument 1 to "iter" has incompatible type
-        # "*Tuple[Union[Callable[[], Iterable[T]], Iterable[T], object], ...]"; expected "Iterable[T]"  [arg-type]
-        self._iterable : Iterator[T] = iter(*args) # type: ignore
-        self._cache : Deque[Union[T, object]] = collections.deque()
-        if len(args) == 2:
-            self.sentinel = args[1]
+    def __init__(self, o:Union[Callable[[], T], Iterable[T]], sentinel:Optional[T]=None) -> None:
+        self._iterable : Iterator[T]
+        if callable(o) :
+            if not sentinel: raise TypeError("If o is a callable object, sentinel cannot be None.")
+            self._iterable = iter(o, sentinel)
+        else: 
+            if sentinel: raise TypeError("If sentinel is given, then o must be a callable object.")
+            self._iterable =  iter(o)
+
+        self._cache : Deque[T] = collections.deque()
+        
+        if sentinel:
+            self.sentinel = sentinel
         else:
             self.sentinel = object()
         # store line number to report correct lines!
@@ -58,10 +63,9 @@ class peek_iter(Generic[T]):
     def __iter__(self) -> "peek_iter[T]":
         return self
 
-    def __next__(self, n: Optional[int] = None) -> Any: 
-        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
-        # because it's interpreted as Iterable[T] all the time even if n = None. 
-        return self.next(n)
+    # overridden: no n param: it was not used. 
+    def __next__(self) -> T:  
+        return self.next()
 
     def _fillcache(self, n: Optional[int]) -> None:
         """Cache `n` items. If `n` is 0 or None, then 1 item is cached."""
@@ -84,12 +88,15 @@ class peek_iter(Generic[T]):
         ----
         Will never raise :exc:`StopIteration`.
         """
-        # error: Returning Any from function declared to return "bool"  [no-any-return]
-        return self.peek() != self.sentinel # type: ignore
+        return self.peek() != self.sentinel
 
-    def next(self, n: Optional[int] = None) -> Any: 
-        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
-        # because it's interpreted as Iterable[T] all the time even if n = None. 
+    @overload
+    def next(self, n: int) -> Sequence[T]: 
+        ...
+    @overload
+    def next(self) -> T: 
+        ...
+    def next(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
         """Get the next item or `n` items of the iterator.
         Parameters
         ----------
@@ -106,28 +113,29 @@ class peek_iter(Generic[T]):
         StopIteration
             Raised if the iterator is exhausted, even if `n` is 0.
         """
-        result: Union[T, Iterable[T]]
+        result: Union[T, Sequence[T]]
         self._fillcache(n)
         if not n:
             if self._cache[0] == self.sentinel:
                 raise StopIteration
             if n is None:
-                #  error: Incompatible types in assignment (expression has type "object", variable has type "Union[T, Iterable[T]]")  [assignment]
-                # object type is only for the sentinel, and it's rasing StopIteration if encoumtered, so we can ignore this. 
-                result = self._cache.popleft() # type: ignore
+                result = self._cache.popleft() 
             else:
                 result = [] 
         else:
             if self._cache[n - 1] == self.sentinel:
                 raise StopIteration
-            #  error: List comprehension has incompatible type List[object]; expected List[T]  [misc]
-            result = [self._cache.popleft() for i in range(n)] # type: ignore
+            result = [self._cache.popleft() for i in range(n)] 
         self.counter += n or 1
         return result
-
-    def peek(self, n: Optional[int] = None) -> Any: 
-        # Type would be Union[Iterable[T], T] but that cause lots's of other mypy errors in docstring.py
-        # because it's interpreted as Iterable[T] all the time even if n = None. 
+    
+    @overload
+    def peek(self, n: int) -> Sequence[T]: 
+        ...
+    @overload
+    def peek(self) -> T: 
+        ...
+    def peek(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
         """Preview the next item or `n` items of the iterator.
         The iterator is not advanced when peek is called.
         Returns
@@ -143,6 +151,7 @@ class peek_iter(Generic[T]):
         Will never raise :exc:`StopIteration`.
         """
         self._fillcache(n)
+        result: Union[Sequence[T], T]
         if n is None:
             result = self._cache[0]
         else:

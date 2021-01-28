@@ -15,7 +15,7 @@ import collections
 import re
 import warnings
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Generator, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Iterator, List, Mapping, Optional, Tuple, Union
 
 import attr
 
@@ -248,15 +248,15 @@ class GoogleDocstring:
         _descs = self.__class__(_descs, self._config).lines()
         return _name, _type, _descs
 
-    # overriden: allow white lines in fields def, this was preventing to add white 
-    # lines in a numpy section
-    # Allow any parameters to be passed to _consume_field with **kwargs
+    # overriden: Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False,
                         multiple: bool = False, **kwargs:Any) -> List[Tuple[str, str, List[str]]]:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
             # error: Too many arguments for "_consume_field" of "GoogleDocstring"  [call-arg]
+            # This is not an issue since kwargs is used only in NumpyDocstring where "_consume_field" method
+            # accepts another parameter. 
             _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs) # type: ignore
             if multiple and _name:
                 for name in _name.split(","):
@@ -310,8 +310,7 @@ class GoogleDocstring:
         stripped_section = section.strip(':')
         if stripped_section.lower() in self._sections:
             section = stripped_section
-        # error: Returning Any from function declared to return "str"  [no-any-return]
-        return section # type: ignore
+        return section 
 
     def _consume_to_end(self) -> List[str]:
         lines = []
@@ -552,7 +551,7 @@ class GoogleDocstring:
 
     def _is_section_break(self) -> bool:
         line = self._line_iter.peek()
-        return (not self._line_iter.has_next() or
+        return bool(not self._line_iter.has_next() or
                 self._is_section_header() or
                 (self._is_in_section and
                     line and
@@ -674,12 +673,11 @@ class GoogleDocstring:
             type_role="type")
         
 
-    # overriden: ignore noindex options + assign a custom role to display methods as others
+    # overriden: ignore noindex options + hack something that renders ok as is
     def _parse_methods_section(self, section: str) -> List[str]:
     
-        def _init_methods_section():
+        def _init_methods_section() -> None:
             if not lines:
-                # lines.extend(['.. role:: meth','   :class: code py-defname', ])
                 lines.extend(['.. admonition:: Methods', ''])
 
         lines = []  # type: List[str]
@@ -830,7 +828,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
     token_queue = collections.deque(tokens)
     keywords = ("optional", "default")
 
-    def takewhile_set(tokens: Deque) -> Generator:
+    def takewhile_set(tokens: Deque[str]) -> Iterator[str]:
         open_braces = 0
         previous_token = None
         while True:
@@ -866,7 +864,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
             if open_braces == 0:
                 break
 
-    def combine_set(tokens: Deque):
+    def combine_set(tokens: Deque[str]) -> Iterator[str]:
         while True:
             try:
                 token = tokens.popleft()
@@ -883,7 +881,7 @@ def _recombine_set_tokens(tokens: List[str]) -> List[str]:
 
 
 def _tokenize_type_spec(spec: str) -> List[str]:
-    def postprocess(item):
+    def postprocess(item:str) -> List[str]:
         if _default_regex.match(item):
             default = item[:7]
             # the default value can't be separated by anything other than a single space
@@ -902,7 +900,7 @@ def _tokenize_type_spec(spec: str) -> List[str]:
 
 
 def _token_type(token: str) -> str:
-    def is_numeric(token):
+    def is_numeric(token: str) -> bool:
         try:
             # use complex to make sure every numeric value is detected as literal
             complex(token)
@@ -960,11 +958,12 @@ def _token_type(token: str) -> str:
 # also use this function to pre-process google-style types. 
 def _convert_type_spec(_type: str, aliases: Mapping[str, str] = {}) -> str:
 
-    def _get_alias(_token:str, aliases:Mapping[str, str]):
+    def _get_alias(_token:str, aliases:Mapping[str, str]) -> str:
         alias = aliases.get(_token, _token)
         return alias
 
-    def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], _next_token:Tuple[str, str], _translation:str=None):
+    def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], 
+                 _next_token:Tuple[str, str], _translation:Optional[str]=None) -> str:
         translation = _translation or "%s"
         if _xref_regex.match(_token[0]) is None:
             converted_token = translation % _token[0]
@@ -996,7 +995,7 @@ def _convert_type_spec(_type: str, aliases: Mapping[str, str] = {}) -> str:
         for token in combined_tokens
     ]
 
-    converters = {
+    converters: Dict[str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], str]] = {
         "literal": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
         "obj": lambda _token, _last_token, _next_token: _convert((_get_alias(_token[0], aliases), _token[1]), _last_token, _next_token, "`%s`"),
         "control": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
@@ -1012,7 +1011,7 @@ def _convert_type_spec(_type: str, aliases: Mapping[str, str] = {}) -> str:
     iter_types: peek_iter[Tuple[str, str]] = peek_iter(types)
     for token, type_ in iter_types:
         next_token = iter_types.peek()
-        converted_token = converters.get(type_)((token, type_), last_token, next_token)
+        converted_token = converters[type_]((token, type_), last_token, next_token)
         converted += converted_token
         last_token = (converted_token, type_)
 
@@ -1187,15 +1186,16 @@ class NumpyDocstring(GoogleDocstring):
         
         return _name, figure_type(_name, _type), []
 
-
+    # allow to pass any args to super()._consume_fields(). Used for allow_free_form=True
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False, 
-                        multiple: bool = False, allow_free_form: bool = False ) -> List[Tuple[str, str, List[str]]]:
+                        multiple: bool = False, **kwargs:Any ) -> List[Tuple[str, str, List[str]]]:
         try:
             return super()._consume_fields(parse_type=parse_type, 
-                prefer_type=prefer_type, multiple=multiple, allow_free_form=allow_free_form)
+                prefer_type=prefer_type, multiple=multiple, **kwargs)
         except ConsumeFieldsAsFreeForm as e:
             return [('', '', e.lines)]
 
+    # Pass allow_free_form depending on the configuration value
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         return self._consume_fields(prefer_type=True, 
             allow_free_form=self._config.napoleon_numpy_returns_allow_free_from)
@@ -1212,7 +1212,7 @@ class NumpyDocstring(GoogleDocstring):
 
     def _is_section_break(self) -> bool:
         line1, line2 = self._line_iter.peek(2)
-        return (not self._line_iter.has_next() or
+        return bool(not self._line_iter.has_next() or
                 self._is_section_header() or
                 ['', ''] == [line1, line2] or
                 (self._is_in_section and
@@ -1248,7 +1248,7 @@ class NumpyDocstring(GoogleDocstring):
         another_func_name : Descriptive text
         func_name1, func_name2, :meth:`func_name`, func_name3
         """
-        items = []
+        items: List[Tuple[str, List[str], Optional[str]]] = []
 
         def parse_item_name(text: str) -> Tuple[str, str]:
             """Match ':role:`name`' or 'name'"""
@@ -1256,19 +1256,19 @@ class NumpyDocstring(GoogleDocstring):
             if m:
                 g = m.groups()
                 if g[1] is None:
-                    return g[3], None
+                    return g[3], None # type: ignore [unreachable]
                 else:
                     return g[2], g[1]
             raise ValueError("%s is not a item name" % text)
 
-        def push_item(name: str, rest: List[str]) -> None:
+        def push_item(name: Optional[str], rest: List[str]) -> None:
             if not name:
                 return
             name, role = parse_item_name(name)
             items.append((name, list(rest), role))
             del rest[:]
 
-        def translate(func, description, role):
+        def translate(func:str, description:List[str], role:Optional[str]) -> Tuple[str, List[str], Optional[str]]:
             translations = self._config.napoleon_type_aliases
             if role is not None or not translations:
                 return func, description, role

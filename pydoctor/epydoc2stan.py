@@ -283,7 +283,7 @@ class FieldHandler:
                 self.return_desc = FieldDesc(kind='return', type=ret_type)
 
     @staticmethod
-    def _report_unexpected_argument(field:Field):
+    def _report_unexpected_argument(field:Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
 
