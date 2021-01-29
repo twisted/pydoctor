@@ -58,7 +58,7 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
@@ -401,19 +401,14 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
         m = _TARGET_RE.match(node.astext())
-        if m: text, target = m.groups()
-        else: target = text = node.astext()
-        label = tags.code(text)
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
         # TODO: 'node.line' is None for some reason.
         #       https://github.com/twisted/pydoctor/issues/237
         lineno = 0
-        try:
-            url = self._linker.resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            xref = tags.a(label, href=url)
-        self.body.append(flatten(xref))
+        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
         raise SkipNode()
 
     def should_be_compact_paragraph(self, node: Node) -> bool:

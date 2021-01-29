@@ -42,12 +42,17 @@ class DocGetter:
                 return [doc, ' (type: ', typ, ')']
 
 class CommonPage(Element):
+    ob: model.Documentable
 
     def __init__(self, ob, docgetter=None):
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
+
+    @property
+    def page_url(self) -> str:
+        return self.ob.page_object.url
 
     @property
     def loader(self):
@@ -62,16 +67,19 @@ class CommonPage(Element):
             )
 
     def category(self) -> str:
-        return f"{self.ob.kind.lower()} documentation"
+        kind = self.ob.kind
+        assert kind is not None
+        return f"{kind.lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
+        page_url = self.page_url
         parts: List[Union[Tag, str]] = []
         ob: Optional[model.Documentable] = obj
         while ob:
             if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 if parts:
                     parts.append('.')
-                parts.append(util.taglink(ob, ob.name))
+                parts.append(tags.code(epydoc2stan.taglink(ob, page_url, ob.name)))
             ob = ob.parent
         parts.reverse()
         return parts
@@ -236,7 +244,7 @@ def unmasked_attrs(baselist):
             if o.isVisible and o.name not in maybe_masking]
 
 
-def assembleList(system, label, lst, idbase):
+def assembleList(system, label, lst, idbase, page_url):
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
@@ -247,7 +255,7 @@ def assembleList(system, label, lst, idbase):
         return None
     def one(item):
         if item in system.allobjects:
-            return util.taglink(system.allobjects[item])
+            return tags.code(epydoc2stan.taglink(system.allobjects[item], page_url))
         else:
             return item
     def commasep(items):
@@ -263,6 +271,8 @@ def assembleList(system, label, lst, idbase):
 
 
 class ClassPage(CommonPage):
+    ob: model.Class
+
     def __init__(self, ob, docgetter=None):
         CommonPage.__init__(self, ob, docgetter)
         self.baselists = []
@@ -290,7 +300,7 @@ class ClassPage(CommonPage):
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
-                         [o.fullName() for o in scs], "moreSubclasses")
+                         [o.fullName() for o in scs], "moreSubclasses", self.page_url)
         if p is not None:
             r.append(tags.p(p))
         return r
@@ -314,7 +324,7 @@ class ClassPage(CommonPage):
                 if url is None:
                     tag = tags.span
                 else:
-                    tag = tags.a(href=url, **{"data-type": "Class"})
+                    tag = tags.a(href=url)
                 r.append(tag(name, title=full_name))
             r.append(')')
         return r
@@ -337,33 +347,36 @@ class ClassPage(CommonPage):
                 for b, attrs in baselists]
 
     def baseName(self, data):
+        page_url = self.page_url
         r = []
         source_base = data[0]
-        r.append(util.taglink(source_base, source_base.name))
+        r.append(tags.code(epydoc2stan.taglink(source_base, page_url, source_base.name)))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
             tail = []
             for b in reversed(bases_to_mention):
-                tail.append(util.taglink(b, b.name))
+                tail.append(tags.code(epydoc2stan.taglink(b, page_url, b.name)))
                 tail.append(', ')
             del tail[-1]
             r.extend([' (via ', tail, ')'])
         return r
 
     def functionExtras(self, data):
+        page_url = self.page_url
         r = []
         for b in self.ob.allbases(include_self=False):
             if data.name not in b.contents:
                 continue
             overridden = b.contents[data.name]
-            r.append(tags.div(class_="interfaceinfo")('overrides ', util.taglink(overridden)))
+            r.append(tags.div(class_="interfaceinfo")(
+                'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
         ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
             l = assembleList(self.ob.system, 'overridden in ',
-                             [o.fullName() for o in ocs], idbase)
+                             [o.fullName() for o in ocs], idbase, self.page_url)
             if l is not None:
                 r.append(tags.div(class_="interfaceinfo")(l))
         return r
@@ -381,7 +394,8 @@ class ZopeInterfaceClassPage(ClassPage):
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
-            l = assembleList(self.ob.system, label, namelist, "moreInterface")
+            l = assembleList(self.ob.system, label, namelist, "moreInterface",
+                             self.page_url)
             if l is not None:
                 r.append(tags.p(l))
         return r
@@ -400,6 +414,8 @@ class ZopeInterfaceClassPage(ClassPage):
         imeth = self.interfaceMeth(data.name)
         r = []
         if imeth:
-            r.append(tags.div(class_="interfaceinfo")('from ', util.taglink(imeth, imeth.parent.fullName())))
+            r.append(tags.div(class_="interfaceinfo")('from ', tags.code(
+                epydoc2stan.taglink(imeth, self.page_url, imeth.parent.fullName())
+                )))
         r.extend(super().functionExtras(data))
         return r

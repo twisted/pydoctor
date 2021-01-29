@@ -24,8 +24,8 @@ The C{ParsedDocstring} output generation method
 (L{to_stan()<ParsedDocstring.to_stan>}) uses a
 L{DocstringLinker} to link the docstring output with the rest of
 the documentation that epydoc generates.  C{DocstringLinker}s are
-responsible for resolving identifier crossreferences
-(L{resolve_identifier_xref() <DocstringLinker.resolve_identifier_xref>}).
+responsible for formatting cross-references
+(L{link_xref() <DocstringLinker.link_xref>}).
 
 Markup errors are represented using L{ParseError}s.  These exception
 classes record information about the cause, location, and severity of
@@ -188,6 +188,34 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
+    def link_to(self, target: str, label: str) -> Tag:
+        """
+        Format a link to a Python identifier.
+        This will resolve the identifier like Python itself would.
+
+        @param target: The name of the Python identifier that
+            should be linked to.
+        @param label: The label to show for the link.
+        @return: The link, or just the label if the target was not found.
+        """
+        raise NotImplementedError()
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        """
+        Format a cross-reference link to a Python identifier.
+        This will resolve the identifier to any reasonable target,
+        even if it has to look in places where Python itself would not.
+
+        @param target: The name of the Python identifier that
+            should be linked to.
+        @param label: The label to show for the link.
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The link, or just the label if the target was not found.
+            In either case, the returned top-level tag will be C{<code>}.
+        """
+        raise NotImplementedError()
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         """
         Resolve a Python identifier.
@@ -196,21 +224,6 @@ class DocstringLinker:
         @param identifier: The name of the Python identifier that
             should be linked to.
         @return: The URL of the target, or L{None} if not found.
-        """
-        raise NotImplementedError()
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        """
-        Resolve a crossreference link to a Python identifier.
-        This will resolve the identifier to any reasonable target,
-        even if it has to look in places where Python itself would not.
-
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @param lineno: The line number within the docstring at which the
-            crossreference is located.
-        @return: The URL of the target.
-        @raise LookupError: If C{identifier} could not be resolved.
         """
         raise NotImplementedError()
 

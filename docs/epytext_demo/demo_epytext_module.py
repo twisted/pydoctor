@@ -12,7 +12,7 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with L{demo_typing_arguments} to
+    This function can be used in conjunction with L{demo_typing_arguments} to
     find an arbitrary function's zeros.
 
     @type  m: number

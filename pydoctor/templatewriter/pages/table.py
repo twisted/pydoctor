@@ -1,5 +1,6 @@
-from twisted.web.template import Element, TagLoader, XMLFile, renderer
+from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
+from pydoctor import epydoc2stan
 from pydoctor.model import Function
 from pydoctor.templatewriter import util
 
@@ -31,7 +32,9 @@ class TableRow(Element):
 
     @renderer
     def name(self, request, tag):
-        return tag.clear()(util.taglink(self.child, self.child.name))
+        return tag.clear()(tags.code(
+            epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
+            ))
 
     @renderer
     def summaryDoc(self, request, tag):
