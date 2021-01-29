@@ -56,7 +56,7 @@ def test_rst_anon_link_email() -> None:
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
 def prettify(html: str) -> str:
-    return BeautifulSoup(html, "html").prettify()  # type: ignore[no-any-return]
+    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""
@@ -64,13 +64,15 @@ def test_rst_directive_adnomitions() -> None:
         <p class="rst-first rst-admonition-title">{}</p>
         <p>this is the first line</p>
         <p class="rst-last">and this is the second line</p>
-        </div>"""
+        </div>
+"""
 
     expected_html_single_line = """
         <div class="rst-admonition {}">
         <p class="rst-first rst-admonition-title">{}</p>
         <p class="rst-last">this is a single line</p>
-        </div>"""
+        </div>
+"""
 
     admonition_map = {
             'Attention': 'attention',
