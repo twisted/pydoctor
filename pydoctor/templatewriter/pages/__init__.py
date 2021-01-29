@@ -30,16 +30,15 @@ def signature(function: model.Function) -> str:
     return str(function.signature)
 
 class DocGetter:
-    def get(self, ob, summary=False):
+    """L{epydoc2stan} bridge."""
+    def get(self, ob:model.Documentable, summary:bool=False):
         if summary:
             return epydoc2stan.format_summary(ob)
         else:
             doc = epydoc2stan.format_docstring(ob)
-            typ = epydoc2stan.type2stan(ob)
-            if typ is None:
-                return doc
-            else:
-                return [doc, ' (type: ', typ, ')']
+            return doc
+    def get_type(self, ob: model.Documentable):
+        return epydoc2stan.type2stan(ob)
 
 class BaseElement(Element, abc.ABC):
     """

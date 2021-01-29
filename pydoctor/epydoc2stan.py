@@ -238,8 +238,8 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     Generates a 2-columns layout as follow:: 
 
         <label>            | <empty_cell>  
-        <name> : <type>    | <desc>
-        <name> : <type>    | <desc>
+        <name>: <type>     | <desc>
+        <name>: <type>     | <desc>
 
     @returns: Each row as iterator
     """
@@ -256,9 +256,10 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         row = tags.tr()
         fieldNameTd = ["\t", ]
         if d.name:
-            fieldNameTd.append(tags.span(class_="fieldArg")(d.name))
+            _name = tags.span(class_="fieldArg")(d.name)
             if d.type:
-                fieldNameTd.append(" : ")
+                _name(": ")
+            fieldNameTd.append(_name)
         if d.type:
             fieldNameTd.append(d.type)
         row(tags.td()(*fieldNameTd))

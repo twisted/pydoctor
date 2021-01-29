@@ -34,7 +34,11 @@ class AttributeChild(BaseElement):
 
     @renderer
     def attribute(self, request, tag):
-        return tags.span(self.ob.name, class_='py-defname')
+        attr = [tags.span(self.ob.name, class_='py-defname')]
+        _type = self.docgetter.get_type(self.ob)
+        if _type:
+            attr.extend([': ', _type])
+        return attr
 
     @renderer
     def sourceLink(self, request, tag):
