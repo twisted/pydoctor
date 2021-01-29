@@ -233,41 +233,37 @@ class FieldDesc:
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
-    Format list of field descriptions: parameters, etc. 
+    Format list of field descriptions: parameters, returns, etc. 
 
-    Generate a 3-column layout as follow:: 
+    Generates a 2-columns layout as follow:: 
 
-        <label>         |  <name>: <type>   | <desc>
-        <empty_cell>    |  <name>: <type>   | <desc>
+        <label>            | <empty_cell>  
+        <name> : <type>    | <desc>
+        <name> : <type>    | <desc>
 
-    @yield Tag: Row
+    @returns: Each row as iterator
     """
     first = True
     for d in descs:
         if first:
-            # <label> 
             row = tags.tr(class_="fieldStart")
             row(tags.td(class_="fieldName")(label))
-            first = False
-        else:
-            # empty table cell
-            row = tags.tr()
             row(tags.td())
-        if d.name is None:  
-            fieldNameTd = []
-            if d.type: # this will be typically used for returned value types
-                fieldNameTd.append(d.type)
-            if fieldNameTd:
-                row(tags.td(*fieldNameTd), 
-                    tags.td(d.format()))
-            else:
-                row(tags.td(colspan="2")(d.format()))
-        else:
-            fieldArgTd = [tags.span(class_="fieldArg")(d.name)]
+            first = False
+            #  <label> | <empty_cell> 
+            yield row
+
+        row = tags.tr()
+        fieldNameTd = ["\t", ]
+        if d.name:
+            fieldNameTd.append(tags.span(class_="fieldArg")(d.name))
             if d.type:
-                fieldArgTd.extend([': ', d.type, ])
-            row(tags.td(*fieldArgTd), 
-                tags.td(d.format()))
+                fieldNameTd.append(" : ")
+        if d.type:
+            fieldNameTd.append(d.type)
+        row(tags.td()(*fieldNameTd))
+        row(tags.td(d.format()))
+        #  <name>: <type> | <desc>
         yield row
 
 

@@ -163,10 +163,20 @@ ul ul ul ul ul ul ul {
     table-layout: fixed;
 }
 
+.fieldArg:before {
+    margin-right: 6px;
+    content: "\2022";
+}
 /* For desktop: */
+/* Arg+type column table  */
+.fieldTable tr td:first-child {
+    border-left: none;
+    width: 45%;
+}
+
 /* argument docs column table  */
-.fieldTable tr td:nth-child(3) {
-    width: 60%;
+.fieldTable tr td:nth-child(2) {
+    width: 55%;
 }
 
 /* Kind column table  */
@@ -176,8 +186,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* Attr name + type column table  */
-#splitTables > table tr td:nth-child(2), .fieldTable tr .fieldArg {
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+#splitTables > table tr td:nth-child(2) {
     /* We do not specify width so the type columns will be automatically
     sized depending on the space left. */
     max-width: 200px;
@@ -190,19 +199,18 @@ ul ul ul ul ul ul ul {
     }
     /* For mobile phones: */
     /* Kind column table  */
-    #splitTables > table tr td:first-child, .fieldTable tr td:first-child {
+    #splitTables > table tr td:first-child {
         border-left: none;
         width: 20%;
     }
 
     /* Attr name column table  */
-    #splitTables > table tr td:nth-child(2), .fieldTable tr .fieldArg {
-        font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    #splitTables > table tr td:nth-child(2) {
         width: 35%;
     }
 
-    /* Summary column table and argument docs  */
-    #splitTables > table tr td:nth-child(3), .fieldTable tr td:nth-child(3){
+    /* Summary column table */
+    #splitTables > table tr td:nth-child(3) {
         width: 45%;
     }
 
@@ -284,10 +292,10 @@ tr.private {
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
 code, .pre, #childList > div .functionHeader,
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+#splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+code, #childList > div .functionHeader, .fieldArg {
     font-size: 90%;
     color: #222222;
 }
@@ -348,29 +356,14 @@ body.private-hidden #summaryTree .private {
     display: none;
 }
 
-/* Adjust show private, make it more visible and add padding */ 
-
-#showPrivate {
-    /* position: fixed;
-    bottom: 0;
-    left: 0; */
-    padding: 0px;
-    /* opacity: 0.6; */
-    /* margin-bottom: 55px; */
-    background-color: #efefef;
-    border-radius: 1px;
-}
+/* Show private */ 
 
 #showPrivate:hover {
-    opacity: 1;
     text-decoration: none;
 }
 
 #showPrivate button {
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding-right: 15px;
-    padding-left: 15px;
+    padding: 10px;
 }
 
 #showPrivate button:hover {
