@@ -488,15 +488,12 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: Node, name: str = '') -> None:
-        if name:
-            self.body.append(self.starttag(
-                node, 'div', CLASS=('admonition ' + name)))
-            node.insert(0, docutils.nodes.title(name, name.title()))
-            self.set_first_last(node)
-        else:
-            self.visit_admonition(node)
-
+    def _visit_admonition(self, node: Node, name: str) -> None:
+        self.body.append(self.starttag(
+            node, 'div', CLASS=('admonition ' + name)))
+        node.insert(0, docutils.nodes.title(name, name.title()))
+        self.set_first_last(node)
+        
     def visit_note(self, node: Node) -> None:
         self._visit_admonition(node, 'note')
 

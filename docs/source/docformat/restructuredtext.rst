@@ -48,7 +48,7 @@ Note that *docutils* requires a space before and after the ``:`` used to mark cl
 .. code:: python
 
     def fox_speed(size, weight, age):
-        '''
+        """
         :Parameters:
             size
                 The size of the fox (in meters)
@@ -56,19 +56,19 @@ Note that *docutils* requires a space before and after the ``:`` used to mark cl
                 The weight of the fox (in stones)
             age : int
                 The age of the fox (in years)
-        '''
+        """
 
 Using a bulleted list.
 
 .. code:: python
 
     def fox_speed(size:float, weight:float, age:int):
-        '''
+        """
         :Parameters:
             - `size`: The size of the fox (in meters)
             - `weight`: The weight of the fox (in stones)
             - `age`: The age of the fox (in years)
-        '''
+        """
 
 The following consolidated fields are currently supported by PyDoctor:
 

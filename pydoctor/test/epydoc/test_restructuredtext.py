@@ -58,24 +58,60 @@ def test_rst_anon_link_email() -> None:
 def prettify(html: str) -> str:
     return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
 
-# TESTS FOR NOT IMPLEMENTTED FEATURES
-
-def test_rst_directive_abnomitions() -> None:
-    html = rst2html(".. warning:: Hey")
-    expected_html="""
-        <div class="rst-admonition warning">
-        <p class="rst-first rst-admonition-title">Warning</p>
-        <p class="rst-last">Hey</p>
+def test_rst_directive_adnomitions() -> None:
+    expected_html_multiline="""
+        <div class="rst-admonition {}">
+        <p class="rst-first rst-admonition-title">{}</p>
+        <p>this is the first line</p>
+        <p class="rst-last">and this is the second line</p>
         </div>"""
-    assert prettify(html).strip() == prettify(expected_html).strip(), html
 
-    html = rst2html(".. note:: Hey")
-    expected_html = """
-        <div class="rst-admonition note">
-        <p class="rst-first rst-admonition-title">Note</p>
-        <p class="rst-last">Hey</p>
+    expected_html_single_line = """
+        <div class="rst-admonition {}">
+        <p class="rst-first rst-admonition-title">{}</p>
+        <p class="rst-last">this is a single line</p>
         </div>"""
-    assert prettify(html).strip() == prettify(expected_html).strip(), html
+
+    admonition_map = {
+            'Attention': 'attention',
+            'Caution': 'caution',
+            'Danger': 'danger',
+            'Error': 'error',
+            'Hint': 'hint',
+            'Important': 'important',
+            'Note': 'note',
+            'Tip': 'tip',
+            'Warning': 'warning',
+        }
+
+    for title, admonition_name in admonition_map.items():
+        # Multiline
+        docstring = (".. {}::\n"
+                    "\n"
+                    "   this is the first line\n"
+                    "   \n"
+                    "   and this is the second line\n"
+                    ).format(admonition_name)
+
+        expect = expected_html_multiline.format(
+            admonition_name, title
+        )
+
+        actual = rst2html(docstring)
+
+        assert prettify(expect)==prettify(actual)
+
+        # Single line
+        docstring = (".. {}:: this is a single line\n"
+                    ).format(admonition_name)
+
+        expect = expected_html_single_line.format(
+            admonition_name, title
+        )
+
+        actual = rst2html(docstring)
+
+        assert prettify(expect)==prettify(actual)
 
 @pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:
