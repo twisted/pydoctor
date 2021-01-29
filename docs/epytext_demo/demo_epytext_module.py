@@ -76,7 +76,7 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
     This is the docstring of this class.
     """
 
-    def __init_(self, one: str, two: bytes) -> None:
+    def __init__(self, one: str, two: bytes) -> None:
         """
         Documentation for class initialization.
 
