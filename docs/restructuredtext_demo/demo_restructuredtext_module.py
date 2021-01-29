@@ -1,51 +1,58 @@
 """
-This is a module demonstrating epydoc code documentation features.
+This is a module demonstrating reST code documentation features.
 
 Most part of this documentation is using Python type hinting.
 """
-
-from abc import ABC
-from somelib import SomeInterface
-
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjunction with L{demo_typing_arguments} to
+    This function can be used in conjuction with L{demo_typing_arguments} to
     find an arbitrary function's zeros.
 
-    @type  m: number
-    @param m: The slope of the line.
-    @type  b: number
-    @param b: The y intercept of the line.
-    @rtype:   number
-    @return:  the x intercept of the line M{y=m*x+b}.
+    :type  m: number
+    :param m: The slope of the line.
+    :type  b: number
+    :param b: The y intercept of the line.
+    :rtype:   number
+    :return:  the x intercept of the line M{y=m*x+b}.
     """
     return -b/m
 
+def demo_consolidated_fields(a:float, b):  # type: ignore
+    """
+    Fields can be condensed into one "consolidated" field. Looks better in plain text. 
+
+    :Parameters:
+        - `a`: The size of the fox (in meters)
+        - `b`: The weight of the fox (in stones)
+    :rtype: str
+    :return: The number of foxes
+    """
+    return -b/a
 
 def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
 
-    @param name: The human readable name for something.
-    @param size: How big the name should be.
-    @return: Always C{True}.
+    :param name: The human readable name for something.
+    :param size: How big the name should be.
+    :return: Always `True`.
     """
     return True
 
 
 def demo_cross_reference() -> None:
-    """
-    The inline markup construct C{LE{lb}text<object>E{rb}} is used to create links to the documentation for other Python objects.
+    r"""
+    The inline markup construct ```object``` is used to create links to the documentation for other Python objects.
     'text' is the text that should be displayed for the link, and 'object' is the name of the Python object that should be linked to.
 
-    If you wish to use the name of the Python object as the text for the link, you can simply write C{LE{lb}objectE{rb}}.
+    If you wish to use the name of the Python object as the text for the link, you can simply write ```object``` -> `object`.
 
-        - L{demo_typing_arguments}
-        - L{Custom name <demo_typing_arguments>}
+    - `demo_typing_arguments`
     """
+
 
 
 class _PrivateClass:
@@ -57,7 +64,7 @@ class _PrivateClass:
         """
         A public method inside a private class.
 
-        @return: Something.
+        :return: Something.
         """
         return True
 
@@ -66,12 +73,12 @@ class _PrivateClass:
         """
         A private method inside a private class.
 
-        @return: Something.
+        :return: Something.
         """
         return True
 
 
-class DemoClass(ABC, SomeInterface, _PrivateClass):
+class DemoClass:
     """
     This is the docstring of this class.
     """
@@ -80,8 +87,8 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
         """
         Documentation for class initialization.
 
-        @param one: Docs for first argument.
-        @param two: Docs for second argument.
+        :param one: Docs for first argument.
+        :param two: Docs for second argument.
         """
 
     @property

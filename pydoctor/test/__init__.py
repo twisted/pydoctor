@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 
+from twisted.web.template import Tag, tags
+
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker
 
@@ -80,8 +82,11 @@ class InMemoryWriter:
 class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
 
+    def link_to(self, target: str, label: str) -> Tag:
+        return tags.transparent(label)  # type: ignore[no-any-return]
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        return tags.code(label)  # type: ignore[no-any-return]
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        raise LookupError(identifier)

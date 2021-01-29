@@ -3,6 +3,7 @@ import re
 import textwrap
 
 from pytest import mark, raises
+from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker, flatten
@@ -59,6 +60,63 @@ def test_html_empty_module() -> None:
     </div>
     """).strip()
     assert docstring2html(mod) == expected_html
+
+
+def test_xref_link_not_found() -> None:
+    """A linked name that is not found is output as text."""
+    mod = fromText('''
+    """This link leads L{nowhere}."""
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert '<code>nowhere</code>' in html
+
+
+def test_xref_link_same_page() -> None:
+    """A linked name that is documented on the same page is linked using only
+    a fragment as the URL.
+    """
+    mod = fromText('''
+    """The home of L{local_func}."""
+
+    def local_func():
+        pass
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert 'href="#local_func"' in html
+
+
+def test_xref_link_other_page() -> None:
+    """A linked name that is documented on a different page but within the
+    same project is linked using a relative URL.
+    """
+    mod1 = fromText('''
+    def func():
+        """This is not L{test2.func}."""
+    ''', modname='test1')
+    fromText('''
+    def func():
+        pass
+    ''', modname='test2', system=mod1.system)
+    html = docstring2html(mod1.contents['func'])
+    assert 'href="test2.html#func"' in html
+
+
+def test_xref_link_intersphinx() -> None:
+    """A linked name that is documented in another project is linked using
+    an absolute URL (retrieved via Intersphinx).
+    """
+    mod = fromText('''
+    def func():
+        """This is a thin wrapper around L{external.func}."""
+    ''', modname='test')
+
+    system = mod.system
+    inventory = SphinxInventory(system.msg)
+    inventory._links['external.func'] = ('https://example.net', 'lib.html#func')
+    system.intersphinx = inventory
+
+    html = docstring2html(mod.contents['func'])
+    assert 'href="https://example.net/lib.html#func"' in html
 
 
 def test_func_undocumented_return_nothing() -> None:
@@ -508,7 +566,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('base.module.other')
-    url_xref = sut.resolve_identifier_xref('base.module.other', 0)
+    url_xref = sut._resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -534,7 +592,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.resolve_identifier('ext_module')
-    url_xref = sut.resolve_identifier_xref('ext_module', 0)
+    url_xref = sut._resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -560,7 +618,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert sut.resolve_identifier('ext_module') is None
     assert not capsys.readouterr().out
     with raises(LookupError):
-        sut.resolve_identifier_xref('ext_module', 0)
+        sut._resolve_identifier_xref('ext_module', 0)
 
     captured = capsys.readouterr().out
     expected = (
@@ -596,7 +654,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier('socket.socket')
-    url_xref = linker.resolve_identifier_xref('socket.socket', 0)
+    url_xref = linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
@@ -618,10 +676,10 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('internal_module.C')
-    url_xref = sut.resolve_identifier_xref('internal_module.C', 0)
+    xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
-    assert "internal_module.C.html" == url_xref
+    assert int_mod.contents['C'] is xref
 
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
@@ -679,12 +737,16 @@ class RecordingAnnotationLinker(DocstringLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
+    def link_to(self, target: str, label: str) -> Tag:
+        self.resolve_identifier(target)
+        return tags.transparent(label)  # type: ignore[no-any-return]
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        assert False
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         self.requests.append(identifier)
         return None
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        assert False
 
 @mark.parametrize('annotation', (
     '<bool>',

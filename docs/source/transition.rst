@@ -19,6 +19,4 @@ From ``pdoc3``
 
 - ``pydoctor`` can only generate HTML, if you are using Markdown output, consider using ``pdocs``.
 
-- Some reStructuredText directives are not supported yet, please refer to `Documentation Formats <docformat.html>`_ section for more information.
-
 - All references to ``__pdoc__`` module variable should be deleted as they are not supported. If you dynamically generated documentation, you should create a separate script and include it's output with an ``.. include::`` directive.
