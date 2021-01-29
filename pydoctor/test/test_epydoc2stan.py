@@ -62,6 +62,63 @@ def test_html_empty_module() -> None:
     assert docstring2html(mod) == expected_html
 
 
+def test_xref_link_not_found() -> None:
+    """A linked name that is not found is output as text."""
+    mod = fromText('''
+    """This link leads L{nowhere}."""
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert '<code>nowhere</code>' in html
+
+
+def test_xref_link_same_page() -> None:
+    """A linked name that is documented on the same page is linked using only
+    a fragment as the URL.
+    """
+    mod = fromText('''
+    """The home of L{local_func}."""
+
+    def local_func():
+        pass
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert 'href="#local_func"' in html
+
+
+def test_xref_link_other_page() -> None:
+    """A linked name that is documented on a different page but within the
+    same project is linked using a relative URL.
+    """
+    mod1 = fromText('''
+    def func():
+        """This is not L{test2.func}."""
+    ''', modname='test1')
+    mod2 = fromText('''
+    def func():
+        pass
+    ''', modname='test2', system=mod1.system)
+    html = docstring2html(mod1.contents['func'])
+    assert 'href="test2.html#func"' in html
+
+
+def test_xref_link_intersphinx() -> None:
+    """A linked name that is documented in another project is linked using
+    an absolute URL (retrieved via Intersphinx).
+    """
+    mod = fromText('''
+    def func():
+        """This is a thin wrapper around L{external.func}."""
+    ''', modname='test')
+
+    system = mod.system
+    inventory = SphinxInventory(system.msg)
+    inventory._links['external.func'] = ('https://example.net', 'lib.html#func')
+    system.intersphinx = inventory
+
+    html = docstring2html(mod.contents['func'])
+    assert 'href="https://example.net/lib.html#func"' in html
+
+
 def test_func_undocumented_return_nothing() -> None:
     """When the returned value is undocumented (no 'return' field) and its type
     annotation is None, omit the "Returns" entry from the output.
