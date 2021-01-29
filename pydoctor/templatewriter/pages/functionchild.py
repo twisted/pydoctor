@@ -38,7 +38,10 @@ class FunctionChild(BaseElement):
         name = self.ob.name
         if name.endswith('.setter') or name.endswith('.deleter'):
             name = name[:name.rindex('.')]
-        return [def_stmt, ' ', name, signature(self.ob), ':']
+        return [
+            tags.span(def_stmt, class_='py-keyword'), ' ',
+            tags.span(name, class_='py-defname'), signature(self.ob), ':'
+            ]
 
     @renderer
     def sourceLink(self, request, tag):

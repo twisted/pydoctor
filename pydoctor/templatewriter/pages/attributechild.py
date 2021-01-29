@@ -34,7 +34,7 @@ class AttributeChild(BaseElement):
 
     @renderer
     def attribute(self, request, tag):
-        return self.ob.name
+        return tags.span(self.ob.name, class_='py-defname')
 
     @renderer
     def sourceLink(self, request, tag):

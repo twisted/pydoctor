@@ -41,10 +41,23 @@ For long docstrings, start with a short summary, followed by an empty line::
         but omitted from the summary table.
         """
 
+Since docstrings are Python strings, escape sequences such as ``\n`` will be parsed as if the corresponding character---for example a newline---occurred at the position of the escape sequence in the source code.
+
+To have the text ``\n`` in a docstring at runtime and in the generated documentation, you either have escape it twice in the source: ``\\n`` or use the ``r`` prefix for a raw string literal.
+The following example shows the raw string approach::
+
+    def iter_lines(stream):
+        r"""Iterate through the lines in the given text stream,
+        with newline characters (\n) removed.
+        """
+        for line in stream:
+            yield line.rstrip('\n')
+
 Further reading:
 
 - `Python Tutorial: Documentation Strings <https://docs.python.org/3/tutorial/controlflow.html#documentation-strings>`_
 - `PEP 257 -- Docstring Conventions <https://www.python.org/dev/peps/pep-0257/>`_
+- `Python Language Reference: String and Bytes literals <https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals>`_
 
 
 Docstring assignments
@@ -105,6 +118,29 @@ Further reading:
 
 - `Python Standard Library: typing -- Support for type hints <https://docs.python.org/3/library/typing.html>`_
 - `PEP 483 -- The Theory of Type Hints <https://www.python.org/dev/peps/pep-0483/>`_
+
+
+Properties
+----------
+
+A method with a decoration ending in ``property`` or ``Property`` will be included in the generated API documentation as an attribute rather than a method::
+
+    class Knight:
+
+        @property
+        def name(self):
+            return self._name
+
+        @abc.abstractproperty
+        def age(self):
+            raise NotImplementedError
+
+        @customProperty
+        def quest(self):
+            return f'Find the {self._object}'
+
+All you have to do for pydoctor to recognize your custom properties is stick to this naming convention.
+
 
 Using ``attrs``
 ---------------

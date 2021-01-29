@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Mapping, Optional, Union, Type
+from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
 
@@ -147,9 +147,6 @@ class CommonPage(BasePage):
     def title(self):
         return self.ob.fullName()
 
-    def mediumName(self, obj):
-        return self.ob.fullName()
-
     def heading(self):
         return tags.h1(class_=self.ob.css_class)(
             tags.code(self.namespace(self.ob))
@@ -158,7 +155,7 @@ class CommonPage(BasePage):
     def category(self) -> str:
         return f"{str(self.ob.kind).lower()} documentation"
 
-    def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
+    def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
         parts: List[Union[Tag, str]] = []
         ob: Optional[model.Documentable] = obj
         while ob:
@@ -373,7 +370,8 @@ class ClassPage(CommonPage):
             source = tags.transparent
         r.append(tags.p(tags.code(
             tags.span("class", class_='py-keyword'), " ",
-            self.mediumName(self.ob), ":", source
+            tags.span(self.ob.name, class_='py-defname'),
+            self.classSignature(), ":", source
             )))
 
         scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
@@ -385,18 +383,27 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def mediumName(self, ob):
-        r = [super().mediumName(ob)]
+    def classSignature(self) -> Sequence[Union[Tag, str]]:
+        r = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
-            for i, (n, m, o) in enumerate(zipped):
-                if o is None:
-                    r.append(tags.span(title=m)(n))
-                else:
-                    r.append(util.taglink(o, n))
-                if i != len(zipped)-1:
+            for idx, (name, full_name, base) in enumerate(zipped):
+                if idx != 0:
                     r.append(', ')
+
+                if base is None:
+                    # External class.
+                    url = self.ob.system.intersphinx.getLink(full_name)
+                else:
+                    # Internal class.
+                    url = base.url
+
+                if url is None:
+                    tag = tags.span
+                else:
+                    tag = tags.a(href=url, **{"data-type": "Class"})
+                r.append(tag(name, title=full_name))
             r.append(')')
         return r
 
