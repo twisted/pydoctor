@@ -56,7 +56,7 @@ def test_rst_anon_link_email() -> None:
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
 def prettify(html: str) -> str:
-    return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
+    return BeautifulSoup(html, "html").prettify()  # type: ignore[no-any-return]
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""
