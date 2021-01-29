@@ -93,7 +93,7 @@ def test_xref_link_other_page() -> None:
     def func():
         """This is not L{test2.func}."""
     ''', modname='test1')
-    mod2 = fromText('''
+    fromText('''
     def func():
         pass
     ''', modname='test2', system=mod1.system)
