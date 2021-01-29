@@ -657,28 +657,22 @@ class ModuleVistor(ast.NodeVisitor):
         is_staticmethod = False
         if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
-                if isinstance(d, ast.Name):
-                    name = d.id
-                    if name == 'property':
-                        is_property = True
-                    elif name.endswith('property') or name.endswith('Property'):
-                        is_property = True
-                    elif name == 'classmethod':
-                        is_classmethod = True
-                    elif name == 'staticmethod':
-                        is_staticmethod = True
-                elif isinstance(d, ast.Attribute):
-                    if d.attr in ('setter', 'deleter'):
-                        # Rename the setter/deleter, so it doesn't replace
-                        # the property object.
-                        func_name = f'{func_name}.{d.attr}'
-                elif isinstance(d, ast.Call):
-                    deco_name = node2fullname(d.func, parent)
-                    if deco_name is not None and (
-                            deco_name.endswith('property') or
-                            deco_name.endswith('Property')
-                            ):
-                        is_property = True
+                if isinstance(d, ast.Call):
+                    deco_name = node2dottedname(d.func)
+                else:
+                    deco_name = node2dottedname(d)
+                if deco_name is None:
+                    continue
+                if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                    is_property = True
+                elif deco_name == ['classmethod']:
+                    is_classmethod = True
+                elif deco_name == ['staticmethod']:
+                    is_staticmethod = True
+                elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
+                    # Rename the setter/deleter, so it doesn't replace
+                    # the property object.
+                    func_name = '.'.join(deco_name[-2:])
 
         if is_property:
             attr = self._handlePropertyDef(node, docstring, lineno)
