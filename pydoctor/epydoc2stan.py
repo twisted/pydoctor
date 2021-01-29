@@ -171,13 +171,25 @@ class FieldDesc:
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
+    """
+    Format list of field descriptions: parameters, etc. 
+
+    Generate a 3-column layout as follow:: 
+
+        <label>         |  <name>: <type>   | <desc>
+        <empty_cell>    |  <name>: <type>   | <desc>
+
+    @yield Tag: Row
+    """
     first = True
     for d in descs:
         if first:
+            # <label> 
             row = tags.tr(class_="fieldStart")
             row(tags.td(class_="fieldName")(label))
             first = False
         else:
+            # empty table cell
             row = tags.tr()
             row(tags.td())
         if d.name is None:  
@@ -192,7 +204,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         else:
             fieldArgTd = [tags.span(class_="fieldArg")(d.name)]
             if d.type:
-                fieldArgTd.extend([' (', d.type, ')'])
+                fieldArgTd.extend([': ', d.type, ])
             row(tags.td(*fieldArgTd), 
                 tags.td(d.format()))
         yield row
