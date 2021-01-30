@@ -4,7 +4,7 @@ import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _SimpleTemplate, _HtmlTemplate
+from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _SimpleTemplate, _HtmlTemplate, TemplateVersionError
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
@@ -191,10 +191,10 @@ def test_template_lookup() -> None:
     try:
         lookup.add_templatedir((here / 'testcustomtemplates' / 'invalid'))
 
-    except RuntimeError as e:
+    except TemplateVersionError as e:
         assert "It appears that your custom template 'nav.html' is designed for a newer version of pydoctor" in str(e)
     else:
-        assert False, "Should have failed with a RuntimeError when loading 'testcustomtemplates/invalid'"
+        assert False, "Should have failed with a TemplateVersionError when loading 'testcustomtemplates/invalid'"
 
 def test_template() -> None:
 
