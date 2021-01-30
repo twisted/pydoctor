@@ -27,7 +27,7 @@ class IWriter(abc.ABC):
     """
 
     @abc.abstractmethod
-    def __init__(self, filebase:str, template_lookup:Optional['TemplateLookup'] = None):
+    def __init__(self, filebase:str, template_lookup:Optional['TemplateLookup'] = None) -> None:
         pass
 
     @abc.abstractmethod

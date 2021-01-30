@@ -31,42 +31,48 @@ def signature(function: model.Function) -> str:
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
-    def get(self, ob:model.Documentable, summary:bool=False):
+    def get(self, ob:model.Documentable, summary:bool=False) -> Tag:
         if summary:
             return epydoc2stan.format_summary(ob)
         else:
-            doc = epydoc2stan.format_docstring(ob)
-            return doc
-    def get_type(self, ob: model.Documentable):
+            return epydoc2stan.format_docstring(ob)
+    def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
 
 class BaseElement(Element, abc.ABC):
     """
-    Common base element 
+    Common base HTML element. 
     """
     def __init__(self, 
         system:Optional[model.System]=None, 
         template_lookup:Optional[TemplateLookup]=None, 
         loader:Optional[ITemplateLoader]=None, ) -> None:
         """
-        C{system} and C{template_lookup} can be none in special 
-        cases like for L{LetterElement}. 
+        Init a new pydoctor HTML element. 
 
-        The C{loader} is usually got from the L{TemplateLookup} 
-        object but can also be set by argument, again for the special 
-        case of L{LetterElement}. 
+        The C{loader} property is usually got from the L{TemplateLookup} 
+        object but can also be set by argument.
 
         @raises RuntimeError: If not enought information is provided 
-        to create the template loader. i.e. missing C{template_lookup} or C{loader} arguments. 
+            to create the template loader. i.e. missing C{template_lookup} or C{loader} argument.
+            Could also be that the L{Template.renderable} property is not a L{ITemplateLoader} provider. 
+
+        @note: C{system} and C{template_lookup} can be none in special cases, like for L{LetterElement}. 
         """
         self.system = system
         self.template_lookup = template_lookup
         if loader:
             self._loader = loader  
+        # filename attribute should be set for most page classes
         elif self.filename:
             if self.template_lookup:
-                self._loader = self.template_lookup.get_template(
-                    self.filename).renderable
+                template = self.template_lookup.get_template(
+                    self.filename)
+                if not isinstance(template.renderable, ITemplateLoader):
+                     RuntimeError(f"Cannot create HTML element {self} because template renderable  \
+                       property is not a ITemplateLoader provider.")
+                else:
+                    self._loader = template.renderable
             else:
                 RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup \
                     object is passed to BaseElement's 'template_lookup' init argument.")
