@@ -18,6 +18,9 @@ from bs4 import BeautifulSoup
 
 from pydoctor.model import System, Documentable
 
+class _TemplateVersionError(RuntimeError):
+    pass
+
 class IWriter(abc.ABC):
     """
     Interface class for pydoctor output writer. 
@@ -59,6 +62,8 @@ class Template(abc.ABC):
     is going to be reused for each output file using this template. 
 
     Use L{Template.fromfile} to create Templates. 
+
+    @see: L{TemplateLookup}
     """
 
     def __init__(self, path:Path):
@@ -197,6 +202,7 @@ class TemplateLookup:
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
 
+    @see: L{Template}
     """
 
     _default_template_dir = 'templates'
@@ -217,7 +223,8 @@ class TemplateLookup:
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
-        @raises RuntimeError: If the custom template is designed for a newer version of pydoctor
+        @raises _TemplateVersionError: If the custom template is designed for a newer version of pydoctor. 
+        @warns: If the custom template is designed for an older version of pydoctor. 
         """
         
         try:
@@ -226,10 +233,10 @@ class TemplateLookup:
             if default_version and template_version != -1:
                 if template_version < default_version: 
                     warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
-                                   "Latest templates are available to download from our github.")
+                                   "Latest templates are available to download from our github." )
                 elif template_version > default_version:
-                    raise RuntimeError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail, so we're crashing now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
+                    raise _TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
+                                        "Rendering will most probably fail, so we're stopping now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except KeyError:
             warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
         

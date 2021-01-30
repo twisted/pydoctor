@@ -10,7 +10,7 @@ import warnings
 from inspect import signature
 
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.templatewriter import IWriter, TemplateLookup
+from pydoctor.templatewriter import IWriter, TemplateLookup, _TemplateVersionError
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -428,8 +428,11 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 if 'template_lookup' in signature(writerclass).parameters:
                     # writer class is up o date
                     custom_lookup = TemplateLookup()
-                    custom_lookup.add_templatedir(
-                        Path(system.options.templatedir))
+                    try:
+                        custom_lookup.add_templatedir(
+                            Path(system.options.templatedir))
+                    except _TemplateVersionError as e:
+                        error(str(e))
 
                     writer = writerclass(options.htmloutput, 
                         template_lookup=custom_lookup)

@@ -241,6 +241,11 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         <name>: <type>     | <desc>
         <name>: <type>     | <desc>
 
+    If fields don't have type or name information, generates:: 
+
+        <label>            | <empty_cell>  
+        <desc>
+
     @returns: Each row as iterator
     """
     first = True
@@ -262,9 +267,13 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
             fieldNameTd.append(_name)
         if d.type:
             fieldNameTd.append(d.type)
-        row(tags.td()(*fieldNameTd))
-        row(tags.td(d.format()))
-        #  <name>: <type> | <desc>
+        if d.name or d.type:
+            #  <name>: <type> | <desc>
+            row(tags.td()(*fieldNameTd))
+            row(tags.td(d.format()))
+        else:
+            #  <desc>
+            row(tags.td(d.format(), colspan="2"))
         yield row
 
 
@@ -299,16 +308,27 @@ class Field:
 
 
 def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+    """
+    Format list of field: notes, see also, authors, etc. 
+
+    Generates a 2-columns layout as follow:: 
+
+        <label>            | <empty_cell>  
+        <desc>
+
+    @returns: Each row as iterator
+    """
     label = singular if len(fields) == 1 else plural
     first = True
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
             row(tags.td(class_="fieldName")(label))
-            first=False
-        else:
-            row = tags.tr()
             row(tags.td())
+            first=False
+            yield row
+
+        row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
 

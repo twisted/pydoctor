@@ -135,11 +135,10 @@ ul ul ul ul ul ul ul {
     margin-bottom: 5px;
 }
 
-#splitTables > table, .fieldTable {
+#splitTables > table {
     margin-bottom: 20px;
     width: 100%;
     border: 0;
-    table-layout: auto;
 }
 
 #splitTables > table tr {
@@ -149,39 +148,47 @@ ul ul ul ul ul ul ul {
     width: 100%;
 }
 
-#splitTables > table tr td, .fieldTable tr td {
-    padding: 5px;
-}
-
 #splitTables > table tr td {
+    padding: 5px;
     border-left-color: #eee;
     border-left-width: 1px;
     border-left-style: solid;
 }
 
 .fieldTable {
-    table-layout: fixed;
+    width: 100%;
+    border: 0;
 }
 
 .fieldArg:before {
     margin-right: 6px;
     content: "\2022";
 }
-/* For desktop: */
-/* Arg+type column table  */
-.fieldTable tr td:first-child {
-    border-left: none;
-    width: 45%;
+
+.fieldTable tr:not(.fieldStart) td:first-child{
+    padding-left: 10px;
 }
 
-/* argument docs column table  */
-.fieldTable tr td:nth-child(2) {
-    width: 55%;
+.fieldTable tr td {
+    padding: 2px;
 }
+
+/* For desktop: */
+
+/* Section header */
+.fieldTable tr td:first-child.fieldName {
+    width: 150px;
+}
+
+/* Arg+type column table  */
+.fieldTable tr td:first-child:not(.fieldName) {
+    width: 275px;
+}
+
 
 /* Kind column table  */
 #splitTables > table tr td:first-child {
-    border-left: none;
+    /* border-left: none; */
     width: 150px;
 }
 
@@ -189,7 +196,7 @@ ul ul ul ul ul ul ul {
 #splitTables > table tr td:nth-child(2) {
     /* We do not specify width so the type columns will be automatically
     sized depending on the space left. */
-    max-width: 200px;
+    max-width: 300px;
 }
 
 @media only screen and (max-width: 1000px) {
@@ -211,6 +218,11 @@ ul ul ul ul ul ul ul {
 
     /* Summary column table */
     #splitTables > table tr td:nth-child(3) {
+        width: 45%;
+    }
+
+    /* Arg+type column table  */
+    .fieldTable tr td:first-child:not(.fieldName) {
         width: 45%;
     }
 
@@ -244,13 +256,8 @@ tr.private {
     background-color: #f1f1f1;
 }
 
-.fieldTable {
-    margin-top: 10px;
-}
-
 .fieldName {
     font-weight: bold;
-    width: 150px;
 }
 
 
@@ -319,8 +326,10 @@ code {
 }
 
 
-a.functionSourceLink {
+a.sourceLink {
+    color: #337ab7;
     font-weight: normal;
+    background-color: transparent;
 }
 
 

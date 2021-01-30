@@ -272,7 +272,7 @@ class ModulePage(CommonPage):
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
-            r.append(tags.a("(source)", href=sourceHref))
+            r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
 
         return r
 
@@ -374,7 +374,7 @@ class ClassPage(CommonPage):
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
-            source = (" ", tags.a("(source)", href=sourceHref))
+            source = (" ", tags.a("(source)", href=sourceHref, class_="sourceLink"))
         else:
             source = tags.transparent
         r.append(tags.p(tags.code(
