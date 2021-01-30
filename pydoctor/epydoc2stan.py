@@ -219,6 +219,15 @@ class _EpydocLinker(DocstringLinker):
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
+    """
+    Combines informations from multiple L{Field} objects into one.
+
+    Example::
+
+       :param foo: description of parameter foo
+       :type foo:  SomeClass
+
+    """
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     kind: str
@@ -233,18 +242,23 @@ class FieldDesc:
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
-    Format list of field descriptions: parameters, returns, etc. 
+    Format list of L{FieldDesc}. Used for param, returns, raises, etc. 
 
     Generates a 2-columns layout as follow:: 
 
-        <label>            | <empty_cell>  
-        <name>: <type>     | <desc>
-        <name>: <type>     | <desc>
+        +------------------------------------+
+        | <label>        |     <empty_cell>  |
+        | <name>: <type> |     <desc>        |
+        | <name>: <type> |     <desc>        |
+        +------------------------------------+
 
-    If fields don't have type or name information, generates:: 
+    If the fields don't have type or name information, 
+    generates the same output as L{format_field_list}:: 
 
-        <label>            | <empty_cell>  
-        <desc>
+        +------------------------------------+
+        | <label>      |       <empty_cell>  |
+        | <desc ... >                        | <- colspan="2"
+        +------------------------------------+
 
     @returns: Each row as iterator
     """
@@ -279,8 +293,12 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
 
 @attr.s(auto_attribs=True)
 class Field:
-    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
+    """Like L{pydoctor.epydoc.markup.Field}, but without the gross accessor
     methods and with a formatted body.
+
+    Example::
+
+        @note: some other information
     """
 
     tag: str
@@ -309,12 +327,14 @@ class Field:
 
 def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
     """
-    Format list of field: notes, see also, authors, etc. 
+    Format list of L{Field} object. Used for notes, see also, authors, etc. 
 
     Generates a 2-columns layout as follow:: 
 
-        <label>            | <empty_cell>  
-        <desc>
+        +------------------------------------+
+        | <label>      |       <empty_cell>  |
+        | <desc ... >                        | <- colspan="2"
+        +------------------------------------+
 
     @returns: Each row as iterator
     """
