@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 
 from pydoctor.model import System, Documentable
 
-class _TemplateVersionError(RuntimeError):
+class TemplateVersionError(RuntimeError):
     pass
 
 class IWriter(abc.ABC):
@@ -121,7 +121,7 @@ class Template(abc.ABC):
         pass
 
     @abc.abstractproperty
-    def renderable(self) -> Any:
+    def renderable(self) -> Optional[Any]:
         """
         Object that is used to render the final file. 
 
@@ -223,7 +223,7 @@ class TemplateLookup:
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
-        @raises _TemplateVersionError: If the custom template is designed for a newer version of pydoctor. 
+        @raises TemplateVersionError: If the custom template is designed for a newer version of pydoctor. 
         @warns: If the custom template is designed for an older version of pydoctor. 
         """
         
@@ -235,7 +235,7 @@ class TemplateLookup:
                     warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
-                    raise _TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
+                    raise TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
                                         "Rendering will most probably fail, so we're stopping now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except KeyError:
             warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
