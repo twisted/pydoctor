@@ -60,7 +60,7 @@ import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
@@ -388,7 +388,12 @@ class _SplitFieldsTranslator(NodeVisitor):
         'Ignore all unknown nodes'
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+_VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
 
+def _valid_identifier(s:str) -> str:
+    """Remove invalid characters"""
+    return _VALID_IDENTIFIER_RE.sub('', s)
+    
 class _EpydocHTMLTranslator(HTMLTranslator):
 
     settings: ClassVar[Optional[optparse.Values]] = None
@@ -410,19 +415,14 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
         m = _TARGET_RE.match(node.astext())
-        if m: text, target = m.groups()
-        else: target = text = node.astext()
-        label = tags.code(text)
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
         # TODO: 'node.line' is None for some reason.
         #       https://github.com/twisted/pydoctor/issues/237
         lineno = 0
-        try:
-            url = self._linker.resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            xref = tags.a(label, href=url)
-        self.body.append(flatten(xref))
+        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
         raise SkipNode()
 
     def should_be_compact_paragraph(self, node: Node) -> bool:
@@ -497,15 +497,12 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
     # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: Node, name: str = '') -> None:
-        if name:
-            self.body.append(self.starttag(
-                node, 'div', CLASS=('admonition ' + name.replace(' ', ''))))
-            node.insert(0, docutils.nodes.title(name, name.title()))
-            self.set_first_last(node)
-        else:
-            self.visit_admonition(node)
-
+    def _visit_admonition(self, node: Node, name: str) -> None:
+        self.body.append(self.starttag(
+            node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
+        node.insert(0, docutils.nodes.title(name, name.title()))
+        self.set_first_last(node)
+        
     def visit_note(self, node: Node) -> None:
         self._visit_admonition(node, 'note')
 

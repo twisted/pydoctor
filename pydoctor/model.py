@@ -183,21 +183,34 @@ class Documentable:
         return self.module.fullName() if source_path is None else str(source_path)
 
     @property
-    def url(self) -> str:
-        """Relative URL at which the documentation for this Documentable
-        can be found.
+    def page_object(self) -> 'Documentable':
+        """The documentable to which the page we're documented on belongs.
+        For example methods are documented on the page of their class,
+        functions are documented in their module's page etc.
         """
         location = self.documentation_location
         if location is DocLocation.OWN_PAGE:
-            return f'{quote(self.fullName())}.html'
+            return self
         elif location is DocLocation.PARENT_PAGE:
             parent = self.parent
             if isinstance(parent, Module) and parent.name == '__init__':
                 parent = parent.parent
             assert parent is not None
-            return f'{quote(parent.fullName())}.html#{quote(self.name)}'
+            return parent
         else:
             assert False, location
+
+    @property
+    def url(self) -> str:
+        """Relative URL at which the documentation for this Documentable
+        can be found.
+        """
+        page_obj = self.page_object
+        page_url = f'{quote(page_obj.fullName())}.html'
+        if page_obj is self:
+            return page_url
+        else:
+            return f'{page_url}#{quote(self.name)}'
 
     def fullName(self) -> str:
         parent = self.parent

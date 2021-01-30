@@ -4,12 +4,12 @@ from typing import Dict, List, Sequence, Tuple, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import util
-from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
+from twisted.web.template import Element, Tag, TagLoader, XMLFile, renderer, tags
 
 
-def moduleSummary(modorpack):
+def moduleSummary(modorpack, page_url):
     r = tags.li(
-        util.taglink(modorpack), ' - ',
+        tags.code(epydoc2stan.taglink(modorpack, page_url)), ' - ',
         epydoc2stan.format_summary(modorpack)
         )
     if modorpack.isPrivate:
@@ -22,7 +22,7 @@ def moduleSummary(modorpack):
         return r
     ul = tags.ul()
     for m in sorted(contents, key=lambda m:m.fullName()):
-        ul(moduleSummary(m))
+        ul(moduleSummary(m, page_url))
     return r(ul)
 
 def _lckey(x):
@@ -51,7 +51,7 @@ class ModuleIndexPage(Element):
     def stuff(self, request, tag):
         r = []
         for o in self.system.rootobjects:
-            r.append(moduleSummary(o))
+            r.append(moduleSummary(o, self.filename))
         return tag.clear()(r)
     @renderer
     def heading(self, request, tag):
@@ -97,7 +97,7 @@ def isClassNodePrivate(cls: model.Class) -> bool:
 
     return True
 
-def subclassesFrom(hostsystem, cls, anchors):
+def subclassesFrom(hostsystem, cls, anchors, page_url):
     r = tags.li()
     if isClassNodePrivate(cls):
         r(class_='private')
@@ -105,13 +105,14 @@ def subclassesFrom(hostsystem, cls, anchors):
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(util.taglink(cls), ' - ', epydoc2stan.format_summary(cls))
+    r(tags.code(epydoc2stan.taglink(cls, page_url)), ' - ',
+      epydoc2stan.format_summary(cls))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
-            ul(subclassesFrom(hostsystem, sc, anchors))
+            ul(subclassesFrom(hostsystem, sc, anchors, page_url))
         r(ul)
     return r
 
@@ -139,7 +140,7 @@ class ClassIndexPage(Element):
         anchors = set()
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
-                t(subclassesFrom(self.system, o, anchors))
+                t(subclassesFrom(self.system, o, anchors, self.filename))
             else:
                 item = tags.li(tags.code(b))
                 if all(isClassNodePrivate(sc) for sc in o):
@@ -149,7 +150,7 @@ class ClassIndexPage(Element):
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):
-                        ul(subclassesFrom(self.system, sc, anchors))
+                        ul(subclassesFrom(self.system, sc, anchors, self.filename))
                     item(ul)
                 t(item)
         return t
@@ -184,6 +185,14 @@ class LetterElement(Element):
 
     @renderer
     def names(self, request, tag):
+        def link(obj: model.Documentable) -> Tag:
+            # The "data-type" attribute helps doc2dash figure out what
+            # category (class, method, etc.) an object belongs to.
+            tag: Tag = tags.code(
+                epydoc2stan.taglink(obj, NameIndexPage.filename),
+                **{"data-type": obj.kind}
+                )
+            return tag
         name2obs = {}
         for obj in self.initials[self.my_letter]:
             name2obs.setdefault(obj.name, []).append(obj)
@@ -194,11 +203,11 @@ class LetterElement(Element):
             if all(isPrivate(ob) for ob in obs):
                 item(class_='private')
             if len(obs) == 1:
-                item(' - ', util.taglink(obs[0]))
+                item(' - ', link(obs[0]))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    subitem = tags.li(util.taglink(ob))
+                    subitem = tags.li(link(ob))
                     if isPrivate(ob):
                         subitem(class_='private')
                     ul(subitem)
@@ -278,7 +287,7 @@ class IndexPage(Element):
         else:
             root, = self.system.rootobjects
             return tag.clear()(
-                "Start at ", util.taglink(root),
+                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
                 ", the root ", root.kind.lower(), ".")
 
     @renderer
@@ -292,7 +301,9 @@ class IndexPage(Element):
     def roots(self, request, tag):
         r = []
         for o in self.system.rootobjects:
-            r.append(tag.clone().fillSlots(root=util.taglink(o)))
+            r.append(tag.clone().fillSlots(root=tags.code(
+                epydoc2stan.taglink(o, self.filename)
+                )))
         return r
 
     @renderer
@@ -345,7 +356,7 @@ class UndocumentedSummaryPage(Element):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", util.taglink(o)))
+            tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
 summarypages = [

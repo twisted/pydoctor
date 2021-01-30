@@ -4,11 +4,15 @@ This is a module demonstrating epydoc code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
+from abc import ABC
+from somelib import SomeInterface
+
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with L{demo_typing_arguments} to
+    This function can be used in conjunction with L{demo_typing_arguments} to
     find an arbitrary function's zeros.
 
     @type  m: number
@@ -67,7 +71,7 @@ class _PrivateClass:
         return True
 
 
-class DemoClass:
+class DemoClass(ABC, SomeInterface, _PrivateClass):
     """
     This is the docstring of this class.
     """
