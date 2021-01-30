@@ -273,11 +273,11 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
             yield row
 
         row = tags.tr()
-        fieldNameTd = ["\t", ]
+        fieldNameTd = [ ]
         if d.name:
             _name = tags.span(class_="fieldArg")(d.name)
             if d.type:
-                _name(": ")
+                _name(":")
             fieldNameTd.append(_name)
         if d.type:
             fieldNameTd.append(d.type)
