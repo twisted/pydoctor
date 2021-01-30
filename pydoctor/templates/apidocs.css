@@ -306,6 +306,7 @@ tr.private {
 .functionBody .interfaceinfo {
     font-style: italic;
     margin-bottom: 3px;
+    margin-top: 3px;
 }
 
 .functionBody > .undocumented {
