@@ -173,20 +173,30 @@ ul ul ul ul ul ul ul {
     padding: 2px;
 }
 
-/* For desktop: */
-
 /* Section header */
 .fieldTable tr td:first-child.fieldName {
     width: 150px;
 }
 
-/* Arg+type column table  */
+/* Argument name + type column table  */
 .fieldTable tr td:first-child:not(.fieldName) {
-    width: 275px;
+    /* columns will be automatically
+    sized depending on the space left. */
+    width: max-content;
+    max-width: 300px;
     display: flex;
     align-items: center;
 }
 
+/* Arg type */
+.fieldTable tr td:first-child:not(.fieldName) code {
+    margin-left: 7px;
+}
+
+/* Argument description column */
+.fieldTable tr td:nth-child(2):not(.fieldName) {
+    padding-left: 15px;
+}
 
 /* Kind column table  */
 #splitTables > table tr td:first-child {
@@ -194,19 +204,21 @@ ul ul ul ul ul ul ul {
     width: 150px;
 }
 
-/* Attr name + type column table  */
+/* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
-    /* We do not specify width so the type columns will be automatically
+    /* columns will be automatically
     sized depending on the space left. */
     max-width: 300px;
 }
 
+/* For smaller displays, i.e. half screen or mobile phone */
 @media only screen and (max-width: 1000px) {
 
+    /* Fix size of summary table columns */
     #splitTables > table {
         table-layout: fixed;
     }
-    /* For mobile phones: */
+    
     /* Kind column table  */
     #splitTables > table tr td:first-child {
         border-left: none;
@@ -223,11 +235,21 @@ ul ul ul ul ul ul ul {
         width: 45%;
     }
 
-    /* Arg+type column table  */
-    .fieldTable tr td:first-child:not(.fieldName) {
-        width: auto;
-    }
+}
 
+@media only screen and (max-width: 650px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td:first-child:not(.fieldName) {
+        max-width: 200px;
+        flex-wrap: wrap;
+    } 
+}
+
+@media only screen and (max-width: 400px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td:first-child:not(.fieldName) {
+        max-width: 150px;
+    } 
 }
 
 tr.package {
