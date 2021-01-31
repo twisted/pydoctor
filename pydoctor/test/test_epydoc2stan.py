@@ -150,7 +150,7 @@ def test_func_undocumented_return_something() -> None:
         '<td class="fieldName">Returns</td>',
         '<td>',
         '</td>', '</tr>', 
-        '<tr>', '<td>\t<code>int</code>',
+        '<tr>', '<td>', '<code>int</code>',
         '</td>',
         '<td>',
         '<span class="undocumented">Undocumented</span>', 
