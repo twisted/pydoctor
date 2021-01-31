@@ -179,7 +179,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* Argument name + type column table  */
-.fieldTable tr td:first-child:not(.fieldName) {
+.fieldTable tr td.fieldArgNameType {
     /* columns will be automatically
     sized depending on the space left. */
     width: max-content;
@@ -189,12 +189,12 @@ ul ul ul ul ul ul ul {
 }
 
 /* Arg type */
-.fieldTable tr td:first-child:not(.fieldName) code {
+.fieldTable tr td.fieldArgNameType code {
     margin-left: 7px;
 }
 
 /* Argument description column */
-.fieldTable tr td:nth-child(2):not(.fieldName) {
+.fieldTable tr td.fieldArgDesc {
     padding-left: 15px;
 }
 
@@ -239,7 +239,7 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 650px) {
     /* Argument name + type column table  */
-    .fieldTable tr td:first-child:not(.fieldName) {
+    .fieldTable tr td.fieldArgNameType {
         max-width: 200px;
         flex-wrap: wrap;
     } 
@@ -247,7 +247,7 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 400px) {
     /* Argument name + type column table  */
-    .fieldTable tr td:first-child:not(.fieldName) {
+    .fieldTable tr td.fieldArgNameType {
         max-width: 150px;
     } 
 }

@@ -257,7 +257,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
 
         +------------------------------------+
         | <label>      |       <empty_cell>  |
-        | <desc ... >                        | <- colspan="2"
+        | <desc ... >                        |
         +------------------------------------+
 
     @returns: Each row as iterator
@@ -283,8 +283,8 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
             fieldNameTd.append(d.type)
         if d.name or d.type:
             #  <name>: <type> | <desc>
-            row(tags.td()(*fieldNameTd))
-            row(tags.td(d.format()))
+            row(tags.td(class_="fieldArgNameType")(*fieldNameTd))
+            row(tags.td(class_="fieldArgDesc")(d.format()))
         else:
             #  <desc>
             row(tags.td(d.format(), colspan="2"))
@@ -333,7 +333,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
         +------------------------------------+
         | <label>      |       <empty_cell>  |
-        | <desc ... >                        | <- colspan="2"
+        | <desc ... >                        |
         +------------------------------------+
 
     @returns: Each row as iterator
