@@ -7,7 +7,7 @@ import datetime
 import os
 import sys
 import warnings
-from inspect import signature
+from inspect import signature, getmodulename
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateVersionError
@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
+# On Python 3.7+, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+try:
+    import importlib.resources as importlib_resources
+except ImportError:
+    import importlib_resources
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -78,6 +84,19 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
+def _get_docformat_parser_names() -> Sequence[str]:
+    """
+    Get the list of currently supported docformat. 
+    """
+    parser_names: List[str] = []
+    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName == '__init__':
+            continue
+        else:
+            parser_names.append(moduleName)
+    return parser_names
+
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
@@ -134,10 +153,12 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
+    _docformat_choices = _get_docformat_parser_names()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
+        type="choice", choices=_docformat_choices, 
         help=("Format used for parsing docstrings. "
-              "Supported values: 'epytext' and 'restructuredtext'."))
+             f"Supported values: {_docformat_choices}"))
     parser.add_option(
         '--template-dir',
         dest='templatedir',
