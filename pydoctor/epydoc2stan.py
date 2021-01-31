@@ -269,6 +269,8 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         | <desc ... >                        |
         +------------------------------------+
 
+    @arg label: Section "mini heading"
+    @arg descs: L{FieldDesc}s
     @returns: Each row as iterator
     """
     first = True
@@ -406,10 +408,10 @@ class FieldHandler:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
 
-    def handle_return(self, field: Field, name:str='Returns') -> None:
+    def handle_return(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return', name=name)
+            self.return_desc = FieldDesc(kind='return')
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -420,7 +422,7 @@ class FieldHandler:
     def handle_yield(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.yields_desc:
-            self.yields_desc = FieldDesc(kind='yields', name='Yields')
+            self.yields_desc = FieldDesc(kind='yields')
         self.yields_desc.body = field.format()
     handle_yields = handle_yield
 
