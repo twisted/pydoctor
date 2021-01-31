@@ -19,6 +19,41 @@ body {
     border-bottom: 0;
     box-shadow: 0px 0px 8px 8px #fff;
 }
+
+.navbar-brand {
+    padding: 0px;
+}
+
+.navbar-brand a, .navbar-brand span {
+    color:#777777;
+    padding: 15px;
+    display: inline-block;
+}
+
+.navbar-brand *:first-child {
+    padding-right: 0px;
+}
+
+.navbar-brand *:last-child {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+.navbar-brand a:hover {
+    color: #444444;
+    text-decoration: none;
+}
+
+#projecthome:hover {
+    color: #23527c;
+}
+
+.navlinks li {
+    padding: 0;
+    display: inline-block;
+    border-radius: 1px;
+}
+
 .page-header h1 {
     margin-bottom: 0;
 }
@@ -100,39 +135,121 @@ ul ul ul ul ul ul ul {
     margin-bottom: 5px;
 }
 
-#splitTables > table, .fieldTable {
+#splitTables > table {
     margin-bottom: 20px;
     width: 100%;
     border: 0;
-}
-
-#splitTables > table {
-    border: 1px solid #eee;
 }
 
 #splitTables > table tr {
     border-bottom-color: #eee;
     border-bottom-width: 1px;
     border-bottom-style: solid;
-}
-
-#splitTables > table tr td, .fieldTable tr td {
-    padding: 5px;
+    width: 100%;
 }
 
 #splitTables > table tr td {
+    padding: 5px;
     border-left-color: #eee;
     border-left-width: 1px;
     border-left-style: solid;
 }
 
-#splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
-    border-left: none;
+.fieldTable {
+    width: 100%;
+    border: 0;
+}
+
+.fieldArg:before {
+    margin-right: 6px;
+    content: "\2022";
+}
+
+.fieldTable tr:not(.fieldStart) td:first-child{
+    padding-left: 10px;
+}
+
+.fieldTable tr td {
+    padding: 2px;
+}
+
+/* Section header */
+.fieldTable tr td:first-child.fieldName {
     width: 150px;
 }
 
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
-    width: 200px;
+/* Argument name + type column table  */
+.fieldTable tr td.fieldArgNameType {
+    /* columns will be automatically
+    sized depending on the space left. */
+    width: max-content;
+    max-width: 300px;
+    display: flex;
+    align-items: center;
+}
+
+/* Arg type */
+.fieldTable tr td.fieldArgNameType code {
+    margin-left: 7px;
+}
+
+/* Argument description column */
+.fieldTable tr td.fieldArgDesc {
+    padding-left: 15px;
+}
+
+/* Kind column table  */
+#splitTables > table tr td:first-child {
+    /* border-left: none; */
+    width: 150px;
+}
+
+/* Attr name column table  */
+#splitTables > table tr td:nth-child(2) {
+    /* columns will be automatically
+    sized depending on the space left. */
+    max-width: 300px;
+}
+
+/* For smaller displays, i.e. half screen or mobile phone */
+@media only screen and (max-width: 1000px) {
+
+    /* Fix size of summary table columns */
+    #splitTables > table {
+        table-layout: fixed;
+    }
+    
+    /* Kind column table  */
+    #splitTables > table tr td:first-child {
+        border-left: none;
+        width: 20%;
+    }
+
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2) {
+        width: 35%;
+    }
+
+    /* Summary column table */
+    #splitTables > table tr td:nth-child(3) {
+        width: 45%;
+    }
+
+}
+
+@media only screen and (max-width: 650px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgNameType {
+        max-width: 200px;
+        flex-wrap: wrap;
+    } 
+}
+
+@media only screen and (max-width: 400px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgNameType {
+        max-width: 150px;
+    } 
 }
 
 tr.package {
@@ -163,10 +280,6 @@ tr.private {
     background-color: #f1f1f1;
 }
 
-.fieldTable {
-    margin-top: 10px;
-}
-
 .fieldName {
     font-weight: bold;
 }
@@ -193,6 +306,7 @@ tr.private {
 .functionBody .interfaceinfo {
     font-style: italic;
     margin-bottom: 3px;
+    margin-top: 3px;
 }
 
 .functionBody > .undocumented {
@@ -210,10 +324,10 @@ tr.private {
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
 code, .pre, #childList > div .functionHeader,
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+#splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+code, #childList > div .functionHeader, .fieldArg {
     font-size: 90%;
     color: #222222;
 }
@@ -237,8 +351,10 @@ code {
 }
 
 
-a.functionSourceLink {
+a.sourceLink {
+    color: #337ab7;
     font-weight: normal;
+    background-color: transparent;
 }
 
 
@@ -274,8 +390,18 @@ body.private-hidden #summaryTree .private {
     display: none;
 }
 
-#showPrivate {
+/* Show private */ 
+
+#showPrivate:hover {
+    text-decoration: none;
+}
+
+#showPrivate button {
     padding: 10px;
+}
+
+#showPrivate button:hover {
+    text-decoration: none;
 }
 
 #current-docs-container {

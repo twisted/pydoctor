@@ -1,19 +1,18 @@
 """Miscellaneous utilities."""
 
 from typing import Optional
-import os
 
-from pydoctor import model
+from pydoctor.model import Documentable
+from pydoctor.templatewriter import TemplateLookup
 from twisted.python.filepath import FilePath
 
-
-def srclink(o: model.Documentable) -> Optional[str]:
+def srclink(o: Documentable) -> Optional[str]:
     return o.sourceHref
 
-def templatefile(filename):
-    abspath = os.path.abspath(__file__)
-    pydoctordir = os.path.dirname(os.path.dirname(abspath))
-    return os.path.join(pydoctordir, 'templates', filename)
+def templatefile(filename: str) -> str:
+    """Deprecated"""
+    return TemplateLookup().get_template(filename).path.as_posix()
 
-def templatefilepath(filename):
+def templatefilepath(filename:str) -> FilePath:
+    """Deprecated"""
     return FilePath(templatefile(filename))

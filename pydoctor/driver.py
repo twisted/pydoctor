@@ -6,8 +6,11 @@ from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
+import warnings
+from inspect import signature, getmodulename
 
 from pydoctor import model, zopeinterface, __version__
+from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateVersionError
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -16,6 +19,12 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
+# On Python 3.7+, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+try:
+    import importlib.resources as importlib_resources
+except ImportError:
+    import importlib_resources
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -75,6 +84,19 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
+def get_supported_docformat() -> Sequence[str]:
+    """
+    Get the list of currently supported docformat. 
+    """
+    parser_names: List[str] = []
+    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName == '__init__':
+            continue
+        else:
+            parser_names.append(moduleName)
+    return parser_names
+
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
@@ -131,14 +153,21 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
+    _docformat_choices = get_supported_docformat()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        help=("Which epydoc-supported format docstrings are assumed "
-              "to be in."))
+        type="choice", choices=_docformat_choices, 
+        help=("Format used for parsing docstrings. "
+             f"Supported values: {_docformat_choices}"))
+    parser.add_option(
+        '--template-dir',
+        dest='templatedir',
+        help=("Directory containing custom HTML templates."),
+    )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
-        help=("The fullName of object to generate API docs for"
-              " (default: everything)."))
+        help=("The fullName of object to generate API docs for: acts like a filter. "
+              " (generates everything by default)."))
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
@@ -148,7 +177,7 @@ def getparser() -> OptionParser:
         help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_option(
         '--html-writer', dest='htmlwriter',
-        help=("Dotted name of html writer class to use (default "
+        help=("Dotted name of writer class to use (default "
               "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
@@ -224,6 +253,7 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
+    
 
     return parser
 
@@ -392,6 +422,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
+        subjects: List[model.Documentable] = []
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -399,8 +430,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer',
-                    templatewriter.TemplateWriter)
+                    # https://github.com/python/mypy/issues/4717
+                    # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
+                    options.htmlwriter, '--html-writer', IWriter) # type: ignore
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -408,19 +440,41 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
-            writer = writerclass(options.htmloutput)
-            writer.prepOutputDirectory()
+            # Init writer
+            writer: IWriter
 
+            # Handle custom HTML templates
+            if system.options.templatedir:
+                
+                if 'template_lookup' in signature(writerclass).parameters:
+                    # writer class is up o date
+                    custom_lookup = TemplateLookup()
+                    try:
+                        custom_lookup.add_templatedir(
+                            Path(system.options.templatedir))
+                    except TemplateVersionError as e:
+                        error(str(e))
+
+                    writer = writerclass(options.htmloutput, 
+                        template_lookup=custom_lookup)
+                else:
+                    # old custom class do not contain 'template_lookup' argument. 
+                    writer = writerclass(options.htmloutput)
+                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
+            else:
+                writer = writerclass(options.htmloutput)
+
+            writer.prepOutputDirectory()
+            
             if options.htmlsubjects:
-                subjects = []
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
                 writer.writeModuleIndex(system)
-                subjects = []
+
             else:
                 writer.writeModuleIndex(system)
-                subjects = system.rootobjects
+                subjects.extend(system.rootobjects)
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:

@@ -222,6 +222,15 @@ class _EpydocLinker(DocstringLinker):
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
+    """
+    Combines informations from multiple L{Field} objects into one.
+
+    Example::
+
+       :param foo: description of parameter foo
+       :type foo:  SomeClass
+
+    """
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     kind: str
@@ -237,32 +246,68 @@ class FieldDesc:
 
     def format(self) -> Tag:
         formatted = self.body or self._UNDOCUMENTED
-        if self.type is not None:
-            formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
         return formatted
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
+    """
+    Format list of L{FieldDesc}. Used for param, returns, raises, etc. 
+
+    Generates a 2-columns layout as follow:: 
+
+        +------------------------------------+
+        | <label>        |     <empty_cell>  |
+        | <name>: <type> |     <desc>        |
+        | <name>: <type> |     <desc>        |
+        +------------------------------------+
+
+    If the fields don't have type or name information, 
+    generates the same output as L{format_field_list}:: 
+
+        +------------------------------------+
+        | <label>      |       <empty_cell>  |
+        | <desc ... >                        |
+        +------------------------------------+
+
+    @returns: Each row as iterator
+    """
     first = True
     for d in descs:
         if first:
             row = tags.tr(class_="fieldStart")
             row(tags.td(class_="fieldName")(label))
-            first = False
-        else:
-            row = tags.tr()
             row(tags.td())
-        if d.name is None:
-            row(tags.td(colspan="2")(d.format()))
+            first = False
+            #  <label> | <empty_cell> 
+            yield row
+
+        row = tags.tr()
+        fieldNameTd: List[Tag] = []
+        if d.name:
+            _name = tags.span(class_="fieldArg")(d.name)
+            if d.type:
+                _name(":")
+            fieldNameTd.append(_name)
+        if d.type:
+            fieldNameTd.append(d.type)
+        if d.name or d.type:
+            #  <name>: <type> | <desc>
+            row(tags.td(class_="fieldArgNameType")(*fieldNameTd))
+            row(tags.td(class_="fieldArgDesc")(d.format()))
         else:
-            row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
+            #  <desc>
+            row(tags.td(d.format(), colspan="2"))
         yield row
 
 
 @attr.s(auto_attribs=True)
 class Field:
-    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
+    """Like L{pydoctor.epydoc.markup.Field}, but without the gross accessor
     methods and with a formatted body.
+
+    Example::
+
+        @note: some other information
     """
 
     tag: str
@@ -292,16 +337,29 @@ class Field:
 
 
 def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+    """
+    Format list of L{Field} object. Used for notes, see also, authors, etc. 
+
+    Generates a 2-columns layout as follow:: 
+
+        +------------------------------------+
+        | <label>      |       <empty_cell>  |
+        | <desc ... >                        |
+        +------------------------------------+
+
+    @returns: Each row as iterator
+    """
     label = singular if len(fields) == 1 else plural
     first = True
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
             row(tags.td(class_="fieldName")(label))
-            first=False
-        else:
-            row = tags.tr()
             row(tags.td())
+            first=False
+            yield row
+
+        row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
 
@@ -529,11 +587,10 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")("Returns"),
-                               tags.td(colspan="2")(self.return_desc.format())))
+            r += format_desc_list('Returns', [self.return_desc])
         if self.yields_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")("Yields"),
-                               tags.td(colspan="2")(self.yields_desc.format())))
+            r += format_desc_list('Yields', [self.yields_desc])
+
         r += format_desc_list("Raises", self.raise_descs)
         r += format_desc_list("Warns", self.warns_desc)
         for s_p_l in (('Author', 'Authors', self.authors),
@@ -777,7 +834,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
             if first:
                 first = False
             else:
-                tag(', ')
+                tag(', ', tags.wbr) # Add an potential line break for long types
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
@@ -805,7 +862,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
     def visit_Subscript(self, node: ast.Subscript) -> Tag:
         tag: Tag = tags.transparent
         tag(self.visit(node.value))
-        tag('[')
+        tag('[', tags.wbr) 
         sub: ast.AST = node.slice
         if isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
@@ -819,7 +876,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
     def visit_List(self, node: ast.List) -> Tag:
         tag: Tag = tags.transparent
-        tag('[')
+        tag('[', tags.wbr) 
         self._handle_sequence(tag, node.elts)
         tag(']')
         return tag

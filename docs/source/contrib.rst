@@ -36,7 +36,7 @@ Publishing to PyPI is done via a GitHub Actions workflow that is triggered when 
 
 First commit the version update to master and wait for tests to pass.
 
-You can push a tag by creating a `GitHub release <https://github.com/twisted/pydoctor/releases/new>`.
+You can push a tag by creating a `GitHub release <https://github.com/twisted/pydoctor/releases/new>`_.
 
 You can also create a tag on local branch then push it::
 
@@ -44,8 +44,8 @@ You can also create a tag on local branch then push it::
         git push --tags
 
 
-Design Notes
-------------
+Author Design Notes
+-------------------
 
 I guess I've always been interested in more-or-less static analysis of
 Python code and have over time developed some fairly strong opinions
@@ -60,9 +60,6 @@ incrementally, and outside-in.  First, you scan the directory
 structure to and compute the package/module structure, then parse each
 module, then do some analysis on what you've found, then generate
 html.
-
-It's extremely handy to be able to pickle a system in between each
-step.
 
 Finally, pydoctor should never crash, no matter what code you feed it
 (this seems a basic idea for a documentation generator, but it's not

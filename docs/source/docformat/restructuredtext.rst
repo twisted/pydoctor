@@ -6,9 +6,6 @@ reStructuredText
 
     restructuredtext/restructuredtext_demo
 
-.. important::
-    ``pydoctor`` relies on ``docutils`` to offer *restructuredtext* support, update docutils with: ``pip install -U docutils``. 
-
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
 Fields
@@ -25,6 +22,7 @@ Here are the supported *restructuredtext* fields:
     - ``:rtype: list``
     - ``:raises ValueError:`` (synonym ``:except ValueError:``)
     - ``:note:``
+    - ``:since:``
 
 In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation

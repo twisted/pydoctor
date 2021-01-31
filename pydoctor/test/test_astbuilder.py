@@ -1210,16 +1210,16 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert type2html(d) == '<code>str</code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert type2html(e) == '<code>List[C]</code>'
+    assert type2html(e).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert type2html(f) == '<code>List[C]</code>'
+    assert type2html(f).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert type2html(g) == '<code>List[C]</code>'
+    assert type2html(g).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert type2html(s) == '<code>List[str]</code>'
+    assert type2html(s).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[str]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
     assert type2html(m) == '<code>bytes</code>'
