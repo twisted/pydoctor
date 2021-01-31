@@ -291,7 +291,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
                 _name(":")
             fieldNameTd.append(_name)
         if d.type:
-            fieldNameTd.append(d.type)
+            fieldNameTd.append(tags.span(class_="fieldType")(d.type))
         if d.name or d.type:
             #  <name>: <type> | <desc>
             row(tags.td(class_="fieldArgNameType")(*fieldNameTd))

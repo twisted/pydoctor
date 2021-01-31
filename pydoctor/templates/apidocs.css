@@ -189,7 +189,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* Arg type */
-.fieldTable tr td.fieldArgNameType code:first-child {
+.fieldTable tr td.fieldArgNameType .fieldType {
     margin-left: 7px;
 }
 
