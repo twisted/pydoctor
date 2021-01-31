@@ -80,7 +80,7 @@ class BaseElement(Element, abc.ABC):
                                     "object is passed to BaseElement's 'template_lookup' init argument.")
         else:
             raise RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader "
-                                "object is passed to BaseElement's 'loader' init argument.")
+                                "object is passed to BaseElement's 'loader' init argument and 'filename' property is not set.")
         super().__init__(loader)
 
     @abc.abstractproperty

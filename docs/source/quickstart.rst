@@ -11,7 +11,7 @@ Pydoctor can be installed from PyPI::
 *This will also install docutils*. 
 
 Alternatively, you can install pydoctor without reStructuredText 
-support, only Epytext will be recognized::
+support, only epytext will be recognized::
 
    $ pip install -U pydoctor
 

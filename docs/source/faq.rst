@@ -30,6 +30,7 @@ Why would I use it?
 -------------------
 
 ``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing.
+
 It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en/latest/>`_, and can recognize interfaces and classes which implement such interfaces.
 
 
@@ -39,7 +40,8 @@ How is it different from ``sphinx-autodoc``
 ``sphinx-autodoc`` can be hazardous and the output is sometimes overwhelming, ``pydoctor`` will generate
 one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables.
 
-It can be integrated to your Sphinx prose documentation seamlessly to link to your API documentation, please refer to `Usage <usage.html>`_ section.
+It can be integrated to your Sphinx prose documentation seamlessly 
+to link to your API documentation, please refer to `Sphinx integration <sphinx-integration.html>`_ section.
 
 
 What does the output look like?
@@ -58,4 +60,4 @@ As a bonus here are other projects using ``pydoctor``:
 How do I use it?
 ----------------
 
-Please review the `Usage <usage.html>`_ section.
+Please review the `Quickstart <quickstart.html>`_ section.

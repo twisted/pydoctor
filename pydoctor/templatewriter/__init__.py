@@ -78,7 +78,8 @@ class Template(abc.ABC):
     def fromfile(cls, path:Path) -> Optional['Template']:
         """
         Create a concrete template object. Type depends on the file extension. 
-        @returns: the template object or None if file is invalid. 
+        @returns: The template object or C{None} if file is invalid. 
+        @warns: If the template cannot be created
         """
         if not path.is_file():
             warnings.warn(f"Cannot create Template: {path.as_posix()} is not a file.")
@@ -236,7 +237,7 @@ class TemplateLookup:
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
                     raise TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail, so we're stopping now. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
+                                        "Rendering will most probably fail. Please upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except KeyError:
             warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
         
@@ -272,4 +273,4 @@ class TemplateLookup:
 
 from pydoctor.templatewriter.writer import TemplateWriter
 TemplateWriter = TemplateWriter
-
+__all__ = ["TemplateWriter"] # re-export as pydoctor.templatewriter.TemplateWriter

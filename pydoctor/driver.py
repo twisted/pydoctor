@@ -84,7 +84,7 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
-def _get_docformat_parser_names() -> Sequence[str]:
+def get_supported_docformat() -> Sequence[str]:
     """
     Get the list of currently supported docformat. 
     """
@@ -153,7 +153,7 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
-    _docformat_choices = _get_docformat_parser_names()
+    _docformat_choices = get_supported_docformat()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
         type="choice", choices=_docformat_choices, 

@@ -24,10 +24,15 @@ and use the following option::
   `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_ 
   with the same method. 
 
+.. admonition:: Example
+
+    See this `sample template <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_ 
+    output `here <custom_template_demo/pydoctor.html>`_
+
 Use a custom system class
 -------------------------
 
-You can subclass the :py:class:`pydoctor:pydoctor.zopeinterface.ZopeInterfaceSystem` 
+You can subclass the :py:class:`pydoctor.zopeinterface.ZopeInterfaceSystem` 
 and pass your custom class dotted name with the following argument::
 
   --system-class=mylib._pydoctor.CustomSystem
@@ -41,11 +46,11 @@ Navigate to the source code for a better overview.
 Use a custom writer class
 -------------------------
 
-You can subclass the :py:class:`pydoctor:pydoctor.templatewriter.writer.TemplateWriter` 
+You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter` 
 and pass your custom class dotted name with the following argument::
 
 
-  --writer-class=mylib._pydoctor.CustomTemplateWriter
+  --html-class=mylib._pydoctor.CustomTemplateWriter
 
 .. warning:: Pydoctor does not have a stable API yet. Code customization is prone 
     to break in future versions. 

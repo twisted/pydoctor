@@ -106,6 +106,15 @@ pydoctor_args = {
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
+    'custom_template_demo': [
+        '--html-output={outdir}/custom_template_demo/',  
+        '--project-name=pydoctor with a twisted theme',
+        f'--project-version={version}',
+        '--docformat=epytext',
+        '--project-url=../customize.html',
+        f'--template-dir={_pydoctor_root}/docs/sample_template',
+        f'{_pydoctor_root}/pydoctor',
+        ] + _common_args,
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext',
         '--project-name=pydoctor-epytext-demo',

@@ -60,6 +60,9 @@ class TemplateWriter(IWriter):
             self.template_lookup.get_template('apidocs.css').path,
             self.base.joinpath('apidocs.css'))
         shutil.copy(
+            self.template_lookup.get_template('extra.css').path,
+            self.base.joinpath('extra.css'))
+        shutil.copy(
             self.template_lookup.get_template('bootstrap.min.css').path,
             self.base.joinpath('bootstrap.min.css'))
         shutil.copy(
