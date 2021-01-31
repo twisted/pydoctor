@@ -145,8 +145,8 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
-        help=("The fullName of object to generate API docs for"
-              " (default: everything)."))
+        help=("The fullName of object to generate API docs for: acts like a filter. "
+              " (generates everything by default)."))
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,

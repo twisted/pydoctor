@@ -3,31 +3,20 @@ Introduction
 
 Welcome to ``pydoctor``'s documentation!
 
-
-Installation
-------------
-
-``pydoctor`` can be installed from PyPI::
-
-   $ pip install -U pydoctor
-
-Install pydoctor with reStructuredText support::
-
-   $ pip install -U pydoctor[rst]
-
 .. toctree::
    :maxdepth: 4
-   :caption: Table of contents:
-
-   self
-   readme
-   usage
-   help
+   :caption: Contents:
+   
+   quickstart
    codedoc
    docformat/index
+   sphinx-integration
+   customize
+   help
    faq
    transition
    contrib
+   readme
 
 .. toctree::
    :maxdepth: 1

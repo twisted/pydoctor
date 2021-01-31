@@ -30,6 +30,7 @@ Here are the supported *restructuredtext* fields:
     - ``:rtype: list``
     - ``:raises ValueError:`` (synonym ``:except ValueError:``)
     - ``:note:``
+    - ``:since:``
 
 In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation
