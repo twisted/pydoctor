@@ -3,8 +3,9 @@
 from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
+import zope.interface.verify
 
-from twisted.web.template import tags, Element, renderer, Tag
+from twisted.web.template import XMLFile, XMLString, tags, Element, renderer, Tag
 import astor
 
 from twisted.web.iweb import ITemplateLoader
@@ -61,25 +62,26 @@ class BaseElement(Element, abc.ABC):
         """
         self.system = system
         self.template_lookup = template_lookup
+        
         if loader:
-            self._loader = loader  
+            pass
         # filename attribute should be set for most page classes
         elif self.filename:
             if self.template_lookup:
                 template = self.template_lookup.get_template(
                     self.filename)
-                if not isinstance(template.renderable, ITemplateLoader):
-                     RuntimeError(f"Cannot create HTML element {self} because template renderable  \
-                       property is not a ITemplateLoader provider.")
+                if not zope.interface.verify.verifyObject(ITemplateLoader, template.renderable):
+                    raise RuntimeError(f"Cannot create HTML element {self} because template renderable "
+                                       f"property is not a ITemplateLoader provider: {type(template.renderable)}")
                 else:
-                    self._loader = template.renderable
+                    loader = template.renderable
             else:
-                RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup \
-                    object is passed to BaseElement's 'template_lookup' init argument.")
+                raise RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup "
+                                    "object is passed to BaseElement's 'template_lookup' init argument.")
         else:
-            RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader \
-                object is passed to BaseElement's 'loader' init argument.")
-        super().__init__()
+            raise RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader "
+                                "object is passed to BaseElement's 'loader' init argument.")
+        super().__init__(loader)
 
     @abc.abstractproperty
     def filename(self) -> str:
@@ -89,12 +91,6 @@ class BaseElement(Element, abc.ABC):
         Can be empty string in special cases (like L{LetterElement}). 
         """
         pass
-
-    @property
-    def loader(self) -> ITemplateLoader: # type: ignore
-        # mypy error: Signature of "loader" incompatible with supertype "Element"  [override]
-        # It's ok to ignore because it's actually a property, so we can disregard signature
-        return self._loader
 
 class Nav(BaseElement):
     """
