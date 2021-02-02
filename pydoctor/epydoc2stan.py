@@ -238,6 +238,14 @@ class FieldDesc:
             yield tags.td(formatted)
 
 
+class RaisesDesc(FieldDesc):
+    """Description of an exception that can be raised by function/method."""
+
+    def format(self) -> Iterator[Tag]:
+        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(self.body or self._UNDOCUMENTED)
+
+
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     first = True
     for d in descs:
@@ -300,12 +308,13 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
+        self.linker = _EpydocLinker(self.obj)
 
         self.types: Dict[str, Optional[Tag]] = {}
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
-        self.raise_descs: List[FieldDesc] = []
+        self.raise_descs: List[RaisesDesc] = []
         self.seealsos: List[Field] = []
         self.notes: List[Field] = []
         self.authors: List[Field] = []
@@ -315,9 +324,9 @@ class FieldHandler:
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        linker = _EpydocLinker(self.obj)
         formatted_annotations = {
-            name: None if value is None else AnnotationDocstring(value).to_stan(linker)
+            name: None if value is None
+                       else AnnotationDocstring(value).to_stan(self.linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -434,7 +443,10 @@ class FieldHandler:
         name = field.arg
         if name is None:
             field.report('Exception type missing')
-        self.raise_descs.append(FieldDesc(name=name, body=field.format()))
+            typ_fmt = tags.span(class_='undocumented')("Unknown exception")
+        else:
+            typ_fmt = self.linker.link_to(name, name)
+        self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
     
