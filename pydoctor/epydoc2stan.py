@@ -495,10 +495,7 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(
-                tags.td("Returns", class_="fieldName"),
-                self.return_desc.format()
-                ))
+            r += format_desc_list('Returns', [self.return_desc])
         r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
