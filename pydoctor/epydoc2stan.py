@@ -225,11 +225,17 @@ class FieldDesc:
     type: Optional[Tag] = None
     body: Optional[Tag] = None
 
-    def format(self) -> Tag:
+    def format(self) -> Iterator[Tag]:
         formatted = self.body or self._UNDOCUMENTED
         if self.type is not None:
             formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
-        return formatted
+
+        name = self.name
+        if name is None:
+            yield tags.td(formatted, colspan="2")
+        else:
+            yield tags.td(name, class_="fieldArg")
+            yield tags.td(formatted)
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
@@ -242,11 +248,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         else:
             row = tags.tr()
             row(tags.td())
-        if d.name is None:
-            row(tags.td(colspan="2")(d.format()))
-        else:
-            row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
-        yield row
+        yield row(d.format())
 
 
 @attr.s(auto_attribs=True)
@@ -493,8 +495,10 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
-                               tags.td(colspan="2")(self.return_desc.format())))
+            r.append(tags.tr(class_="fieldStart")(
+                tags.td("Returns", class_="fieldName"),
+                self.return_desc.format()
+                ))
         r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
