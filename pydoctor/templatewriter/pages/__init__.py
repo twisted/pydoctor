@@ -5,7 +5,7 @@ import ast
 import abc
 import zope.interface.verify
 
-from twisted.web.template import XMLFile, XMLString, tags, Element, renderer, Tag
+from twisted.web.template import tags, Element, renderer, Tag
 import astor
 
 from twisted.web.iweb import ITemplateLoader
@@ -514,13 +514,13 @@ class ZopeInterfaceClassPage(ClassPage):
 # Type alias for HTML page: to use in type checking. 
 # It's necessary because L{BasePage} doesn't have the same C{__init__} siganture as concrete pages classes. 
 
-AnyClassPage = Union[ClassPage, 
+AnyDocPage = Union[ClassPage, 
                 ZopeInterfaceClassPage, 
                 ModulePage,
                 PackagePage, 
                 CommonPage]
 
-classpages: Mapping[str, Type[AnyClassPage]] = { 
+classpages: Mapping[str, Type[AnyDocPage]] = { 
     'Module': ModulePage,
     'Package': PackagePage, 
     'Class': ClassPage, 
