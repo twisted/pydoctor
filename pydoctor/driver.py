@@ -24,7 +24,8 @@ else:
 try:
     import importlib.resources as importlib_resources
 except ImportError:
-    import importlib_resources
+    if not TYPE_CHECKING:
+        import importlib_resources
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
