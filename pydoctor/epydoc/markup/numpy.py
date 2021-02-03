@@ -1,13 +1,12 @@
 """
 Parser for numpy-style docstrings. 
 
-This parser is built on top of a forked version of the Sphinx extension: Napoleon.  
+@See: L{pydoctor.epydoc.markup.google}
 """
 from typing import Callable, List
 
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError
-from pydoctor.epydoc.markup.restructuredtext import parse_docstring as parse_restructuredtext_docstring
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.epydoc.markup.google import parse_g_docstring, ParsedGoogleStyleDocstring
 from pydoctor.napoleon.docstring import NumpyDocstring
 from pydoctor.model import Attribute, Documentable
 
@@ -20,14 +19,11 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
+    # init napoleon.docstring.NumpyDocstring 
     np_docstring = NumpyDocstring(docstring)
-    for warn, linenum in np_docstring.warnings():
-        errors.append(ParseError(warn, linenum-1))
-    rst_docstring = str(np_docstring)
-    # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedNumpyStyleDocstring(
-            parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
-            docstring, rst_docstring)
+    parsed_doc = parse_g_docstring(np_docstring, errors)
+    return ParsedNumpyStyleDocstring(parsed_doc,   
+                                     docstring, str(np_docstring))
 
 def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -41,33 +37,18 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
         will be stored.
     """
     np_docstring = NumpyDocstring(docstring, is_attribute = True)
-    for warn, linenum in np_docstring.warnings():
-        errors.append(ParseError(warn, linenum-1))
-    rst_docstring = str(np_docstring)
-    # error: Argument 1 to "ParsedNumpyStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedNumpyStyleDocstring(
-            parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
-            docstring, rst_docstring)
+    parsed_doc = parse_g_docstring(np_docstring, errors)
+    return ParsedNumpyStyleDocstring(parsed_doc,   
+                                     docstring, str(np_docstring))
 
 def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
-    Returns the `parse_docstring` function or the `parse_attribute_docstring` 
+    Returns the L{parse_docstring} function or the L{parse_attribute_docstring} 
     function depending on the documentable type. 
     """
     return parse_attribute_docstring if isinstance(obj, Attribute) else parse_docstring
 
-class ParsedNumpyStyleDocstring(ParsedRstDocstring):
+class ParsedNumpyStyleDocstring(ParsedGoogleStyleDocstring):
     """
-    Just like L{ParsedRstDocstring} but it stores references to the original 
-    docstring text as well as the napoleon processed docstring. 
-
-    This values are only used for testing purposes. 
+    Just like L{ParsedGoogleStyleDocstring}. 
     """
-
-    def __init__(self, parsed_rst_docstring: ParsedRstDocstring, 
-                original_docstring: str, 
-                napoleon_processed_docstring: str):
-
-        super().__init__(parsed_rst_docstring._document, parsed_rst_docstring.fields)
-        self._original_docstring = original_docstring
-        self._napoleon_processed_docstring = napoleon_processed_docstring

@@ -1,7 +1,7 @@
 """
 Parser for google-style docstrings. 
 
-This parser is built on top of a forked version of the Sphinx extension: Napoleon.  
+@See: L{pydoctor.epydoc.markup.numpy}
 """
 from typing import Callable, List
 
@@ -10,6 +10,18 @@ from pydoctor.epydoc.markup.restructuredtext import parse_docstring as parse_res
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.napoleon.docstring import GoogleDocstring
 from pydoctor.model import Attribute, Documentable
+
+
+def parse_g_docstring(g_docstring:GoogleDocstring, 
+                      errors: List[ParseError]) -> ParsedDocstring:
+    """
+    Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.
+    """
+    # log any warnings
+    for warn, linenum in g_docstring.warnings():
+        errors.append(ParseError(warn, linenum-1, is_fatal=False))
+    # Get the converted reST string and parse it with docutils
+    return parse_restructuredtext_docstring(str(g_docstring), errors)    
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -20,14 +32,11 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param errors: A list where any errors generated during parsing
         will be stored.
     """
+    # init napoleon.docstring.GoogleDocstring 
     g_docstring = GoogleDocstring(docstring)
-    for warn, linenum in g_docstring.warnings():
-        errors.append(ParseError(warn, linenum-1))
-    rst_docstring = str(g_docstring)
-    # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedGoogleStyleDocstring(
-            parse_restructuredtext_docstring(rst_docstring, errors),  # type: ignore
-            docstring, rst_docstring)
+    parsed_doc = parse_g_docstring(g_docstring, errors)
+    return ParsedGoogleStyleDocstring(parsed_doc, 
+                                      docstring, str(g_docstring))
 
 def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -41,17 +50,13 @@ def parse_attribute_docstring(docstring: str, errors: List[ParseError]) -> Parse
         will be stored.
     """
     g_docstring = GoogleDocstring(docstring, is_attribute=True)
-    for warn, linenum in g_docstring.warnings():
-        errors.append(ParseError(warn, linenum-1))
-    rst_docstring = str(g_docstring)
-    # error: Argument 1 to "ParsedGoogleStyleDocstring" has incompatible type "ParsedDocstring"; expected "ParsedRstDocstring"  [arg-type]
-    return ParsedGoogleStyleDocstring(
-            parse_restructuredtext_docstring(rst_docstring, errors), # type: ignore
-            docstring, rst_docstring)
+    parsed_doc = parse_g_docstring(g_docstring, errors)
+    return ParsedGoogleStyleDocstring(parsed_doc,   
+                                      docstring, str(g_docstring))
 
 def get_parser(obj:Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
-    Returns the `parse_docstring` function or the `parse_attribute_docstring` 
+    Returns the L{parse_docstring} function or the L{parse_attribute_docstring} 
     function depending on the documentable type. 
     """
     return parse_attribute_docstring if isinstance(obj, Attribute) else parse_docstring

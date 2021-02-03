@@ -13,7 +13,7 @@ should be checked once in a while to make sure we don't miss any important updat
 import ast
 import collections
 import re
-import warnings
+
 from functools import partial
 from typing import Any, Callable, Deque, Dict, Iterator, List, Mapping, Optional, Tuple, Union
 
@@ -40,25 +40,280 @@ _enumerated_list_regex = re.compile(
     r'^(?P<paren>\()?'
     r'(\d+|#|[ivxlcdm]+|[IVXLCDM]+|[a-zA-Z])'
     r'(?(paren)\)|\.)(\s+\S|\s*$)')
-_token_regex = re.compile(
-    r"(,\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s|,\s"
-    r"|[{]|[}]"
-    r"|[\[]|[\]]"
-    r"|[\(|\)]"
-    r'|"(?:\\"|[^"])*"'
-    r"|'(?:\\'|[^'])*')"
-)
-_default_regex = re.compile(
-    r"^default[^_0-9A-Za-z].*$",
-)
-_SINGLETONS = ("None", "True", "False", "Ellipsis")
+
 
 @attr.s(auto_attribs=True)
 class ConsumeFieldsAsFreeForm(Exception):
     lines: List[str]
 
-class NapoleonWarning(SyntaxWarning):
-    pass
+def is_obj_identifier(_token: str) -> bool:
+    if _token.isidentifier() or _xref_regex.match(_token) :
+        return True
+    try:
+        # We simply try to load the string object with AST, if it's working 
+        # chances are it's a type annotation like type. 
+        # Let's say 2048 is the maximum number of caracters 
+        # that we'll try to parse here since 99% of the time it will 
+        # suffice, and we don't want to add too much of expensive processing. 
+        ast.parse(_token[:2048])
+    except SyntaxError:
+        return False
+    else:
+        return True
+
+class TypeSpecDocstring:
+    """
+    Parse natural language type strings. 
+
+    Syntax is based on U{numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>} 
+    type specification with additionnal recognition of AST-like type annotations (with C{[]()} characters). 
+
+    Exemples of valid type strings: 
+
+        - C{List[str] or list(bytes), optional}
+        - C{{"F", "C", "N"}, optional} 
+        - C{list of int or float or None, default: None}
+        - C{`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`}
+    """
+    _natural_language_delimiters_regex_str = r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
+    _natural_language_delimiters_regex = re.compile(f"({_natural_language_delimiters_regex_str})")
+    
+    _ast_like_delimiters_regex_str = r",\s|[\[]|[\]]|[\(|\)]"
+    _ast_like_delimiters_regex = re.compile(f"({_ast_like_delimiters_regex_str})")
+
+    _token_regex = re.compile(
+        f"({_natural_language_delimiters_regex_str}" 
+        f"|{_ast_like_delimiters_regex_str}"
+        r'|"(?:\\"|[^"])*"' # literals "<text>"
+        r"|'(?:\\'|[^'])*')" # literals '<text>'
+    )
+    _default_regex = re.compile(
+        r"^default[^_0-9A-Za-z].*$",
+    )
+    _xref_regex = re.compile(
+        r'(?:(?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:)?`.+?`)'
+    )
+
+    def __init__(self, annotation: str, lineno:int, aliases:Optional[Mapping[str, str]] = None) -> None:
+        
+        self._lineno = lineno
+        self._warnings: List[Tuple[str, int]] = []
+        self._annotation = annotation 
+        self._aliases = aliases or {}
+
+        _tokens = self._tokenize_type_spec(annotation)
+        _combined_tokens = self._recombine_set_tokens(_tokens)
+
+        # Save tokens in the form : [("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")]
+        self._tokens: List[Tuple[str, str]] = [
+            (token, self._token_type(token))
+            for token in _combined_tokens ]
+
+    def __str__(self) -> str:
+        """
+        Get the type as reST string. 
+        """
+        return self._convert_type_spec_to_rst()
+
+    def warnings(self) -> List[Tuple[str, int]]:
+        """
+        Return any triggered warnings during the conversion. 
+        """
+        return self._warnings
+
+    def _get_alias(self, _token:str) -> str:
+        alias = self._aliases.get(_token, _token)
+        return alias
+
+    @staticmethod
+    def _recombine_set_tokens(tokens: List[str]) -> List[str]:
+        """
+        Merge the special literal choices tokens together. 
+
+        Exemple:
+            
+        >>> tokens = ["{", "1", ", ", "2", "}"]
+        >>> ann._recombine_set_tokens(tokens)
+        ... ["{1, 2}"]
+        """
+        token_queue = collections.deque(tokens)
+        keywords = ("optional", "default")
+
+        def takewhile_set(tokens: Deque[str]) -> Iterator[str]:
+            open_obj_delim = 0
+            previous_token = None
+            while True:
+                try:
+                    token = tokens.popleft()
+                except IndexError:
+                    break
+
+                if token == ", ":
+                    previous_token = token
+                    continue
+
+                if not token.strip():
+                    continue
+
+                if token in keywords:
+                    tokens.appendleft(token)
+                    if previous_token is not None:
+                        tokens.appendleft(previous_token)
+                    break
+
+                if previous_token is not None:
+                    yield previous_token
+                    previous_token = None
+
+                if token == "{":
+                    open_obj_delim += 1
+                elif token == "}":
+                    open_obj_delim -= 1
+
+                yield token
+
+                if open_obj_delim == 0:
+                    break
+
+        def combine_set(tokens: Deque[str]) -> Iterator[str]:
+            while True:
+                try:
+                    token = tokens.popleft()
+                except IndexError:
+                    break
+
+                if token == "{":
+                    tokens.appendleft("{")
+                    yield "".join(takewhile_set(tokens))
+                else:
+                    yield token
+
+        return list(combine_set(token_queue))
+
+    @classmethod
+    def _tokenize_type_spec(cls, spec: str) -> List[str]:
+        """
+        Split the string in tokens for further processing. 
+        """
+        def postprocess(item:str) -> List[str]:
+            if cls._default_regex.match(item):
+                default = item[:7]
+                # the default value can't be separated by anything other than a single space
+                other = item[8:]
+                return [default, " ", other]
+            else:
+                return [item]
+
+        tokens = list(
+            item
+            for raw_token in cls._token_regex.split(spec)
+            for item in postprocess(raw_token)
+            if item
+        )
+        return tokens
+
+    def _token_type(self, token: str) -> str:
+        """
+        Find the type of a token. Type can be  "literal", "obj",  
+        "delimiter", "control", "reference", or "default". 
+        """
+        def is_numeric(token: str) -> bool:
+            try:
+                # use complex to make sure every numeric value is detected as literal
+                complex(token)
+            except ValueError:
+                return False
+            else:
+                return True
+
+        if ( self._natural_language_delimiters_regex.match(token) or not token.strip()
+             or self._ast_like_delimiters_regex.match(token) ):
+                type_ = "delimiter"
+        elif (
+                is_numeric(token) or
+                (token.startswith("{") and token.endswith("}")) or
+                (token.startswith('"') and token.endswith('"')) or
+                (token.startswith("'") and token.endswith("'")) 
+        ):
+            type_ = "literal"
+        elif token.startswith("{"):
+            self._warnings.append(("invalid value set (missing closing brace): %s"%token, self._lineno))
+            type_ = "literal"
+        elif token.endswith("}"):
+            self._warnings.append(("invalid value set (missing opening brace): %s"%token, self._lineno))
+            type_ = "literal"
+        elif token.startswith("'") or token.startswith('"'):
+            self._warnings.append(("malformed string literal (missing closing quote): %s"%token, self._lineno))
+            type_ = "literal"
+        elif token.endswith("'") or token.endswith('"'):
+            self._warnings.append(("malformed string literal (missing opening quote): %s"%token, self._lineno))
+            type_ = "literal"
+        elif token in ("optional", "default", ):
+            # default is not a official keyword (yet) but supported by the
+            # reference implementation (numpydoc) and widely used
+            type_ = "control"
+        elif self._xref_regex.match(token):
+            type_ = "reference"
+        elif is_obj_identifier(token):
+            type_ = "obj"
+        else:
+            type_ = "default"
+
+        return type_
+
+    # add espaced space when necessary 
+    def _convert_type_spec_to_rst(self) -> str:
+
+        def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], 
+                    _next_token:Tuple[str, str], _translation:Optional[str]=None) -> str:
+            translation = _translation or "%s"
+            if self._xref_regex.match(_token[0]) is None:
+                converted_token = translation % _token[0]
+            else:
+                converted_token = _token[0]
+            need_escaped_space = False
+            
+            if _last_token[1] in token_type_using_rest_markup:
+                # the last token has reST markup: 
+                # we might have to escape
+
+                if not converted_token.startswith(" ") and not converted_token.endswith(" "):
+                    if _next_token != iter_types.sentinel:
+                        if _next_token[1] in token_type_using_rest_markup:
+                            need_escaped_space = True
+                
+                if _token[1] in token_type_using_rest_markup:
+                    need_escaped_space = True
+
+            if need_escaped_space:
+                converted_token = f"\\ {converted_token}"
+            return converted_token
+
+        converters: Dict[str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], str]] = {
+            "literal": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
+            "control": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
+            "delimiter": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
+            "reference": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
+            "default": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
+            "obj": lambda _token, _last_token, _next_token: _convert((self._get_alias(_token[0]), _token[1]), _last_token, _next_token, "`%s`"),
+        }
+
+        # "default" can have markup, but not always
+        token_type_using_rest_markup = ["literal", "obj", "control", "reference", "default"]
+
+        converted = ""
+        last_token = ("", "")
+
+        iter_types: peek_iter[Tuple[str, str]] = peek_iter(self._tokens)
+        for token, type_ in iter_types:
+            next_token = iter_types.peek()
+            converted_token = converters.get(type_, 
+                converters["default"])((token, type_), last_token, next_token)
+            converted += converted_token
+            last_token = (converted_token, type_)
+
+        return converted
+
 
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
@@ -332,15 +587,12 @@ class GoogleDocstring:
         """
         # handle warnings line number
         linenum=self._line_iter.counter - 1
-        # note: the context manager is modifying global state and therefore is not thread-safe.
-        with warnings.catch_warnings(record=True) as catch_warnings:
-            warnings.simplefilter("always", category=NapoleonWarning)
-            # convert
-            _type = _convert_type_spec(_type, 
-                    aliases=self._config.napoleon_type_aliases or {},)
-            # append warnings
-            for warning in catch_warnings:
-                self._warnings.append((str(warning.message), linenum))
+        type_spec = TypeSpecDocstring(_type, linenum, 
+                aliases=self._config.napoleon_type_aliases)
+        # convert
+        _type = str(type_spec)
+        # append warnings
+        self._warnings.extend(type_spec.warnings())
         return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
@@ -426,20 +678,14 @@ class GoogleDocstring:
     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
-        separator = ' -- ' if has_desc else ''
+        separator = ' - ' if has_desc else ''
         if _name:
             if _type:
-                if '`' in _type:
-                    field = '**%s** (%s)%s' % (_name, _type, separator)
-                else:
-                    field = '**%s** (*%s*)%s' % (_name, _type, separator)
+                field = '**%s**: %s%s' % (_name, _type, separator)
             else:
                 field = '**%s**%s' % (_name, separator)
         elif _type:
-            if '`' in _type:
-                field = '%s%s' % (_type, separator)
-            else:
-                field = '*%s*%s' % (_type, separator)
+            field = '%s%s' % (_type, separator)
         else:
             field = ''
 
@@ -823,201 +1069,6 @@ class GoogleDocstring:
         return lines
 
 
-# preprocessing numpydoc types: https://github.com/sphinx-doc/sphinx/pull/7690
-def _recombine_set_tokens(tokens: List[str]) -> List[str]:
-    token_queue = collections.deque(tokens)
-    keywords = ("optional", "default")
-
-    def takewhile_set(tokens: Deque[str]) -> Iterator[str]:
-        open_braces = 0
-        previous_token = None
-        while True:
-            try:
-                token = tokens.popleft()
-            except IndexError:
-                break
-
-            if token == ", ":
-                previous_token = token
-                continue
-
-            if not token.strip():
-                continue
-
-            if token in keywords:
-                tokens.appendleft(token)
-                if previous_token is not None:
-                    tokens.appendleft(previous_token)
-                break
-
-            if previous_token is not None:
-                yield previous_token
-                previous_token = None
-
-            if token == "{":
-                open_braces += 1
-            elif token == "}":
-                open_braces -= 1
-
-            yield token
-
-            if open_braces == 0:
-                break
-
-    def combine_set(tokens: Deque[str]) -> Iterator[str]:
-        while True:
-            try:
-                token = tokens.popleft()
-            except IndexError:
-                break
-
-            if token == "{":
-                tokens.appendleft("{")
-                yield "".join(takewhile_set(tokens))
-            else:
-                yield token
-
-    return list(combine_set(token_queue))
-
-
-def _tokenize_type_spec(spec: str) -> List[str]:
-    def postprocess(item:str) -> List[str]:
-        if _default_regex.match(item):
-            default = item[:7]
-            # the default value can't be separated by anything other than a single space
-            other = item[8:]
-            return [default, " ", other]
-        else:
-            return [item]
-
-    tokens = list(
-        item
-        for raw_token in _token_regex.split(spec)
-        for item in postprocess(raw_token)
-        if item
-    )
-    return tokens
-
-
-def _token_type(token: str) -> str:
-    def is_numeric(token: str) -> bool:
-        try:
-            # use complex to make sure every numeric value is detected as literal
-            complex(token)
-        except ValueError:
-            return False
-        else:
-            return True
-
-    if token.startswith(" ") or token.endswith(" ") or token in ["[", "]", "(", ")"]:
-        type_ = "delimiter"
-    elif (
-            is_numeric(token) or
-            (token.startswith("{") and token.endswith("}")) or
-            (token.startswith('"') and token.endswith('"')) or
-            (token.startswith("'") and token.endswith("'")) 
-    ):
-        type_ = "literal"
-    elif token.startswith("{"):
-        warnings.warn(
-            "type pre-processing: invalid value set (missing closing brace): %s"%token, 
-            category=NapoleonWarning, 
-        )
-        type_ = "literal"
-    elif token.endswith("}"):
-        warnings.warn(
-            "type pre-processing: invalid value set (missing opening brace): %s"%token, 
-            category=NapoleonWarning, 
-        )
-        type_ = "literal"
-    elif token.startswith("'") or token.startswith('"'):
-        warnings.warn(
-            "type pre-processing: malformed string literal (missing closing quote): %s"%token, 
-            category=NapoleonWarning, 
-        )
-        type_ = "literal"
-    elif token.endswith("'") or token.endswith('"'):
-        warnings.warn(
-            "type pre-processing: malformed string literal (missing opening quote): %s"%token, 
-            category=NapoleonWarning, 
-        )
-        type_ = "literal"
-    elif token in ("optional", "default", ):
-        # default is not a official keyword (yet) but supported by the
-        # reference implementation (numpydoc) and widely used
-        type_ = "control"
-    elif _xref_regex.match(token):
-        type_ = "reference"
-    else:
-        type_ = "obj"
-
-    return type_
-
-# overriden: just use simple backticks for cross ref and add espaced space when necessary 
-# to able to split on braquets carcaters: need escaped spaces handling to separate reST markup. 
-# also use this function to pre-process google-style types. 
-def _convert_type_spec(_type: str, aliases: Mapping[str, str] = {}) -> str:
-
-    def _get_alias(_token:str, aliases:Mapping[str, str]) -> str:
-        alias = aliases.get(_token, _token)
-        return alias
-
-    def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], 
-                 _next_token:Tuple[str, str], _translation:Optional[str]=None) -> str:
-        translation = _translation or "%s"
-        if _xref_regex.match(_token[0]) is None:
-            converted_token = translation % _token[0]
-        else:
-            converted_token = _token[0]
-        need_escaped_space = False
-        
-        if _last_token[1] in token_type_using_rest_markup:
-            # the last token has reST markup: 
-            #   only those three types defines additionnal markup, see `converters`
-            # we might have to escape
-
-            if not converted_token.startswith(" ") and not converted_token.endswith(" "):
-                if _next_token != iter_types.sentinel:
-                    if _next_token[1] in token_type_using_rest_markup:
-                        need_escaped_space = True
-            
-            if _token[1] in token_type_using_rest_markup:
-                need_escaped_space = True
-
-        if need_escaped_space:
-            converted_token = f"\\ {converted_token}"
-        return converted_token
-
-    tokens = _tokenize_type_spec(_type)
-    combined_tokens = _recombine_set_tokens(tokens)
-    types = [
-        (token, _token_type(token))
-        for token in combined_tokens
-    ]
-
-    converters: Dict[str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], str]] = {
-        "literal": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
-        "obj": lambda _token, _last_token, _next_token: _convert((_get_alias(_token[0], aliases), _token[1]), _last_token, _next_token, "`%s`"),
-        "control": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
-        "delimiter": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
-        "reference": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
-    }
-
-    token_type_using_rest_markup = ["literal", "obj", "control"]
-
-    converted = ""
-    last_token = ("", "")
-
-    iter_types: peek_iter[Tuple[str, str]] = peek_iter(types)
-    for token, type_ in iter_types:
-        next_token = iter_types.peek()
-        converted_token = converters[type_]((token, type_), last_token, next_token)
-        converted += converted_token
-        last_token = (converted_token, type_)
-
-    return converted
-
-
 class NumpyDocstring(GoogleDocstring):
     """Convert NumPy style docstrings to reStructuredText.
     Parameters
@@ -1124,26 +1175,13 @@ class NumpyDocstring(GoogleDocstring):
         Raise
         -----
         ConsumeFieldsAsFreeForm
-            If the type is not obvious and _consume_field(allow_free_form=True), only used for the returns section. 
+            If the type is not obvious and _consume_field(allow_free_form=True), 
+            only used for the returns section. 
         """
-        def is_obvious_type(_type: str) -> bool:
-            if _type.isidentifier() or _xref_regex.match(_type) :
-                return True
-            try:
-                # We simply try to load the string object with AST, if it's working 
-                # chances are it's a type annotation like type. 
-                # Let's say 2048 is the maximum number of caracters 
-                # that we'll try to parse here since 99% of the time it will 
-                # suffice, and we don't want to add too much of expensive processing. 
-                ast.parse(_type[:2048])
-            except SyntaxError:
-                return False
-            else:
-                return True
 
         def figure_type(_name: str, _type: str) -> str:
             # Here we "guess" if _type contains the type
-            if is_obvious_type(_type):
+            if is_obj_identifier(_type):
                 _type = self._convert_type(_type)
                 return _type
 

@@ -12,9 +12,7 @@ from unittest import TestCase
 from textwrap import dedent
 from contextlib import contextmanager
 
-from pydoctor.napoleon.docstring import (  GoogleDocstring, NumpyDocstring, 
-                                           _convert_type_spec, _recombine_set_tokens,
-                                           _token_type, _tokenize_type_spec )
+from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring
 from pydoctor.napoleon import Config
 
 
@@ -256,7 +254,7 @@ Yield:
 """,
 """
 Single line summary
-:Yields: `str` -- Extended
+:Yields: `str` - Extended
          description of yielded value
 """
     ), (
@@ -335,11 +333,10 @@ Single line summary
     def test_parameters_with_class_reference(self):
         # mot sure why this test include back slash in the type spec...
         # users should not write type like that in pydoctor anyway.
-        docstring = """\
-Construct a new XBlock.
+        docstring = r"""Construct a new XBlock.
 This class should only be used by runtimes.
 Arguments:
-    runtime (:class:`~typing.Dict`\\[:class:`int`,:class:`str`\\]): Use it to
+    runtime (:class:`~typing.Dict`[:class:`int`,:class:`str`]): Use it to
         access the environment. It is available in XBlock code
         as ``self.runtime``.
     field_data (:class:`FieldData`): Interface used by the XBlock
@@ -353,7 +350,7 @@ This class should only be used by runtimes.
 :param runtime: Use it to
                 access the environment. It is available in XBlock code
                 as ``self.runtime``.
-:type runtime: :class:`~typing.Dict`\[:class:`int`,:class:`str`\]
+:type runtime: :class:`~typing.Dict`\ [:class:`int`,:class:`str`]
 :param field_data: Interface used by the XBlock
                    fields to access their data from wherever it is persisted.
 :type field_data: :class:`FieldData`
@@ -1009,11 +1006,11 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
-        :returns: * `a complicated string` -- Extended
+        :returns: * a complicated string - Extended
                     description of return value
-                  * `int` -- Extended
+                  * `int` - Extended
                     description of return value
-                  * **the tuple of your life** (`tuple`) -- Extended
+                  * **the tuple of your life**: `tuple` - Extended
                     description of return value
         """
     ),(
@@ -1132,7 +1129,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
-        :Yields: `str` -- Extended
+        :Yields: `str` - Extended
                  description of yielded value
         """
     ), (
@@ -1146,7 +1143,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
-        :Yields: `str` -- Extended
+        :Yields: `str` - Extended
                  description of yielded value
         """
     )]
@@ -1241,7 +1238,7 @@ param1 : MyClass instance
         actual = str(NumpyDocstring(dedent(docstring), config))
         expected = """\
 :param param1:
-:type param1: `MyClass instance`
+:type param1: MyClass instance
 """
         self.assertEqual(expected.rstrip(), actual)
 
@@ -1385,7 +1382,7 @@ arg_ : type
         """)
         expected = dedent("""
             Example Function
-            :Yields: :term:`scalar` or :class:`array-like <numpy.ndarray>` -- The result of the computation
+            :Yields: :term:`scalar` or :class:`array-like <numpy.ndarray>` - The result of the computation
         """)
         aliases = {
             "scalar": ":term:`scalar`",
@@ -1814,14 +1811,20 @@ definition_after_normal_text : int
             (" of ", "delimiter"),
             (" or ", "delimiter"),
             (": ", "delimiter"),
+            ("]", "delimiter"),
+            ("[", "delimiter"),
+            (")", "delimiter"),
+            ("(", "delimiter"),
             ("True", "obj"),
             ("None", "obj"),
             ("name", "obj"),
             (":py:class:`Enum`", "reference"),
+            ("`a complicated string`", "reference"),
+            ("just a string", "default"),
         )
-
+        type_spec = TypeSpecDocstring('', 0)
         for token, expected in tokens:
-            actual = _token_type(token)
+            actual = type_spec._token_type(token)
             self.assertEqual(expected.rstrip(), actual)
 
     def test_tokenize_type_spec(self):
@@ -1858,7 +1861,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, tokens):
-            actual = _tokenize_type_spec(spec)
+            actual = TypeSpecDocstring._tokenize_type_spec(spec)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens(self):
@@ -1877,7 +1880,7 @@ definition_after_normal_text : int
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = _recombine_set_tokens(tokens_)
+            actual = TypeSpecDocstring._recombine_set_tokens(tokens_)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens_invalid(self):
@@ -1893,7 +1896,7 @@ definition_after_normal_text : int
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = _recombine_set_tokens(tokens_)
+            actual = TypeSpecDocstring._recombine_set_tokens(tokens_)
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
@@ -1926,7 +1929,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, converted):
-            actual = _convert_type_spec(spec, aliases=aliases)
+            actual = str(TypeSpecDocstring(spec, 0, aliases=aliases))
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameter_types(self):
@@ -1989,21 +1992,19 @@ definition_after_normal_text : int
             'jkl"',
         )
         errors = (
-            r".+: invalid value set \(missing closing brace\):",
-            r".+: invalid value set \(missing opening brace\):",
-            r".+: malformed string literal \(missing closing quote\):",
-            r".+: malformed string literal \(missing opening quote\):",
-            r".+: malformed string literal \(missing closing quote\):",
-            r".+: malformed string literal \(missing opening quote\):",
+            r"invalid value set \(missing closing brace\):",
+            r"invalid value set \(missing opening brace\):",
+            r"malformed string literal \(missing closing quote\):",
+            r"malformed string literal \(missing opening quote\):",
+            r"malformed string literal \(missing closing quote\):",
+            r"malformed string literal \(missing opening quote\):",
         )
         for token, error in zip(tokens, errors):
-            
-             with warnings.catch_warnings(record=True) as catch_warnings:
-                warnings.simplefilter("always", )
-                _token_type(token)
-                match_re = re.compile(error)
-                assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-                assert match_re.match(str(catch_warnings.pop().message))
+            type_spec = TypeSpecDocstring('', 0)
+            type_spec._token_type(token)
+            match_re = re.compile(error)
+            assert len(type_spec._warnings) == 1, [w[0] for w in type_spec._warnings]
+            assert match_re.match(str(type_spec._warnings.pop()[0]))
 
     def test_docstring_token_type_invalid_warnings_with_linenum(self):
 
@@ -2024,10 +2025,10 @@ list of int
 
 
         errors = (
-            r".+: invalid value set \(missing closing brace\):",
-            r".+: invalid value set \(missing opening brace\):",
-            r".+: malformed string literal \(missing closing quote\):",
-            r".+: malformed string literal \(missing opening quote\):",
+            r"invalid value set \(missing closing brace\):",
+            r"invalid value set \(missing opening brace\):",
+            r"malformed string literal \(missing closing quote\):",
+            r"malformed string literal \(missing opening quote\):",
         )
         
             
