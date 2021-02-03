@@ -150,9 +150,9 @@ def test_func_undocumented_return_something() -> None:
         '<td class="fieldName">Returns</td>',
         '<td>',
         '</td>', '</tr>', 
-        '<tr>', '<td>', '<code>int</code>',
+        '<tr>', '<td class="fieldArgNameType">', '<code>int</code>',
         '</td>',
-        '<td>',
+        '<td class="fieldArgDesc">',
         '<span class="undocumented">Undocumented</span>', 
         '</td>', '</tr>', '</table>', '</div>'
         ]
@@ -338,7 +338,7 @@ def test_missing_param_computed_base(capsys: CapSys) -> None:
         """
     ''')
     html = docstring2html(mod.contents['Proxy'])
-    assert '<td>The wrapped instance.</td>' in html.split('\n')
+    assert '<td class="fieldArgDesc">The wrapped instance.</td>' in html.split('\n')
     captured = capsys.readouterr().out
     assert captured == ''
 
@@ -354,12 +354,12 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
             pass
     ''')
     html = docstring2html(mod.contents['C']).split('\n')
-    assert '<td>Constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Constructor parameter.</td>' in html
     # Non-existing parameters should still end up in the output, because:
     # - pydoctor might be wrong about them not existing
     # - the documentation may still be useful, for example if belongs to
     #   an existing parameter but the name in the @param field has a typo
-    assert '<td>Not a constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Not a constructor parameter.</td>' in html
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
