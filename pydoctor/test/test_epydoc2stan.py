@@ -356,8 +356,24 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
     assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
 
-def test_func_missing_exception_type(capsys: CapSys) -> None:
-    """Raise fields must include the exception type."""
+def test_func_raise_linked() -> None:
+    """Raise fields are formatted by linking the exception type."""
+    mod = fromText('''
+    class SpanishInquisition(Exception):
+        pass
+    def f():
+        """
+        @raise SpanishInquisition: If something unexpected happens.
+        """
+    ''', modname='test')
+    html = docstring2html(mod.contents['f']).split('\n')
+    assert '<a href="test.SpanishInquisition.html">SpanishInquisition</a>' in html
+
+
+def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
+    """When a C{raise} field is missing the exception type, a warning is logged
+    and the HTML will list the exception type as unknown.
+    """
     mod = fromText('''
     def f(x):
         """
@@ -365,9 +381,12 @@ def test_func_missing_exception_type(capsys: CapSys) -> None:
         @raise: On a blue moon.
         """
     ''')
-    epydoc2stan.format_docstring(mod.contents['f'])
+    func = mod.contents['f']
+    epydoc2stan.format_docstring(func)
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Exception type missing\n'
+    html = docstring2html(func).split('\n')
+    assert '<span class="undocumented">Unknown exception</span>' in html
 
 
 def test_unexpected_field_args(capsys: CapSys) -> None:
