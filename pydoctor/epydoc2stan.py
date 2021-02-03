@@ -308,7 +308,7 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
-        self.linker = _EpydocLinker(self.obj)
+        self._linker = _EpydocLinker(self.obj)
 
         self.types: Dict[str, Optional[Tag]] = {}
 
@@ -326,7 +326,7 @@ class FieldHandler:
             ) -> None:
         formatted_annotations = {
             name: None if value is None
-                       else AnnotationDocstring(value).to_stan(self.linker)
+                       else AnnotationDocstring(value).to_stan(self._linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -445,7 +445,7 @@ class FieldHandler:
             field.report('Exception type missing')
             typ_fmt = tags.span(class_='undocumented')("Unknown exception")
         else:
-            typ_fmt = self.linker.link_to(name, name)
+            typ_fmt = self._linker.link_to(name, name)
         self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises

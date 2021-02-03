@@ -371,7 +371,9 @@ def test_func_raise_linked() -> None:
 
 
 def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
-    """Raise fields must include the exception type."""
+    """When a C{raise} field is missing the exception type, a warning is logged
+    and the HTML will list the exception type as unknown.
+    """
     mod = fromText('''
     def f(x):
         """
