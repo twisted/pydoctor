@@ -1289,7 +1289,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
 
 def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
     """
-    Just return the `parse_docstring` function. 
+    Get the L{parse_docstring} function. 
     """
     return parse_docstring
 
