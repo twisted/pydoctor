@@ -91,7 +91,7 @@ def get_supported_docformat() -> Sequence[str]:
     parser_names: List[str] = []
     for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
         moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName == '__init__':
+        if moduleName is None or moduleName.startswith("_"):
             continue
         else:
             parser_names.append(moduleName)
