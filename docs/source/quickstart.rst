@@ -8,10 +8,8 @@ Pydoctor can be installed from PyPI::
 
    $ pip install -U pydoctor[rst]
 
-*This will also install docutils*. 
-
 Alternatively, you can install pydoctor without reStructuredText 
-support, only epytext will be recognized::
+support, only Epytext will be recognized::
 
    $ pip install -U pydoctor
 
@@ -42,6 +40,9 @@ The result looks like `this <api/pydoctor.html>`_.
 .. note:: This example assume that you have cloned and installed ``pydoctor`` 
     and you are running the ``pydoctor`` build from Unix and the current directory 
     is the root folder of the Python project.
+
+.. tip:: First run pydoctor with ``--docformat=plaintext`` to focus on eventual 
+   python code parsing errors. Then, enable docstring parsing by selecting another `docformat <docformat/index.html>`_. 
 
 .. warning:: The ``--html-viewsource-base`` argument should point to a tag or a 
     commit SHA rather than a branch since line numbers are not going to match otherwise 
