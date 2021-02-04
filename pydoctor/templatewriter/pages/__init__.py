@@ -110,7 +110,7 @@ class BasePage(BaseElement):
     """
     Base page element. 
 
-    Defines special placeholders that are designed to be overriden by users: 
+    Defines special HTML placeholders that are designed to be overriden by users: 
     "header.html", "pageHeader.html" and "footer.html".
     """
 
@@ -121,17 +121,18 @@ class BasePage(BaseElement):
     @renderer
     def header(self, request, tag):
         template = self.template_lookup.get_template('header.html')
-        return template.renderable.load() if template.text else ''
+        # Checks are needed here to avoid SAXParseException: no element found error
+        return template.renderable.load() if not template.is_empty() else ''
 
     @renderer
     def pageHeader(self, request, tag):
         template = self.template_lookup.get_template('pageHeader.html')
-        return template.renderable.load() if template.text else ''
+        return template.renderable.load() if not template.is_empty() else ''
 
     @renderer
     def footer(self, request, tag):
         template = self.template_lookup.get_template('footer.html')
-        return template.renderable.load() if template.text else ''
+        return template.renderable.load() if not template.is_empty() else ''
 
 class CommonPage(BasePage):
 
