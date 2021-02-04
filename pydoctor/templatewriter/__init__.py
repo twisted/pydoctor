@@ -13,7 +13,7 @@ import copy
 from twisted.web.iweb import ITemplateLoader
 
 from twisted.web.template import XMLString
-from bs4 import BeautifulSoup
+from twisted.web.microdom import parseXML, getElementsByTagName
 
 from pydoctor.model import System, Documentable
 
@@ -156,26 +156,30 @@ class _HtmlTemplate(Template):
 
     @property
     def version(self) -> int:
-        if self._version == None:
+        if self._version is None:
             if not self.text:
                 self._version = -1
             else:
-                soup = BeautifulSoup(self.text, 'html.parser')
-                res = soup.find_all("meta", attrs=dict(name="pydoctor-template-version"))
                 try:
-                    meta = res.pop()
-                    version_str = meta['content']
-                    self._version = int(version_str)
-                except IndexError:
-                    # No meta pydoctor-template-version tag found, 
-                    # most probably a placeholder template. 
-                    self._version = -1
-                except KeyError as e:
-                    warnings.warn(f"Could not read '{self.name}' template version: can't get meta pydoctor-template-version tag content: {e}")
-                    self._version = -1
-                except ValueError as e:
-                    warnings.warn(f"Could not read '{self.name}' template version: can't cast template version to int: {e}")
-                    self._version = -1
+                    dom = parseXML(self.path)
+                except Exception as e:
+                    raise RuntimeError(f"Can't parse XML file {self.name}") from e
+                version = -1
+                # If No meta pydoctor-template-version tag found, 
+                # it's most probably a placeholder template. 
+                for res in getElementsByTagName(dom, "meta"):
+                    if res.getAttribute("name") == "pydoctor-template-version":
+                        version_str = res.getAttribute("content")
+                        if version_str is not None:
+                            try:
+                                version = int(version_str)
+                            except ValueError:
+                                warnings.warn(f"Could not read '{self.name}' template version: "
+                                        "the version string must be integer")
+                        else:
+                            warnings.warn(f"Could not read '{self.name}' template version: "
+                                f"the 'content' attribute is missing")
+                self._version = version
 
         # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
         # It's ok to ignore mypy error because the version is set to an int if it's None
