@@ -12,8 +12,7 @@ import warnings
 import copy
 from twisted.web.iweb import ITemplateLoader
 
-from twisted.web.template import XMLFile
-from twisted.python.filepath import FilePath
+from twisted.web.template import XMLString
 from bs4 import BeautifulSoup
 
 from pydoctor.model import System, Documentable
@@ -152,7 +151,7 @@ class _HtmlTemplate(Template):
 
     def __init__(self, path:Path):
         super().__init__(path)
-        self._xmlfile:Optional[XMLFile] = None
+        self._xmlstring:Optional[XMLString] = None
         self._version:Optional[int] = None
 
     @property
@@ -184,9 +183,9 @@ class _HtmlTemplate(Template):
 
     @property
     def renderable(self) -> ITemplateLoader:
-        if not self._xmlfile:
-            self._xmlfile = XMLFile(FilePath(self.path.as_posix()))
-        return self._xmlfile
+        if not self._xmlstring:
+            self._xmlstring = XMLString(self.text)
+        return self._xmlstring
 
 class TemplateLookup:
     """
