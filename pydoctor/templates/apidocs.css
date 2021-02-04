@@ -2,6 +2,16 @@ body {
     overflow-y: scroll;
 }
 
+nav div.container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav div.container div.navbar-header {
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
 .navbar {
     margin-bottom: 0px;
 }
@@ -48,10 +58,25 @@ body {
     color: #23527c;
 }
 
+.navlinks  {
+    margin-top: 0px;
+}
+
 .navlinks li {
     padding: 0;
     display: inline-block;
     border-radius: 1px;
+}
+
+.navlinks li a {
+    padding-top: 16px;
+    padding-bottom: 14px;
+    padding-left: 15px;
+    padding-right: 0px;
+}
+
+.navlinks li a:hover {
+    background-color: transparent;
 }
 
 .page-header h1 {
@@ -71,6 +96,7 @@ a[name] {
 
 ul {
     margin-top: 10px;
+    margin-left: 10px;
     padding-left: 10px;
 }
 
@@ -81,10 +107,6 @@ li {
 
 li a {
     text-decoration: none;
-}
-
-ul {
-    margin-left: 10px;
 }
 
 ul ul {
