@@ -13,7 +13,7 @@ import copy
 from twisted.web.iweb import ITemplateLoader
 
 from twisted.web.template import XMLString
-from twisted.web.microdom import parseXML, getElementsByTagName
+from xml.dom.minidom import parseString
 
 from pydoctor.model import System, Documentable
 
@@ -161,21 +161,25 @@ class _HtmlTemplate(Template):
                 self._version = -1
             else:
                 try:
-                    dom = parseXML(self.path)
+                    dom = parseString(self.text)
                 except Exception as e:
                     raise RuntimeError(f"Can't parse XML file {self.name}") from e
                 version = -1
                 # If No meta pydoctor-template-version tag found, 
                 # it's most probably a placeholder template. 
-                for res in getElementsByTagName(dom, "meta"):
+                for res in dom.getElementsByTagName("meta"):
                     if res.getAttribute("name") == "pydoctor-template-version":
-                        version_str = res.getAttribute("content")
-                        if version_str is not None:
-                            try:
-                                version = int(version_str)
-                            except ValueError:
+                        if res.hasAttribute("content"):
+                            version_str = res.getAttribute("content")
+                            if version_str:
+                                try:
+                                    version = int(version_str)
+                                except ValueError:
+                                    warnings.warn(f"Could not read '{self.name}' template version: "
+                                            "the 'content' attribute must be an integer")
+                            else:
                                 warnings.warn(f"Could not read '{self.name}' template version: "
-                                        "the version string must be integer")
+                                    f"the 'content' attribute is empty")
                         else:
                             warnings.warn(f"Could not read '{self.name}' template version: "
                                 f"the 'content' attribute is missing")
