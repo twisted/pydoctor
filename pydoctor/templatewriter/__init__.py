@@ -167,8 +167,13 @@ class _HtmlTemplate(Template):
         if self._dom is None:
             try:
                 dom = minidom.parseString(self.text)
-            except Exception as e:
-                raise RuntimeError(f"Can't parse XML file {self.name} from XML string '{self.text}'") from e
+            except Exception:
+                try:
+                    dom = minidom.parseString(f"<div>{self.text}</div>")
+                except Exception as e:
+                    raise RuntimeError(f"Can't parse XML file {self.name} from string '{self.text}'") from e
+                else:
+                    self._dom = dom
             else:
                 self._dom = dom
         return self._dom
