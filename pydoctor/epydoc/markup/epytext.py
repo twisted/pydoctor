@@ -265,15 +265,11 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
     @return: a DOM tree encoding the contents of an epytext string,
         or C{None} if non-fatal errors were encountered and no C{errors}
         accumulator was provided.
-    @raise ParseError: If C{errors} is C{None} and an error is
-        encountered while parsing.
+    @raise ParseError: If a fatal error is encountered while parsing.
     """
     # Initialize errors list.
     if errors is None:
         errors = []
-        raise_on_error = True
-    else:
-        raise_on_error = False
 
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
@@ -342,12 +338,10 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
                         "epytext string.")
                 errors.append(StructuringError(estr, token.startline))
 
-    # If there was an error, then signal it!
+    # If there was a fatal error, then raise exeption!
+    # Enforce raise_on_error = True
     if any(e.is_fatal() for e in errors):
-        if raise_on_error:
-            raise errors[0]
-        else:
-            return None
+        raise errors[0]
 
     # Return the top-level epytext DOM element.
     return doc
