@@ -1,14 +1,10 @@
 """
 Classes for google-style and numpy-style docstring conversion. 
 
-Forked from sphinx.ext.napoleon.docstring. 
+Forked from C{sphinx.ext.napoleon.docstring}. 
 
-Napoleon U{upstream  
-<https://github.com/sphinx-doc/sphinx/pulls?q=is%3Apr+napoleon>}
-should be checked once in a while to make sure we don't miss any important updates. 
-
-:copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-:license: BSD, see LICENSE for details.
+@copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+@license: BSD, see LICENSE for details.
 """
 import ast
 import collections
@@ -929,9 +925,9 @@ class GoogleDocstring:
         lines = []  # type: List[str]
         for _name, _, _desc in self._consume_fields(parse_type=False):
             _init_methods_section()
-            lines.append('    - %s' % self._convert_type(_name))
+            lines.append('   %s' % self._convert_type(_name))
             if _desc:
-                lines.extend(self._indent(_desc, 6))
+                lines.extend(self._indent(_desc, 7))
             lines.append('')
         return lines
 

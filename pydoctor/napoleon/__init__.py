@@ -1,11 +1,9 @@
 """
 Convert docstrings from numpy or google style format to reST. 
 
-`This package is a fork of U{sphinx.ext.napoleon 
+This package is a fork of U{sphinx.ext.napoleon 
 <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
-(U{commit 
-<https://github.com/sphinx-doc/sphinx/commit/f9968594206e538f13fa1c27c065027f10d4ea27>})
-adapted for the ``pydoctor`` usage. 
+adapted for C{pydoctor} usage. 
 
 Supports both U{Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>} 
 and U{NumpyDoc <https://numpydoc.readthedocs.io/en/latest/format.html>} docstrings. 
@@ -14,10 +12,13 @@ Not all settings are supported in this version.
 
 There is also a new setting: C{napoleon_numpy_returns_allow_free_from}. See L{Config} for more informations. 
 
-@note: Original package license::
+Napoleon U{upstream  
+<https://github.com/sphinx-doc/sphinx/pulls?q=is%3Apr+napoleon>}
+should be checked once in a while to make sure we don't miss any important updates. 
 
-    :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-    :license: BSD, see LICENSE for details.
+
+@copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+@license: BSD, see LICENSE for details.
 """
 
 from typing import Dict, Iterable, Mapping, Optional, Tuple, Union
