@@ -197,11 +197,11 @@ ul ul ul ul ul ul ul {
 
 /* Section header */
 .fieldTable tr td:first-child.fieldName {
-    width: 150px;
+    width: max-content;
 }
 
 /* Argument name + type column table  */
-.fieldTable tr td.fieldArgNameType {
+.fieldTable tr td.fieldArgContainer {
     /* columns will be automatically
     sized depending on the space left. */
     width: max-content;
@@ -211,7 +211,7 @@ ul ul ul ul ul ul ul {
 }
 
 /* Arg type */
-.fieldTable tr td.fieldArgNameType code {
+.fieldTable tr td.fieldArgContainer code {
     margin-left: 7px;
 }
 
@@ -261,7 +261,7 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 650px) {
     /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgNameType {
+    .fieldTable tr td.fieldArgContainer {
         max-width: 200px;
         flex-wrap: wrap;
     } 
@@ -269,7 +269,7 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 400px) {
     /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgNameType {
+    .fieldTable tr td.fieldArgContainer {
         max-width: 150px;
     } 
 }

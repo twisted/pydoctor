@@ -260,7 +260,7 @@ class FieldDesc:
             fieldNameTd.append(self.type)
         if self.name or self.type:
             #  <name>: <type> | <desc>
-            yield tags.td(class_="fieldArgNameType")(*fieldNameTd)
+            yield tags.td(class_="fieldArgContainer")(*fieldNameTd)
             yield tags.td(class_="fieldArgDesc")(formatted)
         else:
             #  <desc>
