@@ -1,6 +1,6 @@
 """PyDoctor, an API documentation generator for Python libraries.
 
-Warning: PyDoctor's API isn't stable YET, custom builds are prone to break!
+@warning: PyDoctor's API isn't stable YET, custom builds are prone to break!
 
 """
 
