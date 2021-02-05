@@ -164,7 +164,7 @@ class ExampleError(Exception):
 
     Args:
         msg (str): Human readable string describing the exception.
-        code (`int`, optional): Error code.
+        code (int, optional): Error code.
 
     Attributes:
         msg (str): Human readable string describing the exception.
@@ -185,29 +185,27 @@ class ExampleClass:
     function's ``Args`` section. Alternatively, attributes may be documented
     inline with the attribute's declaration (see __init__ method below).
 
-    Properties created with the ``@property`` decorator should be documented
-    in the property's getter method.
-
     Attributes:
         attr1 (str): Description of `attr1`.
-        attr2 (`int`, optional): Description of `attr2`.
+        attr2 (List[Union[str, bytes, int]], optional): Description of `attr2`.
 
     Methods:
         example_method: Quick example
-            Returns:
-                List[Union[str, bytes, int]]: The example result
         __special__: Dunder methods are considered public
         __special_without_docstring__: *Undocumented* text will appear. 
+    
+    Note:
+        The "Methods" section is not 
+
+    See:
+        Google style "See Also" section is just like any admonition. 
+    
     """
 
     def __init__(self, param1, param2, param3):
         """Example of docstring on the __init__ method.
 
-        The __init__ method may be documented in either the class level
-        docstring, or as a docstring on the __init__ method itself.
-
-        Either form is acceptable, but the two should not be mixed. Choose one
-        convention to document the __init__ method and be consistent with it.
+        The __init__ method should be documented as a docstring on the __init__ method.
 
         Note:
             Do not include the ``self`` parameter in the ``Args`` section.

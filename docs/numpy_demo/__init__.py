@@ -235,24 +235,18 @@ class ExampleClass:
     function's ``Args`` section. Alternatively, attributes may be documented
     inline with the attribute's declaration (see __init__ method below).
 
-    Properties created with the ``@property`` decorator should be documented
-    in the property's getter method.
 
     Attributes
     ----------
     attr1 : str
         Description of `attr1`.
-    attr2 : `int`, optional
+    attr2 : List[Union[str, bytes, int]], optional
         Description of `attr2`.
 
     Methods
     -------
     example_method
         Quick example
-        Returns
-        -------
-        List[Union[str, bytes, int]]
-            The example result
     __special__
         Dunder methods are considered public
     __special_without_docstring__
