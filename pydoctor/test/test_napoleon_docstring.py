@@ -822,8 +822,8 @@ Methods:
 
 .. admonition:: Methods
 
-    - `func`\ (`abc`, `def`)
-      description
+   `func`\ (`abc`, `def`)
+       description
 """  # NOQA
         config = Config()
         actual = str(GoogleDocstring(docstring, config=config))
@@ -2074,10 +2074,10 @@ the tuple of your life: tuple
 #   napoleon to consider this string as the type: but it won't be tokenized. 
 """
 Single line summary
-:returns: * **the string of your life** (`a complicated string`)
-          * **the str of your life** (``{"foo", "bob", "bar"}``)
-          * **the int of your life** (`int`)
-          * **the tuple of your life** (`tuple`)
+:returns: * **the string of your life**: `a complicated string`
+          * **the str of your life**: ``{"foo", "bob", "bar"}``
+          * **the int of your life**: `int`
+          * **the tuple of your life**: `tuple`
         """
     ),
     
@@ -2292,11 +2292,11 @@ Summary line.
 
 .. admonition:: Methods
 
-    - `__str__`()
-      :returns: The lines of the docstring in a list.
-      
-      .. note:: Nested markup works.
-        """
+   `__str__`()
+       :returns: The lines of the docstring in a list.
+       
+       .. note:: Nested markup works.
+       """
         )] 
     
     # https://github.com/sphinx-contrib/napoleon/issues/12
