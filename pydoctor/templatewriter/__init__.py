@@ -10,11 +10,10 @@ import abc
 from pathlib import Path
 import warnings
 import copy
-from twisted.web.iweb import ITemplateLoader
+from  xml.dom import minidom
 
-from twisted.web.template import XMLFile
-from twisted.python.filepath import FilePath
-from bs4 import BeautifulSoup
+from twisted.web.iweb import ITemplateLoader
+from twisted.web.template import XMLString
 
 from pydoctor.model import System, Documentable
 
@@ -67,17 +66,17 @@ class Template(abc.ABC):
     """
 
     def __init__(self, path:Path):
-        """
-        Template is constructed using a Path that should point to a file. 
-        """
         self._text: Optional[str] = None
         self.path: Path = path
-        """L{Path} object"""
+        """Template file path"""
 
     @classmethod
     def fromfile(cls, path:Path) -> Optional['Template']:
         """
-        Create a concrete template object. Type depends on the file extension. 
+        Create a concrete template object. 
+        Type depends on the file extension. 
+
+        @param path: A L{Path} that should point to a HTML, CSS or JS file. 
         @returns: The template object or C{None} if file is invalid. 
         @warns: If the template cannot be created
         """
@@ -90,6 +89,13 @@ class Template(abc.ABC):
         else:
             warnings.warn(f"Cannot create Template: {path.as_posix()} is not a template file.")
         return None
+
+    def is_empty(self) -> bool:
+        """
+        Does this template is empty? 
+        Empty placeholders templates will not be rendered. 
+        """
+        return len(self.text.strip()) == 0
 
     @property
     def name(self) -> str:
@@ -152,41 +158,59 @@ class _HtmlTemplate(Template):
 
     def __init__(self, path:Path):
         super().__init__(path)
-        self._xmlfile:Optional[XMLFile] = None
+        self._xmlstring:Optional[XMLString] = None
         self._version:Optional[int] = None
+        self._dom: Optional[minidom.Document] = None
+
+    @property
+    def dom(self) -> minidom.Document:
+        if self._dom is None:
+            try:
+                dom = minidom.parseString(self.text)
+            except Exception:
+                try:
+                    dom = minidom.parseString(f"<div>{self.text}</div>")
+                except Exception as e:
+                    raise RuntimeError(f"Can't parse XML file {self.name} from string '{self.text}'") from e
+                else:
+                    self._dom = dom
+            else:
+                self._dom = dom
+        return self._dom
 
     @property
     def version(self) -> int:
-        if self._version == None:
-            if not self.text:
+        if self._version is None:
+            if self.is_empty():
                 self._version = -1
             else:
-                soup = BeautifulSoup(self.text, 'html.parser')
-                res = soup.find_all("meta", attrs=dict(name="pydoctor-template-version"))
-                try:
-                    meta = res.pop()
-                    version_str = meta['content']
-                    self._version = int(version_str)
-                except IndexError:
-                    # No meta pydoctor-template-version tag found, 
-                    # most probably a placeholder template. 
-                    self._version = -1
-                except KeyError as e:
-                    warnings.warn(f"Could not read '{self.name}' template version: can't get meta pydoctor-template-version tag content: {e}")
-                    self._version = -1
-                except ValueError as e:
-                    warnings.warn(f"Could not read '{self.name}' template version: can't cast template version to int: {e}")
-                    self._version = -1
-
-        # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
-        # It's ok to ignore mypy error because the version is set to an int if it's None
-        return self._version # type: ignore 
+                version = -1
+                # If No meta pydoctor-template-version tag found, 
+                # it's most probably a placeholder template. 
+                for meta in self.dom.getElementsByTagName("meta"):
+                    if meta.getAttribute("name") == "pydoctor-template-version":
+                        if meta.hasAttribute("content"):
+                            version_str = meta.getAttribute("content")
+                            if version_str:
+                                try:
+                                    version = int(version_str)
+                                except ValueError:
+                                    warnings.warn(f"Could not read '{self.name}' template version: "
+                                            "the 'content' attribute must be an integer")
+                            else:
+                                warnings.warn(f"Could not read '{self.name}' template version: "
+                                    f"the 'content' attribute is empty")
+                        else:
+                            warnings.warn(f"Could not read '{self.name}' template version: "
+                                f"the 'content' attribute is missing")
+                self._version = version
+        return self._version 
 
     @property
     def renderable(self) -> ITemplateLoader:
-        if not self._xmlfile:
-            self._xmlfile = XMLFile(FilePath(self.path.as_posix()))
-        return self._xmlfile
+        if not self._xmlstring:
+            self._xmlstring = XMLString(self.text)
+        return self._xmlstring
 
 class TemplateLookup:
     """
@@ -209,6 +233,7 @@ class TemplateLookup:
     _default_template_dir = 'templates'
 
     def __init__(self) -> None:
+        """Init L{TemplateLookup} with templates in C{pydoctor/templates}"""
         # Dict comprehension to init templates to whats in pydoctor/templates
         self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
                 Path(__file__).parent.parent.joinpath(

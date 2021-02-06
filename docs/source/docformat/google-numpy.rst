@@ -37,7 +37,7 @@ Sections supported on a "best effort" basis:
     - ``Methods``: Items will be included into a "Methods" admonition. 
     - ``Other Parameters``: Parameters described in this section will be merged with regular parameters. 
 
-For more informations, refer to py:mod:`pydoctor.napoleon` documentation. 
+For more information, refer to py:mod:`pydoctor.napoleon` documentation. 
 
 .. ReST syntax violations might be reported with a slightly incorrect 
    line number because of this pre-processing. (uncommented this when pydoctor/issues/237 is solved)

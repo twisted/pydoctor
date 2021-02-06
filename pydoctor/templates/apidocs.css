@@ -2,6 +2,16 @@ body {
     overflow-y: scroll;
 }
 
+nav div.container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav div.container div.navbar-header {
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
 .navbar {
     margin-bottom: 0px;
 }
@@ -48,10 +58,25 @@ body {
     color: #23527c;
 }
 
+.navlinks  {
+    margin-top: 0px;
+}
+
 .navlinks li {
     padding: 0;
     display: inline-block;
     border-radius: 1px;
+}
+
+.navlinks li a {
+    padding-top: 16px;
+    padding-bottom: 14px;
+    padding-left: 15px;
+    padding-right: 0px;
+}
+
+.navlinks li a:hover {
+    background-color: transparent;
 }
 
 .page-header h1 {
@@ -71,6 +96,7 @@ a[name] {
 
 ul {
     margin-top: 10px;
+    margin-left: 10px;
     padding-left: 10px;
 }
 
@@ -81,10 +107,6 @@ li {
 
 li a {
     text-decoration: none;
-}
-
-ul {
-    margin-left: 10px;
 }
 
 ul ul {
@@ -157,6 +179,7 @@ ul ul ul ul ul ul ul {
 
 .fieldTable {
     width: 100%;
+    display: block;
     border: 0;
 }
 
@@ -173,28 +196,21 @@ ul ul ul ul ul ul ul {
     padding: 2px;
 }
 
-/* Section header */
-.fieldTable tr td:first-child.fieldName {
-    width: 150px;
-}
 
 /* Argument name + type column table  */
-.fieldTable tr td.fieldArgNameType {
-    /* columns will be automatically
-    sized depending on the space left. */
-    width: max-content;
-    max-width: 300px;
+.fieldTable tr td.fieldArgContainer {
+    width: 250px;
     display: flex;
     align-items: center;
 }
 
 /* Arg type */
-.fieldTable tr td.fieldArgNameType .fieldType {
+.fieldTable tr td.fieldArgContainer code {
     margin-left: 7px;
 }
 
-/* Argument description column */
-.fieldTable tr td.fieldArgDesc {
+/* Description column */
+.fieldTable tr td:nth-child(2) {
     padding-left: 15px;
 }
 
@@ -206,9 +222,7 @@ ul ul ul ul ul ul ul {
 
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
-    /* columns will be automatically
-    sized depending on the space left. */
-    max-width: 300px;
+    width: 200px;
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
@@ -239,16 +253,16 @@ ul ul ul ul ul ul ul {
 
 @media only screen and (max-width: 650px) {
     /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgNameType {
-        max-width: 200px;
+    .fieldTable tr td.fieldArgContainer {
+        width: 175px;
         flex-wrap: wrap;
     } 
 }
 
 @media only screen and (max-width: 400px) {
     /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgNameType {
-        max-width: 150px;
+    .fieldTable tr td.fieldArgContainer {
+        width: 125px;
     } 
 }
 

@@ -233,9 +233,6 @@ class FieldDesc:
     """
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
-    kind: str
-    """Field tag, i.e. C{:<tag>:} """
-
     name: Optional[str] = None
     """Field name, i.e. C{:param <name>:}"""
 
@@ -244,9 +241,45 @@ class FieldDesc:
 
     body: Optional[Tag] = None
 
-    def format(self) -> Tag:
+    def format(self) -> Iterator[Tag]:
+        """
+        @return: Iterator that yields one or two C{tags.td}. 
+        """
         formatted = self.body or self._UNDOCUMENTED
-        return formatted
+        # if self.type is not None:
+        #     formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
+
+        # name = self.name
+        # if name is None:
+        #     yield tags.td(formatted, colspan="2")
+        # else:
+        #     yield tags.td(name, class_="fieldArg")
+        #     yield tags.td(formatted)
+
+        
+        fieldNameTd: List[Tag] = []
+        if self.name:
+            _name = tags.span(class_="fieldArg")(self.name)
+            if self.type:
+                _name(":")
+            fieldNameTd.append(_name)
+        if self.type:
+            fieldNameTd.append(self.type)
+        if self.name or self.type:
+            #  <name>: <type> | <desc>
+            yield tags.td(class_="fieldArgContainer")(*fieldNameTd)
+            yield tags.td(class_="fieldArgDesc")(formatted)
+        else:
+            #  <desc>
+            yield tags.td(formatted, colspan="2")
+        
+
+class RaisesDesc(FieldDesc):
+    """Description of an exception that can be raised by function/method."""
+
+    def format(self) -> Iterator[Tag]:
+        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(self.body or self._UNDOCUMENTED)
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
@@ -256,7 +289,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     Generates a 2-columns layout as follow:: 
 
         +------------------------------------+
-        | <label>        |     <empty_cell>  |
+        | <label>                            |
         | <name>: <type> |     <desc>        |
         | <name>: <type> |     <desc>        |
         +------------------------------------+
@@ -265,7 +298,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     generates the same output as L{format_field_list}:: 
 
         +------------------------------------+
-        | <label>      |       <empty_cell>  |
+        | <label>                            |
         | <desc ... >                        |
         +------------------------------------+
 
@@ -276,31 +309,18 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     first = True
     for d in descs:
         if first:
+            # <label>      
             row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            row(tags.td())
+            row(tags.td(class_="fieldName", colspan="2")(label))
             first = False
-            #  <label> | <empty_cell> 
             yield row
 
         row = tags.tr()
-        fieldNameTd: List[Tag] = []
-        if d.name:
-            _name = tags.span(class_="fieldArg")(d.name)
-            if d.type:
-                _name(":")
-            fieldNameTd.append(_name)
-        if d.type:
-            fieldNameTd.append(tags.span(class_="fieldType")(d.type))
-        if d.name or d.type:
-            #  <name>: <type> | <desc>
-            row(tags.td(class_="fieldArgNameType")(*fieldNameTd))
-            row(tags.td(class_="fieldArgDesc")(d.format()))
-        else:
-            #  <desc>
-            row(tags.td(d.format(), colspan="2"))
+        # <name>: <type> |     <desc>      
+        # or
+        # <desc ... >         
+        row(d.format())
         yield row
-
 
 @attr.s(auto_attribs=True)
 class Field:
@@ -345,7 +365,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
     Generates a 2-columns layout as follow:: 
 
         +------------------------------------+
-        | <label>      |       <empty_cell>  |
+        | <label>                            |
         | <desc ... >                        |
         +------------------------------------+
 
@@ -356,8 +376,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            row(tags.td())
+            row(tags.td(class_="fieldName", colspan="2")(label))
             first=False
             yield row
 
@@ -370,26 +389,27 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
+        self._linker = _EpydocLinker(self.obj)
 
         self.types: Dict[str, Optional[Tag]] = {}
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
         self.yields_desc: Optional[FieldDesc] = None 
-        self.raise_descs: List[FieldDesc] = []
+        self.raise_descs: List[RaisesDesc] = []
         self.warns_desc: List[FieldDesc] = [] 
         self.seealsos: List[Field] = []
         self.notes: List[Field] = []
         self.authors: List[Field] = []
         self.sinces: List[Field] = []
-        self.unknowns: List[FieldDesc] = []
-        
+        self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
+
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        linker = _EpydocLinker(self.obj)
         formatted_annotations = {
-            name: None if value is None else AnnotationDocstring(value).to_stan(linker)
+            name: None if value is None
+                       else AnnotationDocstring(value).to_stan(self._linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -401,7 +421,7 @@ class FieldHandler:
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
             if not _is_none_literal(ann_ret):
-                self.return_desc = FieldDesc(kind='return', type=ret_type)
+                self.return_desc = FieldDesc(type=ret_type)
 
     @staticmethod
     def _report_unexpected_argument(field:Field) -> None:
@@ -411,7 +431,7 @@ class FieldHandler:
     def handle_return(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -422,14 +442,14 @@ class FieldHandler:
     def handle_yield(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.yields_desc:
-            self.yields_desc = FieldDesc(kind='yields')
+            self.yields_desc = FieldDesc()
         self.yields_desc.body = field.format()
     handle_yields = handle_yield
 
     def handle_returntype(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
@@ -464,9 +484,6 @@ class FieldHandler:
                 return
         field.report('Documented parameter "%s" does not exist' % (name,))
 
-    def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
-
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
             if field.arg is not None:
@@ -496,7 +513,7 @@ class FieldHandler:
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
                 field.report('Parameter "%s" was already documented' % (name,))
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name not in self.types:
                 self._handle_param_not_found(name, field)
 
@@ -506,7 +523,7 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
@@ -523,13 +540,20 @@ class FieldHandler:
         name = field.arg
         if name is None:
             field.report('Exception type missing')
-        self.add_info(self.raise_descs, name, field)
+            typ_fmt = tags.span(class_='undocumented')("Unknown exception")
+        else:
+            typ_fmt = self._linker.link_to(name, name)
+        self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
 
-    # Warns is just like raises but the syntax is more relax. 
+    # Warns is just like raises but the syntax is more relax i.e. warning type not required. 
     def handle_warns(self, field: Field) -> None:
-        self.add_info(self.warns_desc, field.arg, field)
+        if field.arg is None:
+            typ_fmt = None
+        else:
+            typ_fmt = self._linker.link_to(field.arg, field.arg)
+        self.warns_desc.append(FieldDesc(type=typ_fmt, body=field.format()))
 
     handle_warn = handle_warns
     
@@ -547,8 +571,8 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field: Field) -> None:
-        field.report(f"Unknown field '{field.tag}'" )
-        self.add_info(self.unknowns, field.arg, field)
+        name = field.tag
+        self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
@@ -569,7 +593,7 @@ class FieldHandler:
             except KeyError:
                 if index == 0 and name in ('self', 'cls'):
                     continue
-                param = FieldDesc(kind='param', name=name, type=type_doc)
+                param = FieldDesc(name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
                 param.type = type_doc
@@ -600,11 +624,8 @@ class FieldHandler:
                       ('Present Since', 'Present Since', self.sinces),
                       ('Note', 'Notes', self.notes)):
             r += format_field_list(*s_p_l)
-        unknowns: Dict[str, List[FieldDesc]] = {}
-        for fieldinfo in self.unknowns:
-            unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
-        for kind, fieldlist in unknowns.items():
-            r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
+        for kind, fieldlist in self.unknowns.items():
+            r += format_desc_list(kind.title(), fieldlist)
 
         if any(r):
             return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]

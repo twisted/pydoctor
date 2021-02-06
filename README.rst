@@ -70,7 +70,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-
+* HTML templates are now customizable with ``--template-dir`` option.
+* Change the fields layout to a 2-column layout and display the arguments type right after their name.
 * Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (``objects.inv``) for deep-linking your documentation.
 
 pydoctor 20.12.1

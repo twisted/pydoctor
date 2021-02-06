@@ -120,6 +120,13 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     assert "methodA" in html
     assert "methodB" in html
 
+def test_html_template_version() -> None:
+    lookup = TemplateLookup()
+    for _, template in lookup._templates.items():
+        if isinstance(template, _HtmlTemplate):
+            if not template.is_empty():
+                assert template.version >= 1
+
 def test_template_lookup() -> None:
     
     lookup = TemplateLookup()
@@ -165,11 +172,11 @@ def test_template_lookup() -> None:
 
         lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'table.html'))
         assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Could not read 'table.html' template version: can't cast template version to int" in str(catch_warnings.pop().message) 
+        assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message) 
 
         lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'summary.html'))
         assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Could not read 'summary.html' template version: can't get meta pydoctor-template-version tag content" in str(catch_warnings.pop().message) 
+        assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message) 
 
         lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'random.html'))
         assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
