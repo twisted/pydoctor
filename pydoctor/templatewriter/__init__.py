@@ -204,10 +204,7 @@ class _HtmlTemplate(Template):
                             warnings.warn(f"Could not read '{self.name}' template version: "
                                 f"the 'content' attribute is missing")
                 self._version = version
-
-        # mypy gets error: Incompatible return value type (got "Optional[int]", expected "int")  [return-value]
-        # It's ok to ignore mypy error because the version is set to an int if it's None
-        return self._version # type: ignore 
+        return self._version 
 
     @property
     def renderable(self) -> ITemplateLoader:
