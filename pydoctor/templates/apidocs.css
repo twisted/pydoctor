@@ -179,6 +179,7 @@ ul ul ul ul ul ul ul {
 
 .fieldTable {
     width: 100%;
+    display: block;
     border: 0;
 }
 
@@ -202,11 +203,9 @@ ul ul ul ul ul ul ul {
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
-    /* columns will be automatically
-    sized depending on the space left. */
-    width: max-content;
-    max-width: 300px;
+    width: 250px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
 }
 
@@ -228,9 +227,7 @@ ul ul ul ul ul ul ul {
 
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
-    /* columns will be automatically
-    sized depending on the space left. */
-    max-width: 300px;
+    width: 200px;
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
@@ -262,15 +259,14 @@ ul ul ul ul ul ul ul {
 @media only screen and (max-width: 650px) {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
-        max-width: 200px;
-        flex-wrap: wrap;
+        width: 175px;
     } 
 }
 
 @media only screen and (max-width: 400px) {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
-        max-width: 150px;
+        width: 125px;
     } 
 }
 
