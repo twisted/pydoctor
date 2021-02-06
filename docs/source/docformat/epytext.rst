@@ -30,9 +30,7 @@ Here are the supported *epytext* fields:
     - ``@raise ValueError:`` (synonym: ``@raises ValueError:``)
     - ``@see:`` (synonym: ``@seealso:``)
     - ``@since:``
-    - And more
 
-.. note:: Not everything from the `epydoc fields manual 
-    <http://epydoc.sourceforge.net/manual-fields.html>`_ is applicable. 
-    Some fields might still display as unknown. 
+.. note:: Any other single word field name is also accepted and 
+   will be interpreted as a generic section. 
 
