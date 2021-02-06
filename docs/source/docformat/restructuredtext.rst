@@ -98,10 +98,10 @@ Here is a list of the supported ReST directives by package of origin:
 
 - `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, 
   ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, 
-  ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::`` 
+  ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::``
   and other admonitions, and a few others.
 - `epydoc`: None
-- `Sphinx`: None
+- `Sphinx`: ``.. versionadded::``, ``.. versionchanged::``, ``.. deprecated::``
 - `pydoctor`: ``.. python::``
 
 `Full list of supported and unsupported directives <list-restructuredtext-support.html>`_
