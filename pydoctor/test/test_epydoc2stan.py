@@ -142,7 +142,6 @@ def test_func_undocumented_return_something() -> None:
     ''')
     func = mod.contents['get_answer']
     lines = docstring2html(func).splitlines()
-    ret_idx = lines.index('<td class="fieldName">Returns</td>')
     expected_html = [
         '<div>', '<p class="undocumented">Undocumented</p>', 
         '<table class="fieldTable">',
