@@ -21,7 +21,7 @@ should be checked once in a while to make sure we don't miss any important updat
 @license: BSD, see LICENSE for details.
 """
 
-from typing import Dict, Iterable, Mapping, Optional, Tuple, Union
+from typing import Mapping, Sequence, Tuple, Union
 import attr
 
 @attr.s(auto_attribs=True)
@@ -34,6 +34,10 @@ class Config:
     """
     Allow users who have type annotations in their pure python code to omit 
     types in the returns clause docstrings but as well as specify them when it's needed. 
+
+    Enable this setting with the option::
+
+        --numpy-returns-allow-free-form
     
     All of the following return clauses will be interpreted as expected::
 
@@ -50,7 +54,7 @@ class Config:
         -------
         subprocess.Popen
 
-    For more discussion: U{sphinx/issues/7077 <https://github.com/sphinx-doc/sphinx/issues/7077>} 
+    @see: U{sphinx/issues/7077 <https://github.com/sphinx-doc/sphinx/issues/7077>} 
 
     @note: This come with a little issue: in the case of a natural language 
        type like C{"list of int"}, it needs a follow-up indented description 
@@ -62,39 +66,57 @@ class Config:
     """
 
 
-    napoleon_custom_sections: Optional[Iterable[Union[str, Tuple[str, str]]]] = None
+    napoleon_custom_sections: Sequence[Union[str, Tuple[str, str]]] = attr.ib(factory=list)
     """
     Add a list of custom sections to include, expanding the list of parsed sections.
     The entries can either be strings or tuples, depending on the intention:
 
         - To create a custom "generic" section, just pass a string.
-        - To create an alias for an existing section, pass a tuple containing the
-        alias name and the original, in that order.
+        - To create an alias for an existing section, pass a string 
+        contaning two values separated by a comma:
+        the alias name and the original, in that order.
+        - To create a custom section that displays like the parameters or returns
+        section, pass a string contaning two values separated by a comma: 
+        the custom section name and a string value, "params_style" or "returns_style".
 
-    If an entry is just a string, it is interpreted as a header for a generic
-    section. If the entry is a tuple/list/indexed container, the first entry
-    is the name of the section, the second is the section key to emulate.
+    Define custom sections with the following cummulative option::
+
+        --custom-section=<name>
+
+    If the option is just a string, it is interpreted as a header for a generic
+    section.
+
+    Create section aliases with::
+
+        --custom-section=<alias>,<original>
+
+    The option is two strings, separarated by a comma, the second is the original section key to emulate.
+    If C{<original>} is "params_style" or "returns_style" the custom section
+    will be displayed like the parameters section or returns section.
     """
 
-    napoleon_type_aliases: Optional[Mapping[str, str]] = None
+    napoleon_type_aliases: Mapping[str, str] = attr.ib(factory=dict)
     """
     A mapping to translate type names to other names or references. 
-    *Defaults to None.*
 
-    With::
+    Write a file containing a JSON string of your custom type aliases mapping::
 
-        napoleon_type_aliases = {
+        {
             "CustomType": "mypackage.CustomType",
             "dict-like": "Mapping",
         }
 
-    This NumPy style snippet::
+    Pass the file path with the option::
+
+        --type-aliases=./aliases.json
+
+    Then, this NumPy style snippet::
 
         Parameters
         ----------
         arg1 : CustomType
             Description of `arg1`
-        arg2 : dict-like
+        arg2 : dict-like, optional
             Description of `arg2`
 
     becomes::
@@ -102,6 +124,5 @@ class Config:
         :param arg1: Description of `arg1`
         :type arg1: `mypackage.CustomType`
         :param arg2: Description of `arg2`
-        :type arg2: `Mapping`
-
+        :type arg2: `Mapping`, *optional*
    """
