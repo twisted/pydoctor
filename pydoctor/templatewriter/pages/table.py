@@ -2,7 +2,6 @@ from twisted.web.template import TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Function
-from pydoctor.templatewriter import util
 from pydoctor.templatewriter.pages import BaseElement
 
 

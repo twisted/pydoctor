@@ -80,7 +80,7 @@ nav div.container div.navbar-header {
 }
 
 .page-header h1 {
-    margin-bottom: 0;
+    margin: 0;
 }
 
 .categoryHeader {
@@ -201,6 +201,7 @@ ul ul ul ul ul ul ul {
 .fieldTable tr td.fieldArgContainer {
     width: 250px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
 }
 
@@ -255,7 +256,6 @@ ul ul ul ul ul ul ul {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 175px;
-        flex-wrap: wrap;
     } 
 }
 

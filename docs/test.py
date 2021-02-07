@@ -48,7 +48,7 @@ def test_rtd_extension_inventory():
     """
     The Sphinx inventory is available during normal sphinx-build.
     """
-    with open(BASE_DIR / 'usage.html', 'r') as stream:
+    with open(BASE_DIR / 'sphinx-integration.html', 'r') as stream:
         page = stream.read()
         assert 'href="/en/latest/api/pydoctor.sphinx_ext.build_apidocs.html"' in page, page
 
