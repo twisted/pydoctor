@@ -36,8 +36,10 @@ Sections supported on a "best effort" basis:
     - ``Attributes``: Each item will be translated to ``:ivar:`` and ``:type:`` tags. 
     - ``Methods``: Items will be included into a "Methods" admonition. 
     - ``Other Parameters``: Parameters described in this section will be merged with regular parameters. 
+    - Numpy-style multiple return section: elements will be listed but layout is sub optimal. 
 
-For more information, refer to py:mod:`pydoctor.napoleon` documentation. 
+
+For more information, refer to :py:mod:`pydoctor.napoleon` documentation. 
 
 .. ReST syntax violations might be reported with a slightly incorrect 
    line number because of this pre-processing. (uncommented this when pydoctor/issues/237 is solved)
