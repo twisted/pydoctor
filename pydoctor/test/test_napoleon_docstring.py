@@ -918,13 +918,38 @@ Returns:
         actual = str(GoogleDocstring(docstring2, is_attribute=True))
         self.assertEqual(expected2.rstrip(), actual)
 
-# other issues to watch for - apparently numpy docs imporse a rtype tag, this would a blocking for us
-# since type annotation are verty important and they get overriden with a rtype tag
-# https://github.com/sphinx-doc/sphinx/issues/5887
+    @pytest.mark.xfail
+    def test_multiline_types(self):
 
-# also what out that the warns edits didnot break mupy docs 
-# Here is the only real life exemple of warn section that I found
-# https://github.com/McSinyx/palace/blob/c5861833ab55f19acffb9db76245dfe9bee439f4/src/palace.pyx#L470
+        # Real life example from 
+        # https://googleapis.github.io/google-api-python-client/docs/epy/index.html
+        docstring = """
+Scopes the credentials if necessary.
+
+Args:
+    credentials (Union[
+        google.auth.credentials.Credentials,
+        oauth2client.client.Credentials]): The credentials to scope.
+    scopes (Sequence[str]): The list of scopes.
+
+Returns:
+    Union[google.auth.credentials.Credentials,
+        oauth2client.client.Credentials]: The scoped credentials.
+"""
+
+        expected = r"""
+Scopes the credentials if necessary.
+
+:param credentials: The credentials to scope.
+:type credentials: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
+:param scopes: The list of scopes.
+:param scopes: `Sequence`\ [`str`]
+
+:returns: The scoped credentials.
+:rtype: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
+"""
+        actual = str(GoogleDocstring(docstring))
+        self.assertEqual(expected.rstrip(), actual)
 
 class NumpyDocstringTest(BaseDocstringTest):
     docstrings = [(
