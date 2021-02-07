@@ -126,12 +126,12 @@ def getparser() -> OptionParser:
             "Defaults to empty string."
             ))
     parser.add_option(
-        '--project-url', dest='projecturl',
+        '--project-url', dest='projecturl', metavar="URL",
         help=("The project url, appears in the html if given."))
     parser.add_option(
         '--project-base-dir', dest='projectbasedirectory', type='path',
         help=("Path to the base directory of the project.  Source links "
-              "will be computed based on this value."))
+              "will be computed based on this value."), metavar="PATH",)
     parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
@@ -140,7 +140,8 @@ def getparser() -> OptionParser:
         help=("Like py.test's --pdb."))
     parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
-        default=MAKE_HTML_DEFAULT, help=("Produce html output."))
+        default=MAKE_HTML_DEFAULT, help=("Produce html output."
+            " Enabled by default if options '--testing' or '--make-intersphinx' are not specified. "))
     parser.add_option(
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
@@ -153,7 +154,7 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
-              "Can be used to document part of a package."))
+              "Can be used to document part of a package."), metavar='PACKAGE',)
     _docformat_choices = get_supported_docformat()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
@@ -161,33 +162,55 @@ def getparser() -> OptionParser:
         help=("Format used for parsing docstrings. "
              f"Supported values: {_docformat_choices}"))
     parser.add_option(
+        '--numpy-returns-allow-free-form', action='store_true', 
+        default=False, 
+        dest='napoleon_numpy_returns_allow_free_from',
+        help=("Allow users who have type annotations in their python code to omit "
+                "types in the Numpy's returns clause docstrings but as well as "
+                "specify them when it's needed. "))
+    parser.add_option(
+        '--custom-section', action='append', dest='napoleon_custom_sections',
+        default=[], help=('Custom napoleon sections, can be single value or '
+                'two values separated by a comma. ' 
+                "Only applicable if --docformat is 'google' or 'numpy'"),
+        metavar='<name>[,<alias>]',
+    )
+    parser.add_option(
+        '--type-aliases', action='store', dest='napoleon_type_aliases',
+        help=('Custom napoleon type aliases JSON file mapping. ' 
+                "Only applicable if --docformat is 'google' or 'numpy'"),
+        metavar='PATH',
+    )
+    parser.add_option(
         '--template-dir',
         dest='templatedir',
         help=("Directory containing custom HTML templates."),
+        metavar='PATH',
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of object to generate API docs for: acts like a filter. "
-              " (generates everything by default)."))
+              " (generates everything by default)."),
+        metavar='PACKAGE/MOD/CLASS',)
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
         help=("Only generate the summary pages."))
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
-        help=("Directory to save HTML files to (default 'apidocs')"))
+        help=("Directory to save HTML files to (default 'apidocs')"), metavar='PATH',)
     parser.add_option(
         '--html-writer', dest='htmlwriter',
         help=("Dotted name of writer class to use (default "
-              "'pydoctor.templatewriter.TemplateWriter')."))
+              "'pydoctor.templatewriter.TemplateWriter')."), metavar='CLASS',)
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
         help=("This should be the path to the trac browser for the top "
-              "of the svn checkout we are documenting part of."))
+              "of the svn checkout we are documenting part of."), metavar='URL',)
     parser.add_option(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
-              "Format: %s" % BUILDTIME_FORMAT))
+              "Format: %s" % BUILDTIME_FORMAT), metavar='TIME')
     parser.add_option(
         '-W', '--warnings-as-errors', action='store_true',
         dest='warnings_as_errors', default=False,
@@ -238,7 +261,8 @@ def getparser() -> OptionParser:
         '--intersphinx-cache-path',
         dest='intersphinx_cache_path',
         default=USER_INTERSPHINX_CACHE,
-        help="Where to cache intersphinx objects.inv files."
+        help="Where to cache intersphinx objects.inv files.",
+        metavar='PATH',
     )
     parser.add_option(
         '--clear-intersphinx-cache',
@@ -253,6 +277,7 @@ def getparser() -> OptionParser:
         dest='intersphinx_cache_max_age',
         default='1d',
         help=MAX_AGE_HELP,
+        metavar='DURATION',
     )
     
 
