@@ -48,7 +48,6 @@ module_level_variable1 : int
    https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
 """
-from typing import List, Union
 
 module_level_variable1 = 12345
 
@@ -323,11 +322,11 @@ class ExampleClass:
 
         Returns
         -------
-        bool
-            True if successful, False otherwise.
+        tuple(str, str, int, tuple(str, str))
+            A complicated result. 
 
         """
-        return True
+        return tuple('string', 'foo', -1, tuple('cool', 'right'))
 
     def __special__(self):
         """Dunder methods are considered public and will be included in the output. """

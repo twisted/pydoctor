@@ -257,10 +257,9 @@ class ExampleClass:
             param2: The second parameter.
 
         Returns:
-            True if successful, False otherwise.
-
+            tuple(str, str, int, tuple(str, str)): A complicated result. 
         """
-        return True
+        return tuple('string', 'foo', -1, tuple('cool', 'right'))
 
     def __special__(self):
         """Dunder methods are considered public and will be included in the output. """
