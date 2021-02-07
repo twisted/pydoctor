@@ -667,10 +667,14 @@ class GoogleDocstring:
                 lines.append(':%s %s: %s' % (type_role, _name, _type))
         return lines + ['']
 
-    # overriden not to return useless empty lines 
-    # This method should be used as little as posible in pydoctor
-    # since it won't generate sections in a consistent manner with other styling
-    # But it's still used by multiple returns values for exemple 
+    # overriden: Use a style closer to pydoctor's, but it's still not perfect. 
+    # Ideally, this method should not be used. 
+    # Because it won't generate sections in a consistent style. 
+    # It's still used by :
+    # - Numpy's tuple returns values description syntax
+    # - Inline attributes
+    # - Yields section
+    # - "params_style" and "returns_style" custom sections
     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
@@ -808,11 +812,18 @@ class GoogleDocstring:
                     self._sections[entry.lower()] = self._parse_custom_generic_section
                 else:
                     # otherwise, assume entry is container;
-                    # [0] is new section, [1] is the section to alias.
-                    # in the case of key mismatch, just handle as generic section.
-                    self._sections[entry[0].lower()] = \
-                        self._sections.get(entry[1].lower(),
-                                           self._parse_custom_generic_section)
+                    if entry[1] == "params_style":
+                        self._sections[entry[0].lower()] = \
+                            self._parse_custom_params_style_section
+                    elif entry[1] == "returns_style":
+                        self._sections[entry[0].lower()] = \
+                            self._parse_custom_returns_style_section
+                    else:
+                        # [0] is new section, [1] is the section to alias.
+                        # in the case of key mismatch, just handle as generic section.
+                        self._sections[entry[0].lower()] = \
+                            self._sections.get(entry[1].lower(),
+                                               self._parse_custom_generic_section)
 
     # overriden: call _parse_attribute_docstring if self._is_attribute is True
     def _parse(self) -> None:
@@ -886,6 +897,13 @@ class GoogleDocstring:
     def _parse_custom_generic_section(self, section: str) -> List[str]:
         return self._parse_generic_section(section)
 
+    def _parse_custom_params_style_section(self, section: str) -> List[str]:
+        return self._format_fields(section, self._consume_fields())
+
+    def _parse_custom_returns_style_section(self, section: str) -> List[str]:
+        fields = self._consume_returns_section()
+        return self._format_fields(section, fields)
+        
     # overriden: admonition are the default
     def _parse_usage_section(self, section: str) -> List[str]:
         header = ['.. admonition:: Usage', '']
