@@ -162,26 +162,6 @@ def getparser() -> OptionParser:
         help=("Format used for parsing docstrings. "
              f"Supported values: {_docformat_choices}"))
     parser.add_option(
-        '--numpy-returns-allow-free-form', action='store_true', 
-        default=False, 
-        dest='napoleon_numpy_returns_allow_free_from',
-        help=("Allow users who have type annotations in their python code to omit "
-                "types in the Numpy's returns clause docstrings but as well as "
-                "specify them when it's needed. "))
-    parser.add_option(
-        '--custom-section', action='append', dest='napoleon_custom_sections',
-        default=[], help=('Custom napoleon sections, can be single value or '
-                'two values separated by a comma. ' 
-                "Only applicable if --docformat is 'google' or 'numpy'"),
-        metavar='<name>[,<alias>]',
-    )
-    parser.add_option(
-        '--type-aliases', action='store', dest='napoleon_type_aliases',
-        help=('Custom napoleon type aliases JSON file mapping. ' 
-                "Only applicable if --docformat is 'google' or 'numpy'"),
-        metavar='PATH',
-    )
-    parser.add_option(
         '--template-dir',
         dest='templatedir',
         help=("Directory containing custom HTML templates."),
