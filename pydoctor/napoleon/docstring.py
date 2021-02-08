@@ -11,11 +11,10 @@ import collections
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
 import attr
 
-from . import Config
 from .iterators import modify_iter, peek_iter
 
 __docformat__ = "numpy en"
@@ -37,10 +36,6 @@ _enumerated_list_regex = re.compile(
     r'(\d+|#|[ivxlcdm]+|[IVXLCDM]+|[a-zA-Z])'
     r'(?(paren)\)|\.)(\s+\S|\s*$)')
 
-
-@attr.s(auto_attribs=True)
-class ConsumeFieldsAsFreeForm(Exception):
-    lines: List[str]
 
 def is_obj_identifier(_token: str) -> bool:
     if _token.isidentifier() or _xref_regex.match(_token) :
@@ -86,16 +81,12 @@ class TypeSpecDocstring:
     _default_regex = re.compile(
         r"^default[^_0-9A-Za-z].*$",
     )
-    _xref_regex = re.compile(
-        r'(?:(?::(?:[a-zA-Z0-9]+[\-_+:.])*[a-zA-Z0-9]+:)?`.+?`)'
-    )
 
-    def __init__(self, annotation: str, lineno:int, aliases:Optional[Mapping[str, str]] = None) -> None:
+    def __init__(self, annotation: str, lineno:int, ) -> None:
         
         self._lineno = lineno
         self._warnings: List[Tuple[str, int]] = []
         self._annotation = annotation 
-        self._aliases = aliases or {}
 
         _tokens = self._tokenize_type_spec(annotation)
         _combined_tokens = self._recombine_set_tokens(_tokens)
@@ -116,10 +107,6 @@ class TypeSpecDocstring:
         Return any triggered warnings during the conversion. 
         """
         return self._warnings
-
-    def _get_alias(self, _token:str) -> str:
-        alias = self._aliases.get(_token, _token)
-        return alias
 
     @staticmethod
     def _recombine_set_tokens(tokens: List[str]) -> List[str]:
@@ -248,7 +235,7 @@ class TypeSpecDocstring:
             # default is not a official keyword (yet) but supported by the
             # reference implementation (numpydoc) and widely used
             type_ = "control"
-        elif self._xref_regex.match(token):
+        elif _xref_regex.match(token):
             type_ = "reference"
         elif is_obj_identifier(token):
             type_ = "obj"
@@ -263,7 +250,7 @@ class TypeSpecDocstring:
         def _convert(_token:Tuple[str, str], _last_token:Tuple[str, str], 
                     _next_token:Tuple[str, str], _translation:Optional[str]=None) -> str:
             translation = _translation or "%s"
-            if self._xref_regex.match(_token[0]) is None:
+            if _xref_regex.match(_token[0]) is None:
                 converted_token = translation % _token[0]
             else:
                 converted_token = _token[0]
@@ -291,7 +278,7 @@ class TypeSpecDocstring:
             "delimiter": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
             "reference": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
             "default": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
-            "obj": lambda _token, _last_token, _next_token: _convert((self._get_alias(_token[0]), _token[1]), _last_token, _next_token, "`%s`"),
+            "obj": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "`%s`"),
         }
 
         # "default" can have markup, but not always
@@ -310,47 +297,41 @@ class TypeSpecDocstring:
 
         return converted
 
+@attr.s(auto_attribs=True)
+class ConsumeFieldsAsFreeForm(Exception):
+    """
+    Exception to encapsulate the converted lines when numpy-style fields get treated as free form. 
+    """
+    lines: List[str]
 
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
-    Parameters
-    ----------
-    docstring : `str` or `list` of `str`
-        The docstring to parse, given either as a string or split into
-        individual lines.
-    config: `pydoctor.epydoc.markup.napoleon.Config`. 
-        The configuration settings to use. If not given, defaults to the
-        config object on `app`; or if `app` is not given defaults to the
-        a new `pydoctor.epydoc.markup.napoleon.Config` object.
-    is_attribute: `bool`
-        If the documented object is an attribute, 
-        it will use the `_parse_attribute_docstring` method. 
-    Example
-    -------
-    >>> from pydoctor.napoleon import GoogleDocstring
-    >>> docstring = '''One line summary.
-    ...
-    ... Extended description.
-    ...
-    ... Args:
-    ...   arg1(int): Description of `arg1`
-    ...   arg2(str): Description of `arg2`
-    ... Returns:
-    ...   str: Description of return value.
-    ... '''
-    >>> print(GoogleDocstring(docstring))
-    One line summary.
-    <BLANKLINE>
-    Extended description.
-    <BLANKLINE>
-    :param arg1: Description of `arg1`
-    :type arg1: int
-    :param arg2: Description of `arg2`
-    :type arg2: str
-    <BLANKLINE>
-    :returns: Description of return value.
-    :rtype: str
-    <BLANKLINE>
+    
+    :Example:
+        >>> from pydoctor.napoleon import GoogleDocstring
+        >>> docstring = '''One line summary.
+        ...
+        ... Extended description.
+        ...
+        ... Args:
+        ...   arg1(int): Description of `arg1`
+        ...   arg2(str): Description of `arg2`
+        ... Returns:
+        ...   str: Description of return value.
+        ... '''
+        >>> print(GoogleDocstring(docstring))
+        One line summary.
+        <BLANKLINE>
+        Extended description.
+        <BLANKLINE>
+        :param arg1: Description of `arg1`
+        :type arg1: `int`
+        :param arg2: Description of `arg2`
+        :type arg2: `str`
+        <BLANKLINE>
+        :returns: Description of return value.
+        :rtype: `str`
+        <BLANKLINE>
     """
 
     _name_rgx = re.compile(r"^\s*((?::(?P<role>\S+):)?`(?P<name>~?[a-zA-Z0-9_.-]+)`|"
@@ -359,10 +340,18 @@ class GoogleDocstring:
     # overriden
     def __init__(   self, 
                     docstring: Union[str, List[str]],
-                    config: Optional[Config] = None,
                     is_attribute: bool = False          ) -> None:
+        """
+        Parameters
+        ----------
+        docstring : `str` or `list` of `str`
+            The docstring to parse, given either as a string or split into
+            individual lines.
+        is_attribute: `bool`
+            If the documented object is an attribute, 
+            it will use the `_parse_attribute_docstring` method. 
+        """
 
-        self._config = config or Config()
         self._is_attribute = is_attribute
         if isinstance(docstring, str):
             lines = docstring.splitlines()
@@ -394,8 +383,8 @@ class GoogleDocstring:
                 'notes': self._parse_notes_section,
                 'other parameters': self._parse_parameters_section, # merge other parameters with main parameters (for now at least). 
                 'parameters': self._parse_parameters_section,
-                'receive': self._parse_receives_section,
-                'receives': self._parse_receives_section,
+                'receive': self._parse_parameters_section,
+                'receives': self._parse_parameters_section,
                 'return': self._parse_returns_section,
                 'returns': self._parse_returns_section,
                 'raise': self._parse_raises_section,
@@ -414,9 +403,7 @@ class GoogleDocstring:
                 'yield': self._parse_yields_section,
                 'yields': self._parse_yields_section,
                 'usage': self._parse_usage_section,
-            } 
-
-            self._load_custom_sections()
+            }
 
         self._warnings: List[Tuple[str, int]] = []
         self._parse()
@@ -496,7 +483,7 @@ class GoogleDocstring:
 
         indent = self._get_indent(line) + 1
         _descs = [_desc] + self._dedent(self._consume_indented_block(indent))
-        _descs = self.__class__(_descs, self._config).lines()
+        _descs = self.__class__(_descs).lines()
         return _name, _type, _descs
 
     # overriden: Allow any parameters to be passed to _consume_field with **kwargs
@@ -524,7 +511,7 @@ class GoogleDocstring:
             _type, _desc = _desc, _type
             _desc += colon
         _descs = [_desc] + self._dedent(self._consume_to_end())
-        _descs = self.__class__(_descs, self._config).lines()
+        _descs = self.__class__(_descs).lines()
         if _type:
             _type = self._convert_type(_type)
         return _type, _descs
@@ -547,7 +534,7 @@ class GoogleDocstring:
             if _type:
                 _type = self._convert_type(_type)
 
-            _desc = self.__class__(_desc, self._config).lines()
+            _desc = self.__class__(_desc).lines()
             return [(_name, _type, _desc,)]
         else:
             return []
@@ -583,8 +570,7 @@ class GoogleDocstring:
         """
         # handle warnings line number
         linenum=self._line_iter.counter - 1
-        type_spec = TypeSpecDocstring(_type, linenum, 
-                aliases=self._config.napoleon_type_aliases)
+        type_spec = TypeSpecDocstring(_type, linenum)
         # convert
         _type = str(type_spec)
         # append warnings
@@ -803,28 +789,6 @@ class GoogleDocstring:
                     line and
                     not self._is_indented(line, self._section_indent)))
 
-    def _load_custom_sections(self) -> None:
-        if self._config.napoleon_custom_sections is not None:
-            for entry in self._config.napoleon_custom_sections:
-                if isinstance(entry, str):
-                    # if entry is just a label, add to sections list,
-                    # using generic section logic.
-                    self._sections[entry.lower()] = self._parse_custom_generic_section
-                else:
-                    # otherwise, assume entry is container;
-                    if entry[1] == "params_style":
-                        self._sections[entry[0].lower()] = \
-                            self._parse_custom_params_style_section
-                    elif entry[1] == "returns_style":
-                        self._sections[entry[0].lower()] = \
-                            self._parse_custom_returns_style_section
-                    else:
-                        # [0] is new section, [1] is the section to alias.
-                        # in the case of key mismatch, just handle as generic section.
-                        self._sections[entry[0].lower()] = \
-                            self._sections.get(entry[1].lower(),
-                                               self._parse_custom_generic_section)
-
     # overriden: call _parse_attribute_docstring if self._is_attribute is True
     def _parse(self) -> None:
         self._parsed_lines = self._consume_empty()
@@ -986,13 +950,6 @@ class GoogleDocstring:
             lines.append('')
         return lines
 
-    # overriden: no translation + enforce napoleon_use_param = True
-    def _parse_receives_section(self, section: str) -> List[str]:
-            # Allow to declare multiple parameters at once (ex: x, y: int)
-            fields = self._consume_fields(multiple=True)
-            return self._format_docutils_params(fields)
-
-
     # overriden: no translation
     def _parse_references_section(self, section: str) -> List[str]:
         return self._parse_generic_section('References')
@@ -1084,65 +1041,41 @@ class GoogleDocstring:
 
 
 class NumpyDocstring(GoogleDocstring):
-    """Convert NumPy style docstrings to reStructuredText.
-    Parameters
-    ----------
-    docstring : :obj:`str` or :obj:`list` of :obj:`str`
-        The docstring to parse, given either as a string or split into
-        individual lines.
-    config: :obj:`sphinx.ext.napoleon.Config` or :obj:`sphinx.config.Config`
-        The configuration settings to use. If not given, defaults to the
-        config object on `app`; or if `app` is not given defaults to the
-        a new :class:`sphinx.ext.napoleon.Config` object.
-    Other Parameters
-    ----------------
-    app : :class:`sphinx.application.Sphinx`, optional
-        Application object representing the Sphinx process.
-    what : :obj:`str`, optional
-        A string specifying the type of the object to which the docstring
-        belongs. Valid values: "module", "class", "exception", "function",
-        "method", "attribute".
-    name : :obj:`str`, optional
-        The fully qualified name of the object.
-    obj : module, class, exception, function, method, or attribute
-        The object to which the docstring belongs.
-    options : :class:`sphinx.ext.autodoc.Options`, optional
-        The options given to the directive: an object with attributes
-        inherited_members, undoc_members, show_inheritance and noindex that
-        are True if the flag option of same name was given to the auto
-        directive.
-    Example
-    -------
-    >>> from sphinx.ext.napoleon import Config
-    >>> config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
-    >>> docstring = '''One line summary.
-    ...
-    ... Extended description.
-    ...
-    ... Parameters
-    ... ----------
-    ... arg1 : int
-    ...     Description of `arg1`
-    ... arg2 : str
-    ...     Description of `arg2`
-    ... Returns
-    ... -------
-    ... str
-    ...     Description of return value.
-    ... '''
-    >>> print(NumpyDocstring(docstring, config))
-    One line summary.
-    <BLANKLINE>
-    Extended description.
-    <BLANKLINE>
-    :param arg1: Description of `arg1`
-    :type arg1: int
-    :param arg2: Description of `arg2`
-    :type arg2: str
-    <BLANKLINE>
-    :returns: Description of return value.
-    :rtype: str
-    <BLANKLINE>
+    """
+    Convert NumPy style docstrings to reStructuredText.
+
+    :Example:
+        >>> from sphinx.ext.napoleon import Config
+        >>> config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
+        >>> docstring = '''One line summary.
+        ...
+        ... Extended description.
+        ...
+        ... Parameters
+        ... ----------
+        ... arg1 : int
+        ...     Description of `arg1`
+        ... arg2 : str
+        ...     Description of `arg2`
+        ... Returns
+        ... -------
+        ... str
+        ...     Description of return value.
+        ... '''
+        >>> print(NumpyDocstring(docstring, config))
+        One line summary.
+        <BLANKLINE>
+        Extended description.
+        <BLANKLINE>
+        :param arg1: Description of `arg1`
+        :type arg1: int
+        :param arg2: Description of `arg2`
+        :type arg2: str
+        <BLANKLINE>
+        :returns: Description of return value.
+        :rtype: str
+        <BLANKLINE>
+
     Methods
     -------
     __str__()
@@ -1170,8 +1103,15 @@ class NumpyDocstring(GoogleDocstring):
         list of tuple[str, int]
             List of tuples (description, linenum)
     """
-    def __init__(self, docstring: Union[str, List[str]], config: Optional[Config] = None, is_attribute: bool = False) -> None:
-        super().__init__(docstring, config, is_attribute)
+    def __init__(self, docstring: Union[str, List[str]], is_attribute: bool = False) -> None:
+        """
+        Parameters
+        ----------
+        docstring : :obj:`str` or :obj:`list` of :obj:`str`
+            The docstring to parse, given either as a string or split into
+            individual lines.
+        """
+        super().__init__(docstring, is_attribute)
     
 
     def _escape_args_and_kwargs(self, name: str) -> str:
@@ -1195,17 +1135,13 @@ class NumpyDocstring(GoogleDocstring):
 
         def figure_type(_name: str, _type: str) -> str:
             # Here we "guess" if _type contains the type
-            if is_obj_identifier(_type):
+            if is_obj_identifier(_type) or not allow_free_form:
                 _type = self._convert_type(_type)
                 return _type
-
-            elif allow_free_form: # Else we consider it as free form
-                _desc = self.__class__(self._consume_to_next_section(), self._config).lines()
-                raise ConsumeFieldsAsFreeForm(lines=[_name + _type] + _desc)
-            
             else:
-                _type = self._convert_type(_type)
-                return _type
+                # Else we consider it as free form
+                _desc = self.__class__(self._consume_to_next_section()).lines()
+                raise ConsumeFieldsAsFreeForm(lines=[_name + _type] + _desc)
                 
         line = next(self._line_iter)
         if parse_type:
@@ -1220,10 +1156,11 @@ class NumpyDocstring(GoogleDocstring):
         
         indent = self._get_indent(line) + 1
 
-        # Solving this https://github.com/sphinx-doc/sphinx/issues/7077 only if allow_free_form = True
-        # to properly solve this issue we need to determine if the section is
-        # formatted with types or not, for that we check if the second line of the field is indented 
+        # Solving this https://github.com/sphinx-doc/sphinx/issues/7077 if allow_free_form = True
+
+        # We determine if the currnt line contains the type if the following-up line is indented 
         # (that would be the description)
+        # formatted with types or not, for that we check if the second line of the field 
 
         next_line = self._line_iter.peek()
 
@@ -1231,7 +1168,7 @@ class NumpyDocstring(GoogleDocstring):
             next_line_indent = self._get_indent(next_line) + 1
             if next_line_indent > indent:
                 _desc = self._dedent(self._consume_indented_block(indent))
-                _desc = self.__class__(_desc, self._config).lines()
+                _desc = self.__class__(_desc).lines()
                 _type = self._convert_type(_type)
                 # Normal case
                 return _name, _type, _desc
@@ -1247,10 +1184,10 @@ class NumpyDocstring(GoogleDocstring):
         except ConsumeFieldsAsFreeForm as e:
             return [('', '', e.lines)]
 
-    # Pass allow_free_form depending on the configuration value
+    # Pass allow_free_form = True
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         return self._consume_fields(prefer_type=True, 
-            allow_free_form=self._config.napoleon_numpy_returns_allow_free_from)
+            allow_free_form=True)
 
     def _consume_raises_section(self) -> List[Tuple[str, str, List[str]]]:
         return self._consume_fields(prefer_type=True)
@@ -1320,22 +1257,6 @@ class NumpyDocstring(GoogleDocstring):
             items.append((name, list(rest), role))
             del rest[:]
 
-        def translate(func:str, description:List[str], role:Optional[str]) -> Tuple[str, List[str], Optional[str]]:
-            translations = self._config.napoleon_type_aliases
-            if role is not None or not translations:
-                return func, description, role
-
-            translated = translations.get(func, func)
-            match = self._name_rgx.match(translated)
-            if not match:
-                return translated, description, role
-
-            groups = match.groupdict()
-            role = groups["role"]
-            new_func = groups["name"] or groups["name2"]
-
-            return new_func, description, role
-
         current_func = None
         rest = []  # type: List[str]
 
@@ -1365,12 +1286,6 @@ class NumpyDocstring(GoogleDocstring):
 
         if not items:
             return []
-
-        # apply type aliases
-        items = [
-            translate(func, description, role)
-            for func, description, role in items
-        ]
 
         lines = []  # type: List[str]
         last_had_desc = True

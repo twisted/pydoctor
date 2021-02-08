@@ -13,7 +13,6 @@ from textwrap import dedent
 from contextlib import contextmanager
 
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring
-from pydoctor.napoleon import Config
 
 
 class BaseDocstringTest(TestCase):
@@ -301,14 +300,14 @@ Single line summary
             'Warning': 'warning',
             'Warnings': 'warning',
         }
-        config = Config()
+
         for section, admonition in admonition_map.items():
             # Multiline
             actual = str(GoogleDocstring(("{}:\n"
                                           "    this is the first line\n"
                                           "\n"
                                           "    and this is the second line\n"
-                                          ).format(section), config))
+                                          ).format(section)))
             expect = (".. {}::\n"
                       "\n"
                       "   this is the first line\n"
@@ -320,7 +319,7 @@ Single line summary
             # Single line
             actual = str(GoogleDocstring(("{}:\n"
                                           "    this is a single line\n"
-                                          ).format(section), config))
+                                          ).format(section)))
             expect = (".. {}:: this is a single line\n"
                       ).format(admonition)
             self.assertEqual(expect.rstrip(), actual)
@@ -787,42 +786,6 @@ Parameters:
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
-    def test_custom_generic_sections(self):
-
-        docstrings = (("""\
-Really Important Details:
-    You should listen to me!
-""", """.. admonition:: Really Important Details
-
-   You should listen to me!
-"""),
-                      ("""\
-Sooper Warning:
-    Stop hitting yourself!
-""", """.. warning:: Stop hitting yourself!
-"""),
-                      ("""\
-Params Style:
-    arg1 (int): Description of arg1
-    arg2 (str): Description of arg2
-""", """\
-:Params Style: * **arg1**: `int` - Description of arg1
-               * **arg2**: `str` - Description of arg2
-"""),
-                      ("""\
-Returns Style:
-    description of custom section
-""", """:Returns Style: description of custom section
-"""))
-
-        testConfig = Config(napoleon_custom_sections=['Really Important Details',
-                                                      ('Sooper Warning', 'warning'),
-                                                      ('Params Style', 'params_style'),
-                                                      ('Returns Style', 'returns_style')])
-
-        for docstring, expected in docstrings:
-            actual = str(GoogleDocstring(docstring, testConfig))
-            self.assertEqual(expected.rstrip(), actual)
 
     def test_attr_with_method(self):
         docstring = """
@@ -841,8 +804,8 @@ Methods:
    `func`\ (`abc`, `def`)
        description
 """  # NOQA
-        config = Config()
-        actual = str(GoogleDocstring(docstring, config=config))
+
+        actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_return_formatting_indentation(self):
@@ -885,8 +848,7 @@ Returns:
 :rtype: `bool`
 """ 
 
-        config = Config()
-        actual = str(GoogleDocstring(docstring, config=config))
+        actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_column_summary_lines_sphinx_issue_4016(self):
@@ -1202,7 +1164,7 @@ class NumpyDocstringTest(BaseDocstringTest):
             'Warning': 'warning',
             'Warnings': 'warning',
         }
-        config = Config()
+
         for section, admonition in admonition_map.items():
             # Multiline
             actual = str(NumpyDocstring(("{}\n"
@@ -1210,7 +1172,7 @@ class NumpyDocstringTest(BaseDocstringTest):
                                          "    this is the first line\n"
                                          "\n"
                                          "    and this is the second line\n"
-                                         ).format(section, '-' * len(section)), config))
+                                         ).format(section, '-' * len(section))))
             expected = (".. {}::\n"
                       "\n"
                       "   this is the first line\n"
@@ -1223,15 +1185,15 @@ class NumpyDocstringTest(BaseDocstringTest):
             actual = str(NumpyDocstring(("{}\n"
                                          "{}\n"
                                          "    this is a single line\n"
-                                         ).format(section, '-' * len(section)), config))
+                                         ).format(section, '-' * len(section))))
             expected = (".. {}:: this is a single line\n"
                       ).format(admonition)
             self.assertEqual(expected.rstrip(), actual)
 
     def test_docstrings(self):
-        config = Config()
+
         for docstring, expected in self.docstrings:
-            actual = str(NumpyDocstring(dedent(docstring), config))
+            actual = str(NumpyDocstring(dedent(docstring)))
             expected = dedent(expected)
             self.assertEqual(expected.rstrip(), actual)
 
@@ -1242,8 +1204,8 @@ Parameters
 param1 : :class:`MyClass <name.space.MyClass>` instance
 """
 
-        config = Config()
-        actual = str(NumpyDocstring(docstring, config))
+
+        actual = str(NumpyDocstring(docstring))
         expected = """\
 :param param1:
 :type param1: :class:`MyClass <name.space.MyClass>` instance
@@ -1258,8 +1220,8 @@ x1, x2 : array_like
     Input arrays, description of ``x1``, ``x2``.
 """
 
-        config = Config()
-        actual = str(NumpyDocstring(dedent(docstring), config))
+
+        actual = str(NumpyDocstring(dedent(docstring)))
         expected = """\
 :param x1: Input arrays, description of ``x1``, ``x2``.
 :type x1: `array_like`
@@ -1275,8 +1237,8 @@ Parameters
 param1 : MyClass instance
 """
 
-        config = Config()
-        actual = str(NumpyDocstring(dedent(docstring), config))
+
+        actual = str(NumpyDocstring(dedent(docstring)))
         expected = """\
 :param param1:
 :type param1: MyClass instance
@@ -1313,8 +1275,8 @@ some, other, funcs
 otherfunc : relationship
 """
 
-        config = Config()
-        actual = str(NumpyDocstring(docstring, config))
+
+        actual = str(NumpyDocstring(docstring))
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
@@ -1334,21 +1296,17 @@ See Also
 some, other, :func:`funcs`
 otherfunc : relationship
 """
-        aliases = {
-            "other": "MyClass.other",
-            "otherfunc": ":anyroleherewillbescraped:`my_package.otherfunc`",
-        }
-        config = Config(napoleon_type_aliases=aliases)
 
-        actual = str(NumpyDocstring(docstring, config))
+
+        actual = str(NumpyDocstring(docstring))
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
 .. seealso::
 
-   `some`, `MyClass.other`, `funcs`
+   `some`, `other`, `funcs`
    
-   `my_package.otherfunc`
+   `otherfunc`
        relationship
 """
         self.assertEqual(expected.rstrip(), actual)
@@ -1368,9 +1326,8 @@ Summary
 :rtype: :py:class:`~my_mod.my_class`
 """
 
-        config = Config()
 
-        actual = str(NumpyDocstring(docstring, config))
+        actual = str(NumpyDocstring(docstring))
 
         self.assertEqual(expected.rstrip(), actual)
 
@@ -1387,9 +1344,7 @@ arg_ : type
 :type arg_: `type`
 """
 
-        config = Config()
-
-        actual = str(NumpyDocstring(docstring, config))
+        actual = str(NumpyDocstring(docstring))
 
         self.assertEqual(expected.rstrip(), actual)
 
@@ -1397,20 +1352,15 @@ arg_ : type
         docstring = dedent("""
             Returns
             -------
-            df
+            pandas.DataFrame
                 a dataframe
         """)
         expected = dedent("""
            :returns: a dataframe
            :rtype: `pandas.DataFrame`
         """)
-        aliases = {
-            "df": "pandas.DataFrame",
-        }
-        config = Config(
-            napoleon_type_aliases=aliases,
-        )
-        actual = str(NumpyDocstring(docstring, config))
+        
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_yield_types(self):
@@ -1423,15 +1373,10 @@ arg_ : type
         """)
         expected = dedent("""
             Example Function
-            :Yields: :term:`scalar` or :class:`array-like <numpy.ndarray>` - The result of the computation
+            :Yields: `scalar` or `array-like` - The result of the computation
         """)
-        aliases = {
-            "scalar": ":term:`scalar`",
-            "array-like": ":class:`array-like <numpy.ndarray>`",
-        }
-        config = Config(napoleon_type_aliases=aliases)
 
-        actual = str(NumpyDocstring(docstring, config))
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_raises_types(self):
@@ -1568,7 +1513,7 @@ CustomError
     If the dimensions couldn't be parsed.
 """, """
 Example Function
-:raises package.CustomError: If the dimensions couldn't be parsed.
+:raises CustomError: If the dimensions couldn't be parsed.
 """),
                       ################################
                       ("""
@@ -1579,7 +1524,7 @@ AnotherError
     If the dimensions couldn't be parsed.
 """, """
 Example Function
-:raises ~package.AnotherError: If the dimensions couldn't be parsed.
+:raises AnotherError: If the dimensions couldn't be parsed.
 """),
                       ################################
                       ("""
@@ -1594,13 +1539,8 @@ Example Function
 :raises exc.InvalidArgumentsError:
 """)]
         for docstring, expected in docstrings:
-            aliases = {
-                "CustomError": "package.CustomError",
-                "AnotherError": ":py:exc:`~package.AnotherError`",
-            }
-            config = Config(napoleon_type_aliases=aliases)
 
-            actual = str(NumpyDocstring(docstring, config))
+            actual = str(NumpyDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
 
     def test_xrefs_in_return_type(self):
@@ -1618,9 +1558,8 @@ Example Function
           a bunch of math items
 :rtype: :class:`numpy.ndarray`
 """
-        config = Config()
 
-        actual = str(NumpyDocstring(docstring, config))
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_section_header_underline_length(self):
@@ -1833,8 +1772,8 @@ definition_after_normal_text : int
                                          first line
 :type definition_after_normal_text: `int`
 """
-        config = Config()
-        actual = str(NumpyDocstring(docstring, config))
+
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_token_type(self):
@@ -1941,9 +1880,6 @@ definition_after_normal_text : int
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
-        aliases = {
-            "DataFrame": "pandas.DataFrame",
-        }
 
         specs = (
             "",
@@ -1966,11 +1902,11 @@ definition_after_normal_text : int
             '``{"F", "C", "N"}``',
             "``{'F', 'C', 'N'}``, *default*: ``'N'``",
             "``{'F', 'C', 'N'}``, *default* ``'N'``",
-            "`pandas.DataFrame`, *optional*",
+            "`DataFrame`, *optional*",
         )
 
         for spec, expected in zip(specs, converted):
-            actual = str(TypeSpecDocstring(spec, 0, aliases=aliases))
+            actual = str(TypeSpecDocstring(spec, 0))
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameter_types(self):
@@ -2000,7 +1936,7 @@ definition_after_normal_text : int
             :param param2: a parameter with different types
             :type param2: `int` or `float` or `None`, *optional*
             :param param3: a optional mapping
-            :type param3: :term:`dict-like <mapping>`, *optional*
+            :type param3: `dict-like`, *optional*
             :param param4: a optional parameter with different types
             :type param4: `int` or `float` or `None`, *optional*
             :param param5: a optional parameter with fixed values
@@ -2008,19 +1944,12 @@ definition_after_normal_text : int
             :param param6: different default format
             :type param6: `int`, *default* `None`
             :param param7: a optional mapping
-            :type param7: :term:`mapping` of :term:`hashable` to `str`, *optional*
+            :type param7: `mapping` of `hashable` to `str`, *optional*
             :param param8: ellipsis
             :type param8: `...` or `Ellipsis`
         """)
-        aliases = {
-            "dict-like": ":term:`dict-like <mapping>`",
-            "mapping": ":term:`mapping`",
-            "hashable": ":term:`hashable`",
-        }
-        config = Config(
-            napoleon_type_aliases=aliases,
-        )
-        actual = str(NumpyDocstring(docstring, config))
+ 
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
     def test_token_type_invalid(self):
@@ -2072,9 +2001,7 @@ list of int
             r"malformed string literal \(missing opening quote\):",
         )
         
-            
-        config = Config(napoleon_numpy_returns_allow_free_from=True)
-        numpy_docstring = NumpyDocstring(docstring, config=config)
+        numpy_docstring = NumpyDocstring(docstring)
         numpy_warnings = numpy_docstring.warnings()
         self.assertEqual(len(numpy_warnings), 4)
         for i, error in enumerate(errors):
@@ -2346,8 +2273,7 @@ Summary line.
         
         for docstring, expected in self.docstrings_returns:
             
-            config = Config(napoleon_numpy_returns_allow_free_from=True)
-            actual = str(NumpyDocstring(docstring, config=config))
+            actual = str(NumpyDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
         
     def test_return_type_annotation_style(self):
@@ -2390,8 +2316,7 @@ bool
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual, str(actual))
 
-        config = Config(napoleon_numpy_returns_allow_free_from=True)
-        actual = str(NumpyDocstring(docstring, config))
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual, str(actual)) 
 
     @pytest.mark.xfail
@@ -2411,6 +2336,6 @@ bool
                   * **the int of your life** (`int`)
                   * **the tuple of your life** (`tuple`)
         """)
-        config = Config(napoleon_numpy_returns_allow_free_from=True)
-        actual = str(NumpyDocstring(docstring, config=config))
+
+        actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)

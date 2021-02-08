@@ -1,8 +1,7 @@
 """
 This module contains shared behaviour between L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}. 
-It's basically a wrapper for L{pydoctor.napoleon} that adapts for each L{Documentable} instance. 
 """
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type
 
 from pathlib import Path
 import json
@@ -16,7 +15,19 @@ from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 from pydoctor.model import Attribute, Documentable
 
 class NapoelonDocstringParser:
+    """
+    Parse google-style or numpy-style docstrings. 
+    First wrap the L{pydoctor.napoleon} converter classes, then call 
+    L{pydoctor.epydoc.markup.restructuredtext.parse_docstring} with the 
+    converted reStructuredText docstring. 
+
+    If the L{Documentable} instance is an L{Attribute}, the docstring
+    will be parsed differently 
+    """
     def __init__(self, obj: Optional[Documentable] = None):
+        """
+        @param obj: Documentable object we're parsing the docstring for. 
+        """
         self.obj = obj
 
     def parse_google_docstring(self, docstring:str, errors:List[ParseError]) -> ParsedDocstring:
@@ -46,40 +57,13 @@ class NapoelonDocstringParser:
                          parsed_docstring_cls:Type['ParsedGoogleStyleDocstring']) -> ParsedDocstring:
         
         docstring_obj = docstring_cls(docstring, 
-                                      is_attribute=isinstance(self.obj, Attribute), 
-                                      config=self._load_napoleon_config())
+                                      is_attribute=isinstance(self.obj, Attribute))
 
         parsed_doc = self._parse_docstring_obj(docstring_obj, errors)
 
         return parsed_docstring_cls(parsed_doc,   
                                     docstring, str(docstring_obj))
 
-    # TODO: move this somewhere else not to reload type aliases file for each documentable.
-    def _load_napoleon_config(self) -> napoleon.Config:
-        """
-        Load the napoelon config based on L{System.options} values. 
-        """
-        config = napoleon.Config()
-        if self.obj:
-            if self.obj.system.options.napoleon_numpy_returns_allow_free_from:
-                config.napoleon_numpy_returns_allow_free_from = True
-            for custom_section in self.obj.system.options.napoleon_custom_sections:
-                names = custom_section.split(',', 1)
-                if len(names) > 1:
-                    config.napoleon_custom_sections += tuple(names[0], names[1])
-                elif len(names) > 0:
-                    config.napoleon_custom_sections += names[0]
-            if self.obj.system.options.napoleon_type_aliases:
-                path = Path(self.obj.system.options.napoleon_type_aliases)
-                if path.is_file():
-                    try:
-                        with path.open() as fobj:
-                            config.napoleon_custom_sections.update(json.load(fobj))
-                    except Exception as e:
-                        warnings.warn(f"Failed to load custom type aliases: {e}")
-                else:
-                    warnings.warn(f"Cannot load custom type aliases: '{path}' is not a file. ")
-        return config
 
     @staticmethod
     def _parse_docstring_obj(docstring_obj:GoogleDocstring, 
