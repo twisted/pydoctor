@@ -504,8 +504,7 @@ def test_unknown_field_name(capsys: CapSys) -> None:
     ''', modname='test')
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    # Any fields name are considered valid 
-    assert captured == '' #"test:5: Unknown field 'zap'\n"
+    assert captured == "test:5: Unknown field 'zap'\n"
 
 
 def test_inline_field_type(capsys: CapSys) -> None:
