@@ -4,7 +4,6 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-from _pytest.outcomes import xfail
 import pytest
 import re
 import warnings
@@ -12,12 +11,28 @@ from unittest import TestCase
 from textwrap import dedent
 from contextlib import contextmanager
 
-from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring
+from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring, is_type_spec
 
 
 class BaseDocstringTest(TestCase):
     maxDiff = None
-    
+
+# TODO: test the two new warnings
+
+class TypeSpecTest(BaseDocstringTest):
+
+    def test_is_type_spec(self):
+
+        self.assertFalse(is_type_spec("Random words are not a type spec"))
+        self.assertFalse(is_type_spec("List of string or any kind fo sequences of strings"))
+
+        self.assertTrue(is_type_spec("Sequence(str), optional"))
+        self.assertTrue(is_type_spec("Sequence(str) or str"))
+        self.assertTrue(is_type_spec("List[str] or list(bytes), optional"))
+        self.assertTrue(is_type_spec('{"F", "C", "N"}, optional'))
+        self.assertTrue(is_type_spec("list of int or float or None, default: None"))
+        self.assertTrue(is_type_spec("`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`"))
+
 class InlineAttributeTest(BaseDocstringTest):
 
     def test_class_data_member(self):
@@ -350,7 +365,7 @@ This class should only be used by runtimes.
 :param runtime: Use it to
                 access the environment. It is available in XBlock code
                 as ``self.runtime``.
-:type runtime: :class:`~typing.Dict`\ [:class:`int`,:class:`str`]
+:type runtime: :class:`~typing.Dict`\ [:class:`int`, :class:`str`]
 :param field_data: Interface used by the XBlock
                    fields to access their data from wherever it is persisted.
 :type field_data: :class:`FieldData`
@@ -880,7 +895,6 @@ Returns:
         actual = str(GoogleDocstring(docstring2, is_attribute=True))
         self.assertEqual(expected2.rstrip(), actual)
 
-    @pytest.mark.xfail
     def test_multiline_types(self):
 
         # Real life example from 
@@ -891,7 +905,8 @@ Scopes the credentials if necessary.
 Args:
     credentials (Union[
         google.auth.credentials.Credentials,
-        oauth2client.client.Credentials]): The credentials to scope.
+        oauth2client.client.Credentials]): The
+            credentials to scope.
     scopes (Sequence[str]): The list of scopes.
 
 Returns:
@@ -902,16 +917,46 @@ Returns:
         expected = r"""
 Scopes the credentials if necessary.
 
-:param credentials: The credentials to scope.
+:param credentials: The
+                    credentials to scope.
 :type credentials: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
 :param scopes: The list of scopes.
-:param scopes: `Sequence`\ [`str`]
+:type scopes: `Sequence`\ [`str`]
 
 :returns: The scoped credentials.
 :rtype: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+
+        # test robustness with invalid arg syntax
+        docstring = """
+Description...
+
+Args:
+    docformat
+        Can be one of:
+        - "numpy"
+        - "google"
+    scopes (Sequence[str]): The list of scopes.
+"""
+
+        expected = r"""
+Description...
+
+:param docformat: Can be one of:
+                  - "numpy"
+                  - "google"
+:param scopes: The list of scopes.
+:type scopes: `Sequence`\ [`str`]
+"""     
+        doc = GoogleDocstring(docstring)
+        actual = str(doc)
+        self.assertEqual(expected.rstrip(), actual)
+        self.assertEqual(1, len(doc.warnings()))
+        warning = doc.warnings().pop()
+        self.assertIn("invalid specification: 'docformatCan be one of'", warning[0])
+        self.assertEqual(5, warning[1])
 
 class NumpyDocstringTest(BaseDocstringTest):
     docstrings = [(
@@ -1800,7 +1845,7 @@ definition_after_normal_text : int
             ("name", "obj"),
             (":py:class:`Enum`", "reference"),
             ("`a complicated string`", "reference"),
-            ("just a string", "default"),
+            ("just a string", "unknown"),
         )
         type_spec = TypeSpecDocstring('', 0)
         for token, expected in tokens:
@@ -2025,6 +2070,7 @@ list of int
             assert actual == expected
 
     # test docstrings for the napoleon_numpy_returns_allow_free_from=True option
+    # which is always enabled anyway
     docstrings_returns = [(
         """
 Single line summary
@@ -2319,7 +2365,6 @@ bool
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual, str(actual)) 
 
-    @pytest.mark.xfail
     def test_return_type_list_free_style_do_desc(self):
         docstring = dedent("""
         Return
@@ -2331,10 +2376,10 @@ bool
         """)
 
         expected = dedent("""
-        :returns: * **the list of your life** (`list` of `str`)
-                  * **the str of your life** (``{"foo", "bob", "bar"}``)
-                  * **the int of your life** (`int`)
-                  * **the tuple of your life** (`tuple`)
+        :returns: * **the list of your life**: `list` of `str`
+                  * **the str of your life**: ``{"foo", "bob", "bar"}``
+                  * **the int of your life**: `int`
+                  * **the tuple of your life**: `tuple`
         """)
 
         actual = str(NumpyDocstring(docstring))

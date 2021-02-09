@@ -37,8 +37,8 @@ _enumerated_list_regex = re.compile(
     r'(?(paren)\)|\.)(\s+\S|\s*$)')
 
 
-def is_obj_identifier(_token: str) -> bool:
-    if _token.isidentifier() or _xref_regex.match(_token) :
+def is_obj_identifier(string: str) -> bool:
+    if string.isidentifier() or _xref_regex.match(string) :
         return True
     try:
         # We simply try to load the string object with AST, if it's working 
@@ -46,18 +46,21 @@ def is_obj_identifier(_token: str) -> bool:
         # Let's say 2048 is the maximum number of caracters 
         # that we'll try to parse here since 99% of the time it will 
         # suffice, and we don't want to add too much of expensive processing. 
-        ast.parse(_token[:2048])
+        ast.parse(string[:2048])
     except SyntaxError:
         return False
     else:
         return True
 
+def is_type_spec(string: str) -> bool:
+    return is_obj_identifier(string) or len(TypeSpecDocstring(string).warnings()) == 0
+
 class TypeSpecDocstring:
     """
-    Parse natural language type strings. 
+    Convert natural language type strings to reST. 
 
     Syntax is based on U{numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>} 
-    type specification with additionnal recognition of AST-like type annotations (with C{[]()} characters). 
+    type specification with additionnal recognition of AST-like type annotations (with C{[]} and C{()} characters). 
 
     Exemples of valid type strings: 
 
@@ -69,7 +72,7 @@ class TypeSpecDocstring:
     _natural_language_delimiters_regex_str = r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
     _natural_language_delimiters_regex = re.compile(f"({_natural_language_delimiters_regex_str})")
     
-    _ast_like_delimiters_regex_str = r",\s|[\[]|[\]]|[\(|\)]"
+    _ast_like_delimiters_regex_str = r",\s|,|[\[]|[\]]|[\(|\)]"
     _ast_like_delimiters_regex = re.compile(f"({_ast_like_delimiters_regex_str})")
 
     _token_regex = re.compile(
@@ -82,9 +85,9 @@ class TypeSpecDocstring:
         r"^default[^_0-9A-Za-z].*$",
     )
 
-    def __init__(self, annotation: str, lineno:int, ) -> None:
+    def __init__(self, annotation: str, lineno:Optional[int] = None) -> None:
         
-        self._lineno = lineno
+        self._lineno = lineno or 0
         self._warnings: List[Tuple[str, int]] = []
         self._annotation = annotation 
 
@@ -184,6 +187,8 @@ class TypeSpecDocstring:
                 # the default value can't be separated by anything other than a single space
                 other = item[8:]
                 return [default, " ", other]
+            elif item == ",": # Add space after comma if not there
+                return [", "]
             else:
                 return [item]
 
@@ -198,7 +203,7 @@ class TypeSpecDocstring:
     def _token_type(self, token: str) -> str:
         """
         Find the type of a token. Type can be  "literal", "obj",  
-        "delimiter", "control", "reference", or "default". 
+        "delimiter", "control", "reference", or "unknown". 
         """
         def is_numeric(token: str) -> bool:
             try:
@@ -240,7 +245,8 @@ class TypeSpecDocstring:
         elif is_obj_identifier(token):
             type_ = "obj"
         else:
-            type_ = "default"
+            self._warnings.append(("unknown expresssion in type specification: %s"%token, self._lineno))
+            type_ = "unknown"
 
         return type_
 
@@ -277,12 +283,12 @@ class TypeSpecDocstring:
             "control": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
             "delimiter": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
             "reference": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
-            "default": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
+            "unknown": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token), 
             "obj": lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "`%s`"),
         }
 
-        # "default" can have markup, but not always
-        token_type_using_rest_markup = ["literal", "obj", "control", "reference", "default"]
+        # "unknown" could have markup we just don't know!
+        token_type_using_rest_markup = ["literal", "obj", "control", "reference", "unknown"]
 
         converted = ""
         last_token = ("", "")
@@ -291,7 +297,7 @@ class TypeSpecDocstring:
         for token, type_ in iter_types:
             next_token = iter_types.peek()
             converted_token = converters.get(type_, 
-                converters["default"])((token, type_), last_token, next_token)
+                converters["unknown"])((token, type_), last_token, next_token)
             converted += converted_token
             last_token = (converted_token, type_)
 
@@ -307,7 +313,8 @@ class ConsumeFieldsAsFreeForm(Exception):
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
     
-    :Example:
+    @example:
+
         >>> from pydoctor.napoleon import GoogleDocstring
         >>> docstring = '''One line summary.
         ...
@@ -344,7 +351,7 @@ class GoogleDocstring:
         """
         Parameters
         ----------
-        docstring : `str` or `list` of `str`
+        docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
         is_attribute: `bool`
@@ -383,8 +390,8 @@ class GoogleDocstring:
                 'notes': self._parse_notes_section,
                 'other parameters': self._parse_parameters_section, # merge other parameters with main parameters (for now at least). 
                 'parameters': self._parse_parameters_section,
-                'receive': self._parse_parameters_section,
-                'receives': self._parse_parameters_section,
+                'receive': self._parse_parameters_section, # same as parameters
+                'receives': self._parse_parameters_section, # same as parameters
                 'return': self._parse_returns_section,
                 'returns': self._parse_returns_section,
                 'raise': self._parse_raises_section,
@@ -430,7 +437,11 @@ class GoogleDocstring:
         return self._parsed_lines
 
     def warnings(self) -> List[Tuple[str, int]]:
-        """Return any triggered warnings during the conversion. 
+        """
+        Return any triggered warnings during the conversion. 
+        Returns
+        -------
+        List of tuples(description, line number)
         """
         return self._warnings
 
@@ -459,16 +470,50 @@ class GoogleDocstring:
             line = self._line_iter.peek()
         return lines
 
-    # overriden: enforce type pre-processing: add backtics over the type if not present
+    # overriden: enforce type pre-processing + made more smart to understand multiline types. 
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False
                        ) -> Tuple[str, str, List[str]]:
+        
         line = next(self._line_iter)
+        indent = self._get_indent(line) + 1
+        lines = self._dedent(self._consume_indented_block(indent))
+        lines.insert(0, line)
 
-        before, colon, after = self._partition_field_on_colon(line)
-        _name, _type, _desc = before, '', after
+        def is_google_typed_arg_spec(string: str) -> bool:
+            """
+            Verify the validity of google-style field name and type specification.
+            Only used for multilines fields. 
+
+            Valid strings are like::
+
+                param (list(str), optional)
+
+                list(str), optional
+
+                ValueError
+            """
+            if is_type_spec(string):
+                return True
+            else:
+                if parse_type:
+                    match = _google_typed_arg_regex.match(string)
+                    if match:
+                        _name = match.group(1).strip()
+                        _type = match.group(2)
+                        if _name.isidentifier() and is_type_spec(_type):
+                            return True
+            return False
+        
+        before_colon, got_colon, _descs = self._partition_multiline_field_on_colon(
+            lines, is_google_typed_arg_spec)
+
+        _descs = self.__class__(_descs).lines()        
+
+        _name = before_colon
+        _type = ''
 
         if parse_type:
-            match = _google_typed_arg_regex.match(before)
+            match = _google_typed_arg_regex.match(before_colon)
             if match:
                 _name = match.group(1).strip()
                 _type = match.group(2)
@@ -481,9 +526,6 @@ class GoogleDocstring:
         if _type:
             _type = self._convert_type(_type)
 
-        indent = self._get_indent(line) + 1
-        _descs = [_desc] + self._dedent(self._consume_indented_block(indent))
-        _descs = self.__class__(_descs).lines()
         return _name, _type, _descs
 
     # overriden: Allow any parameters to be passed to _consume_field with **kwargs
@@ -516,26 +558,30 @@ class GoogleDocstring:
             _type = self._convert_type(_type)
         return _type, _descs
 
-    # overriden: enforce type pre-processing: add backtics over the type if not present
+    # overriden: enforce type pre-processing: add backtics over the type if not present.
+    # note: _name is always empty string.
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         lines = self._dedent(self._consume_to_next_section())
         if lines:
-            before, colon, after = self._partition_field_on_colon(lines[0])
-            _name, _type, _desc = '', '', lines
 
-            if colon:
-                if after:
-                    _desc = [after] + lines[1:]
+            before_colon, got_colon, _descs = self._partition_multiline_field_on_colon(
+                lines, is_type_spec)
+            
+            _type = ''
+            if _descs:
+                if got_colon:
+                    _type = before_colon
                 else:
-                    _desc = lines[1:]
-
-                _type = before
+                    _descs.insert(0, before_colon)
+            else:
+                _descs = [before_colon]
 
             if _type:
                 _type = self._convert_type(_type)
 
-            _desc = self.__class__(_desc).lines()
-            return [(_name, _type, _desc,)]
+            _descs = self.__class__(_descs).lines()
+            _name = ''
+            return [(_name, _type, _descs,)]
         else:
             return []
 
@@ -855,18 +901,6 @@ class GoogleDocstring:
         }
         label = labels.get(section.lower(), section)
         return self._parse_generic_section(label)
-
-    # overriden: admonition are the default for all sections where we don't 
-    # have a field equivalent 
-    def _parse_custom_generic_section(self, section: str) -> List[str]:
-        return self._parse_generic_section(section)
-
-    def _parse_custom_params_style_section(self, section: str) -> List[str]:
-        return self._format_fields(section, self._consume_fields())
-
-    def _parse_custom_returns_style_section(self, section: str) -> List[str]:
-        fields = self._consume_returns_section()
-        return self._format_fields(section, fields)
         
     # overriden: admonition are the default
     def _parse_usage_section(self, section: str) -> List[str]:
@@ -1019,6 +1053,71 @@ class GoogleDocstring:
                 colon,
                 "".join(after_colon).strip())
 
+    # new method: hack to make multiple lines type work seemlessly - for google-style only. 
+    def _partition_multiline_field_on_colon(self, lines:List[str], 
+            before_colon_format_checker:Callable[[str], bool]) -> Tuple[str, bool, List[str]]:
+        """
+        Returns
+        -------
+        before_colon
+            depending on the context this might be the first 
+            line of the description or the name with the optional type or the type. 
+
+        got_colon: bool
+        description
+        """
+        
+        before_colon, colon, after_colon_start = self._partition_field_on_colon(lines[0])
+        
+        # save before colon string
+        before_colon_start = before_colon
+
+        raw_descs = lines[1:]
+        _descs = []
+        got_colon = bool(colon)
+        multiline = False
+
+        # the first line of the field is not complete or malformed. 
+        if not colon:
+            if raw_descs:
+                # try to complete type info from next lines. 
+                partinioned_lines = [self._partition_field_on_colon(l) for l in raw_descs]
+                for i, p_line in enumerate(partinioned_lines):
+                    multiline = True
+                    before, colon, after = p_line
+                    before_colon += before
+                    if colon:
+                        got_colon = True
+                        if after:
+                            _descs.append(after)
+                        # If the type spans several lines, it's natural (but bot required) to add indentation
+                        # again after to delimit the description
+                        _descs.extend(self._dedent(raw_descs[i+1:]))
+                        break
+
+        else:
+            got_colon = True
+            if after_colon_start:
+                _descs = [after_colon_start] + raw_descs
+            else:
+                _descs = raw_descs
+        
+        if not got_colon: 
+            before_colon = before_colon_start
+            _descs = raw_descs
+        
+        # check format only if multiline
+        if multiline and not before_colon_format_checker(before_colon):
+            # If fails check, fall back to original behaviour, with a warning. 
+            self._warnings.append((f"invalid specification: '{before_colon}'. Probably missing colon.", 
+                self._line_iter.counter - len(raw_descs)))
+            before_colon = before_colon_start
+            if after_colon_start:
+                _descs = [after_colon_start] + raw_descs
+            else:
+                _descs = raw_descs
+        
+        return (before_colon, got_colon, _descs)
 
     def _strip_empty(self, lines: List[str]) -> List[str]:
         if lines:
@@ -1044,9 +1143,9 @@ class NumpyDocstring(GoogleDocstring):
     """
     Convert NumPy style docstrings to reStructuredText.
 
-    :Example:
-        >>> from sphinx.ext.napoleon import Config
-        >>> config = Config(napoleon_use_param=True, napoleon_use_rtype=True)
+    @example:
+
+        >>> from pydoctor.napoleon import NumpyDocstring
         >>> docstring = '''One line summary.
         ...
         ... Extended description.
@@ -1062,7 +1161,7 @@ class NumpyDocstring(GoogleDocstring):
         ... str
         ...     Description of return value.
         ... '''
-        >>> print(NumpyDocstring(docstring, config))
+        >>> print(NumpyDocstring(docstring))
         One line summary.
         <BLANKLINE>
         Extended description.
@@ -1075,39 +1174,12 @@ class NumpyDocstring(GoogleDocstring):
         :returns: Description of return value.
         :rtype: str
         <BLANKLINE>
-
-    Methods
-    -------
-    __str__()
-        Return the parsed docstring in reStructuredText format.
-        Returns
-        -------
-        str
-            UTF-8 encoded version of the docstring.
-    __unicode__()
-        Return the parsed docstring in reStructuredText format.
-        Returns
-        -------
-        unicode
-            Unicode version of the docstring.
-    lines()
-        Return the parsed lines of the docstring in reStructuredText format.
-        Returns
-        -------
-        list(str)
-            The lines of the docstring in a list.
-    warnings()
-        List of generated numpy-style warnings. 
-        Returns
-        -------
-        list of tuple[str, int]
-            List of tuples (description, linenum)
     """
     def __init__(self, docstring: Union[str, List[str]], is_attribute: bool = False) -> None:
         """
         Parameters
         ----------
-        docstring : :obj:`str` or :obj:`list` of :obj:`str`
+        docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
         """
@@ -1135,7 +1207,7 @@ class NumpyDocstring(GoogleDocstring):
 
         def figure_type(_name: str, _type: str) -> str:
             # Here we "guess" if _type contains the type
-            if is_obj_identifier(_type) or not allow_free_form:
+            if is_type_spec(_type) or not allow_free_form:
                 _type = self._convert_type(_type)
                 return _type
             else:
