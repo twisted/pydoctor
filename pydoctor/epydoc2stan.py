@@ -537,6 +537,7 @@ class FieldHandler:
 
     def handleUnknownField(self, field: Field) -> None:
         name = field.tag
+        field.report(f"Unknown field '{name}'" )
         self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
@@ -587,7 +588,7 @@ class FieldHandler:
                       ('Note', 'Notes', self.notes)):
             r += format_field_list(*s_p_l)
         for kind, fieldlist in self.unknowns.items():
-            r += format_desc_list(kind.title(), fieldlist)
+            r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
             return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
