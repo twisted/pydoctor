@@ -1,14 +1,13 @@
+from pathlib import Path
 from typing import Type
-import os
 
 from pydoctor import model
 
-testpackages = os.path.join(os.path.dirname(__file__), 'testpackages')
+testpackages = Path(__file__).parent / 'testpackages'
 
 def processPackage(packname: str, systemcls: Type[model.System] = model.System) -> model.System:
-    testpackage = os.path.join(testpackages, packname)
     system = systemcls()
-    system.addPackage(testpackage)
+    system.addPackage(testpackages / packname)
     system.process()
     return system
 

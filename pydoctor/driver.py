@@ -397,10 +397,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                         error(f"Source path lies outside base directory: {ex}")
                 if path.is_dir():
                     system.msg('addPackage', f"adding directory {path}")
-                    system.addPackage(str(path), prependedpackage)
+                    system.addPackage(path, prependedpackage)
                 elif path.is_file():
                     system.msg('addModuleFromPath', f"adding module {path}")
-                    system.addModuleFromPath(prependedpackage, str(path))
+                    system.addModuleFromPath(prependedpackage, path)
                 elif path.exists():
                     error(f"Source path is neither file nor directory: {path}")
                 else:

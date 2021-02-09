@@ -10,7 +10,6 @@ import ast
 import datetime
 import importlib
 import inspect
-import os
 import platform
 import sys
 import types
@@ -845,33 +844,29 @@ class System:
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
-    def addPackage(self, dirpath: str, parentPackage: Optional[_PackageT] = None) -> None:
-        if not os.path.exists(dirpath):
-            raise Exception(f"package path {dirpath!r} does not exist!")
-        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
-            raise Exception("you must pass a package directory to "
-                            "addPackage")
+    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
+        if not package_path.exists():
+            raise Exception(f'package path "{package_path}" does not exist!')
+        if not (package_path / '__init__.py').exists():
+            raise Exception("you must pass a package directory to addPackage")
         if parentPackage:
-            prefix = parentPackage.fullName() + '.'
+            package_full_name = f'{parentPackage.fullName()}.{package_path.name}'
         else:
-            prefix = ''
-        package_name = os.path.basename(dirpath)
-        package_full_name = prefix + package_name
+            package_full_name = package_path.name
         package = self.ensurePackage(package_full_name)
-        for fname in sorted(os.listdir(dirpath)):
-            fullname = os.path.join(dirpath, fname)
-            if os.path.isdir(fullname):
-                initname = os.path.join(fullname, '__init__.py')
-                if os.path.exists(initname):
-                    self.addPackage(fullname, package)
-            elif not fname.startswith('.'):
-                self.addModuleFromPath(package, fullname)
+        for path in sorted(package_path.iterdir()):
+            if path.is_dir():
+                if (path / '__init__.py').exists():
+                    self.addPackage(path, package)
+            elif not path.name.startswith('.'):
+                self.addModuleFromPath(package, path)
 
-    def addModuleFromPath(self, package: Optional[_PackageT], path: str) -> None:
+    def addModuleFromPath(self, package: Optional[_PackageT], path: Path) -> None:
+        name = path.name
         for suffix in importlib.machinery.all_suffixes():
-            if not path.endswith(suffix):
+            if not name.endswith(suffix):
                 continue
-            module_name = os.path.basename(path[:-len(suffix)])
+            module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
                 if not self.options.introspect_c_modules:
                     continue
@@ -879,9 +874,9 @@ class System:
                     module_full_name = f'{package.fullName()}.{module_name}'
                 else:
                     module_full_name = module_name
-                self.introspectModule(Path(path), module_full_name)
+                self.introspectModule(path, module_full_name)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.addModule(Path(path), module_name, package)
+                self.addModule(path, module_name, package)
             break
 
     def handleDuplicate(self, obj: Documentable) -> None:
