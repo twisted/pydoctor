@@ -1,28 +1,24 @@
 """
-This module contains shared behaviour between L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}. 
+This module contains a class to wrap shared behaviour between 
+L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}. 
 """
 from typing import List, Optional, Type
 
-from pathlib import Path
-import json
-import warnings
-
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError
-from pydoctor.epydoc.markup.restructuredtext import parse_docstring as parse_restructuredtext_docstring
-from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-from pydoctor import napoleon
+from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 from pydoctor.model import Attribute, Documentable
 
 class NapoelonDocstringParser:
     """
     Parse google-style or numpy-style docstrings. 
+
     First wrap the L{pydoctor.napoleon} converter classes, then call 
     L{pydoctor.epydoc.markup.restructuredtext.parse_docstring} with the 
     converted reStructuredText docstring. 
 
     If the L{Documentable} instance is an L{Attribute}, the docstring
-    will be parsed differently 
+    will be parsed differently. 
     """
     def __init__(self, obj: Optional[Documentable] = None):
         """
@@ -32,7 +28,7 @@ class NapoelonDocstringParser:
 
     def parse_google_docstring(self, docstring:str, errors:List[ParseError]) -> ParsedDocstring:
         """
-        Parse the given docstring, which is formatted as NumPy style docstring. 
+        Parse the given docstring, which is formatted as Google style docstring. 
         Return a L{ParsedDocstring} representation of its contents.
 
         @param docstring: The docstring to parse
@@ -75,10 +71,10 @@ class NapoelonDocstringParser:
         for warn, linenum in docstring_obj.warnings():
             errors.append(ParseError(warn, linenum-1, is_fatal=False))
         # Get the converted reST string and parse it with docutils
-        return parse_restructuredtext_docstring(str(docstring_obj), errors)    
+        return restructuredtext.parse_docstring(str(docstring_obj), errors)    
 
 
-class ParsedGoogleStyleDocstring(ParsedRstDocstring):
+class ParsedGoogleStyleDocstring(restructuredtext.ParsedRstDocstring):
     """
     Just like L{ParsedRstDocstring} but it stores references to the original 
     docstring text as well as the napoleon processed docstring. 
@@ -86,7 +82,7 @@ class ParsedGoogleStyleDocstring(ParsedRstDocstring):
     This values are only used for testing purposes. 
     """
 
-    def __init__(self, parsed_rst_docstring: ParsedRstDocstring, 
+    def __init__(self, parsed_rst_docstring: restructuredtext.ParsedRstDocstring, 
                 original_docstring: str, 
                 napoleon_processed_docstring: str):
 
