@@ -845,8 +845,6 @@ class System:
         self._introspectThing(py_mod, module, module)
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        if not package_path.exists():
-            raise Exception(f'package path "{package_path}" does not exist!')
         if not (package_path / '__init__.py').exists():
             raise Exception("you must pass a package directory to addPackage")
         if parentPackage:
