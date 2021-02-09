@@ -29,9 +29,6 @@ Here are the supported *restructuredtext* fields:
     - ``:note:``
     - ``:since:``
 
-.. note:: Any other single word field name is also accepted and 
-   will be interpreted as a generic section. 
-
 In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation
 for several objects into a single field.
