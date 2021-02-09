@@ -397,6 +397,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                         error(f"Source path lies outside base directory: {ex}")
                 if path.is_dir():
                     system.msg('addPackage', f"adding directory {path}")
+                    if not (path / '__init__.py').is_file():
+                        error(f"Source directory lacks __init__.py: {path}")
                     system.addPackage(path, prependedpackage)
                 elif path.is_file():
                     system.msg('addModuleFromPath', f"adding module {path}")
