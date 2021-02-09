@@ -400,7 +400,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     system.addPackage(path, prependedpackage)
                 elif path.is_file():
                     system.msg('addModuleFromPath', f"adding module {path}")
-                    system.addModuleFromPath(prependedpackage, path)
+                    system.addModuleFromPath(path, prependedpackage)
                 elif path.exists():
                     error(f"Source path is neither file nor directory: {path}")
                 else:

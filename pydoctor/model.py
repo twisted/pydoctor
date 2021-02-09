@@ -859,9 +859,9 @@ class System:
                 if (path / '__init__.py').exists():
                     self.addPackage(path, package)
             elif not path.name.startswith('.'):
-                self.addModuleFromPath(package, path)
+                self.addModuleFromPath(path, package)
 
-    def addModuleFromPath(self, package: Optional[_PackageT], path: Path) -> None:
+    def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
         name = path.name
         for suffix in importlib.machinery.all_suffixes():
             if not name.endswith(suffix):
