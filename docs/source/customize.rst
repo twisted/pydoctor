@@ -1,5 +1,5 @@
 
-Customize output
+Customize Output
 ================
 
 Include custom HTML
@@ -7,12 +7,12 @@ Include custom HTML
 
 They are 4 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
 
-- ``header.html``: At the very beginning of the body
+- ``header.html``: at the very beginning of the body
 - ``pageHeader.html``: After the main header, before the page title
 - ``footer.html``: At the very end of the body
 - ``extra.css``: Extra CSS sheet for layout customization
 
-To override a placeholder, write your custom HTLM files to a folder 
+To override a placeholder, write your custom HTML files to a directory 
 and use the following option::
 
   --template-dir=./pydoctor_templates
@@ -27,7 +27,7 @@ and use the following option::
 .. admonition:: Example
 
     See this `sample template <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_ 
-    output `here <custom_template_demo/pydoctor.html>`_
+    output `here <custom_template_demo/pydoctor.html>`_.
 
 Use a custom system class
 -------------------------
@@ -54,4 +54,3 @@ and pass your custom class dotted name with the following argument::
 
 .. warning:: Pydoctor does not have a stable API yet. Code customization is prone 
     to break in future versions. 
-
