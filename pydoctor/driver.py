@@ -167,7 +167,7 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
-        help=("The fullName of object to generate API docs for: acts like a filter. "
+        help=("The fullName of objects to generate API docs for"
               " (generates everything by default)."))
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
@@ -254,7 +254,6 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
-    
 
     return parser
 
@@ -433,7 +432,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writerclass = findClassFromDottedName(
                     # https://github.com/python/mypy/issues/4717
                     # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
-                    options.htmlwriter, '--html-writer', IWriter) # type: ignore
+                    options.htmlwriter, '--html-writer', IWriter) # type: ignore[misc]
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -441,14 +440,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
-            # Init writer
             writer: IWriter
 
             # Handle custom HTML templates
             if system.options.templatedir:
-                
                 if 'template_lookup' in signature(writerclass).parameters:
-                    # writer class is up o date
+                    # writer class is up to date
                     custom_lookup = TemplateLookup()
                     try:
                         custom_lookup.add_templatedir(
@@ -459,9 +456,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     writer = writerclass(options.htmloutput, 
                         template_lookup=custom_lookup)
                 else:
-                    # old custom class do not contain 'template_lookup' argument. 
+                    # Old custom class does not accept 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
+                    warnings.warn(f"Writer '{writerclass.__name__}' does not support HTML template customization with --template-dir.")
             else:
                 writer = writerclass(options.htmloutput)
 
@@ -472,7 +469,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
                 writer.writeModuleIndex(system)
-
             else:
                 writer.writeModuleIndex(system)
                 subjects.extend(system.rootobjects)

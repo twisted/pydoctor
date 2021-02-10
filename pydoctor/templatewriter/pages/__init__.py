@@ -32,7 +32,7 @@ def signature(function: model.Function) -> str:
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
-    def get(self, ob:model.Documentable, summary:bool=False) -> Tag:
+    def get(self, ob: model.Documentable, summary: bool = False) -> Tag:
         if summary:
             return epydoc2stan.format_summary(ob)
         else:
@@ -45,9 +45,10 @@ class BaseElement(Element, abc.ABC):
     Common base HTML element. 
     """
     def __init__(self, 
-        system:Optional[model.System]=None, 
-        template_lookup:Optional[TemplateLookup]=None, 
-        loader:Optional[ITemplateLoader]=None, ) -> None:
+        system: Optional[model.System] = None, 
+        template_lookup: Optional[TemplateLookup] = None, 
+        loader: Optional[ITemplateLoader] = None
+        ) -> None:
         """
         Init a new pydoctor HTML element. 
 
@@ -528,4 +529,3 @@ classpages: Mapping[str, Type[AnyDocPage]] = {
     'ZopeInterfaceClass': ZopeInterfaceClassPage, 
 }
 """List all page classes: ties documentable class name with the page class used for rendering"""
-

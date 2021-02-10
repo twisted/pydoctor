@@ -258,14 +258,13 @@ class FieldDesc:
             fieldNameTd.append(_name)
         if self.type:
             fieldNameTd.append(self.type)
-        if self.name or self.type:
+        if fieldNameTd:
             #  <name>: <type> | <desc>
             yield tags.td(class_="fieldArgContainer")(*fieldNameTd)
             yield tags.td(class_="fieldArgDesc")(formatted)
         else:
             #  <desc>
             yield tags.td(formatted, colspan="2")
-        
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""

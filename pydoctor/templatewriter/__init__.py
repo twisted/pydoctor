@@ -242,7 +242,7 @@ class TemplateLookup:
         self._default_templates = copy.deepcopy(self._templates)
 
 
-    def add_template(self, template:Template) -> None:
+    def add_template(self, template: Template) -> None:
         """
         Add a custom template to the lookup. 
 
@@ -269,7 +269,7 @@ class TemplateLookup:
         self._templates[template.name] = template
 
 
-    def add_templatedir(self, dir:Path) -> None:
+    def add_templatedir(self, dir: Path) -> None:
         """
         Scan a directory and add all templates in the given directory to the lookup. 
         """
@@ -279,9 +279,9 @@ class TemplateLookup:
                 self.add_template(template)
 
 
-    def get_template(self, filename:str) -> Template:
+    def get_template(self, filename: str) -> Template:
         """
-        Lookup a template based on it's filename. 
+        Lookup a template based on its filename. 
 
         Return the custom template if provided, else the default template.
 

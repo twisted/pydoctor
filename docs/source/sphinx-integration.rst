@@ -36,7 +36,7 @@ used with the following mapping:
 * methods -> ``:py:meth:``
 * attributes -> ``:py:attr:``
 
-Use this mapping in Sphinx by configure the `Intersphinx extension`__.
+You can use this mapping in Sphinx via the `Intersphinx extension`__.
 
 __ https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
 
@@ -119,4 +119,3 @@ The key is the human readable build name and the value for each dict member
 is the list of arguments.
 See pydoctor's own `conf.py <https://github.com/twisted/pydoctor/blob/master/docs/source/conf.py>`_
 for usage example.
-
