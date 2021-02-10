@@ -2,7 +2,7 @@
 
 from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
+from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
@@ -85,18 +85,16 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
-def get_supported_docformat() -> Sequence[str]:
+def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat. 
     """
-    parser_names: List[str] = []
     for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
         moduleName = getmodulename(fileName)
         if moduleName is None or moduleName == '__init__':
             continue
         else:
-            parser_names.append(moduleName)
-    return parser_names
+            yield moduleName
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
@@ -154,12 +152,12 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
-    _docformat_choices = get_supported_docformat()
+    _docformat_choices = get_supported_docformats()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        type="choice", choices=_docformat_choices, 
+        type="choice", choices=list(_docformat_choices), 
         help=("Format used for parsing docstrings. "
-             f"Supported values: {_docformat_choices}"))
+             f"Supported values: {', '.join(_docformat_choices)}"))
     parser.add_option(
         '--template-dir',
         dest='templatedir',
@@ -178,7 +176,7 @@ def getparser() -> OptionParser:
         help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_option(
         '--html-writer', dest='htmlwriter',
-        help=("Dotted name of writer class to use (default "
+        help=("Dotted name of HTML writer class to use (default "
               "'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
@@ -422,7 +420,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
-        subjects: List[model.Documentable] = []
+        
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -441,7 +439,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writerclass.__name__))
 
             writer: IWriter
-
             # Handle custom HTML templates
             if system.options.templatedir:
                 if 'template_lookup' in signature(writerclass).parameters:
@@ -463,7 +460,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writer = writerclass(options.htmloutput)
 
             writer.prepOutputDirectory()
-            
+
+            subjects: List[model.Documentable] = []
             if options.htmlsubjects:
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
