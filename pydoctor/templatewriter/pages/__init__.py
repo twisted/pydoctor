@@ -112,7 +112,7 @@ class BasePage(BaseElement):
     Base page element. 
 
     Defines special HTML placeholders that are designed to be overriden by users: 
-    "header.html", "pageHeader.html" and "footer.html".
+    "header.html", "subheader.html" and "footer.html".
     """
 
     @renderer
@@ -126,8 +126,8 @@ class BasePage(BaseElement):
         return template.renderable.load() if not template.is_empty() else ''
 
     @renderer
-    def pageHeader(self, request, tag):
-        template = self.template_lookup.get_template('pageHeader.html')
+    def subheader(self, request, tag):
+        template = self.template_lookup.get_template('subheader.html')
         return template.renderable.load() if not template.is_empty() else ''
 
     @renderer

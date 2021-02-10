@@ -8,11 +8,11 @@ Include custom HTML
 They are 4 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
 
 - ``header.html``: at the very beginning of the body
-- ``pageHeader.html``: after the main header, before the page title
+- ``subheader.html``: after the main header, before the page title
 - ``footer.html``: at the very end of the body
 - ``extra.css``: extra CSS sheet for layout customization
 
-To override a placeholder, write your custom HTML files to a directory 
+To override a placeholder, write your custom HTML or CSS files to a directory 
 and use the following option::
 
   --template-dir=./pydoctor_templates

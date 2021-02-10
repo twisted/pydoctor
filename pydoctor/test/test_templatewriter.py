@@ -141,7 +141,7 @@ def test_template_lookup() -> None:
     
     assert str(lookup.get_template('header.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'header.html' )
 
-    assert str(lookup.get_template('pageHeader.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'pageHeader.html' )
+    assert str(lookup.get_template('subheader.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'subheader.html' )
 
     assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
 
@@ -151,7 +151,7 @@ def test_template_lookup() -> None:
     
     assert str(lookup.get_template('header.html').path) == str(here.parent / 'templates' / 'header.html' )
 
-    assert str(lookup.get_template('pageHeader.html').path) == str(here.parent / 'templates' / 'pageHeader.html' )
+    assert str(lookup.get_template('subheader.html').path) == str(here.parent / 'templates' / 'subheader.html' )
 
     assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
 
