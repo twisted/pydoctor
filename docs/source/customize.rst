@@ -8,9 +8,9 @@ Include custom HTML
 They are 4 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
 
 - ``header.html``: at the very beginning of the body
-- ``pageHeader.html``: After the main header, before the page title
-- ``footer.html``: At the very end of the body
-- ``extra.css``: Extra CSS sheet for layout customization
+- ``pageHeader.html``: after the main header, before the page title
+- ``footer.html``: at the very end of the body
+- ``extra.css``: extra CSS sheet for layout customization
 
 To override a placeholder, write your custom HTML files to a directory 
 and use the following option::
