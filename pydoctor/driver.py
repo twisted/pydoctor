@@ -414,7 +414,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         # step 3: move the system to the desired state
 
         if system.options.projectname is None:
-            name = '/'.join(ro.name for ro in system.rootobjects)
+            name = '/'.join(system.root_names)
             system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
             system.projectname = name
         else:
@@ -462,14 +462,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             writer.prepOutputDirectory()
 
-            subjects: List[model.Documentable] = []
+            subjects: Sequence[model.Documentable] = ()
             if options.htmlsubjects:
-                for fn in options.htmlsubjects:
-                    subjects.append(system.allobjects[fn])
+                subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
             else:
                 writer.writeSummaryPages(system)
                 if not options.htmlsummarypages:
-                    subjects.extend(system.rootobjects)
+                    subjects = system.rootobjects
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:

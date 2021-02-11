@@ -571,7 +571,7 @@ class System:
 
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
-        self.rootobjects: List[Documentable] = []
+        self.rootobjects: List[Union[_ModuleT, _PackageT]] = []
 
         self.violations = 0
         """The number of docstring problems found.
@@ -604,11 +604,7 @@ class System:
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
-        return {
-            obj.name
-            for obj in self.rootobjects
-            if isinstance(obj, (Module, Package))
-            }
+        return {obj.name for obj in self.rootobjects}
 
     def verbosity(self, section: Union[str, Iterable[str]]) -> int:
         if isinstance(section, str):
@@ -728,8 +724,10 @@ class System:
 
         if obj.parent:
             obj.parent.contents[obj.name] = obj
-        else:
+        elif isinstance(obj, (_ModuleT, _PackageT)):
             self.rootobjects.append(obj)
+        else:
+            raise ValueError(f'Top-level object is not a module: {obj!r}')
 
         first = self.allobjects.setdefault(obj.fullName(), obj)
         if obj is not first:
