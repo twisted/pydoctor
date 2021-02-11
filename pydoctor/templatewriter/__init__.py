@@ -17,7 +17,8 @@ from twisted.web.template import XMLString
 
 from pydoctor.model import System, Documentable
 
-class TemplateVersionError(RuntimeError):
+class UnsupportedTemplateVersion(Exception):
+    """Raised when custom template is designed for a newer version of pydoctor"""
     pass
 
 class IWriter(abc.ABC):
@@ -249,7 +250,7 @@ class TemplateLookup:
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
-        @raises TemplateVersionError: If the custom template is designed for a newer version of pydoctor. 
+        @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor. 
         @warns: If the custom template is designed for an older version of pydoctor. 
         """
         
@@ -261,7 +262,7 @@ class TemplateLookup:
                     warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
-                    raise TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
+                    raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
                                         "Rendering will most probably fail. Please upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
         except KeyError:
             warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
