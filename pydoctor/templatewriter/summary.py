@@ -274,14 +274,6 @@ class IndexPage(BasePage):
         return self.system.projectname
 
     @renderer
-    def recentChanges(self, request, tag):
-        return ()
-
-    @renderer
-    def problemObjects(self, request, tag):
-        return ()
-
-    @renderer
     def onlyIfOneRoot(self, request, tag):
         if len(self.system.rootobjects) != 1:
             return []
