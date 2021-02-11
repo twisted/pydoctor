@@ -70,13 +70,12 @@ def test_package_sourceHref() -> None:
     options.projectbasedirectory = project_dir
 
     system = model.System()
-    system.ensurePackage('pkg')
     system.sourcebase = "https://git.example.org/proj/main"
     system.options = cast(Values, options)
 
     mod_init = fromText('''
     """Docstring."""
-    ''', modname='__init__', parent_name='pkg', system=system)
+    ''', modname='pkg', is_package=True, system=system)
     system.setSourceHref(mod_init, project_dir / 'src' / 'pkg' / '__init__.py')
 
     package = system.objForFullName('pkg')

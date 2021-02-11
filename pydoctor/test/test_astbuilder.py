@@ -23,46 +23,60 @@ systemcls_param = pytest.mark.parametrize(
 def fromAST(
         ast: ast.Module,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
+
     if system is None:
         _system = systemcls()
     else:
         _system = system
+
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
+
     if parent_name is None:
         full_name = modname
     else:
         full_name = f'{parent_name}.{modname}'
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
+
+    if is_package:
+        _system.ensurePackage(full_name)
+        builder.current = _system.allobjects[full_name]
+        modname = '__init__'
+        full_name = f'{full_name}.{modname}'
+
     mod: model.Module = builder._push(_system.Module, modname, 0)
     builder._pop(_system.Module)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
+
     if system is None:
         # Assume that an implicit system will only contain one module,
         # so post-process it as a convenience.
         _system.postProcess()
+
     return mod
 
 def fromText(
         text: str,
         *,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
     ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, parent_name, system, buildercls, systemcls)
+    return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
@@ -747,10 +761,9 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
     package C{a}, they import the function C{f} from the module C{a.__init__}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     mod_a = fromText('''
     def f(): pass
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', is_package=True, system=system)
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
@@ -779,10 +792,9 @@ def test_import_module_from_package(systemcls: Type[model.System]) -> None:
     it imports the module C{a.b} which contains C{f}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     fromText('''
     # This module intentionally left blank.
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', system=system)
     mod_b = fromText('''
     def f(): pass
     ''', modname='b', parent_name='a', system=system)
