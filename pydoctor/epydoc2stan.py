@@ -238,18 +238,7 @@ class FieldDesc:
         """
         @return: Iterator that yields one or two C{tags.td}. 
         """
-        formatted = self.body or self._UNDOCUMENTED
-        # if self.type is not None:
-        #     formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
-
-        # name = self.name
-        # if name is None:
-        #     yield tags.td(formatted, colspan="2")
-        # else:
-        #     yield tags.td(name, class_="fieldArg")
-        #     yield tags.td(formatted)
-
-        
+        formatted = self.body or self._UNDOCUMENTED        
         fieldNameTd: List[Tag] = []
         if self.name:
             _name = tags.span(class_="fieldArg")(self.name)
@@ -281,7 +270,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     Generates a 2-columns layout as follow:: 
 
         +------------------------------------+
-        | <label>        |     <empty_cell>  |
+        | <label>                            |
         | <name>: <type> |     <desc>        |
         | <name>: <type> |     <desc>        |
         +------------------------------------+
@@ -290,22 +279,21 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     generates the same output as L{format_field_list}:: 
 
         +------------------------------------+
-        | <label>      |       <empty_cell>  |
+        | <label>                            |
         | <desc ... >                        |
         +------------------------------------+
 
-    @returns: Each row as iterator
+    @returns: Each row as iterator or None if no C{descs} id provided. 
     """
-    first = True
+    if not descs: 
+        return iter(())
+    # <label>
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    # yield the first row. 
+    yield row
+    # yield descriptions.
     for d in descs:
-        if first:
-            # <label>      |       <empty_cell>
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            row(tags.td())
-            first = False
-            yield row
-
         row = tags.tr()
         # <name>: <type> |     <desc>      
         # or
@@ -354,7 +342,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
     Generates a 2-columns layout as follow:: 
 
         +------------------------------------+
-        | <label>      |       <empty_cell>  |
+        | <label>                            |
         | <desc ... >                        |
         +------------------------------------+
 
@@ -365,8 +353,7 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
     for field in fields:
         if first:
             row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            row(tags.td())
+            row(tags.td(class_="fieldName", colspan="2")(label))
             first=False
             yield row
 
