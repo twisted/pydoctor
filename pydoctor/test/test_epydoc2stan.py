@@ -1,6 +1,5 @@
 from typing import List, Optional, cast
 import re
-import textwrap
 
 from pytest import mark, raises
 from twisted.web.template import Tag, tags
@@ -46,20 +45,21 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
-def docstring2html(docstring: model.Documentable) -> str:
-    stan = epydoc2stan.format_docstring(docstring)
-    return flatten(stan).replace('><', '>\n<')
+def docstring2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_docstring(obj)
+    assert stan.tagName == 'div', stan
+    return flatten(stan.children).replace('><', '>\n<')
+
+def summary2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_summary(obj)
+    assert stan.tagName == 'span', stan
+    return flatten(stan.children)
 
 def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    expected_html = textwrap.dedent("""
-    <div>
-    <p>Empty module.</p>
-    </div>
-    """).strip()
-    assert docstring2html(mod) == expected_html
+    assert docstring2html(mod) == "<p>Empty module.</p>"
 
 
 def test_xref_link_not_found() -> None:
@@ -444,13 +444,9 @@ def test_summary() -> None:
         Lorem Ipsum
         """
     ''')
-    def get_summary(func: str) -> str:
-        stan = epydoc2stan.format_summary(mod.contents[func])
-        assert stan.tagName == 'span', stan
-        return flatten(stan.children)
-    assert 'Lorem Ipsum' == get_summary('single_line_summary')
-    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert 'No summary' == get_summary('no_summary')
+    assert 'Lorem Ipsum' == summary2html(mod.contents['single_line_summary'])
+    assert 'Foo Bar Baz' == summary2html(mod.contents['three_lines_summary'])
+    assert 'No summary' == summary2html(mod.contents['no_summary'])
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
