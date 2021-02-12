@@ -449,6 +449,62 @@ def test_summary() -> None:
     assert 'No summary' == summary2html(mod.contents['no_summary'])
 
 
+def test_ivar_overriding_attribute() -> None:
+    """An 'ivar' field in a subclass overrides a docstring for the same
+    attribute set in the base class.
+
+    The 'a' attribute in the test code reproduces a regression introduced
+    in pydoctor 20.7.0, where the summary would be constructed from the base
+    class documentation instead. The problem was in the fact that a split
+    field's docstring is stored in 'parsed_docstring', while format_summary()
+    looked there only if no unparsed docstring could be found.
+
+    The 'b' attribute in the test code is there to make sure that in the
+    absence of an 'ivar' field, the docstring is inherited.
+    """
+
+    mod = fromText('''
+    class Base:
+        a: str
+        """base doc
+
+        details
+        """
+
+        b: object
+        """not overridden
+
+        details
+        """
+
+    class Sub(Base):
+        """
+        @ivar a: sub doc
+        @type b: sub type
+        """
+    ''')
+
+    base = mod.contents['Base']
+    base_a = base.contents['a']
+    assert isinstance(base_a, model.Attribute)
+    assert summary2html(base_a) == "base doc"
+    assert docstring2html(base_a) == "<p>base doc</p>\n<p>details</p>"
+    base_b = base.contents['b']
+    assert isinstance(base_b, model.Attribute)
+    assert summary2html(base_b) == "not overridden"
+    assert docstring2html(base_b) == "<p>not overridden</p>\n<p>details</p>"
+
+    sub = mod.contents['Sub']
+    sub_a = sub.contents['a']
+    assert isinstance(sub_a, model.Attribute)
+    assert summary2html(sub_a) == 'sub doc'
+    assert docstring2html(sub_a) == "sub doc"
+    sub_b = sub.contents['b']
+    assert isinstance(sub_b, model.Attribute)
+    assert summary2html(sub_b) == 'not overridden'
+    assert docstring2html(sub_b) == "<p>not overridden</p>\n<p>details</p>"
+
+
 def test_missing_field_name(capsys: CapSys) -> None:
     mod = fromText('''
     """
