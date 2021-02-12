@@ -613,17 +613,19 @@ def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
     doc, source = get_docstring(obj)
-    if doc is None:
+
+    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
         # Attributes can be documented as fields in their parent's docstring.
-        if isinstance(obj, model.Attribute):
-            pdoc = obj.parsed_docstring
-        else:
-            pdoc = None
-        if pdoc is None:
-            return format_undocumented(obj)
+        pdoc = obj.parsed_docstring
+    else:
+        pdoc = None
+
+    if pdoc is not None:
+        # The docstring was split off from the Attribute's parent docstring.
         source = obj.parent
-        # Since obj is an Attribute, it has a parent.
         assert source is not None
+    elif doc is None:
+        return format_undocumented(obj)
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert source is not None
