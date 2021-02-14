@@ -315,7 +315,7 @@ def test_relative_import_past_top(
     package.
     """
     system = systemcls()
-    system.ensurePackage('pkg')
+    fromText('', modname='pkg', is_package=True, system=system)
     fromText(f'''
     from {'.' * level + 'X'} import A
     ''', modname='mod', parent_name='pkg', system=system)

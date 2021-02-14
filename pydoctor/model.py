@@ -750,42 +750,6 @@ class System:
         self.setSourceHref(mod, modpath)
         return mod
 
-    def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
-        try:
-            module = self.allobjects[module_full_name]
-            assert isinstance(module, Module)
-        except KeyError:
-            pass
-        else:
-            return module
-
-        parent_package: Optional[_PackageT]
-        if '.' in module_full_name:
-            parent_name, module_name = module_full_name.rsplit('.', 1)
-            parent_package = self.ensurePackage(parent_name)
-        else:
-            parent_package = None
-            module_name = module_full_name
-        module = self.Module(self, module_name, parent_package, modpath)
-        self.addObject(module)
-        return module
-
-    def ensurePackage(self, package_full_name: str) -> _PackageT:
-        if package_full_name in self.allobjects:
-            package = self.allobjects[package_full_name]
-            assert isinstance(package, _PackageT)
-            return package
-        parent_package: Optional[_PackageT]
-        if '.' in package_full_name:
-            parent_name, package_name = package_full_name.rsplit('.', 1)
-            parent_package = self.ensurePackage(parent_name)
-        else:
-            parent_package = None
-            package_name = package_full_name
-        package = self.Package(self, package_name, parent_package)
-        self.addObject(package)
-        return package
-
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
             if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
@@ -824,12 +788,12 @@ class System:
         loader = spec.loader
         assert isinstance(loader, importlib.abc.Loader), loader
         loader.exec_module(py_mod)
+        is_package = py_mod.__package__ == py_mod.__name__
 
-        module = (
-            self.ensurePackage(module_full_name)
-            if py_mod.__package__ == py_mod.__name__ else
-            self.ensureModule(module_full_name, path)
-            )
+        factory = self.Package if is_package else self.Module
+        module = factory(self, module_name, package, path)
+        self.addObject(module)
+
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
