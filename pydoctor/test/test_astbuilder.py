@@ -46,14 +46,9 @@ def fromAST(
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
 
-    if is_package:
-        _system.ensurePackage(full_name)
-        builder.current = _system.allobjects[full_name]
-        modname = '__init__'
-        full_name = f'{full_name}.{modname}'
-
-    mod: model.Module = builder._push(_system.Module, modname, 0)
-    builder._pop(_system.Module)
+    factory = _system.Package if is_package else _system.Module
+    mod: model.Module = builder._push(factory, modname, 0)
+    builder._pop(factory)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED

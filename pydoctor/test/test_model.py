@@ -73,13 +73,9 @@ def test_package_sourceHref() -> None:
     system.sourcebase = "https://git.example.org/proj/main"
     system.options = cast(Values, options)
 
-    mod_init = fromText('''
-    """Docstring."""
-    ''', modname='pkg', is_package=True, system=system)
-    system.setSourceHref(mod_init, project_dir / 'src' / 'pkg' / '__init__.py')
+    package = system.Package(system, 'pkg')
+    system.setSourceHref(package, project_dir / 'src' / 'pkg' / '__init__.py')
 
-    package = system.objForFullName('pkg')
-    assert isinstance(package, model.Package)
     assert package.sourceHref == "https://git.example.org/proj/main/src/pkg/__init__.py"
 
 

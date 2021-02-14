@@ -19,8 +19,7 @@ def test_relative_import() -> None:
 
 def test_package_docstring() -> None:
     system = processPackage("relativeimporttest")
-    assert (system.allobjects['relativeimporttest.__init__'].docstring ==
-            "DOCSTRING")
+    assert system.allobjects['relativeimporttest'].docstring == "DOCSTRING"
 
 def test_modnamedafterbuiltin() -> None:
     # well, basically the test is that this doesn't explode:

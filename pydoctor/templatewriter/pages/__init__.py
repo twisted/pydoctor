@@ -275,25 +275,26 @@ class ModulePage(CommonPage):
 
 class PackagePage(ModulePage):
     def children(self):
-        return sorted((o for o in self.ob.contents.values()
-                       if o.name != '__init__' and o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+        return sorted(
+            (o for o in self.ob.contents.values()
+             if isinstance(o, model.Module) and o.isVisible),
+            key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
-        init = self.ob.contents['__init__']
         children = sorted(
-            [o for o in init.contents.values() if o.isVisible],
+            (o for o in self.ob.contents.values()
+             if not isinstance(o, model.Module) and o.isVisible),
             key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, loader)]
+                    ChildTable(self.docgetter, self.ob, children, loader)]
         else:
             return ()
 
     def methods(self):
-        return [o for o in self.ob.contents['__init__'].contents.values()
+        return [o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 

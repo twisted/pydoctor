@@ -18,8 +18,10 @@ from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
+from typing_extensions import Literal
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -120,9 +122,8 @@ class Documentable:
             parent: Optional['Documentable'] = None,
             source_path: Optional[Path] = None
             ):
-        if not isinstance(self, Package):
-            if source_path is None and parent is not None:
-                source_path = parent.source_path
+        if source_path is None and parent is not None:
+            source_path = parent.source_path
         self.system = system
         self.name = name
         self.parent = parent
@@ -198,8 +199,6 @@ class Documentable:
             return self
         elif location is DocLocation.PARENT_PAGE:
             parent = self.parent
-            if isinstance(parent, Module) and parent.name == '__init__':
-                parent = parent.parent
             assert parent is not None
             return parent
         else:
@@ -219,16 +218,10 @@ class Documentable:
 
     def fullName(self) -> str:
         parent = self.parent
-        if parent is not None:
-            if (parent.parent and isinstance(parent.parent, Package)
-                and isinstance(parent, Module)
-                and parent.name == '__init__'):
-                prefix = parent.parent.fullName() + '.'
-            else:
-                prefix = parent.fullName() + '.'
+        if parent is None:
+            return self.name
         else:
-            prefix = ''
-        return prefix + self.name
+            return f'{parent.fullName()}.{self.name}'
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
@@ -368,32 +361,6 @@ class Documentable:
             thresh=-1)
 
 
-class Package(Documentable):
-    kind = DocumentableKind.PACKAGE
-    
-    def docsources(self) -> Iterator[Documentable]:
-        yield self.contents['__init__']
-    @property
-    def doctarget(self) -> Documentable:
-        return self.contents['__init__'] # type: ignore[no-any-return]
-    @property
-    def sourceHref(self) -> Optional[str]: # type: ignore[override]
-        return self.module.sourceHref
-    @property
-    def module(self) -> 'Module':
-        return self.contents['__init__'] # type: ignore[no-any-return]
-    @property
-    def state(self) -> ProcessingState:
-        return self.contents['__init__'].state # type: ignore[no-any-return]
-
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        else:
-            return self.module._localNameToFullName(name)
-
-
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
@@ -406,10 +373,7 @@ class Module(CanContainImportsDocumentable):
 
     @property
     def documentation_location(self) -> DocLocation:
-        if self.name == '__init__':
-            return DocLocation.PARENT_PAGE
-        else:
-            return DocLocation.OWN_PAGE
+        return DocLocation.OWN_PAGE
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -444,6 +408,10 @@ class Module(CanContainImportsDocumentable):
     @property
     def module(self) -> 'Module':
         return self
+
+
+class Package(Module):
+    kind = DocumentableKind.PACKAGE
 
 
 class Class(CanContainImportsDocumentable):
@@ -571,7 +539,7 @@ class System:
 
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
-        self.rootobjects: List[Union[_ModuleT, _PackageT]] = []
+        self.rootobjects: List[_ModuleT] = []
 
         self.violations = 0
         """The number of docstring problems found.
@@ -724,7 +692,7 @@ class System:
 
         if obj.parent:
             obj.parent.contents[obj.name] = obj
-        elif isinstance(obj, (_ModuleT, _PackageT)):
+        elif isinstance(obj, _ModuleT):
             self.rootobjects.append(obj)
         else:
             raise ValueError(f'Top-level object is not a module: {obj!r}')
@@ -760,12 +728,30 @@ class System:
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
+    @overload
     def addModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT] = None
-            ) -> None:
-        mod = self.Module(self, modname, parentPackage, modpath)
+            parentPackage: Optional[_PackageT],
+            is_package: Literal[False] = False
+            ) -> _ModuleT: ...
+
+    @overload
+    def addModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT],
+            is_package: Literal[True]
+            ) -> _PackageT: ...
+
+    def addModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT] = None,
+            is_package: bool = False
+            ) -> _ModuleT:
+        factory = self.Package if is_package else self.Module
+        mod = factory(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
             "addModule", len(self.allobjects),
@@ -773,6 +759,7 @@ class System:
         self.unprocessed_modules.add(mod)
         self.module_count += 1
         self.setSourceHref(mod, modpath)
+        return mod
 
     def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
         try:
@@ -797,7 +784,7 @@ class System:
     def ensurePackage(self, package_full_name: str) -> _PackageT:
         if package_full_name in self.allobjects:
             package = self.allobjects[package_full_name]
-            assert isinstance(package, Package)
+            assert isinstance(package, _PackageT)
             return package
         parent_package: Optional[_PackageT]
         if '.' in package_full_name:
@@ -843,16 +830,14 @@ class System:
         self._introspectThing(py_mod, module, module)
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        if parentPackage:
-            package_full_name = f'{parentPackage.fullName()}.{package_path.name}'
-        else:
-            package_full_name = package_path.name
-        package = self.ensurePackage(package_full_name)
+        package = self.addModule(
+            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
+
         for path in sorted(package_path.iterdir()):
             if path.is_dir():
                 if (path / '__init__.py').exists():
                     self.addPackage(path, package)
-            elif not path.name.startswith('.'):
+            elif path.name != '__init__.py' and not path.name.startswith('.'):
                 self.addModuleFromPath(path, package)
 
     def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
@@ -912,8 +897,6 @@ class System:
         mod = self.allobjects.get(modname)
         if mod is None:
             return None
-        if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__')
         if not isinstance(mod, Module):
             return None
 
