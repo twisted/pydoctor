@@ -59,26 +59,6 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
 
-def test_package_sourceHref() -> None:
-    """
-    A package reports its __init__.py location as its source link.
-    """
-
-    project_dir = Path("/foo/bar/ProjectName")
-
-    options = FakeOptions()
-    options.projectbasedirectory = project_dir
-
-    system = model.System()
-    system.sourcebase = "https://git.example.org/proj/main"
-    system.options = cast(Values, options)
-
-    package = system.Package(system, 'pkg')
-    system.setSourceHref(package, project_dir / 'src' / 'pkg' / '__init__.py')
-
-    assert package.sourceHref == "https://git.example.org/proj/main/src/pkg/__init__.py"
-
-
 def test_initialization_default() -> None:
     """
     When initialized without options, will use default options and default
