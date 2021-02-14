@@ -122,12 +122,12 @@ class Documentable:
             ):
         if not isinstance(self, Package):
             if source_path is None and parent is not None:
-                source_path = parent.source_path # type: ignore[has-type]
+                source_path = parent.source_path
         self.system = system
         self.name = name
         self.parent = parent
         self.parentMod: Optional[Module] = None
-        self.source_path = source_path
+        self.source_path: Optional[Path] = source_path
         self.setup()
 
     @property
