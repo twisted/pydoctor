@@ -117,6 +117,9 @@ class Documentable:
     sourceHref: Optional[str] = None
     kind: Optional[DocumentableKind] = None
 
+    documentation_location = DocLocation.OWN_PAGE
+    """Page location where we are documented."""
+
     def __init__(
             self, system: 'System', name: str,
             parent: Optional['Documentable'] = None,
@@ -130,13 +133,6 @@ class Documentable:
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
         self.setup()
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        """Page location where we are documented.
-        The default implementation returns L{DocLocation.OWN_PAGE}.
-        """
-        return DocLocation.OWN_PAGE
 
     @property
     def doctarget(self) -> 'Documentable':
@@ -372,10 +368,6 @@ class Module(CanContainImportsDocumentable):
     state = ProcessingState.UNPROCESSED
 
     @property
-    def documentation_location(self) -> DocLocation:
-        return DocLocation.OWN_PAGE
-
-    @property
     def privacyClass(self) -> PrivacyClass:
         if self.name == '__main__':
             return PrivacyClass.PRIVATE
@@ -478,12 +470,9 @@ class Class(CanContainImportsDocumentable):
 
 
 class Inheritable(Documentable):
+    documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        return DocLocation.PARENT_PAGE
 
     def docsources(self) -> Iterator[Documentable]:
         yield self
