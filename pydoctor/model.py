@@ -718,7 +718,7 @@ class System:
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
     @overload
-    def addModule(self,
+    def analyzeModule(self,
             modpath: Path,
             modname: str,
             parentPackage: Optional[_PackageT],
@@ -726,14 +726,14 @@ class System:
             ) -> _ModuleT: ...
 
     @overload
-    def addModule(self,
+    def analyzeModule(self,
             modpath: Path,
             modname: str,
             parentPackage: Optional[_PackageT],
             is_package: Literal[True]
             ) -> _PackageT: ...
 
-    def addModule(self,
+    def analyzeModule(self,
             modpath: Path,
             modname: str,
             parentPackage: Optional[_PackageT] = None,
@@ -743,7 +743,7 @@ class System:
         mod = factory(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
-            "addModule", len(self.allobjects),
+            "analyzeModule", len(self.allobjects),
             None, "modules and packages discovered")
         self.unprocessed_modules.add(mod)
         self.module_count += 1
@@ -836,7 +836,7 @@ class System:
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
-        package = self.addModule(
+        package = self.analyzeModule(
             package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
 
         for path in sorted(package_path.iterdir()):
@@ -856,7 +856,7 @@ class System:
                 if self.options.introspect_c_modules:
                     self.introspectModule(path, module_name, package)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.addModule(path, module_name, package)
+                self.analyzeModule(path, module_name, package)
             break
 
     def handleDuplicate(self, obj: Documentable) -> None:
