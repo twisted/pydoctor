@@ -21,15 +21,16 @@ from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
-from typing_extensions import Literal
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
+    from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder
 else:
+    Literal = {True: bool, False: bool}
     ASTBuilder = object
 
 
