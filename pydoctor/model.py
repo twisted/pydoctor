@@ -808,15 +808,32 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, path: Path, module_full_name: str) -> None:
+    def introspectModule(self,
+            path: Path,
+            module_name: str,
+            package: Optional[_PackageT]
+            ) -> _ModuleT:
+
+        if package is None:
+            module_full_name = module_name
+        else:
+            module_full_name = f'{package.fullName()}.{module_name}'
+
         spec = importlib.util.spec_from_file_location(module_full_name, path)
         py_mod = importlib.util.module_from_spec(spec)
         loader = spec.loader
         assert isinstance(loader, importlib.abc.Loader), loader
         loader.exec_module(py_mod)
-        module = self.ensureModule(module_full_name, path)
+
+        module = (
+            self.ensurePackage(module_full_name)
+            if py_mod.__package__ == py_mod.__name__ else
+            self.ensureModule(module_full_name, path)
+            )
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
+
+        return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
         package = self.addModule(
@@ -836,13 +853,8 @@ class System:
                 continue
             module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
-                if not self.options.introspect_c_modules:
-                    continue
-                if package is not None:
-                    module_full_name = f'{package.fullName()}.{module_name}'
-                else:
-                    module_full_name = module_name
-                self.introspectModule(path, module_full_name)
+                if self.options.introspect_c_modules:
+                    self.introspectModule(path, module_name, package)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.addModule(path, module_name, package)
             break
