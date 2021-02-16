@@ -38,7 +38,7 @@ class IWriter(Protocol):
         """
         Called first.
         """
-            
+        ... 
 
     def writeModuleIndex(self, system:'System') -> None: 
         """
