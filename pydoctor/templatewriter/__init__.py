@@ -68,7 +68,7 @@ class Template(abc.ABC):
     @see: L{TemplateLookup}
     """
 
-    def __init__(self, path:Path):
+    def __init__(self, path: Path):
         self.path: Path = path
         """
         Template file path
@@ -94,7 +94,7 @@ class Template(abc.ABC):
     TEMPLATE_FILES_SUFFIX = ['.html', '.css', '.js']
     
     @classmethod
-    def fromfile(cls, path:Path) -> Optional['Template']:
+    def fromfile(cls, path: Path) -> Optional['Template']:
         """
         Create a concrete template object. 
         Type depends on the file extension. 
@@ -211,7 +211,7 @@ class _HtmlTemplate(Template):
         return dom
 
     @staticmethod
-    def _extract_version(dom: minidom.Document, template_name:str) -> int:
+    def _extract_version(dom: minidom.Document, template_name: str) -> int:
         # If no meta pydoctor-template-version tag found, 
         # it's most probably a placeholder template. 
         version = -1
@@ -256,11 +256,10 @@ class TemplateLookup:
 
     def __init__(self) -> None:
         """Init L{TemplateLookup} with templates in C{pydoctor/templates}"""
-        # Dict comprehension to init templates to whats in pydoctor/templates
+        default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
         self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
-                Path(__file__).parent.parent.joinpath(
-                    self._default_template_dir).iterdir()) if t }
-        
+                default_template_dir.iterdir()) if t }
+
         self._default_templates = copy.deepcopy(self._templates)
 
 
@@ -277,6 +276,9 @@ class TemplateLookup:
         
         try:
             default_version = self._default_templates[template.name].version
+        except KeyError:
+            warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
+        else:
             template_version = template.version
             if default_version and template_version != -1:
                 if template_version < default_version: 
@@ -284,11 +286,9 @@ class TemplateLookup:
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
                     raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail. Please upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
-        except KeyError:
-            warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
-        
-        self._templates[template.name] = template
+                                        "Rendering will most probably fail. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
+        finally:
+            self._templates[template.name] = template
 
 
     def add_templatedir(self, dir: Path) -> None:
