@@ -57,7 +57,7 @@ class BaseElement(Element, abc.ABC):
 
         @raises RuntimeError: If not enought information is provided 
             to create the template loader. i.e. missing C{template_lookup} or C{loader} argument.
-            Could also be that the L{Template.renderable} property is not a L{ITemplateLoader} provider. 
+            Could also be that the L{Template.loader} property is not a L{ITemplateLoader} provider. 
 
         @note: C{system} and C{template_lookup} can be none in special cases, like for L{LetterElement}. 
         """
@@ -71,11 +71,11 @@ class BaseElement(Element, abc.ABC):
             if self.template_lookup:
                 template = self.template_lookup.get_template(
                     self.filename)
-                if not zope.interface.verify.verifyObject(ITemplateLoader, template.renderable):
-                    raise RuntimeError(f"Cannot create HTML element {self} because template renderable "
-                                       f"property is not a ITemplateLoader provider: {type(template.renderable)}")
+                if not zope.interface.verify.verifyObject(ITemplateLoader, template.loader):
+                    raise RuntimeError(f"Cannot create HTML element {self} because template loader "
+                                       f"property is not a ITemplateLoader provider: {type(template.loader)}")
                 else:
-                    loader = template.renderable
+                    loader = template.loader
             else:
                 raise RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup "
                                     "object is passed to BaseElement's 'template_lookup' init argument.")
@@ -123,17 +123,17 @@ class BasePage(BaseElement):
     def header(self, request, tag):
         template = self.template_lookup.get_template('header.html')
         # Checks are needed here to avoid SAXParseException: no element found error
-        return template.renderable.load() if not template.is_empty() else ''
+        return template.loader.load() if not template.is_empty() else ''
 
     @renderer
     def subheader(self, request, tag):
         template = self.template_lookup.get_template('subheader.html')
-        return template.renderable.load() if not template.is_empty() else ''
+        return template.loader.load() if not template.is_empty() else ''
 
     @renderer
     def footer(self, request, tag):
         template = self.template_lookup.get_template('footer.html')
-        return template.renderable.load() if not template.is_empty() else ''
+        return template.loader.load() if not template.is_empty() else ''
 
 class CommonPage(BasePage):
 

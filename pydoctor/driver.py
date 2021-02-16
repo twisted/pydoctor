@@ -428,9 +428,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    # https://github.com/python/mypy/issues/4717
-                    # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
-                    options.htmlwriter, '--html-writer', IWriter) # type: ignore[misc]
+                    options.htmlwriter, '--html-writer', IWriter) 
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -450,14 +448,15 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     except UnsupportedTemplateVersion as e:
                         error(str(e))
 
-                    writer = writerclass(options.htmloutput, 
+                    # mypy error: Cannot instantiate abstract class 'IWriter'
+                    writer = writerclass(options.htmloutput, # type: ignore[abstract]
                         template_lookup=custom_lookup)
                 else:
                     # Old custom class does not accept 'template_lookup' argument. 
-                    writer = writerclass(options.htmloutput)
+                    writer = writerclass(options.htmloutput) # type: ignore[abstract]
                     warnings.warn(f"Writer '{writerclass.__name__}' does not support HTML template customization with --template-dir.")
             else:
-                writer = writerclass(options.htmloutput)
+                writer = writerclass(options.htmloutput) # type: ignore[abstract]
 
             writer.prepOutputDirectory()
 

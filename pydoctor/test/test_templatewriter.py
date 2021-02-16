@@ -4,7 +4,7 @@ import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _SimpleTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
@@ -133,27 +133,27 @@ def test_template_lookup() -> None:
 
     here = Path(__file__).parent
 
-    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
+    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
 
     lookup.add_templatedir((here / 'testcustomtemplates' / 'faketemplate'))
 
-    assert str(lookup.get_template('footer.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html' )
+    assert lookup.get_template('footer.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'footer.html' 
     
-    assert str(lookup.get_template('header.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'header.html' )
+    assert lookup.get_template('header.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'header.html' 
 
-    assert str(lookup.get_template('subheader.html').path) == str(here / 'testcustomtemplates' / 'faketemplate' / 'subheader.html' )
+    assert lookup.get_template('subheader.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'subheader.html' 
 
-    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
+    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
 
     lookup = TemplateLookup()
 
-    assert str(lookup.get_template('footer.html').path) == str(here.parent / 'templates' / 'footer.html' )
+    assert lookup.get_template('footer.html').path == here.parent / 'templates' / 'footer.html' 
     
-    assert str(lookup.get_template('header.html').path) == str(here.parent / 'templates' / 'header.html' )
+    assert lookup.get_template('header.html').path == here.parent / 'templates' / 'header.html' 
 
-    assert str(lookup.get_template('subheader.html').path) == str(here.parent / 'templates' / 'subheader.html' )
+    assert lookup.get_template('subheader.html').path == here.parent / 'templates' / 'subheader.html' 
 
-    assert str(lookup.get_template('index.html').path) == str(here.parent / 'templates' / 'index.html' )
+    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
 
     assert lookup.get_template('footer.html').version == -1
 
@@ -190,13 +190,13 @@ def test_template_lookup() -> None:
     with warnings.catch_warnings(record=True) as catch_warnings:
         warnings.simplefilter("always", )
         
-        lookup.add_templatedir((here / 'testcustomtemplates' / 'allok'))
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
         assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
 
     lookup = TemplateLookup()
 
     try:
-        lookup.add_templatedir((here / 'testcustomtemplates' / 'invalid'))
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'invalid')
 
     except UnsupportedTemplateVersion as e:
         assert "It appears that your custom template 'nav.html' is designed for a newer version of pydoctor" in str(e)
@@ -207,10 +207,10 @@ def test_template() -> None:
 
     here = Path(__file__).parent
 
-    js_template = Template.fromfile((here / 'testcustomtemplates' / 'faketemplate' / 'pydoctor.js'))
-    html_template = Template.fromfile((here / 'testcustomtemplates' / 'faketemplate' / 'nav.html'))
+    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'pydoctor.js')
+    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'nav.html')
 
-    assert isinstance(js_template, _SimpleTemplate)
+    assert isinstance(js_template, _StaticTemplate)
     assert isinstance(html_template, _HtmlTemplate)
 
 

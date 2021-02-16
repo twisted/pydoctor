@@ -41,7 +41,7 @@ class ModuleIndexPage(BasePage):
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
-            loader=template_lookup.get_template('summary.html').renderable )
+            loader=template_lookup.get_template('summary.html').loader )
 
     @renderer
     def project(self, request, tag):
@@ -131,7 +131,7 @@ class ClassIndexPage(BasePage):
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
-            loader=template_lookup.get_template('summary.html').renderable )
+            loader=template_lookup.get_template('summary.html').loader )
 
     @renderer
     def title(self, request, tag):
@@ -332,7 +332,7 @@ class UndocumentedSummaryPage(BasePage):
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
-            loader=template_lookup.get_template('summary.html').renderable )
+            loader=template_lookup.get_template('summary.html').loader )
 
     @renderer
     def title(self, request, tag):
