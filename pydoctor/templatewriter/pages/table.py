@@ -1,19 +1,14 @@
-from twisted.web.template import TagLoader, renderer, tags
+from twisted.web.template import TagLoader, renderer, tags, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Function
-from pydoctor.templatewriter.pages import BaseElement
+from pydoctor.templatewriter.pages import TemplateElement
 
 
-class TableRow(BaseElement):
+class TableRow(Element):
 
-    filename = ''
-
-    def __init__(self, loader, docgetter, ob, child, template_lookup):
-        super().__init__(
-            system = ob.system,
-            template_lookup = template_lookup, 
-            loader = loader)
+    def __init__(self, loader, docgetter, ob, child):
+        super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self.child = child
@@ -46,15 +41,13 @@ class TableRow(BaseElement):
         return tag.clear()(self.docgetter.get(self.child, summary=True))
 
 
-class ChildTable(BaseElement):
+class ChildTable(TemplateElement):
     last_id = 0
 
     filename = 'table.html'
 
-    def __init__(self, docgetter, ob, children, template_lookup):
-        super().__init__( 
-            system = ob.system,
-            template_lookup = template_lookup, )
+    def __init__(self, docgetter, ob, children, loader):
+        super().__init__(ob.system, loader)
         self.docgetter = docgetter
         self.children = children
         ChildTable.last_id += 1
@@ -72,6 +65,5 @@ class ChildTable(BaseElement):
                 TagLoader(tag),
                 self.docgetter,
                 self.ob,
-                child, 
-                self.template_lookup)
+                child)
             for child in self.children]

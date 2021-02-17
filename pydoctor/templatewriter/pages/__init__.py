@@ -8,10 +8,10 @@ import zope.interface.verify
 from twisted.web.template import tags, Element, renderer, Tag
 import astor
 
-from twisted.web.iweb import ITemplateLoader
+from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter import util, TemplateLookup
+from pydoctor.templatewriter import Template, util, TemplateLookup
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -40,60 +40,56 @@ class DocGetter:
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
 
-class BaseElement(Element, abc.ABC):
+class TemplateElement(Element, abc.ABC):
     """
-    Common base HTML element. 
+    Element based on a template file. 
     """
-    def __init__(self, 
-        system: Optional[model.System] = None, 
-        template_lookup: Optional[TemplateLookup] = None, 
-        loader: Optional[ITemplateLoader] = None
-        ) -> None:
+    def __init__(self, system: model.System, loader: ITemplateLoader ) -> None:
         """
-        Init a new pydoctor HTML element. 
+        Init a new element. 
 
-        The C{loader} property is usually got from the L{TemplateLookup} 
-        object but can also be set by argument.
-
-        @raises RuntimeError: If not enought information is provided 
-            to create the template loader. i.e. missing C{template_lookup} or C{loader} argument.
-            Could also be that the L{Template.loader} property is not a L{ITemplateLoader} provider. 
-
-        @note: C{system} and C{template_lookup} can be none in special cases, like for L{LetterElement}. 
+        @raises TypeError: If C{loader} is not a L{ITemplateLoader} provider. 
         """
         self.system = system
-        self.template_lookup = template_lookup
-        
-        if loader:
-            pass
-        # filename attribute should be set for most page classes
-        elif self.filename:
-            if self.template_lookup:
-                template = self.template_lookup.get_template(
-                    self.filename)
-                if not zope.interface.verify.verifyObject(ITemplateLoader, template.loader):
-                    raise RuntimeError(f"Cannot create HTML element {self} because template loader "
-                                       f"property is not a ITemplateLoader provider: {type(template.loader)}")
-                else:
-                    loader = template.loader
-            else:
-                raise RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup "
-                                    "object is passed to BaseElement's 'template_lookup' init argument.")
-        else:
-            raise RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader "
-                                "object is passed to BaseElement's 'loader' init argument and 'filename' property is not set.")
+        try:
+            zope.interface.verify.verifyObject(ITemplateLoader, loader)
+        except Exception as e:
+            raise TypeError(f"Cannot create HTML element {self} because template loader "
+                            f"is not a ITemplateLoader provider: {type(loader)}") from e
         super().__init__(loader)
+
+    @classmethod
+    def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
+        """
+        Lookup the template loader with the the C{TemplateLookup}. 
+
+        @raise TypeError: If the C{filename} property is not set. 
+        """
+        if cls.filename:
+            template = cls.template(template_lookup)
+            loader = template.loader
+            assert loader is not None
+            return loader
+        else:
+            raise TypeError(f"Cannot create loader because '{cls}.filename' property is not set.")
+
+    @classmethod
+    def template(cls, template_lookup: Optional[TemplateLookup] = None) -> Template:
+        # error: Argument 1 to "get_template" of "TemplateLookup" has incompatible type
+        # "Callable[[TemplateElement], str]"; expected "str"
+        # We can ignore mypy error because filename is an abstractproperty. 
+        if not template_lookup:
+            template_lookup = TemplateLookup()
+        return template_lookup.get_template(cls.filename) # type: ignore[arg-type]
 
     @abc.abstractproperty
     def filename(self) -> str:
         """
-        Associated output filename. 
-        
-        Can be empty string in special cases (like L{LetterElement}). 
+        Associated template filename. 
         """
         pass
 
-class Nav(BaseElement):
+class Nav(TemplateElement):
     """
     Common navigation header. 
     """
@@ -101,13 +97,14 @@ class Nav(BaseElement):
     filename = 'nav.html'
 
     @renderer
-    def project(self, request, tag):
+    def project(self, request: IRequest, tag: Tag) -> Tag:
         if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl, id="projecthome")(self.system.projectname)
+            return Tag('a', attributes=dict(href=self.system.options.projecturl, id="projecthome"), 
+                       children=[self.system.projectname])
         else:
-            return tags.span(self.system.projectname)
+            return Tag('span', children=[self.system.projectname])
 
-class BasePage(BaseElement):
+class BasePage(TemplateElement):
     """
     Base page element. 
 
@@ -115,35 +112,47 @@ class BasePage(BaseElement):
     "header.html", "subheader.html" and "footer.html".
     """
 
-    @renderer
-    def nav(self, request, tag):
-        return Nav(self.system, self.template_lookup)
+    def __init__(self, system: model.System, 
+                 template_lookup: TemplateLookup, 
+                 loader: Optional[ITemplateLoader] = None) -> None:
+        self.template_lookup = template_lookup
+        if not loader:
+            loader = self.lookup_loader(template_lookup)
+        super().__init__(system, loader)
 
     @renderer
-    def header(self, request, tag):
+    def nav(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
+
+    @renderer
+    def header(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
+        # Tag is a IRenderable but mypy is not smart enough.
+
         template = self.template_lookup.get_template('header.html')
-        # Checks are needed here to avoid SAXParseException: no element found error
-        return template.loader.load() if not template.is_empty() else ''
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
     @renderer
-    def subheader(self, request, tag):
+    def subheader(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
         template = self.template_lookup.get_template('subheader.html')
-        return template.loader.load() if not template.is_empty() else ''
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
     @renderer
-    def footer(self, request, tag):
+    def footer(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
         template = self.template_lookup.get_template('footer.html')
-        return template.loader.load() if not template.is_empty() else ''
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
 class CommonPage(BasePage):
 
     filename = 'common.html'
     ob: model.Documentable
 
-    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:Optional[DocGetter]=None):
+    def __init__(self, ob:model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
-        if docgetter == None:
+        if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
 
@@ -227,7 +236,8 @@ class CommonPage(BasePage):
         from pydoctor.templatewriter.pages.table import ChildTable
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children, self.template_lookup)
+            return ChildTable(self.docgetter, self.ob, children, 
+                    ChildTable.lookup_loader(self.template_lookup))
         else:
             return ()
 
@@ -242,9 +252,11 @@ class CommonPage(BasePage):
         r = []
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), 
+                            FunctionChild.lookup_loader(self.template_lookup)))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), 
+                            AttributeChild.lookup_loader(self.template_lookup)))
         return r
 
     def functionExtras(self, data):
@@ -296,7 +308,8 @@ class PackagePage(ModulePage):
         if children:
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, self.template_lookup)]
+                    ChildTable(self.docgetter, init, children, 
+                        ChildTable.lookup_loader(self.template_lookup))]
         else:
             return ()
 
@@ -436,7 +449,7 @@ class ClassPage(CommonPage):
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
                                                sorted(attrs, key=lambda o:-o.privacyClass.value), 
-                                                self.template_lookup))
+                                                ChildTable.lookup_loader(self.template_lookup)))
                 for b, attrs in baselists]
 
     def baseName(self, data):

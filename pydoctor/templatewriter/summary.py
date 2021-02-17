@@ -4,8 +4,8 @@ from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import BasePage, BaseElement
-from twisted.web.template import Tag, TagLoader, renderer, tags
+from pydoctor.templatewriter.pages import BasePage
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 
 def moduleSummary(modorpack, page_url):
@@ -35,8 +35,8 @@ class ModuleIndexPage(BasePage):
     filename = 'moduleIndex.html'
 
     def __init__(self, 
-        system:model.System, 
-        template_lookup:TemplateLookup, ):
+        system: model.System, 
+        template_lookup: TemplateLookup, ):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -167,12 +167,10 @@ class ClassIndexPage(BasePage):
         return tag.clear()("Class Hierarchy")
 
 
-class LetterElement(BaseElement):
-
-    filename = ''
+class LetterElement(Element):
 
     def __init__(self, loader, initials, letter):
-        super().__init__(loader=loader, system=None, template_lookup=None)
+        super().__init__(loader=loader)
         self.initials = initials
         self.my_letter = letter
 

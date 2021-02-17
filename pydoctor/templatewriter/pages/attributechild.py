@@ -1,9 +1,9 @@
 from twisted.web.template import renderer, tags
 
-from pydoctor.templatewriter.pages import format_decorators, BaseElement
+from pydoctor.templatewriter.pages import format_decorators, TemplateElement
 
 
-class AttributeChild(BaseElement):
+class AttributeChild(TemplateElement):
 
     filename = 'attribute-child.html'
 

@@ -1,9 +1,9 @@
 from twisted.web.template import renderer, tags
 
-from pydoctor.templatewriter.pages import format_decorators, signature, BaseElement
+from pydoctor.templatewriter.pages import format_decorators, signature, TemplateElement
 
 
-class FunctionChild(BaseElement):
+class FunctionChild(TemplateElement):
 
     filename = 'function-child.html'
 
