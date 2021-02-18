@@ -104,6 +104,18 @@ class Nav(TemplateElement):
         else:
             return Tag('span', children=[self.system.projectname])
 
+class Meta(TemplateElement):
+    """
+    Metadata. 
+    """
+
+    filename = 'meta.html'
+
+    # @renderer
+    # def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
+    #     # Slot do not exists yet.
+    #     return __version__
+
 class BasePage(TemplateElement):
     """
     Base page element. 
@@ -120,6 +132,10 @@ class BasePage(TemplateElement):
             loader = self.lookup_loader(template_lookup)
         super().__init__(system, loader)
 
+    @renderer
+    def meta(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Meta(self.system, Meta.lookup_loader(self.template_lookup))
+    
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
         return Nav(self.system, Nav.lookup_loader(self.template_lookup))

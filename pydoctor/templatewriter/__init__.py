@@ -5,17 +5,43 @@ DOCTYPE = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from typing import Iterable, Optional, Dict, Protocol, overload, runtime_checkable
+from typing import Iterable, List, Optional, Dict, Protocol, Sequence, Union, overload, runtime_checkable
 import abc
 from pathlib import Path
 import warnings
 import copy
 from  xml.dom import minidom
 
-from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import TagLoader, XMLString, tags
+from zope.interface import implementer
+
+from twisted.web.iweb import IRenderable, ITemplateLoader
+from twisted.web.template import XMLString
 
 from pydoctor.model import System, Documentable
+
+def parse_dom(text: str) -> minidom.Document:
+    """
+    Create a L{minidom} representaton of the XML string. 
+    
+    An englobing C{<div class="default_pydoctor_container">} will be added if the parsing 
+    fails. Useful to handle multiple roots XML for instance. 
+    """
+    try:
+        dom = minidom.parseString(text)
+    except Exception:
+        try:
+            dom = minidom.parseString(f'<div class="default_pydoctor_container">{text}</div>')
+        except Exception as e:
+            raise ValueError(f"Can't parse XML from text '{text}'") from e
+    return dom
+
+def default_container_added(dom: minidom.Document) -> bool:
+    """
+    Is this DOM's root a C{<div class="default_pydoctor_container">}?
+    """
+    return (dom.documentElement.tagName == "div" and 
+        dom.documentElement.getAttribute("class") == "default_pydoctor_container")
+
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
@@ -99,9 +125,10 @@ class Template(abc.ABC):
         Create a concrete template object. 
         Type depends on the file extension. 
 
+        Warns if the template cannot be created.
+
         @param path: A L{Path} that should point to a HTML, CSS or JS file. 
         @returns: The template object or C{None} if file is invalid. 
-        @warns: If the template cannot be created.
         """
         if not path.is_file():
             warnings.warn(f"Cannot create Template: {path.as_posix()} is not a file.")
@@ -145,9 +172,9 @@ class Template(abc.ABC):
     @abc.abstractproperty
     def loader(self) -> Optional[ITemplateLoader]:
         """
-        Object that is used to render the final file. 
+        Object(s) used to render the final file. 
 
-        For HTML templates, this is a L{ITemplateLoader}. 
+        For HTML templates, this is a L{ITemplateLoader} or a list of L{ITemplateLoader}.  
 
         For CSS and JS templates, this is C{None} 
         because there is no rendering to do, it's already the final file.  
@@ -164,51 +191,75 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None: return None
 
+@implementer(ITemplateLoader)
+class _MultiRootXML:
+    """
+    Provide L{twisted.web.iweb.ITemplateLoader} just like L{twisted.web.template.XMLString} 
+    with support for multi root XML trees like :: 
+        
+        <meta name="viewport" content="width=device-width, initial-scale=0.75" />
+        <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
+        <link rel="stylesheet" type="text/css" href="apidocs.css" />
+        <link rel="stylesheet" type="text/css" href="extra.css" />
+
+    """
+
+    def __init__(self, text: str) -> None:
+        self._data: Sequence[Union[IRenderable, str]] = []
+        data = []
+        try:
+            data.extend(XMLString(text).load())
+        except Exception:
+            dom = parse_dom(text)
+            if default_container_added(dom):
+                data.extend(self._parse_multi_root_xml(dom))
+            else: 
+                raise
+        finally:
+            self._data.extend(data)
+
+    @staticmethod
+    def _parse_multi_root_xml(dom: minidom.Document) -> Sequence[Union[IRenderable, str]]:
+        data = []
+        for child in dom.documentElement.childNodes:
+            child_xml = child.toxml(encoding='utf-8')
+            if child_xml.strip():
+                try:
+                    data.extend(XMLString(child_xml).load())
+                except Exception as e:
+                    raise ValueError(f"Can't create XMLString from text '{child_xml}'") from e
+            else:
+                data.append('\n')
+        return data
+
+    def load(self) -> Sequence[Union[IRenderable, str]]:
+        return self._data
+
+@implementer(ITemplateLoader)
+class _NullLoader:
+    def load(self) -> List[str]:
+        return []
+
 class _HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system 
     and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag. 
     """
-
     def __init__(self, path: Path):
         super().__init__(path)
         self._version: int
         self._loader: ITemplateLoader
         if self.is_empty():
-            self._loader = TagLoader(tags.transparent)
+            self._loader = _NullLoader()
             self._version = -1
         else:
-            self._loader = self._create_loader(self.text)
-            self._version = self._extract_version(
-                self._create_dom(self.text), self.name)
+            self._loader = _MultiRootXML(self.text)
+            self._version = self._extract_version(parse_dom(self.text), self.name)
     
-    @staticmethod
-    def _create_loader(text: str) -> ITemplateLoader:
-        loader: ITemplateLoader
-        try:
-            loader = XMLString(text)
-        except Exception:
-            try:
-                loader = XMLString(f"<div>{text}</div>")
-            except Exception as e:
-                raise ValueError(f"Can't parse XML from text '{text}'") from e
-        return loader
-
     @property
     def version(self) -> int: return self._version
     @property
     def loader(self) -> ITemplateLoader: return self._loader
-
-    @staticmethod
-    def _create_dom(text: str) -> minidom.Document:
-        try:
-            dom = minidom.parseString(text)
-        except Exception:
-            try:
-                dom = minidom.parseString(f"<div>{text}</div>")
-            except Exception as e:
-                raise ValueError(f"Can't parse XML from text '{text}'") from e
-        return dom
 
     @staticmethod
     def _extract_version(dom: minidom.Document, template_name: str) -> int:
@@ -270,8 +321,9 @@ class TemplateLookup:
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
+        Warns if the custom template is designed for an older version of pydoctor. 
+
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor. 
-        @warns: If the custom template is designed for an older version of pydoctor. 
         """
         
         try:
