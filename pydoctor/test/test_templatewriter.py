@@ -157,8 +157,6 @@ def test_template_lookup() -> None:
 
     assert lookup.get_template('footer.html').version == -1
 
-    assert type(lookup.get_template('index.html').version) == int
-
     assert lookup.get_template('table.html').version == 1
     
     lookup = TemplateLookup()
