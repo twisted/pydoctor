@@ -5,11 +5,11 @@ DOCTYPE = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from typing import Iterable, List, Optional, Dict, overload, runtime_checkable
+from typing import Iterable, List, Optional, Dict, overload
 try:
-    from typing import Protocol
+    from typing import Protocol, runtime_checkable
 except ImportError:
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol, runtime_checkable
 import abc
 from pathlib import Path
 import warnings
