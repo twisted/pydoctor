@@ -12,10 +12,10 @@ import warnings
 import copy
 from  xml.dom import minidom
 
-from zope.interface import implementer
+from zope.interface import implementer, verify
 
 from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import XMLString
+from twisted.web.template import XMLString, Element
 
 from pydoctor.model import System, Documentable
 
@@ -311,6 +311,54 @@ class TemplateLookup:
             raise KeyError(f"Cannot find template '{filename}' in template lookup: {self}. "
                 f"Valid filenames are: {list(self._templates)}") from e
         return t
+
+class TemplateElement(Element, abc.ABC):
+    """
+    Renderable element based on a template file. 
+    """
+    def __init__(self, loader: ITemplateLoader ) -> None:
+        """
+        Init a new element. 
+
+        @raises TypeError: If C{loader} is not a L{ITemplateLoader} provider. 
+        """
+        try:
+            verify.verifyObject(ITemplateLoader, loader)
+        except Exception as e:
+            raise TypeError(f"Cannot create HTML element {self} because template loader "
+                            f"is not a ITemplateLoader provider: {type(loader)}") from e
+        super().__init__(loader)
+
+    @classmethod
+    def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
+        """
+        Lookup the template loader with the the C{TemplateLookup}. 
+
+        @raise TypeError: If the C{filename} property is not set. 
+        """
+        if cls.filename:
+            template = cls.template(template_lookup)
+            loader = template.loader
+            assert loader is not None
+            return loader
+        else:
+            raise TypeError(f"Cannot create loader because '{cls}.filename' property is not set.")
+
+    @classmethod
+    def template(cls, template_lookup: Optional[TemplateLookup] = None) -> Template:
+        # error: Argument 1 to "get_template" of "TemplateLookup" has incompatible type
+        # "Callable[[TemplateElement], str]"; expected "str"
+        # We can ignore mypy error because filename is an abstractproperty. 
+        if not template_lookup:
+            template_lookup = TemplateLookup()
+        return template_lookup.get_template(cls.filename) # type: ignore[arg-type]
+
+    @abc.abstractproperty
+    def filename(self) -> str:
+        """
+        Associated template filename. 
+        """
+        pass
 
 from pydoctor.templatewriter.writer import TemplateWriter
 __all__ = ["TemplateWriter"] # re-export as pydoctor.templatewriter.TemplateWriter

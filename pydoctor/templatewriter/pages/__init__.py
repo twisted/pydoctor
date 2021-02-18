@@ -3,15 +3,15 @@
 from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
-import zope.interface.verify
 
-from twisted.web.template import tags, Element, renderer, Tag
+from twisted.web.template import tags, renderer, Tag
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter import Template, util, TemplateLookup
+from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
+from pydoctor.templatewriter.pages.table import ChildTable
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -40,54 +40,7 @@ class DocGetter:
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
 
-class TemplateElement(Element, abc.ABC):
-    """
-    Element based on a template file. 
-    """
-    def __init__(self, system: model.System, loader: ITemplateLoader ) -> None:
-        """
-        Init a new element. 
 
-        @raises TypeError: If C{loader} is not a L{ITemplateLoader} provider. 
-        """
-        self.system = system
-        try:
-            zope.interface.verify.verifyObject(ITemplateLoader, loader)
-        except Exception as e:
-            raise TypeError(f"Cannot create HTML element {self} because template loader "
-                            f"is not a ITemplateLoader provider: {type(loader)}") from e
-        super().__init__(loader)
-
-    @classmethod
-    def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
-        """
-        Lookup the template loader with the the C{TemplateLookup}. 
-
-        @raise TypeError: If the C{filename} property is not set. 
-        """
-        if cls.filename:
-            template = cls.template(template_lookup)
-            loader = template.loader
-            assert loader is not None
-            return loader
-        else:
-            raise TypeError(f"Cannot create loader because '{cls}.filename' property is not set.")
-
-    @classmethod
-    def template(cls, template_lookup: Optional[TemplateLookup] = None) -> Template:
-        # error: Argument 1 to "get_template" of "TemplateLookup" has incompatible type
-        # "Callable[[TemplateElement], str]"; expected "str"
-        # We can ignore mypy error because filename is an abstractproperty. 
-        if not template_lookup:
-            template_lookup = TemplateLookup()
-        return template_lookup.get_template(cls.filename) # type: ignore[arg-type]
-
-    @abc.abstractproperty
-    def filename(self) -> str:
-        """
-        Associated template filename. 
-        """
-        pass
 
 class Nav(TemplateElement):
     """
@@ -95,6 +48,10 @@ class Nav(TemplateElement):
     """
 
     filename = 'nav.html'
+
+    def __init__(self, system: model.System, loader: ITemplateLoader) -> None:
+        self.system = system
+        super().__init__(loader)
 
     @renderer
     def project(self, request: IRequest, tag: Tag) -> Tag:
@@ -112,10 +69,8 @@ class Head(TemplateElement):
 
     filename = 'head.html'
 
-    def __init__(self, system: model.System, 
-                 loader: ITemplateLoader,
-                 title: str) -> None:
-        super().__init__(system, loader)
+    def __init__(self, title: str, loader: ITemplateLoader, ) -> None:
+        super().__init__(loader)
         self._title = title
     
     @renderer
@@ -137,11 +92,13 @@ class BasePage(TemplateElement):
 
     def __init__(self, system: model.System, 
                  template_lookup: TemplateLookup, 
-                 loader: Optional[ITemplateLoader] = None) -> None:
+                 loader: Optional[ITemplateLoader] = None):
+        self.system = system
         self.template_lookup = template_lookup
         if not loader:
             loader = self.lookup_loader(template_lookup)
-        super().__init__(system, loader)
+        super().__init__(loader)
+        
 
     @abc.abstractmethod
     def title(self) -> str:
@@ -149,11 +106,11 @@ class BasePage(TemplateElement):
 
     @renderer
     def head(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Head(self.system, Head.lookup_loader(self.template_lookup), self.title())
+        return Head(self.title(), Head.lookup_loader(self.template_lookup), )
     
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup), )
 
     @renderer
     def header(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
@@ -180,7 +137,7 @@ class CommonPage(BasePage):
     filename = 'common.html'
     ob: model.Documentable
 
-    def __init__(self, ob:model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
+    def __init__(self, ob: model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
@@ -264,7 +221,6 @@ class CommonPage(BasePage):
         return ()
 
     def mainTable(self):
-        from pydoctor.templatewriter.pages.table import ChildTable
         children = self.children()
         if children:
             return ChildTable(self.docgetter, self.ob, children, 
@@ -331,7 +287,6 @@ class PackagePage(ModulePage):
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
-        from pydoctor.templatewriter.pages.table import ChildTable
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.contents.values() if o.isVisible],
@@ -470,7 +425,6 @@ class ClassPage(CommonPage):
 
     @renderer
     def baseTables(self, request, item):
-        from pydoctor.templatewriter.pages.table import ChildTable
         baselists = self.baselists[:]
         if not baselists:
             return []

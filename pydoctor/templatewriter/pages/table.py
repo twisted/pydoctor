@@ -47,7 +47,7 @@ class ChildTable(TemplateElement):
     filename = 'table.html'
 
     def __init__(self, docgetter, ob, children, loader):
-        super().__init__(ob.system, loader)
+        super().__init__(loader)
         self.docgetter = docgetter
         self.children = children
         ChildTable.last_id += 1

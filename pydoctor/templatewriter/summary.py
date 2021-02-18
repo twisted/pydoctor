@@ -29,14 +29,11 @@ def moduleSummary(modorpack, page_url):
 def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
-
 class ModuleIndexPage(BasePage):
 
     filename = 'moduleIndex.html'
 
-    def __init__(self, 
-        system: model.System, 
-        template_lookup: TemplateLookup, ):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup, ):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -320,10 +317,7 @@ class UndocumentedSummaryPage(BasePage):
     
     filename = 'undoccedSummary.html'
 
-    def __init__(self, 
-        system:model.System, 
-        template_lookup:TemplateLookup, ):
-
+    def __init__(self, system:model.System, template_lookup:TemplateLookup, ):
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
@@ -349,15 +343,7 @@ class UndocumentedSummaryPage(BasePage):
             tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
-
-AnySummaryPage = Union[
-                ModuleIndexPage, 
-                ClassIndexPage,
-                NameIndexPage,
-                IndexPage,
-                UndocumentedSummaryPage]
-
-summarypages: Iterable[Type[AnySummaryPage]] = [
+summarypages: Iterable[Type[BasePage]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

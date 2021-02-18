@@ -1,17 +1,17 @@
 from twisted.web.template import renderer, tags
 
-from pydoctor.templatewriter.pages import format_decorators, signature, TemplateElement
-
+from pydoctor.templatewriter.pages import format_decorators, signature
+from pydoctor.templatewriter import TemplateElement
 
 class FunctionChild(TemplateElement):
 
     filename = 'function-child.html'
 
-    def __init__(self, docgetter, ob, functionExtras, template_lookup):
-        super().__init__(ob.system, template_lookup)
+    def __init__(self, docgetter, ob, extras, loader):
+        super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
-        self._functionExtras = functionExtras
+        self._functionExtras = extras
 
     @renderer
     def class_(self, request, tag):

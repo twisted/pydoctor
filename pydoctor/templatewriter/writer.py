@@ -86,7 +86,9 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj: 
+            # It's ok to ignore the mypy error because filename is a property. 
+            # error: Argument 1 to "joinpath" of "PurePath" has incompatible type "Callable[[TemplateElement], str]"; expected "Union[str, _PathLike[str]]"
+            with self.base.joinpath(pclass.filename).open('wb') as fobj:  # type: ignore[arg-type]
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
