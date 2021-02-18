@@ -161,7 +161,7 @@ class Template(abc.ABC):
     @abc.abstractproperty
     def loader(self) -> Optional[ITemplateLoader]:
         """
-        Object(s) used to render the final file. 
+        Object used to render the final file. 
 
         For HTML templates, this is a L{ITemplateLoader} or a list of L{ITemplateLoader}.  
 
