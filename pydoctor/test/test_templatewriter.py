@@ -203,6 +203,15 @@ def test_template_lookup() -> None:
     else:
         assert False, "Should have failed with a UnsupportedTemplateVersion when loading 'testcustomtemplates/invalid'"
 
+    try:
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'wrongxml')
+
+    except ValueError as e:
+        assert "Can't parse XML from text" in str(e)
+    else:
+        assert False, "Should have failed with a ValueError when loading 'testcustomtemplates/wrongxml'"
+
+
 def test_template() -> None:
 
     here = Path(__file__).parent

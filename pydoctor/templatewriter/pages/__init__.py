@@ -104,12 +104,23 @@ class Nav(TemplateElement):
         else:
             return Tag('span', children=[self.system.projectname])
 
-class Meta(TemplateElement):
+
+class Head(TemplateElement):
     """
     Metadata. 
     """
 
-    filename = 'meta.html'
+    filename = 'head.html'
+
+    def __init__(self, system: model.System, 
+                 loader: ITemplateLoader,
+                 title: str) -> None:
+        super().__init__(system, loader)
+        self._title = title
+    
+    @renderer
+    def title(self, request: IRequest, tag: Tag) -> str:
+        return self._title
 
     # @renderer
     # def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
@@ -132,9 +143,13 @@ class BasePage(TemplateElement):
             loader = self.lookup_loader(template_lookup)
         super().__init__(system, loader)
 
+    @abc.abstractmethod
+    def title(self) -> str:
+        raise NotImplementedError()
+
     @renderer
-    def meta(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Meta(self.system, Meta.lookup_loader(self.template_lookup))
+    def head(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Head(self.system, Head.lookup_loader(self.template_lookup), self.title())
     
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
@@ -285,7 +300,7 @@ class CommonPage(BasePage):
     def all(self, request, tag):
         return tag.fillSlots(
             project=self.system.projectname,
-            title=self.title(),
+            # title=self.title(),
             heading=self.heading(),
             category=self.category(),
             part=self.part(),

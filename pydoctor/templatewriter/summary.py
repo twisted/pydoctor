@@ -47,9 +47,8 @@ class ModuleIndexPage(BasePage):
     def project(self, request, tag):
         return self.system.projectname
 
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Module Index")
+    def title(self):
+        return "Module Index"
 
     @renderer
     def stuff(self, request, tag):
@@ -133,9 +132,8 @@ class ClassIndexPage(BasePage):
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
 
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Class Hierarchy")
+    def title(self):
+        return "Class Hierarchy"
 
     @renderer
     def project(self, request, tag):
@@ -235,9 +233,9 @@ class NameIndexPage(BasePage):
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
 
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Index of Names")
+
+    def title(self):
+        return "Index of Names"
 
     @renderer
     def heading(self, request, tag):
@@ -267,9 +265,8 @@ class IndexPage(BasePage):
         else:
             return self.system.projectname
 
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
+    def title(self):
+        return f"API Documentation for {self.system.projectname}"
 
     @renderer
     def onlyIfOneRoot(self, request, tag):
@@ -332,9 +329,8 @@ class UndocumentedSummaryPage(BasePage):
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
 
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Summary of Undocumented Objects")
+    def title(self):
+        return "Summary of Undocumented Objects"
 
     @renderer
     def heading(self, request, tag):

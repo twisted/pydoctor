@@ -5,7 +5,7 @@ DOCTYPE = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from typing import Iterable, List, Optional, Dict, Protocol, Sequence, Union, overload, runtime_checkable
+from typing import Iterable, List, Optional, Dict, Protocol, overload, runtime_checkable
 import abc
 from pathlib import Path
 import warnings
@@ -14,7 +14,7 @@ from  xml.dom import minidom
 
 from zope.interface import implementer
 
-from twisted.web.iweb import IRenderable, ITemplateLoader
+from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import XMLString
 
 from pydoctor.model import System, Documentable
@@ -22,26 +22,13 @@ from pydoctor.model import System, Documentable
 def parse_dom(text: str) -> minidom.Document:
     """
     Create a L{minidom} representaton of the XML string. 
-    
-    An englobing C{<div class="default_pydoctor_container">} will be added if the parsing 
-    fails. Useful to handle multiple roots XML for instance. 
     """
     try:
         dom = minidom.parseString(text)
-    except Exception:
-        try:
-            dom = minidom.parseString(f'<div class="default_pydoctor_container">{text}</div>')
-        except Exception as e:
-            raise ValueError(f"Can't parse XML from text '{text}'") from e
-    return dom
-
-def default_container_added(dom: minidom.Document) -> bool:
-    """
-    Is this DOM's root a C{<div class="default_pydoctor_container">}?
-    """
-    return (dom.documentElement.tagName == "div" and 
-        dom.documentElement.getAttribute("class") == "default_pydoctor_container")
-
+    except Exception as e:
+        raise ValueError(f"Can't parse XML from text '{text}'. XML documents can have only one root. ") from e
+    else:
+        return dom
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
@@ -191,49 +178,6 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None: return None
 
-@implementer(ITemplateLoader)
-class _MultiRootXML:
-    """
-    Provide L{twisted.web.iweb.ITemplateLoader} just like L{twisted.web.template.XMLString} 
-    with support for multi root XML trees like :: 
-        
-        <meta name="viewport" content="width=device-width, initial-scale=0.75" />
-        <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
-        <link rel="stylesheet" type="text/css" href="apidocs.css" />
-        <link rel="stylesheet" type="text/css" href="extra.css" />
-
-    """
-
-    def __init__(self, text: str) -> None:
-        self._data: Sequence[Union[IRenderable, str]] = []
-        data = []
-        try:
-            data.extend(XMLString(text).load())
-        except Exception:
-            dom = parse_dom(text)
-            if default_container_added(dom):
-                data.extend(self._parse_multi_root_xml(dom))
-            else: 
-                raise
-        finally:
-            self._data.extend(data)
-
-    @staticmethod
-    def _parse_multi_root_xml(dom: minidom.Document) -> Sequence[Union[IRenderable, str]]:
-        data = []
-        for child in dom.documentElement.childNodes:
-            child_xml = child.toxml(encoding='utf-8')
-            if child_xml.strip():
-                try:
-                    data.extend(XMLString(child_xml).load())
-                except Exception as e:
-                    raise ValueError(f"Can't create XMLString from text '{child_xml}'") from e
-            else:
-                data.append('\n')
-        return data
-
-    def load(self) -> Sequence[Union[IRenderable, str]]:
-        return self._data
 
 @implementer(ITemplateLoader)
 class _NullLoader:
@@ -250,11 +194,11 @@ class _HtmlTemplate(Template):
         self._version: int
         self._loader: ITemplateLoader
         if self.is_empty():
-            self._loader = _NullLoader()
             self._version = -1
+            self._loader = _NullLoader()
         else:
-            self._loader = _MultiRootXML(self.text)
             self._version = self._extract_version(parse_dom(self.text), self.name)
+            self._loader = XMLString(self.text)
     
     @property
     def version(self) -> int: return self._version
