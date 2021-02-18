@@ -557,16 +557,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(data))
         return r
         
-# Type alias for HTML page: to use in type checking. 
-# It's necessary because L{BasePage} doesn't have the same C{__init__} siganture as concrete pages classes. 
-
-AnyDocPage = Union[ClassPage, 
-                ZopeInterfaceClassPage, 
-                ModulePage,
-                PackagePage, 
-                CommonPage]
-
-classpages: Mapping[str, Type[AnyDocPage]] = { 
+commonpages: Mapping[str, Type[CommonPage]] = { 
     'Module': ModulePage,
     'Package': PackagePage, 
     'Class': ClassPage, 

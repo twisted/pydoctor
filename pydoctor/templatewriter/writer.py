@@ -107,11 +107,11 @@ class TemplateWriter(IWriter):
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage
         for parent in ob.__class__.__mro__:
-            # This implementation relies on 'pages.classpages' dict that ties 
+            # This implementation relies on 'pages.commonpages' dict that ties 
             # documentable class name (i.e. 'Class') with the 
             # page class used for rendering: pages.ClassPage
             try:
-                pclass = pages.classpages[parent.__name__]
+                pclass = pages.commonpages[parent.__name__]
             except KeyError:
                 continue
             else:
