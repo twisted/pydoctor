@@ -286,7 +286,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     @returns: Each row as iterator or None if no C{descs} id provided. 
     """
     if not descs: 
-        return iter(())
+        return
     # <label>
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName", colspan="2")(label))
