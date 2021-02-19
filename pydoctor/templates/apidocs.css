@@ -12,6 +12,7 @@ nav.container {
 nav.container > .navbar-header {
     margin-right: 0;
     margin-left: 0;
+    height: 100%;
 }
 
 .navbar {
@@ -61,21 +62,19 @@ nav.container > .navbar-header {
 }
 
 .navlinks  {
-    margin-top: 0px;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    height: 50px;
 }
 
-.navlinks li {
-    padding: 0;
-    display: inline-block;
-    border-radius: 1px;
+.navlinks > a {
+    padding: 10px 0 10px 15px;
 }
 
-.navlinks li a {
-    padding: 16px 0 14px 15px;
-}
-
-.navlinks li a:hover {
+.navlinks > a:hover {
     background-color: transparent;
+    text-decoration: none;
 }
 
 .page-header h1 {
