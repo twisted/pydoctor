@@ -1050,6 +1050,7 @@ class ASTBuilder:
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
         findAll(mod_ast, mod)
+        findDocformat(mod_ast, mod)
 
         self.ModuleVistor(self, mod).visit(mod_ast)
 
@@ -1068,7 +1069,8 @@ class ASTBuilder:
 model.System.defaultBuilder = ASTBuilder
 
 def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
-    """Find and attempt to parse into a list of names the __all__ of a module's AST."""
+    """Find and attempt to parse into a list of names the 
+    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
     for node in mod_ast.body:
         if isinstance(node, ast.Assign) and \
                len(node.targets) == 1 and \
@@ -1102,3 +1104,43 @@ def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
                     'Assignment to "__all__" overrides previous assignment',
                     section='all', lineno_offset=node.lineno)
             mod.all = names
+
+def findDocformat(mod_ast: ast.Module, mod: model.Module) -> None:
+    """
+    Find C{__docformat__} variable of this 
+    module's AST and set L{Module.docformat} accordingly.
+    """
+    for node in mod_ast.body:
+        if isinstance(node, ast.Assign) and \
+               len(node.targets) == 1 and \
+               isinstance(node.targets[0], ast.Name) and \
+               node.targets[0].id == '__docformat__':
+            if not isinstance(node.value, ast.Constant):
+                mod.report(
+                    'Cannot parse value assigned to "__docformat__", not a constant',
+                    section='docformat', lineno_offset=node.lineno)
+                continue
+
+            value = node.value.value
+
+            if not isinstance(value, str):
+                mod.report(
+                    'Cannot parse value assigned to "__docformat__", not a string',
+                    section='docformat', lineno_offset=node.lineno)
+                continue
+                
+            if not value.strip():
+                mod.report(
+                    'Cannot parse value assigned to "__docformat__", no value',
+                    section='docformat', lineno_offset=node.lineno)
+                continue
+            
+            # Language is ignored and parser name is lowercased.
+            value = value.split(" ", 1)[0].lower()
+
+            if mod.docformat is not None:
+                mod.report(
+                    'Assignment to "__docformat__" overrides previous assignment',
+                    section='docformat', lineno_offset=node.lineno)
+
+            mod.docformat = value

@@ -22,7 +22,10 @@ import pydoctor.epydoc.markup.plaintext
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
-    formatname = obj.system.options.docformat
+    if obj.module.docformat:
+        formatname = obj.module.docformat
+    else:
+        formatname = obj.system.options.docformat
     try:
         mod = import_module('pydoctor.epydoc.markup.' + formatname)
     except ImportError as e:
