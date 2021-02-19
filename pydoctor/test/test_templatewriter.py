@@ -35,13 +35,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.template().loader)
+    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.template().loader)
+    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
