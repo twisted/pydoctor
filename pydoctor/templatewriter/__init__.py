@@ -153,7 +153,7 @@ class Template(abc.ABC):
         """
         Object used to render the final file. 
 
-        For HTML templates, this is a L{ITemplateLoader} or a list of L{ITemplateLoader}.  
+        For HTML templates, this is a L{ITemplateLoader}.  
 
         For CSS and JS templates, this is C{None} 
         because there is no rendering to do, it's already the final file.  
