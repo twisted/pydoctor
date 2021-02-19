@@ -5,21 +5,22 @@ DOCTYPE = b'''\
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from typing import Iterable, List, Optional, Dict, overload
+from typing import Iterable, Optional, Dict, overload, TYPE_CHECKING
 try:
     from typing import Protocol, runtime_checkable
 except ImportError:
-    from typing_extensions import Protocol, runtime_checkable
+    if not TYPE_CHECKING:
+        from typing_extensions import Protocol, runtime_checkable
 import abc
 from pathlib import Path
 import warnings
 import copy
 from  xml.dom import minidom
 
-from zope.interface import implementer, verify
+from zope.interface import verify
 
 from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import XMLString, Element
+from twisted.web.template import TagLoader, XMLString, Element, tags
 
 from pydoctor.model import System, Documentable
 
@@ -30,7 +31,7 @@ def parse_dom(text: str) -> minidom.Document:
     try:
         dom = minidom.parseString(text)
     except Exception as e:
-        raise ValueError(f"Can't parse XML from text '{text}'. XML documents can have only one root. ") from e
+        raise ValueError(f"Can't parse XML from text '{text}'. ") from e
     else:
         return dom
 
@@ -94,17 +95,6 @@ class Template(abc.ABC):
             """
             File text
             """
-        
-
-    path: Path
-    """
-    File path
-    """
-
-    text: str
-    """
-    File text 
-    """
     
     TEMPLATE_FILES_SUFFIX = ['.html', '.css', '.js']
     
@@ -124,9 +114,9 @@ class Template(abc.ABC):
         elif path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
 
             if path.suffix.lower() == '.html':
-                return _HtmlTemplate(path=path)
+                return _HtmlTemplate(path)
             else:
-                return _StaticTemplate(path=path)
+                return _StaticTemplate(path)
         else:
             warnings.warn(f"Cannot create Template: {path.as_posix()} is not a template file.")
         return None
@@ -180,12 +170,6 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None: return None
 
-
-@implementer(ITemplateLoader)
-class _NullLoader:
-    def load(self) -> List[str]:
-        return []
-
 class _HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system 
@@ -197,7 +181,7 @@ class _HtmlTemplate(Template):
         self._loader: ITemplateLoader
         if self.is_empty():
             self._version = -1
-            self._loader = _NullLoader()
+            self._loader = TagLoader(tags.transparent)
         else:
             self._version = self._extract_version(parse_dom(self.text), self.name)
             self._loader = XMLString(self.text)

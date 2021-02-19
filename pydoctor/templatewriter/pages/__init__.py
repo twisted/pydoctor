@@ -50,8 +50,8 @@ class Nav(TemplateElement):
     filename = 'nav.html'
 
     def __init__(self, system: model.System, loader: ITemplateLoader) -> None:
-        self.system = system
         super().__init__(loader)
+        self.system = system
 
     @renderer
     def project(self, request: IRequest, tag: Tag) -> Tag:
@@ -64,7 +64,7 @@ class Nav(TemplateElement):
 
 class Head(TemplateElement):
     """
-    Metadata. 
+    Common metadata. 
     """
 
     filename = 'head.html'
@@ -77,10 +77,9 @@ class Head(TemplateElement):
     def title(self, request: IRequest, tag: Tag) -> str:
         return self._title
 
-    # @renderer
-    # def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
-    #     # Slot do not exists yet.
-    #     return __version__
+    @renderer
+    def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
+        return __version__
 
 class BasePage(TemplateElement):
     """

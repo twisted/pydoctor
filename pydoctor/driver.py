@@ -7,7 +7,7 @@ import datetime
 import os
 import sys
 import warnings
-from inspect import signature, getmodulename
+from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
