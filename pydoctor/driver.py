@@ -439,20 +439,19 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             writer: IWriter
             # Handle custom HTML templates
             if system.options.templatedir:
-                if 'template_lookup' in signature(writerclass).parameters:
-                    # writer class is up to date
-                    custom_lookup = TemplateLookup()
-                    try:
-                        custom_lookup.add_templatedir(
-                            Path(system.options.templatedir))
-                    except UnsupportedTemplateVersion as e:
-                        error(str(e))
-
+                custom_lookup = TemplateLookup()
+                try:
+                    custom_lookup.add_templatedir(
+                        Path(system.options.templatedir))
+                except UnsupportedTemplateVersion as e:
+                    error(str(e))
+                
+                try:
                     # mypy error: Cannot instantiate abstract class 'IWriter'
                     writer = writerclass(options.htmloutput, # type: ignore[abstract]
                         template_lookup=custom_lookup)
-                else:
-                    # Old custom class does not accept 'template_lookup' argument. 
+                except TypeError:
+                    # Custom class does not accept 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput) # type: ignore[abstract]
                     warnings.warn(f"Writer '{writerclass.__name__}' does not support HTML template customization with --template-dir.")
             else:
