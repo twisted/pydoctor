@@ -1,10 +1,4 @@
 """Render pydoctor data as HTML."""
-
-DOCTYPE = b'''\
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "DTD/xhtml1-strict.dtd">
-'''
 from typing import Iterable, Optional, Dict, overload, TYPE_CHECKING
 try:
     from typing import Protocol, runtime_checkable
@@ -23,6 +17,12 @@ from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
 from pydoctor.model import System, Documentable
+
+DOCTYPE = b'''\
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "DTD/xhtml1-strict.dtd">
+'''
 
 def parse_dom(text: str) -> minidom.Document:
     """
