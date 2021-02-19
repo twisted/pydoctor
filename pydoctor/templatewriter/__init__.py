@@ -177,14 +177,13 @@ class _HtmlTemplate(Template):
     """
     def __init__(self, path: Path):
         super().__init__(path)
-        self._version: int
-        self._loader: ITemplateLoader
-        if self.is_empty():
-            self._version = -1
-            self._loader = TagLoader(tags.transparent)
-        else:
-            self._version = self._extract_version(parse_dom(self.text), self.name)
-            self._loader = XMLString(self.text)
+        self._dom: Optional[minidom.Document] = None
+        self._version: int = -1
+        self._loader: ITemplateLoader = TagLoader(tags.transparent)
+        if not self.is_empty():
+            self._dom = parse_dom(self.text)
+            self._version = self._extract_version(self._dom, self.name)
+            self._loader = XMLString(self._dom.toxml())
     
     @property
     def version(self) -> int: return self._version
@@ -207,12 +206,17 @@ class _HtmlTemplate(Template):
                     except ValueError:
                         warnings.warn(f"Could not read '{template_name}' template version: "
                                 "the 'content' attribute must be an integer")
+                    else:
+                        # Remove the meta tag. 
+                        meta.parentNode.removeChild(meta)
+                        break
                 else:
                     warnings.warn(f"Could not read '{template_name}' template version: "
                         f"the 'content' attribute is empty")
             else:
                 warnings.warn(f"Could not read '{template_name}' template version: "
                     f"the 'content' attribute is missing")
+            
         return version
 
 class TemplateLookup:
