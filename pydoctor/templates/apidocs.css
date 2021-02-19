@@ -69,10 +69,7 @@ nav div.container div.navbar-header {
 }
 
 .navlinks li a {
-    padding-top: 16px;
-    padding-bottom: 14px;
-    padding-left: 15px;
-    padding-right: 0px;
+    padding: 16px 0 14px 15px;
 }
 
 .navlinks li a:hover {
