@@ -1,5 +1,5 @@
 """
-Convert epydoc markup into renderable content.
+Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
@@ -348,19 +348,18 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
     @returns: Each row as iterator
     """
-    label = singular if len(fields) == 1 else plural
-    first = True
-    for field in fields:
-        if first:
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName", colspan="2")(label))
-            first=False
-            yield row
+    if not fields: 
+        return
 
+    label = singular if len(fields) == 1 else plural
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    yield row
+    
+    for field in fields:
         row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
-
 
 class FieldHandler:
 

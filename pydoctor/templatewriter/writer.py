@@ -6,7 +6,7 @@ import os
 from typing import IO
 from pathlib import Path
 
-from pydoctor.templatewriter import IWriter
+from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
 from twisted.web.template import flattenString, Element
@@ -21,8 +21,7 @@ def flattenToFile(fobj:IO[bytes], page:Element) -> None:
     err: List[Failure] = []
     flattenString(None, page).addCallback(fobj.write).addErrback(err.append)
     if err:
-        raise err.pop().value
-
+        raise err[0]
 
 class TemplateWriter(IWriter):
     """
@@ -55,14 +54,10 @@ class TemplateWriter(IWriter):
         Write static CSS and JS files to build directory. 
         """
         os.makedirs(self.base, exist_ok=True)
-        with self.base.joinpath('apidocs.css').open('w', encoding='utf-8') as jobj:
-            jobj.write(self.template_lookup.get_template('apidocs.css').text)
-        with self.base.joinpath('extra.css').open('w', encoding='utf-8') as jobj:
-            jobj.write(self.template_lookup.get_template('extra.css').text)
-        with self.base.joinpath('bootstrap.min.css').open('w', encoding='utf-8') as jobj:
-            jobj.write(self.template_lookup.get_template('bootstrap.min.css').text)
-        with self.base.joinpath('pydoctor.js').open('w', encoding='utf-8') as jobj:
-            jobj.write(self.template_lookup.get_template('pydoctor.js').text)
+        for template in self.template_lookup.itertemplates():
+            if isinstance(template, _StaticTemplate):
+                with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
+                    jobj.write(template.text)
 
     def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """

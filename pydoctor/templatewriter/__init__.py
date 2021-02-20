@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Optional, Dict, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Dict, overload, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -152,7 +152,8 @@ class Template(abc.ABC):
 
 class _StaticTemplate(Template):
     """
-    Static template: no rendering. 
+    Static template: no rendering, will be copied as is to build directory. 
+    
     For CSS and JS templates. 
     """
     @property
@@ -281,7 +282,6 @@ class TemplateLookup:
             if template:
                 self.add_template(template)
 
-
     def get_template(self, filename: str) -> Template:
         """
         Lookup a template based on its filename. 
@@ -298,6 +298,12 @@ class TemplateLookup:
             raise KeyError(f"Cannot find template '{filename}' in template lookup: {self}. "
                 f"Valid filenames are: {list(self._templates)}") from e
         return t
+    
+    def itertemplates(self) -> Iterator[Template]:
+        """
+        Return an iterator containing all templates. 
+        """
+        return iter(self._templates.values())
 
 class TemplateElement(Element, abc.ABC):
     """
