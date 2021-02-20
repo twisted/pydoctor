@@ -176,9 +176,14 @@ ul ul ul ul ul ul ul {
     border: 0;
 }
 
+/* Arg name */
+.fieldArg {
+    margin-right: 7px;
+}
+
 .fieldArg:before {
     margin-right: 6px;
-    content: "\2022";
+    content: "\2043";
 }
 
 .fieldTable tr:not(.fieldStart) td:first-child{
@@ -202,14 +207,9 @@ ul ul ul ul ul ul ul {
     align-items: center;
 }
 
-/* Arg type */
-.fieldTable tr td.fieldArgContainer code {
-    margin-left: 7px;
-}
-
-/* Argument description column */
-.fieldTable tr td.fieldArgDesc {
-    padding-left: 15px;
+/* Argument description column or return value desc, etc */
+.fieldTable tr td::nth-child(2) {
+    padding-left: 10px;
 }
 
 /* Kind column table  */
