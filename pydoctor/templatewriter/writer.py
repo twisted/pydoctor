@@ -54,7 +54,7 @@ class TemplateWriter(IWriter):
         Write static CSS and JS files to build directory. 
         """
         os.makedirs(self.base, exist_ok=True)
-        for template in self.template_lookup.itertemplates():
+        for template in self.template_lookup.iter_templates():
             if isinstance(template, _StaticTemplate):
                 with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
                     jobj.write(template.text)

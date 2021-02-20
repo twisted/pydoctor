@@ -153,7 +153,7 @@ class Template(abc.ABC):
 class _StaticTemplate(Template):
     """
     Static template: no rendering, will be copied as is to build directory. 
-    
+
     For CSS and JS templates. 
     """
     @property
@@ -299,7 +299,7 @@ class TemplateLookup:
                 f"Valid filenames are: {list(self._templates)}") from e
         return t
     
-    def itertemplates(self) -> Iterator[Template]:
+    def iter_templates(self) -> Iterator[Template]:
         """
         Return an iterator containing all templates. 
         """
