@@ -126,7 +126,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 
 def test_html_template_version() -> None:
     lookup = TemplateLookup()
-    for _, template in lookup._templates.items():
+    for template in lookup._templates.values():
         if isinstance(template, _HtmlTemplate) and not template.is_empty():
             assert template.version >= 1
 
