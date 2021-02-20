@@ -33,7 +33,7 @@ def parse_xml(text: str) -> minidom.Document:
         dom = minidom.parseString(text)
         return dom
     except Exception as e:
-        raise ValueError(f"Can't parse XML from text '{text}'.") from e
+        raise ValueError(f"Failed to parse template as XML: {e}") from e
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
