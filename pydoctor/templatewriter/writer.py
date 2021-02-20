@@ -66,7 +66,7 @@ class TemplateWriter(IWriter):
 
     def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """
-        Iterate trought C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
+        Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
         """
         self.dry_run = True
         for ob in obs:
