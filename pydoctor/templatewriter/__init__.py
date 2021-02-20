@@ -25,7 +25,7 @@ DOCTYPE = b'''\
           "DTD/xhtml1-strict.dtd">
 '''
 
-def parse_dom(text: str) -> minidom.Document:
+def parse_xml(text: str) -> minidom.Document:
     """
     Create a L{minidom} representaton of the XML string. 
     """
@@ -81,17 +81,15 @@ class Template(abc.ABC):
     @see: L{TemplateLookup}
     """
 
-    def __init__(self, path: Path):
-        self.path: Path = path
+    def __init__(self, name: str, text: str):
+        self.name = name
         """
-        Template file path
+        Template filename
         """
-        
-        with path.open('r') as f:
-            self.text = f.read()
-            """
-            File text
-            """
+        self.text = text
+        """
+        File text
+        """        
     
     TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js')
     
@@ -108,10 +106,12 @@ class Template(abc.ABC):
         """
         if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
             try:
+                with path.open('r') as fobj:
+                    text = fobj.read()
                 if path.suffix.lower() == '.html':
-                    return _HtmlTemplate(path)
+                    return _HtmlTemplate(name=path.name, text=text)
                 else:
-                    return _StaticTemplate(path)
+                    return _StaticTemplate(name=path.name, text=text)
             except IOError as e:
                 warnings.warn(f"Cannot create Template: {path.as_posix()}. IO error: {e}")
         else:
@@ -122,16 +122,9 @@ class Template(abc.ABC):
     def is_empty(self) -> bool:
         """
         Does this template contain nothing except whitespace?
-        Empty placeholder templates will not be rendered. 
+        Empty templates will not be rendered. 
         """
         return len(self.text.strip()) == 0
-
-    @property
-    def name(self) -> str:
-        """
-        Template filename
-        """
-        return self.path.name
 
     @abc.abstractproperty
     def version(self) -> int:
@@ -175,20 +168,22 @@ class _HtmlTemplate(Template):
     HTML template that works with the Twisted templating system 
     and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag. 
     """
-    def __init__(self, path: Path):
-        super().__init__(path)
+    def __init__(self, name: str, text: str):
+        super().__init__(name=name, text=text)
         self._dom: Optional[minidom.Document] = None
         self._version: int = -1
         self._loader: ITemplateLoader = TagLoader(tags.transparent)
         if not self.is_empty():
-            self._dom = parse_dom(self.text)
+            self._dom = parse_xml(self.text)
             self._version = self._extract_version(self._dom, self.name)
             self._loader = XMLString(self._dom.toxml())
     
     @property
-    def version(self) -> int: return self._version
+    def version(self) -> int: 
+        return self._version
     @property
-    def loader(self) -> ITemplateLoader: return self._loader
+    def loader(self) -> ITemplateLoader: 
+        return self._loader
 
     @staticmethod
     def _extract_version(dom: minidom.Document, template_name: str) -> int:
@@ -238,7 +233,10 @@ class TemplateLookup:
     _default_template_dir = 'templates'
 
     def __init__(self) -> None:
-        """Init L{TemplateLookup} with templates in C{pydoctor/templates}"""
+        """
+        Init L{TemplateLookup} with templates in C{pydoctor/templates}. 
+        This loads all templates into the lookup C{_templates} dict. 
+        """
         default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
         self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
                 default_template_dir.iterdir()) if t }
@@ -253,27 +251,27 @@ class TemplateLookup:
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
-        Warns if the custom template is designed for an older version of pydoctor. 
-
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor. 
         """
         
         try:
             default_version = self._default_templates[template.name].version
         except KeyError:
-            warnings.warn(f"Invalid template filename '{template.name}'. Valid filenames are: {list(self._templates)}")
+            warnings.warn(f"Invalid template filename '{template.name}'. "
+                f"Valid filenames are: {list(self._templates)}")
         else:
             template_version = template.version
             if default_version and template_version != -1:
                 if template_version < default_version: 
-                    warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
+                    warnings.warn(f"Your custom template '{template.name}' is out of date, "
+                                    "information might be missing. "
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
-                    raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail. Upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
-        finally:
+                    raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' "
+                                        "is designed for a newer version of pydoctor."
+                                        "Rendering will most probably fail. Upgrade to latest "
+                                        "version of pydoctor with 'pip install -U pydoctor'. ")
             self._templates[template.name] = template
-
 
     def add_templatedir(self, dir: Path) -> None:
         """

@@ -453,7 +453,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 except TypeError:
                     # Custom class does not accept 'template_lookup' argument. 
                     writer = writerclass(options.htmloutput) # type: ignore[abstract]
-                    warnings.warn(f"Writer '{writerclass.__name__}' does not support HTML template customization with --template-dir.")
+                    warnings.warn(f"Writer '{writerclass.__name__}' does not support "
+                        "HTML template customization with --template-dir.")
             else:
                 writer = writerclass(options.htmloutput) # type: ignore[abstract]
 

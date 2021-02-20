@@ -1,18 +1,22 @@
 """Miscellaneous utilities."""
 
+import warnings
 from typing import Optional
-
 from pydoctor.model import Documentable
-from pydoctor.templatewriter import TemplateLookup
-from twisted.python.filepath import FilePath
 
 def srclink(o: Documentable) -> Optional[str]:
     return o.sourceHref
 
-def templatefile(filename: str) -> str:
+def templatefile(filename: str) -> None:
     """Deprecated"""
-    return TemplateLookup().get_template(filename).path.as_posix()
+    warnings.warn("pydoctor.templatewriter.util.templatefile() "
+        "is deprecated and will be remove in future versions. "
+        "Please use the templating system.")
+    return None
 
-def templatefilepath(filename:str) -> FilePath:
+def templatefilepath(filename:str) -> None:
     """Deprecated"""
-    return FilePath(templatefile(filename))
+    warnings.warn("pydoctor.templatewriter.util.templatefilepath() "
+        "is deprecated and will be remove in future versions. "
+        "Please use the templating system.")
+    return None

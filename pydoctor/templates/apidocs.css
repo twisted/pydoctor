@@ -2,21 +2,16 @@ body {
     overflow-y: scroll;
 }
 
-nav.container {
-    display: flex;
-    flex-wrap: wrap;
+nav.navbar {
     width:100%;
-    margin:0;
+    margin-bottom: 0px;
 }
 
-nav.container > .navbar-header {
+nav.navbar > .navbar-header {
     margin-right: 0;
     margin-left: 0;
     height: 100%;
-}
-
-.navbar {
-    margin-bottom: 0px;
+    display: inline-block;
 }
 
 .page-header {
@@ -64,8 +59,8 @@ nav.container > .navbar-header {
 .navlinks  {
     margin: 0;
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    height: 50px;
 }
 
 .navlinks > a {

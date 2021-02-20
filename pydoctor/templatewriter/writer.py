@@ -3,7 +3,6 @@
 
 from typing import Iterable, Type, Optional, List
 import os
-import shutil
 from typing import IO
 from pathlib import Path
 
@@ -53,21 +52,17 @@ class TemplateWriter(IWriter):
 
     def prepOutputDirectory(self) -> None:
         """
-        Copy static CSS and JS files to build directory and warn when custom templates are outdated. 
+        Write static CSS and JS files to build directory. 
         """
         os.makedirs(self.base, exist_ok=True)
-        shutil.copy(
-            self.template_lookup.get_template('apidocs.css').path,
-            self.base.joinpath('apidocs.css'))
-        shutil.copy(
-            self.template_lookup.get_template('extra.css').path,
-            self.base.joinpath('extra.css'))
-        shutil.copy(
-            self.template_lookup.get_template('bootstrap.min.css').path,
-            self.base.joinpath('bootstrap.min.css'))
-        shutil.copy(
-            self.template_lookup.get_template('pydoctor.js').path,
-            self.base.joinpath('pydoctor.js'))
+        with self.base.joinpath('apidocs.css').open('w', encoding='utf-8') as jobj:
+            jobj.write(self.template_lookup.get_template('apidocs.css').text)
+        with self.base.joinpath('extra.css').open('w', encoding='utf-8') as jobj:
+            jobj.write(self.template_lookup.get_template('extra.css').text)
+        with self.base.joinpath('bootstrap.min.css').open('w', encoding='utf-8') as jobj:
+            jobj.write(self.template_lookup.get_template('bootstrap.min.css').text)
+        with self.base.joinpath('pydoctor.js').open('w', encoding='utf-8') as jobj:
+            jobj.write(self.template_lookup.get_template('pydoctor.js').text)
 
     def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """
