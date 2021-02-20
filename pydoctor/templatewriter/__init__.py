@@ -30,8 +30,7 @@ def parse_xml(text: str) -> minidom.Document:
     Create a L{minidom} representaton of the XML string. 
     """
     try:
-        dom = minidom.parseString(text)
-        return dom
+        return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
 
