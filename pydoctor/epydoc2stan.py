@@ -259,7 +259,7 @@ class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
 
     def format(self) -> Iterator[Tag]:
-        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
 
