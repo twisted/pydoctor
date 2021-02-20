@@ -183,7 +183,8 @@ ul ul ul ul ul ul ul {
 
 .fieldArg:before {
     margin-right: 6px;
-    content: "\2043";
+    content: "\2022";
+    font-size: 14px;
 }
 
 .fieldTable tr:not(.fieldStart) td:first-child{
