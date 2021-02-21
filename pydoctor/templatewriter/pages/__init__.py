@@ -4,7 +4,7 @@ from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
 
-from twisted.web.template import tags, renderer, Tag
+from twisted.web.template import tags, renderer, Tag, Element
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
@@ -113,15 +113,15 @@ class BasePage(TemplateElement):
 
     @renderer
     def header(self, request: IRequest, tag: Tag) -> IRenderable:
-        return self.template_lookup.get_loader('header.html').load()
+        return Element(self.template_lookup.get_loader('header.html'))
 
     @renderer
     def subheader(self, request: IRequest, tag: Tag) -> IRenderable:
-        return self.template_lookup.get_loader('footer.html').load()
+        return Element(self.template_lookup.get_loader('footer.html'))
 
     @renderer
     def footer(self, request: IRequest, tag: Tag) -> IRenderable:
-        return self.template_lookup.get_loader('footer.html').load()
+        return Element(self.template_lookup.get_loader('footer.html'))
 
 class CommonPage(BasePage):
 
