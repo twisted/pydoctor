@@ -1,54 +1,69 @@
 """Render pydoctor data as HTML."""
+from typing import Iterable, Iterator, Optional, Dict, overload, TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing_extensions import Protocol, runtime_checkable
+else:
+    Protocol = object
+    def runtime_checkable(f):
+        return f
+import abc
+from pathlib import Path
+import warnings
+import copy
+from xml.dom import minidom
+
+from zope.interface import verify
+
+from twisted.web.iweb import ITemplateLoader
+from twisted.web.template import TagLoader, XMLString, Element, tags
+
+from pydoctor.model import System, Documentable
 
 DOCTYPE = b'''\
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
           "DTD/xhtml1-strict.dtd">
 '''
-from typing import Any, Iterable, Optional, Dict
-import abc
-from pathlib import Path
-import warnings
-import copy
-from  xml.dom import minidom
 
-from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import XMLString
+def parse_xml(text: str) -> minidom.Document:
+    """
+    Create a L{minidom} representaton of the XML string. 
+    """
+    try:
+        return minidom.parseString(text)
+    except Exception as e:
+        raise ValueError(f"Failed to parse template as XML: {e}") from e
 
-from pydoctor.model import System, Documentable
-
-class TemplateVersionError(RuntimeError):
+class UnsupportedTemplateVersion(Exception):
+    """Raised when custom template is designed for a newer version of pydoctor"""
     pass
 
-class IWriter(abc.ABC):
+@runtime_checkable
+class IWriter(Protocol):
     """
     Interface class for pydoctor output writer. 
     """
 
-    @abc.abstractmethod
-    def __init__(self, filebase:str, template_lookup:Optional['TemplateLookup'] = None) -> None:
-        pass
+    @overload
+    def __init__(self, htmloutput: str) -> None: ...
+    @overload
+    def __init__(self, htmloutput: str, template_lookup: 'TemplateLookup') -> None: ...
 
-    @abc.abstractmethod
     def prepOutputDirectory(self) -> None:
         """
         Called first.
         """
-        pass
 
-    @abc.abstractmethod
-    def writeModuleIndex(self, system:'System') -> None: 
+    def writeModuleIndex(self, system:System) -> None: 
         """
         Called second.
         """
-        pass
 
-    @abc.abstractmethod
-    def writeIndividualFiles(self, obs:Iterable['Documentable']) -> None:
+    def writeIndividualFiles(self, obs:Iterable[Documentable]) -> None:
         """
         Called last.
         """
-        pass
+
 
 class Template(abc.ABC):
     """
@@ -57,7 +72,7 @@ class Template(abc.ABC):
     It holds references to template information. 
 
     It's an additionnal level of abstraction to hook to the 
-    rendering system, it stores the renderable object that 
+    rendering system, it stores the loader object that 
     is going to be reused for each output file using this template. 
 
     Use L{Template.fromfile} to create Templates. 
@@ -65,54 +80,50 @@ class Template(abc.ABC):
     @see: L{TemplateLookup}
     """
 
-    def __init__(self, path:Path):
-        self._text: Optional[str] = None
-        self.path: Path = path
-        """Template file path"""
-
+    def __init__(self, name: str, text: str):
+        self.name = name
+        """
+        Template filename
+        """
+        self.text = text
+        """
+        File text
+        """        
+    
+    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js')
+    
     @classmethod
-    def fromfile(cls, path:Path) -> Optional['Template']:
+    def fromfile(cls, path: Path) -> Optional['Template']:
         """
         Create a concrete template object. 
         Type depends on the file extension. 
 
+        Warns if the template cannot be created.
+
         @param path: A L{Path} that should point to a HTML, CSS or JS file. 
         @returns: The template object or C{None} if file is invalid. 
-        @warns: If the template cannot be created
         """
-        if not path.is_file():
-            warnings.warn(f"Cannot create Template: {path.as_posix()} is not a file.")
-        elif path.suffix.lower() == '.html':
-            return _HtmlTemplate(path)
-        elif path.suffix.lower() in ['.css', '.js']:
-            return _SimpleTemplate(path)
+        if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
+            try:
+                with path.open('r') as fobj:
+                    text = fobj.read()
+                if path.suffix.lower() == '.html':
+                    return _HtmlTemplate(name=path.name, text=text)
+                else:
+                    return _StaticTemplate(name=path.name, text=text)
+            except IOError as e:
+                warnings.warn(f"Cannot create Template: {path.as_posix()}. IO error: {e}")
         else:
-            warnings.warn(f"Cannot create Template: {path.as_posix()} is not a template file.")
+            warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
+                f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
         return None
-
+    
     def is_empty(self) -> bool:
         """
-        Does this template is empty? 
-        Empty placeholders templates will not be rendered. 
+        Does this template contain nothing except whitespace?
+        Empty templates will not be rendered. 
         """
         return len(self.text.strip()) == 0
-
-    @property
-    def name(self) -> str:
-        """
-        Template filename
-        """
-        return self.path.name
-
-    @property
-    def text(self) -> str:
-        """
-        File text 
-        """
-        if not self._text:
-            with self.path.open('r') as f:
-                self._text = f.read()
-        return self._text
 
     @abc.abstractproperty
     def version(self) -> int:
@@ -125,92 +136,81 @@ class Template(abc.ABC):
 
         This is always C{-1} for CSS and JS templates. 
         """
-        pass
+        raise NotImplementedError()
 
     @abc.abstractproperty
-    def renderable(self) -> Optional[Any]:
+    def loader(self) -> Optional[ITemplateLoader]:
         """
-        Object that is used to render the final file. 
+        Object used to render the final file. 
 
-        For HTML templates, this is a L{ITemplateLoader}. 
+        For HTML templates, this is a L{ITemplateLoader}.  
 
         For CSS and JS templates, this is C{None} 
         because there is no rendering to do, it's already the final file.  
         """
-        pass
+        raise NotImplementedError()
 
-class _SimpleTemplate(Template):
+class _StaticTemplate(Template):
     """
-    Simple template with no rendering for CSS and JS templates. 
+    Static template: no rendering, will be copied as is to build directory. 
+
+    For CSS and JS templates. 
     """
     @property
-    def version(self) -> int:
+    def version(self) -> int: 
         return -1
     @property
-    def renderable(self) -> None:
+    def loader(self) -> None: 
         return None
 
 class _HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system 
-    and use BeautifulSoup to parse the pydoctor-template-version meta tag. 
+    and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag. 
     """
-
-    def __init__(self, path:Path):
-        super().__init__(path)
-        self._xmlstring:Optional[XMLString] = None
-        self._version:Optional[int] = None
+    def __init__(self, name: str, text: str):
+        super().__init__(name=name, text=text)
         self._dom: Optional[minidom.Document] = None
-
+        self._version: int = -1
+        self._loader: ITemplateLoader = TagLoader(tags.transparent)
+        if not self.is_empty():
+            self._dom = parse_xml(self.text)
+            self._version = self._extract_version(self._dom, self.name)
+            self._loader = XMLString(self._dom.toxml())
+    
     @property
-    def dom(self) -> minidom.Document:
-        if self._dom is None:
+    def version(self) -> int: 
+        return self._version
+    @property
+    def loader(self) -> ITemplateLoader: 
+        return self._loader
+
+    @staticmethod
+    def _extract_version(dom: minidom.Document, template_name: str) -> int:
+        # If no meta pydoctor-template-version tag found, 
+        # it's most probably a placeholder template. 
+        version = -1
+        for meta in dom.getElementsByTagName("meta"):
+            if meta.getAttribute("name") != "pydoctor-template-version":
+                continue
+            if not meta.hasAttribute("content"):
+                warnings.warn(f"Could not read '{template_name}' template version: "
+                    f"the 'content' attribute is missing")
+                continue
+
+            version_str = meta.getAttribute("content")
+            
             try:
-                dom = minidom.parseString(self.text)
-            except Exception:
-                try:
-                    dom = minidom.parseString(f"<div>{self.text}</div>")
-                except Exception as e:
-                    raise RuntimeError(f"Can't parse XML file {self.name} from string '{self.text}'") from e
-                else:
-                    self._dom = dom
+                version = int(version_str)
+            except ValueError:
+                warnings.warn(f"Could not read '{template_name}' template version: "
+                        "the 'content' attribute must be an integer")
             else:
-                self._dom = dom
-        return self._dom
-
-    @property
-    def version(self) -> int:
-        if self._version is None:
-            if self.is_empty():
-                self._version = -1
-            else:
-                version = -1
-                # If No meta pydoctor-template-version tag found, 
-                # it's most probably a placeholder template. 
-                for meta in self.dom.getElementsByTagName("meta"):
-                    if meta.getAttribute("name") == "pydoctor-template-version":
-                        if meta.hasAttribute("content"):
-                            version_str = meta.getAttribute("content")
-                            if version_str:
-                                try:
-                                    version = int(version_str)
-                                except ValueError:
-                                    warnings.warn(f"Could not read '{self.name}' template version: "
-                                            "the 'content' attribute must be an integer")
-                            else:
-                                warnings.warn(f"Could not read '{self.name}' template version: "
-                                    f"the 'content' attribute is empty")
-                        else:
-                            warnings.warn(f"Could not read '{self.name}' template version: "
-                                f"the 'content' attribute is missing")
-                self._version = version
-        return self._version 
-
-    @property
-    def renderable(self) -> ITemplateLoader:
-        if not self._xmlstring:
-            self._xmlstring = XMLString(self.text)
-        return self._xmlstring
+                # Remove the meta tag. 
+                meta.parentNode.removeChild(meta)
+                break
+            
+        return version
 
 class TemplateLookup:
     """
@@ -233,43 +233,47 @@ class TemplateLookup:
     _default_template_dir = 'templates'
 
     def __init__(self) -> None:
-        """Init L{TemplateLookup} with templates in C{pydoctor/templates}"""
-        # Dict comprehension to init templates to whats in pydoctor/templates
+        """
+        Init L{TemplateLookup} with templates in C{pydoctor/templates}. 
+        This loads all templates into the lookup C{_templates} dict. 
+        """
+        default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
         self._templates: Dict[str, Template] = { t.name:t for t in (Template.fromfile(f) for f in 
-                Path(__file__).parent.parent.joinpath(
-                    self._default_template_dir).iterdir()) if t }
-        
-        self._default_templates = copy.deepcopy(self._templates)
+                default_template_dir.iterdir()) if t }
+
+        self._default_templates = copy.copy(self._templates)
 
 
-    def add_template(self, template:Template) -> None:
+    def add_template(self, template: Template) -> None:
         """
         Add a custom template to the lookup. 
 
         Compare the passed Template version with default template, 
         issue warnings if template are outdated.
 
-        @raises TemplateVersionError: If the custom template is designed for a newer version of pydoctor. 
-        @warns: If the custom template is designed for an older version of pydoctor. 
+        @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor. 
         """
         
         try:
             default_version = self._default_templates[template.name].version
+        except KeyError:
+            warnings.warn(f"Invalid template filename '{template.name}'. "
+                f"Valid filenames are: {list(self._templates)}")
+        else:
             template_version = template.version
             if default_version and template_version != -1:
                 if template_version < default_version: 
-                    warnings.warn(f"Your custom template '{template.name}' is out of date, information might be missing. "
+                    warnings.warn(f"Your custom template '{template.name}' is out of date, "
+                                    "information might be missing. "
                                    "Latest templates are available to download from our github." )
                 elif template_version > default_version:
-                    raise TemplateVersionError(f"It appears that your custom template '{template.name}' is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail. Please upgrade to latest version of pydoctor with 'pip install -U pydoctor'. ")
-        except KeyError:
-            warnings.warn(f"Invalid template filename '{template.name}' (will be ignored). Valid filenames are: {list(self._templates)}")
-        
-        self._templates[template.name] = template
+                    raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' "
+                                        "is designed for a newer version of pydoctor."
+                                        "Rendering will most probably fail. Upgrade to latest "
+                                        "version of pydoctor with 'pip install -U pydoctor'. ")
+            self._templates[template.name] = template
 
-
-    def add_templatedir(self, dir:Path) -> None:
+    def add_templatedir(self, dir: Path) -> None:
         """
         Scan a directory and add all templates in the given directory to the lookup. 
         """
@@ -278,10 +282,9 @@ class TemplateLookup:
             if template:
                 self.add_template(template)
 
-
-    def get_template(self, filename:str) -> Template:
+    def get_template(self, filename: str) -> Template:
         """
-        Lookup a template based on it's filename. 
+        Lookup a template based on its filename. 
 
         Return the custom template if provided, else the default template.
 
@@ -295,7 +298,52 @@ class TemplateLookup:
             raise KeyError(f"Cannot find template '{filename}' in template lookup: {self}. "
                 f"Valid filenames are: {list(self._templates)}") from e
         return t
+    
+    def iter_templates(self) -> Iterator[Template]:
+        """
+        Return an iterator containing all templates. 
+        """
+        return iter(self._templates.values())
+
+class TemplateElement(Element, abc.ABC):
+    """
+    Renderable element based on a template file. 
+    """
+
+    filename: str = NotImplemented
+    """
+    Associated template filename. 
+    """
+
+    def __init__(self, loader: ITemplateLoader ) -> None:
+        """
+        Init a new element. 
+
+        @raises TypeError: If C{loader} is not a L{ITemplateLoader} provider. 
+        """
+        try:
+            verify.verifyObject(ITemplateLoader, loader)
+        except Exception as e:
+            raise TypeError(f"Cannot create HTML element {self} because template loader "
+                            f"is not a ITemplateLoader provider: {type(loader)}") from e
+        super().__init__(loader)
+
+    @classmethod
+    def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
+        """
+        Lookup the element L{ITemplateLoader} with the the C{TemplateLookup}. 
+        """
+        template = cls.lookup_template(template_lookup)
+        loader = template.loader
+        assert loader is not None
+        return loader
+
+    @classmethod
+    def lookup_template(cls, template_lookup: TemplateLookup) -> Template:
+        """
+        Lookup the element L{Template} with the the C{TemplateLookup}. 
+        """
+        return template_lookup.get_template(cls.filename)
 
 from pydoctor.templatewriter.writer import TemplateWriter
-TemplateWriter = TemplateWriter
 __all__ = ["TemplateWriter"] # re-export as pydoctor.templatewriter.TemplateWriter

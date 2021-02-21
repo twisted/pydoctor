@@ -138,6 +138,7 @@ pydoctor_args = {
         '--docformat=numpy',
         '--project-url=../google-numpy.html',
         f'{_pydoctor_root}/docs/numpy_demo',
+        f'{_pydoctor_root}/pydoctor/napoleon'
         ] + _common_args,
     'google_demo': [
         '--html-output={outdir}/docformat/google',

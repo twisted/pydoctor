@@ -8,9 +8,9 @@ Forked from C{sphinx.ext.napoleon.iterators}.
 """
 
 import collections
-from typing import Any, Callable, Deque, Iterable, Iterator, Optional, Sequence, TypeVar, Generic, Union, overload, cast
+from typing import Any, Callable, Deque, Iterable, Iterator, Optional, Sequence, TypeVar, Generic, Union, overload
 
-__docformat__ = "numpy en" # for future usage 
+__docformat__ = "numpy en" 
 
 T = TypeVar("T")
 
@@ -24,7 +24,7 @@ class peek_iter(Generic[T]):
         If `sentinel` is not given, then `o` must be a collection object
         which supports either the iteration protocol or the sequence protocol.
         If `sentinel` is given, then `o` must be a callable object.
-    sentinel : any value, optional
+    sentinel : object, optional
         If given, the iterator will call `o` with no arguments for each
         call to its `next` method; if the value returned is equal to
         `sentinel`, `StopIteration` will be raised, otherwise the
@@ -52,11 +52,14 @@ class peek_iter(Generic[T]):
             self._iterable =  iter(o)
 
         self._cache : Deque[T] = collections.deque()
-        
+
         if sentinel:
             self.sentinel = sentinel
         else:
-            self.sentinel = object()
+            # mypy error: Incompatible types in assignment (expression
+            # has type "object", variable has type "T")  
+            self.sentinel = object() # type: ignore[assignment]
+        
         # store line number to report correct lines!
         self.counter = 0
 

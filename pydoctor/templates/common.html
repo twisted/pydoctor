@@ -1,22 +1,16 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1" t:render="all">
-  <head>
-    <title><t:slot name="title">Something</t:slot> : API documentation</title>
-    <meta name="generator" content="pydoctor"/>
-    <meta name="pydoctor-template-version" content="1" />
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.75" />
-    <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
-    <link rel="stylesheet" type="text/css" href="apidocs.css" />
-    <link rel="stylesheet" type="text/css" href="extra.css" />
-  </head>
+  <meta name="pydoctor-template-version" content="1" />
+
+  <t:transparent t:render="head">Head</t:transparent>
+
   <body>
 
     <div t:render="header" />
 
     <t:transparent t:render="nav">Nav</t:transparent>
 
-    <div class="container" t:render="pageHeader" />
+    <div class="container" t:render="subheader" />
 
     <div class="container">
 

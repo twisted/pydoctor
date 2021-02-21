@@ -5,7 +5,6 @@ from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 
 from bs4 import BeautifulSoup
-import pytest
 
 
 def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:

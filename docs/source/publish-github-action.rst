@@ -1,15 +1,18 @@
 :orphan:
 
-Simple GitHub action to publish API docs
+Simple GitHub Action to publish API docs
 ----------------------------------------
 
-Here is an example of a simple GitHub action to automatically 
+Here is an example of a simple GitHub Action to automatically 
 generate your documentation with Pydoctor
-and publish it to your default GitHub Pages website.
+and publish it to your default GitHub Pages website. 
+
+Just substitute `(projectname)` and `(packagedirectory)` 
+with the appropriate information. 
 
 ::
 
-    name: publish-pydoctor-apidocs
+    name: apidocs
     on:
     - push
 
@@ -30,10 +33,8 @@ and publish it to your default GitHub Pages website.
             python -m pip install .
             python -m pip install pydoctor
 
-        - name: Generate pydoctor documentation
+        - name: Generate documentation with pydoctor
           run: |
-            # Allow pydoctor to exit with non-zero status code
-            set +e
 
             # Run pydoctor build
             pydoctor \
@@ -57,6 +58,6 @@ and publish it to your default GitHub Pages website.
 .. note:: As mentioned in the ``actions-gh-pages`` `documentation`__, the first workflow run won't actually publish the documentation to GitHub Pages.
     GitHub Pages needs to be enabled afterwards in the repository settings, select ``gh-pages`` branch, then re-run your workflow.
 
-    The website we'll be at https://(user).github.io/(repo)/
+    The website will be located at `https://(user).github.io/(repo)/`.
 
     __ https://github.com/peaceiris/actions-gh-pages

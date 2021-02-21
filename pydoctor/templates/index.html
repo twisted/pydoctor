@@ -1,25 +1,16 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <head>
-    <title>
-      API Documentation for
-      <t:transparent t:render="project">Some Project</t:transparent>
-    </title>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <meta name="generator" content="pydoctor" />
-    <meta name="pydoctor-template-version" content="1" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.75" />
-    <link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
-    <link rel="stylesheet" type="text/css" href="apidocs.css" />
-    <link rel="stylesheet" type="text/css" href="extra.css" />
-  </head>
+  <meta name="pydoctor-template-version" content="1" />
+
+  <t:transparent t:render="head">Head</t:transparent>
+
   <body>
 
     <div t:render="header" />
-
+    
     <t:transparent t:render="nav">Nav</t:transparent>
 
-    <div class="container" t:render="pageHeader" />
+    <div class="container" t:render="subheader" />
 
     <div class="container">
       <h2>
@@ -37,13 +28,6 @@
         <li>
           A listing of <a href="nameIndex.html">all functions, classes,
           modules and packages</a>, ordered by name.
-        </li>
-        <li t:render="recentChanges">
-          See <a href="recentChanges">recent changes</a> made online to
-          docstrings.
-        </li>
-        <li t:render="problemObjects">
-          See <a href="problemObjects">objects with formatting problems</a>.
         </li>
         <li t:render="onlyIfOneRoot">
           Start at <a href="root.html">root</a>, the root package.

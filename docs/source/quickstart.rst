@@ -1,4 +1,4 @@
-Quick start
+Quick Start
 ===========
 
 Installation
@@ -16,10 +16,10 @@ support, only Epytext will be recognized::
 Example
 -------
 
-The following example uses all most common options to generate ``pydoctor``'s own 
+The following example uses most common options to generate pydoctor's own 
 API docs under the ``docs/api`` folder. It will add a link to the project website 
-in all pages header, show a link to source code aside every documented elements 
-and resolve links to standard library objects.
+in the header of each page, show a link to its source code beside every documented object 
+and resolve links to Python standard library objects.
 
 The result looks like `this <api/pydoctor.html>`_. 
 
@@ -51,7 +51,7 @@ The result looks like `this <api/pydoctor.html>`_.
 Publish your documentation
 --------------------------
 
-Output files are static HTML pages without no extra server-side support.
+Output files are static HTML pages which require no extra server-side support.
 
-Here is a `GitHub action example <publish-github-action.html>`_ to automatically 
-publish your API documentation to your default GitHub pages website.
+Here is a `GitHub Action example <publish-github-action.html>`_ to automatically 
+publish your API documentation to your default GitHub Pages website.

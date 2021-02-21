@@ -24,3 +24,11 @@ The following format keywords are recognized:
 - ``google``
 - ``numpy``
 - ``plaintext``
+
+To override the default markup language for a module, define a module-level string variable 
+``__docformat__``, containing the name of the module's markup language.
+
+Language code is ignored and parser name is lowercased::
+
+    __docformat__ = "reStructuredText en"
+    __docformat__ = "epytext"

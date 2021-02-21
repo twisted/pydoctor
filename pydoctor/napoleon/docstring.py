@@ -313,32 +313,32 @@ class ConsumeFieldsAsFreeForm(Exception):
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
     
-    @example:
+    Exemple:
 
-        >>> from pydoctor.napoleon import GoogleDocstring
-        >>> docstring = '''One line summary.
-        ...
-        ... Extended description.
-        ...
-        ... Args:
-        ...   arg1(int): Description of `arg1`
-        ...   arg2(str): Description of `arg2`
-        ... Returns:
-        ...   str: Description of return value.
-        ... '''
-        >>> print(GoogleDocstring(docstring))
-        One line summary.
-        <BLANKLINE>
-        Extended description.
-        <BLANKLINE>
-        :param arg1: Description of `arg1`
-        :type arg1: `int`
-        :param arg2: Description of `arg2`
-        :type arg2: `str`
-        <BLANKLINE>
-        :returns: Description of return value.
-        :rtype: `str`
-        <BLANKLINE>
+    >>> from pydoctor.napoleon import GoogleDocstring
+    >>> docstring = '''One line summary.
+    ...
+    ... Extended description.
+    ...
+    ... Args:
+    ...   arg1(int): Description of `arg1`
+    ...   arg2(str): Description of `arg2`
+    ... Returns:
+    ...   str: Description of return value.
+    ... '''
+    >>> print(GoogleDocstring(docstring))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: `int`
+    :param arg2: Description of `arg2`
+    :type arg2: `str`
+    <BLANKLINE>
+    :returns: Description of return value.
+    :rtype: `str`
+    <BLANKLINE>
     """
 
     _name_rgx = re.compile(r"^\s*((?::(?P<role>\S+):)?`(?P<name>~?[a-zA-Z0-9_.-]+)`|"
@@ -428,7 +428,8 @@ class GoogleDocstring:
         return '\n'.join(self.lines()).rstrip()
 
     def lines(self) -> List[str]:
-        """Return the parsed lines of the docstring in reStructuredText format.
+        """
+        Return the parsed lines of the docstring in reStructuredText format.
         Returns
         -------
         list(str)

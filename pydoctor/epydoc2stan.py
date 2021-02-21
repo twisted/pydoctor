@@ -1,5 +1,5 @@
 """
-Convert epydoc markup into renderable content.
+Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
@@ -24,13 +24,15 @@ import pydoctor.epydoc.markup.plaintext
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
     Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function. 
-    """
-    formatname = obj.system.options.docformat
+    """    
+    # Use module's __docformat__ if specified, else use system's.
+    docformat = obj.module.docformat or obj.system.options.docformat
+    
     try:
-        mod = import_module('pydoctor.epydoc.markup.' + formatname)
+        mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
     except ImportError as e:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
-            formatname, e.__class__.__name__, e)
+            docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         mod = pydoctor.epydoc.markup.plaintext
     return mod.get_parser(obj) # type: ignore[attr-defined, no-any-return]
@@ -245,18 +247,7 @@ class FieldDesc:
         """
         @return: Iterator that yields one or two C{tags.td}. 
         """
-        formatted = self.body or self._UNDOCUMENTED
-        # if self.type is not None:
-        #     formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
-
-        # name = self.name
-        # if name is None:
-        #     yield tags.td(formatted, colspan="2")
-        # else:
-        #     yield tags.td(name, class_="fieldArg")
-        #     yield tags.td(formatted)
-
-        
+        formatted = self.body or self._UNDOCUMENTED        
         fieldNameTd: List[Tag] = []
         if self.name:
             _name = tags.span(class_="fieldArg")(self.name)
@@ -265,20 +256,19 @@ class FieldDesc:
             fieldNameTd.append(_name)
         if self.type:
             fieldNameTd.append(self.type)
-        if self.name or self.type:
+        if fieldNameTd:
             #  <name>: <type> | <desc>
             yield tags.td(class_="fieldArgContainer")(*fieldNameTd)
             yield tags.td(class_="fieldArgDesc")(formatted)
         else:
             #  <desc>
             yield tags.td(formatted, colspan="2")
-        
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
 
     def format(self) -> Iterator[Tag]:
-        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
 
@@ -306,15 +296,15 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     @arg descs: L{FieldDesc}s
     @returns: Each row as iterator
     """
-    first = True
+    if not descs: 
+        return
+    # <label>
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    # yield the first row. 
+    yield row
+    # yield descriptions.
     for d in descs:
-        if first:
-            # <label>      
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName", colspan="2")(label))
-            first = False
-            yield row
-
         row = tags.tr()
         # <name>: <type> |     <desc>      
         # or
@@ -371,19 +361,18 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
     @returns: Each row as iterator
     """
-    label = singular if len(fields) == 1 else plural
-    first = True
-    for field in fields:
-        if first:
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName", colspan="2")(label))
-            first=False
-            yield row
+    if not fields: 
+        return
 
+    label = singular if len(fields) == 1 else plural
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    yield row
+    
+    for field in fields:
         row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
-
 
 class FieldHandler:
 
@@ -572,6 +561,7 @@ class FieldHandler:
 
     def handleUnknownField(self, field: Field) -> None:
         name = field.tag
+        field.report(f"Unknown field '{name}'" )
         self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
@@ -625,7 +615,7 @@ class FieldHandler:
                       ('Note', 'Notes', self.notes)):
             r += format_field_list(*s_p_l)
         for kind, fieldlist in self.unknowns.items():
-            r += format_desc_list(kind.title(), fieldlist)
+            r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
             return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]

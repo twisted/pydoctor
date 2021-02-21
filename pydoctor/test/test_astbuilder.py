@@ -502,6 +502,18 @@ def test_all_recognition(systemcls: Type[model.System]) -> None:
     assert '__all__' not in mod.contents
 
 @systemcls_param
+def test_docformat_recognition(systemcls: Type[model.System]) -> None:
+    """The value assigned to __docformat__ is parsed to Module.docformat."""
+    mod = fromText('''
+    __docformat__ = 'Epytext en'
+
+    def f():
+        pass
+    ''', systemcls=systemcls)
+    assert mod.docformat == 'epytext'
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
     """A class variable named __all__ is just an ordinary variable and
     does not affect Module.all.
@@ -1193,7 +1205,7 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     def type2html(obj: model.Documentable) -> str:
         parsed_type = get_parsed_type(obj)
         assert parsed_type is not None
-        return to_html(parsed_type)
+        return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
     C = mod.contents['C']
     a = C.contents['a']
@@ -1210,16 +1222,16 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     assert type2html(d) == '<code>str</code>'
     e = C.contents['e']
     assert e.docstring == """fifth"""
-    assert type2html(e).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
+    assert type2html(e) == '<code>List[C]</code>'
     f = C.contents['f']
     assert f.docstring == """sixth"""
-    assert type2html(f).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
+    assert type2html(f) == '<code>List[C]</code>'
     g = C.contents['g']
     assert g.docstring == """seventh"""
-    assert type2html(g).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[C]</code>'
+    assert type2html(g) == '<code>List[C]</code>'
     s = C.contents['s']
     assert s.docstring == """instance"""
-    assert type2html(s).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == '<code>List[str]</code>'
+    assert type2html(s) == '<code>List[str]</code>'
     m = mod.contents['m']
     assert m.docstring == """module-level"""
     assert type2html(m) == '<code>bytes</code>'

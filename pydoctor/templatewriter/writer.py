@@ -3,11 +3,10 @@
 
 from typing import Iterable, Type, Optional, List
 import os
-import shutil
 from typing import IO
 from pathlib import Path
 
-from pydoctor.templatewriter import IWriter
+from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
 from twisted.web.template import flattenString, Element
@@ -22,8 +21,7 @@ def flattenToFile(fobj:IO[bytes], page:Element) -> None:
     err: List[Failure] = []
     flattenString(None, page).addCallback(fobj.write).addErrback(err.append)
     if err:
-        raise err.pop().value
-
+        raise err[0]
 
 class TemplateWriter(IWriter):
     """
@@ -53,25 +51,17 @@ class TemplateWriter(IWriter):
 
     def prepOutputDirectory(self) -> None:
         """
-        Copy static CSS and JS files to build directory and warn when custom templates are outdated. 
+        Write static CSS and JS files to build directory. 
         """
         os.makedirs(self.base, exist_ok=True)
-        shutil.copy(
-            self.template_lookup.get_template('apidocs.css').path,
-            self.base.joinpath('apidocs.css'))
-        shutil.copy(
-            self.template_lookup.get_template('extra.css').path,
-            self.base.joinpath('extra.css'))
-        shutil.copy(
-            self.template_lookup.get_template('bootstrap.min.css').path,
-            self.base.joinpath('bootstrap.min.css'))
-        shutil.copy(
-            self.template_lookup.get_template('pydoctor.js').path,
-            self.base.joinpath('pydoctor.js'))
+        for template in self.template_lookup.iter_templates():
+            if isinstance(template, _StaticTemplate):
+                with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
+                    jobj.write(template.text)
 
     def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """
-        Iterate trought C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
+        Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
         """
         self.dry_run = True
         for ob in obs:
@@ -86,7 +76,7 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj: 
+            with self.base.joinpath(pclass.filename).open('wb') as fobj:  
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
@@ -105,13 +95,13 @@ class TemplateWriter(IWriter):
     def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
         if not ob.isVisible:
             return
-        pclass: Type[pages.AnyDocPage] = pages.CommonPage
+        pclass: Type[pages.CommonPage] = pages.CommonPage
         for parent in ob.__class__.__mro__:
-            # This implementation relies on 'pages.classpages' dict that ties 
+            # This implementation relies on 'pages.commonpages' dict that ties 
             # documentable class name (i.e. 'Class') with the 
             # page class used for rendering: pages.ClassPage
             try:
-                pclass = pages.classpages[parent.__name__]
+                pclass = pages.commonpages[parent.__name__]
             except KeyError:
                 continue
             else:

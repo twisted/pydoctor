@@ -4,12 +4,9 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
-import pytest
 import re
-import warnings
 from unittest import TestCase
 from textwrap import dedent
-from contextlib import contextmanager
 
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring, is_type_spec
 

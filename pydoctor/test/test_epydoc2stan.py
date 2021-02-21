@@ -48,7 +48,8 @@ def test_multiple_types() -> None:
 
 def docstring2html(docstring: model.Documentable) -> str:
     stan = epydoc2stan.format_docstring(docstring)
-    return flatten(stan).replace('><', '>\n<')
+    # We strip off break lines fo the ake of simplicity.
+    return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
 def test_html_empty_module() -> None:
     mod = fromText('''
@@ -177,8 +178,8 @@ def test_func_arg_and_ret_annotation() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
-    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_and_ret_annotation_with_override() -> None:
@@ -202,8 +203,8 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
-    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_arg_when_doc_missing() -> None:
@@ -222,8 +223,8 @@ def test_func_arg_when_doc_missing() -> None:
         @rtype: C{bool}
         """
     ''')
-    annotation_fmt = docstring2html(annotation_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
-    classic_fmt = docstring2html(classic_mod.contents['f']).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+    annotation_fmt = docstring2html(annotation_mod.contents['f'])
+    classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
 def test_func_param_duplicate(capsys: CapSys) -> None:
@@ -503,8 +504,7 @@ def test_unknown_field_name(capsys: CapSys) -> None:
     ''', modname='test')
     epydoc2stan.format_docstring(mod)
     captured = capsys.readouterr().out
-    # Any fields name are considered valid 
-    assert captured == '' #"test:5: Unknown field 'zap'\n"
+    assert captured == "test:5: Unknown field 'zap'\n"
 
 
 def test_inline_field_type(capsys: CapSys) -> None:
@@ -800,5 +800,43 @@ def test_annotation_formatter(annotation: str) -> None:
     html = flatten(stan)
     assert html.startswith('<code>')
     assert html.endswith('</code>')
-    text= html[6:-7]
+    text = html[6:-7]
     assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+def test_module_docformat(capsys: CapSys) -> None:
+    """
+    Test if Module.docformat effectively override System.options.docformat
+    """
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+
+    mod = fromText('''
+    """
+    Link to pydoctor: U{pydoctor <https://github.com/twisted/pydoctor>}.
+    """
+    __docformat__ = "epytext"
+    ''', modname='test_epy', system=system)
+
+    epytext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    mod = fromText('''
+    """
+    Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
+    """
+    __docformat__ = "restructuredtext en"
+    ''', modname='test_rst', system=system)
+
+    restructuredtext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ('Link to pydoctor: <a href="https://github.com/twisted/pydoctor"'
+        ' target="_top">pydoctor</a>' in flatten(epytext_output))
+    
+    assert ('Link to pydoctor: <a class="rst-reference external"'
+        ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))

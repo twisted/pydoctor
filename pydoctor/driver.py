@@ -2,15 +2,15 @@
 
 from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
+from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
 import warnings
-from inspect import signature, getmodulename
+from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateVersionError
+from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -85,18 +85,16 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
-def get_supported_docformat() -> Sequence[str]:
+def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat. 
     """
-    parser_names: List[str] = []
     for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
         moduleName = getmodulename(fileName)
         if moduleName is None or moduleName.startswith("_"):
             continue
         else:
-            parser_names.append(moduleName)
-    return parser_names
+            yield moduleName
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
@@ -126,7 +124,7 @@ def getparser() -> OptionParser:
             "Defaults to empty string."
             ))
     parser.add_option(
-        '--project-url', dest='projecturl', metavar="URL",
+        '--project-url', dest='projecturl',
         help=("The project url, appears in the html if given."))
     parser.add_option(
         '--project-base-dir', dest='projectbasedirectory', type='path',
@@ -154,13 +152,14 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
-              "Can be used to document part of a package."), metavar='PACKAGE',)
-    _docformat_choices = get_supported_docformat()
+              "Can be used to document part of a package."))
+    _docformat_choices = get_supported_docformats()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        type="choice", choices=_docformat_choices, 
+        type="choice", choices=list(_docformat_choices), 
         help=("Format used for parsing docstrings. "
-             f"Supported values: {_docformat_choices}"))
+             f"Supported values: {', '.join(_docformat_choices)}"),
+             metavar='FORMAT')
     parser.add_option(
         '--template-dir',
         dest='templatedir',
@@ -169,9 +168,9 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
-        help=("The fullName of object to generate API docs for: acts like a filter. "
+        help=("The fullName of objects to generate API docs for"
               " (generates everything by default)."),
-        metavar='PACKAGE/MOD/CLASS',)
+              metavar='PACKAGE/MOD/CLASS')
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
@@ -259,7 +258,6 @@ def getparser() -> OptionParser:
         help=MAX_AGE_HELP,
         metavar='DURATION',
     )
-    
 
     return parser
 
@@ -428,7 +426,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
-        subjects: List[model.Documentable] = []
+        
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -436,9 +434,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    # https://github.com/python/mypy/issues/4717
-                    # mypy get error: Only concrete class can be given where "Type[IWriter]" is expected  [misc]
-                    options.htmlwriter, '--html-writer', IWriter) # type: ignore
+                    options.htmlwriter, '--html-writer', IWriter) 
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -446,38 +442,36 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
-            # Init writer
             writer: IWriter
-
             # Handle custom HTML templates
             if system.options.templatedir:
+                custom_lookup = TemplateLookup()
+                try:
+                    custom_lookup.add_templatedir(
+                        Path(system.options.templatedir))
+                except UnsupportedTemplateVersion as e:
+                    error(str(e))
                 
-                if 'template_lookup' in signature(writerclass).parameters:
-                    # writer class is up o date
-                    custom_lookup = TemplateLookup()
-                    try:
-                        custom_lookup.add_templatedir(
-                            Path(system.options.templatedir))
-                    except TemplateVersionError as e:
-                        error(str(e))
-
-                    writer = writerclass(options.htmloutput, 
+                try:
+                    # mypy error: Cannot instantiate abstract class 'IWriter'
+                    writer = writerclass(options.htmloutput, # type: ignore[abstract]
                         template_lookup=custom_lookup)
-                else:
-                    # old custom class do not contain 'template_lookup' argument. 
-                    writer = writerclass(options.htmloutput)
-                    warnings.warn(f"Writer '{writerclass.__name__}' do not support HTML template customization with --template-dir.")
+                except TypeError:
+                    # Custom class does not accept 'template_lookup' argument. 
+                    writer = writerclass(options.htmloutput) # type: ignore[abstract]
+                    warnings.warn(f"Writer '{writerclass.__name__}' does not support "
+                        "HTML template customization with --template-dir.")
             else:
-                writer = writerclass(options.htmloutput)
+                writer = writerclass(options.htmloutput) # type: ignore[abstract]
 
             writer.prepOutputDirectory()
-            
+
+            subjects: List[model.Documentable] = []
             if options.htmlsubjects:
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
                 writer.writeModuleIndex(system)
-
             else:
                 writer.writeModuleIndex(system)
                 subjects.extend(system.rootobjects)

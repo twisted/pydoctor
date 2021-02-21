@@ -5,7 +5,7 @@ Parser for google-style docstrings.
 @See: L{pydoctor.epydoc.markup._napoleon}
 """
 from typing import Callable, List
-from pydoctor.model import Documentable, Attribute
+from pydoctor.model import Documentable
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._napoleon import NapoelonDocstringParser
 

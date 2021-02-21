@@ -3,15 +3,15 @@
 from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
-import zope.interface.verify
 
-from twisted.web.template import tags, Element, renderer, Tag
+from twisted.web.template import tags, renderer, Tag
 import astor
 
-from twisted.web.iweb import ITemplateLoader
+from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
-from pydoctor.templatewriter import util, TemplateLookup
+from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
+from pydoctor.templatewriter.pages.table import ChildTable
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -32,7 +32,7 @@ def signature(function: model.Function) -> str:
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
-    def get(self, ob:model.Documentable, summary:bool=False) -> Tag:
+    def get(self, ob: model.Documentable, summary: bool = False) -> Tag:
         if summary:
             return epydoc2stan.format_summary(ob)
         else:
@@ -40,109 +40,106 @@ class DocGetter:
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
 
-class BaseElement(Element, abc.ABC):
-    """
-    Common base HTML element. 
-    """
-    def __init__(self, 
-        system:Optional[model.System]=None, 
-        template_lookup:Optional[TemplateLookup]=None, 
-        loader:Optional[ITemplateLoader]=None, ) -> None:
-        """
-        Init a new pydoctor HTML element. 
 
-        The C{loader} property is usually got from the L{TemplateLookup} 
-        object but can also be set by argument.
 
-        @raises RuntimeError: If not enought information is provided 
-            to create the template loader. i.e. missing C{template_lookup} or C{loader} argument.
-            Could also be that the L{Template.renderable} property is not a L{ITemplateLoader} provider. 
-
-        @note: C{system} and C{template_lookup} can be none in special cases, like for L{LetterElement}. 
-        """
-        self.system = system
-        self.template_lookup = template_lookup
-        
-        if loader:
-            pass
-        # filename attribute should be set for most page classes
-        elif self.filename:
-            if self.template_lookup:
-                template = self.template_lookup.get_template(
-                    self.filename)
-                if not zope.interface.verify.verifyObject(ITemplateLoader, template.renderable):
-                    raise RuntimeError(f"Cannot create HTML element {self} because template renderable "
-                                       f"property is not a ITemplateLoader provider: {type(template.renderable)}")
-                else:
-                    loader = template.renderable
-            else:
-                raise RuntimeError(f"Cannot create HTML element {self} because no TemplateLookup "
-                                    "object is passed to BaseElement's 'template_lookup' init argument.")
-        else:
-            raise RuntimeError(f"Cannot create HTML element {self} because no ITemplateLoader "
-                                "object is passed to BaseElement's 'loader' init argument and 'filename' property is not set.")
-        super().__init__(loader)
-
-    @abc.abstractproperty
-    def filename(self) -> str:
-        """
-        Associated output filename. 
-        
-        Can be empty string in special cases (like L{LetterElement}). 
-        """
-        pass
-
-class Nav(BaseElement):
+class Nav(TemplateElement):
     """
     Common navigation header. 
     """
 
     filename = 'nav.html'
 
-    @renderer
-    def project(self, request, tag):
-        if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl, id="projecthome")(self.system.projectname)
-        else:
-            return tags.span(self.system.projectname)
+    def __init__(self, system: model.System, loader: ITemplateLoader) -> None:
+        super().__init__(loader)
+        self.system = system
 
-class BasePage(BaseElement):
+    @renderer
+    def project(self, request: IRequest, tag: Tag) -> Tag:
+        if self.system.options.projecturl:
+            return Tag('a', attributes=dict(href=self.system.options.projecturl, id="projecthome"), 
+                       children=[self.system.projectname])
+        else:
+            return Tag('span', children=[self.system.projectname])
+
+
+class Head(TemplateElement):
+    """
+    Common metadata. 
+    """
+
+    filename = 'head.html'
+
+    def __init__(self, title: str, loader: ITemplateLoader, ) -> None:
+        super().__init__(loader)
+        self._title = title
+    
+    @renderer
+    def title(self, request: IRequest, tag: Tag) -> str:
+        return self._title
+
+    @renderer
+    def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
+        return __version__
+
+class BasePage(TemplateElement):
     """
     Base page element. 
 
     Defines special HTML placeholders that are designed to be overriden by users: 
-    "header.html", "pageHeader.html" and "footer.html".
+    "header.html", "subheader.html" and "footer.html".
     """
 
-    @renderer
-    def nav(self, request, tag):
-        return Nav(self.system, self.template_lookup)
+    def __init__(self, system: model.System, 
+                 template_lookup: TemplateLookup, 
+                 loader: Optional[ITemplateLoader] = None):
+        self.system = system
+        self.template_lookup = template_lookup
+        if not loader:
+            loader = self.lookup_loader(template_lookup)
+        super().__init__(loader)
+        
+
+    @abc.abstractmethod
+    def title(self) -> str:
+        raise NotImplementedError()
 
     @renderer
-    def header(self, request, tag):
+    def head(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Head(self.title(), Head.lookup_loader(self.template_lookup), )
+    
+    @renderer
+    def nav(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup), )
+
+    @renderer
+    def header(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
+        # Tag is a IRenderable but mypy is not smart enough.
+
         template = self.template_lookup.get_template('header.html')
-        # Checks are needed here to avoid SAXParseException: no element found error
-        return template.renderable.load() if not template.is_empty() else ''
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
     @renderer
-    def pageHeader(self, request, tag):
-        template = self.template_lookup.get_template('pageHeader.html')
-        return template.renderable.load() if not template.is_empty() else ''
+    def subheader(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
+        template = self.template_lookup.get_template('subheader.html')
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
     @renderer
-    def footer(self, request, tag):
+    def footer(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
         template = self.template_lookup.get_template('footer.html')
-        return template.renderable.load() if not template.is_empty() else ''
+        assert template.loader is not None
+        return template.loader.load() if not template.is_empty() else Tag('transparent')
 
 class CommonPage(BasePage):
 
     filename = 'common.html'
     ob: model.Documentable
 
-    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, docgetter:Optional[DocGetter]=None):
+    def __init__(self, ob: model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
-        if docgetter == None:
+        if docgetter is None:
             docgetter = DocGetter()
         self.docgetter = docgetter
 
@@ -223,10 +220,10 @@ class CommonPage(BasePage):
         return ()
 
     def mainTable(self):
-        from pydoctor.templatewriter.pages.table import ChildTable
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children, self.template_lookup)
+            return ChildTable(self.docgetter, self.ob, children, 
+                    ChildTable.lookup_loader(self.template_lookup))
         else:
             return ()
 
@@ -238,12 +235,17 @@ class CommonPage(BasePage):
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
         from pydoctor.templatewriter.pages.functionchild import FunctionChild
+
         r = []
+
+        func_loader = FunctionChild.lookup_loader(self.template_lookup)
+        attr_loader = AttributeChild.lookup_loader(self.template_lookup)
+
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), func_loader))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), self.template_lookup))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), attr_loader))
         return r
 
     def functionExtras(self, data):
@@ -256,7 +258,6 @@ class CommonPage(BasePage):
     def all(self, request, tag):
         return tag.fillSlots(
             project=self.system.projectname,
-            title=self.title(),
             heading=self.heading(),
             category=self.category(),
             part=self.part(),
@@ -287,15 +288,15 @@ class PackagePage(ModulePage):
                       key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
 
     def packageInitTable(self):
-        from pydoctor.templatewriter.pages.table import ChildTable
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.contents.values() if o.isVisible],
             key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
+            loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, self.template_lookup)]
+                    ChildTable(self.docgetter, init, children, loader)]
         else:
             return ()
 
@@ -425,17 +426,17 @@ class ClassPage(CommonPage):
 
     @renderer
     def baseTables(self, request, item):
-        from pydoctor.templatewriter.pages.table import ChildTable
         baselists = self.baselists[:]
         if not baselists:
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
+        loader = ChildTable.lookup_loader(self.template_lookup)
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
                                                sorted(attrs, key=lambda o:-o.privacyClass.value), 
-                                                self.template_lookup))
+                                               loader))
                 for b, attrs in baselists]
 
     def baseName(self, data):
@@ -512,20 +513,10 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(data))
         return r
         
-# Type alias for HTML page: to use in type checking. 
-# It's necessary because L{BasePage} doesn't have the same C{__init__} siganture as concrete pages classes. 
-
-AnyDocPage = Union[ClassPage, 
-                ZopeInterfaceClassPage, 
-                ModulePage,
-                PackagePage, 
-                CommonPage]
-
-classpages: Mapping[str, Type[AnyDocPage]] = { 
+commonpages: Mapping[str, Type[CommonPage]] = { 
     'Module': ModulePage,
     'Package': PackagePage, 
     'Class': ClassPage, 
     'ZopeInterfaceClass': ZopeInterfaceClassPage, 
 }
 """List all page classes: ties documentable class name with the page class used for rendering"""
-

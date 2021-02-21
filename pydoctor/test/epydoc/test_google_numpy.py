@@ -29,7 +29,7 @@ super-dooper attribute
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
 
-    def test_get_google_parser_other(self) -> None:
+    def test_get_google_parser_not_attribute(self) -> None:
 
         obj = Function(system = System(), name='whatever')
 
@@ -71,7 +71,7 @@ super-dooper attribute
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
 
-    def test_get_numpy_parser_other(self) -> None:
+    def test_get_numpy_parser_not_attribute(self) -> None:
 
         obj = Function(system = System(), name='whatever')
 

@@ -4,6 +4,9 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
+from typing import List
+
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
@@ -69,16 +72,15 @@ class _PrivateClass:
         return True
 
 
-    def _private_inside_private(self) -> bool:
+    def _private_inside_private(self) -> List[str]:
         """
-        A private method inside a private class.
-
-        :return: Something.
+        Returns something. 
+        :rtype: `list`
         """
-        return True
+        return []
 
 
-class DemoClass:
+class DemoClass(_PrivateClass):
     """
     This is the docstring of this class.
     """
