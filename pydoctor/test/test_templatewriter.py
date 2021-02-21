@@ -10,6 +10,10 @@ from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
+def filetext(path: Path) -> str:
+    with path.open('r', encoding='utf-8') as fobj:
+        t = fobj.read()
+    return t
 
 def flatten(t: ChildTable) -> str:
     io = BytesIO()
@@ -35,13 +39,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.template().loader)
+    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.template().loader)
+    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -122,93 +126,96 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 
 def test_html_template_version() -> None:
     lookup = TemplateLookup()
-    for _, template in lookup._templates.items():
-        if isinstance(template, _HtmlTemplate):
-            if not template.is_empty():
-                assert template.version >= 1
+    for template in lookup._templates.values():
+        if isinstance(template, _HtmlTemplate) and not template.is_empty():
+            assert template.version >= 1
 
-def test_template_lookup() -> None:
+def test_template_lookup_get_template() -> None:
     
     lookup = TemplateLookup()
 
     here = Path(__file__).parent
 
-    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
+    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
 
-    lookup.add_templatedir((here / 'testcustomtemplates' / 'faketemplate'))
+    lookup.add_template(_HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
-    assert lookup.get_template('footer.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'footer.html' 
-    
-    assert lookup.get_template('header.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'header.html' 
+    assert lookup.get_template('footer.html').text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
-    assert lookup.get_template('subheader.html').path == here / 'testcustomtemplates' / 'faketemplate' / 'subheader.html' 
-
-    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
+    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
 
     lookup = TemplateLookup()
 
-    assert lookup.get_template('footer.html').path == here.parent / 'templates' / 'footer.html' 
-    
-    assert lookup.get_template('header.html').path == here.parent / 'templates' / 'header.html' 
-
-    assert lookup.get_template('subheader.html').path == here.parent / 'templates' / 'subheader.html' 
-
-    assert lookup.get_template('index.html').path == here.parent / 'templates' / 'index.html' 
+    assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
 
     assert lookup.get_template('footer.html').version == -1
 
     assert lookup.get_template('table.html').version == 1
+
+def test_template_lookup_add_template_warns() -> None:
+
+    lookup = TemplateLookup()
+
+    here = Path(__file__).parent
+
+    with pytest.warns(UserWarning) as catch_warnings:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'nav.html').open('r', encoding='utf-8') as fobj:
+            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='nav.html'))
+    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
+    assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message) 
     
-    lookup = TemplateLookup()
+    with pytest.warns(UserWarning) as catch_warnings:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'table.html').open('r', encoding='utf-8') as fobj:
+            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='table.html'))
+    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
+    assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message) 
+
+    with pytest.warns(UserWarning) as catch_warnings:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'summary.html').open('r', encoding='utf-8') as fobj:
+            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='summary.html'))
+    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
+    assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message) 
+
+    with pytest.warns(UserWarning) as catch_warnings:
+        with (here / 'testcustomtemplates' / 'faketemplate' / 'random.html').open('r', encoding='utf-8') as fobj:
+            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='random.html'))
+    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
+    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message) 
+
+    with pytest.warns(UserWarning) as catch_warnings:
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
+    assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
+
+def test_template_lookup_add_template_allok() -> None:
+    
+    here = Path(__file__).parent
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         warnings.simplefilter("always", )
-        
-        lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'nav.html'))
-        assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message) 
-
-        lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'table.html'))
-        assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message) 
-
-        lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'summary.html'))
-        assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message) 
-
-        lookup.add_template(_HtmlTemplate(here / 'testcustomtemplates' / 'faketemplate' / 'random.html'))
-        assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-        assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message) 
-
-        lookup.add_templatedir((here / 'testcustomtemplates' / 'faketemplate'))
-        assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
-
-    lookup = TemplateLookup()
-
-    with warnings.catch_warnings(record=True) as catch_warnings:
-        warnings.simplefilter("always", )
-        
+        lookup = TemplateLookup()
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
-        assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
+    assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
+
+def test_template_lookup_add_template_raises() -> None:
 
     lookup = TemplateLookup()
 
-    try:
-        lookup.add_templatedir(here / 'testcustomtemplates' / 'invalid')
+    with pytest.raises(UnsupportedTemplateVersion):
+        lookup.add_template(_HtmlTemplate(name="nav.html", text="""
+        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+            <meta name="pydoctor-template-version" content="2050" />
+            <div class="container"> </div>
+        </nav>
+        """))
 
-    except UnsupportedTemplateVersion as e:
-        assert "It appears that your custom template 'nav.html' is designed for a newer version of pydoctor" in str(e)
-    else:
-        assert False, "Should have failed with a UnsupportedTemplateVersion when loading 'testcustomtemplates/invalid'"
-
-    try:
-        lookup.add_templatedir(here / 'testcustomtemplates' / 'wrongxml')
-
-    except ValueError as e:
-        assert "Can't parse XML from text" in str(e)
-    else:
-        assert False, "Should have failed with a ValueError when loading 'testcustomtemplates/wrongxml'"
-
+    with pytest.raises(ValueError):
+        lookup.add_template(_HtmlTemplate(name="nav.html", text="""
+        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+            <meta name="pydoctor-template-version" content="1" />
+            <div class="container"> </div>
+        </nav>
+        <span> Words </span>
+        """))
 
 def test_template() -> None:
 

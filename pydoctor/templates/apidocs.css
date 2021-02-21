@@ -2,18 +2,16 @@ body {
     overflow-y: scroll;
 }
 
-nav div.container {
-    display: flex;
-    flex-wrap: wrap;
+nav.navbar {
+    width:100%;
+    margin-bottom: 0px;
 }
 
-nav div.container div.navbar-header {
+nav.navbar > .navbar-header {
     margin-right: 0;
     margin-left: 0;
-}
-
-.navbar {
-    margin-bottom: 0px;
+    height: 100%;
+    display: inline-block;
 }
 
 .page-header {
@@ -59,24 +57,19 @@ nav div.container div.navbar-header {
 }
 
 .navlinks  {
-    margin-top: 0px;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
 }
 
-.navlinks li {
-    padding: 0;
-    display: inline-block;
-    border-radius: 1px;
+.navlinks > a {
+    padding: 10px 0 10px 15px;
 }
 
-.navlinks li a {
-    padding-top: 16px;
-    padding-bottom: 14px;
-    padding-left: 15px;
-    padding-right: 0px;
-}
-
-.navlinks li a:hover {
+.navlinks > a:hover {
     background-color: transparent;
+    text-decoration: none;
 }
 
 .page-header h1 {
@@ -183,9 +176,15 @@ ul ul ul ul ul ul ul {
     border: 0;
 }
 
+/* Arg name */
+.fieldArg {
+    margin-right: 7px;
+}
+
 .fieldArg:before {
     margin-right: 6px;
     content: "\2022";
+    font-size: 14px;
 }
 
 .fieldTable tr:not(.fieldStart) td:first-child{
@@ -209,14 +208,9 @@ ul ul ul ul ul ul ul {
     align-items: center;
 }
 
-/* Arg type */
-.fieldTable tr td.fieldArgContainer code {
-    margin-left: 7px;
-}
-
-/* Argument description column */
-.fieldTable tr td.fieldArgDesc {
-    padding-left: 15px;
+/* Argument description column or return value desc, etc */
+.fieldTable tr td::nth-child(2) {
+    padding-left: 10px;
 }
 
 /* Kind column table  */

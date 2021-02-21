@@ -235,14 +235,17 @@ class CommonPage(BasePage):
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
         from pydoctor.templatewriter.pages.functionchild import FunctionChild
+
         r = []
+
+        func_loader = FunctionChild.lookup_loader(self.template_lookup)
+        attr_loader = AttributeChild.lookup_loader(self.template_lookup)
+
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), 
-                            FunctionChild.lookup_loader(self.template_lookup)))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), func_loader))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), 
-                            AttributeChild.lookup_loader(self.template_lookup)))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), attr_loader))
         return r
 
     def functionExtras(self, data):
@@ -255,7 +258,6 @@ class CommonPage(BasePage):
     def all(self, request, tag):
         return tag.fillSlots(
             project=self.system.projectname,
-            # title=self.title(),
             heading=self.heading(),
             category=self.category(),
             part=self.part(),
@@ -291,10 +293,10 @@ class PackagePage(ModulePage):
             [o for o in init.contents.values() if o.isVisible],
             key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
+            loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, 
-                        ChildTable.lookup_loader(self.template_lookup))]
+                    ChildTable(self.docgetter, init, children, loader)]
         else:
             return ()
 
@@ -429,11 +431,12 @@ class ClassPage(CommonPage):
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
+        loader = ChildTable.lookup_loader(self.template_lookup)
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
                                                sorted(attrs, key=lambda o:-o.privacyClass.value), 
-                                                ChildTable.lookup_loader(self.template_lookup)))
+                                               loader))
                 for b, attrs in baselists]
 
     def baseName(self, data):

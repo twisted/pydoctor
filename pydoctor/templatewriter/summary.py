@@ -33,7 +33,7 @@ class ModuleIndexPage(BasePage):
 
     filename = 'moduleIndex.html'
 
-    def __init__(self, system: model.System, template_lookup: TemplateLookup, ):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -120,9 +120,7 @@ class ClassIndexPage(BasePage):
 
     filename = 'classIndex.html'
 
-    def __init__(self, 
-        system:model.System, 
-        template_lookup:TemplateLookup, ):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
@@ -317,7 +315,7 @@ class UndocumentedSummaryPage(BasePage):
     
     filename = 'undoccedSummary.html'
 
-    def __init__(self, system:model.System, template_lookup:TemplateLookup, ):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
         # Override L{BasePage.loader} because here the page L{filename} 
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 

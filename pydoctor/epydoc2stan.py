@@ -1,5 +1,5 @@
 """
-Convert epydoc markup into renderable content.
+Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
@@ -262,7 +262,7 @@ class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
 
     def format(self) -> Iterator[Tag]:
-        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
 
@@ -289,7 +289,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     @returns: Each row as iterator or None if no C{descs} id provided. 
     """
     if not descs: 
-        return iter(())
+        return
     # <label>
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName", colspan="2")(label))
@@ -351,19 +351,18 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
     @returns: Each row as iterator
     """
-    label = singular if len(fields) == 1 else plural
-    first = True
-    for field in fields:
-        if first:
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName", colspan="2")(label))
-            first=False
-            yield row
+    if not fields: 
+        return
 
+    label = singular if len(fields) == 1 else plural
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    yield row
+    
+    for field in fields:
         row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
-
 
 class FieldHandler:
 
