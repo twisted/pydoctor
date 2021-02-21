@@ -1,10 +1,10 @@
 """
 Classes for google-style and numpy-style docstring conversion. 
 
-Forked from C{sphinx.ext.napoleon.docstring}. 
+Forked from `sphinx.ext.napoleon.docstring`. 
 
-@copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-@license: BSD, see LICENSE for details.
+:copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+:license: BSD, see LICENSE for details.
 """
 import ast
 import collections
@@ -38,6 +38,10 @@ _enumerated_list_regex = re.compile(
 
 
 def is_obj_identifier(string: str) -> bool:
+    """
+    An object identifier is a valid type spec. 
+    But a valid type spec can be more complex than an object identifier.
+    """
     if string.isidentifier() or _xref_regex.match(string) :
         return True
     try:
@@ -53,21 +57,25 @@ def is_obj_identifier(string: str) -> bool:
         return True
 
 def is_type_spec(string: str) -> bool:
+    """
+    See `TypeSpecDocstring`. 
+    """
     return is_obj_identifier(string) or len(TypeSpecDocstring(string).warnings()) == 0
 
 class TypeSpecDocstring:
-    """
+    r"""
     Convert natural language type strings to reST. 
 
-    Syntax is based on U{numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>} 
-    type specification with additionnal recognition of AST-like type annotations (with C{[]} and C{()} characters). 
+    Syntax is based on `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>`_ 
+    type specification with additionnal recognition of parentheses and square brackets characters. 
 
     Exemples of valid type strings: 
 
-        - C{List[str] or list(bytes), optional}
-        - C{{"F", "C", "N"}, optional} 
-        - C{list of int or float or None, default: None}
-        - C{`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`}
+    - List[str] or list(bytes), optional
+    - {"html", "json", "xml"}, optional
+    - list of int or float or None, default: None
+    - \`complicated string\` or \`strIO <twisted.python.compat.NativeStringIO>\`
+
     """
     _natural_language_delimiters_regex_str = r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
     _natural_language_delimiters_regex = re.compile(f"({_natural_language_delimiters_regex_str})")
