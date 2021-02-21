@@ -671,7 +671,7 @@ class GoogleDocstring:
         else:
             return ['.. %s::' % admonition, '']
 
-    # overriden to avoid extra unecessary whitespace 
+    # overriden to avoid extra unecessary blank lines
     def _format_block(self, prefix: str, lines: List[str], padding: str = '') -> List[str]:
         # remove the last line of the block if it's empty
         if not lines[-1]: 
@@ -715,7 +715,6 @@ class GoogleDocstring:
     # - Numpy's tuple returns values description syntax
     # - Inline attributes
     # - Yields section
-    # - "params_style" and "returns_style" custom sections
     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
@@ -1254,7 +1253,8 @@ class NumpyDocstring(GoogleDocstring):
                 # Normal case
                 return _name, _type, _desc
         
-        return _name, figure_type(_name, _type), []
+        _type = figure_type(_name, _type) # Can raise ConsumeFieldsAsFreeForm
+        return _name, _type, []
 
     # allow to pass any args to super()._consume_fields(). Used for allow_free_form=True
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False, 
