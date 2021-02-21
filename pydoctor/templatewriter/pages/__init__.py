@@ -105,31 +105,23 @@ class BasePage(TemplateElement):
 
     @renderer
     def head(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Head(self.title(), Head.lookup_loader(self.template_lookup), )
+        return Head(self.title(), Head.lookup_loader(self.template_lookup))
     
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Nav(self.system, Nav.lookup_loader(self.template_lookup), )
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
 
     @renderer
-    def header(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        # Tag is a IRenderable but mypy is not smart enough.
-
-        template = self.template_lookup.get_template('header.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def header(self, request: IRequest, tag: Tag) -> IRenderable:
+        return self.template_lookup.get_loader('header.html').load()
 
     @renderer
-    def subheader(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        template = self.template_lookup.get_template('subheader.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def subheader(self, request: IRequest, tag: Tag) -> IRenderable:
+        return self.template_lookup.get_loader('footer.html').load()
 
     @renderer
-    def footer(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        template = self.template_lookup.get_template('footer.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def footer(self, request: IRequest, tag: Tag) -> IRenderable:
+        return self.template_lookup.get_loader('footer.html').load()
 
 class CommonPage(BasePage):
 
