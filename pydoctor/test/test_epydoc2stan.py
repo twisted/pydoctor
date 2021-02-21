@@ -48,7 +48,7 @@ def test_multiple_types() -> None:
 
 def docstring2html(docstring: model.Documentable) -> str:
     stan = epydoc2stan.format_docstring(docstring)
-    # We strip off break lines fo the ake of simplicity.
+    # We strip off break lines for the sake of simplicity.
     return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
 def test_html_empty_module() -> None:
