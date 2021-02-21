@@ -39,8 +39,8 @@ _enumerated_list_regex = re.compile(
 
 def is_obj_identifier(string: str) -> bool:
     """
-    An object identifier is a valid type spec. 
-    But a valid type spec can be more complex than an object identifier.
+    An object identifier is a valid type string. 
+    But a valid type can be more complex than an object identifier.
     """
     if string.isidentifier() or _xref_regex.match(string) :
         return True
@@ -56,15 +56,22 @@ def is_obj_identifier(string: str) -> bool:
     else:
         return True
 
-def is_type_spec(string: str) -> bool:
+def is_type(string: str) -> bool:
     """
-    See `TypeSpecDocstring`. 
+    See `TypeDocstring`. 
     """
-    return is_obj_identifier(string) or len(TypeSpecDocstring(string).warnings()) == 0
+    return is_obj_identifier(string) or len(TypeDocstring(string).warnings()) == 0
 
-class TypeSpecDocstring:
+@attr.s(auto_attribs=True)
+class FreeFormException(Exception):
+    """
+    Exception to encapsulate the converted lines when numpy-style fields get treated as free form. 
+    """
+    lines: List[str]
+
+class TypeDocstring:
     r"""
-    Convert natural language type strings to reST. 
+    Convert natural language type strings to reStructuredText. 
 
     Syntax is based on `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>`_ 
     type specification with additionnal recognition of parentheses and square brackets characters. 
@@ -109,13 +116,17 @@ class TypeSpecDocstring:
 
     def __str__(self) -> str:
         """
-        Get the type as reST string. 
+        Returns
+        -------
+        The parsed type in reStructuredText format.
         """
         return self._convert_type_spec_to_rst()
 
     def warnings(self) -> List[Tuple[str, int]]:
         """
-        Return any triggered warnings during the conversion. 
+        Returns
+        -------
+        Triggered warnings during the conversion. 
         """
         return self._warnings
 
@@ -311,18 +322,11 @@ class TypeSpecDocstring:
 
         return converted
 
-@attr.s(auto_attribs=True)
-class ConsumeFieldsAsFreeForm(Exception):
-    """
-    Exception to encapsulate the converted lines when numpy-style fields get treated as free form. 
-    """
-    lines: List[str]
-
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
     
-    Exemple:
-
+    Exemple
+    -------
     >>> from pydoctor.napoleon import GoogleDocstring
     >>> docstring = '''One line summary.
     ...
@@ -427,7 +431,9 @@ class GoogleDocstring:
     # empty blank line at the end and sometimes not? 
     # (probably a inconsistency introduced while porting napoleon to pydoctor)
     def __str__(self) -> str:
-        """Return the parsed docstring in reStructuredText format.
+        """
+        Return the parsed docstring in reStructuredText format.
+        
         Returns
         -------
         unicode
@@ -438,6 +444,7 @@ class GoogleDocstring:
     def lines(self) -> List[str]:
         """
         Return the parsed lines of the docstring in reStructuredText format.
+        
         Returns
         -------
         list(str)
@@ -448,6 +455,7 @@ class GoogleDocstring:
     def warnings(self) -> List[Tuple[str, int]]:
         """
         Return any triggered warnings during the conversion. 
+        
         Returns
         -------
         List of tuples(description, line number)
@@ -501,7 +509,7 @@ class GoogleDocstring:
 
                 ValueError
             """
-            if is_type_spec(string):
+            if is_type(string):
                 return True
             else:
                 if parse_type:
@@ -509,7 +517,7 @@ class GoogleDocstring:
                     if match:
                         _name = match.group(1).strip()
                         _type = match.group(2)
-                        if _name.isidentifier() and is_type_spec(_type):
+                        if _name.isidentifier() and is_type(_type):
                             return True
             return False
         
@@ -574,7 +582,7 @@ class GoogleDocstring:
         if lines:
 
             before_colon, got_colon, _descs = self._partition_multiline_field_on_colon(
-                lines, is_type_spec)
+                lines, is_type)
             
             _type = ''
             if _descs:
@@ -625,7 +633,7 @@ class GoogleDocstring:
         """
         # handle warnings line number
         linenum=self._line_iter.counter - 1
-        type_spec = TypeSpecDocstring(_type, linenum)
+        type_spec = TypeDocstring(_type, linenum)
         # convert
         _type = str(type_spec)
         # append warnings
@@ -638,7 +646,7 @@ class GoogleDocstring:
         else:
             min_indent = self._get_min_indent(lines)
             return [line[min_indent:] for line in lines]
-            
+
     # overriden enforce strip_signature_backslash=False
     def _escape_args_and_kwargs(self, name: str) -> str:
         if name[:2] == '**':
@@ -1146,42 +1154,41 @@ class GoogleDocstring:
                 lines = lines[start:end + 1]
         return lines
 
-
 class NumpyDocstring(GoogleDocstring):
     """
     Convert NumPy style docstrings to reStructuredText.
 
-    @example:
-
-        >>> from pydoctor.napoleon import NumpyDocstring
-        >>> docstring = '''One line summary.
-        ...
-        ... Extended description.
-        ...
-        ... Parameters
-        ... ----------
-        ... arg1 : int
-        ...     Description of `arg1`
-        ... arg2 : str
-        ...     Description of `arg2`
-        ... Returns
-        ... -------
-        ... str
-        ...     Description of return value.
-        ... '''
-        >>> print(NumpyDocstring(docstring))
-        One line summary.
-        <BLANKLINE>
-        Extended description.
-        <BLANKLINE>
-        :param arg1: Description of `arg1`
-        :type arg1: int
-        :param arg2: Description of `arg2`
-        :type arg2: str
-        <BLANKLINE>
-        :returns: Description of return value.
-        :rtype: str
-        <BLANKLINE>
+    Example
+    -------
+    >>> from pydoctor.napoleon import NumpyDocstring
+    >>> docstring = '''One line summary.
+    ...
+    ... Extended description.
+    ...
+    ... Parameters
+    ... ----------
+    ... arg1 : int
+    ...     Description of `arg1`
+    ... arg2 : str
+    ...     Description of `arg2`
+    ... Returns
+    ... -------
+    ... str
+    ...     Description of return value.
+    ... '''
+    >>> print(NumpyDocstring(docstring))
+    One line summary.
+    <BLANKLINE>
+    Extended description.
+    <BLANKLINE>
+    :param arg1: Description of `arg1`
+    :type arg1: `int`
+    :param arg2: Description of `arg2`
+    :type arg2: `str`
+    <BLANKLINE>
+    :returns: Description of return value.
+    :rtype: `str`
+    <BLANKLINE>
     """
     def __init__(self, docstring: Union[str, List[str]], is_attribute: bool = False) -> None:
         """
@@ -1208,20 +1215,20 @@ class NumpyDocstring(GoogleDocstring):
         """
         Raise
         -----
-        ConsumeFieldsAsFreeForm
+        FreeFormException
             If the type is not obvious and _consume_field(allow_free_form=True), 
             only used for the returns section. 
         """
 
         def figure_type(_name: str, _type: str) -> str:
             # Here we "guess" if _type contains the type
-            if is_type_spec(_type) or not allow_free_form:
+            if is_type(_type) or not allow_free_form:
                 _type = self._convert_type(_type)
                 return _type
             else:
                 # Else we consider it as free form
                 _desc = self.__class__(self._consume_to_next_section()).lines()
-                raise ConsumeFieldsAsFreeForm(lines=[_name + _type] + _desc)
+                raise FreeFormException(lines=[_name + _type] + _desc)
                 
         line = next(self._line_iter)
         if parse_type:
@@ -1253,7 +1260,7 @@ class NumpyDocstring(GoogleDocstring):
                 # Normal case
                 return _name, _type, _desc
         
-        _type = figure_type(_name, _type) # Can raise ConsumeFieldsAsFreeForm
+        _type = figure_type(_name, _type) # Can raise FreeFormException
         return _name, _type, []
 
     # allow to pass any args to super()._consume_fields(). Used for allow_free_form=True
@@ -1262,7 +1269,7 @@ class NumpyDocstring(GoogleDocstring):
         try:
             return super()._consume_fields(parse_type=parse_type, 
                 prefer_type=prefer_type, multiple=multiple, **kwargs)
-        except ConsumeFieldsAsFreeForm as e:
+        except FreeFormException as e:
             return [('', '', e.lines)]
 
     # Pass allow_free_form = True

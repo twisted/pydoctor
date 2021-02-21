@@ -15,34 +15,36 @@ __docformat__ = "numpy en"
 T = TypeVar("T")
 
 class peek_iter(Generic[T]):
-    """An iterator object that supports peeking ahead.
-    Parameters
-    ----------
-    o : iterable or callable
-        `o` is interpreted very differently depending on the presence of
-        `sentinel`.
-        If `sentinel` is not given, then `o` must be a collection object
-        which supports either the iteration protocol or the sequence protocol.
-        If `sentinel` is given, then `o` must be a callable object.
-    sentinel : object, optional
-        If given, the iterator will call `o` with no arguments for each
-        call to its `next` method; if the value returned is equal to
-        `sentinel`, `StopIteration` will be raised, otherwise the
-        value will be returned.
-    See Also
-    --------
-    `peek_iter` can operate as a drop in replacement for the built-in
-    `iter <https://docs.python.org/3/library/functions.html#iter>`_ function.
+    """
+    An iterator object that supports peeking ahead.
+
+    `peek_iter` can operate as a drop in replacement for the built-in `iter` function.
+    
     Attributes
     ----------
     sentinel
-        The value used to indicate the iterator is exhausted. If `sentinel`
-        was not given when the `peek_iter` was instantiated, then it will
+        The value used to indicate the iterator is exhausted. 
+        If `sentinel` was not given when the `peek_iter` was instantiated, then it will
         be set to a new object instance: ``object()``.
     counter
         Store and increment line number to report correct lines!
     """
     def __init__(self, o:Union[Callable[[], T], Iterable[T]], sentinel:Optional[T]=None) -> None:
+        """
+        Parameters
+        ----------
+        o : iterable or callable
+            `o` is interpreted very differently depending on the presence of
+            `sentinel`.
+            If `sentinel` is not given, then `o` must be a collection object
+            which supports either the iteration protocol or the sequence protocol.
+            If `sentinel` is given, then `o` must be a callable object.
+        sentinel : object, optional
+            If given, the iterator will call `o` with no arguments for each
+            call to its `next` method; if the value returned is equal to
+            `sentinel`, `StopIteration` will be raised, otherwise the
+            value will be returned.
+        """
         self._iterable : Iterator[T]
         if callable(o) :
             if not sentinel: raise TypeError("If o is a callable object, sentinel cannot be None.")
@@ -100,17 +102,21 @@ class peek_iter(Generic[T]):
     def next(self) -> T: 
         ...
     def next(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
-        """Get the next item or `n` items of the iterator.
+        """
+        Get the next item or `n` items of the iterator.
+        
         Parameters
         ----------
         n : int or None
             The number of items to retrieve. Defaults to None.
+        
         Returns
         -------
         item or list of items
             The next item or `n` items of the iterator. If `n` is None, the
             item itself is returned. If `n` is an int, the items will be
             returned in a list. If `n` is 0, an empty list is returned.
+        
         Raises
         ------
         StopIteration
@@ -141,6 +147,7 @@ class peek_iter(Generic[T]):
     def peek(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
         """Preview the next item or `n` items of the iterator.
         The iterator is not advanced when peek is called.
+        
         Returns
         -------
         item or list of items
@@ -149,6 +156,7 @@ class peek_iter(Generic[T]):
             returned in a list. If `n` is 0, an empty list is returned.
             If the iterator is exhausted, `peek_iter.sentinel` is returned,
             or placed as the last item in the returned list.
+        
         Note
         ----
         Will never raise :exc:`StopIteration`.
@@ -164,26 +172,9 @@ class peek_iter(Generic[T]):
 
 
 class modify_iter(peek_iter[T]):
-    """An iterator object that supports modifying items as they are returned.
-    Parameters
-    ----------
-    o : iterable or callable
-        `o` is interpreted very differently depending on the presence of
-        `sentinel`.
-        If `sentinel` is not given, then `o` must be a collection object
-        which supports either the iteration protocol or the sequence protocol.
-        If `sentinel` is given, then `o` must be a callable object.
-    sentinel : any value, optional
-        If given, the iterator will call `o` with no arguments for each
-        call to its `next` method; if the value returned is equal to
-        `sentinel`, :exc:`StopIteration` will be raised, otherwise the
-        value will be returned.
-    modifier : callable, optional
-        The function that will be used to modify each item returned by the
-        iterator. `modifier` should take a single argument and return a
-        single value. Defaults to ``lambda x: x``.
-        If `sentinel` is not given, `modifier` must be passed as a keyword
-        argument.
+    """
+    An iterator object that supports modifying items as they are returned.
+
     Attributes
     ----------
     modifier : callable
@@ -192,6 +183,7 @@ class modify_iter(peek_iter[T]):
         Values returned by `peek` as well as `next` are affected by
         `modifier`. However, `modify_iter.sentinel` is never passed through
         `modifier`; it will always be returned from `peek` unmodified.
+    
     Example
     -------
     >>> a = ["     A list    ",
@@ -209,7 +201,27 @@ class modify_iter(peek_iter[T]):
     "whitespace."
     """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """__init__(o, sentinel=None, modifier=lambda x: x)"""
+        """
+        Parameters
+        ----------
+        o : iterable or callable
+            `o` is interpreted very differently depending on the presence of
+            `sentinel`.
+            If `sentinel` is not given, then `o` must be a collection object
+            which supports either the iteration protocol or the sequence protocol.
+            If `sentinel` is given, then `o` must be a callable object.
+        sentinel : object, optional
+            If given, the iterator will call `o` with no arguments for each
+            call to its `next` method; if the value returned is equal to
+            `sentinel`, :exc:`StopIteration` will be raised, otherwise the
+            value will be returned.
+        modifier : callable, optional
+            The function that will be used to modify each item returned by the
+            iterator. `modifier` should take a single argument and return a
+            single value. Defaults to ``lambda x: x``.
+            If `sentinel` is not given, `modifier` must be passed as a keyword
+            argument.
+        """
         if 'modifier' in kwargs:
             self.modifier = kwargs['modifier']
         elif len(args) > 2:

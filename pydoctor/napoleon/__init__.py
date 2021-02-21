@@ -10,7 +10,7 @@ The following list roughtly describes the changes:
     - B{Use more type parsing}:
 
     All types will be pre-processed and links will be automtically created when possible. 
-    See L{TypeSpecDocstring} for examples of what's a valid type specification string. 
+    See L{TypeDocstring} for examples of what's a valid type specification string. 
 
     - B{Better google-style C{Returns} and C{Args} clauses}:
 

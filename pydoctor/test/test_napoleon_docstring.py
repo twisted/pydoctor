@@ -9,7 +9,7 @@ import pytest
 from unittest import TestCase
 from textwrap import dedent
 
-from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeSpecDocstring, is_type_spec
+from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeDocstring, is_type
 
 
 class BaseDocstringTest(TestCase):
@@ -21,15 +21,15 @@ class TypeSpecTest(BaseDocstringTest):
 
     def test_is_type_spec(self):
 
-        self.assertFalse(is_type_spec("Random words are not a type spec"))
-        self.assertFalse(is_type_spec("List of string or any kind fo sequences of strings"))
+        self.assertFalse(is_type("Random words are not a type spec"))
+        self.assertFalse(is_type("List of string or any kind fo sequences of strings"))
 
-        self.assertTrue(is_type_spec("Sequence(str), optional"))
-        self.assertTrue(is_type_spec("Sequence(str) or str"))
-        self.assertTrue(is_type_spec("List[str] or list(bytes), optional"))
-        self.assertTrue(is_type_spec('{"F", "C", "N"}, optional'))
-        self.assertTrue(is_type_spec("list of int or float or None, default: None"))
-        self.assertTrue(is_type_spec("`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`"))
+        self.assertTrue(is_type("Sequence(str), optional"))
+        self.assertTrue(is_type("Sequence(str) or str"))
+        self.assertTrue(is_type("List[str] or list(bytes), optional"))
+        self.assertTrue(is_type('{"F", "C", "N"}, optional'))
+        self.assertTrue(is_type("list of int or float or None, default: None"))
+        self.assertTrue(is_type("`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`"))
 
 class InlineAttributeTest(BaseDocstringTest):
 
@@ -1877,7 +1877,7 @@ definition_after_normal_text : int
             ("`a complicated string`", "reference"),
             ("just a string", "unknown"),
         )
-        type_spec = TypeSpecDocstring('', 0)
+        type_spec = TypeDocstring('', 0)
         for token, expected in tokens:
             actual = type_spec._token_type(token)
             self.assertEqual(expected.rstrip(), actual)
@@ -1916,7 +1916,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, tokens):
-            actual = TypeSpecDocstring._tokenize_type_spec(spec)
+            actual = TypeDocstring._tokenize_type_spec(spec)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens(self):
@@ -1935,7 +1935,7 @@ definition_after_normal_text : int
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeSpecDocstring._recombine_set_tokens(tokens_)
+            actual = TypeDocstring._recombine_set_tokens(tokens_)
             self.assertEqual(expected, actual)
 
     def test_recombine_set_tokens_invalid(self):
@@ -1951,7 +1951,7 @@ definition_after_normal_text : int
         )
 
         for tokens_, expected in zip(tokens, combined_tokens):
-            actual = TypeSpecDocstring._recombine_set_tokens(tokens_)
+            actual = TypeDocstring._recombine_set_tokens(tokens_)
             self.assertEqual(expected, actual)
 
     def test_convert_numpy_type_spec(self):
@@ -1981,7 +1981,7 @@ definition_after_normal_text : int
         )
 
         for spec, expected in zip(specs, converted):
-            actual = str(TypeSpecDocstring(spec, 0))
+            actual = str(TypeDocstring(spec, 0))
             self.assertEqual(expected.rstrip(), actual)
 
     def test_parameter_types(self):
@@ -2045,7 +2045,7 @@ definition_after_normal_text : int
             r"malformed string literal \(missing opening quote\):",
         )
         for token, error in zip(tokens, errors):
-            type_spec = TypeSpecDocstring('', 0)
+            type_spec = TypeDocstring('', 0)
             type_spec._token_type(token)
             match_re = re.compile(error)
             assert len(type_spec._warnings) == 1, [w[0] for w in type_spec._warnings]
