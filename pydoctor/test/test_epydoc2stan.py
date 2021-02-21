@@ -802,3 +802,41 @@ def test_annotation_formatter(annotation: str) -> None:
     assert html.endswith('</code>')
     text = html[6:-7]
     assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+def test_module_docformat(capsys: CapSys) -> None:
+    """
+    Test if Module.docformat effectively override System.options.docformat
+    """
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+
+    mod = fromText('''
+    """
+    Link to pydoctor: U{pydoctor <https://github.com/twisted/pydoctor>}.
+    """
+    __docformat__ = "epytext"
+    ''', modname='test_epy', system=system)
+
+    epytext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    mod = fromText('''
+    """
+    Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
+    """
+    __docformat__ = "restructuredtext en"
+    ''', modname='test_rst', system=system)
+
+    restructuredtext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ('Link to pydoctor: <a href="https://github.com/twisted/pydoctor"'
+        ' target="_top">pydoctor</a>' in flatten(epytext_output))
+    
+    assert ('Link to pydoctor: <a class="rst-reference external"'
+        ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))

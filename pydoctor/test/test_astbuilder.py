@@ -502,6 +502,18 @@ def test_all_recognition(systemcls: Type[model.System]) -> None:
     assert '__all__' not in mod.contents
 
 @systemcls_param
+def test_docformat_recognition(systemcls: Type[model.System]) -> None:
+    """The value assigned to __docformat__ is parsed to Module.docformat."""
+    mod = fromText('''
+    __docformat__ = 'Epytext en'
+
+    def f():
+        pass
+    ''', systemcls=systemcls)
+    assert mod.docformat == 'epytext'
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
     """A class variable named __all__ is just an ordinary variable and
     does not affect Module.all.

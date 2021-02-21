@@ -433,9 +433,10 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if target == '__all__':
+        if target in ['__all__', '__docformat__']:
             # This is metadata, not a variable that needs to be documented.
-            # It is handled by findAll(), which operates on the AST and
+            # It is handled by findAll(), or other findDocformat() functions, 
+            # which operates on the AST and
             # therefore doesn't need an Attribute instance.
             return
         parent = self.builder.current
