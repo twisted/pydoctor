@@ -159,3 +159,11 @@ def test_custom_template_contains_infos():
         page = stream.read()
         for i in infos:
             assert i in page, page
+
+def test_meta_pydoctor_template_version_tag_gets_removed():
+    """
+    Test if the index.html effectively do not contains the meta pydoctor template version tag
+    """
+    with open(BASE_DIR / 'api' / 'index.html', 'r', encoding='utf-8') as stream:
+        page = stream.read()
+        assert '<meta name="pydoctor-template-version" content="' not in page, page
