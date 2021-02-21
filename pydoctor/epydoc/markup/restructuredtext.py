@@ -101,6 +101,12 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
+
+    # Strip Sphinx interpreted text roles for code references: :obj:`foo` -> `foo`
+    docstring = re.sub(
+        r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring
+    )
+
     publish_string(docstring, writer=writer, reader=reader,
                    settings_overrides={'report_level':10000,
                                        'halt_level':10000,

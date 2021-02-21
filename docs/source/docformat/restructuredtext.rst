@@ -90,6 +90,7 @@ to the ``module.Example`` class, simply put backticks around it, typing::
 
     `module.Example`
 
+.. note:: Sphinx interpreted text roles for code references like ``:obj:`` or ``:meth:`` are not required and will be ignored. 
 
 Directives
 ----------

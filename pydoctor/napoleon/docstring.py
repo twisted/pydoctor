@@ -264,7 +264,7 @@ class TypeDocstring:
         elif is_obj_identifier(token):
             type_ = "obj"
         else:
-            self._warnings.append(("unknown expresssion in type specification: %s"%token, self._lineno))
+            self._warnings.append(("unknown expresssion in type: %s"%token, self._lineno))
             type_ = "unknown"
 
         return type_
@@ -496,7 +496,7 @@ class GoogleDocstring:
         lines = self._dedent(self._consume_indented_block(indent))
         lines.insert(0, line)
 
-        def is_google_typed_arg_spec(string: str) -> bool:
+        def is_google_typed_arg(string: str) -> bool:
             """
             Verify the validity of google-style field name and type specification.
             Only used for multilines fields. 
@@ -521,8 +521,8 @@ class GoogleDocstring:
                             return True
             return False
         
-        before_colon, got_colon, _descs = self._partition_multiline_field_on_colon(
-            lines, is_google_typed_arg_spec)
+        before_colon, colon, _descs = self._partition_multiline_field_on_colon(
+            lines, is_google_typed_arg)
 
         _descs = self.__class__(_descs).lines()        
 
@@ -581,12 +581,12 @@ class GoogleDocstring:
         lines = self._dedent(self._consume_to_next_section())
         if lines:
 
-            before_colon, got_colon, _descs = self._partition_multiline_field_on_colon(
+            before_colon, colon, _descs = self._partition_multiline_field_on_colon(
                 lines, is_type)
             
             _type = ''
             if _descs:
-                if got_colon:
+                if colon:
                     _type = before_colon
                 else:
                     _descs.insert(0, before_colon)
@@ -1069,18 +1069,25 @@ class GoogleDocstring:
                 colon,
                 "".join(after_colon).strip())
 
-    # new method: hack to make multiple lines type work seemlessly - for google-style only. 
+    # new method: make multiple lines type work seemlessly - for google-style only. 
     def _partition_multiline_field_on_colon(self, lines:List[str], 
-            before_colon_format_checker:Callable[[str], bool]) -> Tuple[str, bool, List[str]]:
+            format_validator:Callable[[str], bool]) -> Tuple[str, str, List[str]]:
         """
+        Parameters
+        ----------
+        lines
+            Lines to split
+        format_validator
+            Validator returning `bool` indicates if the value of ``before_colon`` is sane. 
+            If the value is not sane, fall back to `_partition_field_on_colon` behaviour with a warning. 
+
         Returns
         -------
-        before_colon
+        before_colon: str
             depending on the context this might be the first 
             line of the description or the name with the optional type or the type. 
-
-        got_colon: bool
-        description
+        colon: str
+        description: list(str)
         """
         
         before_colon, colon, after_colon_start = self._partition_field_on_colon(lines[0])
@@ -1090,7 +1097,6 @@ class GoogleDocstring:
 
         raw_descs = lines[1:]
         _descs = []
-        got_colon = bool(colon)
         multiline = False
 
         # the first line of the field is not complete or malformed. 
@@ -1103,7 +1109,6 @@ class GoogleDocstring:
                     before, colon, after = p_line
                     before_colon += before
                     if colon:
-                        got_colon = True
                         if after:
                             _descs.append(after)
                         # If the type spans several lines, it's natural (but bot required) to add indentation
@@ -1112,20 +1117,19 @@ class GoogleDocstring:
                         break
 
         else:
-            got_colon = True
             if after_colon_start:
                 _descs = [after_colon_start] + raw_descs
             else:
                 _descs = raw_descs
         
-        if not got_colon: 
+        if not colon: 
             before_colon = before_colon_start
             _descs = raw_descs
         
         # check format only if multiline
-        if multiline and not before_colon_format_checker(before_colon):
+        if multiline and not format_validator(before_colon):
             # If fails check, fall back to original behaviour, with a warning. 
-            self._warnings.append((f"invalid specification: '{before_colon}'. Probably missing colon.", 
+            self._warnings.append((f"invalid type: '{before_colon}'. Probably missing colon.", 
                 self._line_iter.counter - len(raw_descs)))
             before_colon = before_colon_start
             if after_colon_start:
@@ -1133,7 +1137,7 @@ class GoogleDocstring:
             else:
                 _descs = raw_descs
         
-        return (before_colon, got_colon, _descs)
+        return (before_colon, colon, _descs)
 
     def _strip_empty(self, lines: List[str]) -> List[str]:
         if lines:
