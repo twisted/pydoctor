@@ -1,8 +1,7 @@
 """
 Convert docstrings from numpy or google style format to reST. 
 
-This package is a fork of U{sphinx.ext.napoleon 
-<https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html?highlight=napoleon_custom_sections#module-sphinx.ext.napoleon>} 
+This package is a fork of L{sphinx.ext.napoleon} 
 adapted for C{pydoctor} usage. 
 
 The following list roughtly describes the changes: 
@@ -55,7 +54,7 @@ The following list roughtly describes the changes:
     See: U{sphinx/issues/7077 <https://github.com/sphinx-doc/sphinx/issues/7077>} 
 
     - No settings are supported. 
-    Also there is no support for custom sections or type aliases. 
+      Also there is no support for custom sections or type aliases. 
 
 Docformat references: 
 

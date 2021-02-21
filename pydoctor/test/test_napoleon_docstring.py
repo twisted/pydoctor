@@ -11,6 +11,7 @@ from textwrap import dedent
 
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeDocstring, is_type
 
+__docformat__ = "restructuredtext"
 
 class BaseDocstringTest(TestCase):
     maxDiff = None
@@ -985,7 +986,7 @@ Description...
         self.assertEqual(expected.rstrip(), actual)
         self.assertEqual(1, len(doc.warnings()))
         warning = doc.warnings().pop()
-        self.assertIn("invalid specification: 'docformatCan be one of'", warning[0])
+        self.assertIn("invalid type: 'docformatCan be one of'", warning[0])
         self.assertEqual(5, warning[1])
 
 class NumpyDocstringTest(BaseDocstringTest):
@@ -2440,7 +2441,7 @@ bool
             tuple(ice, cream)
                 Yes""")
         
-        expected = dedent("""
+        expected = dedent(r"""
         Made my day
 
         :param foo: a string

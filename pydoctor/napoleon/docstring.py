@@ -1,7 +1,7 @@
 """
 Classes for google-style and numpy-style docstring conversion. 
 
-Forked from `sphinx.ext.napoleon.docstring`. 
+Forked from ``sphinx.ext.napoleon.docstring``. 
 
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
@@ -135,8 +135,8 @@ class TypeDocstring:
         """
         Merge the special literal choices tokens together. 
 
-        Exemple:
-            
+        Example
+        -------
         >>> tokens = ["{", "1", ", ", "2", "}"]
         >>> ann._recombine_set_tokens(tokens)
         ... ["{1, 2}"]
@@ -325,7 +325,7 @@ class TypeDocstring:
 class GoogleDocstring:
     """Convert Google style docstrings to reStructuredText.
     
-    Exemple
+    Example
     -------
     >>> from pydoctor.napoleon import GoogleDocstring
     >>> docstring = '''One line summary.
@@ -436,7 +436,7 @@ class GoogleDocstring:
         
         Returns
         -------
-        unicode
+        str
             Unicode version of the docstring.
         """
         return '\n'.join(self.lines()).rstrip()
@@ -1073,12 +1073,14 @@ class GoogleDocstring:
     def _partition_multiline_field_on_colon(self, lines:List[str], 
             format_validator:Callable[[str], bool]) -> Tuple[str, str, List[str]]:
         """
+        Partition multiple lines on colon. 
+
         Parameters
         ----------
         lines
             Lines to split
         format_validator
-            Validator returning `bool` indicates if the value of ``before_colon`` is sane. 
+            Validator returning `bool` indicates if the value of before_colon is sane. 
             If the value is not sane, fall back to `_partition_field_on_colon` behaviour with a warning. 
 
         Returns

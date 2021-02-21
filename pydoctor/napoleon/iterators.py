@@ -1,7 +1,7 @@
 """
 A collection of helpful iterators.
 
-Forked from `sphinx.ext.napoleon.iterators`. 
+Forked from ``sphinx.ext.napoleon.iterators``. 
 
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
@@ -29,20 +29,20 @@ class peek_iter(Generic[T]):
     counter
         Store and increment line number to report correct lines!
     """
-    def __init__(self, o:Union[Callable[[], T], Iterable[T]], sentinel:Optional[T]=None) -> None:
+    def __init__(self, o: Union[Callable[[], T], Iterable[T]], sentinel: Optional[T]=None) -> None:
         """
         Parameters
         ----------
-        o : iterable or callable
-            `o` is interpreted very differently depending on the presence of
+        o : Iterable or Callable
+            ``o`` is interpreted very differently depending on the presence of
             `sentinel`.
-            If `sentinel` is not given, then `o` must be a collection object
+            If ``sentinel`` is not given, then ``o`` must be a collection object
             which supports either the iteration protocol or the sequence protocol.
-            If `sentinel` is given, then `o` must be a callable object.
+            If ``sentinel`` is given, then ``o`` must be a callable object.
         sentinel : object, optional
-            If given, the iterator will call `o` with no arguments for each
+            If given, the iterator will call ``o`` with no arguments for each
             call to its `next` method; if the value returned is equal to
-            `sentinel`, `StopIteration` will be raised, otherwise the
+            ``sentinel``, `StopIteration` will be raised, otherwise the
             value will be returned.
         """
         self._iterable : Iterator[T]
@@ -73,7 +73,7 @@ class peek_iter(Generic[T]):
         return self.next()
 
     def _fillcache(self, n: Optional[int]) -> None:
-        """Cache `n` items. If `n` is 0 or None, then 1 item is cached."""
+        """Cache ``n`` items. If ``n`` is 0 or None, then 1 item is cached."""
         if not n:
             n = 1
         try:
@@ -103,7 +103,7 @@ class peek_iter(Generic[T]):
         ...
     def next(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
         """
-        Get the next item or `n` items of the iterator.
+        Get the next item or ``n`` items of the iterator.
         
         Parameters
         ----------
@@ -112,15 +112,14 @@ class peek_iter(Generic[T]):
         
         Returns
         -------
-        item or list of items
-            The next item or `n` items of the iterator. If `n` is None, the
-            item itself is returned. If `n` is an int, the items will be
-            returned in a list. If `n` is 0, an empty list is returned.
+        The next item or ``n`` items of the iterator. If ``n`` is None, the
+        item itself is returned. If ``n`` is an int, the items will be
+        returned in a list. If ``n`` is 0, an empty list is returned.
         
         Raises
         ------
         StopIteration
-            Raised if the iterator is exhausted, even if `n` is 0.
+            Raised if the iterator is exhausted, even if ``n`` is 0.
         """
         result: Union[T, Sequence[T]]
         self._fillcache(n)
@@ -145,17 +144,16 @@ class peek_iter(Generic[T]):
     def peek(self) -> T: 
         ...
     def peek(self, n: Optional[int] = None) -> Union[Sequence[T], T]: 
-        """Preview the next item or `n` items of the iterator.
+        """Preview the next item or ``n`` items of the iterator.
         The iterator is not advanced when peek is called.
         
         Returns
         -------
-        item or list of items
-            The next item or `n` items of the iterator. If `n` is None, the
-            item itself is returned. If `n` is an int, the items will be
-            returned in a list. If `n` is 0, an empty list is returned.
-            If the iterator is exhausted, `peek_iter.sentinel` is returned,
-            or placed as the last item in the returned list.
+        The next item or ``n`` items of the iterator. If ``n`` is None, the
+        item itself is returned. If ``n`` is an int, the items will be
+        returned in a list. If ``n`` is 0, an empty list is returned.
+        If the iterator is exhausted, `peek_iter.sentinel` is returned,
+        or placed as the last item in the returned list.
         
         Note
         ----
@@ -177,12 +175,12 @@ class modify_iter(peek_iter[T]):
 
     Attributes
     ----------
-    modifier : callable
-        `modifier` is called with each item in `o` as it is iterated. The
-        return value of `modifier` is returned in lieu of the item.
+    modifier : Callable
+        ``modifier`` is called with each item in ``o`` as it is iterated. The
+        return value of ``modifier`` is returned in lieu of the item.
         Values returned by `peek` as well as `next` are affected by
-        `modifier`. However, `modify_iter.sentinel` is never passed through
-        `modifier`; it will always be returned from `peek` unmodified.
+        ``modifier``. However, `sentinel` is never passed through
+        ``modifier``; it will always be returned from `peek` unmodified.
     
     Example
     -------
@@ -200,44 +198,42 @@ class modify_iter(peek_iter[T]):
     "extra"
     "whitespace."
     """
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, o: Union[Callable[[], T], Iterable[T]], 
+                 sentinel: Optional[T] = None, 
+                 modifier: Optional[Callable[[str], str]] = None) -> None:
         """
         Parameters
         ----------
-        o : iterable or callable
-            `o` is interpreted very differently depending on the presence of
-            `sentinel`.
-            If `sentinel` is not given, then `o` must be a collection object
+        o : Iterable or Callable
+            ``o`` is interpreted very differently depending on the presence of
+            ``sentinel``.
+            If ``sentinel`` is not given, then ``o`` must be a collection object
             which supports either the iteration protocol or the sequence protocol.
-            If `sentinel` is given, then `o` must be a callable object.
+            If ``sentinel`` is given, then ``o`` must be a callable object.
         sentinel : object, optional
-            If given, the iterator will call `o` with no arguments for each
+            If given, the iterator will call ``o`` with no arguments for each
             call to its `next` method; if the value returned is equal to
-            `sentinel`, :exc:`StopIteration` will be raised, otherwise the
+            ``sentinel``, :exc:`StopIteration` will be raised, otherwise the
             value will be returned.
         modifier : callable, optional
             The function that will be used to modify each item returned by the
-            iterator. `modifier` should take a single argument and return a
+            iterator. ``modifier`` should take a single argument and return a
             single value. Defaults to ``lambda x: x``.
-            If `sentinel` is not given, `modifier` must be passed as a keyword
+            If ``sentinel`` is not given, `modifier` must be passed as a keyword
             argument.
         """
-        if 'modifier' in kwargs:
-            self.modifier = kwargs['modifier']
-        elif len(args) > 2:
-            self.modifier = args[2]
-            args = args[:2]
+        if modifier:
+            self.modifier = modifier
         else:
             self.modifier = lambda x: x
         if not callable(self.modifier):
-            raise TypeError('modify_iter(o, modifier): '
-                            'modifier must be callable')
-        super().__init__(*args)
+            raise TypeError('modify_iter(): modifier must be callable')
+        super().__init__(o, sentinel)
 
     def _fillcache(self, n: Optional[int]) -> None:
-        """Cache `n` modified items. If `n` is 0 or None, 1 item is cached.
+        """Cache ``n`` modified items. If ``n`` is 0 or None, 1 item is cached.
         Each item returned by the iterator is passed through the
-        `modify_iter.modified` function before being cached.
+        `modify_iter.modifier` function before being cached.
         """
         if not n:
             n = 1

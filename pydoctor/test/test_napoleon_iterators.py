@@ -1,13 +1,12 @@
 """
-    test_napoleon_iterators
-    ~~~~~~~~~~~~~~~~~~~~~~~
-
-    Tests for :mod:`sphinx.ext.napoleon.iterators` module.
+Tests for :mod:`pydoctor.napoleon.iterators` module.
 
 
-    :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-    :license: BSD, see LICENSE for details.
+:copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+:license: BSD, see LICENSE for details.
 """
+
+__docformat__ = "restructuredtext"
 
 from unittest import TestCase
 

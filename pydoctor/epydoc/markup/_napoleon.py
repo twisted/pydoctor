@@ -28,7 +28,7 @@ class NapoelonDocstringParser:
         """
         self.obj = obj
 
-    def parse_google_docstring(self, docstring:str, errors:List[ParseError]) -> ParsedDocstring:
+    def parse_google_docstring(self, docstring:str, errors: List[ParseError]) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as Google style docstring. 
         Return a L{ParsedDocstring} representation of its contents.
@@ -50,9 +50,9 @@ class NapoelonDocstringParser:
         """
         return self._parse_docstring(docstring, errors, NumpyDocstring, ParsedNumpyDocstring)
 
-    def _parse_docstring(self, docstring:str, errors:List[ParseError], 
-                         docstring_cls:Type[GoogleDocstring],
-                         parsed_docstring_cls:Type['ParsedGoogleDocstring']) -> ParsedDocstring:
+    def _parse_docstring(self, docstring: str, errors:List[ParseError], 
+                         docstring_cls: Type[GoogleDocstring],
+                         parsed_docstring_cls: Type['ParsedGoogleDocstring']) -> ParsedDocstring:
         
         docstring_obj = docstring_cls(docstring, 
                                       is_attribute=isinstance(self.obj, Attribute))
@@ -64,7 +64,7 @@ class NapoelonDocstringParser:
 
 
     @staticmethod
-    def _parse_docstring_obj(docstring_obj:GoogleDocstring, 
+    def _parse_docstring_obj(docstring_obj: GoogleDocstring, 
                             errors: List[ParseError]) -> ParsedDocstring:
         """
         Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.
