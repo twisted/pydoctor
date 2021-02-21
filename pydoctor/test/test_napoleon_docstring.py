@@ -5,6 +5,7 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :license: BSD, see LICENSE for details.
 """
 import re
+import pytest
 from unittest import TestCase
 from textwrap import dedent
 
@@ -444,6 +445,7 @@ Returns:
     def test_raises_types(self):
         docstrings = [("""
 Example Function
+
 Raises:
     RuntimeError:
         A setting wasn't specified, or was invalid.
@@ -459,6 +461,7 @@ Raises:
         If the arguments are wrong.
 """, """
 Example Function
+
 :raises RuntimeError: A setting wasn't specified, or was invalid.
 :raises ValueError: Something something value error.
 :raises AttributeError: errors for missing attributes.
@@ -469,105 +472,127 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises:
     InvalidDimensionsError
 """, """
 Example Function
+
 :raises InvalidDimensionsError:
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     Invalid Dimensions Error
 """, """
 Example Function
+
 :raises Invalid Dimensions Error:
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     Invalid Dimensions Error: With description
 """, """
 Example Function
+
 :raises Invalid Dimensions Error: With description
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     InvalidDimensionsError: If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises InvalidDimensionsError: If the dimensions couldn't be parsed.
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     Invalid Dimensions Error: If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises Invalid Dimensions Error: If the dimensions couldn't be parsed.
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises If the dimensions couldn't be parsed.:
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     :class:`exc.InvalidDimensionsError`
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError:
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     :class:`exc.InvalidDimensionsError`: If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     :class:`exc.InvalidDimensionsError`: If the dimensions couldn't be parsed,
        then a :class:`exc.InvalidDimensionsError` will be raised.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed,
     then a :class:`exc.InvalidDimensionsError` will be raised.
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     :class:`exc.InvalidDimensionsError`: If the dimensions couldn't be parsed.
     :class:`exc.InvalidArgumentsError`: If the arguments are invalid.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
 :raises exc.InvalidArgumentsError: If the arguments are invalid.
 """),
                       ################################
                       ("""
 Example Function
+
 Raises:
     :class:`exc.InvalidDimensionsError`
     :class:`exc.InvalidArgumentsError`
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError:
 :raises exc.InvalidArgumentsError:
 """)]
@@ -581,6 +606,7 @@ Some other paragraph.
 Code sample for usage::
   dev.bind(loopback=Loopback)
   dev.loopback.configure()
+
 Arguments:
   **kwargs: name/class pairs that will create resource-managers
     bound as instance attributes to this instance. See code
@@ -591,6 +617,7 @@ Some other paragraph.
 Code sample for usage::
   dev.bind(loopback=Loopback)
   dev.loopback.configure()
+
 :param \\*\\*kwargs: name/class pairs that will create resource-managers
                    bound as instance attributes to this instance. See code
                    example above.
@@ -614,11 +641,13 @@ Summary line
                       ################################
                       ("""
 Summary line
+
 Example::
     Multiline reStructuredText
     literal code block
 """, """
 Summary line
+
 Example::
     Multiline reStructuredText
     literal code block
@@ -626,11 +655,13 @@ Example::
                       ################################
                       ("""
 Summary line
+
 :Example:
     Multiline reStructuredText
     literal code block
 """, """
 Summary line
+
 :Example:
     Multiline reStructuredText
     literal code block
@@ -641,6 +672,7 @@ Summary line
 
     def test_list_in_parameter_description(self):
         docstring = """One line summary.
+
 Parameters:
     no_list (int):
     one_bullet_empty (int):
@@ -711,6 +743,7 @@ Parameters:
 """
 
         expected = """One line summary.
+
 :param no_list:
 :type no_list: `int`
 :param one_bullet_empty:
@@ -2071,6 +2104,7 @@ list of int
     docstrings_returns = [(
         """
 Single line summary
+
 Return
 ------
 the string of your life: `a complicated string`
@@ -2085,6 +2119,7 @@ the tuple of your life: tuple
 #   napoleon to consider this string as the type: but it won't be tokenized. 
 """
 Single line summary
+
 :returns: * **the string of your life**: `a complicated string`
           * **the str of your life**: ``{"foo", "bob", "bar"}``
           * **the int of your life**: `int`
@@ -2165,12 +2200,14 @@ Summary line.
         ),(
         """
 Single line summary
+
 Return
 ------
 the string of your life
 """,
 """
 Single line summary
+
 :returns: the string of your life
 """
     ) ,(
@@ -2291,8 +2328,6 @@ Summary line.
 Methods
 -------
 __str__()
-    Returns
-    -------
     The lines of the docstring in a list.
     Note
     ----
@@ -2304,8 +2339,7 @@ Summary line.
 .. admonition:: Methods
 
    `__str__`()
-       :returns: The lines of the docstring in a list.
-       
+       The lines of the docstring in a list.
        .. note:: Nested markup works.
        """
         )] 
@@ -2377,6 +2411,51 @@ bool
                   * **the str of your life**: ``{"foo", "bob", "bar"}``
                   * **the int of your life**: `int`
                   * **the tuple of your life**: `tuple`
+        """)
+
+        actual = str(NumpyDocstring(docstring))
+        self.assertEqual(expected.rstrip(), actual)
+
+    @pytest.mark.xfail
+    def test_fields_blank_lines(self):
+        docstring = dedent("""
+            Made my day
+            Parameters
+            ----------
+            foo: str
+                a string
+            bob: list of str
+            Returns
+            -------
+            bool: 
+                The lines of the docstring in a list.
+            Note
+            ----
+            Markup works.
+            
+
+            It is strong
+            Yields
+            ------
+            tuple(ice, cream)
+                Yes""")
+        
+        expected = dedent("""
+        Made my day
+
+        :param foo: a string
+        :type foo: `str`
+        :param bob:
+        :type bob: `list` of `str`
+
+        :returns: The lines of the docstring in a list.
+        :rtype: `bool`
+
+        .. note:: Markup works.
+
+        It is strong
+
+        :Yields: `tuple`\ (`ice`, `cream`) - Yes
         """)
 
         actual = str(NumpyDocstring(docstring))
