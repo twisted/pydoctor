@@ -1358,6 +1358,7 @@ class NumpyDocstring(GoogleDocstring):
         except ValueError:
             return self._format_admonition('seealso', lines)
 
+    # overriden: do not use interpreted text role in links
     def _parse_numpydoc_see_also_section(self, content: List[str]) -> List[str]:
         """
         Derived from the NumpyDoc implementation of _parse_see_also::
@@ -1422,7 +1423,7 @@ class NumpyDocstring(GoogleDocstring):
         lines = []  # type: List[str]
         last_had_desc = True
         for name, desc, role in items:
-            
+            # do not use interpreted text role
             link = '`%s`' % name
             
             if desc or last_had_desc:
