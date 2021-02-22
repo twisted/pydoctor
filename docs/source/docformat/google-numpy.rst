@@ -9,15 +9,19 @@ Google and Numpy
 
 
 Docstrings will be first converted to reStructuredText and then parsed with ``docutils``. 
-This means any supported `reST markup <restructuredtext.html>`_ can be use to supplement google-style or numpy-style markup. 
+Any supported `reST markup <restructuredtext.html>`_ can be use to supplement google-style or numpy-style markup. 
 
-*Pydoctor* has forked and enhanced the `napoleon Sphinx extension 
-<https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>`_.
+The main difference between the two styles is that Google uses indentation to separate sections, 
+whereas NumPy uses underlines. This means that 2 blank lines are needed to end a NumPy section 
+that is followed by a regular paragraph (i.e. not another section header)
 
-For more information on syntax enhancements, 
-refer to :py:mod:`pydoctor.napoleon` documentation. 
+.. note:: Pydoctor* has forked and enhanced the `napoleon Sphinx extension 
+    <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>`_.
 
-For markup details, refer to the `Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`_
+    For more information on enhancements, 
+    refer to :py:mod:`pydoctor.napoleon` documentation. 
+
+For complete markup details, refer to the `Google style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`_
 or `NumpyDoc style <https://numpydoc.readthedocs.io/en/latest/format.html>`_ reference documentation. 
 
 Sections
@@ -37,7 +41,7 @@ List of supported sections:
 Sections supported on a "best effort" basis:
     - ``Methods``: Items will be included into a generic "Methods" admonition. 
     - ``Other Parameters``, ``Receive(s)``: Parameters described in those sections will be merged with regular parameters. 
-    - Numpy-style multiple return section: elements will be listed but layout is sub optimal. 
+    - Numpy-style multiple return section: elements will be listed but layout is sub optimal (but still usefull, see :py:meth:``). 
 
 
 
