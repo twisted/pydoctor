@@ -1,6 +1,5 @@
 from typing import List, Optional, cast
 import re
-import textwrap
 
 from pytest import mark, raises
 from twisted.web.template import Tag, tags
@@ -46,20 +45,21 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
-def docstring2html(docstring: model.Documentable) -> str:
-    stan = epydoc2stan.format_docstring(docstring)
-    return flatten(stan).replace('><', '>\n<')
+def docstring2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_docstring(obj)
+    assert stan.tagName == 'div', stan
+    return flatten(stan.children).replace('><', '>\n<')
+
+def summary2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_summary(obj)
+    assert stan.tagName == 'span', stan
+    return flatten(stan.children)
 
 def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    expected_html = textwrap.dedent("""
-    <div>
-    <p>Empty module.</p>
-    </div>
-    """).strip()
-    assert docstring2html(mod) == expected_html
+    assert docstring2html(mod) == "<p>Empty module.</p>"
 
 
 def test_xref_link_not_found() -> None:
@@ -463,13 +463,65 @@ def test_summary() -> None:
         Lorem Ipsum
         """
     ''')
-    def get_summary(func: str) -> str:
-        stan = epydoc2stan.format_summary(mod.contents[func])
-        assert stan.tagName == 'span', stan
-        return flatten(stan.children)
-    assert 'Lorem Ipsum' == get_summary('single_line_summary')
-    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert 'No summary' == get_summary('no_summary')
+    assert 'Lorem Ipsum' == summary2html(mod.contents['single_line_summary'])
+    assert 'Foo Bar Baz' == summary2html(mod.contents['three_lines_summary'])
+    assert 'No summary' == summary2html(mod.contents['no_summary'])
+
+
+def test_ivar_overriding_attribute() -> None:
+    """An 'ivar' field in a subclass overrides a docstring for the same
+    attribute set in the base class.
+
+    The 'a' attribute in the test code reproduces a regression introduced
+    in pydoctor 20.7.0, where the summary would be constructed from the base
+    class documentation instead. The problem was in the fact that a split
+    field's docstring is stored in 'parsed_docstring', while format_summary()
+    looked there only if no unparsed docstring could be found.
+
+    The 'b' attribute in the test code is there to make sure that in the
+    absence of an 'ivar' field, the docstring is inherited.
+    """
+
+    mod = fromText('''
+    class Base:
+        a: str
+        """base doc
+
+        details
+        """
+
+        b: object
+        """not overridden
+
+        details
+        """
+
+    class Sub(Base):
+        """
+        @ivar a: sub doc
+        @type b: sub type
+        """
+    ''')
+
+    base = mod.contents['Base']
+    base_a = base.contents['a']
+    assert isinstance(base_a, model.Attribute)
+    assert summary2html(base_a) == "base doc"
+    assert docstring2html(base_a) == "<p>base doc</p>\n<p>details</p>"
+    base_b = base.contents['b']
+    assert isinstance(base_b, model.Attribute)
+    assert summary2html(base_b) == "not overridden"
+    assert docstring2html(base_b) == "<p>not overridden</p>\n<p>details</p>"
+
+    sub = mod.contents['Sub']
+    sub_a = sub.contents['a']
+    assert isinstance(sub_a, model.Attribute)
+    assert summary2html(sub_a) == 'sub doc'
+    assert docstring2html(sub_a) == "sub doc"
+    sub_b = sub.contents['b']
+    assert isinstance(sub_b, model.Attribute)
+    assert summary2html(sub_b) == 'not overridden'
+    assert docstring2html(sub_b) == "<p>not overridden</p>\n<p>details</p>"
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
