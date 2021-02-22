@@ -76,12 +76,23 @@ class TypeDocstring:
     Syntax is based on `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>`_ 
     type specification with additionnal recognition of parentheses and square brackets characters. 
 
-    Exemples of valid type strings: 
+    .. list-table:: Exemples of valid type strings and output
+        :header-rows: 1
 
-    - List[str] or list(bytes), optional
-    - {"html", "json", "xml"}, optional
-    - list of int or float or None, default: None
-    - \`complicated string\` or \`strIO <twisted.python.compat.NativeStringIO>\`
+        * - Type string
+          - Output
+
+        * - List[str] or list(bytes), optional
+          - `List`\ [`str`] or `list`\ (`bytes`), *optional*
+    
+        * - {"html", "json", "xml"}, optional
+          - ``{"html", "json", "xml"}``, *optional*
+          
+        * - list of int or float or None, default: None
+          - `list` of `int` or `float` or `None`, *default*: `None`
+    
+        * -  \`complicated string\` or \`strIO <twisted.python.compat.NativeStringIO>\`
+          - `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`
 
     """
     _natural_language_delimiters_regex_str = r",\sor\s|\sor\s|\sof\s|:\s|\sto\s|,\sand\s|\sand\s"
