@@ -5,19 +5,61 @@ Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
 :license: BSD, see LICENSE for details.
 """
 import re
+from typing import Type, Union
 import pytest
 from unittest import TestCase
 from textwrap import dedent
+import functools
 
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring, TypeDocstring, is_type
 
+import sphinx.ext.napoleon as sphinx_napoleon
+
 __docformat__ = "restructuredtext"
+
+def partialclass(cls, *args, **kwds):
+    class NewCls(cls):
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds)
+        __class__ = cls
+    return NewCls
+
+sphinx_napoleon_config = sphinx_napoleon.Config(
+    napoleon_use_admonition_for_examples=True, 
+    napoleon_use_admonition_for_notes=True,
+    napoleon_use_admonition_for_references=True,
+    napoleon_use_ivar=True,
+    napoleon_use_param=True,
+    napoleon_use_keyword=True,
+    napoleon_use_rtype=True,
+    napoleon_preprocess_types=True)
+
+# Adapters for upstream Sphinx napoleon classes
+SphinxGoogleDocstring = partialclass(sphinx_napoleon.docstring.GoogleDocstring, 
+    config=sphinx_napoleon_config, what='function')
+SphinxNumpyDocstring = partialclass(sphinx_napoleon.docstring.NumpyDocstring, 
+    config=sphinx_napoleon_config, what='function')
 
 class BaseDocstringTest(TestCase):
     maxDiff = None
 
-# TODO: test the two new warnings
+    def assertAlmostEqualSphinxDocstring(self, expected: str, docstring: str, 
+                                         type_: Type[Union[SphinxGoogleDocstring, SphinxNumpyDocstring]]) -> None:
+        """
+        Check if the upstream version of the parser class (from `sphinx.ext.napoleon`) parses the docstring as expected.
 
+        This is used as a supplementary manner of testing the parser behaviour.
+        Not all tests cases can be adapted to pass this check. 
+        """
+        expected_sphinx_output = re.sub(
+                r"(`|\\\s|\\|:mod:|:func:|:class:|:obj:)", "", expected)
+
+        sphinx_docstring_output = re.sub(
+            r"(`|\\|:mod:|:func:|:class:|:obj:|\s<Ellipsis>)", "",
+            str(type_(docstring)).replace(
+            ":kwtype", ":type").replace(":vartype", ":type").replace(" -- ", " - ").rstrip())
+
+        self.assertEqual(expected_sphinx_output.rstrip(), sphinx_docstring_output)
+    
 class TypeSpecTest(BaseDocstringTest):
 
     def test_is_type_spec(self):
@@ -88,6 +130,7 @@ Extended description
     ), (
         """
 Single line summary
+
 Args:
     arg1(str):Extended
         description of arg1
@@ -102,11 +145,13 @@ Single line summary
     ), (
         """
 Single line summary
+
 Args:
     arg1(str):Extended
         description of arg1
     arg2 ( int ) : Extended
         description of arg2
+
 Keyword Args:
     kwarg1(str):Extended
         description of kwarg1
@@ -132,11 +177,13 @@ Single line summary
     ), (
         """
 Single line summary
+
 Arguments:
     arg1(str):Extended
         description of arg1
     arg2 ( int ) : Extended
         description of arg2
+
 Keyword Arguments:
     kwarg1(str):Extended
         description of kwarg1
@@ -162,6 +209,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Return:
     str:Extended
     description of return value
@@ -176,6 +224,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Returns:
     str:Extended
     description of return value
@@ -190,6 +239,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Returns:
     Extended
     description of return value
@@ -203,6 +253,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Args:
     arg1(str):Extended
         description of arg1
@@ -221,6 +272,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Args:
     arg1 (list(int)): Description
     arg2 (list[int]): Description
@@ -242,6 +294,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Receive:
     arg1 (list(int)): Description
     arg2 (list[int]): Description
@@ -257,6 +310,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Receives:
     arg1 (list(int)): Description
     arg2 (list[int]): Description
@@ -272,6 +326,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Yield:
     str:Extended
     description of yielded value
@@ -285,6 +340,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Yields:
     Extended
     description of yielded value
@@ -298,6 +354,7 @@ Single line summary
     ), (
         """
 Single line summary
+
 Args:
     arg1 (list(int)):
         desc arg1. 
@@ -313,6 +370,12 @@ Single line summary
 :type arg2: `list`\ [`int`]
 """
     ), ]
+
+    def test_docstrings(self):
+        for docstring, expected in self.docstrings:
+            actual = str(GoogleDocstring(docstring))
+            self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
     def test_sphinx_admonitions(self):
         admonition_map = {
@@ -351,19 +414,15 @@ Single line summary
                       ).format(admonition)
             self.assertEqual(expect.rstrip(), actual)
 
-    def test_docstrings(self):
-        for docstring, expected in self.docstrings:
-            actual = str(GoogleDocstring(docstring))
-            expected = expected
-            self.assertEqual(expected.rstrip(), actual)
 
     def test_parameters_with_class_reference(self):
         # mot sure why this test include back slash in the type spec...
         # users should not write type like that in pydoctor anyway.
         docstring = r"""Construct a new XBlock.
 This class should only be used by runtimes.
+
 Arguments:
-    runtime (:class:`~typing.Dict`[:class:`int`,:class:`str`]): Use it to
+    runtime (:class:`~typing.Dict`[:class:`int`, :class:`str`]): Use it to
         access the environment. It is available in XBlock code
         as ``self.runtime``.
     field_data (:class:`FieldData`): Interface used by the XBlock
@@ -386,6 +445,8 @@ This class should only be used by runtimes.
 :type scope_ids: :class:`ScopeIds`
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
     def test_attributes_with_class_reference(self):
         docstring = """\
@@ -431,6 +492,7 @@ Returns:
 
     def test_colon_in_return_type(self):
         docstring = """Example property.
+
 Returns:
     :py:class:`~.module.submodule.SomeClass`: an example instance
     if available, None if not available.
@@ -443,9 +505,12 @@ Returns:
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
     def test_xrefs_in_return_type(self):
         docstring = """Example Function
+
 Returns:
     :class:`numpy.ndarray`: A :math:`n \\times 2` array containing
     a bunch of math items
@@ -458,6 +523,8 @@ Returns:
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
     def test_raises_types(self):
         docstrings = [("""
@@ -616,6 +683,8 @@ Example Function
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, docstring,
+                type_=SphinxGoogleDocstring)
 
     def test_kwargs_in_arguments(self):
         docstring = """Allows to create attributes binded to this device.
@@ -641,10 +710,13 @@ Code sample for usage::
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
     def test_section_header_formatting(self):
         docstrings = [("""
 Summary line
+
 Example:
     Multiline reStructuredText
     literal code block
@@ -687,6 +759,8 @@ Summary line
         for docstring, expected in docstrings:
             actual = str(GoogleDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, docstring,
+                type_=SphinxGoogleDocstring)
 
     def test_list_in_parameter_description(self):
         docstring = """One line summary.
@@ -848,6 +922,8 @@ Parameters:
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
 
     def test_attr_with_method(self):
@@ -913,6 +989,8 @@ Returns:
 
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
     def test_column_summary_lines_sphinx_issue_4016(self):
         # test https://github.com/sphinx-doc/sphinx/issues/4016
@@ -923,6 +1001,8 @@ Returns:
 
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxGoogleDocstring)
 
         actual = str(GoogleDocstring(docstring, is_attribute=True))
         self.assertEqual(expected.rstrip(), actual)
@@ -939,6 +1019,8 @@ Returns:
 
         actual = str(GoogleDocstring(docstring2))
         self.assertEqual(expected2.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected2, docstring2,
+            type_=SphinxGoogleDocstring)
 
         actual = str(GoogleDocstring(docstring2, is_attribute=True))
         self.assertEqual(expected2.rstrip(), actual)
@@ -1022,6 +1104,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Parameters
         ----------
         arg1:str
@@ -1038,6 +1121,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Parameters
         ----------
         arg1:str
@@ -1046,6 +1130,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         arg2 : int
             Extended
             description of arg2
+
         Keyword Arguments
         -----------------
           kwarg1:str
@@ -1075,6 +1160,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Return
         ------
         str
@@ -1091,31 +1177,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ),(
         """
         Single line summary
-        Return
-        ------
-        a complicated string
-            Extended
-            description of return value
-        int 
-            Extended
-            description of return value
-        the tuple of your life: tuple
-            Extended
-            description of return value
-        """,
-        """
-        Single line summary
 
-        :returns: * a complicated string - Extended
-                    description of return value
-                  * `int` - Extended
-                    description of return value
-                  * **the tuple of your life**: `tuple` - Extended
-                    description of return value
-        """
-    ),(
-        """
-        Single line summary
         Return
         ------
         the string of your life: str
@@ -1129,6 +1191,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Returns
         -------
         str
@@ -1145,6 +1208,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Parameters
         ----------
         arg1:str
@@ -1165,6 +1229,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Parameters
         ----------
         arg1:str
@@ -1183,6 +1248,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Receive
         -------
         arg1:str
@@ -1205,6 +1271,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Receives
         --------
         arg1:str
@@ -1227,6 +1294,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Yield
         -----
         str
@@ -1242,6 +1310,7 @@ class NumpyDocstringTest(BaseDocstringTest):
     ), (
         """
         Single line summary
+
         Yields
         ------
         str
@@ -1255,6 +1324,14 @@ class NumpyDocstringTest(BaseDocstringTest):
                  description of yielded value
         """
     )]
+
+    def test_docstrings(self):
+    
+        for docstring, expected in self.docstrings:
+            actual = str(NumpyDocstring(dedent(docstring)))
+            expected = dedent(expected)
+            self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, dedent(docstring), type_=SphinxNumpyDocstring)
 
     def test_sphinx_admonitions(self):
         admonition_map = {
@@ -1295,12 +1372,7 @@ class NumpyDocstringTest(BaseDocstringTest):
                       ).format(admonition)
             self.assertEqual(expected.rstrip(), actual)
 
-    def test_docstrings(self):
 
-        for docstring, expected in self.docstrings:
-            actual = str(NumpyDocstring(dedent(docstring)))
-            expected = dedent(expected)
-            self.assertEqual(expected.rstrip(), actual)
 
     def test_parameters_with_class_reference(self):
         docstring = """\
@@ -1316,6 +1388,8 @@ param1 : :class:`MyClass <name.space.MyClass>` instance
 :type param1: :class:`MyClass <name.space.MyClass>` instance
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_multiple_parameters(self):
         docstring = """\
@@ -1334,6 +1408,8 @@ x1, x2 : array_like
 :type x2: `array_like`
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_parameters_without_class_reference(self):
         docstring = """\
@@ -1349,10 +1425,13 @@ param1 : MyClass instance
 :type param1: MyClass instance
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_see_also_refs(self):
         docstring = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 See Also
 --------
 some, other, funcs
@@ -1372,9 +1451,12 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
        relationship
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
         docstring = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 See Also
 --------
 some, other, funcs
@@ -1395,9 +1477,12 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
        relationship
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
         docstring = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 See Also
 --------
 some, other, :func:`funcs`
@@ -1418,10 +1503,13 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
        relationship
 """
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_colon_in_return_type(self):
         docstring = """
 Summary
+
 Returns
 -------
 :py:class:`~my_mod.my_class`
@@ -1439,6 +1527,8 @@ Summary
         actual = str(NumpyDocstring(docstring))
 
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_underscore_in_attribute(self):
         docstring = """
@@ -1454,8 +1544,9 @@ arg_ : type
 """
 
         actual = str(NumpyDocstring(docstring))
-
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_return_types(self):
         docstring = dedent("""
@@ -1471,10 +1562,13 @@ arg_ : type
         
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_yield_types(self):
         docstring = dedent("""
             Example Function
+
             Yields
             ------
             scalar or array-like
@@ -1488,10 +1582,13 @@ arg_ : type
 
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_raises_types(self):
         docstrings = [("""
 Example Function
+
 Raises
 ------
   RuntimeError
@@ -1507,6 +1604,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 InvalidDimensionsError
@@ -1518,6 +1616,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 Invalid Dimensions Error
@@ -1529,6 +1628,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 Invalid Dimensions Error
@@ -1541,6 +1641,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 InvalidDimensionsError
@@ -1553,6 +1654,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 Invalid Dimensions Error
@@ -1565,6 +1667,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 If the dimensions couldn't be parsed.
@@ -1576,6 +1679,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 :class:`exc.InvalidDimensionsError`
@@ -1587,6 +1691,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 :class:`exc.InvalidDimensionsError`
@@ -1599,6 +1704,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 :class:`exc.InvalidDimensionsError`
@@ -1613,6 +1719,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 :class:`exc.InvalidDimensionsError`
@@ -1628,6 +1735,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 CustomError
@@ -1640,6 +1748,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 AnotherError
@@ -1652,6 +1761,7 @@ Example Function
                       ################################
                       ("""
 Example Function
+
 Raises
 ------
 :class:`exc.InvalidDimensionsError`
@@ -1666,10 +1776,13 @@ Example Function
 
             actual = str(NumpyDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+                type_=SphinxNumpyDocstring)
 
     def test_xrefs_in_return_type(self):
         docstring = """
 Example Function
+
 Returns
 -------
 :class:`numpy.ndarray`
@@ -1686,6 +1799,8 @@ Example Function
 
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_section_header_underline_length(self):
         docstrings = [("""
@@ -1704,6 +1819,7 @@ body
                       ################################
                       ("""
 Summary line
+
 Example
 --
 Multiline example
@@ -1719,6 +1835,7 @@ Summary line
                       ################################
                       ("""
 Summary line
+
 Example
 -------
 Multiline example
@@ -1734,6 +1851,7 @@ Summary line
                       ################################
                       ("""
 Summary line
+
 Example
 ------------
 Multiline example
@@ -1749,9 +1867,12 @@ Summary line
         for docstring, expected in docstrings:
             actual = str(NumpyDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
+            self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+                type_=SphinxNumpyDocstring)
 
     def test_list_in_parameter_description(self):
         docstring = """One line summary.
+
 Parameters
 ----------
 no_list : int
@@ -1904,6 +2025,8 @@ definition_after_normal_text : int
 
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_token_type(self):
         tokens = (
@@ -2036,7 +2159,7 @@ definition_after_normal_text : int
 
         for spec, expected in zip(specs, converted):
             actual = str(TypeDocstring(spec, 0))
-            self.assertEqual(expected.rstrip(), actual)
+            self.assertEqual(expected, actual)
 
     def test_parameter_types(self):
         docstring = dedent("""\
@@ -2080,6 +2203,8 @@ definition_after_normal_text : int
  
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxNumpyDocstring)
 
     def test_token_type_invalid(self):
         tokens = (
@@ -2153,7 +2278,7 @@ list of int
 
             assert actual == expected
 
-    # test docstrings for the napoleon_numpy_returns_allow_free_from=True option
+    # test docstrings for the option that allow free form text in the restur secion. 
     # which is always enabled anyway
     docstrings_returns = [(
         """
@@ -2399,7 +2524,33 @@ Summary line.
        
        .. note:: Nested markup works.
        """
-        )] 
+        ), (
+"""
+Single line summary
+
+Return
+------
+a complicated string
+    Extended
+    description of return value
+int 
+    Extended
+    description of return value
+the tuple of your life: tuple
+    Extended
+    description of return value
+""",
+"""
+Single line summary
+
+:returns: * a complicated string - Extended
+            description of return value
+          * `int` - Extended
+            description of return value
+          * **the tuple of your life**: `tuple` - Extended
+            description of return value
+"""
+    ),] 
     
     # https://github.com/sphinx-contrib/napoleon/issues/12
     # https://github.com/sphinx-doc/sphinx/issues/7077
@@ -2431,6 +2582,7 @@ Summary line.
         # section breaks needs two white spaces with numpy-style docstrings, 
         # even if footnotes are following-up 
         docstring = """`PEP 484`_ type annotations are supported.
+
 Returns
 -------
 bool
@@ -2451,8 +2603,24 @@ bool
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual, str(actual))
 
-        actual = str(NumpyDocstring(docstring))
-        self.assertEqual(expected.rstrip(), actual, str(actual)) 
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
+
+        # test that Sphinx also cannot parse correctly the docstring
+        # without two blank lines before new section
+        # if no section header is provided
+        bogus = """`PEP 484`_ type annotations are supported.
+
+Returns
+-------
+bool
+    True if successful, False otherwise.
+
+.. _PEP 484:
+    https://www.python.org/dev/peps/pep-0484/
+"""
+        self.assertAlmostEqualSphinxDocstring(str(NumpyDocstring(bogus, )), bogus,
+            type_=SphinxNumpyDocstring)
 
     def test_return_type_list_free_style_do_desc(self):
         docstring = dedent("""
