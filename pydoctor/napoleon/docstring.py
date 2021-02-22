@@ -39,6 +39,8 @@ _enumerated_list_regex = re.compile(
 
 def is_obj_identifier(string: str) -> bool:
     """
+    Is this string a Python object(s) identifier?
+
     An object identifier is a valid type string. 
     But a valid type can be more complex than an object identifier.
     """
@@ -46,7 +48,7 @@ def is_obj_identifier(string: str) -> bool:
         return True
     try:
         # We simply try to load the string object with AST, if it's working 
-        # chances are it's a type annotation like type. 
+        # we consider the string as a valid Python object identifier. 
         # Let's say 2048 is the maximum number of caracters 
         # that we'll try to parse here since 99% of the time it will 
         # suffice, and we don't want to add too much of expensive processing. 
@@ -58,9 +60,20 @@ def is_obj_identifier(string: str) -> bool:
 
 def is_type(string: str) -> bool:
     """
-    See `TypeDocstring`. 
+    Is this string a type expression that can be parsed 
+    by `TypeDocstring` without generating any warnings?
+
+    :note: Some string will be parsed without warnings 
+           even if `is_type` returns `False`. 
+
+    :see: `TypeDocstring`
     """
-    return is_obj_identifier(string) or len(TypeDocstring(string).warnings()) == 0
+    return (is_obj_identifier(string) or 
+        len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings()) == 0)
+        # The sphinx's implementation allow regular sentences inside type string. 
+        # But automatically detect that type of construct seems technically hard. 
+        # Arg warns_on_unknown_tokens allows to narow the checks and match only docstrings 
+        # that we are 100% sure are type specifications. 
 
 @attr.s(auto_attribs=True)
 class FreeFormException(Exception):
@@ -111,11 +124,12 @@ class TypeDocstring:
         r"^default[^_0-9A-Za-z].*$",
     )
 
-    def __init__(self, annotation: str, lineno:Optional[int] = None) -> None:
+    def __init__(self, annotation: str, lineno:Optional[int] = None, warns_on_unknown_tokens: bool = False) -> None:
         
         self._lineno = lineno or 0
         self._warnings: List[Tuple[str, int]] = []
         self._annotation = annotation 
+        self._warns_on_unknown_tokens = warns_on_unknown_tokens
 
         _tokens = self._tokenize_type_spec(annotation)
         _combined_tokens = self._recombine_set_tokens(_tokens)
@@ -275,7 +289,10 @@ class TypeDocstring:
         elif is_obj_identifier(token):
             type_ = "obj"
         else:
-            self._warnings.append(("unknown expresssion in type: %s"%token, self._lineno))
+            # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a 
+            # identifier, leading into generating failures when tying to resolve links. 
+            if self._warns_on_unknown_tokens:
+                self._warnings.append(("unknown expresssion in type: %s"%token, self._lineno))
             type_ = "unknown"
 
         return type_
@@ -863,6 +880,7 @@ class GoogleDocstring:
                     not self._is_indented(line, self._section_indent)))
 
     # overriden: call _parse_attribute_docstring if self._is_attribute is True
+    # and add empty blank lines when required
     def _parse(self) -> None:
         self._parsed_lines = self._consume_empty()
 
@@ -889,11 +907,19 @@ class GoogleDocstring:
                 finally:
                     self._is_in_section = False
                     self._section_indent = 0
+
+                    # Automatically adding a blank line at the begining of the 
+                    # section if it is not already there. 
+                    # Fixes https://github.com/twisted/pydoctor/issues/366
+                    if self._parsed_lines and self._parsed_lines[-1].strip():
+                        lines.insert(0, '')
+            
             else:
                 if not self._parsed_lines:
                     lines = self._consume_contiguous() + self._consume_empty()
                 else:
                     lines = self._consume_to_next_section()
+
             self._parsed_lines.extend(lines)
 
     def _parse_admonition(self, admonition: str, section: str) -> List[str]:
@@ -1334,13 +1360,14 @@ class NumpyDocstring(GoogleDocstring):
 
     def _parse_numpydoc_see_also_section(self, content: List[str]) -> List[str]:
         """
-        Derived from the NumpyDoc implementation of _parse_see_also.
-        See Also
-        --------
-        func_name : Descriptive text
-            continued text
-        another_func_name : Descriptive text
-        func_name1, func_name2, :meth:`func_name`, func_name3
+        Derived from the NumpyDoc implementation of _parse_see_also::
+
+            See Also
+            --------
+            func_name : Descriptive text
+                continued text
+            another_func_name : Descriptive text
+            func_name1, func_name2, :meth:`func_name`, func_name3
         """
         items: List[Tuple[str, List[str], Optional[str]]] = []
 

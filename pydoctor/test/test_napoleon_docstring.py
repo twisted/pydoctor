@@ -94,6 +94,7 @@ Args:
 """,
 """
 Single line summary
+
 :param arg1: Extended
              description of arg1
 :type arg1: `str`
@@ -113,6 +114,7 @@ Keyword Args:
         description of kwarg2""",
 """
 Single line summary
+
 :param arg1: Extended
              description of arg1
 :type arg1: `str`
@@ -142,6 +144,7 @@ Keyword Arguments:
         description of kwarg2""",
 """
 Single line summary
+
 :param arg1: Extended
              description of arg1
 :type arg1: `str`
@@ -165,6 +168,7 @@ Return:
 """,
 """
 Single line summary
+
 :returns: Extended
           description of return value
 :rtype: `str`
@@ -178,6 +182,7 @@ Returns:
 """,
 """
 Single line summary
+
 :returns: Extended
           description of return value
 :rtype: `str`
@@ -191,6 +196,7 @@ Returns:
 """,
 """
 Single line summary
+
 :returns: Extended
           description of return value
 """
@@ -205,6 +211,7 @@ Args:
 """,
 r"""
 Single line summary
+
 :param arg1: Extended
              description of arg1
 :type arg1: `str`
@@ -222,6 +229,7 @@ Args:
 """,
 r"""
 Single line summary
+
 :param arg1: Description
 :type arg1: `list`\ (`int`)
 :param arg2: Description
@@ -240,6 +248,7 @@ Receive:
 """,
 r"""
 Single line summary
+
 :param arg1: Description
 :type arg1: `list`\ (`int`)
 :param arg2: Description
@@ -254,6 +263,7 @@ Receives:
 """,
 r"""
 Single line summary
+
 :param arg1: Description
 :type arg1: `list`\ (`int`)
 :param arg2: Description
@@ -268,6 +278,7 @@ Yield:
 """,
 """
 Single line summary
+
 :Yields: `str` - Extended
          description of yielded value
 """
@@ -280,6 +291,7 @@ Yields:
 """,
 """
 Single line summary
+
 :Yields: Extended
          description of yielded value
 """
@@ -294,6 +306,7 @@ Args:
 """,
 r"""
 Single line summary
+
 :param arg1: desc arg1.
 :type arg1: `list`\ (`int`)
 :param arg2: desc arg2.
@@ -361,6 +374,7 @@ Arguments:
         actual = str(GoogleDocstring(docstring))
         expected = r"""Construct a new XBlock.
 This class should only be used by runtimes.
+
 :param runtime: Use it to
                 access the environment. It is available in XBlock code
                 as ``self.runtime``.
@@ -422,6 +436,7 @@ Returns:
     if available, None if not available.
 """
         expected = """Example property.
+
 :returns: an example instance
           if available, None if not available.
 :rtype: :py:class:`~.module.submodule.SomeClass`
@@ -436,6 +451,7 @@ Returns:
     a bunch of math items
 """
         expected = """Example Function
+
 :returns: A :math:`n \\times 2` array containing
           a bunch of math items
 :rtype: :class:`numpy.ndarray`
@@ -634,6 +650,7 @@ Example:
     literal code block
 """, """
 Summary line
+
 .. admonition:: Example
 
    Multiline reStructuredText
@@ -1013,6 +1030,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended
                      description of arg1
         :type arg1: `str`
@@ -1039,6 +1057,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended
                      description of arg1
         :type arg1: `str`
@@ -1064,6 +1083,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :returns: Extended
                   description of return value
         :rtype: `str`
@@ -1085,6 +1105,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :returns: * a complicated string - Extended
                     description of return value
                   * `int` - Extended
@@ -1101,6 +1122,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :returns: **the string of your life**
         :rtype: `str`
         """
@@ -1115,6 +1137,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :returns: Extended
                   description of return value
         :rtype: `str`
@@ -1133,6 +1156,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended description of arg1
         :type arg1: `str`
         :param \\*args: Variable length argument list.
@@ -1150,6 +1174,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended description of arg1
         :type arg1: `str`
         :param \\*args: Variable length argument list and arbitrary keyword arguments.
@@ -1169,6 +1194,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended
                      description of arg1
         :type arg1: `str`
@@ -1190,6 +1216,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :param arg1: Extended
                      description of arg1
         :type arg1: `str`
@@ -1208,6 +1235,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :Yields: `str` - Extended
                  description of yielded value
         """
@@ -1222,6 +1250,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         """,
         """
         Single line summary
+
         :Yields: `str` - Extended
                  description of yielded value
         """
@@ -1334,6 +1363,7 @@ otherfunc : relationship
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 .. seealso::
 
    `some`, `other`, `funcs`
@@ -1356,6 +1386,7 @@ otherfunc : relationship
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 .. seealso::
 
    `some`, `other`, `funcs`
@@ -1378,6 +1409,7 @@ otherfunc : relationship
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
 .. seealso::
 
    `some`, `other`, `funcs`
@@ -1398,6 +1430,7 @@ Returns
 
         expected = """
 Summary
+
 :returns: an instance of :py:class:`~my_mod.my_class`
 :rtype: :py:class:`~my_mod.my_class`
 """
@@ -1449,6 +1482,7 @@ arg_ : type
         """)
         expected = dedent("""
             Example Function
+
             :Yields: `scalar` or `array-like` - The result of the computation
         """)
 
@@ -1466,6 +1500,7 @@ Raises
       Something something value error.
 """, """
 Example Function
+
 :raises RuntimeError: A setting wasn't specified, or was invalid.
 :raises ValueError: Something something value error.
 """),
@@ -1477,6 +1512,7 @@ Raises
 InvalidDimensionsError
 """, """
 Example Function
+
 :raises InvalidDimensionsError:
 """),
                       ################################
@@ -1487,6 +1523,7 @@ Raises
 Invalid Dimensions Error
 """, """
 Example Function
+
 :raises Invalid Dimensions Error:
 """),
                       ################################
@@ -1498,6 +1535,7 @@ Invalid Dimensions Error
     With description
 """, """
 Example Function
+
 :raises Invalid Dimensions Error: With description
 """),
                       ################################
@@ -1509,6 +1547,7 @@ InvalidDimensionsError
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises InvalidDimensionsError: If the dimensions couldn't be parsed.
 """),
                       ################################
@@ -1520,6 +1559,7 @@ Invalid Dimensions Error
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises Invalid Dimensions Error: If the dimensions couldn't be parsed.
 """),
                       ################################
@@ -1530,6 +1570,7 @@ Raises
 If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises If the dimensions couldn't be parsed.:
 """),
                       ################################
@@ -1540,6 +1581,7 @@ Raises
 :class:`exc.InvalidDimensionsError`
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError:
 """),
                       ################################
@@ -1551,6 +1593,7 @@ Raises
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
 """),
                       ################################
@@ -1563,6 +1606,7 @@ Raises
     then a :class:`exc.InvalidDimensionsError` will be raised.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed,
     then a :class:`exc.InvalidDimensionsError` will be raised.
 """),
@@ -1577,6 +1621,7 @@ Raises
     If the arguments are invalid.
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError: If the dimensions couldn't be parsed.
 :raises exc.InvalidArgumentsError: If the arguments are invalid.
 """),
@@ -1589,6 +1634,7 @@ CustomError
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises CustomError: If the dimensions couldn't be parsed.
 """),
                       ################################
@@ -1600,6 +1646,7 @@ AnotherError
     If the dimensions couldn't be parsed.
 """, """
 Example Function
+
 :raises AnotherError: If the dimensions couldn't be parsed.
 """),
                       ################################
@@ -1611,6 +1658,7 @@ Raises
 :class:`exc.InvalidArgumentsError`
 """, """
 Example Function
+
 :raises exc.InvalidDimensionsError:
 :raises exc.InvalidArgumentsError:
 """)]
@@ -1630,6 +1678,7 @@ Returns
 """
         expected = """
 Example Function
+
 :returns: A :math:`n \\times 2` array containing
           a bunch of math items
 :rtype: :class:`numpy.ndarray`
@@ -1661,6 +1710,7 @@ Multiline example
 body
 """, """
 Summary line
+
 .. admonition:: Example
 
    Multiline example
@@ -1675,6 +1725,7 @@ Multiline example
 body
 """, """
 Summary line
+
 .. admonition:: Example
 
    Multiline example
@@ -1689,6 +1740,7 @@ Multiline example
 body
 """, """
 Summary line
+
 .. admonition:: Example
 
    Multiline example
@@ -1768,6 +1820,7 @@ definition_after_normal_text : int
 """
 
         expected = """One line summary.
+
 :param no_list:
 :type no_list: `int`
 :param one_bullet_empty:
@@ -2300,6 +2353,7 @@ list(str)
 Summary line.
 
 :returns: The lines of the docstring in a list.
+
           .. note:: Nested markup works.
 :rtype: `list`\ (`str`)
         """
@@ -2319,6 +2373,7 @@ List[str]
 Summary line.
 
 :returns: The lines of the docstring in a list.
+
           .. note:: Nested markup works.
 :rtype: `List`\ [`str`]
         """
@@ -2341,6 +2396,7 @@ Summary line.
 
    `__str__`()
        The lines of the docstring in a list.
+       
        .. note:: Nested markup works.
        """
         )] 
@@ -2385,6 +2441,7 @@ bool
     https://www.python.org/dev/peps/pep-0484/
         """
         expected = """`PEP 484`_ type annotations are supported.
+
 :returns: True if successful, False otherwise.
 :rtype: `bool`
 
@@ -2417,8 +2474,10 @@ bool
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
-    @pytest.mark.xfail
     def test_fields_blank_lines(self):
+        """
+        Test for issue https://github.com/twisted/pydoctor/issues/366
+        """
         docstring = dedent("""
             Made my day
             Parameters
