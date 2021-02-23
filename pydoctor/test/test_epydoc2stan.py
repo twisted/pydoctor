@@ -62,7 +62,7 @@ def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    assert docstring2html(mod) == "<p>Empty module.</p>"
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
 
 
 def test_xref_link_not_found() -> None:
@@ -516,21 +516,21 @@ def test_ivar_overriding_attribute() -> None:
     base_a = base.contents['a']
     assert isinstance(base_a, model.Attribute)
     assert summary2html(base_a) == "base doc"
-    assert docstring2html(base_a) == "<p>base doc</p>\n<p>details</p>"
+    assert docstring2html(base_a) == "<div>\n<p>base doc</p>\n<p>details</p>\n</div>"
     base_b = base.contents['b']
     assert isinstance(base_b, model.Attribute)
     assert summary2html(base_b) == "not overridden"
-    assert docstring2html(base_b) == "<p>not overridden</p>\n<p>details</p>"
+    assert docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
     sub = mod.contents['Sub']
     sub_a = sub.contents['a']
     assert isinstance(sub_a, model.Attribute)
     assert summary2html(sub_a) == 'sub doc'
-    assert docstring2html(sub_a) == "sub doc"
+    assert docstring2html(sub_a) == "<div>sub doc</div>"
     sub_b = sub.contents['b']
     assert isinstance(sub_b, model.Attribute)
     assert summary2html(sub_b) == 'not overridden'
-    assert docstring2html(sub_b) == "<p>not overridden</p>\n<p>details</p>"
+    assert docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
