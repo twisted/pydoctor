@@ -398,7 +398,8 @@ pre {
 
 body.private-hidden #splitTables .private,
 body.private-hidden #childList .private,
-body.private-hidden #summaryTree .private {
+body.private-hidden #summaryTree .private,
+body.private-hidden nav.sidebar .private {
     display: none;
 }
 
@@ -500,4 +501,60 @@ div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p
 div.tip, div.hint, div.important {
     background-color: #d9edf7;
     border-color: #bce8f1;
+}
+
+/* The sidebar menu */
+.sidebar {
+    height: 100%; /* Full-height: remove this if you want "auto" height */
+    width: 210px; /* Set the width of the sidebar */
+    float: left;
+    padding: 22px 0 0 0;
+
+  }
+
+.sidebar > div {
+    width: 190px;
+}
+
+.sidebar > div > table {
+    width: 190px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.sidebar > div > table tr {
+    display: block;
+    width: 190px;
+}
+
+.sidebar > div > table tr td {
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.sidebar .thingTitle {
+    font-weight: bold;
+    margin-bottom: 2px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.sidebar .childrenKindTitle::after {
+    content: ":";
+}
+  
+/* Style page content */
+.main {
+    margin-left: 210px; /* Same as the width of the sidebar */
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+@media screen and (max-width: 850px) {
+    .sidebar {
+        display: none;
+    }
+    .main {
+        margin: 0;
+    }
 }

@@ -11,7 +11,7 @@ from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
-from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.templatewriter.pages.table import ChildTable, SideBar
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -245,6 +245,11 @@ class CommonPage(BasePage):
 
     def functionBody(self, data):
         return self.docgetter.get(data)
+
+    @renderer
+    def sidebar(self, request: IRequest, tag: Tag) -> Element:
+        return SideBar(loader=SideBar.lookup_loader(self.template_lookup), 
+                ob=self.ob, template_lookup=self.template_lookup)
 
     @renderer
     def all(self, request, tag):
