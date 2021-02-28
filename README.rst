@@ -63,12 +63,40 @@ What's New?
 pydoctor 21.2.0
 ^^^^^^^^^^^^^^^
 
-* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
+* Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (``objects.inv``) for deep-linking your documentation.
+* Fixed project version in the generated Intersphinx inventory. This used to be hardcoded to 2.0 (we mistook it for a format version), now it is unversioned by default and a version can be specified using the new ``--project-version`` option.
+* Fixed multiple bugs in Python name resolution, which could lead to for example missing "implemented by" links.
+* Fixed bug where class docstring fields such as ``cvar`` and ``ivar`` are ignored when they override inherited attribute docstrings.
+* Property decorators containing one or more dots (such as ``@abc.abstractproperty``) are now recognized by the custom properties support.
+* Improvements to `attrs`__ support:
+
+  - Attributes are now marked as instance variables.
+  - Type comments are given precedence over types inferred from ``attr.ib``.
+  - Support positional arguments in ``attr.ib`` definitions. Please use keyword arguments instead though, both for clarity and to be compatible with future ``attrs`` releases.
+
+* Improvements in the treatment of the ``__all__`` module variable:
+
+  - Assigning an empty sequence is interpreted as exporting nothing instead of being ignored.
+  - Better error reporting when the value assigned is either invalid or pydoctor cannot make sense of it.
+
 * Added ``except`` field as a synonym of ``raises``, to be compatible with epydoc and to fix handling of the ``:Exceptions:`` consolidated field in reStructuredText.
-* The ``build_apidocs`` Sphinx extension builds the API docs before Sphinx docs, such that the rest of the documentation can link to it via Intersphinx.
-* The ``build_apidocs`` Sphinx extension now has the `pydoctor_url_path` that will automatically update the `intersphinx_mapping` variable so that it uses the latest API inventory.
-* The ``build_apidocs`` Sphinx extension can be configured to build API docs for more than one package.
+* Exception types and external base classes are hyperlinked to their class documentation.
+* Formatting of ``def func():`` and ``class Class:`` lines was made consistent with code blocks.
+* Changes to the "Show/hide Private API" button:
+
+  - The button was moved to the right hand side of the navigation bar, to avoid overlapping the content on narrow displays.
+  - The show/hide state is now synced with a query argument in the location bar. This way, if you bookmark the page or send a link to someone else, the show/hide state will be preserved.
+  - A deep link to a private API item will now automatically enable "show private API" mode.
+
+* Improvements to the ``build_apidocs`` Sphinx extension:
+
+  - API docs are now built before Sphinx docs, such that the rest of the documentation can link to it via Intersphinx.
+  - New configuration variable ``pydoctor_url_path`` that will automatically update the ``intersphinx_mapping`` variable so that it uses the latest API inventory.
+  - The extension can be configured to build API docs for more than one package.
+
 * ``pydoctor.__version__`` is now a plain ``str`` instead of an ``incremental.Version`` object.
+
+__ https://www.attrs.org/
 
 pydoctor 20.12.1
 ^^^^^^^^^^^^^^^^
