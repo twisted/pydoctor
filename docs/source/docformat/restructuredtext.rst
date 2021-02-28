@@ -7,7 +7,7 @@ reStructuredText
     restructuredtext/restructuredtext_demo
 
 .. important::
-    ``pydoctor`` relies on ``docutils`` to offer *restructuredtext* support, update docutils with: ``pip install -U docutils``. 
+    ``pydoctor`` relies on ``docutils`` to offer *restructuredtext* support, update docutils with: ``pip install -U docutils``.
 
 For the language syntax documentation, read the `ReST docutils syntax reference <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
@@ -103,9 +103,9 @@ Directives
 
 Here is a list of the supported ReST directives by package of origin:
 
-- `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``, 
-  ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``, 
-  ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::`` 
+- `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``,
+  ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``,
+  ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::``
   and other admonitions, and a few others.
 - `epydoc`: None
 - `Sphinx`: None
@@ -116,10 +116,10 @@ Here is a list of the supported ReST directives by package of origin:
 Colorized snippets directive
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Using reStructuredText markup it is possible to specify Python snippets in a 
+Using reStructuredText markup it is possible to specify Python snippets in a
 `doctest block <https://docutils.sourceforge.io/docs/user/rst/quickref.html#doctest-blocks>`_.
 
-If the Python prompt gets in your way when you try to copy and paste and you are not interested 
+If the Python prompt gets in your way when you try to copy and paste and you are not interested
 in self-testing docstrings, the python directive will let you obtain a simple block of colorized text::
 
     .. python::

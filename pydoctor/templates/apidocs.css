@@ -357,7 +357,7 @@ div.danger p.rst-admonition-title, div.error p.rst-admonition-title, div.caution
 
 div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p.rst-admonition-title{
     color: #3a87ad;
-} 
+}
 
 div.tip, div.hint, div.important {
     background-color: #d9edf7;
