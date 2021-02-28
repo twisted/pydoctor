@@ -12,6 +12,20 @@ nav.navbar > .navbar-header {
     margin-left: 0;
     height: 100%;
     display: inline-block;
+    margin-right: 50px;
+}
+
+nav.mainnavbar > div.container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+nav div.layoutOptions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    margin-left: auto;
+    padding-top:11px;
 }
 
 .page-header {
@@ -25,7 +39,7 @@ nav.navbar > .navbar-header {
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
-    box-shadow: 0px 0px 8px 8px #fff;
+    box-shadow: 5px 0px 8px 8px #fff;
 }
 
 .navbar-brand {
@@ -243,6 +257,11 @@ ul ul ul ul ul ul ul {
         width: 35%;
     }
 
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 175px;
+    } 
+
     /* Summary column table */
     #splitTables > table tr td:nth-child(3) {
         width: 45%;
@@ -250,10 +269,10 @@ ul ul ul ul ul ul ul {
 
 }
 
-@media only screen and (max-width: 650px) {
+@media only screen and (max-width: 750px) {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
-        width: 175px;
+        width: 155px;
     } 
 }
 
@@ -403,17 +422,18 @@ body.private-hidden nav.sidebar .private {
     display: none;
 }
 
-/* Show private */ 
+/* Show private and other options */ 
 
-#showPrivate:hover {
+#showPrivate:hover, #toggleCollapseSideBar:hover {
     text-decoration: none;
 }
 
-#showPrivate button {
-    padding: 10px;
+#showPrivate button, #toggleCollapseSideBar button{
+    padding: 5px;
+    padding-bottom: 15px;
 }
 
-#showPrivate button:hover {
+#showPrivate button:hover, #toggleCollapseSideBar button:hover {
     text-decoration: none;
 }
 
@@ -503,28 +523,70 @@ div.tip, div.hint, div.important {
     border-color: #bce8f1;
 }
 
-/* The sidebar menu */
-.sidebar {
-    height: 100%; /* Full-height: remove this if you want "auto" height */
-    width: 210px; /* Set the width of the sidebar */
+.sidebarcontainer {
+    height: 100vh; /* Full-height: remove this if you want "auto" height */
+    width: 200px; /* Set the width of the sidebar */
     float: left;
-    padding: 22px 0 0 0;
+    padding: 5px;
+    margin-right: 20px;
+    margin-top: 24px;
+    border: 1px solid;
+    border-color: #e7e7e7;
+    border-radius: 4px 4px 0px 0px;
+    border-bottom: 0;
+    display: flex;
+    position: sticky;
+    top: 0;
+    overflow-wrap: break-word;
+    overflow-x: visible;
+    overflow-y: auto;
+}
 
-  }
+/* Hide scrollbar for Chrome, Safari and Opera */
+.sidebarcontainer::-webkit-scrollbar {
+    display: none;
+}
+  
+/* Hide scrollbar for IE, Edge and Firefox */
+.sidebarcontainer {
+    -ms-overflow-style: none; 
+    scrollbar-width: none;
+} 
+
+/* The sidebar menu */
+
+.sidebar {
+    word-wrap: break-word;
+    padding-bottom: 20px;
+}
 
 .sidebar > div {
     width: 190px;
 }
 
 .sidebar > div > table {
-    width: 190px;
     display: block;
     margin-bottom: 5px;
 }
 
+.sidebar > div.docstringToc li {
+    margin-left: 14px;
+    width: 160px;
+    padding: 0;
+}
+
+.sidebar > div.docstringToc li::marker {
+    font-size: 11px;
+}
+
 .sidebar > div > table tr {
-    display: block;
-    width: 190px;
+    width: 160px;
+    margin-left: 14px;
+    display: list-item;
+}
+
+.sidebar > div > table tr::marker {
+    font-size: 11px;
 }
 
 .sidebar > div > table tr td {
@@ -535,26 +597,129 @@ div.tip, div.hint, div.important {
 
 .sidebar .thingTitle {
     font-weight: bold;
-    margin-bottom: 2px;
+    margin-bottom: 5px;
     text-overflow: ellipsis;
     overflow: hidden;
+    color: #777777;
+    font-size: 1.1em;
+}
+
+.sidebar .childrenKindTitle {
+    color: #333;
+    margin-left: 4px;
+    margin-bottom: 3px;
 }
 
 .sidebar .childrenKindTitle::after {
     content: ":";
 }
+
+.sidebar hr {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
   
 /* Style page content */
 .main {
-    margin-left: 210px; /* Same as the width of the sidebar */
+    margin-left: 220px; /* Same as the width of the sidebar */
 }
 
-/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
-@media screen and (max-width: 850px) {
+nav.foot {
+    background-color: #fff;
+    text-align: center;
+}
+
+nav.foot address {
+    padding-top: 15px;
+    text-align: center;
+}
+
+#collapseSideBar {
+    border-radius: 4px; 
+    color: rgb(68, 68, 68); 
+    font-size: 1.2em; 
+    display: block; 
+    float: left;
+    width: 8px;
+    padding: 0;
+    margin: 0;
+    position: sticky;
+    top: 0;
+}
+
+#collapseSideBar > a:hover{
+    color: #23527c;
+    background-color: #e1e1e1;
+    text-decoration: none;
+}
+
+#collapseSideBar > a {
+    height: 100vh;
+    width: 12px;
+    padding: 1px;
+    background-color: #f4f4f4;
+    border-radius: 0 4px 0 0;
+    margin-left: -8px;
+    margin-top: -7px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: solid 1px #e7e7e7;
+}
+
+/* collapsed */
+
+body.sidebar-collapsed .sidebar {
+    display: none;
+}
+
+body.sidebar-collapsed .sidebarcontainer {
+    border: none;
+    padding: 0;
+    width: 5px;
+    margin-right: 0;
+    margin-left: -15px;
+    overflow: visible;
+    background-color: transparent;
+}
+
+body.sidebar-collapsed .main {
+    margin: 0;
+}
+
+body.sidebar-collapsed #collapseSideBar {
+    left: 1px;
+}
+
+body.sidebar-collapsed #collapseSideBar > a {
+    margin-top: 0;
+    border-radius: 4px;
+}
+
+/* On smaller screens, where width is less than 650px, simply hide sidebar */
+@media screen and (max-width: 650px) {
     .sidebar {
         display: none;
     }
     .main {
         margin: 0;
     }
+
+    .sidebarcontainer {
+        border: none;
+        padding: 0;
+        width: auto;
+        margin-right: 0;
+        margin-left: -20px;
+    }
+    
+    .main {
+        margin: 0;
+    }
+
+    #toggleCollapseSideBar {
+        display: none;
+    }
+
 }
