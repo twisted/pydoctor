@@ -1,14 +1,21 @@
-import pytest
 from typing import List
-from pydoctor.epydoc.markup import ParseError, flatten, restructuredtext
-from pydoctor.epydoc.markup.restructuredtext import parse_docstring
-from bs4 import BeautifulSoup
 
-def rst2html(s: str) -> str:
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
+from pydoctor.epydoc.markup.restructuredtext import parse_docstring
+from pydoctor.test import NotFoundLinker
+
+from bs4 import BeautifulSoup
+import pytest
+
+
+def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
+    """
+    Render a docstring to HTML.
+    """
     errors: List[ParseError] = []
-    parsed = parse_docstring(s, errors)
+    parsed = parse_docstring(docstring, errors)
     assert not errors
-    return flatten(parsed.to_stan(None))
+    return flatten(parsed.to_stan(linker))
 
 def test_rst_body_empty() -> None:
     src = """
@@ -48,43 +55,69 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
-def to_html(docstring: str) -> str:
-    """
-    Utility method to convert a docstring to html with pydoctor.
-    """
-    err: List[ParseError] = []
-    p = restructuredtext.parse_docstring(docstring, err)
-    if err:
-        raise ValueError("\n".join(repr(e) for e in err))
-    html=flatten(p.to_stan(None))
-    return html
-
 def prettify(html: str) -> str:
-    return BeautifulSoup(html).prettify()  # type: ignore[no-any-return]
+    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
 
-# TESTS FOR NOT IMPLEMENTTED FEATURES
+def test_rst_directive_adnomitions() -> None:
+    expected_html_multiline="""
+        <div class="rst-admonition {}">
+        <p class="rst-first rst-admonition-title">{}</p>
+        <p>this is the first line</p>
+        <p class="rst-last">and this is the second line</p>
+        </div>
+"""
 
-@pytest.mark.xfail
-def test_rst_directive_abnomitions() -> None:
-    html = to_html(".. warning:: Hey")
-    expected_html="""
-        <div class="admonition warning">
-        <p class="admonition-title">Warning</p>
-        <p>Hey</p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    expected_html_single_line = """
+        <div class="rst-admonition {}">
+        <p class="rst-first rst-admonition-title">{}</p>
+        <p class="rst-last">this is a single line</p>
+        </div>
+"""
 
-    html = to_html(".. note:: Hey")
-    expected_html = """
-        <div class="admonition note">
-        <p class="admonition-title">Note</p>
-        <p>Hey</p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    admonition_map = {
+            'Attention': 'attention',
+            'Caution': 'caution',
+            'Danger': 'danger',
+            'Error': 'error',
+            'Hint': 'hint',
+            'Important': 'important',
+            'Note': 'note',
+            'Tip': 'tip',
+            'Warning': 'warning',
+        }
+
+    for title, admonition_name in admonition_map.items():
+        # Multiline
+        docstring = (".. {}::\n"
+                    "\n"
+                    "   this is the first line\n"
+                    "   \n"
+                    "   and this is the second line\n"
+                    ).format(admonition_name)
+
+        expect = expected_html_multiline.format(
+            admonition_name, title
+        )
+
+        actual = rst2html(docstring)
+
+        assert prettify(expect)==prettify(actual)
+
+        # Single line
+        docstring = (".. {}:: this is a single line\n"
+                    ).format(admonition_name)
+
+        expect = expected_html_single_line.format(
+            admonition_name, title
+        )
+
+        actual = rst2html(docstring)
+
+        assert prettify(expect)==prettify(actual)
 
 @pytest.mark.xfail
 def test_rst_directive_versionadded() -> None:
-    html = to_html(".. versionadded:: 0.6")
+    html = rst2html(".. versionadded:: 0.6")
     expected_html="""
         <div class="versionadded">
         <p><span class="versionmodified added">New in version 0.6.</span></p>
@@ -93,7 +126,7 @@ def test_rst_directive_versionadded() -> None:
 
 @pytest.mark.xfail
 def test_rst_directive_versionchanged() -> None:
-    html = to_html(""".. versionchanged:: 0.7
+    html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
     expected_html="""
         <div class="versionchanged">
@@ -103,7 +136,7 @@ def test_rst_directive_versionchanged() -> None:
 
 @pytest.mark.xfail
 def test_rst_directive_deprecated() -> None:
-    html = to_html(""".. deprecated:: 0.2
+    html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""
         <div class="deprecated">

@@ -1,5 +1,5 @@
 #
-# rst.py: ReStructuredText docstring parsing
+# restructuredtext.py: ReStructuredText docstring parsing
 # Edward Loper
 #
 # Created [06/28/03 02:52 AM]
@@ -15,8 +15,7 @@ defined by L{ParsedDocstring}.
 L{ParsedRstDocstring} is basically just a L{ParsedDocstring} wrapper
 for the C{docutils.nodes.document} class.
 
-Creating C{ParsedRstDocstring}s
-===============================
+B{Creating C{ParsedRstDocstring}s}:
 
 C{ParsedRstDocstring}s are created by the C{parse_document} function,
 using the C{docutils.core.publish_string()} method, with the following
@@ -42,23 +41,24 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-# Imports
-from typing import Sequence
+from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set
+import optparse
 import re
 
 from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
-from docutils.utils import new_document
-from docutils.nodes import NodeVisitor, SkipNode, Text
+from docutils.utils import Reporter, new_document
+from docutils.nodes import Node, NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
 from docutils.parsers.rst import Directive, directives
+from docutils.transforms import Transform
 import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
@@ -86,17 +86,15 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring, errors):
+def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
     of its contents.
+
     @param docstring: The docstring to parse
-    @type docstring: C{string}
     @param errors: A list where any errors generated during parsing
         will be stored.
-    @type errors: C{list} of L{ParseError}
-    @rtype: L{ParsedDocstring}
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
@@ -114,8 +112,11 @@ def parse_docstring(docstring, errors):
 class OptimizedReporter(docutils.utils.Reporter):
     """A reporter that ignores all debug messages.  This is used to
     shave a couple seconds off of epydoc's run time, since docutils
-    isn't very fast about processing its own debug messages."""
-    def debug(self, *args, **kwargs): pass
+    isn't very fast about processing its own debug messages.
+    """
+
+    def debug(self, *args: object, **kwargs: object) -> None:
+        pass
 
 class ParsedRstDocstring(ParsedDocstring):
     """
@@ -155,28 +156,28 @@ class _EpydocReader(StandaloneReader):
     and appends them to a list.
     """
 
-    def __init__(self, errors):
+    def __init__(self, errors: List[ParseError]):
         self._errors = errors
         StandaloneReader.__init__(self)
 
-    def get_transforms(self):
+    def get_transforms(self) -> List[Transform]:
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
         return [t for t in StandaloneReader.get_transforms(self)
                 if t != docutils.transforms.frontmatter.DocInfo]
 
-    def new_document(self):
+    def new_document(self) -> docutils.nodes.document:
         document = new_document(self.source.source_path, self.settings)
         # Capture all warning messages.
         document.reporter.attach_observer(self.report)
         # Return the new document.
         return document
 
-    def report(self, error):
-        try: is_fatal = int(error['level']) > 2
-        except: is_fatal = True
-        try: linenum = int(error['line'])
-        except: linenum = None
+    def report(self, error: docutils.nodes.system_message) -> None:
+        level: int = error['level']
+        is_fatal = level >= Reporter.ERROR_LEVEL
+
+        linenum: Optional[int] = error.get('line')
 
         msg = ''.join(c.astext() for c in error)
 
@@ -188,16 +189,13 @@ class _DocumentPseudoWriter(Writer):
     access the document itself.  The output of C{_DocumentPseudoWriter}
     is just an empty string; but after it has been used, the most
     recently processed document is available as the instance variable
-    C{document}
-
-    @type document: C{docutils.nodes.document}
-    @ivar document: The most recently processed document.
+    C{document}.
     """
-    def __init__(self):
-        self.document = None
-        Writer.__init__(self)
 
-    def translate(self):
+    document: docutils.nodes.document
+    """The most recently processed document."""
+
+    def translate(self) -> None:
         self.output = ''
 
 class _SplitFieldsTranslator(NodeVisitor):
@@ -216,16 +214,16 @@ class _SplitFieldsTranslator(NodeVisitor):
     consolidated fields expressed as unordered lists still require
     backticks for now."""
 
-    def __init__(self, document, errors):
+    def __init__(self, document: docutils.nodes.document, errors: List[ParseError]):
         NodeVisitor.__init__(self, document)
         self._errors = errors
-        self.fields = []
-        self._newfields = set()
+        self.fields: List[Field] = []
+        self._newfields: Set[str] = set()
 
-    def visit_document(self, node):
+    def visit_document(self, node: Node) -> None:
         self.fields = []
 
-    def visit_field(self, node):
+    def visit_field(self, node: Node) -> None:
         # Remove the field from the tree.
         node.parent.remove(node)
 
@@ -259,18 +257,23 @@ class _SplitFieldsTranslator(NodeVisitor):
 
         self._add_field(tagname, arg, fbody, node.line)
 
-    def _add_field(self, tagname, arg, fbody, lineno):
+    def _add_field(self,
+            tagname: str,
+            arg: Optional[str],
+            fbody: Iterable[Node],
+            lineno: int
+            ) -> None:
         field_doc = self.document.copy()
         for child in fbody: field_doc.append(child)
         field_pdoc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_pdoc, lineno - 1))
 
-    def visit_field_list(self, node):
+    def visit_field_list(self, node: Node) -> None:
         # Remove the field list from the tree.  The visitor will still walk
         # over the node's children.
         node.parent.remove(node)
 
-    def handle_consolidated_field(self, body, tagname):
+    def handle_consolidated_field(self, body: Sequence[Node], tagname: str) -> None:
         """
         Attempt to handle a consolidated section.
         """
@@ -287,7 +290,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items, tagname):
+    def handle_consolidated_bullet_list(self, items: Iterable[Node], tagname: str) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -338,7 +341,7 @@ class _SplitFieldsTranslator(NodeVisitor):
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items, tagname):
+    def handle_consolidated_definition_list(self, items: Iterable[Node], tagname: str) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
@@ -372,14 +375,19 @@ class _SplitFieldsTranslator(NodeVisitor):
                 type_descr = item[1]
                 self._add_field('type', arg, type_descr, lineno)
 
-    def unknown_visit(self, node):
+    def unknown_visit(self, node: Node) -> None:
         'Ignore all unknown nodes'
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
 class _EpydocHTMLTranslator(HTMLTranslator):
-    settings = None
-    def __init__(self, document, docstring_linker):
+
+    settings: ClassVar[Optional[optparse.Values]] = None
+
+    def __init__(self,
+            document: docutils.nodes.document,
+            docstring_linker: DocstringLinker
+            ):
         self._linker = docstring_linker
 
         # Set the document's settings.
@@ -388,37 +396,34 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             self.__class__.settings = settings
         document.settings = self.settings
 
-        # Call the parent constructor.
-        HTMLTranslator.__init__(self, document)
+        super().__init__(document)
 
     # Handle interpreted text (crossreferences)
-    def visit_title_reference(self, node):
+    def visit_title_reference(self, node: Node) -> None:
         m = _TARGET_RE.match(node.astext())
-        if m: text, target = m.groups()
-        else: target = text = node.astext()
-        label = tags.code(text)
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
         # TODO: 'node.line' is None for some reason.
         #       https://github.com/twisted/pydoctor/issues/237
         lineno = 0
-        try:
-            url = self._linker.resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            xref = tags.a(label, href=url)
-        self.body.append(flatten(xref))
+        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
         raise SkipNode()
 
-    def should_be_compact_paragraph(self, node):
+    def should_be_compact_paragraph(self, node: Node) -> bool:
         if self.document.children == [node]:
             return True
         else:
-            return HTMLTranslator.should_be_compact_paragraph(self, node)
+            return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 
-    def visit_document(self, node): pass
-    def depart_document(self, node): pass
+    def visit_document(self, node: Node) -> None:
+        pass
 
-    def starttag(self, node, tagname, suffix='\n', **attributes):
+    def depart_document(self, node: Node) -> None:
+        pass
+
+    def starttag(self, node: Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
         """
         This modified version of starttag makes a few changes to HTML
         tags, to prevent them from conflicting with epydoc.  In particular:
@@ -458,17 +463,86 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return HTMLTranslator.starttag(self, node, tagname, suffix,
-                                       **attributes)
+        return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
-    def visit_doctest_block(self, node):
+    def visit_doctest_block(self, node: Node) -> None:
         pysrc = node[0].astext()
         if node.get('codeblock'):
             self.body.append(flatten(colorize_codeblock(pysrc)))
         else:
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
+    
 
+    # Other ressources on how to extend docutils: 
+    # https://docutils.sourceforge.io/docs/user/tools.html
+    # https://docutils.sourceforge.io/docs/dev/hacking.html
+    # https://docutils.sourceforge.io/docs/howto/rst-directives.html
+    # docutils apidocs: 
+    # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
+
+    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
+    # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
+    def _visit_admonition(self, node: Node, name: str) -> None:
+        self.body.append(self.starttag(
+            node, 'div', CLASS=('admonition ' + name)))
+        node.insert(0, docutils.nodes.title(name, name.title()))
+        self.set_first_last(node)
+        
+    def visit_note(self, node: Node) -> None:
+        self._visit_admonition(node, 'note')
+
+    def depart_note(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_warning(self, node: Node) -> None:
+        self._visit_admonition(node, 'warning')
+
+    def depart_warning(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_attention(self, node: Node) -> None:
+        self._visit_admonition(node, 'attention')
+
+    def depart_attention(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_caution(self, node: Node) -> None:
+        self._visit_admonition(node, 'caution')
+
+    def depart_caution(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_danger(self, node: Node) -> None:
+        self._visit_admonition(node, 'danger')
+
+    def depart_danger(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_error(self, node: Node) -> None:
+        self._visit_admonition(node, 'error')
+
+    def depart_error(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_hint(self, node: Node) -> None:
+        self._visit_admonition(node, 'hint')
+
+    def depart_hint(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_important(self, node: Node) -> None:
+        self._visit_admonition(node, 'important')
+
+    def depart_important(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_tip(self, node: Node) -> None:
+        self._visit_admonition(node, 'tip')
+
+    def depart_tip(self, node: Node) -> None:
+        self.depart_admonition(node)
+    
 class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
@@ -482,7 +556,7 @@ class PythonCodeDirective(Directive):
 
     has_content = True
 
-    def run(self):
+    def run(self) -> List[Node]:
         text = '\n'.join(self.content)
         node = docutils.nodes.doctest_block(text, text, codeblock=True)
         return [ node ]

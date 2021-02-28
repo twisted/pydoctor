@@ -47,9 +47,9 @@ pydoctor currently supports the following markup languages in docstrings:
 
 `restructuredtext`__
     The markup language used by Sphinx.
-    More expressive than epytext, but also slighly more complex and verbose.
+    More expressive than epytext, but also slightly more complex and verbose.
 
-plaintext
+``plaintext``
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
@@ -60,8 +60,8 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
-pydoctor 20.13.0
-^^^^^^^^^^^^^^^^
+pydoctor 21.2.0
+^^^^^^^^^^^^^^^
 
 * Removed the ``--html-write-function-pages`` option. As a replacement, you can use the generated Intersphinx inventory (objects.inv) for deep-linking your documentation.
 * Added ``except`` field as a synonym of ``raises``, to be compatible with epydoc and to fix handling of the ``:Exceptions:`` consolidated field in reStructuredText.
@@ -82,7 +82,7 @@ pydoctor 20.12.0
 
 * Python 3.6 or higher is required.
 
-* There is now a user manual that can be built with Sphinx or read online on `Read the Docs`__; this is a work in progress and the online version will be updated between releases.
+* There is now a user manual that can be built with Sphinx or read online on `Read the Docs`__. This is a work in progress and the online version will be updated between releases.
 
 * Added support for Python language features:
 
@@ -104,9 +104,9 @@ pydoctor 20.12.0
 
 * New option ``-W``/``--warnings-as-errors`` to fail your build on documentation errors.
 
-* Linking to the standard library documentation is more accurate now, but does require the use of an intersphinx inventory (``--intersphinx=https://docs.python.org/3/objects.inv``).
+* Linking to the standard library documentation is more accurate now, but does require the use of an Intersphinx inventory (``--intersphinx=https://docs.python.org/3/objects.inv``).
 
-* Caching of intersphinx inventories is now enabled by default.
+* Caching of Intersphinx inventories is now enabled by default.
 
 * Added a `Sphinx extension`__ for embedding pydoctor's output in a project's Sphinx documentation.
 
@@ -153,7 +153,7 @@ pydoctor 20.7.0
 * Improved error reporting: more errors are reported, error messages include file name and line number.
 * Dropped support for implicit relative imports.
 * Explicit relative imports (using ``from``) no longer cause warnings.
-* Dropped support for index terms in epytext (``X{}``); this was never supported in any meaningful capacity, but now the tag is gone.
+* Dropped support for index terms in epytext (``X{}``). This was never supported in any meaningful capacity, but now the tag is gone.
 
 This was the last major release to support Python 2.7 and 3.5.
 

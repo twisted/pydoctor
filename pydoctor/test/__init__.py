@@ -1,11 +1,15 @@
 """PyDoctor's test suite."""
 
 from logging import LogRecord
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 
+from twisted.web.template import Tag, tags
+
 from pydoctor import epydoc2stan, model
+from pydoctor.epydoc.markup import DocstringLinker
+
 
 posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
@@ -73,3 +77,16 @@ class InMemoryWriter:
 
         for o in ob.contents.values():
             self._writeDocsFor(o)
+
+
+class NotFoundLinker(DocstringLinker):
+    """A DocstringLinker implementation that cannot find any links."""
+
+    def link_to(self, target: str, label: str) -> Tag:
+        return tags.transparent(label)  # type: ignore[no-any-return]
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        return tags.code(label)  # type: ignore[no-any-return]
+
+    def resolve_identifier(self, identifier: str) -> Optional[str]:
+        return None

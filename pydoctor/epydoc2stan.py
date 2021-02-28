@@ -6,7 +6,7 @@ from collections import defaultdict
 from importlib import import_module
 from typing import (
     Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Tuple
+    Optional, Sequence, Tuple, Union
 )
 import ast
 import itertools
@@ -46,6 +46,24 @@ def get_docstring(
     return None, None
 
 
+def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -> Tag:
+    if not o.isVisible:
+        o.system.msg("html", "don't link to %s"%o.fullName())
+
+    if label is None:
+        label = o.fullName()
+
+    url = o.url
+    if url.startswith(page_url + '#'):
+        # When linking to an item on the same page, omit the path.
+        # Besides shortening the HTML, this also avoids the page being reloaded
+        # if the query string is non-empty.
+        url = url[len(page_url):]
+
+    ret: Tag = tags.a(label, href=url)
+    return ret
+
+
 class _EpydocLinker(DocstringLinker):
 
     def __init__(self, obj: model.Documentable):
@@ -82,6 +100,33 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
+    def link_to(self, identifier: str, label: str) -> Tag:
+        fullID = self.obj.expandName(identifier)
+
+        target = self.obj.system.objForFullName(fullID)
+        if target is not None:
+            return taglink(target, self.obj.page_object.url, label)
+
+        url = self.look_for_intersphinx(fullID)
+        if url is not None:
+            return tags.a(label, href=url)  # type: ignore[no-any-return]
+
+        return tags.transparent(label)  # type: ignore[no-any-return]
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        xref: Union[Tag, str]
+        try:
+            resolved = self._resolve_identifier_xref(target, lineno)
+        except LookupError:
+            xref = label
+        else:
+            if isinstance(resolved, model.Documentable):
+                xref = taglink(resolved, self.obj.page_object.url, label)
+            else:
+                xref = tags.a(label, href=resolved)
+        ret: Tag = tags.code(xref)
+        return ret
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         fullID = self.obj.expandName(identifier)
 
@@ -91,7 +136,23 @@ class _EpydocLinker(DocstringLinker):
 
         return self.look_for_intersphinx(fullID)
 
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
+    def _resolve_identifier_xref(self,
+            identifier: str,
+            lineno: int
+            ) -> Union[str, model.Documentable]:
+        """
+        Resolve a crossreference link to a Python identifier.
+        This will resolve the identifier to any reasonable target,
+        even if it has to look in places where Python itself would not.
+
+        @param identifier: The name of the Python identifier that
+            should be linked to.
+        @param lineno: The line number within the docstring at which the
+            crossreference is located.
+        @return: The referenced object within our system, or the URL of
+            an external target (found via Intersphinx).
+        @raise LookupError: If C{identifier} could not be resolved.
+        """
 
         # There is a lot of DWIM here. Look for a global match first,
         # to reduce the chance of a false positive.
@@ -99,7 +160,7 @@ class _EpydocLinker(DocstringLinker):
         # Check if 'identifier' is the fullName of an object.
         target = self.obj.system.objForFullName(identifier)
         if target is not None:
-            return target.url
+            return target
 
         # Check if the fullID exists in an intersphinx inventory.
         fullID = self.obj.expandName(identifier)
@@ -122,7 +183,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = src.resolveName(identifier)
             if target is not None:
-                return target.url
+                return target
             src = src.parent
 
         # Walk up the object tree again and see if 'identifier' refers to an
@@ -133,7 +194,7 @@ class _EpydocLinker(DocstringLinker):
         while src is not None:
             target = self.look_for_name(identifier, src.contents.values(), lineno)
             if target is not None:
-                return target.url
+                return target
             src = src.parent
 
         # Examine every module and package in the system and see if 'identifier'
@@ -144,7 +205,7 @@ class _EpydocLinker(DocstringLinker):
             self.obj.system.objectsOfType(model.Package)),
             lineno)
         if target is not None:
-            return target.url
+            return target
 
         message = f'Cannot find link target for "{fullID}"'
         if identifier != fullID:
@@ -160,16 +221,29 @@ class _EpydocLinker(DocstringLinker):
 class FieldDesc:
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
-    kind: str
     name: Optional[str] = None
     type: Optional[Tag] = None
     body: Optional[Tag] = None
 
-    def format(self) -> Tag:
+    def format(self) -> Iterator[Tag]:
         formatted = self.body or self._UNDOCUMENTED
         if self.type is not None:
             formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
-        return formatted
+
+        name = self.name
+        if name is None:
+            yield tags.td(formatted, colspan="2")
+        else:
+            yield tags.td(name, class_="fieldArg")
+            yield tags.td(formatted)
+
+
+class RaisesDesc(FieldDesc):
+    """Description of an exception that can be raised by function/method."""
+
+    def format(self) -> Iterator[Tag]:
+        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(self.body or self._UNDOCUMENTED)
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
@@ -182,11 +256,7 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         else:
             row = tags.tr()
             row(tags.td())
-        if d.name is None:
-            row(tags.td(colspan="2")(d.format()))
-        else:
-            row(tags.td(class_="fieldArg")(d.name), tags.td(d.format()))
-        yield row
+        yield row(d.format())
 
 
 @attr.s(auto_attribs=True)
@@ -238,24 +308,25 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
+        self._linker = _EpydocLinker(self.obj)
 
         self.types: Dict[str, Optional[Tag]] = {}
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
-        self.raise_descs: List[FieldDesc] = []
+        self.raise_descs: List[RaisesDesc] = []
         self.seealsos: List[Field] = []
         self.notes: List[Field] = []
         self.authors: List[Field] = []
         self.sinces: List[Field] = []
-        self.unknowns: List[FieldDesc] = []
+        self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
     def set_param_types_from_annotations(
             self, annotations: Mapping[str, Optional[ast.expr]]
             ) -> None:
-        linker = _EpydocLinker(self.obj)
         formatted_annotations = {
-            name: None if value is None else AnnotationDocstring(value).to_stan(linker)
+            name: None if value is None
+                       else AnnotationDocstring(value).to_stan(self._linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -267,13 +338,13 @@ class FieldHandler:
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
             if not _is_none_literal(ann_ret):
-                self.return_desc = FieldDesc(kind='return', type=ret_type)
+                self.return_desc = FieldDesc(type=ret_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
@@ -281,7 +352,7 @@ class FieldHandler:
         if field.arg is not None:
             field.report('Unexpected argument in %s field' % (field.tag,))
         if not self.return_desc:
-            self.return_desc = FieldDesc(kind='return')
+            self.return_desc = FieldDesc()
         self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
@@ -316,9 +387,6 @@ class FieldHandler:
                 return
         field.report('Documented parameter "%s" does not exist' % (name,))
 
-    def add_info(self, desc_list: List[FieldDesc], name: Optional[str], field: Field) -> None:
-        desc_list.append(FieldDesc(kind=field.tag, name=name, body=field.format()))
-
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
             if field.arg is not None:
@@ -348,7 +416,7 @@ class FieldHandler:
         if name is not None:
             if any(desc.name == name for desc in self.parameter_descs):
                 field.report('Parameter "%s" was already documented' % (name,))
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name not in self.types:
                 self._handle_param_not_found(name, field)
 
@@ -358,7 +426,7 @@ class FieldHandler:
         name = self._handle_param_name(field)
         if name is not None:
             # TODO: How should this be matched to the type annotation?
-            self.add_info(self.parameter_descs, name, field)
+            self.parameter_descs.append(FieldDesc(name=name, body=field.format()))
             if name in self.types:
                 field.report('Parameter "%s" is documented as keyword' % (name,))
 
@@ -375,7 +443,10 @@ class FieldHandler:
         name = field.arg
         if name is None:
             field.report('Exception type missing')
-        self.add_info(self.raise_descs, name, field)
+            typ_fmt = tags.span(class_='undocumented')("Unknown exception")
+        else:
+            typ_fmt = self._linker.link_to(name, name)
+        self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
     
@@ -393,8 +464,9 @@ class FieldHandler:
         self.sinces.append(field)
 
     def handleUnknownField(self, field: Field) -> None:
-        field.report(f"Unknown field '{field.tag}'" )
-        self.add_info(self.unknowns, field.arg, field)
+        name = field.tag
+        field.report(f"Unknown field '{name}'" )
+        self.unknowns[name].append(FieldDesc(name=field.arg, body=field.format()))
 
     def handle(self, field: Field) -> None:
         m = getattr(self, 'handle_' + field.tag, self.handleUnknownField)
@@ -415,7 +487,7 @@ class FieldHandler:
             except KeyError:
                 if index == 0 and name in ('self', 'cls'):
                     continue
-                param = FieldDesc(kind='param', name=name, type=type_doc)
+                param = FieldDesc(name=name, type=type_doc)
                 any_info |= type_doc is not None
             else:
                 param.type = type_doc
@@ -435,18 +507,14 @@ class FieldHandler:
 
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
-            r.append(tags.tr(class_="fieldStart")(tags.td(class_="fieldName")('Returns'),
-                               tags.td(colspan="2")(self.return_desc.format())))
+            r += format_desc_list('Returns', [self.return_desc])
         r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
                       ('Present Since', 'Present Since', self.sinces),
                       ('Note', 'Notes', self.notes)):
             r += format_field_list(*s_p_l)
-        unknowns: Dict[str, List[FieldDesc]] = {}
-        for fieldinfo in self.unknowns:
-            unknowns.setdefault(fieldinfo.kind, []).append(fieldinfo)
-        for kind, fieldlist in unknowns.items():
+        for kind, fieldlist in self.unknowns.items():
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
@@ -552,17 +620,19 @@ def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
     doc, source = get_docstring(obj)
-    if doc is None:
+
+    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
         # Attributes can be documented as fields in their parent's docstring.
-        if isinstance(obj, model.Attribute):
-            pdoc = obj.parsed_docstring
-        else:
-            pdoc = None
-        if pdoc is None:
-            return format_undocumented(obj)
+        pdoc = obj.parsed_docstring
+    else:
+        pdoc = None
+
+    if pdoc is not None:
+        # The docstring was split off from the Attribute's parent docstring.
         source = obj.parent
-        # Since obj is an Attribute, it has a parent.
         assert source is not None
+    elif doc is None:
+        return format_undocumented(obj)
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert source is not None
@@ -661,14 +731,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
         self.linker = linker
 
     def _handle_name(self, identifier: str) -> Tag:
-        url = self.linker.resolve_identifier(identifier)
-
-        tag: Tag
-        if url is None:
-            tag = tags.transparent(identifier)
-        else:
-            tag = tags.a(identifier, href=url, class_='code')
-        return tag
+        return self.linker.link_to(identifier, identifier)
 
     def _handle_constant(self, node: ast.expr, value: object) -> Tag:
         if value in (False, True, None, NotImplemented):
