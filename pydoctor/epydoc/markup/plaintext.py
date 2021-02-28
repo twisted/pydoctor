@@ -38,6 +38,10 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return bool(self._text)
+    
+    @property
+    def toc(self) -> None:
+        return None
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.p(self._text, class_='pre')  # type: ignore[no-any-return]

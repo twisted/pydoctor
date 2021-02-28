@@ -104,13 +104,24 @@ class SideBar(TemplateElement):
 
     filename = 'sidebar.html'
 
-    def __init__(self, loader: ITemplateLoader, ob: Documentable, template_lookup: TemplateLookup):
+    def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, template_lookup: TemplateLookup):
         super().__init__(loader)
         self.ob = ob
         self.template_lookup = template_lookup
+        self.docgetter = docgetter
 
     @renderer
-    def toc(self, request: IRequest, tag: Tag) -> Sequence[Element]:
+    def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
+        
+        toc = self.docgetter.get_toc(self.ob)
+        if toc:
+            return tag.fillSlots(sectionList=toc)
+        else:
+            tag.clear()
+            return Tag('transparent')
+
+    @renderer
+    def moduleToc(self, request: IRequest, tag: Tag) -> Sequence[Element]:
         r = []   
         if isinstance(self.ob, (Package, Module)):
             if isinstance(self.ob, Package):
@@ -261,7 +272,7 @@ class TOCTableRow(Element):
 
 class TOCTable(_ChildTable):
     """Just like L{ChildTable} but without a L{DocGetter} instance."""
-    # one table per module childen kind: classes, functions, variables, modules
+    # one table per module children kind: classes, functions, variables, modules
 
     filename = 'sidebar-table.html'
 

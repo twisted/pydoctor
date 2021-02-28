@@ -41,7 +41,7 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set
+from typing import Any, ClassVar, Iterable, List, Mapping, Optional, Sequence, Set
 import optparse
 import re
 
@@ -140,6 +140,17 @@ class ParsedRstDocstring(ParsedDocstring):
             isinstance(child, Text) or child.children
             for child in self._document.children
             )
+    
+    @property
+    def toc(self) -> Optional[ParsedDocstring]:
+
+        contents = self._build_contents(self._document, depth=4)
+        docstring_toc = new_document('toc')
+        if len(contents):
+            docstring_toc.extend(contents)
+            return ParsedRstDocstring(docstring_toc, ())
+        else:
+            return None
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         # Inherit docs
@@ -149,6 +160,39 @@ class ParsedRstDocstring(ParsedDocstring):
 
     def __repr__(self) -> str:
         return '<ParsedRstDocstring: ...>'
+
+    def _build_contents(self, node: docutils.nodes.Node, 
+                        level: int = 0, depth: int = 4) -> List[docutils.nodes.Node]:
+        # Simplified from docutils Contents transform. 
+        level += 1
+        sections = [sect for sect in node if isinstance(sect, docutils.nodes.section)]
+        entries = []
+        for section in sections:
+            title = section[0]
+            entrytext = self._copy_and_filter(title)
+            reference = docutils.nodes.reference('', '', refid=section['ids'][0],
+                                        *entrytext)
+            ref_id = self._document.set_id(reference,
+                                     suggested_prefix='toc-entry')
+            entry = docutils.nodes.paragraph('', '', reference)
+            item = docutils.nodes.list_item('', entry)
+            if title.next_node(docutils.nodes.reference) is None:
+                title['refid'] = ref_id
+            if level < depth:
+                subsects = self._build_contents(section, level)
+                item += subsects
+            entries.append(item)
+        if entries:
+            contents = docutils.nodes.bullet_list('', *entries)
+            return contents
+        else:
+            return []
+
+    def _copy_and_filter(self, node: docutils.nodes.Node):
+        """Return a copy of a title, with references, images, etc. removed."""
+        visitor = docutils.transforms.parts.ContentsFilter(self._document)
+        node.walkabout(visitor)
+        return visitor.get_entry_text()
 
 class _EpydocReader(StandaloneReader):
     """
@@ -434,7 +478,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
         # Get the list of all attribute dictionaries we need to munge.
-        attr_dicts = [attributes]
+        attr_dicts: List[Mapping[str, Any]] = [attributes]
         if isinstance(node, docutils.nodes.Node):
             attr_dicts.append(node.attributes)
         if isinstance(node, dict):
@@ -447,12 +491,17 @@ class _EpydocHTMLTranslator(HTMLTranslator):
                 # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
                 if key.lower() in ('class', 'id', 'name'):
-                    attr_dict[key] = f'rst-{val}'
+                    if not val.startswith('rst-'):
+                        attr_dict[key] = f'rst-{val}'
                 elif key.lower() in ('classes', 'ids', 'names'):
-                    attr_dict[key] = [f'rst-{cls}' for cls in val]
+                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in val]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
-                        attr_dict[key] = f'#rst-{attr_dict[key][1:]}'
+                        href = attr_dict[key][1:]
+                        # We check that the class doesn't alrealy start with "rst-"
+                        if not href.startswith('rst-'):
+                            attr_dict[key] = f'#rst-{href}'
                     else:
                         # If it's an external link, open it in a new
                         # page.

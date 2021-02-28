@@ -769,6 +769,16 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
 
     return None
 
+def format_toc(obj: model.Documentable) -> Optional[Tag]:
+    # Load the parsed_docstring if it's not already done. 
+    if not obj.parsed_docstring and obj.docstring:
+        obj.parsed_docstring = parse_docstring(obj, obj.docstring, obj)
+
+    if obj.parsed_docstring and obj.parsed_docstring.toc:
+        return obj.parsed_docstring.toc.to_stan(_EpydocLinker(obj))
+    else: 
+        return None
+
 
 class AnnotationDocstring(ParsedDocstring):
 

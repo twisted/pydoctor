@@ -35,6 +35,7 @@ __docformat__ = 'epytext en'
 
 from typing import List, Optional, Sequence, Union
 import re
+import abc
 
 from twisted.python.failure import Failure
 from twisted.web.template import Tag, XMLString, flattenString
@@ -59,7 +60,7 @@ class ParsedDocstring:
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()} and L{to_stan()}.
+    Subclasses must implement L{has_body()}, L{to_stan()} and L{toc()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -68,16 +69,25 @@ class ParsedDocstring:
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
+    
+    @abc.abstractproperty
+    def toc(self) -> Optional[Tag]:
+        """
+        The table of contents of the docstring if titles are defined or C{None}.
+        """
+        raise NotImplementedError()
 
-    @property
+    @abc.abstractproperty
     def has_body(self) -> bool:
-        """Does this docstring have a non-empty body?
+        """
+        Does this docstring have a non-empty body?
 
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.

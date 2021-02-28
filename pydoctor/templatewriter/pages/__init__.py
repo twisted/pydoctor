@@ -39,8 +39,18 @@ class DocGetter:
             return epydoc2stan.format_docstring(ob)
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
+    def get_toc(self, ob: model.Documentable) -> Optional[Tag]:
+        return epydoc2stan.format_toc(ob)
 
+class Options(TemplateElement):
+    """
+    Hold buttons to activate/deactivate some pydoctor layout options: 
 
+        - Toogle private API
+        - Toogle sidebar collapse
+    """
+
+    filename = 'options.html'
 
 class Nav(TemplateElement):
     """
@@ -49,9 +59,10 @@ class Nav(TemplateElement):
 
     filename = 'nav.html'
 
-    def __init__(self, system: model.System, loader: ITemplateLoader) -> None:
+    def __init__(self, system: model.System, loader: ITemplateLoader, template_lookup: TemplateLookup) -> None:
         super().__init__(loader)
         self.system = system
+        self.template_lookup = template_lookup
 
     @renderer
     def project(self, request: IRequest, tag: Tag) -> Tag:
@@ -60,6 +71,10 @@ class Nav(TemplateElement):
                        children=[self.system.projectname])
         else:
             return Tag('span', children=[self.system.projectname])
+    
+    @renderer
+    def options(self, request: IRequest, tag: Tag) -> Element:
+        return Options(loader=Options.lookup_loader(self.template_lookup))
 
 
 class Head(TemplateElement):
@@ -109,7 +124,8 @@ class BasePage(TemplateElement):
     
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup), 
+                   template_lookup=self.template_lookup)
 
     @renderer
     def header(self, request: IRequest, tag: Tag) -> IRenderable:
@@ -248,7 +264,8 @@ class CommonPage(BasePage):
 
     @renderer
     def sidebar(self, request: IRequest, tag: Tag) -> Element:
-        return SideBar(loader=SideBar.lookup_loader(self.template_lookup), 
+        return SideBar(docgetter=self.docgetter,
+                loader=SideBar.lookup_loader(self.template_lookup), 
                 ob=self.ob, template_lookup=self.template_lookup)
 
     @renderer
