@@ -23,6 +23,21 @@ Try to keep the example as condensed as possible.
     blank lines are often needed where Epytext allowed no blank line after parent element. Indentation
     is also much more important, lists content and child items must be correctly indented.  
 
+Titles
+======
+
+Level 2
+-------
+
+Level 3
+~~~~~~~
+
+Level 4
+^^^^^^^
+
+Level 5
+!!!!!!!
+
 Lists
 =====
 
