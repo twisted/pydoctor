@@ -242,6 +242,12 @@ class IndexPage(util.Page):
     def __init__(self, system):
         self.system = system
 
+    # Deprecated: pydoctor's templates no longer use this, but it is kept
+    #             for now to not break customized templates like Twisted's.
+    @renderer
+    def project_link(self, request, tag):
+        return self.project_tag
+
     @renderer
     def recentChanges(self, request, tag):
         return ()

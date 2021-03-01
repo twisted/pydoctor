@@ -27,7 +27,7 @@ class Page(Element):
         self.system = system
 
     @property
-    def project_link(self) -> Tag:
+    def project_tag(self) -> Tag:
         system = self.system
         projecturl: Optional[str] = system.options.projecturl
         tag: Tag = tags.a(href=projecturl) if projecturl else tags.transparent
@@ -36,4 +36,4 @@ class Page(Element):
 
     @renderer
     def project(self, request, tag):
-        return self.project_link
+        return self.project_tag
