@@ -11,7 +11,8 @@ from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
-from pydoctor.templatewriter.pages.table import ChildTable, SideBar
+from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.templatewriter.pages.sidebar import SideBar
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -41,20 +42,13 @@ class DocGetter:
         return epydoc2stan.type2stan(ob)
     def get_toc(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.format_toc(ob)
-
-class Options(TemplateElement):
-    """
-    Hold buttons to activate/deactivate some pydoctor layout options: 
-
-        - Toogle private API
-        - Toogle sidebar collapse
-    """
-
-    filename = 'options.html'
+   
 
 class Nav(TemplateElement):
     """
     Common navigation header. 
+
+    Hold links to project home and API docs index. 
     """
 
     filename = 'nav.html'
@@ -72,9 +66,6 @@ class Nav(TemplateElement):
         else:
             return Tag('span', children=[self.system.projectname])
     
-    @renderer
-    def options(self, request: IRequest, tag: Tag) -> Element:
-        return Options(loader=Options.lookup_loader(self.template_lookup))
 
 
 class Head(TemplateElement):

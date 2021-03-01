@@ -109,7 +109,12 @@ function toggleSideBarCollapse() {
 function updateSideBarCollapse() {
     var collapsed = document.body.classList.contains('sidebar-collapsed');
     document.querySelector('#collapseSideBar a').innerText = collapsed ? '»' : '«';
-    document.querySelector('#toggleCollapseSideBar button').innerText = collapsed ? 'Show Sidebar' : 'Hide Sidebar';
+    // Fixes renderring issue with safari. 
+    // https://stackoverflow.com/a/8840703
+    var sidebarcontainer = document.querySelector('.sidebarcontainer');
+    sidebarcontainer.style.display='none';
+    sidebarcontainer.offsetHeight; // no need to store this anywhere, the reference is enough
+    sidebarcontainer.style.display='';
 }
 
 initSideBarCollapse();

@@ -2,6 +2,10 @@ body {
     overflow-y: scroll;
 }
 
+.container-fluid{
+    max-width: 1300px;   
+}
+
 nav.navbar {
     width:100%;
     margin-bottom: 0px;
@@ -15,7 +19,7 @@ nav.navbar > .navbar-header {
     margin-right: 50px;
 }
 
-nav.mainnavbar > div.container {
+nav.mainnavbar > div.container-fluid {
     display: flex;
     flex-wrap: wrap;
 }
@@ -424,16 +428,16 @@ body.private-hidden nav.sidebar .private {
 
 /* Show private and other options */ 
 
-#showPrivate:hover, #toggleCollapseSideBar:hover {
+#showPrivate:hover {
     text-decoration: none;
 }
 
-#showPrivate button, #toggleCollapseSideBar button{
+#showPrivate button {
     padding: 5px;
     padding-bottom: 15px;
 }
 
-#showPrivate button:hover, #toggleCollapseSideBar button:hover {
+#showPrivate button:hover {
     text-decoration: none;
 }
 
@@ -524,22 +528,22 @@ div.tip, div.hint, div.important {
 }
 
 .sidebarcontainer {
-    height: 100vh; /* Full-height: remove this if you want "auto" height */
-    width: 200px; /* Set the width of the sidebar */
+    width: 290px; /* Set the width of the sidebar */
+    max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
-    padding: 5px;
+    padding: 10px 5px 20px 5px;
     margin-right: 20px;
     margin-top: 24px;
     border: 1px solid;
-    border-color: #e7e7e7;
-    border-radius: 4px 4px 0px 0px;
-    border-bottom: 0;
+    border-radius: 4px;
     display: flex;
     position: sticky;
     top: 0;
     overflow-wrap: break-word;
     overflow-x: visible;
     overflow-y: auto;
+    background-color: #f8f8f8;
+    border-color: #e7e7e7;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -556,58 +560,96 @@ div.tip, div.hint, div.important {
 /* The sidebar menu */
 
 .sidebar {
-    word-wrap: break-word;
-    padding-bottom: 20px;
+    /* padding-bottom: 10px; */
 }
 
 .sidebar > div {
-    width: 190px;
+    width: 280px;
+    padding-top: 7px;
 }
 
-.sidebar > div > table {
+.sidebar div:first-child {
+    padding-top: 0;
+    margin-top: -4px;
+}
+
+.sidebar > div:last-child {
+    padding-bottom: 15px;
+}
+
+.sidebar > div ul {
     display: block;
-    margin-bottom: 5px;
-}
-
-.sidebar > div.docstringToc li {
-    margin-left: 14px;
-    width: 160px;
+    margin: 0 0 5px 0;
     padding: 0;
 }
 
-.sidebar > div.docstringToc li::marker {
-    font-size: 11px;
-}
-
-.sidebar > div > table tr {
-    width: 160px;
-    margin-left: 14px;
-    display: list-item;
-}
-
-.sidebar > div > table tr::marker {
-    font-size: 11px;
-}
-
-.sidebar > div > table tr td {
+.sidebar li {
+    width: 260px;
     display: block;
-    text-overflow: ellipsis;
+    display: list-item;
+    margin-left: 14px;
+    padding: 0;
+    display: flex;
     overflow: hidden;
+    flex-wrap: wrap;
+    word-break: break-all;
+}
+
+.sidebar li p {
+    margin: 0;
+}
+
+.sidebar li ul {
+    margin: 0;
+    padding: 0;
+}
+
+.sidebar li a {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.sidebar > div ul > li > code, .sidebar > div ul > li > code > a { 
+    background-color: transparent;
+}
+
+.sidebar > div ul > li > code {
+    padding: 0;
+    display: flex;
+}
+
+.sidebar > div ul > li > code > a{
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
 .sidebar .thingTitle {
-    font-weight: bold;
-    margin-bottom: 5px;
-    text-overflow: ellipsis;
+    margin-bottom: 7px;
+    margin-top: 7px;
     overflow: hidden;
-    color: #777777;
-    font-size: 1.1em;
+    color: #676767;
+    font-size: 1.4em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    word-break: break-all;
+}
+
+.sidebar .thingTitle > span {
+    margin-right: 3px;
+}
+
+.sidebar .thingTitle > code {
+    font-size: 0.8em;
+    color: #676767;
+    background-color: transparent;
 }
 
 .sidebar .childrenKindTitle {
-    color: #333;
+    color: #676767;
     margin-left: 4px;
     margin-bottom: 3px;
+    font-size: 1.2em;
 }
 
 .sidebar .childrenKindTitle::after {
@@ -621,11 +663,45 @@ div.tip, div.hint, div.important {
   
 /* Style page content */
 .main {
-    margin-left: 220px; /* Same as the width of the sidebar */
+    margin-left: 310px; /* Same as the width of the sidebar + 20px*/
 }
+
+/* For smaller displays, i.e. half screen or mobile phone */
+@media only screen and (max-width: 1000px) {
+    .sidebarcontainer {
+        width: 250px; /* Set the width of the sidebar */
+    }
+    .sidebar > div {
+        width: 240px;
+    }
+    .sidebar li {
+        width: 220px;
+    }
+    .main {
+        margin-left: 270px; /* Same as the width of the sidebar + 20px*/
+    }
+}
+
+/* For smaller displays mobile phone */
+@media only screen and (max-width: 800px) {
+    .sidebarcontainer {
+        width: 200px; /* Set the width of the sidebar */
+    }
+    .sidebar > div {
+        width: 190px;
+    }
+    .sidebar li {
+        width: 170px;
+    }
+    .main {
+        margin-left: 220px; /* Same as the width of the sidebar + 20px*/
+    }
+}
+
 
 nav.foot {
     background-color: #fff;
+    border: none;
     text-align: center;
 }
 
@@ -640,7 +716,7 @@ nav.foot address {
     font-size: 1.2em; 
     display: block; 
     float: left;
-    width: 8px;
+    width: 0;
     padding: 0;
     margin: 0;
     position: sticky;
@@ -648,19 +724,20 @@ nav.foot address {
 }
 
 #collapseSideBar > a:hover{
-    color: #23527c;
     background-color: #e1e1e1;
     text-decoration: none;
 }
 
 #collapseSideBar > a {
-    height: 100vh;
+    height: 43px;
     width: 12px;
+    font-size: 1.2em;
+    color: #333;
     padding: 1px;
-    background-color: #f4f4f4;
-    border-radius: 0 4px 0 0;
+    background-color: #e7e7e7;
+    border-radius: 0 4px 0 4px;
     margin-left: -8px;
-    margin-top: -7px;
+    margin-top: -11px;
     text-align: center;
     display: flex;
     align-items: center;
@@ -678,14 +755,12 @@ body.sidebar-collapsed .sidebarcontainer {
     border: none;
     padding: 0;
     width: 5px;
-    margin-right: 0;
-    margin-left: -15px;
     overflow: visible;
     background-color: transparent;
 }
 
 body.sidebar-collapsed .main {
-    margin: 0;
+    margin: 25px;
 }
 
 body.sidebar-collapsed #collapseSideBar {
@@ -693,8 +768,14 @@ body.sidebar-collapsed #collapseSideBar {
 }
 
 body.sidebar-collapsed #collapseSideBar > a {
-    margin-top: 0;
+    margin-top: 1px;
+    margin-left: 0;
     border-radius: 4px;
+    background-color: #f8f8f8;
+}
+
+body.sidebar-collapsed #collapseSideBar > a:hover {
+    background-color: #e7e7e7;
 }
 
 /* On smaller screens, where width is less than 650px, simply hide sidebar */
@@ -705,21 +786,14 @@ body.sidebar-collapsed #collapseSideBar > a {
     .main {
         margin: 0;
     }
-
     .sidebarcontainer {
-        border: none;
-        padding: 0;
-        width: auto;
-        margin-right: 0;
-        margin-left: -20px;
+        display: none;
     }
-    
     .main {
         margin: 0;
     }
-
-    #toggleCollapseSideBar {
+    #collapseSideBar {
         display: none;
     }
-
 }
+
