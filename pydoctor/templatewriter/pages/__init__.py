@@ -172,6 +172,8 @@ class CommonPage(util.Page):
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
+            # Note: This slot is not used anymore, but kept for backwards
+            #       compatibility until the new template system lands.
             project=self.project_link,
             version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
