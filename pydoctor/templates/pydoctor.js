@@ -35,19 +35,6 @@ function initPrivate() {
             show = anchor && anchor.parentNode.classList.contains('private');
         }
 
-        var hidden = getCookie("pydoctor-private-hidden");
-        if (hidden == "no") {
-            show = true;
-        }
-        if (hidden == ""){
-            if (!show) {
-                setCookie("pydoctor-private-hidden", "yes", 2);
-            }
-            else{
-                setCookie("pydoctor-private-hidden", "no", 2);
-            }
-        }
-
         if (!show) {
             document.body.classList.add("private-hidden");
         }
@@ -56,16 +43,7 @@ function initPrivate() {
 }
 
 function togglePrivate() {
-    // document.body.classList.toggle("private-hidden");
-    if (document.body.classList.contains('private-hidden')){
-        document.body.classList.remove('private-hidden');
-        setCookie("pydoctor-private-hidden", "no", 2);
-    }
-    else {
-        document.body.classList.add("private-hidden");
-        setCookie("pydoctor-private-hidden", "yes", 2);
-    }
-    
+    document.body.classList.toggle("private-hidden");
     updatePrivate();
 }
 function updatePrivate() {
