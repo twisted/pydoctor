@@ -3,7 +3,7 @@ General epytext formating markups are documented here.
 
 Epydoc code related formating are demonstrated in the L{demo_epytext_module}.
 
-Read the U{the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>} for more documentation. 
+Read the U{the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>} for more documentation.
 
 Scope and Purpose
 =================

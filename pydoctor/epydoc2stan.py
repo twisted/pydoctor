@@ -506,7 +506,7 @@ class FieldHandler:
         self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
-    
+
     def handle_seealso(self, field: Field) -> None:
         self.seealsos.append(field)
     handle_see = handle_seealso
