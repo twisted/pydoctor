@@ -29,19 +29,12 @@ def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
 
-class ModuleIndexPage(Element):
+class ModuleIndexPage(util.Page):
     filename = 'moduleIndex.html'
 
     @property
     def loader(self):
         return XMLFile(util.templatefilepath('summary.html'))
-
-    def __init__(self, system):
-        self.system = system
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def title(self, request, tag):
@@ -116,23 +109,16 @@ def subclassesFrom(hostsystem, cls, anchors, page_url):
         r(ul)
     return r
 
-class ClassIndexPage(Element):
+class ClassIndexPage(util.Page):
     filename = 'classIndex.html'
 
     @property
     def loader(self):
         return XMLFile(util.templatefilepath('summary.html'))
 
-    def __init__(self, system):
-        self.system = system
-
     @renderer
     def title(self, request, tag):
         return tag.clear()("Class Hierarchy")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):
@@ -216,16 +202,16 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(Element):
+class NameIndexPage(util.Page):
     filename = 'nameIndex.html'
 
     @property
     def loader(self):
         return XMLFile(util.templatefilepath('nameIndex.html'))
 
-    def __init__(self, system):
-        self.system = system
-        self.initials = {}
+    def __init__(self, system: model.System):
+        super().__init__(system)
+        self.initials: Dict[str, List[model.Documentable]] = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
@@ -239,10 +225,6 @@ class NameIndexPage(Element):
         return tag.clear()("Index of Names")
 
     @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
     def index(self, request, tag):
         r = []
         for i in sorted(self.initials):
@@ -250,7 +232,7 @@ class NameIndexPage(Element):
         return r
 
 
-class IndexPage(Element):
+class IndexPage(util.Page):
     filename = 'index.html'
 
     @property
@@ -261,16 +243,14 @@ class IndexPage(Element):
         self.system = system
 
     @renderer
-    def project_link(self, request, tag):
-        if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(
-                self.system.projectname)
-        else:
-            return self.system.projectname
+    def title(self, request, tag):
+        return tag.clear()(f"API Documentation for {self.system.projectname}")
 
+    # Deprecated: pydoctor's templates no longer use this, but it is kept
+    #             for now to not break customized templates like Twisted's.
     @renderer
-    def project(self, request, tag):
-        return self.system.projectname
+    def project_link(self, request, tag):
+        return self.project_tag
 
     @renderer
     def recentChanges(self, request, tag):
@@ -328,7 +308,7 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(Element):
+class UndocumentedSummaryPage(util.Page):
     filename = 'undoccedSummary.html'
 
     @property
@@ -345,10 +325,6 @@ class UndocumentedSummaryPage(Element):
     @renderer
     def heading(self, request, tag):
         return tag.clear()("Summary of Undocumented Objects")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):

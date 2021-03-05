@@ -3,7 +3,7 @@
 from typing import Any, Iterator, List, Optional, Sequence, Union
 import ast
 
-from twisted.web.template import tags, Element, renderer, Tag, XMLFile
+from twisted.web.template import tags, renderer, Tag, XMLFile
 import astor
 
 from pydoctor import epydoc2stan, model, __version__
@@ -41,10 +41,11 @@ class DocGetter:
             else:
                 return [doc, ' (type: ', typ, ')']
 
-class CommonPage(Element):
+class CommonPage(util.Page):
     ob: model.Documentable
 
     def __init__(self, ob, docgetter=None):
+        super().__init__(ob.system)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
@@ -93,12 +94,6 @@ class CommonPage(Element):
             return 'Part of ', tags.code(self.namespace(parent))
         else:
             return []
-
-    def project(self):
-        if self.ob.system.options.projecturl:
-            return tags.a(href=self.ob.system.options.projecturl)(self.ob.system.projectname)
-        else:
-            return self.ob.system.projectname
 
     @renderer
     def deprecated(self, request, tag):
@@ -177,7 +172,9 @@ class CommonPage(Element):
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            project=self.project(),
+            # Note: This slot is not used anymore, but kept for backwards
+            #       compatibility until the new template system lands.
+            project=self.project_tag,
             version=__version__,
             buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
 
