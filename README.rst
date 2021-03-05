@@ -60,6 +60,11 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
+pydoctor 21.2.1
+^^^^^^^^^^^^^^^
+
+* Fix presentation of the project name and URL in the navigation bars, such that it works as expected on all generated HTML pages.
+
 pydoctor 21.2.0
 ^^^^^^^^^^^^^^^
 
