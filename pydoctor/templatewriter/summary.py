@@ -242,6 +242,10 @@ class IndexPage(util.Page):
     def __init__(self, system):
         self.system = system
 
+    @renderer
+    def title(self, request, tag):
+        return tag.clear()(f"API Documentation for {self.system.projectname}")
+
     # Deprecated: pydoctor's templates no longer use this, but it is kept
     #             for now to not break customized templates like Twisted's.
     @renderer
