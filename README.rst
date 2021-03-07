@@ -60,6 +60,11 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
+pydoctor 21.2.2
+^^^^^^^^^^^^^^^
+
+* Fix positioning of anchors, such that following a link to a member of a module or class will scroll its documentation to a visible spot at the top of the page.
+
 pydoctor 21.2.1
 ^^^^^^^^^^^^^^^
 
