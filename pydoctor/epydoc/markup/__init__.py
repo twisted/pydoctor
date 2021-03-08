@@ -71,7 +71,7 @@ class ParsedDocstring:
         """
     
     @abc.abstractproperty
-    def toc(self) -> Optional[Tag]:
+    def toc(self) -> Optional['ParsedDocstring']:
         """
         The table of contents of the docstring if titles are defined or C{None}.
         """

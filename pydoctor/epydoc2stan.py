@@ -786,6 +786,14 @@ class AnnotationDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self.annotation = annotation
 
+    @property
+    def has_body(self) -> bool:
+        return True
+    
+    @property
+    def toc(self) -> None:
+        return None
+
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         tag: Tag = tags.code
         tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
