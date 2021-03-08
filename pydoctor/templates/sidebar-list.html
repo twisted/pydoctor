@@ -2,8 +2,32 @@
     <meta name="pydoctor-template-version" content="1" />
     <li t:render="items">
         <t:attr name="class" t:render="class_" />
-        <t:transparent t:render="name">
-            Name
+        
+        <t:transparent t:render="expandableItem">
+            <input class="tocChildrenToggle" type="checkbox" onclick="updateSideBarCollapseMargin()"> 
+                <t:attr name="id" t:render="expandableItemId" />
+            </input>
+
+            <label class="lbl-toggle" tabindex="0">
+                <t:attr name="for" t:render="expandableItemId" />
+            </label>
+
+            <t:transparent t:render="name">
+                Name
+            </t:transparent>
+
+            <div class="expandableContent">
+                <t:transparent t:render="contents">
+                    Nested TOC contents
+                </t:transparent>
+            </div>
         </t:transparent>
+
+        <t:transparent t:render="linkOnlyItem">
+            <t:transparent t:render="name">
+            Name
+            </t:transparent>
+        </t:transparent>
+
     </li>
 </ul>

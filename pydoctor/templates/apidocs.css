@@ -528,7 +528,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebarcontainer {
-    width: 290px; /* Set the width of the sidebar */
+    width: 297px; /* Set the width of the sidebar: 290px + 2px for the border + 5px for the scrollbar */
     max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
     padding: 10px 5px 20px 5px;
@@ -546,16 +546,37 @@ div.tip, div.hint, div.important {
     border-color: #e7e7e7;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
 .sidebarcontainer::-webkit-scrollbar {
-    display: none;
+    width: 5px;
+    position: absolute;
+    
 }
+
+.sidebarcontainer::-webkit-scrollbar:horizontal {
+   display: none;
+}
+
+.sidebarcontainer::-webkit-scrollbar-track {
+    box-shadow: inset 0 0 5px 5px transparent;
+    border: solid 1px transparent;
+}
+
+.sidebarcontainer::-webkit-scrollbar-thumb {
+    box-shadow: inset 0 0 5px 5px rgb(200,200,200);
+    border: solid 1px transparent;
+    border-radius: 3px;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+/* .sidebarcontainer::-webkit-scrollbar {
+    display: none;
+} */
   
 /* Hide scrollbar for IE, Edge and Firefox */
-.sidebarcontainer {
+/* .sidebarcontainer {
     -ms-overflow-style: none; 
     scrollbar-width: none;
-} 
+}  */
 
 /* The sidebar menu */
 
@@ -597,16 +618,20 @@ div.tip, div.hint, div.important {
 
 .sidebar li p {
     margin: 0;
+    width: 100%;
 }
 
 .sidebar li ul {
     margin: 0;
     padding: 0;
+    border: 0;
 }
 
 .sidebar li a {
     padding-top: 2px;
     padding-bottom: 2px;
+    display: block;
+    min-width: calc(100% - 20px)
 }
 
 .sidebar > div ul > li > code, .sidebar > div ul > li > code > a { 
@@ -616,6 +641,7 @@ div.tip, div.hint, div.important {
 .sidebar > div ul > li > code {
     padding: 0;
     display: flex;
+    min-width: calc(100% - 16px);
 }
 
 .sidebar > div ul > li > code > a{
@@ -628,7 +654,7 @@ div.tip, div.hint, div.important {
     margin-top: 7px;
     overflow: hidden;
     color: #676767;
-    font-size: 1.4em;
+    font-size: 18px;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -636,24 +662,22 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar .thingTitle > span {
-    margin-right: 3px;
+    margin-right: 7px;
 }
 
 .sidebar .thingTitle > code {
-    font-size: 0.8em;
+    font-size: 16px;
     color: #676767;
     background-color: transparent;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .sidebar .childrenKindTitle {
     color: #676767;
     margin-left: 4px;
     margin-bottom: 3px;
-    font-size: 1.2em;
-}
-
-.sidebar .childrenKindTitle::after {
-    content: ":";
+    font-size: 16px;
 }
 
 .sidebar hr {
@@ -663,13 +687,13 @@ div.tip, div.hint, div.important {
   
 /* Style page content */
 .main {
-    margin-left: 310px; /* Same as the width of the sidebar + 20px*/
+    margin-left: 317px; /* Same as the width of the sidebar + 20px*/
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
 @media only screen and (max-width: 1000px) {
     .sidebarcontainer {
-        width: 250px; /* Set the width of the sidebar */
+        width: 257px; /* Set the width of the sidebar: 250px + 2px for the border + 5px for the scrollbar */
     }
     .sidebar > div {
         width: 240px;
@@ -678,14 +702,14 @@ div.tip, div.hint, div.important {
         width: 220px;
     }
     .main {
-        margin-left: 270px; /* Same as the width of the sidebar + 20px*/
+        margin-left: 277px; /* Same as the width of the sidebar + 20px*/
     }
 }
 
 /* For smaller displays mobile phone */
 @media only screen and (max-width: 800px) {
     .sidebarcontainer {
-        width: 200px; /* Set the width of the sidebar */
+        width: 207px; /* Set the width of the sidebar: 200px + 2px for the border + 5px for the scrollbar */
     }
     .sidebar > div {
         width: 190px;
@@ -694,7 +718,7 @@ div.tip, div.hint, div.important {
         width: 170px;
     }
     .main {
-        margin-left: 220px; /* Same as the width of the sidebar + 20px*/
+        margin-left: 227px; /* Same as the width of the sidebar + 20px */
     }
 }
 
@@ -721,6 +745,7 @@ nav.foot address {
     margin: 0;
     position: sticky;
     top: 0;
+    z-index:30;
 }
 
 #collapseSideBar > a:hover{
@@ -729,20 +754,20 @@ nav.foot address {
 }
 
 #collapseSideBar > a {
-    height: 43px;
-    width: 12px;
+    height: 42px;
+    width: 15px;
     font-size: 1.2em;
     color: #333;
     padding: 1px;
     background-color: #e7e7e7;
     border-radius: 0 4px 0 4px;
-    margin-left: -8px;
-    margin-top: -11px;
+    margin: -11px 0 0 -3px;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
     border: solid 1px #e7e7e7;
+    z-index:30;
 }
 
 /* collapsed */
@@ -768,6 +793,7 @@ body.sidebar-collapsed #collapseSideBar {
 }
 
 body.sidebar-collapsed #collapseSideBar > a {
+    width: 15px;
     margin-top: 1px;
     margin-left: 0;
     border-radius: 4px;
@@ -797,3 +823,71 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
     }
 }
 
+/* Style for expandable content */
+
+input.tocChildrenToggle {
+    display: none;
+  }
+
+.lbl-toggle {
+    display: block;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    text-align: center;
+    color: #333;
+    /* background: #0069ff; */
+    cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.1s ease-out;
+    margin: 0;
+    padding: 5px 2px 0 2px;
+    color: rgb(163, 163, 163);
+}
+
+.lbl-toggle::before {
+    
+    content: " ";
+    display: inline-block;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid currentColor;
+    vertical-align: middle;
+    margin-right: 0.7rem;
+    transform: translateY(-2px);
+    transition: transform 0.1s ease-out;
+  }
+
+  .lbl-toggle:hover {
+    color: #333;
+  }
+
+  .tocChildrenToggle:checked + .lbl-toggle::before {
+    transform: rotate(90deg) translateX(-3px);
+  }
+
+.expandableContent {
+    height: 0px;
+    overflow: hidden;
+    transition: height 0.1s ease-in-out;
+    padding-left: 11px;
+}
+
+.expandableContent > div {
+    padding-top: 5px;
+}
+
+.tocChildrenToggle:checked ~ .expandableContent {
+    height: auto;
+}
+
+.tocChildrenToggle:checked + .lbl-toggle {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    color: #333;
+  }
+
+.expandableContent .childrenKindTitle {
+    font-size:14px;
+}

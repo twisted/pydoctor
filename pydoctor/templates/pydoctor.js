@@ -93,6 +93,27 @@ function updateSideBarCollapse() {
     sidebarcontainer.style.display='none';
     sidebarcontainer.offsetHeight; // no need to store this anywhere, the reference is enough
     sidebarcontainer.style.display='';
+    updateSideBarCollapseMargin()
 }
 
 initSideBarCollapse();
+
+function scrollbarVisible(element) {
+    return element.scrollHeight > element.clientHeight;
+}
+
+function updateSideBarCollapseMargin(){
+    if (scrollbarVisible(document.querySelector('.sidebarcontainer'))){
+        document.querySelector('#collapseSideBar a').style.marginLeft = '-10px';
+    }
+    else{
+        document.querySelector('#collapseSideBar a').style.marginLeft = '-5px';
+    }
+}
+
+if(window.addEventListener) {
+    window.addEventListener('resize', updateSideBarCollapseMargin, true);
+}
+else {
+    //The browser does not support Javascript event binding
+}
