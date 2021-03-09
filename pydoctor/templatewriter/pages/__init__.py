@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
+from typing import Any, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
 import ast
 import abc
 
@@ -319,16 +319,29 @@ def overriding_subclasses(c, name, firstcall=True):
             if sc.isVisible:
                 yield from overriding_subclasses(sc, name, False)
 
-def nested_bases(b):
-    r = [(b,)]
-    for b2 in b.baseobjects:
-        if b2 is None:
-            continue
-        for n in nested_bases(b2):
-            r.append(n + (b,))
-    return r
+def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
+    """
+    Helper function to retreive the complete list of base classes chains (represented by tuples) for a given Class. 
+    A chain of classes is used to compute the member inheritence from the first element to the last element of the chain.  
+    
+    The first yielded chain only contains the Class itself. 
 
-def unmasked_attrs(baselist):
+    Then for each of the super-classes:
+        - the next yielded chain contains the super class and the class itself, 
+        - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
+    """
+    yield (classobj,)
+    for base in classobj.baseobjects:
+        if base is None:
+            continue
+        for nested_base in nested_bases(base):
+            yield (nested_base + (classobj,))
+
+def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentable]:
+    """
+    Helper function to reteive the list of inherited children given a base classes chain (As yielded by C{nested_bases}). 
+    The returned members are inherited from the Class listed first in the chain to the Class listed last: they are not overriden in between. 
+    """
     maybe_masking = {
         o.name
         for b in baselist[1:]
