@@ -1,3 +1,6 @@
+"""
+Classes for the sidebar generation. 
+"""
 from typing import Iterable, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, tags, Tag, Element
@@ -11,7 +14,7 @@ class SideBar(TemplateElement):
     Sidebar. 
 
     Contains:
-        - the object docstring TOC if titles are defined
+        - the object docstring table of contents if titles are defined
         - for classes: 
             - information about the contents of the current class and parent module/package. 
         - for modules/packages:
@@ -34,33 +37,39 @@ class SideBar(TemplateElement):
     @renderer
     def sections(self, request: IRequest, tag: Tag) -> Sequence[Element]:
         """
-        Sections are a TOC elements, separated by <hr />
+        Sections are a SideBarSection elements, separated by <hr />
         """
         r = []   
         if isinstance(self.ob, (Package, Module)):
             if isinstance(self.ob, Package):
-                r.append(TOC(docgetter=self.docgetter, ob=self.ob,
+                r.append(SideBarSection(docgetter=self.docgetter, ob=self.ob,
                                     loader=TagLoader(tag), 
                                     template_lookup=self.template_lookup, first=True))
             else:
-                r.append(TOC(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
+                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
                              template_lookup=self.template_lookup, first=True))
             if self.ob.parent:
-                r.append(TOC(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
+                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
                              template_lookup=self.template_lookup))
         else:
-            r.append(TOC(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
+            r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
                          template_lookup=self.template_lookup, first=True))
             
             if self.ob.module.name == "__init__" and self.ob.module.parent:
-                r.append(TOC(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
+                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
                              template_lookup=self.template_lookup))
             else:
-                r.append(TOC(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
+                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
                              template_lookup=self.template_lookup))
         return r
 
-class TOC(Element):
+class SideBarSection(Element):
+    """
+    Main sidebar section. 
+    
+    The sidebar typically contains two C{SideBarSection}: one for the documented object and one for it's parent. 
+    Root modules have only one section. 
+    """
 
     def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup, first: bool = False):
@@ -103,9 +112,16 @@ class TOC(Element):
                          template_lookup=self.template_lookup)
 
 class ObjContent(Element):
+    """
+    Object content displayed on the sidebar. 
+
+    Each L{SideBarSection} object uses one of these in the L{SideBarSection.content} renderer. 
+
+    Composed by L{ContentList} elements. 
+    """
 
     def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, 
-                 template_lookup: TemplateLookup, depth: int = 3, level: int = 0):
+                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
 
         super().__init__(loader)
         self.ob = ob
@@ -119,6 +135,25 @@ class ObjContent(Element):
         self.functionList = self._getListOf(Function)
         self.variableList = self._getListOf(Attribute)
         self.subModuleList = self._getListOf((Module, Package))
+
+        self.inheritedFunctionList = self._getListOf(Function, inherited=True)
+        self.inheritedVariableList = self._getListOf(Attribute, inherited=True)
+
+    def expand_list(self, list_type: Union[Type[Documentable], 
+                                            Tuple[Type[Documentable], ...]]) -> bool:
+        """
+        Should the list items be expandable?
+        """
+        
+        can_be_expanded = False
+
+        # Classes, modules and packages can be expanded in the sidebar. 
+        if isinstance(list_type, type) and issubclass(list_type, (Class, Module, Package)):
+            can_be_expanded = True
+        elif isinstance(list_type, tuple) and any([issubclass(t, (Class, Module, Package)) for t in list_type]):
+            can_be_expanded = True
+        
+        return self._level < self._depth and can_be_expanded
 
     @renderer
     def docstringToc(self, request: IRequest, tag: Tag) -> Tag:
@@ -165,32 +200,37 @@ class ObjContent(Element):
 
     def _getListOf(self, 
                          type_: Union[Type[Documentable], 
-                                Tuple[Type[Documentable], ...]]
-                         ) -> Optional[Element]:
-        things = [ child for child in self.children() if isinstance(child, type_) ]
-        
-        can_be_expanded = False
+                                Tuple[Type[Documentable], ...]],
+                         inherited: bool = False) -> Optional[Element]:
 
-        # Classes, modules and packages can be expanded in the sidebar. 
-        if isinstance(type_, type) and issubclass(type_, (Class, Module, Package)):
-            can_be_expanded = True
-        elif isinstance(type_, tuple) and any([issubclass(t, (Class, Module, Package)) for t in type_]):
-            can_be_expanded = True
+        things = [ child for child in self.children(inherited=inherited) if isinstance(child, type_) ]
         
+        return self._getListFrom(things, expand=self.expand_list(type_))
+
+
+    def _getListFrom(self, things: Iterable[Documentable], expand: bool):
+
         if things:
             assert self.loader is not None
-            return TOCList(ob=self.ob, children=things,
-                    loader=TOCList.lookup_loader(self.template_lookup), docgetter=self.docgetter,
-                    expand=self._level < self._depth and can_be_expanded,
-                    nestedContentLoader=self.loader, template_lookup=self.template_lookup,
-                    level=self._level, depth=self._depth)
+            return ContentList(ob=self.ob, children=things,
+                    loader=ContentList.lookup_loader(self.template_lookup), 
+                    docgetter=self.docgetter,
+                    expand=expand,
+                    nestedContentLoader=self.loader, 
+                    template_lookup=self.template_lookup,
+                    level_depth=(self._level, self._depth))
         else:
             return None
 
-    def children(self) -> Iterable[Documentable]:
-        return sorted(
-            [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o:-o.privacyClass.value)
+
+    def children(self, inherited: bool = False) -> Iterable[Documentable]:
+        if inherited:
+            #TODO: Get inherited children with nested_bases and unmasked_attrs.
+            return []
+        else:
+            return sorted(
+                [o for o in self.ob.contents.values() if o.isVisible],
+                 key=lambda o:-o.privacyClass.value)
 
 class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
@@ -208,69 +248,75 @@ class PackageContent(ObjContent):
             key=lambda o:-o.privacyClass.value)
     
     def _getListOf(self, type_: Union[Type[Documentable], 
-                                Tuple[Type[Documentable], ...]]
+                                Tuple[Type[Documentable], ...]], inherited: bool = False
                   ) -> Optional[Element]:
+
         sub_modules = [ child for child in self.children() if isinstance(child, type_) and child.name != '__init__' ]
         contents_filtered = [ child for child in self.init_module_children() 
                                           if isinstance(child, type_) ] + sub_modules
         things = contents_filtered
 
-        can_be_expanded = False
+        return self._getListFrom(things, expand=self.expand_list(type_))
 
-        # Classes, modules and packages can be expanded in the sidebar. 
-        if isinstance(type_, type) and issubclass(type_, (Class, Module, Package)):
-            can_be_expanded = True
-        elif isinstance(type_, tuple) and any([issubclass(t, (Class, Module, Package)) for t in type_]):
-            can_be_expanded = True
-        
-        if things:
-            assert self.loader is not None
-            return TOCList(ob=self.ob, children=things,
-                    loader=TOCList.lookup_loader(self.template_lookup), docgetter=self.docgetter,
-                    expand=self._level < self._depth and can_be_expanded,
-                    nestedContentLoader=self.loader, template_lookup=self.template_lookup,
-                    level=self._level, depth=self._depth)
-        else:
-            return None
+class ContentList(TemplateElement):
+    """
+    List of child objects that share the same kind. 
 
-class LinkOnlyItem(Element):
-    def __init__(self, loader: ITemplateLoader, child: Documentable):
+    One L{ObjContent} element can have up to six C{ContentList}: 
+        - classes 
+        - functions/methods
+        - variables
+        - modules
+        - inherited variables (todo)
+        - inherited methods (todo)
+    """
+    # one table per module children kind: classes, functions, variables, modules
+
+    filename = 'sidebar-list.html'
+
+    def __init__(self, ob: Documentable, docgetter: 'DocGetter',
+                 children: Iterable[Documentable], loader: ITemplateLoader, 
+                 expand: bool, nestedContentLoader: ITemplateLoader, template_lookup: TemplateLookup,
+                 level_depth: Tuple[int, int]):
         super().__init__(loader)
-        self.child = child
+        self.ob = ob 
+        self.children = children
+
+        self._expand = expand
+        self._level_depth = level_depth
+
+        self.nestedContentLoader = nestedContentLoader
+        self.docgetter = docgetter
+        self.template_lookup = template_lookup
+    
     @renderer
-    def name(self, request: IRequest, tag: Tag) -> Tag:
-        return Tag('code')(
-            epydoc2stan.taglink(self.child, self.child.url, self.child.name)
-            )
+    def items(self, request: IRequest, tag: Tag) -> Iterable[Element]:
+        return [
+            ContentItem(
+                loader=TagLoader(tag),
+                ob=self.ob,
+                child=child, 
+                docgetter=self.docgetter,
+                expand=self._expand, 
+                nestedContentLoader=self.nestedContentLoader if self._expand else None,
+                template_lookup=self.template_lookup, level_depth=self._level_depth)
+            for child in self.children]
 
-class ExpandableItem(LinkOnlyItem):
-
-    last_ExpandableItem_id = 0
-
-    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: Element):
-        super().__init__(loader, child)
-        self._contents =  contents
-        ExpandableItem.last_ExpandableItem_id += 1
-        self._id = ExpandableItem.last_ExpandableItem_id
-    @renderer
-    def contents(self, request: IRequest, tag: Tag) -> Element:
-        return self._contents
-    @renderer
-    def expandableItemId(self, request: IRequest, tag: Tag) -> str:
-        return f"tocExpandableItemId{self._id}"
-
-class TOCListItem(Element):
+class ContentItem(Element):
+    """
+    L{ContentList} item. 
+    """
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, docgetter: 'DocGetter',
                  expand: bool, nestedContentLoader: Optional[ITemplateLoader], template_lookup: TemplateLookup,
-                 depth: int, level: int):
+                 level_depth: Tuple[int, int]):
+        
         super().__init__(loader)
         self.child = child
         self.ob = ob
 
         self._expand = expand
-        self._depth = depth
-        self._level = level
+        self._level_depth = level_depth
 
         self.nestedContentLoader = nestedContentLoader
         self.docgetter = docgetter
@@ -296,59 +342,66 @@ class TOCListItem(Element):
                                     package=self.child, 
                                     init_module=self.child.module, 
                                     template_lookup=self.template_lookup,
-                                    level=self._level, depth=self._depth)
+                                    level=self._level_depth[0], 
+                                    depth=self._level_depth[1])
             else:
                 return ObjContent(docgetter=self.docgetter, loader=self.nestedContentLoader, ob=self.child.module, 
-                             template_lookup=self.template_lookup, level=self._level, depth=self._depth)
+                             template_lookup=self.template_lookup, level=self._level_depth[0], 
+                                    depth=self._level_depth[1])
 
         else:
             return ObjContent(docgetter=self.docgetter, loader=self.nestedContentLoader, ob=self.child, 
-                         template_lookup=self.template_lookup, level=self._level, depth=self._depth)
+                         template_lookup=self.template_lookup, level=self._level_depth[0], 
+                                    depth=self._level_depth[1])
     
     @renderer
-    def expandableItem(self, request: IRequest, tag: Tag) -> Tag:
+    def expandableItem(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
         if self._expand:
             return ExpandableItem(TagLoader(tag), self.child, self.nested_contents())
         else:
             return tag.clear()
 
     @renderer
-    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Tag:
+    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
         if not self._expand:
             return LinkOnlyItem(TagLoader(tag), self.child)
         else:
             return tag.clear()
 
-class TOCList(TemplateElement):
-    # one table per module children kind: classes, functions, variables, modules
+class LinkOnlyItem(Element):
+    """
+    Sidebar leaf item.
 
-    filename = 'sidebar-list.html'
+    Used by L{ContentItem.linkOnlyItem}
+    """
 
-    def __init__(self, ob: Documentable, docgetter: 'DocGetter',
-                 children: Iterable[Documentable], loader: ITemplateLoader, 
-                 expand: bool, nestedContentLoader: ITemplateLoader, template_lookup: TemplateLookup,
-                 depth: int, level: int):
+    def __init__(self, loader: ITemplateLoader, child: Documentable):
         super().__init__(loader)
-        self.ob = ob 
-        self.children = children
-
-        self._expand = expand
-        self._depth = depth
-        self._level = level
-
-        self.nestedContentLoader = nestedContentLoader
-        self.docgetter = docgetter
-        self.template_lookup = template_lookup
-    
+        self.child = child
     @renderer
-    def items(self, request: IRequest, tag: Tag) -> Iterable[Element]:
-        return [
-            TOCListItem(
-                loader=TagLoader(tag),
-                ob=self.ob,
-                child=child, 
-                docgetter=self.docgetter,
-                expand=self._expand, 
-                nestedContentLoader=self.nestedContentLoader if self._expand else None,
-                template_lookup=self.template_lookup, level=self._level, depth=self._depth)
-            for child in self.children]
+    def name(self, request: IRequest, tag: Tag) -> Tag:
+        return Tag('code')(
+            epydoc2stan.taglink(self.child, self.child.url, self.child.name)
+            )
+
+class ExpandableItem(LinkOnlyItem):
+    """
+    Sidebar expandable item.
+
+    Used by L{ContentItem.expandableItem}
+    """
+
+    last_ExpandableItem_id = 0
+
+    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: Element):
+        super().__init__(loader, child)
+        self._contents =  contents
+        ExpandableItem.last_ExpandableItem_id += 1
+        self._id = ExpandableItem.last_ExpandableItem_id
+    @renderer
+    def contents(self, request: IRequest, tag: Tag) -> Element:
+        return self._contents
+    @renderer
+    def expandableItemId(self, request: IRequest, tag: Tag) -> str:
+        return f"expandableItemId{self._id}"
+
