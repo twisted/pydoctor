@@ -70,7 +70,10 @@ class SideBarSection(Element):
     The sidebar typically contains two C{SideBarSection}: one for the documented object and one for it's parent. 
     Root modules have only one section. 
     """
-
+    #TODO: Add a current_obj parameter in order to disable the expandable item for 
+    # the current obj inside the paremts items and make it gray or something. 
+    # so it's clear that it's the one selected currently. 
+    
     def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup, first: bool = False):
         super().__init__(loader)
@@ -306,6 +309,8 @@ class ContentItem(Element):
     """
     L{ContentList} item. 
     """
+
+    #TODO: Show a text like "No members" when an object do not have any members, instead of expanding on an empty div. 
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, docgetter: 'DocGetter',
                  expand: bool, nestedContentLoader: Optional[ITemplateLoader], template_lookup: TemplateLookup,
