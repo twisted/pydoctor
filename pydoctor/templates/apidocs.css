@@ -531,7 +531,7 @@ div.tip, div.hint, div.important {
     width: 297px; /* Set the width of the sidebar: 290px + 2px for the border + 5px for the scrollbar */
     max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
-    padding: 10px 5px 10px 5px;
+    padding: 10px 0px 10px 5px;
     margin-right: 20px;
     margin-top: 24px;
     border: 1px solid;
@@ -639,7 +639,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar ul > li > .itemName {
-    width: calc(100% - 8px);
+    width: 100%;
 }
 
 .sidebar > div ul > li > .itemName > code {
@@ -657,7 +657,7 @@ div.tip, div.hint, div.important {
     flex-wrap: wrap;
     align-items: baseline;
     word-break: break-all;
-    padding-right: 10px;
+    padding-right: 15px;
 }
 
 .sidebar .thingTitle > span {
@@ -676,7 +676,7 @@ div.tip, div.hint, div.important {
     color: #676767;
     margin-left: 4px;
     margin-bottom: 3px;
-    font-size: 16px;
+    font-size: 15px;
 }
 
 .sidebar hr {
@@ -748,7 +748,7 @@ nav.foot address {
     padding: 1px;
     background-color: #e7e7e7;
     border-radius: 0 4px 0 4px;
-    margin: -11px 0 0 -10px;
+    margin: -11px 0 0 -15px;
     text-align: center;
     display: flex;
     align-items: center;
@@ -779,7 +779,6 @@ body.sidebar-collapsed #collapseSideBar {
 }
 
 body.sidebar-collapsed #collapseSideBar > a {
-    width: 15px;
     margin-top: 1px;
     margin-left: 0;
     border-radius: 4px;
@@ -858,7 +857,7 @@ input.tocChildrenToggle {
     overflow: hidden;
     flex-basis: 100%;
     transition: height 0.1s ease-in-out;
-    padding: 0 5px 0 7px;
+    padding: 0 0 0 7px;
     margin-left: 4px;
     border-left: 1px solid #e7e7e7;
 }
