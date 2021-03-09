@@ -531,7 +531,7 @@ div.tip, div.hint, div.important {
     width: 297px; /* Set the width of the sidebar: 290px + 2px for the border + 5px for the scrollbar */
     max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
-    padding: 10px 5px 20px 5px;
+    padding: 10px 5px 10px 5px;
     margin-right: 20px;
     margin-top: 24px;
     border: 1px solid;
@@ -589,7 +589,7 @@ div.tip, div.hint, div.important {
     padding-top: 7px;
 }
 
-.sidebar div:first-child {
+.sidebar > div:first-child {
     padding-top: 0;
     margin-top: -4px;
 }
@@ -605,9 +605,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar li {
-    width: 260px;
-    display: block;
-    display: list-item;
+    width: 100%;
     margin-left: 14px;
     padding: 0;
     display: flex;
@@ -628,25 +626,23 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar li a {
-    padding-top: 2px;
-    padding-bottom: 2px;
-    display: block;
-    min-width: calc(100% - 20px)
+    display: inline-block;
+    width: 100%;
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
-.sidebar > div ul > li > code, .sidebar > div ul > li > code > a { 
+.sidebar > div ul > li > .itemName > code, .sidebar > div ul > li > .itemName > code > a { 
     background-color: transparent;
 }
 
-.sidebar > div ul > li > code {
-    padding: 0;
-    display: flex;
-    min-width: calc(100% - 16px);
+.sidebar ul > li > .itemName {
+    width: calc(100% - 8px);
 }
 
-.sidebar > div ul > li > code > a{
-    padding-top: 3px;
-    padding-bottom: 3px;
+.sidebar > div ul > li > .itemName > code {
+    padding: 0;
+    width: 100%;
 }
 
 .sidebar .thingTitle {
@@ -659,6 +655,7 @@ div.tip, div.hint, div.important {
     flex-wrap: wrap;
     align-items: baseline;
     word-break: break-all;
+    padding-right: 10px;
 }
 
 .sidebar .thingTitle > span {
@@ -698,9 +695,6 @@ div.tip, div.hint, div.important {
     .sidebar > div {
         width: 240px;
     }
-    .sidebar li {
-        width: 220px;
-    }
     .main {
         margin-left: 277px; /* Same as the width of the sidebar + 20px*/
     }
@@ -713,9 +707,6 @@ div.tip, div.hint, div.important {
     }
     .sidebar > div {
         width: 190px;
-    }
-    .sidebar li {
-        width: 170px;
     }
     .main {
         margin-left: 227px; /* Same as the width of the sidebar + 20px */
@@ -859,23 +850,26 @@ input.tocChildrenToggle {
     transition: transform 0.1s ease-out;
   }
 
-  .lbl-toggle:hover {
+.lbl-toggle:hover {
     color: #333;
   }
 
-  .tocChildrenToggle:checked + .lbl-toggle::before {
+.tocChildrenToggle:checked + .lbl-toggle::before {
     transform: rotate(90deg) translateX(-3px);
   }
 
 .expandableContent {
     height: 0px;
     overflow: hidden;
+    flex-basis: 100%;
     transition: height 0.1s ease-in-out;
-    padding-left: 11px;
+    padding: 0 5px 0 7px;
+    margin-left: 4px;
+    border-left: 1px solid #e7e7e7;
 }
 
 .expandableContent > div {
-    padding-top: 5px;
+    margin-top: 5px;
 }
 
 .tocChildrenToggle:checked ~ .expandableContent {
@@ -890,4 +884,13 @@ input.tocChildrenToggle {
 
 .expandableContent .childrenKindTitle {
     font-size:14px;
+}
+
+.expandableItem {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.expandableItem > code {
+    width: calc(100% - 16px)!important;
 }
