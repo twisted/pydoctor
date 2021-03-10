@@ -676,7 +676,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
 
     tag: Tag = tags.span(class_='undocumented')
     if subdocstrings:
-        plurals = {'class': 'classes'}
+        plurals = {'class': 'classes', 'property': 'properties'}
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
