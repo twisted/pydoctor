@@ -66,7 +66,7 @@ function initSideBarCollapse() {
         document.body.classList.add("sidebar-collapsed");
     }
     if (collapsed == ""){
-        setCookie("pydoctor-sidebar-collapsed", "no", 2);
+        setCookie("pydoctor-sidebar-collapsed", "no", 365);
     }
     updateSideBarCollapse();
 }
@@ -74,11 +74,11 @@ function initSideBarCollapse() {
 function toggleSideBarCollapse() {
     if (document.body.classList.contains('sidebar-collapsed')){
         document.body.classList.remove('sidebar-collapsed');
-        setCookie("pydoctor-sidebar-collapsed", "no", 2);
+        setCookie("pydoctor-sidebar-collapsed", "no", 365);
     }
     else {
         document.body.classList.add("sidebar-collapsed");
-        setCookie("pydoctor-sidebar-collapsed", "yes", 2);
+        setCookie("pydoctor-sidebar-collapsed", "yes", 365);
     }
     
     updateSideBarCollapse();
