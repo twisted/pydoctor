@@ -7,7 +7,7 @@ from twisted.web.template import TagLoader, renderer, tags, Tag, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Attribute, Class, Function, Documentable, Module, Package
-from pydoctor.templatewriter import TemplateLookup, TemplateElement
+from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 class SideBar(TemplateElement):
     """
@@ -25,7 +25,7 @@ class SideBar(TemplateElement):
 
     filename = 'sidebar.html'
 
-    def __init__(self, docgetter: 'DocGetter', 
+    def __init__(self, docgetter: util.DocGetter, 
                  loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup):
         super().__init__(loader)
@@ -74,7 +74,7 @@ class SideBarSection(Element):
     # the current obj inside the paremts items and make it gray or something. 
     # so it's clear that it's the one selected currently. 
     
-    def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, 
+    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup, first: bool = False):
         super().__init__(loader)
         self.ob = ob
@@ -84,18 +84,21 @@ class SideBarSection(Element):
     
     @renderer
     def separator(self, request: IRequest, tag: Tag) -> Tag:
-        return tag.clear()(tags.hr) if not self._first else tag.clear()
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(tags.hr) if not self._first else tag.clear() # type: ignore[no-any-return]
 
     @renderer
     def kind(self, request: IRequest, tag: Tag) -> Tag:
-        return tag.clear()(self.ob.kind)
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(self.ob.kind) # type: ignore[no-any-return]
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
         name = self.ob.name
         if name == "__init__" and self.ob.parent:
             name = self.ob.parent.name
-        return tag.clear()(name)
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(name) # type: ignore[no-any-return]
 
     @renderer
     def content(self, request: IRequest, tag: Tag) -> Element:
@@ -123,7 +126,7 @@ class ObjContent(Element):
     Composed by L{ContentList} elements. 
     """
 
-    def __init__(self, docgetter: 'DocGetter', loader: ITemplateLoader, ob: Documentable, 
+    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
 
         super().__init__(loader)
@@ -159,47 +162,47 @@ class ObjContent(Element):
         return self._level < self._depth and can_be_expanded
 
     @renderer
-    def docstringToc(self, request: IRequest, tag: Tag) -> Tag:
+    def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         
         toc = self.docgetter.get_toc(self.ob)
         if toc:
-            return tag.fillSlots(titles=toc)
+            # mypy gets error: Returning Any from function declared to return "Union[Tag, str]"
+            return tag.fillSlots(titles=toc) # type: ignore[no-any-return]
         else:
-            tag.clear()
-            return Tag('transparent')
+            return ""
 
     @renderer
-    def classesTitle(self, request: IRequest, tag: Tag) -> str:
+    def classesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Classes") if self.classList else ""
 
     @renderer
-    def classes(self, request: IRequest, tag: Tag) -> Union[Element, Tag]:
-        return self.classList or Tag('transparent')
+    def classes(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.classList or ""
     
     @renderer
-    def functionsTitle(self, request: IRequest, tag: Tag) -> str:
+    def functionsTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return (tag.clear()("Functions") if not isinstance(self.ob, Class) 
                 else tag.clear()("Methods")) if self.functionList else ""
 
     @renderer
-    def functions(self, request: IRequest, tag: Tag) -> Union[Element, Tag]:
-        return self.functionList or Tag('transparent')
+    def functions(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.functionList or ""
 
     @renderer
-    def variablesTitle(self, request: IRequest, tag: Tag) -> str:
+    def variablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return (tag.clear()("Variables")) if self.variableList else ""
     
     @renderer
-    def variables(self, request: IRequest, tag: Tag) -> Union[Element, Tag]:
-        return self.variableList or Tag('transparent')
+    def variables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.variableList or ""
 
     @renderer
-    def subModulesTitle(self, request: IRequest, tag: Tag) -> str:
+    def subModulesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         return tag.clear()("Modules") if self.subModuleList else ""
     
     @renderer
-    def subModules(self, request: IRequest, tag: Tag) -> Union[Element, Tag]:
-        return self.subModuleList or Tag('transparent')
+    def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.subModuleList or ""
 
     def _getListOf(self, 
                          type_: Union[Type[Documentable], 
@@ -211,7 +214,7 @@ class ObjContent(Element):
         return self._getListFrom(things, expand=self.expand_list(type_))
 
 
-    def _getListFrom(self, things: Iterable[Documentable], expand: bool):
+    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional[Element]:
 
         if things:
             assert self.loader is not None
@@ -238,7 +241,7 @@ class ObjContent(Element):
 class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
 
-    def __init__(self,  docgetter: 'DocGetter', loader: ITemplateLoader, package: Package, 
+    def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, 
                  init_module: Module, template_lookup: TemplateLookup, depth: int = 3, level: int = 0 ):
 
         self.init_module = init_module
@@ -277,7 +280,7 @@ class ContentList(TemplateElement):
 
     filename = 'sidebar-list.html'
 
-    def __init__(self, ob: Documentable, docgetter: 'DocGetter',
+    def __init__(self, ob: Documentable, docgetter: util.DocGetter,
                  children: Iterable[Documentable], loader: ITemplateLoader, 
                  expand: bool, nestedContentLoader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
@@ -312,7 +315,7 @@ class ContentItem(Element):
 
     #TODO: Show a text like "No members" when an object do not have any members, instead of expanding on an empty div. 
 
-    def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, docgetter: 'DocGetter',
+    def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, docgetter: util.DocGetter,
                  expand: bool, nestedContentLoader: Optional[ITemplateLoader], template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
         
@@ -364,14 +367,14 @@ class ContentItem(Element):
         if self._expand:
             return ExpandableItem(TagLoader(tag), self.child, self.nested_contents())
         else:
-            return tag.clear()
+            return Tag('transparent')
 
     @renderer
     def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
         if not self._expand:
             return LinkOnlyItem(TagLoader(tag), self.child)
         else:
-            return tag.clear()
+            return Tag('transparent')
 
 class LinkOnlyItem(Element):
     """
@@ -385,9 +388,7 @@ class LinkOnlyItem(Element):
         self.child = child
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
-        return Tag('code')(
-            epydoc2stan.taglink(self.child, self.child.url, self.child.name)
-            )
+        return Tag('code', children=[epydoc2stan.taglink(self.child, self.child.url, self.child.name)])
 
 class ExpandableItem(LinkOnlyItem):
     """

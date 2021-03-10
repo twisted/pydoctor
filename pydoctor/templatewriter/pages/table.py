@@ -5,12 +5,12 @@ from twisted.web.template import TagLoader, renderer, tags, Tag, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Function, Documentable
-from pydoctor.templatewriter import TemplateElement
+from pydoctor.templatewriter import util, TemplateElement
 
 
 class TableRow(Element):
 
-    def __init__(self, loader: ITemplateLoader, docgetter: 'DocGetter', 
+    def __init__(self, loader: ITemplateLoader, docgetter: util.DocGetter, 
                  ob: Documentable, child: Documentable):
         super().__init__(loader)
         self.docgetter = docgetter
@@ -32,17 +32,21 @@ class TableRow(Element):
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
             kind = f'Async {kind}'
-        return tag.clear()(kind)
+        
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(kind) # type: ignore[no-any-return]
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
-        return tag.clear()(tags.code(
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(tags.code( # type: ignore[no-any-return]
             epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
             ))
 
     @renderer
     def summaryDoc(self, request: IRequest, tag: Tag) -> Tag:
-        return tag.clear()(self.docgetter.get(self.child, summary=True))
+        # mypy gets error: Returning Any from function declared to return "Tag"
+        return tag.clear()(self.docgetter.get(self.child, summary=True)) # type: ignore[no-any-return]
 
 class ChildTable(TemplateElement):
 
@@ -50,7 +54,7 @@ class ChildTable(TemplateElement):
 
     filename = 'table.html'
 
-    def __init__(self, docgetter: 'DocGetter', ob: Documentable, 
+    def __init__(self, docgetter: util.DocGetter, ob: Documentable, 
                  children: Iterable[Documentable], loader: ITemplateLoader):
         super().__init__(loader)
         self.children = children

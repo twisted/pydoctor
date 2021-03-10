@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
+from typing import Any, Iterable, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
 import ast
 import abc
 
@@ -30,19 +30,6 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
 def signature(function: model.Function) -> str:
     """Return a nicely-formatted source-like function signature."""
     return str(function.signature)
-
-class DocGetter:
-    """L{epydoc2stan} bridge."""
-    def get(self, ob: model.Documentable, summary: bool = False) -> Tag:
-        if summary:
-            return epydoc2stan.format_summary(ob)
-        else:
-            return epydoc2stan.format_docstring(ob)
-    def get_type(self, ob: model.Documentable) -> Optional[Tag]:
-        return epydoc2stan.type2stan(ob)
-    def get_toc(self, ob: model.Documentable) -> Optional[Tag]:
-        return epydoc2stan.format_toc(ob)
-   
 
 class Nav(TemplateElement):
     """
@@ -135,11 +122,11 @@ class CommonPage(BasePage):
     filename = 'common.html'
     ob: model.Documentable
 
-    def __init__(self, ob: model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
+    def __init__(self, ob: model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[util.DocGetter]=None):
         super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
-            docgetter = DocGetter()
+            docgetter = util.DocGetter()
         self.docgetter = docgetter
 
     @property
@@ -311,47 +298,10 @@ class PackagePage(ModulePage):
                 and o.isVisible]
 
 
-def overriding_subclasses(c, name, firstcall=True):
-    if not firstcall and name in c.contents:
-        yield c
-    else:
-        for sc in c.subclasses:
-            if sc.isVisible:
-                yield from overriding_subclasses(sc, name, False)
-
-def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
+def assembleList(system: model.System, label: str, lst: Iterable[str], idbase: str, page_url: str) -> Optional[Sequence[Union[str, Tag]]]:
     """
-    Helper function to retreive the complete list of base classes chains (represented by tuples) for a given Class. 
-    A chain of classes is used to compute the member inheritence from the first element to the last element of the chain.  
-    
-    The first yielded chain only contains the Class itself. 
-
-    Then for each of the super-classes:
-        - the next yielded chain contains the super class and the class itself, 
-        - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
+    Convert list of object names into a stan tree with clickable links. 
     """
-    yield (classobj,)
-    for base in classobj.baseobjects:
-        if base is None:
-            continue
-        for nested_base in nested_bases(base):
-            yield (nested_base + (classobj,))
-
-def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentable]:
-    """
-    Helper function to reteive the list of inherited children given a base classes chain (As yielded by C{nested_bases}). 
-    The returned members are inherited from the Class listed first in the chain to the Class listed last: they are not overriden in between. 
-    """
-    maybe_masking = {
-        o.name
-        for b in baselist[1:]
-        for o in b.contents.values()
-        }
-    return [o for o in baselist[0].contents.values()
-            if o.isVisible and o.name not in maybe_masking]
-
-
-def assembleList(system, label, lst, idbase, page_url):
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
@@ -382,11 +332,11 @@ class ClassPage(CommonPage):
     ob: model.Class
 
     def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, 
-                 docgetter:Optional[DocGetter] = None):
+                 docgetter:Optional[util.DocGetter] = None):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
-        for baselist in nested_bases(self.ob):
-            attrs = unmasked_attrs(baselist)
+        for baselist in util.nested_bases(self.ob):
+            attrs = util.unmasked_attrs(baselist)
             if attrs:
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
@@ -482,7 +432,7 @@ class ClassPage(CommonPage):
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
+        ocs = sorted(util.overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
