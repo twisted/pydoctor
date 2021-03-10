@@ -252,17 +252,21 @@ class ObjContent(Element):
             return self._getListFrom(things, expand=self.expand_list(type_))
         else:
             return None
+            
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
     def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Element:
-        assert self.loader is not None
-        return ContentList(ob=self.ob, children=things,
-                loader=ContentList.lookup_loader(self.template_lookup), 
-                docgetter=self.docgetter,
-                expand=expand,
-                nestedContentLoader=self.loader, 
-                template_lookup=self.template_lookup,
-                level_depth=(self._level, self._depth))
+        if things:
+            assert self.loader is not None
+            return ContentList(ob=self.ob, children=things,
+                    loader=ContentList.lookup_loader(self.template_lookup), 
+                    docgetter=self.docgetter,
+                    expand=expand,
+                    nestedContentLoader=self.loader, 
+                    template_lookup=self.template_lookup,
+                    level_depth=(self._level, self._depth))
+        else:
+            return None
         
 
 class PackageContent(ObjContent):
