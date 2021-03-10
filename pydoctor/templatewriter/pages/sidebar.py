@@ -148,6 +148,9 @@ class ObjContent(Element):
         self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
 
     def children(self, inherited: bool = False) -> Optional[List[Documentable]]:
+        """
+        Sorted by name and privacy. 
+        """
         if inherited:
             if isinstance(self.ob, Class):
                 children : List[Documentable] = []
@@ -158,13 +161,13 @@ class ObjContent(Element):
                         if attrs:
                             children.extend(attrs)
                 return sorted(
-                    [o for o in children if o.isVisible],
+                    [o for o in sorted(children, key=lambda o:o.name) if o.isVisible],
                      key=lambda o:-o.privacyClass.value)
             else:
                 return None
         else:
             return sorted(
-                [o for o in self.ob.contents.values() if o.isVisible],
+                [o for o in sorted(self.ob.contents.values(), key=lambda o:o.name) if o.isVisible],
                  key=lambda o:-o.privacyClass.value)
 
     def expand_list(self, list_type: Union[Type[Documentable], 
@@ -220,7 +223,8 @@ class ObjContent(Element):
 
     @renderer
     def variablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
-        return (tag.clear()("Variables")) if self.variableList else ""
+        return (tag.clear()("Variables") if not isinstance(self.ob, Class)
+                else tag.clear()("Attributes")) if self.variableList else ""
     
     @renderer
     def variables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -228,7 +232,7 @@ class ObjContent(Element):
 
     @renderer
     def inheritedVariablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
-        return tag.clear()("Inherited Variables") if self.inheritedVariableList else ""
+        return tag.clear()("Inherited Attributes") if self.inheritedVariableList else ""
 
     @renderer
     def inheritedVariables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
@@ -252,7 +256,7 @@ class ObjContent(Element):
             return self._getListFrom(things, expand=self.expand_list(type_))
         else:
             return None
-            
+
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
     def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Element:
@@ -302,10 +306,10 @@ class ContentList(TemplateElement):
     One L{ObjContent} element can have up to six C{ContentList}: 
         - classes 
         - functions/methods
-        - variables
+        - variables/attributes
         - modules
-        - inherited variables (todo)
-        - inherited methods (todo)
+        - inherited attributes
+        - inherited methods
     """
     # one table per module children kind: classes, functions, variables, modules
 
