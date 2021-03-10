@@ -162,7 +162,7 @@ class ParsedRstDocstring(ParsedDocstring):
         return '<ParsedRstDocstring: ...>'
 
     def _build_contents(self, node: docutils.nodes.Node, 
-                        level: int = 0, depth: int = 4) -> List[docutils.nodes.Node]:
+                        level: int = 0, depth: int = 6) -> List[docutils.nodes.Node]:
         # Simplified from docutils Contents transform. 
         level += 1
         sections = [sect for sect in node if isinstance(sect, docutils.nodes.section)]
