@@ -4,7 +4,7 @@ import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import util, pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
@@ -39,13 +39,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
