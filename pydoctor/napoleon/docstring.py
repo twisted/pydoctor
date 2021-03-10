@@ -75,6 +75,30 @@ def is_type(string: str) -> bool:
         # Arg warns_on_unknown_tokens allows to narow the checks and match only docstrings 
         # that we are 100% sure are type specifications. 
 
+def is_google_typed_arg(string: str, parse_type: bool = True) -> bool:
+    """
+    Verify the validity of google-style field name and type specification.
+
+    Valid strings are like::
+
+        list(str), optional
+        ValueError
+
+        # parse_type must equal True to check that string
+        param (list(str), optional)
+    """
+    if is_type(string):
+        return True
+    else:
+        if parse_type:
+            match = _google_typed_arg_regex.match(string)
+            if match:
+                _name = match.group(1).strip()
+                _type = match.group(2)
+                if _name.isidentifier() and is_type(_type):
+                    return True
+    return False
+
 @attr.s(auto_attribs=True)
 class FreeFormException(Exception):
     """
@@ -516,41 +540,15 @@ class GoogleDocstring:
         return lines
 
     # overriden: enforce type pre-processing + made more smart to understand multiline types. 
-    def _consume_field(self, parse_type: bool = True, prefer_type: bool = False
-                       ) -> Tuple[str, str, List[str]]:
+    def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, **kwargs: Any) -> Tuple[str, str, List[str]]:
         
         line = next(self._line_iter)
         indent = self._get_indent(line) + 1
         lines = self._dedent(self._consume_indented_block(indent))
         lines.insert(0, line)
 
-        def is_google_typed_arg(string: str) -> bool:
-            """
-            Verify the validity of google-style field name and type specification.
-            Only used for multilines fields. 
-
-            Valid strings are like::
-
-                param (list(str), optional)
-
-                list(str), optional
-
-                ValueError
-            """
-            if is_type(string):
-                return True
-            else:
-                if parse_type:
-                    match = _google_typed_arg_regex.match(string)
-                    if match:
-                        _name = match.group(1).strip()
-                        _type = match.group(2)
-                        if _name.isidentifier() and is_type(_type):
-                            return True
-            return False
-        
         before_colon, colon, _descs = self._partition_multiline_field_on_colon(
-            lines, is_google_typed_arg)
+            lines, format_validator=partial(is_google_typed_arg, parse_type=parse_type))
 
         _descs = self.__class__(_descs).lines()        
 
@@ -575,7 +573,7 @@ class GoogleDocstring:
 
     # overriden: Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(self, parse_type: bool = True, prefer_type: bool = False,
-                        multiple: bool = False, **kwargs:Any) -> List[Tuple[str, str, List[str]]]:
+                        multiple: bool = False, **kwargs: Any) -> List[Tuple[str, str, List[str]]]:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
@@ -610,7 +608,7 @@ class GoogleDocstring:
         if lines:
 
             before_colon, colon, _descs = self._partition_multiline_field_on_colon(
-                lines, is_type)
+                lines, format_validator=is_type)
             
             _type = ''
             if _descs:
@@ -1110,7 +1108,7 @@ class GoogleDocstring:
     def _partition_multiline_field_on_colon(self, lines:List[str], 
             format_validator:Callable[[str], bool]) -> Tuple[str, str, List[str]]:
         """
-        Partition multiple lines on colon. 
+        Partition multiple lines on colon. If the type or name span multiple lines, they will be automatically joined. 
 
         Parameters
         ----------
@@ -1119,6 +1117,12 @@ class GoogleDocstring:
         format_validator
             Validator returning `bool` indicates if the value of before_colon is sane. 
             If the value is not sane, fall back to `_partition_field_on_colon` behaviour with a warning. 
+            Note
+            ----
+            The validator will be called with a one line string as the argument.
+            Note
+            ----
+            Only used for multiline fields. 
 
         Returns
         -------
@@ -1252,26 +1256,15 @@ class NumpyDocstring(GoogleDocstring):
         else:
             return func(name)
 
-    # overriden: remove lookup annotations and resolving sphinx/issues/7077
+    # overriden: remove lookup annotations and resolving https://github.com/sphinx-doc/sphinx/issues/7077
     def _consume_field(self, parse_type: bool = True, prefer_type: bool = False, 
                        allow_free_form: bool = False) -> Tuple[str, str, List[str]]:
         """
         Raise
         -----
         FreeFormException
-            If the type is not obvious and _consume_field(allow_free_form=True), 
-            only used for the returns section. 
+            See `_convert_type_and_maybe_consume_free_form_field`
         """
-
-        def figure_type(_name: str, _type: str) -> str:
-            # Here we "guess" if _type contains the type
-            if is_type(_type) or not allow_free_form:
-                _type = self._convert_type(_type)
-                return _type
-            else:
-                # Else we consider it as free form
-                _desc = self.__class__(self._consume_to_next_section()).lines()
-                raise FreeFormException(lines=[_name + _type] + _desc)
                 
         line = next(self._line_iter)
         if parse_type:
@@ -1297,13 +1290,27 @@ class NumpyDocstring(GoogleDocstring):
         if next_line != self._line_iter.sentinel:
             next_line_indent = self._get_indent(next_line) + 1
             if next_line_indent > indent:
+                # Normal case.
                 _desc = self._dedent(self._consume_indented_block(indent))
                 _desc = self.__class__(_desc).lines()
                 _type = self._convert_type(_type)
-                # Normal case
                 return _name, _type, _desc
         
-        _type = figure_type(_name, _type) # Can raise FreeFormException
+        # The field either do not provide description and data contains the name and type informations,
+        # or the _name and _type variable contains directly the description. i.e.
+        
+        # Returns
+        # -------
+        # fox_speed: float
+        
+        # Or 
+        
+        # Returns
+        # -------
+        # The computed speed of the fox
+        
+        _type = self._convert_type_and_maybe_consume_free_form_field(
+                        _name, _type, allow_free_form=allow_free_form) # Can raise FreeFormException
         return _name, _type, []
 
     # allow to pass any args to super()._consume_fields(). Used for allow_free_form=True
@@ -1350,6 +1357,22 @@ class NumpyDocstring(GoogleDocstring):
                     if section.startswith(directive_section):
                         return True
         return False
+    
+    def _convert_type_and_maybe_consume_free_form_field(self, _name: str, _type: str, allow_free_form: bool = False) -> str:
+        """
+        We guess if _type contains the type
+        Raises
+        ------
+        FreeFormException
+            If allow_free_form=True and _type do not match `is_type` check.
+        """
+        if is_type(_type) or not allow_free_form:
+            _type = self._convert_type(_type)
+            return _type
+        else:
+            # Else we consider it as free form
+            _desc = self.__class__(self._consume_to_next_section()).lines()
+            raise FreeFormException(lines=[_name + _type] + _desc)
 
     def _parse_see_also_section(self, section: str) -> List[str]:
         lines = self._consume_to_next_section()
