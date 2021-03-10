@@ -1,7 +1,7 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Iterable, Optional, Sequence, Tuple, Type, Union
+from typing import Iterable, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, tags, Tag, Element
 
@@ -126,6 +126,8 @@ class ObjContent(Element):
     Composed by L{ContentList} elements. 
     """
 
+    #TODO: Hide the childrenKindTitle if they are all private and show ptivate is off -> need JS
+
     def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
                  template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
 
@@ -142,8 +144,28 @@ class ObjContent(Element):
         self.variableList = self._getListOf(Attribute)
         self.subModuleList = self._getListOf((Module, Package))
 
-        self.inheritedFunctionList = self._getListOf(Function, inherited=True)
-        self.inheritedVariableList = self._getListOf(Attribute, inherited=True)
+        self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
+        self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
+
+    def children(self, inherited: bool = False) -> Optional[List[Documentable]]:
+        if inherited:
+            if isinstance(self.ob, Class):
+                children : List[Documentable] = []
+                for baselist in util.nested_bases(self.ob):
+                    #  If the class has super class
+                    if len(baselist) >= 2:
+                        attrs = util.unmasked_attrs(baselist)
+                        if attrs:
+                            children.extend(attrs)
+                return sorted(
+                    [o for o in children if o.isVisible],
+                     key=lambda o:-o.privacyClass.value)
+            else:
+                return None
+        else:
+            return sorted(
+                [o for o in self.ob.contents.values() if o.isVisible],
+                 key=lambda o:-o.privacyClass.value)
 
     def expand_list(self, list_type: Union[Type[Documentable], 
                                             Tuple[Type[Documentable], ...]]) -> bool:
@@ -187,6 +209,14 @@ class ObjContent(Element):
     @renderer
     def functions(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.functionList or ""
+    
+    @renderer
+    def inheritedFunctionsTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
+        return tag.clear()("Inherited Methods") if self.inheritedFunctionList else ""
+
+    @renderer
+    def inheritedFunctions(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.inheritedFunctionList or ""
 
     @renderer
     def variablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
@@ -195,6 +225,14 @@ class ObjContent(Element):
     @renderer
     def variables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.variableList or ""
+
+    @renderer
+    def inheritedVariablesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
+        return tag.clear()("Inherited Variables") if self.inheritedVariableList else ""
+
+    @renderer
+    def inheritedVariables(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+        return self.inheritedVariableList or ""
 
     @renderer
     def subModulesTitle(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
@@ -208,35 +246,24 @@ class ObjContent(Element):
                          type_: Union[Type[Documentable], 
                                 Tuple[Type[Documentable], ...]],
                          inherited: bool = False) -> Optional[Element]:
-
-        things = [ child for child in self.children(inherited=inherited) if isinstance(child, type_) ]
-        
-        return self._getListFrom(things, expand=self.expand_list(type_))
-
-
-    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional[Element]:
-
-        if things:
-            assert self.loader is not None
-            return ContentList(ob=self.ob, children=things,
-                    loader=ContentList.lookup_loader(self.template_lookup), 
-                    docgetter=self.docgetter,
-                    expand=expand,
-                    nestedContentLoader=self.loader, 
-                    template_lookup=self.template_lookup,
-                    level_depth=(self._level, self._depth))
+        children = self.children(inherited=inherited)
+        if children:
+            things = [ child for child in children if isinstance(child, type_) ]
+            return self._getListFrom(things, expand=self.expand_list(type_))
         else:
             return None
+    #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
-
-    def children(self, inherited: bool = False) -> Iterable[Documentable]:
-        if inherited:
-            #TODO: Get inherited children with nested_bases and unmasked_attrs.
-            return []
-        else:
-            return sorted(
-                [o for o in self.ob.contents.values() if o.isVisible],
-                 key=lambda o:-o.privacyClass.value)
+    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Element:
+        assert self.loader is not None
+        return ContentList(ob=self.ob, children=things,
+                loader=ContentList.lookup_loader(self.template_lookup), 
+                docgetter=self.docgetter,
+                expand=expand,
+                nestedContentLoader=self.loader, 
+                template_lookup=self.template_lookup,
+                level_depth=(self._level, self._depth))
+        
 
 class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged

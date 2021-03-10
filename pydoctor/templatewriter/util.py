@@ -1,7 +1,7 @@
 """Miscellaneous utilities."""
 
 import warnings
-from typing import Iterator, Optional, Sequence, Tuple
+from typing import Iterator, List, Optional, Sequence, Tuple
 from pydoctor.model import Documentable, Class
 from pydoctor import epydoc2stan
 
@@ -54,7 +54,7 @@ def nested_bases(classobj: Class) -> Iterator[Tuple[Class, ...]]:
         for nested_base in nested_bases(base):
             yield (nested_base + (classobj,))
 
-def unmasked_attrs(baselist: Sequence[Class]) -> Sequence[Documentable]:
+def unmasked_attrs(baselist: Sequence[Class]) -> List[Documentable]:
     """
     Helper function to reteive the list of inherited children given a base classes chain (As yielded by L{nested_bases}). 
     The returned members are inherited from the Class listed first in the chain to the Class listed last: they are not overriden in between. 
