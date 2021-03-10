@@ -4,7 +4,7 @@ import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import util, pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import util, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText

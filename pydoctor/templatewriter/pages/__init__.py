@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterable, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
+from typing import Any, Iterable, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
 
