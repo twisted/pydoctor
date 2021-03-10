@@ -3,7 +3,7 @@ body {
 }
 
 .container-fluid{
-    max-width: 1300px;   
+    max-width: 1330px;   
 }
 
 nav.navbar {
@@ -528,7 +528,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebarcontainer {
-    width: 297px; /* Set the width of the sidebar: 290px + 2px for the border + 5px for the scrollbar */
+    width: 297px; /* Set the width of the sidebar: 290px + 2px for the border + 5px for the padding */
     max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
     padding: 10px 0px 10px 5px;
@@ -690,6 +690,16 @@ div.tip, div.hint, div.important {
     margin-left: 317px; /* Same as the width of the sidebar + 20px*/
 }
 
+/* For bigger displays, i.e. full screen */
+@media only screen and (min-width: 1330px) {
+    .sidebarcontainer {
+        width: 317px; /* Set the width of the sidebar: 310px + 2px for the border + 5px for the scrollbar */
+    }
+    .main {
+        margin-left: 347px; /* Same as the width of the sidebar + 30px*/
+    }
+}
+
 /* For smaller displays, i.e. half screen or mobile phone */
 @media only screen and (max-width: 1000px) {
     .sidebarcontainer {
@@ -772,7 +782,8 @@ body.sidebar-collapsed .sidebarcontainer {
 }
 
 body.sidebar-collapsed .main {
-    margin: 25px;
+    margin: 0 0 0 25px;
+    max-width: 970px; /* Arbitrary "good for reading" width for the content when the sidebar is collapsed */ 
 }
 
 body.sidebar-collapsed #collapseSideBar {
@@ -780,7 +791,7 @@ body.sidebar-collapsed #collapseSideBar {
 }
 
 body.sidebar-collapsed #collapseSideBar > a {
-    margin-top: 1px;
+    margin-top: 0;
     margin-left: 0;
     border-radius: 4px;
     background-color: #f8f8f8;
@@ -802,7 +813,7 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
         display: none;
     }
     .main {
-        margin: 0;
+        margin: 0!important;
     }
     #collapseSideBar {
         display: none;

@@ -93,7 +93,6 @@ function updateSideBarCollapse() {
     sidebarcontainer.style.display='none';
     sidebarcontainer.offsetHeight; // no need to store this anywhere, the reference is enough
     sidebarcontainer.style.display='';
-    updateSideBarCollapseMargin()
 }
 
 initSideBarCollapse();
