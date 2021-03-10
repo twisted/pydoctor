@@ -722,8 +722,8 @@ div.tip, div.hint, div.important {
 
 
 nav.foot {
+    margin-top: 10px;
     background-color: #fff;
-    border: none;
     text-align: center;
 }
 
