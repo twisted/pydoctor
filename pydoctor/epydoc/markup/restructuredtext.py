@@ -41,7 +41,7 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, ClassVar, Iterable, List, Mapping, Optional, Sequence, Set
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Sequence, Set
 import optparse
 import re
 
@@ -146,7 +146,7 @@ class ParsedRstDocstring(ParsedDocstring):
 
         contents = self._build_contents(self._document, depth=4)
         docstring_toc = new_document('toc')
-        if len(contents):
+        if contents:
             docstring_toc.extend(contents)
             return ParsedRstDocstring(docstring_toc, ())
         else:
@@ -162,7 +162,7 @@ class ParsedRstDocstring(ParsedDocstring):
         return '<ParsedRstDocstring: ...>'
 
     def _build_contents(self, node: docutils.nodes.Node, 
-                        level: int = 0, depth: int = 6) -> List[docutils.nodes.Node]:
+                        level: int = 0, depth: int = 6) -> Optional[docutils.nodes.Node]:
         # Simplified from docutils Contents transform. 
         level += 1
         sections = [sect for sect in node if isinstance(sect, docutils.nodes.section)]
@@ -180,15 +180,15 @@ class ParsedRstDocstring(ParsedDocstring):
                 title['refid'] = ref_id
             if level < depth:
                 subsects = self._build_contents(section, level)
-                item += subsects
+                item += subsects or []
             entries.append(item)
         if entries:
             contents = docutils.nodes.bullet_list('', *entries)
             return contents
         else:
-            return []
+            return None
 
-    def _copy_and_filter(self, node: docutils.nodes.Node):
+    def _copy_and_filter(self, node: docutils.nodes.Node) -> docutils.nodes.Node:
         """Return a copy of a title, with references, images, etc. removed."""
         visitor = docutils.transforms.parts.ContentsFilter(self._document)
         node.walkabout(visitor)
@@ -478,7 +478,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
           - all headings (C{<hM{n}>}) are given the css class C{'heading'}
         """
         # Get the list of all attribute dictionaries we need to munge.
-        attr_dicts: List[Mapping[str, Any]] = [attributes]
+        attr_dicts: List[Dict[str, Any]] = [attributes]
         if isinstance(node, docutils.nodes.Node):
             attr_dicts.append(node.attributes)
         if isinstance(node, dict):
