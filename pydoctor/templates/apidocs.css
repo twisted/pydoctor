@@ -678,11 +678,15 @@ div.tip, div.hint, div.important {
     margin-left: 4px;
     margin-bottom: 3px;
     font-size: 15px;
+    border-bottom: solid 1px #e7e7e7;
 }
 
 .sidebar hr {
     margin-top: 10px;
     margin-bottom: 10px;
+    border-color: #ddd;
+    border-style: dashed;
+    border-width: thin;
 }
   
 /* Style page content */
@@ -828,9 +832,10 @@ input.tocChildrenToggle {
 
 .lbl-toggle {
     display: block;
+    width: 20px;
     font-weight: bold;
     font-family: monospace;
-    font-size: 1.2rem;
+    font-size: 12px;
     text-transform: uppercase;
     text-align: center;
     color: #333;
@@ -889,7 +894,8 @@ input.tocChildrenToggle {
   }
 
 .expandableContent .childrenKindTitle {
-    font-size:14px;
+    font-size: 13px;
+    margin-left: 5px;
 }
 
 .expandableItem {
@@ -898,5 +904,5 @@ input.tocChildrenToggle {
 }
 
 .expandableItem > code {
-    width: calc(100% - 16px)!important;
+    width: calc(100% - 20px)!important;
 }
