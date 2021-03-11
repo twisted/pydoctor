@@ -628,6 +628,14 @@ div.tip, div.hint, div.important {
     border: 0;
 }
 
+/* Generated TOC */ 
+.sidebar ul.rst-simple, .sidebar ul.rst-simple ul {
+    margin: 0 0 5px 0;
+    padding: 0 0 0 15px;
+    margin: 0;
+    border-left: 1px solid #e7e7e7;
+}
+
 .sidebar li a {
     display: inline-block;
     width: 100%;
@@ -843,13 +851,13 @@ input.tocChildrenToggle {
     cursor: pointer;
     border-radius: 7px;
     transition: all 0.1s ease-out;
-    margin: 0;
+    margin: 0 0 0 -7px;
     padding: 5px 2px 0 2px;
     color: rgb(163, 163, 163);
+    position: absolute;
 }
 
 .lbl-toggle::before {
-    
     content: " ";
     display: inline-block;
     border-top: 5px solid transparent;
@@ -858,7 +866,6 @@ input.tocChildrenToggle {
     vertical-align: middle;
     margin-right: 0.7rem;
     transform: translateY(-2px);
-    transition: transform 0.1s ease-out;
   }
 
 .lbl-toggle:hover {
@@ -873,9 +880,8 @@ input.tocChildrenToggle {
     height: 0px;
     overflow: hidden;
     flex-basis: 100%;
-    transition: height 0.1s ease-in-out;
-    padding: 0 0 0 7px;
-    margin-left: 4px;
+    padding: 0 0 0 11px;
+    /* margin-left: 4px; */
     border-left: 1px solid #e7e7e7;
 }
 
@@ -887,6 +893,10 @@ input.tocChildrenToggle {
     height: auto;
 }
 
+.tocChildrenToggle:not(:checked) ~ .expandableContent .lbl-toggle {
+    position: relative;
+}
+
 .tocChildrenToggle:checked + .lbl-toggle {
     border-bottom-right-radius: 0;
     border-bottom-left-radius: 0;
@@ -895,7 +905,7 @@ input.tocChildrenToggle {
 
 .expandableContent .childrenKindTitle {
     font-size: 13px;
-    margin-left: 5px;
+    /* margin-left: 5px; */
 }
 
 .expandableItem {
@@ -905,4 +915,7 @@ input.tocChildrenToggle {
 
 .expandableItem > code {
     width: calc(100% - 20px)!important;
+    margin-left: 10px;
 }
+
+
