@@ -681,6 +681,10 @@ div.tip, div.hint, div.important {
     padding-right: 0;
 }
 
+.sidebar .thingTitle > code a {
+    background-color: transparent;
+}
+
 .sidebar .childrenKindTitle {
     color: #676767;
     margin-left: 4px;
