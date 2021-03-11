@@ -679,6 +679,7 @@ div.tip, div.hint, div.important {
     background-color: transparent;
     padding-left: 0;
     padding-right: 0;
+    display: flex;
 }
 
 .sidebar .thingTitle > code a {
@@ -807,7 +808,7 @@ body.sidebar-collapsed #collapseSideBar {
 }
 
 body.sidebar-collapsed #collapseSideBar > a {
-    margin-top: 0;
+    margin-top: -1px;
     margin-left: 0;
     border-radius: 4px;
     background-color: #f8f8f8;
@@ -844,7 +845,7 @@ input.tocChildrenToggle {
 
 .lbl-toggle {
     display: block;
-    width: 20px;
+    width: 18px;
     font-weight: bold;
     font-family: monospace;
     font-size: 12px;
@@ -855,7 +856,7 @@ input.tocChildrenToggle {
     cursor: pointer;
     border-radius: 7px;
     transition: all 0.1s ease-out;
-    margin: 0 0 0 -7px;
+    margin: 0 0 0 0;
     padding: 5px 2px 0 2px;
     color: rgb(163, 163, 163);
     position: absolute;
@@ -884,8 +885,8 @@ input.tocChildrenToggle {
     height: 0px;
     overflow: hidden;
     flex-basis: 100%;
-    padding: 0 0 0 11px;
-    /* margin-left: 4px; */
+    padding: 0 0 0 8px;
+    margin-left: 5px;
     border-left: 1px solid #e7e7e7;
 }
 
@@ -919,7 +920,5 @@ input.tocChildrenToggle {
 
 .expandableItem > code {
     width: calc(100% - 20px)!important;
-    margin-left: 10px;
+    margin-left: 18px;
 }
-
-
