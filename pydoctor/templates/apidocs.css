@@ -703,8 +703,13 @@ div.tip, div.hint, div.important {
 }
   
 /* Style page content */
-.main {
+#main {
     margin-left: 317px; /* Same as the width of the sidebar + 20px*/
+    max-width: 970px; /* Arbitrary "good for reading" width for the content */ 
+}
+
+.noSideBar {
+    margin-left: 0!important;
 }
 
 /* For bigger displays, i.e. full screen */
@@ -712,7 +717,7 @@ div.tip, div.hint, div.important {
     .sidebarcontainer {
         width: 317px; /* Set the width of the sidebar: 310px + 2px for the border + 5px for the scrollbar */
     }
-    .main {
+    #main {
         margin-left: 347px; /* Same as the width of the sidebar + 30px*/
     }
 }
@@ -722,7 +727,7 @@ div.tip, div.hint, div.important {
     .sidebarcontainer {
         width: 257px; /* Set the width of the sidebar: 250px + 2px for the border + 5px for the scrollbar */
     }
-    .main {
+    #main {
         margin-left: 277px; /* Same as the width of the sidebar + 20px*/
     }
 }
@@ -732,7 +737,7 @@ div.tip, div.hint, div.important {
     .sidebarcontainer {
         width: 207px; /* Set the width of the sidebar: 200px + 2px for the border + 5px for the scrollbar */
     }
-    .main {
+    #main {
         margin-left: 227px; /* Same as the width of the sidebar + 20px */
     }
 }
@@ -798,9 +803,8 @@ body.sidebar-collapsed .sidebarcontainer {
     background-color: transparent;
 }
 
-body.sidebar-collapsed .main {
+body.sidebar-collapsed #main {
     margin: 0 0 0 25px;
-    max-width: 970px; /* Arbitrary "good for reading" width for the content when the sidebar is collapsed */ 
 }
 
 body.sidebar-collapsed #collapseSideBar {
@@ -823,13 +827,13 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
     .sidebar {
         display: none;
     }
-    .main {
+    #main {
         margin: 0;
     }
     .sidebarcontainer {
         display: none;
     }
-    .main {
+    #main {
         margin: 0!important;
     }
     #collapseSideBar {

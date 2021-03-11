@@ -253,6 +253,22 @@ def getparser() -> OptionParser:
         help=MAX_AGE_HELP,
     )
 
+    parser.add_option(
+        '--sidebar-expand-depth', metavar="integer", action="store",
+        type=int, default=3, dest='sidebarexpanddepth',
+        help=("How many nested modules and classes should be expandable, "
+              "first level is always expanded. (default: 3)"))
+
+    parser.add_option(
+        '--sidebar-toc-depth', metavar="integer", action="store",
+        type=int, default=6, dest='sidebartocdepth',
+        help=("How many nested titles should be listed in the docstring TOC, "
+              "first level is always listed. (default: 6)"))
+    
+    parser.add_option(
+        '--no-sidebar', default=False, action='store_true', dest='nosidebar',
+        help=("Do not generate the sidebar at all."))
+
     return parser
 
 def readConfigFile(options: Values) -> None:

@@ -774,10 +774,11 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
     if not obj.parsed_docstring and obj.docstring:
         obj.parsed_docstring = parse_docstring(obj, obj.docstring, obj)
 
-    if obj.parsed_docstring and obj.parsed_docstring.toc:
-        return obj.parsed_docstring.toc.to_stan(_EpydocLinker(obj))
-    else: 
-        return None
+    if obj.parsed_docstring:
+        toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
+        if toc:
+            return toc.to_stan(_EpydocLinker(obj))
+    return None
 
 
 class AnnotationDocstring(ParsedDocstring):
@@ -790,8 +791,7 @@ class AnnotationDocstring(ParsedDocstring):
     def has_body(self) -> bool:
         return True
     
-    @property
-    def toc(self) -> None:
+    def get_toc(self, depth: int = 6) -> None:
         return None
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:

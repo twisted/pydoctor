@@ -1346,8 +1346,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
     def has_body(self) -> bool:
         return self._tree is not None
     
-    @property
-    def toc(self) -> None:
+    def get_toc(self, depth: int = 6) -> None:
         return None
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:

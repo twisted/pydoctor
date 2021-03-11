@@ -13,16 +13,17 @@
     <div class="container-fluid">
 
       <!-- Side navigation -->
-      <div class="sidebarcontainer">
-        <div class="sidebar" t:render="sidebar">
-          SideBar contents
+      <div class="sidebarcontainer" t:render="sidebarcontainer">
+        <div class="sidebar"><t:slot name="sidebar">
+          SideBar contents </t:slot>
         </div>
         <div id="collapseSideBar">
           <a class="btn btn-link" onclick="toggleSideBarCollapse()">Toggle Sidebar Collapse</a>
         </div>   
       </div>
 
-      <div class="main">
+      <div id="main">
+        <t:attr name="class" t:render="mainDivClass" />
 
         <div t:render="subheader" />
 

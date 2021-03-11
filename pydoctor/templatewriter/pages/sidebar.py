@@ -121,20 +121,23 @@ class SideBarSection(Element):
                                     package=self.ob, 
                                     init_module=self.ob.module, 
                                     documented_ob=self.documented_ob,
-                                    template_lookup=self.template_lookup)
+                                    template_lookup=self.template_lookup, 
+                                    depth=self.ob.system.options.sidebarexpanddepth)
             else:
                 return ObjContent(docgetter=self.docgetter, 
                                   loader=TagLoader(tag), 
                                   ob=self.ob.module, 
                                   documented_ob=self.documented_ob,
-                                  template_lookup=self.template_lookup)
+                                  template_lookup=self.template_lookup, 
+                                    depth=self.ob.system.options.sidebarexpanddepth)
 
         else:
             return ObjContent(docgetter=self.docgetter, 
                               loader=TagLoader(tag), 
                               ob=self.ob, 
                               documented_ob=self.documented_ob,
-                              template_lookup=self.template_lookup)
+                              template_lookup=self.template_lookup, 
+                              depth=self.ob.system.options.sidebarexpanddepth)
 
 class ObjContent(Element):
     """
@@ -148,7 +151,7 @@ class ObjContent(Element):
     #TODO: Hide the childrenKindTitle if they are all private and show private is off -> need JS
 
     def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
-                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
+                 template_lookup: TemplateLookup, depth: int, level: int = 0):
 
         super().__init__(loader)
         self.ob = ob
@@ -268,8 +271,7 @@ class ObjContent(Element):
     def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.subModuleList or ""
 
-    def _getListOf(self, 
-                         type_: Union[Type[Documentable], 
+    def _getListOf(self, type_: Union[Type[Documentable], 
                                 Tuple[Type[Documentable], ...]],
                          inherited: bool = False) -> Optional[Element]:
         children = self.children(inherited=inherited)
@@ -300,7 +302,7 @@ class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
 
     def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, init_module: Module, 
-                 documented_ob: Documentable, template_lookup: TemplateLookup, depth: int = 3, level: int = 0):
+                 documented_ob: Documentable, template_lookup: TemplateLookup, depth: int, level: int = 0):
 
         self.init_module = init_module
         super().__init__(docgetter=docgetter, loader=loader, ob=package, documented_ob=documented_ob, 

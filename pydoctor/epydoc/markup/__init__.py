@@ -70,12 +70,7 @@ class ParsedDocstring:
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
     
-    @abc.abstractproperty
-    def toc(self) -> Optional['ParsedDocstring']:
-        """
-        The table of contents of the docstring if titles are defined or C{None}.
-        """
-        raise NotImplementedError()
+    
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -84,6 +79,13 @@ class ParsedDocstring:
 
         The body is the part of the docstring that remains after the fields
         have been split off.
+        """
+        raise NotImplementedError()
+    
+    @abc.abstractmethod
+    def get_toc(self, depth: int = 6) -> Optional['ParsedDocstring']:
+        """
+        The table of contents of the docstring if titles are defined or C{None}.
         """
         raise NotImplementedError()
 

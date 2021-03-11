@@ -241,14 +241,23 @@ class CommonPage(BasePage):
         return self.docgetter.get(data)
 
     @renderer
-    def sidebar(self, request: IRequest, tag: Tag) -> Element:
-        return SideBar(docgetter=self.docgetter,
-                loader=SideBar.lookup_loader(self.template_lookup), 
-                ob=self.ob, template_lookup=self.template_lookup)
+    def mainDivClass(self, request: IRequest, tag: Tag) -> str:
+        return 'noSideBar' if self.ob.system.options.nosidebar else ""
 
     @renderer
-    def all(self, request, tag):
-        return tag.fillSlots(
+    def sidebarcontainer(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
+        if self.ob.system.options.nosidebar:
+            return ""
+        else:
+            # error: Returning Any from function declared to return "Tag"
+            return tag.fillSlots(sidebar=SideBar(docgetter=self.docgetter, # type: ignore[no-any-return]
+                    loader=SideBar.lookup_loader(self.template_lookup), 
+                    ob=self.ob, template_lookup=self.template_lookup))
+
+    @renderer
+    def all(self, request: IRequest, tag: Tag) -> Tag:
+        # error: Returning Any from function declared to return "Tag"
+        return tag.fillSlots(  # type: ignore[no-any-return]
             project=self.system.projectname,
             heading=self.heading(),
             category=self.category(),

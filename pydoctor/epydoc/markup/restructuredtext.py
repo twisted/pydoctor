@@ -141,10 +141,9 @@ class ParsedRstDocstring(ParsedDocstring):
             for child in self._document.children
             )
     
-    @property
-    def toc(self) -> Optional[ParsedDocstring]:
+    def get_toc(self, depth: int = 6) -> Optional[ParsedDocstring]:
 
-        contents = self._build_contents(self._document, depth=4)
+        contents = self._build_contents(self._document, depth=depth)
         docstring_toc = new_document('toc')
         if contents:
             docstring_toc.extend(contents)
@@ -161,8 +160,7 @@ class ParsedRstDocstring(ParsedDocstring):
     def __repr__(self) -> str:
         return '<ParsedRstDocstring: ...>'
 
-    def _build_contents(self, node: docutils.nodes.Node, 
-                        level: int = 0, depth: int = 6) -> Optional[docutils.nodes.Node]:
+    def _build_contents(self, node: docutils.nodes.Node, depth: int, level: int = 0) -> Optional[docutils.nodes.Node]:
         # Simplified from docutils Contents transform. 
         level += 1
         sections = [sect for sect in node if isinstance(sect, docutils.nodes.section)]
@@ -178,7 +176,7 @@ class ParsedRstDocstring(ParsedDocstring):
             item = docutils.nodes.list_item('', entry)
             if title.next_node(docutils.nodes.reference) is None:
                 title['refid'] = ref_id
-            if level < depth:
+            if level <= depth:
                 subsects = self._build_contents(section, level)
                 item += subsects or []
             entries.append(item)
