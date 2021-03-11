@@ -60,7 +60,7 @@ class ParsedDocstring:
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()}, L{to_stan()} and L{toc()}.
+    Subclasses must implement L{has_body()}, L{to_stan()} and L{get_toc()}.
     """
 
     def __init__(self, fields: Sequence['Field']):

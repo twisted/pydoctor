@@ -96,6 +96,7 @@ _common_args = [
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
+    '--sidebar-expand-depth=10', '--sidebar-toc-depth=3',
 ]
 pydoctor_args = {
     'main': [
@@ -113,6 +114,7 @@ pydoctor_args = {
         '--docformat=epytext',
         '--project-url=../customize.html',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
+        '--no-sidebar',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'epydoc_demo': [
