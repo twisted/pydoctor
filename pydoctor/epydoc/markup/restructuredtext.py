@@ -176,8 +176,8 @@ class ParsedRstDocstring(ParsedDocstring):
             item = docutils.nodes.list_item('', entry)
             if title.next_node(docutils.nodes.reference) is None:
                 title['refid'] = ref_id
-            if level <= depth:
-                subsects = self._build_contents(section, level)
+            if level < depth:
+                subsects = self._build_contents(section, depth=depth, level=level)
                 item += subsects or []
             entries.append(item)
         if entries:
