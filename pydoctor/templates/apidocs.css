@@ -666,7 +666,7 @@ div.tip, div.hint, div.important {
     flex-wrap: wrap;
     align-items: baseline;
     word-break: break-all;
-    padding-right: 15px;
+    padding: 0 15px 3px 0;
 }
 
 .sidebar .thingTitle > span {
@@ -698,7 +698,7 @@ div.tip, div.hint, div.important {
     margin-top: 10px;
     margin-bottom: 10px;
     border-color: #ddd;
-    border-style: dashed;
+    border-style: solid;
     border-width: thin;
 }
   

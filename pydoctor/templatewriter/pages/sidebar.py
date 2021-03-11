@@ -3,7 +3,7 @@ Classes for the sidebar generation.
 """
 from typing import Iterable, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
-from twisted.web.template import TagLoader, renderer, tags, Tag, Element
+from twisted.web.template import TagLoader, renderer, Tag, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Attribute, Class, Function, Documentable, Module, Package
@@ -74,12 +74,9 @@ class SideBarSection(Element):
     The sidebar typically contains two C{SideBarSection}: one for the documented object and one for it's parent. 
     Root modules have only one section. 
     """
-    #TODO: Add a current_obj parameter in order to disable the expandable item for 
-    # the current obj inside the paremts items and make it gray or something. 
-    # so it's clear that it's the one selected currently. 
     
-    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable,
-                 template_lookup: TemplateLookup):
+    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
+                 documented_ob: Documentable, template_lookup: TemplateLookup):
         super().__init__(loader)
         self.ob = ob
         self.documented_ob = documented_ob
@@ -119,15 +116,21 @@ class SideBarSection(Element):
                                     loader=TagLoader(tag), 
                                     package=self.ob, 
                                     init_module=self.ob.module, 
-                                    template_lookup=self.template_lookup,
-                                    showDocstringToc=self._represents_documented_ob)
+                                    documented_ob=self.documented_ob,
+                                    template_lookup=self.template_lookup)
             else:
-                return ObjContent(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
-                             template_lookup=self.template_lookup, showDocstringToc=self._represents_documented_ob)
+                return ObjContent(docgetter=self.docgetter, 
+                                  loader=TagLoader(tag), 
+                                  ob=self.ob.module, 
+                                  documented_ob=self.documented_ob,
+                                  template_lookup=self.template_lookup)
 
         else:
-            return ObjContent(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
-                         template_lookup=self.template_lookup, showDocstringToc=self._represents_documented_ob)
+            return ObjContent(docgetter=self.docgetter, 
+                              loader=TagLoader(tag), 
+                              ob=self.ob, 
+                              documented_ob=self.documented_ob,
+                              template_lookup=self.template_lookup)
 
 class ObjContent(Element):
     """
@@ -138,16 +141,16 @@ class ObjContent(Element):
     Composed by L{ContentList} elements. 
     """
 
-    #TODO: Hide the childrenKindTitle if they are all private and show ptivate is off -> need JS
+    #TODO: Hide the childrenKindTitle if they are all private and show private is off -> need JS
 
-    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
-                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3, showDocstringToc: bool = True):
+    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
+                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
 
         super().__init__(loader)
         self.ob = ob
+        self.documented_ob=documented_ob
         self.template_lookup = template_lookup
         self.docgetter = docgetter
-        self.showDocstringToc = showDocstringToc
 
         self._depth = depth
         self._level = level + 1
@@ -205,7 +208,7 @@ class ObjContent(Element):
     def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         
         toc = self.docgetter.get_toc(self.ob)
-        if toc and self.showDocstringToc:
+        if toc and self.documented_ob == self.ob:
             # mypy gets error: Returning Any from function declared to return "Union[Tag, str]"
             return tag.fillSlots(titles=toc) # type: ignore[no-any-return]
         else:
@@ -277,11 +280,12 @@ class ObjContent(Element):
     def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional[Element]:
         if things:
             assert self.loader is not None
-            return ContentList(ob=self.ob, children=things,
+            return ContentList(ob=self.ob, children=things, 
+                    documented_ob=self.documented_ob,
                     loader=ContentList.lookup_loader(self.template_lookup), 
                     docgetter=self.docgetter,
                     expand=expand,
-                    nestedContentLoader=self.loader, 
+                    nested_content_loader=self.loader, 
                     template_lookup=self.template_lookup,
                     level_depth=(self._level, self._depth))
         else:
@@ -291,12 +295,12 @@ class ObjContent(Element):
 class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
 
-    def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, 
-                 init_module: Module, template_lookup: TemplateLookup, depth: int = 3, level: int = 0, showDocstringToc: bool = True ):
+    def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, init_module: Module, 
+                 documented_ob: Documentable, template_lookup: TemplateLookup, depth: int = 3, level: int = 0):
 
         self.init_module = init_module
-        super().__init__(docgetter=docgetter, loader=loader, 
-                         ob=package, template_lookup=template_lookup, depth=depth, level=level, showDocstringToc=showDocstringToc)
+        super().__init__(docgetter=docgetter, loader=loader, ob=package, documented_ob=documented_ob, 
+                         template_lookup=template_lookup, depth=depth, level=level)
         
     def init_module_children(self) -> Iterable[Documentable]:
         return sorted(
@@ -313,7 +317,7 @@ class PackageContent(ObjContent):
                                             if isinstance(child, type_) ] + sub_modules
             things = contents_filtered
         else:
-            things = []
+            return None
 
         return self._getListFrom(things, expand=self.expand_list(type_))
 
@@ -334,32 +338,50 @@ class ContentList(TemplateElement):
     filename = 'sidebar-list.html'
 
     def __init__(self, ob: Documentable, docgetter: util.DocGetter,
-                 children: Iterable[Documentable], loader: ITemplateLoader, 
-                 expand: bool, nestedContentLoader: ITemplateLoader, template_lookup: TemplateLookup,
+                 children: Iterable[Documentable], documented_ob: Documentable, loader: ITemplateLoader, 
+                 expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
         super().__init__(loader)
         self.ob = ob 
         self.children = children
+        self.documented_ob = documented_ob
 
         self._expand = expand
         self._level_depth = level_depth
 
-        self.nestedContentLoader = nestedContentLoader
+        self.nested_content_loader = nested_content_loader
         self.docgetter = docgetter
         self.template_lookup = template_lookup
     
     @renderer
     def items(self, request: IRequest, tag: Tag) -> Iterable[Element]:
-        return [
-            ContentItem(
+        got_documented_ob = False
+        for child in self.children:
+            if child == self.documented_ob:
+                got_documented_ob = True
+                continue
+            yield ContentItem(
                 loader=TagLoader(tag),
                 ob=self.ob,
-                child=child, 
+                child=child,
+                documented_ob=self.documented_ob,
                 docgetter=self.docgetter,
                 expand=self._expand, 
-                nestedContentLoader=self.nestedContentLoader if self._expand else None,
-                template_lookup=self.template_lookup, level_depth=self._level_depth)
-            for child in self.children]
+                nested_content_loader=self.nested_content_loader if self._expand else None,
+                template_lookup=self.template_lookup, 
+                level_depth=self._level_depth)
+        
+        if got_documented_ob:
+            yield ContentItem(
+                loader=TagLoader(tag),
+                ob=self.ob,
+                child=self.documented_ob,
+                documented_ob=self.documented_ob,
+                docgetter=self.docgetter,
+                expand=False, 
+                nested_content_loader=None,
+                template_lookup=self.template_lookup, 
+                level_depth=self._level_depth)
 
 class ContentItem(Element):
     """
@@ -368,18 +390,19 @@ class ContentItem(Element):
 
     #TODO: Show a text like "No members" when an object do not have any members, instead of expanding on an empty div. 
 
-    def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, docgetter: util.DocGetter,
-                 expand: bool, nestedContentLoader: Optional[ITemplateLoader], template_lookup: TemplateLookup,
-                 level_depth: Tuple[int, int]):
+    def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, documented_ob: Documentable,
+                 docgetter: util.DocGetter, expand: bool, nested_content_loader: Optional[ITemplateLoader], 
+                 template_lookup: TemplateLookup, level_depth: Tuple[int, int]):
         
         super().__init__(loader)
         self.child = child
         self.ob = ob
+        self.documented_ob = documented_ob
 
         self._expand = expand
         self._level_depth = level_depth
 
-        self.nestedContentLoader = nestedContentLoader
+        self.nested_content_loader = nested_content_loader
         self.docgetter = docgetter
         self.template_lookup = template_lookup
 
@@ -394,40 +417,49 @@ class ContentItem(Element):
         return class_
 
     def nested_contents(self) -> Element:
-        assert self.nestedContentLoader is not None
+        assert self.nested_content_loader is not None
 
         if isinstance(self.child, (Package, Module)):
             if isinstance(self.child, Package):
                 return PackageContent(docgetter=self.docgetter,
-                                    loader=self.nestedContentLoader, 
+                                    loader=self.nested_content_loader, 
                                     package=self.child, 
                                     init_module=self.child.module, 
+                                    documented_ob=self.documented_ob,
                                     template_lookup=self.template_lookup,
                                     level=self._level_depth[0], 
                                     depth=self._level_depth[1])
             else:
-                return ObjContent(docgetter=self.docgetter, loader=self.nestedContentLoader, ob=self.child.module, 
-                             template_lookup=self.template_lookup, level=self._level_depth[0], 
-                                    depth=self._level_depth[1])
+                return ObjContent(docgetter=self.docgetter, 
+                                 loader=self.nested_content_loader, 
+                                 ob=self.child.module, 
+                                 documented_ob=self.documented_ob,
+                                 template_lookup=self.template_lookup, 
+                                 level=self._level_depth[0], 
+                                 depth=self._level_depth[1])
 
         else:
-            return ObjContent(docgetter=self.docgetter, loader=self.nestedContentLoader, ob=self.child, 
-                         template_lookup=self.template_lookup, level=self._level_depth[0], 
-                                    depth=self._level_depth[1])
+            return ObjContent(docgetter=self.docgetter, 
+                              loader=self.nested_content_loader, 
+                              ob=self.child, 
+                              documented_ob=self.documented_ob,
+                              template_lookup=self.template_lookup, 
+                              level=self._level_depth[0], 
+                              depth=self._level_depth[1])
     
     @renderer
-    def expandableItem(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
+    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, Element]:
         if self._expand:
             return ExpandableItem(TagLoader(tag), self.child, self.nested_contents())
         else:
-            return Tag('transparent')
+            return ""
 
     @renderer
-    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[Tag, Element]:
+    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[str, Element]:
         if not self._expand:
             return LinkOnlyItem(TagLoader(tag), self.child)
         else:
-            return Tag('transparent')
+            return ""
 
 class LinkOnlyItem(Element):
     """
