@@ -96,12 +96,16 @@ class SideBarSection(Element):
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
+        """Craft a <code><a> block for the title. """
         name = self.ob.name
         if name == "__init__" and self.ob.parent:
             name = self.ob.parent.name
         link = epydoc2stan.taglink(self.ob, self.ob.url, name)
         link.attributes['title'] = self.description()
-        return Tag('code', children=[link])
+        attributes = {}
+        if self._represents_documented_ob:
+            attributes['class'] = 'thisObject'
+        return Tag('code', children=[link], attributes=attributes)
     
     def description(self) -> str:
         return (f"This {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" if self._represents_documented_ob 
@@ -414,6 +418,8 @@ class ContentItem(Element):
         # class_ += 'base' + self.child.css_class + ' '
         if self.child.isPrivate:
             class_ += "private"
+        if self.child == self.documented_ob:
+            class_ += " thisObject"
         return class_
 
     def nested_contents(self) -> Element:
