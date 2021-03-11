@@ -42,23 +42,29 @@ class SideBar(TemplateElement):
         r = []   
         if isinstance(self.ob, (Package, Module)):
             if isinstance(self.ob, Package):
+                # The object itself
                 r.append(SideBarSection(docgetter=self.docgetter, ob=self.ob,
                                     loader=TagLoader(tag), 
                                     template_lookup=self.template_lookup, first=True))
             else:
+                # The object itself
                 r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
                              template_lookup=self.template_lookup, first=True))
             if self.ob.parent:
+                # The parent of the object
                 r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
                              template_lookup=self.template_lookup))
         else:
+            # The object itself
             r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
                          template_lookup=self.template_lookup, first=True))
             
             if self.ob.module.name == "__init__" and self.ob.module.parent:
+                # The parent of the object
                 r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
                              template_lookup=self.template_lookup))
             else:
+                # The parent of the object
                 r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
                              template_lookup=self.template_lookup))
         return r
@@ -108,14 +114,15 @@ class SideBarSection(Element):
                                     loader=TagLoader(tag), 
                                     package=self.ob, 
                                     init_module=self.ob.module, 
-                                    template_lookup=self.template_lookup)
+                                    template_lookup=self.template_lookup,
+                                    showDocstringToc=self._first)
             else:
                 return ObjContent(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
-                             template_lookup=self.template_lookup)
+                             template_lookup=self.template_lookup, showDocstringToc=self._first)
 
         else:
             return ObjContent(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
-                         template_lookup=self.template_lookup)
+                         template_lookup=self.template_lookup, showDocstringToc=self._first)
 
 class ObjContent(Element):
     """
@@ -129,12 +136,13 @@ class ObjContent(Element):
     #TODO: Hide the childrenKindTitle if they are all private and show ptivate is off -> need JS
 
     def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
-                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3):
+                 template_lookup: TemplateLookup, level: int = 0, depth: int = 3, showDocstringToc: bool = True):
 
         super().__init__(loader)
         self.ob = ob
         self.template_lookup = template_lookup
         self.docgetter = docgetter
+        self.showDocstringToc = showDocstringToc
 
         self._depth = depth
         self._level = level + 1
@@ -190,7 +198,7 @@ class ObjContent(Element):
     def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         
         toc = self.docgetter.get_toc(self.ob)
-        if toc:
+        if toc and self.showDocstringToc:
             # mypy gets error: Returning Any from function declared to return "Union[Tag, str]"
             return tag.fillSlots(titles=toc) # type: ignore[no-any-return]
         else:
@@ -277,11 +285,11 @@ class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
 
     def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, 
-                 init_module: Module, template_lookup: TemplateLookup, depth: int = 3, level: int = 0 ):
+                 init_module: Module, template_lookup: TemplateLookup, depth: int = 3, level: int = 0, showDocstringToc: bool = True ):
 
         self.init_module = init_module
         super().__init__(docgetter=docgetter, loader=loader, 
-                         ob=package, template_lookup=template_lookup, depth=depth, level=level)
+                         ob=package, template_lookup=template_lookup, depth=depth, level=level, showDocstringToc=showDocstringToc)
         
     def init_module_children(self) -> Iterable[Documentable]:
         return sorted(
