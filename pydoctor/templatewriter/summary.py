@@ -4,7 +4,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
 
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import BasePage
+from pydoctor.templatewriter.pages import Page
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 
@@ -29,13 +29,13 @@ def moduleSummary(modorpack, page_url):
 def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
-class ModuleIndexPage(BasePage):
+class ModuleIndexPage(Page):
 
     filename = 'moduleIndex.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-        # Override L{BasePage.loader} because here the page L{filename} 
+        # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
@@ -116,13 +116,13 @@ def subclassesFrom(hostsystem, cls, anchors, page_url):
         r(ul)
     return r
 
-class ClassIndexPage(BasePage):
+class ClassIndexPage(Page):
 
     filename = 'classIndex.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-        # Override L{BasePage.loader} because here the page L{filename} 
+        # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
@@ -217,7 +217,7 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(BasePage):
+class NameIndexPage(Page):
 
     filename = 'nameIndex.html'
 
@@ -248,7 +248,7 @@ class NameIndexPage(BasePage):
         return r
 
 
-class IndexPage(BasePage):
+class IndexPage(Page):
 
     filename = 'index.html'
 
@@ -311,12 +311,12 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(BasePage):
+class UndocumentedSummaryPage(Page):
     
     filename = 'undoccedSummary.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
-        # Override L{BasePage.loader} because here the page L{filename} 
+        # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename. 
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
@@ -341,7 +341,7 @@ class UndocumentedSummaryPage(BasePage):
             tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
-summarypages: Iterable[Type[BasePage]] = [
+summarypages: Iterable[Type[Page]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

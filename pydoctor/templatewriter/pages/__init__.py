@@ -81,9 +81,10 @@ class Head(TemplateElement):
     def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
         return __version__
 
-class BasePage(TemplateElement):
+
+class Page(TemplateElement):
     """
-    Base page element. 
+    Abstract base class for output pages.
 
     Defines special HTML placeholders that are designed to be overriden by users: 
     "header.html", "subheader.html" and "footer.html".
@@ -123,7 +124,8 @@ class BasePage(TemplateElement):
     def footer(self, request: IRequest, tag: Tag) -> IRenderable:
         return Element(self.template_lookup.get_loader('footer.html'))
 
-class CommonPage(BasePage):
+
+class CommonPage(Page):
 
     filename = 'common.html'
     ob: model.Documentable
