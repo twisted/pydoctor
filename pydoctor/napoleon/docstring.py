@@ -69,23 +69,27 @@ def is_type(string: str) -> bool:
     :see: `TypeDocstring`
     """
     return (is_obj_identifier(string) or 
-        len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings()) == 0)
+        len(TypeDocstring(string, warns_on_unknown_tokens = True).warnings()) == 0)
         # The sphinx's implementation allow regular sentences inside type string. 
         # But automatically detect that type of construct seems technically hard. 
         # Arg warns_on_unknown_tokens allows to narow the checks and match only docstrings 
-        # that we are 100% sure are type specifications. 
+        # that we are 100% sure are type expression. 
 
 def is_google_typed_arg(string: str, parse_type: bool = True) -> bool:
     """
-    Verify the validity of google-style field name and type specification.
+    Is this string a valid type expression and/or google-style field name and type expression in parenthesis?
+
+    :note: Behave exactly like `is_type` if ``parse_type=False``. 
 
     Valid strings are like::
 
         list(str), optional
         ValueError
+    
+    When ``parse_type=True`` (default), this google-style field name and type is recognized::
 
-        # parse_type must equal True to check that string
         param (list(str), optional)
+    
     """
     if is_type(string):
         return True
@@ -95,7 +99,7 @@ def is_google_typed_arg(string: str, parse_type: bool = True) -> bool:
             if match:
                 _name = match.group(1).strip()
                 _type = match.group(2)
-                if _name.isidentifier() and is_type(_type):
+                if is_type(_type):
                     return True
     return False
 
@@ -149,10 +153,8 @@ class TypeDocstring:
         r"^default[^_0-9A-Za-z].*$",
     )
 
-    def __init__(self, annotation: str, lineno:Optional[int] = None, warns_on_unknown_tokens: bool = False) -> None:
-        
-        self._lineno = lineno or 0
-        self._warnings: List[Tuple[str, int]] = []
+    def __init__(self, annotation: str, warns_on_unknown_tokens: bool = False) -> None:
+        self._warnings: List[str] = []
         self._annotation = annotation 
         self._warns_on_unknown_tokens = warns_on_unknown_tokens
 
@@ -172,11 +174,11 @@ class TypeDocstring:
         """
         return self._convert_type_spec_to_rst()
 
-    def warnings(self) -> List[Tuple[str, int]]:
+    def warnings(self) -> List[str]:
         """
         Returns
         -------
-        Triggered warnings during the conversion. 
+        Warning messages triggered during the conversion. 
         """
         return self._warnings
 
@@ -294,20 +296,19 @@ class TypeDocstring:
         ):
             type_ = "literal"
         elif token.startswith("{"):
-            self._warnings.append(("invalid value set (missing closing brace): %s"%token, self._lineno))
+            self._warnings.append("invalid value set (missing closing brace): %s"%token)
             type_ = "literal"
         elif token.endswith("}"):
-            self._warnings.append(("invalid value set (missing opening brace): %s"%token, self._lineno))
+            self._warnings.append("invalid value set (missing opening brace): %s"%token)
             type_ = "literal"
         elif token.startswith("'") or token.startswith('"'):
-            self._warnings.append(("malformed string literal (missing closing quote): %s"%token, self._lineno))
+            self._warnings.append("malformed string literal (missing closing quote): %s"%token)
             type_ = "literal"
         elif token.endswith("'") or token.endswith('"'):
-            self._warnings.append(("malformed string literal (missing opening quote): %s"%token, self._lineno))
+            self._warnings.append("malformed string literal (missing opening quote): %s"%token)
             type_ = "literal"
+        # keyword supported by the reference implementation (numpydoc)
         elif token in ("optional", "default", ):
-            # default is not a official keyword (yet) but supported by the
-            # reference implementation (numpydoc) and widely used
             type_ = "control"
         elif _xref_regex.match(token):
             type_ = "reference"
@@ -317,7 +318,7 @@ class TypeDocstring:
             # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a 
             # identifier, leading into generating failures when tying to resolve links. 
             if self._warns_on_unknown_tokens:
-                self._warnings.append(("unknown expresssion in type: %s"%token, self._lineno))
+                self._warnings.append("unknown expresssion in type: %s"%token)
             type_ = "unknown"
 
         return type_
@@ -659,12 +660,13 @@ class GoogleDocstring:
         Tokenize the string type and convert it with additional markup and auto linking. 
         """
         # handle warnings line number
-        linenum=self._line_iter.counter - 1
-        type_spec = TypeDocstring(_type, linenum)
+        linenum=self._line_iter.counter
+        type_spec = TypeDocstring(_type)
         # convert
         _type = str(type_spec)
         # append warnings
-        self._warnings.extend(type_spec.warnings())
+        for warn in type_spec.warnings():
+            self._warnings.append((warn, linenum-1))
         return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
@@ -1109,7 +1111,7 @@ class GoogleDocstring:
                 "".join(after_colon).strip())
 
     # new method: make multiple lines type work seemlessly - for google-style only. 
-    def _partition_multiline_field_on_colon(self, lines:List[str], 
+    def _partition_multiline_field_on_colon(self, lines: List[str], 
             format_validator:Callable[[str], bool]) -> Tuple[str, str, List[str]]:
         """
         Partition multiple lines on colon. If the type or name span multiple lines, they will be automatically joined. 

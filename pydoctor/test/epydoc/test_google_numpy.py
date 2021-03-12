@@ -102,18 +102,45 @@ class TestWarnings(TestCase):
         docstring = """
 Description of the function. 
 
+Some more text.
+
+Some more text.
+
+Some more text.
+
+Some more text.
+
 Args
 ----
-my attr: hey"
-        super-dooper attribute"""
+my attr: 'bar or 'foo'
+        super-dooper attribute
+a valid typed param: List[Union[str, bytes]]
+        Description.
+other: {hello
+        Choices.
+
+Returns
+-------
+'spam' or 'baz, optional
+        A string.
+
+Note
+----
+Some more text.
+"""
 
         errors: List[ParseError] = []
 
         parse_docstring(docstring, errors)
         
-        self.assertEqual(len(errors), 1)
+        self.assertEqual(len(errors), 3)
+        
+        self.assertIn("malformed string literal (missing closing quote)", errors[2].descr())
+        self.assertIn("invalid value set (missing closing brace)", errors[1].descr())
+        self.assertIn("malformed string literal (missing opening quote)", errors[0].descr())
+        
+        self.assertEqual(errors[2].linenum(), 23)
+        self.assertEqual(errors[1].linenum(), 18)
+        self.assertEqual(errors[0].linenum(), 13) #FIXME: It should be 14 actually...
 
-        error = errors.pop()
-
-        self.assertEqual(error.linenum(), 6)
-        self.assertIn("malformed string literal (missing opening quote)", error.descr())
+        

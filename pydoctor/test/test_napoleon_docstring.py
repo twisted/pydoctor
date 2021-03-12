@@ -239,50 +239,7 @@ class TypeDocstringTest(BaseDocstringTest):
             actual = str(TypeDocstring(spec, 0))
             self.assertEqual(expected, actual)
 
-    def test_parameter_types(self):
-        docstring = dedent("""\
-            Parameters
-            ----------
-            param1 : DataFrame
-                the data to work on
-            param2 : int or float or None, optional
-                a parameter with different types
-            param3 : dict-like, optional
-                a optional mapping
-            param4 : int or float or None, optional
-                a optional parameter with different types
-            param5 : {"F", "C", "N"}, optional
-                a optional parameter with fixed values
-            param6 : int, default None
-                different default format
-            param7 : mapping of hashable to str, optional
-                a optional mapping
-            param8 : ... or Ellipsis
-                ellipsis
-        """)
-        expected = dedent("""\
-            :param param1: the data to work on
-            :type param1: `DataFrame`
-            :param param2: a parameter with different types
-            :type param2: `int` or `float` or `None`, *optional*
-            :param param3: a optional mapping
-            :type param3: `dict-like`, *optional*
-            :param param4: a optional parameter with different types
-            :type param4: `int` or `float` or `None`, *optional*
-            :param param5: a optional parameter with fixed values
-            :type param5: ``{"F", "C", "N"}``, *optional*
-            :param param6: different default format
-            :type param6: `int`, *default* `None`
-            :param param7: a optional mapping
-            :type param7: `mapping` of `hashable` to `str`, *optional*
-            :param param8: ellipsis
-            :type param8: `...` or `Ellipsis`
-        """)
- 
-        actual = str(NumpyDocstring(docstring))
-        self.assertEqual(expected.rstrip(), actual)
-        self.assertAlmostEqualSphinxDocstring(expected, docstring,
-            type_=SphinxNumpyDocstring)
+    
 
     def test_token_type_invalid(self):
         tokens = (
@@ -305,8 +262,8 @@ class TypeDocstringTest(BaseDocstringTest):
             type_spec = TypeDocstring('', 0)
             type_spec._token_type(token)
             match_re = re.compile(error)
-            assert len(type_spec._warnings) == 1, [w[0] for w in type_spec._warnings]
-            assert match_re.match(str(type_spec._warnings.pop()[0]))
+            assert len(type_spec._warnings) == 1, type_spec._warnings
+            assert match_re.match(str(type_spec._warnings.pop()))
 
 class InlineAttributeTest(BaseDocstringTest):
 
@@ -1668,6 +1625,51 @@ param1 : MyClass instance
         self.assertAlmostEqualSphinxDocstring(expected, docstring, 
             type_=SphinxNumpyDocstring)
 
+    def test_parameter_types(self):
+        docstring = dedent("""\
+            Parameters
+            ----------
+            param1 : DataFrame
+                the data to work on
+            param2 : int or float or None, optional
+                a parameter with different types
+            param3 : dict-like, optional
+                a optional mapping
+            param4 : int or float or None, optional
+                a optional parameter with different types
+            param5 : {"F", "C", "N"}, optional
+                a optional parameter with fixed values
+            param6 : int, default None
+                different default format
+            param7 : mapping of hashable to str, optional
+                a optional mapping
+            param8 : ... or Ellipsis
+                ellipsis
+        """)
+        expected = dedent("""\
+            :param param1: the data to work on
+            :type param1: `DataFrame`
+            :param param2: a parameter with different types
+            :type param2: `int` or `float` or `None`, *optional*
+            :param param3: a optional mapping
+            :type param3: `dict-like`, *optional*
+            :param param4: a optional parameter with different types
+            :type param4: `int` or `float` or `None`, *optional*
+            :param param5: a optional parameter with fixed values
+            :type param5: ``{"F", "C", "N"}``, *optional*
+            :param param6: different default format
+            :type param6: `int`, *default* `None`
+            :param param7: a optional mapping
+            :type param7: `mapping` of `hashable` to `str`, *optional*
+            :param param8: ellipsis
+            :type param8: `...` or `Ellipsis`
+        """)
+ 
+        actual = str(NumpyDocstring(docstring))
+        self.assertEqual(expected.rstrip(), actual)
+        self.assertAlmostEqualSphinxDocstring(expected, docstring,
+            type_=SphinxNumpyDocstring)
+
     def test_see_also_refs(self):
         docstring = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
@@ -2297,7 +2299,7 @@ list of int
         
         numpy_docstring = NumpyDocstring(docstring)
         numpy_warnings = numpy_docstring.warnings()
-        self.assertEqual(len(numpy_warnings), 4)
+        self.assertEqual(len(numpy_warnings), 4, numpy_warnings)
         for i, error in enumerate(errors):
             warn = numpy_warnings.pop(0)
             match_re = re.compile(error)

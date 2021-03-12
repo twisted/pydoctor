@@ -65,13 +65,13 @@ class NapoelonDocstringParser:
 
     @staticmethod
     def _parse_docstring_obj(docstring_obj: GoogleDocstring, 
-                            errors: List[ParseError]) -> ParsedDocstring:
+                             errors: List[ParseError]) -> ParsedDocstring:
         """
         Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.
         """
         # log any warnings
-        for warn, linenum in docstring_obj.warnings():
-            errors.append(ParseError(warn, linenum-1, is_fatal=False))
+        for warn, lineno in docstring_obj.warnings():
+            errors.append(ParseError(warn, lineno-2, is_fatal=False))
         # Get the converted reST string and parse it with docutils
         return restructuredtext.parse_docstring(str(docstring_obj), errors)    
 
