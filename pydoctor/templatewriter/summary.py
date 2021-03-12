@@ -40,10 +40,6 @@ class ModuleIndexPage(Page):
         super().__init__(system=system, template_lookup=template_lookup, 
             loader=template_lookup.get_template('summary.html').loader )
 
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
     def title(self):
         return "Module Index"
 
@@ -129,10 +125,6 @@ class ClassIndexPage(Page):
 
     def title(self):
         return "Class Hierarchy"
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):
@@ -221,9 +213,9 @@ class NameIndexPage(Page):
 
     filename = 'nameIndex.html'
 
-    def __init__(self, system, template_lookup):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
         super().__init__(system=system, template_lookup=template_lookup)
-        self.initials = {}
+        self.initials: Dict[str, List[model.Documentable]] = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
@@ -237,10 +229,6 @@ class NameIndexPage(Page):
         return tag.clear()("Index of Names")
 
     @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
     def index(self, request, tag):
         r = []
         for i in sorted(self.initials):
@@ -251,14 +239,6 @@ class NameIndexPage(Page):
 class IndexPage(Page):
 
     filename = 'index.html'
-
-    @renderer
-    def project_link(self, request, tag):
-        if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(
-                self.system.projectname)
-        else:
-            return self.system.projectname
 
     def title(self):
         return f"API Documentation for {self.system.projectname}"
@@ -327,10 +307,6 @@ class UndocumentedSummaryPage(Page):
     @renderer
     def heading(self, request, tag):
         return tag.clear()("Summary of Undocumented Objects")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):

@@ -84,7 +84,8 @@ nav.navbar > .navbar-header {
 
 a[name] {
     position: relative;
-    bottom: 62px;
+    bottom: 80px;
+    font-size: 0;
 }
 
 ul {
@@ -348,6 +349,9 @@ code > a {
     background-color:#f9f2f4;
 }
 /* top navagation bar */
+.page-header > h1 {
+    margin-top: 0;
+}
 .page-header > h1 > code {
     color: #971c3a;
 }

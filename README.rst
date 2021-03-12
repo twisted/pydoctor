@@ -60,12 +60,20 @@ You can select a different format using the ``--docformat`` option.
 What's New?
 ~~~~~~~~~~~
 
-
 in development
 ^^^^^^^^^^^^^^
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables. 
 
+pydoctor 21.2.2
+^^^^^^^^^^^^^^^
+
+* Fix positioning of anchors, such that following a link to a member of a module or class will scroll its documentation to a visible spot at the top of the page.
+
+pydoctor 21.2.1
+^^^^^^^^^^^^^^^
+
+* Fix presentation of the project name and URL in the navigation bars, such that it works as expected on all generated HTML pages.
 
 pydoctor 21.2.0
 ^^^^^^^^^^^^^^^
