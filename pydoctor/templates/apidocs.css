@@ -232,7 +232,7 @@ ul ul ul ul ul ul ul {
     #splitTables > table {
         table-layout: fixed;
     }
-    
+
     /* Kind column table  */
     #splitTables > table tr td:first-child {
         border-left: none;
@@ -255,14 +255,14 @@ ul ul ul ul ul ul ul {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 175px;
-    } 
+    }
 }
 
 @media only screen and (max-width: 400px) {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 125px;
-    } 
+    }
 }
 
 tr.package {
@@ -406,7 +406,7 @@ body.private-hidden #summaryTree .private {
     display: none;
 }
 
-/* Show private */ 
+/* Show private */
 
 #showPrivate:hover {
     text-decoration: none;

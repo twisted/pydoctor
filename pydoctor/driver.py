@@ -87,7 +87,7 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
 
 def get_supported_docformats() -> Iterator[str]:
     """
-    Get the list of currently supported docformat. 
+    Get the list of currently supported docformat.
     """
     for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
         moduleName = getmodulename(fileName)
@@ -155,7 +155,7 @@ def getparser() -> OptionParser:
     _docformat_choices = get_supported_docformats()
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        type="choice", choices=list(_docformat_choices), 
+        type="choice", choices=list(_docformat_choices),
         help=("Format used for parsing docstrings. "
              f"Supported values: {', '.join(_docformat_choices)}"))
     parser.add_option(
@@ -420,7 +420,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
-        
+
         # step 4: make html, if desired
 
         if options.makehtml:
@@ -428,7 +428,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer', IWriter) 
+                    options.htmlwriter, '--html-writer', IWriter)
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -445,13 +445,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                         Path(system.options.templatedir))
                 except UnsupportedTemplateVersion as e:
                     error(str(e))
-                
+
                 try:
                     # mypy error: Cannot instantiate abstract class 'IWriter'
                     writer = writerclass(options.htmloutput, # type: ignore[abstract]
                         template_lookup=custom_lookup)
                 except TypeError:
-                    # Custom class does not accept 'template_lookup' argument. 
+                    # Custom class does not accept 'template_lookup' argument.
                     writer = writerclass(options.htmloutput) # type: ignore[abstract]
                     warnings.warn(f"Writer '{writerclass.__name__}' does not support "
                         "HTML template customization with --template-dir.")

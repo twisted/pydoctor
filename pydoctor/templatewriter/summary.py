@@ -36,8 +36,8 @@ class ModuleIndexPage(Page):
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
         # Override L{Page.loader} because here the page L{filename}
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
 
     def title(self):
@@ -119,8 +119,8 @@ class ClassIndexPage(Page):
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
         # Override L{Page.loader} because here the page L{filename}
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
 
     def title(self):
@@ -292,13 +292,13 @@ def hasdocstring(ob):
     return False
 
 class UndocumentedSummaryPage(Page):
-    
+
     filename = 'undoccedSummary.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
         # Override L{Page.loader} because here the page L{filename}
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
 
     def title(self):
