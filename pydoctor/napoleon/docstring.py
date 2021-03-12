@@ -111,7 +111,8 @@ class TypeDocstring:
     Convert natural language type strings to reStructuredText. 
 
     Syntax is based on `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html#sections>`_ 
-    type specification with additionnal recognition of parentheses and square brackets characters. 
+    type specification with additionnal recognition of `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_-like type annotations 
+    (with parentheses or square brackets characters).
 
     .. list-table:: Exemples of valid type strings and output
         :header-rows: 1
@@ -934,6 +935,9 @@ class GoogleDocstring:
 
     # overriden: enforce napoleon_use_ivar=True and ignore noindex option
     # Skip annotations handling
+    # overriden 'vartype' is not a pydoctor field, we just use 'type' everywhere
+    # TODO: add 'vartype' and 'kwtype' as aliases of 'type' and use them here to output
+    #       the most correct reStructuredText. 
     def _parse_attributes_section(self, section: str) -> List[str]:
         lines = []
         for _name, _type, _desc in self._consume_fields():

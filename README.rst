@@ -50,10 +50,12 @@ pydoctor currently supports the following markup languages in docstrings:
     More expressive than epytext, but also slightly more complex and verbose.
 
 `google`__
-    Popular markup language used by Google.
+    Docstrings formatted as specified by the Google Python Style Guide. 
+    (compatible with reStructuredText markup)
 
 `numpy`__
-    Popular markup language used by Numpy. 
+    Docstrings formatted as specified by the Numpy Docstring Standard. 
+    (compatible with reStructuredText markup)
 
 ``plaintext``
     Text without any markup.

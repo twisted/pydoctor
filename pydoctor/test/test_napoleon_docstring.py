@@ -1272,6 +1272,9 @@ Args:
         oauth2client.client.Credentials]): The
             credentials to scope.
     scopes (Sequence[str]): The list of scopes.
+    errors (Sequence[Union[ParseError,
+        ParseWarning, ParseInfo, ...]]): The list of errors,
+        warnings or other informations.
 
 Returns:
     Union[google.auth.credentials.Credentials,
@@ -1286,6 +1289,9 @@ Scopes the credentials if necessary.
 :type credentials: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
 :param scopes: The list of scopes.
 :type scopes: `Sequence`\ [`str`]
+:param errors: The list of errors,
+               warnings or other informations.
+:type errors: `Sequence`\ [`Union`\ [`ParseError`, `ParseWarning`, `ParseInfo`, `...`]]
 
 :returns: The scoped credentials.
 :rtype: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
@@ -2733,3 +2739,48 @@ bool
 
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
+
+    def test_fields_blank_lines_sphinx_upstream(self):
+        """
+        Test that sphinx napoleon upstream version of NumpyDocstring is actually generating wrong reST text (for now)...
+        """
+        docstring = dedent("""
+            Made my day
+            Parameters
+            ----------
+            foo: str
+                a string
+            bob: list of str
+            Returns
+            -------
+            bool: 
+                The lines of the docstring in a list.
+            Note
+            ----
+            Markup works.
+            
+
+            It is strong
+            Yields
+            ------
+            tuple(ice, cream)
+                Yes""")
+        
+        expected_wrong = dedent(r"""
+        Made my day
+        :param foo: a string
+        :type foo: `str`
+        :param bob:
+        :type bob: `list` of `str`
+
+        :returns: The lines of the docstring in a list.
+        :rtype: `bool`
+
+        .. note:: Markup works.
+
+        It is strong
+        :Yields: `tuple`\ (`ice`, `cream`) - Yes
+        """)
+
+        self.assertAlmostEqualSphinxDocstring(expected_wrong, docstring, type_=SphinxNumpyDocstring)
+        
