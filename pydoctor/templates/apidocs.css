@@ -4,7 +4,7 @@ body {
 
 nav.navbar {
     width:100%;
-    margin-bottom: 0px;
+    margin-bottom: 0;
 }
 
 nav.navbar > .navbar-header {
@@ -25,11 +25,11 @@ nav.navbar > .navbar-header {
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
-    box-shadow: 0px 0px 8px 8px #fff;
+    box-shadow: 0 0 8px 8px #fff;
 }
 
 .navbar-brand {
-    padding: 0px;
+    padding: 0;
 }
 
 .navbar-brand a, .navbar-brand span {
@@ -39,12 +39,12 @@ nav.navbar > .navbar-header {
 }
 
 .navbar-brand *:first-child {
-    padding-right: 0px;
+    padding-right: 0;
 }
 
 .navbar-brand *:last-child {
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .navbar-brand a:hover {
@@ -395,7 +395,7 @@ a.sourceLink {
 }
 
 pre {
-    padding-left: 0px;
+    padding-left: 0;
 }
 
 /* Private stuff */
