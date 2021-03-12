@@ -296,16 +296,16 @@ class TypeDocstring:
         ):
             type_ = "literal"
         elif token.startswith("{"):
-            self._warnings.append("invalid value set (missing closing brace): %s"%token)
+            self._warnings.append(f"invalid value set (missing closing brace): {token}")
             type_ = "literal"
         elif token.endswith("}"):
-            self._warnings.append("invalid value set (missing opening brace): %s"%token)
+            self._warnings.append(f"invalid value set (missing opening brace): {token}")
             type_ = "literal"
         elif token.startswith("'") or token.startswith('"'):
-            self._warnings.append("malformed string literal (missing closing quote): %s"%token)
+            self._warnings.append(f"malformed string literal (missing closing quote): {token}")
             type_ = "literal"
         elif token.endswith("'") or token.endswith('"'):
-            self._warnings.append("malformed string literal (missing opening quote): %s"%token)
+            self._warnings.append(f"malformed string literal (missing opening quote): {token}")
             type_ = "literal"
         # keyword supported by the reference implementation (numpydoc)
         elif token in ("optional", "default", ):
@@ -318,7 +318,7 @@ class TypeDocstring:
             # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a 
             # identifier, leading into generating failures when tying to resolve links. 
             if self._warns_on_unknown_tokens:
-                self._warnings.append("unknown expresssion in type: %s"%token)
+                self._warnings.append(f"unknown expresssion in type: {token}")
             type_ = "unknown"
 
         return type_
@@ -701,12 +701,12 @@ class GoogleDocstring:
     def _format_admonition(self, admonition: str, lines: List[str]) -> List[str]:
         lines = self._strip_empty(lines)
         if len(lines) == 1:
-            return ['.. %s:: %s' % (admonition, lines[0].strip()), '']
+            return [f'.. {admonition}:: {lines[0].strip()}', '']
         elif lines:
             lines = self._indent(self._dedent(lines), 3)
-            return ['.. %s::' % admonition, ''] + lines + ['']
+            return [f'.. {admonition}::', ''] + lines + ['']
         else:
-            return ['.. %s::' % admonition, '']
+            return [f'.. {admonition}::', '']
 
     # overriden to avoid extra unecessary blank lines
     def _format_block(self, prefix: str, lines: List[str], padding: str = '') -> List[str]:
@@ -736,13 +736,13 @@ class GoogleDocstring:
             _desc = self._strip_empty(_desc)
             if any(_desc):
                 _desc = self._fix_field_desc(_desc)
-                field = ':%s %s: ' % (field_role, _name)
+                field = f':{field_role} {_name}: '
                 lines.extend(self._format_block(field, _desc))
             else:
-                lines.append(':%s %s:' % (field_role, _name))
+                lines.append(f':{field_role} {_name}:')
 
             if _type:
-                lines.append(':%s %s: %s' % (type_role, _name, _type))
+                lines.append(f':{type_role} {_name}: {_type}')
         return lines + ['']
 
     # overriden: Use a style closer to pydoctor's, but it's still not perfect. 
@@ -758,11 +758,11 @@ class GoogleDocstring:
         separator = ' - ' if has_desc else ''
         if _name:
             if _type:
-                field = '**%s**: %s%s' % (_name, _type, separator)
+                field = f'**{_name}**: {_type}{separator}'
             else:
-                field = '**%s**%s' % (_name, separator)
+                field = f'**{_name}**{separator}'
         elif _type:
-            field = '%s%s' % (_type, separator)
+            field = f'{_type}{separator}'
         else:
             field = ''
 
@@ -780,7 +780,7 @@ class GoogleDocstring:
 
     def _format_fields(self, field_type: str, fields: List[Tuple[str, str, List[str]]]
                        ) -> List[str]:
-        field_type = ':%s:' % field_type.strip()
+        field_type = f':{field_type.strip()}:'
         padding = ' ' * len(field_type)
         multi = len(fields) > 1
         lines = []  # type: List[str]
@@ -932,7 +932,7 @@ class GoogleDocstring:
         _type, _desc = self._consume_inline_attribute()
         lines = self._format_field('', '', _desc)
         if _type:
-            lines.extend(['', ':type: %s' % _type])
+            lines.extend(['', f':type: {_type}'])
         return lines
 
     # overriden: enforce napoleon_use_ivar=True and ignore noindex option
@@ -943,10 +943,10 @@ class GoogleDocstring:
     def _parse_attributes_section(self, section: str) -> List[str]:
         lines = []
         for _name, _type, _desc in self._consume_fields():
-            field = ':ivar %s: ' % _name
+            field = f':ivar {_name}: '
             lines.extend(self._format_block(field, _desc))
             if _type:
-                lines.append(':type %s: %s' % (_name, _type))
+                lines.append(f':type {_name}: {_type}')
         
         lines.append('')
         return lines
@@ -971,7 +971,7 @@ class GoogleDocstring:
     def _parse_generic_section(self, section: str) -> List[str]:
         lines = self._strip_empty(self._consume_to_next_section())
         lines = self._dedent(lines)
-        header = '.. admonition:: %s' % section
+        header = f'.. admonition:: {section}'
         lines = self._indent(lines, 3)
         if lines:
             return [header, ''] + lines + ['']
@@ -998,7 +998,7 @@ class GoogleDocstring:
         lines = []  # type: List[str]
         for _name, _, _desc in self._consume_fields(parse_type=False):
             _init_methods_section()
-            lines.append('   %s' % self._convert_type(_name))
+            lines.append(f'   {self._convert_type(_name)}')
             if _desc:
                 lines.extend(self._indent(_desc, 7))
             lines.append('')
@@ -1036,7 +1036,7 @@ class GoogleDocstring:
             _descs = ' ' + '\n    '.join(_desc) if any(_desc) else ''
             if _type and not _descs and not prefer_type: 
                 _descs, _type = _type, _descs
-            lines.append(':%s%s:%s' % (field_type, _type, _descs))
+            lines.append(f':{field_type}{_type}:{_descs}')
         if lines:
             lines.append('')
         return lines
@@ -1070,7 +1070,7 @@ class GoogleDocstring:
                 if any(field): 
                     lines.extend(self._format_block(':returns: ', field))
                 if _type and use_rtype:
-                    lines.extend([':rtype: %s' % _type, ''])
+                    lines.extend([f':rtype: {_type}', ''])
         if lines and lines[-1]:
             lines.append('')
         return lines
@@ -1410,7 +1410,7 @@ class NumpyDocstring(GoogleDocstring):
                     return g[3], None # type: ignore [unreachable]
                 else:
                     return g[2], g[1]
-            raise ValueError("%s is not a item name" % text)
+            raise ValueError(f"{text} is not a item name")
 
         def push_item(name: Optional[str], rest: List[str]) -> None:
             if not name:
@@ -1453,13 +1453,13 @@ class NumpyDocstring(GoogleDocstring):
         last_had_desc = True
         for name, desc, role in items:
             # do not use interpreted text role
-            link = '`%s`' % name
+            link = f'`{name}`'
             
             if desc or last_had_desc:
                 lines += ['']
                 lines += [link]
             else:
-                lines[-1] += ", %s" % link
+                lines[-1] += f", {link}"
             if desc:
                 lines += self._indent([' '.join(desc)])
                 last_had_desc = True
