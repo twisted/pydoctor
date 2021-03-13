@@ -118,7 +118,7 @@ class Page(TemplateElement):
 
     @renderer
     def subheader(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Element(self.template_lookup.get_loader('footer.html'))
+        return Element(self.template_lookup.get_loader('subheader.html'))
 
     @renderer
     def footer(self, request: IRequest, tag: Tag) -> IRenderable:
