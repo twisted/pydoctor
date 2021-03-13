@@ -39,7 +39,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     def has_body(self) -> bool:
         return bool(self._text)
     
-    def get_toc(self, depth: int = 6) -> None:
+    def get_toc(self, depth: int) -> None:
         return None
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:

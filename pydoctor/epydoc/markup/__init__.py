@@ -83,7 +83,7 @@ class ParsedDocstring:
         raise NotImplementedError()
     
     @abc.abstractmethod
-    def get_toc(self, depth: int = 6) -> Optional['ParsedDocstring']:
+    def get_toc(self, depth: int) -> Optional['ParsedDocstring']:
         """
         The table of contents of the docstring if titles are defined or C{None}.
         """

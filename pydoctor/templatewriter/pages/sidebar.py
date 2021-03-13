@@ -373,7 +373,7 @@ class ContentList(TemplateElement):
                 documented_ob=self.documented_ob,
                 docgetter=self.docgetter,
                 expand=self._expand, 
-                nested_content_loader=self.nested_content_loader if self._expand else None,
+                nested_content_loader=self.nested_content_loader,
                 template_lookup=self.template_lookup, 
                 level_depth=self._level_depth)
         
@@ -397,7 +397,7 @@ class ContentItem(Element):
     #TODO: Show a text like "No members" when an object do not have any members, instead of expanding on an empty div. 
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, documented_ob: Documentable,
-                 docgetter: util.DocGetter, expand: bool, nested_content_loader: Optional[ITemplateLoader], 
+                 docgetter: util.DocGetter, expand: bool, nested_content_loader: ITemplateLoader, 
                  template_lookup: TemplateLookup, level_depth: Tuple[int, int]):
         
         super().__init__(loader)
@@ -425,7 +425,6 @@ class ContentItem(Element):
         return class_
 
     def nested_contents(self) -> Element:
-        assert self.nested_content_loader is not None
 
         if isinstance(self.child, (Package, Module)):
             if isinstance(self.child, Package):

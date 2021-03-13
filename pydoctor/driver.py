@@ -254,13 +254,13 @@ def getparser() -> OptionParser:
     )
 
     parser.add_option(
-        '--sidebar-expand-depth', metavar="integer", action="store",
+        '--sidebar-expand-depth', metavar="INTEGER", action="store",
         type=int, default=3, dest='sidebarexpanddepth',
         help=("How many nested modules and classes should be expandable, "
               "first level is always expanded. (default: 3)"))
 
     parser.add_option(
-        '--sidebar-toc-depth', metavar="integer", action="store",
+        '--sidebar-toc-depth', metavar="INTEGER", action="store",
         type=int, default=6, dest='sidebartocdepth',
         help=("How many nested titles should be listed in the docstring TOC, "
               "first level is always listed. (default: 6)"))
@@ -436,8 +436,17 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
-        
         # step 4: make html, if desired
+
+        # check if sidebar related arguments are valid
+        if system.options.sidebarexpanddepth < 1:
+            system.msg('html', 'The value of --sidebar-expand-depth option should be greater or equal to 1, '
+                                'to suppress sidebar generation all together: use --no-sidebar')
+            system.options.sidebarexpanddepth = 1
+        if system.options.sidebartocdepth < 1:
+            system.msg('html', 'The value of --sidebar-toc-depth option should be greater or equal to 1, '
+                                'to suppress sidebar generation all together: use --no-sidebar')
+            system.options.sidebartocdepth = 1
 
         if options.makehtml:
             options.makeintersphinx = True

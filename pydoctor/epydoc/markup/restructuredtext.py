@@ -141,7 +141,7 @@ class ParsedRstDocstring(ParsedDocstring):
             for child in self._document.children
             )
     
-    def get_toc(self, depth: int = 6) -> Optional[ParsedDocstring]:
+    def get_toc(self, depth: int) -> Optional[ParsedDocstring]:
 
         contents = self._build_contents(self._document, depth=depth)
         docstring_toc = new_document('toc')
