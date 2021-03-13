@@ -9,7 +9,6 @@ else:
 import abc
 from pathlib import Path
 import warnings
-import copy
 from xml.dom import minidom
 
 from twisted.web.iweb import ITemplateLoader
@@ -246,7 +245,7 @@ class TemplateLookup:
             if t
             }
 
-        self._default_templates = copy.copy(self._templates)
+        self._default_templates = self._templates.copy()
 
 
     def add_template(self, template: Template) -> None:
