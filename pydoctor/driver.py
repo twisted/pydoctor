@@ -439,14 +439,14 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         # step 4: make html, if desired
 
         # check if sidebar related arguments are valid
-        if system.options.sidebarexpanddepth < 1:
-            system.msg('html', 'The value of --sidebar-expand-depth option should be greater or equal to 1, '
+        if system.options.sidebarexpanddepth < 0:
+            system.msg('html', 'The value of --sidebar-expand-depth option should be greater or equal to 0'
                                 'to suppress sidebar generation all together: use --no-sidebar')
-            system.options.sidebarexpanddepth = 1
-        if system.options.sidebartocdepth < 1:
-            system.msg('html', 'The value of --sidebar-toc-depth option should be greater or equal to 1, '
+            system.options.sidebarexpanddepth = 0
+        if system.options.sidebartocdepth < 0:
+            system.msg('html', 'The value of --sidebar-toc-depth option should be greater or equal to 0, '
                                 'to suppress sidebar generation all together: use --no-sidebar')
-            system.options.sidebartocdepth = 1
+            system.options.sidebartocdepth = 0
 
         if options.makehtml:
             options.makeintersphinx = True
