@@ -16,7 +16,7 @@ from twisted.python.failure import Failure
 def flattenToFile(fobj: IO[bytes], page: Element) -> None:
     """
     This method writes a page to a HTML file.
-    @raises Exception: If any failure during L{flattenString} call.
+    @raises Exception: If the L{flatten} call fails.
     """
     fobj.write(DOCTYPE)
     err: List[Failure] = []
