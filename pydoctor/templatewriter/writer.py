@@ -9,19 +9,22 @@ from pathlib import Path
 from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
-from twisted.web.template import flattenString, Element
+from twisted.web.template import Element, flatten
 from twisted.python.failure import Failure
 
-def flattenToFile(fobj:IO[bytes], page:Element) -> None:
+
+def flattenToFile(fobj: IO[bytes], page: Element) -> None:
     """
     This method writes a page to a HTML file.
     @raises Exception: If any failure during L{flattenString} call.
     """
     fobj.write(DOCTYPE)
     err: List[Failure] = []
-    flattenString(None, page).addCallback(fobj.write).addErrback(err.append)
+    d = flatten(None, page, fobj.write).addErrback(err.append)
+    assert d.called
     if err:
         raise err[0]
+
 
 class TemplateWriter(IWriter):
     """
