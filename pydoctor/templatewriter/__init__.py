@@ -51,7 +51,7 @@ class IWriter(Protocol):
         Called first.
         """
 
-    def writeModuleIndex(self, system:System) -> None:
+    def writeSummaryPages(self, system: System) -> None:
         """
         Called second.
         """

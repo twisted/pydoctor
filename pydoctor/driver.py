@@ -465,9 +465,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
             elif options.htmlsummarypages:
-                writer.writeModuleIndex(system)
+                writer.writeSummaryPages(system)
             else:
-                writer.writeModuleIndex(system)
+                writer.writeSummaryPages(system)
                 subjects.extend(system.rootobjects)
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:

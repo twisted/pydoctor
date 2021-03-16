@@ -74,7 +74,7 @@ def test_basic_package(tmp_path: Path) -> None:
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
-    w.writeModuleIndex(system)
+    w.writeSummaryPages(system)
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:

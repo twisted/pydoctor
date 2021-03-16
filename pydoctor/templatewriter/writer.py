@@ -73,7 +73,7 @@ class TemplateWriter(IWriter):
         for ob in obs:
             self._writeDocsFor(ob)
 
-    def writeModuleIndex(self, system:model.System) -> None:
+    def writeSummaryPages(self, system: model.System) -> None:
         import time
         for pclass in summary.summarypages:
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
