@@ -77,10 +77,6 @@ class Head(TemplateElement):
     def title(self, request: IRequest, tag: Tag) -> str:
         return self._title
 
-    @renderer
-    def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
-        return __version__
-
 
 class Page(TemplateElement):
     """
@@ -99,6 +95,18 @@ class Page(TemplateElement):
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
 
+    def render(self, request: None) -> Tag:
+        tag: Tag
+        tag, = super().render(request)
+        tag.fillSlots(**self.slot_map)
+        return tag
+
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        return dict(
+            pydoctor_version=__version__,
+            buildtime=self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+        )
 
     @abc.abstractmethod
     def title(self) -> str:
@@ -248,15 +256,10 @@ class CommonPage(Page):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    def render(self, request: None) -> Tag:
-        tag: Tag
-        tag, = super().render(request)
-        tag.fillSlots(**self.slot_map)
-        return tag
-
     @property
     def slot_map(self) -> Dict[str, str]:
-        return dict(
+        slot_map = super().slot_map
+        slot_map.update(
             project=self.system.projectname,
             heading=self.heading(),
             category=self.category(),
@@ -266,9 +269,8 @@ class CommonPage(Page):
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            pydoctor_version=__version__,
-            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
         )
+        return slot_map
 
 
 class ModulePage(CommonPage):

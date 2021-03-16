@@ -2,7 +2,7 @@
 
 from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
 
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
 from pydoctor.templatewriter.pages import Page
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
@@ -275,14 +275,6 @@ class IndexPage(Page):
         for o in self.system.rootobjects:
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()('/'.join(sorted(rootkinds)))
-
-    @renderer
-    def version(self, request, tag):
-        return __version__
-
-    @renderer
-    def buildtime(self, request, tag):
-        return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def hasdocstring(ob):
