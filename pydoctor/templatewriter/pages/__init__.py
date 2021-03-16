@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
+from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
 
@@ -248,9 +248,15 @@ class CommonPage(Page):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    @renderer
-    def all(self, request, tag):
-        return tag.fillSlots(
+    def render(self, request: None) -> Tag:
+        tag: Tag
+        tag, = super().render(request)
+        tag.fillSlots(**self.slot_map)
+        return tag
+
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        return dict(
             project=self.system.projectname,
             heading=self.heading(),
             category=self.category(),
@@ -261,7 +267,8 @@ class CommonPage(Page):
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
             pydoctor_version=__version__,
-            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
+            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
+        )
 
 
 class ModulePage(CommonPage):
