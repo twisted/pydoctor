@@ -464,11 +464,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             if options.htmlsubjects:
                 for fn in options.htmlsubjects:
                     subjects.append(system.allobjects[fn])
-            elif options.htmlsummarypages:
-                writer.writeSummaryPages(system)
             else:
                 writer.writeSummaryPages(system)
-                subjects.extend(system.rootobjects)
+                if not options.htmlsummarypages:
+                    subjects.extend(system.rootobjects)
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:
