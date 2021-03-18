@@ -69,7 +69,7 @@ class Head(TemplateElement):
 
     filename = 'head.html'
 
-    def __init__(self, title: str, loader: ITemplateLoader, ) -> None:
+    def __init__(self, title: str, loader: ITemplateLoader) -> None:
         super().__init__(loader)
         self._title = title
 

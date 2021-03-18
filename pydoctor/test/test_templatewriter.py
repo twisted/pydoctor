@@ -191,7 +191,7 @@ def test_template_lookup_add_template_allok() -> None:
     here = Path(__file__).parent
 
     with warnings.catch_warnings(record=True) as catch_warnings:
-        warnings.simplefilter("always", )
+        warnings.simplefilter("always")
         lookup = TemplateLookup()
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
