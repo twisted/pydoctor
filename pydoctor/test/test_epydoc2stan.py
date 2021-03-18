@@ -146,15 +146,15 @@ def test_func_undocumented_return_something() -> None:
     func = mod.contents['get_answer']
     lines = docstring2html(func).splitlines()
     expected_html = [
-        '<div>', '<p class="undocumented">Undocumented</p>', 
+        '<div>', '<p class="undocumented">Undocumented</p>',
         '<table class="fieldTable">',
-        '<tr class="fieldStart">', 
+        '<tr class="fieldStart">',
         '<td class="fieldName" colspan="2">Returns</td>',
-        '</tr>', 
+        '</tr>',
         '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
         '</td>',
         '<td class="fieldArgDesc">',
-        '<span class="undocumented">Undocumented</span>', 
+        '<span class="undocumented">Undocumented</span>',
         '</td>', '</tr>', '</table>', '</div>'
         ]
     assert lines == expected_html, str(lines)

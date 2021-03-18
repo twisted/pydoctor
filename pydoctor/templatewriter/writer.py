@@ -9,23 +9,26 @@ from pathlib import Path
 from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
-from twisted.web.template import flattenString, Element
+from twisted.web.template import Element, flatten
 from twisted.python.failure import Failure
 
-def flattenToFile(fobj:IO[bytes], page:Element) -> None:
+
+def flattenToFile(fobj: IO[bytes], page: Element) -> None:
     """
     This method writes a page to a HTML file.
-    @raises Exception: If any failure during L{flattenString} call. 
+    @raises Exception: If the L{flatten} call fails.
     """
     fobj.write(DOCTYPE)
     err: List[Failure] = []
-    flattenString(None, page).addCallback(fobj.write).addErrback(err.append)
+    d = flatten(None, page, fobj.write).addErrback(err.append)
+    assert d.called
     if err:
         raise err[0]
 
+
 class TemplateWriter(IWriter):
     """
-    HTML templates writer. 
+    HTML templates writer.
     """
 
     @classmethod
@@ -38,20 +41,20 @@ class TemplateWriter(IWriter):
 
     def __init__(self, filebase:str, template_lookup:Optional[TemplateLookup] = None):
         """
-        @arg filebase: Output directory. 
-        @arg template_lookup: Custom L{TemplateLookup} object. 
+        @arg filebase: Output directory.
+        @arg template_lookup: Custom L{TemplateLookup} object.
         """
         self.base: Path = Path(filebase)
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
-        self.template_lookup:TemplateLookup = ( 
+        self.template_lookup:TemplateLookup = (
             template_lookup if template_lookup else TemplateLookup() )
         """Writer's L{TemplateLookup} object"""
 
     def prepOutputDirectory(self) -> None:
         """
-        Write static CSS and JS files to build directory. 
+        Write static CSS and JS files to build directory.
         """
         os.makedirs(self.base, exist_ok=True)
         for template in self.template_lookup.templates:
@@ -61,7 +64,7 @@ class TemplateWriter(IWriter):
 
     def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
         """
-        Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}. 
+        Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}.
         """
         self.dry_run = True
         for ob in obs:
@@ -70,13 +73,13 @@ class TemplateWriter(IWriter):
         for ob in obs:
             self._writeDocsFor(ob)
 
-    def writeModuleIndex(self, system:model.System) -> None:
+    def writeSummaryPages(self, system: model.System) -> None:
         import time
         for pclass in summary.summarypages:
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj:  
+            with self.base.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
@@ -97,8 +100,8 @@ class TemplateWriter(IWriter):
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage
         for parent in ob.__class__.__mro__:
-            # This implementation relies on 'pages.commonpages' dict that ties 
-            # documentable class name (i.e. 'Class') with the 
+            # This implementation relies on 'pages.commonpages' dict that ties
+            # documentable class name (i.e. 'Class') with the
             # page class used for rendering: pages.ClassPage
             try:
                 pclass = pages.commonpages[parent.__name__]

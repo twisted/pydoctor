@@ -236,9 +236,9 @@ class FieldDesc:
 
     def format(self) -> Iterator[Tag]:
         """
-        @return: Iterator that yields one or two C{tags.td}. 
+        @return: Iterator that yields one or two C{tags.td}.
         """
-        formatted = self.body or self._UNDOCUMENTED        
+        formatted = self.body or self._UNDOCUMENTED
         fieldNameTd: List[Tag] = []
         if self.name:
             _name = tags.span(class_="fieldArg")(self.name)
@@ -265,9 +265,9 @@ class RaisesDesc(FieldDesc):
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
-    Format list of L{FieldDesc}. Used for param, returns, raises, etc. 
+    Format list of L{FieldDesc}. Used for param, returns, raises, etc.
 
-    Generates a 2-columns layout as follow:: 
+    Generates a 2-columns layout as follow::
 
         +------------------------------------+
         | <label>                            |
@@ -275,29 +275,29 @@ def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
         | <name>: <type> |     <desc>        |
         +------------------------------------+
 
-    If the fields don't have type or name information, 
-    generates the same output as L{format_field_list}:: 
+    If the fields don't have type or name information,
+    generates the same output as L{format_field_list}::
 
         +------------------------------------+
         | <label>                            |
         | <desc ... >                        |
         +------------------------------------+
 
-    @returns: Each row as iterator or None if no C{descs} id provided. 
+    @returns: Each row as iterator or None if no C{descs} id provided.
     """
-    if not descs: 
+    if not descs:
         return
     # <label>
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName", colspan="2")(label))
-    # yield the first row. 
+    # yield the first row.
     yield row
     # yield descriptions.
     for d in descs:
         row = tags.tr()
-        # <name>: <type> |     <desc>      
+        # <name>: <type> |     <desc>
         # or
-        # <desc ... >         
+        # <desc ... >
         row(d.format())
         yield row
 
@@ -337,9 +337,9 @@ class Field:
 
 def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
     """
-    Format list of L{Field} object. Used for notes, see also, authors, etc. 
+    Format list of L{Field} object. Used for notes, see also, authors, etc.
 
-    Generates a 2-columns layout as follow:: 
+    Generates a 2-columns layout as follow::
 
         +------------------------------------+
         | <label>                            |
@@ -348,14 +348,14 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
 
     @returns: Each row as iterator
     """
-    if not fields: 
+    if not fields:
         return
 
     label = singular if len(fields) == 1 else plural
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName", colspan="2")(label))
     yield row
-    
+
     for field in fields:
         row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
@@ -506,7 +506,7 @@ class FieldHandler:
         self.raise_descs.append(RaisesDesc(type=typ_fmt, body=field.format()))
     handle_raise = handle_raises
     handle_except = handle_raises
-    
+
     def handle_seealso(self, field: Field) -> None:
         self.seealsos.append(field)
     handle_see = handle_seealso
@@ -734,7 +734,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
 
     tag: Tag = tags.span(class_='undocumented')
     if subdocstrings:
-        plurals = {'class': 'classes'}
+        plurals = {'class': 'classes', 'property': 'properties'}
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
@@ -854,7 +854,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
     def visit_Subscript(self, node: ast.Subscript) -> Tag:
         tag: Tag = tags.transparent
         tag(self.visit(node.value))
-        tag('[', tags.wbr) 
+        tag('[', tags.wbr)
         sub: ast.AST = node.slice
         if isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
@@ -868,7 +868,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
     def visit_List(self, node: ast.List) -> Tag:
         tag: Tag = tags.transparent
-        tag('[', tags.wbr) 
+        tag('[', tags.wbr)
         self._handle_sequence(tag, node.elts)
         tag(']')
         return tag

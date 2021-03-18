@@ -41,7 +41,7 @@ def test_rtd_pydoctor_multiple_call():
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
         page = stream.read()
-        assert 'pydoctor-epytext-demo' in page, page
+        assert '<a href="../epytext.html" id="projecthome">pydoctor-epytext-demo</a>' in page, page
 
 
 def test_rtd_extension_inventory():

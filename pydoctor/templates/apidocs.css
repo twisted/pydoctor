@@ -8,7 +8,7 @@ body {
 
 nav.navbar {
     width:100%;
-    margin-bottom: 0px;
+    margin-bottom: 0;
 }
 
 nav.navbar > .navbar-header {
@@ -47,7 +47,7 @@ nav div.layoutOptions {
 }
 
 .navbar-brand {
-    padding: 0px;
+    padding: 0;
 }
 
 .navbar-brand a, .navbar-brand span {
@@ -57,12 +57,12 @@ nav div.layoutOptions {
 }
 
 .navbar-brand *:first-child {
-    padding-right: 0px;
+    padding-right: 0;
 }
 
 .navbar-brand *:last-child {
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .navbar-brand a:hover {
@@ -102,7 +102,8 @@ nav div.layoutOptions {
 
 a[name] {
     position: relative;
-    bottom: 62px;
+    bottom: 80px;
+    font-size: 0;
 }
 
 ul {
@@ -249,7 +250,7 @@ ul ul ul ul ul ul ul {
     #splitTables > table {
         table-layout: fixed;
     }
-    
+
     /* Kind column table  */
     #splitTables > table tr td:first-child {
         border-left: none;
@@ -284,7 +285,7 @@ ul ul ul ul ul ul ul {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 125px;
-    } 
+    }
 }
 
 tr.package {
@@ -371,6 +372,9 @@ code > a {
     background-color:#f9f2f4;
 }
 /* top navagation bar */
+.page-header > h1 {
+    margin-top: 0;
+}
 .page-header > h1 > code {
     color: #971c3a;
 }
@@ -414,7 +418,7 @@ a.sourceLink {
 }
 
 pre {
-    padding-left: 0px;
+    padding-left: 0;
 }
 
 /* Private stuff */
@@ -520,7 +524,7 @@ div.danger p.rst-admonition-title, div.error p.rst-admonition-title, div.caution
 
 div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p.rst-admonition-title{
     color: #3a87ad;
-} 
+}
 
 div.tip, div.hint, div.important {
     background-color: #d9edf7;

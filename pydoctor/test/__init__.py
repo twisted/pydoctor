@@ -61,7 +61,7 @@ class InMemoryWriter(IWriter):
         for ob in obs:
             self._writeDocsFor(ob)
 
-    def writeModuleIndex(self, system: model.System) -> None:
+    def writeSummaryPages(self, system: model.System) -> None:
         """
         Rig the system to not created the inter sphinx inventory.
         """

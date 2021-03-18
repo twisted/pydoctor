@@ -2,9 +2,9 @@
 
 from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
 
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import BasePage
+from pydoctor.templatewriter.pages import Page
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 
@@ -29,20 +29,16 @@ def moduleSummary(modorpack, page_url):
 def _lckey(x):
     return (x.fullName().lower(), x.fullName())
 
-class ModuleIndexPage(BasePage):
+class ModuleIndexPage(Page):
 
     filename = 'moduleIndex.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-        # Override L{BasePage.loader} because here the page L{filename} 
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     def title(self):
         return "Module Index"
@@ -116,23 +112,19 @@ def subclassesFrom(hostsystem, cls, anchors, page_url):
         r(ul)
     return r
 
-class ClassIndexPage(BasePage):
+class ClassIndexPage(Page):
 
     filename = 'classIndex.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-        # Override L{BasePage.loader} because here the page L{filename} 
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
 
     def title(self):
         return "Class Hierarchy"
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
 
     @renderer
     def stuff(self, request, tag):
@@ -217,13 +209,13 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(BasePage):
+class NameIndexPage(Page):
 
     filename = 'nameIndex.html'
 
-    def __init__(self, system, template_lookup):
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
         super().__init__(system=system, template_lookup=template_lookup)
-        self.initials = {}
+        self.initials: Dict[str, List[model.Documentable]] = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
@@ -237,10 +229,6 @@ class NameIndexPage(BasePage):
         return tag.clear()("Index of Names")
 
     @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
     def index(self, request, tag):
         r = []
         for i in sorted(self.initials):
@@ -248,17 +236,9 @@ class NameIndexPage(BasePage):
         return r
 
 
-class IndexPage(BasePage):
+class IndexPage(Page):
 
     filename = 'index.html'
-
-    @renderer
-    def project_link(self, request, tag):
-        if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(
-                self.system.projectname)
-        else:
-            return self.system.projectname
 
     def title(self):
         return f"API Documentation for {self.system.projectname}"
@@ -296,14 +276,6 @@ class IndexPage(BasePage):
             rootkinds[o.kind.lower() + 's']  = 1
         return tag.clear()('/'.join(sorted(rootkinds)))
 
-    @renderer
-    def version(self, request, tag):
-        return __version__
-
-    @renderer
-    def buildtime(self, request, tag):
-        return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
-
 
 def hasdocstring(ob):
     for source in ob.docsources():
@@ -311,14 +283,14 @@ def hasdocstring(ob):
             return True
     return False
 
-class UndocumentedSummaryPage(BasePage):
-    
+class UndocumentedSummaryPage(Page):
+
     filename = 'undoccedSummary.html'
 
     def __init__(self, system: model.System, template_lookup: TemplateLookup):
-        # Override L{BasePage.loader} because here the page L{filename} 
-        # does not equal the template filename. 
-        super().__init__(system=system, template_lookup=template_lookup, 
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
             loader=template_lookup.get_template('summary.html').loader )
 
     def title(self):
@@ -329,10 +301,6 @@ class UndocumentedSummaryPage(BasePage):
         return tag.clear()("Summary of Undocumented Objects")
 
     @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
     def stuff(self, request, tag):
         undoccedpublic = [o for o in self.system.allobjects.values()
                           if o.isVisible and not hasdocstring(o)]
@@ -341,7 +309,7 @@ class UndocumentedSummaryPage(BasePage):
             tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
-summarypages: Iterable[Type[BasePage]] = [
+summarypages: Iterable[Type[Page]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,
