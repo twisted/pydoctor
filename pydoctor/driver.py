@@ -262,8 +262,8 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--sidebar-toc-depth', metavar="INTEGER", action="store",
         type=int, default=6, dest='sidebartocdepth',
-        help=("How many nested titles should be listed in the docstring TOC, "
-              "first level is always listed. (default: 6)"))
+        help=("How many nested titles should be listed in the docstring TOC "
+              "(default: 6)"))
     
     parser.add_option(
         '--no-sidebar', default=False, action='store_true', dest='nosidebar',
@@ -439,12 +439,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         # step 4: make html, if desired
 
         # check if sidebar related arguments are valid
-        if system.options.sidebarexpanddepth < 0:
-            system.msg('html', 'The value of --sidebar-expand-depth option should be greater or equal to 0'
+        if system.options.sidebarexpanddepth < 1:
+            system._warning(None, "Invalid --sidebar-expand-depth value", detail='The value of --sidebar-expand-depth option should be greater or equal to 1, '
                                 'to suppress sidebar generation all together: use --no-sidebar')
-            system.options.sidebarexpanddepth = 0
+            system.options.sidebarexpanddepth = 1
         if system.options.sidebartocdepth < 0:
-            system.msg('html', 'The value of --sidebar-toc-depth option should be greater or equal to 0, '
+            system._warning(None, "Invalid --sidebar-toc-depth value", detail='The value of --sidebar-toc-depth option should be greater or equal to 0, '
                                 'to suppress sidebar generation all together: use --no-sidebar')
             system.options.sidebartocdepth = 0
 

@@ -114,8 +114,7 @@ class SideBarSection(Element):
 
     @renderer
     def content(self, request: IRequest, tag: Tag) -> Union[Element, str]:
-        if self.ob.system.options.sidebarexpanddepth == 0:
-            return ""
+        
         if isinstance(self.ob, (Package, Module)):
             if isinstance(self.ob, Package):
                 return PackageContent(docgetter=self.docgetter,
