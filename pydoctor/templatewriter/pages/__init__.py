@@ -176,16 +176,6 @@ class CommonPage(Page):
         parts.reverse()
         return parts
 
-    # Deprecated: pydoctor's templates no longer use this, but it is kept
-    #             for now to not break customized templates like Twisted's.
-    #             NOTE: Remember to remove the CSS as well.
-    def part(self):
-        parent = self.ob.parent
-        if parent:
-            return 'Part of ', tags.code(self.namespace(parent))
-        else:
-            return []
-
     @renderer
     def deprecated(self, request, tag):
         if hasattr(self.ob, "_deprecated_info"):
@@ -263,7 +253,6 @@ class CommonPage(Page):
         slot_map.update(
             heading=self.heading(),
             category=self.category(),
-            part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
             mainTable=self.mainTable(),
