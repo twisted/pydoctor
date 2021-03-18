@@ -744,9 +744,11 @@ div.tip, div.hint, div.important {
 
 
 nav.foot {
-    margin-top: 10px;
+    margin-top: 20px;
     background-color: #fff;
     text-align: center;
+    border-width: 1px 0 0 0;
+    border-radius: 0;
 }
 
 nav.foot address {
