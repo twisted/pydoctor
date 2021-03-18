@@ -362,11 +362,9 @@ class ContentList(TemplateElement):
     
     @renderer
     def items(self, request: IRequest, tag: Tag) -> Iterable[Element]:
-        got_documented_ob = False
+
         for child in self.children:
-            if child == self.documented_ob:
-                got_documented_ob = True
-                continue
+
             yield ContentItem(
                 loader=TagLoader(tag),
                 ob=self.ob,
@@ -378,17 +376,6 @@ class ContentList(TemplateElement):
                 template_lookup=self.template_lookup, 
                 level_depth=self._level_depth)
         
-        if got_documented_ob:
-            yield ContentItem(
-                loader=TagLoader(tag),
-                ob=self.ob,
-                child=self.documented_ob,
-                documented_ob=self.documented_ob,
-                docgetter=self.docgetter,
-                expand=False, 
-                nested_content_loader=None,
-                template_lookup=self.template_lookup, 
-                level_depth=self._level_depth)
 
 class ContentItem(Element):
     """
@@ -425,7 +412,7 @@ class ContentItem(Element):
             class_ += " thisObject"
         return class_
 
-    def nested_contents(self) -> Element:
+    def nested_contents(self) -> ObjContent:
 
         if isinstance(self.child, (Package, Module)):
             if isinstance(self.child, Package):
@@ -456,9 +443,11 @@ class ContentItem(Element):
                               depth=self._level_depth[1])
     
     @renderer
-    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, Element]:
+    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, Element, Tag]:
         if self._expand:
-            return ExpandableItem(TagLoader(tag), self.child, self.nested_contents())
+            nested_contents = self.nested_contents()
+            return ExpandableItem(TagLoader(tag), self.child, nested_contents, 
+                    do_not_expand=self.child == self.documented_ob)
         else:
             return ""
 
@@ -488,19 +477,34 @@ class ExpandableItem(LinkOnlyItem):
     Sidebar expandable item.
 
     Used by L{ContentItem.expandableItem}
+
+    @note: ExpandableItem can be created with C{do_not_expand} flag. 
+           This will generate a expandable item with a special C{notExpandable} CSS class. 
+           It differs from L{LinkOnlyItem}, wich do not show the expand button, 
+           here we show it but we make it unusable by assinging an empty CSS ID. 
     """
 
     last_ExpandableItem_id = 0
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: Element):
+    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: ObjContent, do_not_expand: bool = False):
         super().__init__(loader, child)
         self._contents =  contents
+        self._do_not_expand = do_not_expand
         ExpandableItem.last_ExpandableItem_id += 1
         self._id = ExpandableItem.last_ExpandableItem_id
     @renderer
-    def contents(self, request: IRequest, tag: Tag) -> Element:
+    def labelClass(self, request: IRequest, tag: Tag) -> str:
+        assert all(isinstance(child, str) for child in tag.children)
+        classes: List[str] = tag.children
+        if self._do_not_expand:
+            classes.append('notExpandable')
+        return ' '.join(classes)
+    @renderer
+    def contents(self, request: IRequest, tag: Tag) -> ObjContent:
         return self._contents
     @renderer
     def expandableItemId(self, request: IRequest, tag: Tag) -> str:
         return f"expandableItemId{self._id}"
-
+    @renderer
+    def labelForExpandableItemId(self, request: IRequest, tag: Tag) -> str:
+        return f"expandableItemId{self._id}" if not self._do_not_expand else ""

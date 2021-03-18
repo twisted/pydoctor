@@ -9,8 +9,9 @@
                     <t:attr name="id" t:render="expandableItemId" />
                 </input>
 
-                <label class="lbl-toggle" tabindex="0">
-                    <t:attr name="for" t:render="expandableItemId" />
+                <label>
+                    <t:attr name="class" t:render="labelClass">lbl-toggle</t:attr>
+                    <t:attr name="for" t:render="labelForExpandableItemId" />
                 </label>
 
                 <t:transparent t:render="name">

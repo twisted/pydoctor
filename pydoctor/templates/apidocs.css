@@ -664,7 +664,7 @@ div.tip, div.hint, div.important {
     margin-bottom: 7px;
     margin-top: 7px;
     overflow: hidden;
-    color: #5d5d5d;
+    color: #555;
     font-size: 18px;
     display: flex;
     flex-wrap: wrap;
@@ -679,7 +679,7 @@ div.tip, div.hint, div.important {
 
 .sidebar .thingTitle > code {
     font-size: 16px;
-    color: #5d5d5d;
+    color: #555;
     background-color: transparent;
     padding-left: 0;
     padding-right: 0;
@@ -691,7 +691,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar .childrenKindTitle {
-    color: #5d5d5d;
+    color: #555;
     margin-left: 4px;
     margin-bottom: 3px;
     font-size: 15px;
@@ -934,5 +934,10 @@ input.tocChildrenToggle {
 }
 
 .thisObject a {
-    color: #5d5d5d;
+    color: #555;
+}
+
+/* Special case */ 
+.expandableItem label.notExpandable {
+    cursor: not-allowed;
 }
