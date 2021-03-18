@@ -56,7 +56,7 @@ class Nav(TemplateElement):
     @renderer
     def project(self, request: IRequest, tag: Tag) -> Tag:
         if self.system.options.projecturl:
-            return Tag('a', attributes=dict(href=self.system.options.projecturl, id="projecthome"),
+            return Tag('a', attributes=dict(href=self.system.options.projecturl),
                        children=[self.system.projectname])
         else:
             return Tag('span', children=[self.system.projectname])

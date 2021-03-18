@@ -52,10 +52,6 @@ nav.navbar > .navbar-header {
     text-decoration: none;
 }
 
-#projecthome:hover {
-    color: #23527c;
-}
-
 .navlinks  {
     margin: 0;
     display: flex;
