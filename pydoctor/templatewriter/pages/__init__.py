@@ -53,14 +53,6 @@ class Nav(TemplateElement):
         super().__init__(loader)
         self.system = system
 
-    @renderer
-    def project(self, request: IRequest, tag: Tag) -> Tag:
-        if self.system.options.projecturl:
-            return Tag('a', attributes=dict(href=self.system.options.projecturl),
-                       children=[self.system.projectname])
-        else:
-            return Tag('span', children=[self.system.projectname])
-
 
 class Head(TemplateElement):
     """
@@ -103,9 +95,18 @@ class Page(TemplateElement):
 
     @property
     def slot_map(self) -> Dict[str, str]:
+        system = self.system
+
+        if system.options.projecturl:
+            project_tag = tags.a(href=system.options.projecturl)
+        else:
+            project_tag = tags.transparent
+        project_tag(system.projectname)
+
         return dict(
+            project=project_tag,
             pydoctor_version=__version__,
-            buildtime=self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+            buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
         )
 
     @abc.abstractmethod
@@ -260,7 +261,6 @@ class CommonPage(Page):
     def slot_map(self) -> Dict[str, str]:
         slot_map = super().slot_map
         slot_map.update(
-            project=self.system.projectname,
             heading=self.heading(),
             category=self.category(),
             part=self.part(),
