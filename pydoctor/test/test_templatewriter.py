@@ -148,7 +148,7 @@ def test_template_lookup_get_template() -> None:
 
     assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
 
-    assert lookup.get_template('footer.html').version == -1
+    assert lookup.get_template('subheader.html').version == -1
 
     assert lookup.get_template('table.html').version == 1
 

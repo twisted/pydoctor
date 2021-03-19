@@ -1,4 +1,7 @@
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     overflow-y: scroll;
 }
 
@@ -76,6 +79,12 @@ nav.navbar > .navbar-header {
     font-size: 24px;
     color: #777;
     margin-bottom: 1.8em;
+}
+
+footer.navbar {
+    margin: auto 0 0 0;
+    padding-top: 15px;
+    padding-bottom: 15px;
 }
 
 a[name] {
