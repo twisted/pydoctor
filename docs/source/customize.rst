@@ -5,11 +5,10 @@ Customize Output
 Include custom HTML
 -------------------
 
-They are 4 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
+They are 3 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
 
 - ``header.html``: at the very beginning of the body
 - ``subheader.html``: after the main header, before the page title
-- ``footer.html``: at the very end of the body
 - ``extra.css``: extra CSS sheet for layout customization
 
 To override a placeholder, write your custom HTML or CSS files to a directory 
@@ -20,9 +19,11 @@ and use the following option::
 .. note::
 
   If you want more customization, you can override the defaults 
-  HTML and CSS templates in 
+  HTML, CSS and JS templates in 
   `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_ 
   with the same method. 
+
+  HTML templates have their own versionning system and warnings will be triggered if oudated custom template are used. 
 
 .. admonition:: Example
 
