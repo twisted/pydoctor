@@ -98,7 +98,7 @@ class Page(TemplateElement):
         system = self.system
 
         if system.options.projecturl:
-            project_tag = tags.a(href=system.options.projecturl)
+            project_tag = tags.a(href=system.options.projecturl, class_="projecthome")
         else:
             project_tag = tags.transparent
         project_tag(system.projectname)
