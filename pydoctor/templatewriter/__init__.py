@@ -102,7 +102,7 @@ class Template(abc.ABC):
                 with path.open('r', encoding='utf-8') as fobj:
                     text = fobj.read()
             except IOError as e:
-                warnings.warn(f"Cannot create Template: {path.as_posix()}. IO error: {e}")
+                warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
             else:
                 if path.suffix.lower() == '.html':
                     return _HtmlTemplate(name=path.name, text=text)
