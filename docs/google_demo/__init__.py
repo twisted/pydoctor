@@ -34,7 +34,7 @@ Attributes:
    https://google.github.io/styleguide/pyguide.html
 
 """
-from typing import List, Union
+from typing import List, Union # NOQA
 
 module_level_variable1 = 12345
 

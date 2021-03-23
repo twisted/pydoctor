@@ -5,7 +5,7 @@ List of ReST directives
 
 .. list-table:: List of ReST directives and status whether they are supported or unsupported by PyDoctor
    :header-rows: 1
-   
+
    * - Directive
      - Defined by
      - Supported
@@ -21,7 +21,7 @@ List of ReST directives
    * - ``.. image::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#image>`__
      - Yes
-       
+
    * - ``.. |time| date:: %H:%M``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#date>`__
      - Yes
@@ -33,27 +33,27 @@ List of ReST directives
    * - ``.. |T| replace:: term``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#replacement-text>`__
      - Yes
- 
+
    * - ``.. unicode::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#unicode-character-codes>`__
      - Yes
- 
+
    * - ``.. raw::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#raw-data-pass-through>`__
      - Yes
-  
+
    * - ``.. class::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#class>`__
      - No
-  
+
    * - ``.. role::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#custom-interpreted-text-roles>`__
      - Yes
-  
+
    * - ``.. default-role::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#setting-the-default-interpreted-text-role>`__
-     - Should not be changed. 
-    
+     - Should not be changed.
+
    * - ``.. line-block::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#line-block>`__
      - No
@@ -61,7 +61,7 @@ List of ReST directives
    * - ``.. code::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`__
      - Yes
-   
+
    * - ``.. python::``
      - pydoctor
      - Yes
@@ -69,7 +69,7 @@ List of ReST directives
    * - ``.. math::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#math>`__
      - Yes
-    
+
    * - ``.. highlights::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#highlights>`__
      - No
@@ -96,7 +96,7 @@ List of ReST directives
 
    * - ``.. warning::`` and other admonitions
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#specific-admonitions>`__
-     - Yes. This includes: attention, caution, danger, error, hint, important, note, tip, warning and the generic admonitions. 
+     - Yes. This includes: attention, caution, danger, error, hint, important, note, tip, warning and the generic admonitions.
 
    * - ``.. versionadded::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionadded>`__
@@ -185,23 +185,23 @@ List of ReST directives
    * - ``.. compound::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#compound-paragraph>`__
      - No
-   
+
    * - ``.. sectnum::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#automatic-section-numbering>`__
      - No
- 
+
    * - ``.. header::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`__
      - No
- 
+
    * - ``.. footer::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#document-header-footer>`__
      - No
- 
+
    * - ``.. meta::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#meta>`__
      - No
-  
+
    * - ``.. title::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#metadata-document-title>`__
      - No

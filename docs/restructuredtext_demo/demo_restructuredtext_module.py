@@ -25,7 +25,7 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
 
 def demo_consolidated_fields(a:float, b):  # type: ignore
     """
-    Fields can be condensed into one "consolidated" field. Looks better in plain text. 
+    Fields can be condensed into one "consolidated" field. Looks better in plain text.
 
     :Parameters:
         - `a`: The size of the fox (in meters)

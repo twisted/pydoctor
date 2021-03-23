@@ -1,11 +1,11 @@
 
 """
-Forked from the tests for :mod:`sphinx.ext.napoleon.docstring` module.
+Forked from the tests for ``sphinx.ext.napoleon.docstring`` module.
 :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
 :license: BSD, see LICENSE for details.
 """
 import re
-from typing import Type, Union
+from typing import Type, Union, Any
 from unittest import TestCase
 from textwrap import dedent
 import functools
@@ -16,10 +16,13 @@ import sphinx.ext.napoleon as sphinx_napoleon
 
 __docformat__ = "restructuredtext"
 
-def partialclass(cls, *args, **kwds):
-    class NewCls(cls):
+def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
+    # mypy gets errors: - Variable "cls" is not valid as a type
+    #                   - Invalid base class "cls" 
+    class NewCls(cls): #type: ignore[valid-type][misc]
         __init__ = functools.partialmethod(cls.__init__, *args, **kwds)
         __class__ = cls
+    assert isinstance(NewCls, type)
     return NewCls
 
 sphinx_napoleon_config = sphinx_napoleon.Config(
@@ -41,8 +44,10 @@ SphinxNumpyDocstring = partialclass(sphinx_napoleon.docstring.NumpyDocstring,
 class BaseDocstringTest(TestCase):
     maxDiff = None
 
+    # mypy get error:
+    # Variable "pydoctor.test.test_napoleon_docstring.SphinxGoogleDocstring" is not valid as a type 
     def assertAlmostEqualSphinxDocstring(self, expected: str, docstring: str, 
-                                         type_: Type[Union[SphinxGoogleDocstring, SphinxNumpyDocstring]]) -> None:
+                                         type_: Type[Union[SphinxGoogleDocstring, SphinxNumpyDocstring]]) -> None: #type: ignore[valid-type]
         """
         Check if the upstream version of the parser class (from `sphinx.ext.napoleon`) 
         parses the docstring as expected.
@@ -60,9 +65,10 @@ class BaseDocstringTest(TestCase):
         expected_sphinx_output = re.sub(
                 r"(`|\\\s|\\|:mod:|:func:|:class:|:obj:)", "", expected)
 
+        # mypy error: Cannot instantiate type "Type[SphinxGoogleDocstring?]
         sphinx_docstring_output = re.sub(
             r"(`|\\|:mod:|:func:|:class:|:obj:|\s<Ellipsis>)", "",
-            str(type_(docstring)).replace(
+            str(type_(docstring)).replace( #type: ignore[misc]
             ":kwtype", ":type").replace(":vartype", ":type").replace(" -- ", " - ").rstrip())
 
         self.assertEqual(expected_sphinx_output.rstrip(), sphinx_docstring_output)

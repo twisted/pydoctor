@@ -41,7 +41,7 @@ def test_rtd_pydoctor_multiple_call():
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
         page = stream.read()
-        assert 'pydoctor-epytext-demo' in page, page
+        assert '<a href="../epytext.html" class="projecthome">pydoctor-epytext-demo</a>' in page, page
 
 
 def test_rtd_extension_inventory():
@@ -159,3 +159,11 @@ def test_custom_template_contains_infos():
         page = stream.read()
         for i in infos:
             assert i in page, page
+
+def test_meta_pydoctor_template_version_tag_gets_removed():
+    """
+    Test if the index.html effectively do not contains the meta pydoctor template version tag
+    """
+    with open(BASE_DIR / 'api' / 'index.html', 'r', encoding='utf-8') as stream:
+        page = stream.read()
+        assert '<meta name="pydoctor-template-version" content="' not in page, page

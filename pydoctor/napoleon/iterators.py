@@ -225,7 +225,7 @@ class modify_iter(peek_iter[T]):
         self,
         o: Union[Callable[[], T], Iterable[T]],
         sentinel: Optional[T] = None,
-        modifier: Optional[Callable[[str], str]] = None,
+        modifier: Optional[Callable[[T], T]] = None,
     ) -> None:
         """
         Parameters

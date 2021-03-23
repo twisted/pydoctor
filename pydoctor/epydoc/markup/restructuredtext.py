@@ -498,23 +498,23 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         else:
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
-    
 
-    # Other ressources on how to extend docutils: 
+
+    # Other ressources on how to extend docutils:
     # https://docutils.sourceforge.io/docs/user/tools.html
     # https://docutils.sourceforge.io/docs/dev/hacking.html
     # https://docutils.sourceforge.io/docs/howto/rst-directives.html
-    # docutils apidocs: 
+    # docutils apidocs:
     # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
 
-    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator: 
+    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
     def _visit_admonition(self, node: Node, name: str) -> None:
         self.body.append(self.starttag(
             node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, docutils.nodes.title(name, name.title()))
         self.set_first_last(node)
-        
+
     def visit_note(self, node: Node) -> None:
         self._visit_admonition(node, 'note')
 

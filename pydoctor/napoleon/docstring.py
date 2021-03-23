@@ -643,10 +643,7 @@ class GoogleDocstring:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
-            # error: Too many arguments for "_consume_field" of "GoogleDocstring"  [call-arg]
-            # This is not an issue since kwargs is used only in NumpyDocstring where "_consume_field" method
-            # accepts another parameter.
-            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs)  # type: ignore
+            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs) 
             if multiple and _name:
                 for name in _name.split(","):
                     fields.append((name.strip(), _type, _desc))
@@ -1365,6 +1362,7 @@ class NumpyDocstring(GoogleDocstring):
         parse_type: bool = True,
         prefer_type: bool = False,
         allow_free_form: bool = False,
+        **kwargs: Any,
     ) -> Tuple[str, str, List[str]]:
         """
         Raise
