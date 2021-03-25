@@ -279,6 +279,11 @@ class ClassPage(CommonPage):
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
 
+    def children(self):
+        return sorted((o for o in self.ob.contents.values()
+                       if o.name != '__init__' and o.isVisible),
+                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+
     def extras(self):
         r = super().extras()
 
@@ -340,7 +345,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value)))
+                                               sorted(attrs, key=lambda o:(-o.privacyClass.value, o.fullName()))))
                 for b, attrs in baselists]
 
     def baseName(self, data):
