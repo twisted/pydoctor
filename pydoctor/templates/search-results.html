@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+  <meta name="pydoctor-template-version" content="1" />
+  <t:transparent t:render="head">Head</t:transparent>
+  <body>
+    <div t:render="header" />
+
+    <t:transparent t:render="nav">Nav</t:transparent>
+
+    <div class="container" t:render="subheader" />
+    
+    <div class="container">
+        <noscript>
+            Cannot display the search results: JavaScript is not supported/enabled in your browser. 
+        </noscript>
+        <main>
+            <h4 id="search-status"></h4>
+            <ul id="search-results"></ul>
+        </main>
+
+        <div>
+            <p>Search results provided by <a href="https://lunrjs.com">Lunr.js</a></p>
+        </div>
+        <!-- The built index file -->
+        <script src="index.js"></script>
+        <!-- lunr source -->
+        <script src="lunr.min.js"></script>
+        <!-- boilerplate search -->
+        <script src="search.js"></script>
+    </div>
+  </body>
+</html>

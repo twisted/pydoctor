@@ -66,7 +66,7 @@ a.projecthome:hover {
     align-items: baseline;
 }
 
-.navlinks > a {
+.navlinks > a, .navlinks > form {
     padding: 10px 0 10px 15px;
 }
 

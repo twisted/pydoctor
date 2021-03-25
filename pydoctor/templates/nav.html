@@ -21,7 +21,26 @@
           <a href="nameIndex.html">
             Names
           </a>
+          
+          <form>
+            <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" disabled="" minlength="2" />
+          </form>
+    
+          
       </div>
+
+      <script>
+
+        document.getElementById('search-box').disabled = false;
+
+        var params = (new URL(document.location)).searchParams;
+        var query = params.get('search-query')
+        if (query){
+          // Simulate a mouse click
+          window.location.href = 'search-results.html#' + encodeURIComponent(query);
+        }
+
+      </script>
 
     </div>
   </div>

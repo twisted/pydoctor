@@ -8,7 +8,8 @@ from pathlib import Path
 
 from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
-from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
+from pydoctor.templatewriter import DOCTYPE, pages, summary, search, TemplateLookup
+
 from twisted.web.template import Element, flatten
 from twisted.python.failure import Failure
 
@@ -39,12 +40,12 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, filebase:str, template_lookup:Optional[TemplateLookup] = None):
+    def __init__(self, output_dir: str, template_lookup: Optional[TemplateLookup] = None):
         """
-        @arg filebase: Output directory.
+        @arg output_dir: Output directory.
         @arg template_lookup: Custom L{TemplateLookup} object.
         """
-        self.base: Path = Path(filebase)
+        self.output_dir: Path = Path(output_dir)
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
@@ -56,13 +57,13 @@ class TemplateWriter(IWriter):
         """
         Write static CSS and JS files to build directory.
         """
-        os.makedirs(self.base, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
         for template in self.template_lookup.templates:
             if isinstance(template, _StaticTemplate):
-                with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
-                    jobj.write(template.text)
+                with self.output_dir.joinpath(template.name).open('w', encoding='utf-8') as fobj:
+                    fobj.write(template.text)
 
-    def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
+    def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """
         Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}.
         """
@@ -79,23 +80,34 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj:
+            with self.output_dir.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob:model.Documentable) -> None:
+        # Search stuff.
+        system.msg('html', 'starting Lunr.js search index ...', nonl=True)
+        T = time.time()
+        index_writer = search.IndexWriter(self.output_dir)
+        index_writer.write_lunr_index(system.allobjects.values())
+
+        search_resutls = search.SearchResultsPage(system, self.template_lookup)
+        with self.output_dir.joinpath(search_resutls.filename).open('wb') as fobj:
+            flattenToFile(fobj, search_resutls)
+        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+
+    def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
         if ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.base.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.output_dir.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
-    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
+    def _writeDocsForOne(self, ob: model.Documentable, fobj: IO[bytes]) -> None:
         if not ob.isVisible:
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage
