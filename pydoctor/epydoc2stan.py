@@ -184,6 +184,11 @@ class _EpydocLinker(DocstringLinker):
             target = src.resolveName(identifier)
             if target is not None:
                 return target
+            if isinstance(src, model.Class):
+                for base in src.allbases():
+                    target = base.resolveName(identifier)
+                    if target is not None:
+                        return target
             src = src.parent
 
         # Walk up the object tree again and see if 'identifier' refers to an
