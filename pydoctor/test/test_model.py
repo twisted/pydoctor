@@ -229,6 +229,11 @@ class Dummy:
     def crash(self) -> None:
         """Mmm"""
 
+
+def dummy_function_with_complex_signature(foo: int, bar: float) -> str:
+    return "foo"
+
+
 def test_introspection_python() -> None:
     """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
@@ -240,10 +245,14 @@ def test_introspection_python() -> None:
 
     func = module.contents['test_introspection_python']
     assert func.docstring == "Find docstrings from this test using introspection on pure Python."
+    assert str(func.signature) == "() -> None"
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
     assert method is not None
     assert method.docstring == "Mmm"
+
+    func = module.contents['dummy_function_with_complex_signature']
+    assert str(func.signature) == "(foo: int, bar: float) -> str"
 
 
 def test_introspection_extension() -> None:

@@ -27,7 +27,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
 
 def signature(function: model.Function) -> str:
     """Return a nicely-formatted source-like function signature."""
-    return str(function.signature) if function.signature else function.text_signature or "(...)"
+    return str(function.signature) if function.signature else "(...)"
 
 class DocGetter:
     def get(self, ob, summary=False):

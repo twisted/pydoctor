@@ -528,7 +528,6 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
-    text_signature: str = ""
 
     def setup(self) -> None:
         super().setup()
@@ -831,8 +830,12 @@ class System:
                 f.decorators = None
                 try:
                     f.signature = signature(v)
-                except Exception:
-                    f.text_signature = (getattr(v, "__text_signature__") or "") + " (invalid)"
+                except ValueError:
+                    # function either has an invalid text signature or no signature
+                    # at all. We distinguish between the two by looking at the
+                    # __text_signature__ attribute
+                    if getattr(v, "__text_signature__", None) is not None:
+                        parent.report("Cannot parse signature of {0.name}.{1}".format(parent, k))
                     f.signature = None
                         
                 f.is_async = False
