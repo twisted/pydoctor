@@ -550,14 +550,13 @@ T = TypeVar('T')
 
 # Declare the types that we consider as functions (also when they are coming
 # from a C extension)
-func_types = [types.BuiltinFunctionType, types.FunctionType]
+func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
 if hasattr(types, "MethodDescriptorType"):
     # This is Python >= 3.7 only
-    func_types.append(types.MethodDescriptorType)
+    func_types += (types.MethodDescriptorType, )
 if hasattr(types, "ClassMethodDescriptorType"):
     # This is Python >= 3.7 only
-    func_types.append(types.ClassMethodDescriptorType)
-func_types = tuple(func_types)
+    func_types += (types.ClassMethodDescriptorType, )
 
 
 class System:
@@ -822,7 +821,6 @@ class System:
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            # TODO(ntamas): MethodDescriptorType and ClassMethodDescriptorType are Python 3.7 only.
             if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
                     # instances of the abstract types in func_types
