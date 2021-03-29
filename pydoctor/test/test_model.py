@@ -2,6 +2,7 @@
 Unit tests for model.
 """
 
+from inspect import signature
 from optparse import Values
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import cast
@@ -245,14 +246,14 @@ def test_introspection_python() -> None:
 
     func = module.contents['test_introspection_python']
     assert func.docstring == "Find docstrings from this test using introspection on pure Python."
-    assert str(func.signature) == "() -> None"
+    assert func.signature == signature(test_introspection_python)
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
     assert method is not None
     assert method.docstring == "Mmm"
 
     func = module.contents['dummy_function_with_complex_signature']
-    assert str(func.signature) == "(foo: int, bar: float) -> str"
+    assert func.signature == signature(dummy_function_with_complex_signature)
 
 
 def test_introspection_extension() -> None:
