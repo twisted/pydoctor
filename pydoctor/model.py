@@ -553,9 +553,13 @@ func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionTy
 if hasattr(types, "MethodDescriptorType"):
     # This is Python >= 3.7 only
     func_types += (types.MethodDescriptorType, )
+else:
+    func_types += (type(str.join), )
 if hasattr(types, "ClassMethodDescriptorType"):
     # This is Python >= 3.7 only
     func_types += (types.ClassMethodDescriptorType, )
+else:
+    func_types += (type(dict.__dict__["fromkeys"]), )
 
 
 class System:
