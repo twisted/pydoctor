@@ -87,7 +87,7 @@ class TemplateWriter(IWriter):
         # Search stuff.
         system.msg('html', 'starting search index ...', nonl=True)
         T = time.time()
-        search.write_lunr_index(self.output_dir, system.allobjects.values())
+        search.write_lunr_index(self.output_dir, system)
         system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:

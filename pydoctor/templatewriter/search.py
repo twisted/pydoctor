@@ -36,17 +36,17 @@ class AllDocuments(Page):
 
 
 # https://lunr.readthedocs.io/en/latest/
-def write_lunr_index(output_dir: str, allobjects: Iterable[model.Documentable]) -> None:
+def write_lunr_index(output_dir: str, system: model.System) -> None:
     """
     @arg output_dir: Output directory.
     @arg allobjects: All objects in the system. 
     """
     output_dir_path = Path(output_dir)
     # TODO: sanitize docstring in a proper way. 
-    documents = [dict(ref=i, name=ob.name, 
+    documents = [dict(ref=str(i), name=ob.name, 
                         fullName=ob.fullName(), kind=ob.kind or '', 
                         docstring=ob.docstring )   
-                        for i, ob in enumerate(allobjects)]
+                        for i, ob in enumerate(system.allobjects.values())]
 
     index = lunr(
         ref='ref',
