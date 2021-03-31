@@ -52,7 +52,7 @@ def write_lunr_index(output_dir: str, allobjects: Iterable[model.Documentable]) 
         ref='ref',
         fields=[dict(field_name='name', boost=10), 
                 dict(field_name='fullName', boost=5),
-                dict(field_name='docstring', boost=2), ],
+                dict(field_name='docstring', boost=5), ],
         documents=documents )
     
     serialized_index = json.dumps(index.serialize())
