@@ -24,22 +24,26 @@
           
           <form>
             <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" disabled="" minlength="2" />
+            <button type="submit" title="Search">&#10157;</button>
+            <span title="Search bar offers the following options:
+
+            - Term presence: The below example searches for documents that must contain “foo”, might contain “bar” and must not contain “baz”:
+            '+foo bar -baz'
+
+            - Fuzzy matches: The following search matches all documents that have a word within 1 edit distance of “foo”:
+            'foo~1'" style="height: 100%; padding 3px;">&#8505;</span>
           </form>
-    
-          
+
       </div>
 
       <script>
-
         document.getElementById('search-box').disabled = false;
-
         var params = (new URL(document.location)).searchParams;
         var query = params.get('search-query')
         if (query){
           // Redirect to the search result page
           window.location.href = 'search-results.html#' + encodeURIComponent(query);
         }
-
       </script>
 
     </div>
