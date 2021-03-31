@@ -1,20 +1,17 @@
 'use strict';
 
 
-function httpGet(callback, url, mimeType) {   
+function httpGet(callback, url) {   
 
     var xobj = new XMLHttpRequest();
-        xobj.overrideMimeType(mimeType);
     xobj.open('GET', url, true); // Asynchronous
     xobj.send(null);  
     xobj.onload = function () {
-        if (xobj.readyState == 4){
-            if (xobj.status == "200") {
-                callback(xobj.responseText);
-            }
-            else{
-                throw( "Error during the XMLHttpRequest, status: " + xobj.status.toString() ); 
-            }
+        if (xobj.status == "200") {
+            callback(xobj.responseText);
+        }
+        else{
+            throw( "Error during the XMLHttpRequest, status: " + xobj.status.toString() ); 
         }
     };
 }
@@ -23,11 +20,8 @@ function setStatus(message) {
     document.getElementById('search-status').textContent = message;
 }
 
-
-
-function buildSearchResult(result, documents) {
-    // Find the result model 
-    const dobj = documents.getElementById(parseInt(result.ref));
+function buildSearchResult(dobj) {
+    
     
     // Build one result item
     var li = document.createElement('li'),
@@ -101,11 +95,22 @@ async function _search(query) {
             
             // Display results
             results.forEach(function (result) {
-                results_list.appendChild(buildSearchResult(result, documents));
+                // Find the result model 
+                let dobj = documents.getElementById(result.ref);
+
+                if (!dobj){
+                    setStatus("Something went wrong. See development console for details.");
+                    throw( "Cannot find document ID: " + result.ref ); 
+                }
+
+                let li = buildSearchResult(dobj)
+                results_list.appendChild(li);
+
             });
 
-        }, "all-documents.html", "application/xml");
-    }, "searchindex.json", "application/json");
+        }, "all-documents.html");
+    }, "searchindex.json");
+
 }
 
 setStatus("Searching...");
