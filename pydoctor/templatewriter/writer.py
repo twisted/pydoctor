@@ -76,7 +76,7 @@ class TemplateWriter(IWriter):
 
     def writeSummaryPages(self, system: model.System) -> None:
         import time
-        for pclass in summary.summarypages:
+        for pclass in summary.summarypages + search.searchpages:
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
@@ -85,14 +85,9 @@ class TemplateWriter(IWriter):
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
         # Search stuff.
-        system.msg('html', 'starting Lunr.js search index ...', nonl=True)
+        system.msg('html', 'starting search index ...', nonl=True)
         T = time.time()
-        index_writer = search.IndexWriter(self.output_dir)
-        index_writer.write_lunr_index(system.allobjects.values())
-
-        search_resutls = search.SearchResultsPage(system, self.template_lookup)
-        with self.output_dir.joinpath(search_resutls.filename).open('wb') as fobj:
-            flattenToFile(fobj, search_resutls)
+        search.write_lunr_index(self.output_dir, system.allobjects.values())
         system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:

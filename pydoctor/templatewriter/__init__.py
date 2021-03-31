@@ -84,7 +84,7 @@ class Template(abc.ABC):
         self.text = text
         """Template text: contents of the template file."""
 
-    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js')
+    TEMPLATE_FILES_SUFFIX = ('.html', '.xml', '.xhtml', '.css', '.js')
 
     @classmethod
     def fromfile(cls, path: Path) -> Optional['Template']:
@@ -104,7 +104,7 @@ class Template(abc.ABC):
             except IOError as e:
                 warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
             else:
-                if path.suffix.lower() == '.html':
+                if path.suffix.lower() in ('.html', '.xml', '.xhtml'):
                     return _HtmlTemplate(name=path.name, text=text)
                 else:
                     return _StaticTemplate(name=path.name, text=text)

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+  <meta name="pydoctor-template-version" content="1" />
+  <t:transparent t:render="head">Head</t:transparent>
+  <body>
+    <div t:render="header" />
+
+    <t:transparent t:render="nav">Nav</t:transparent>
+
+    <div class="container" t:render="subheader" />
+    
+    <div class="container">
+      <h4>All Documents</h4>
+
+       <ul>
+          <li t:render="documents">
+            <t:attr name="id"><t:slot name="id" /></t:attr>
+            <div class="fullName"><t:slot name="fullName" /></div>
+            <div class="url"><t:slot name="url" /></div>
+            <div class="kind"><t:slot name="kind" /></div>
+            <div class="summary"><t:slot name="summary" /></div>
+          </li>
+       </ul>
+    </div>
+  </body>
+</html>

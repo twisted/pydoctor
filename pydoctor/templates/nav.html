@@ -36,7 +36,7 @@
         var params = (new URL(document.location)).searchParams;
         var query = params.get('search-query')
         if (query){
-          // Simulate a mouse click
+          // Redirect to the search result page
           window.location.href = 'search-results.html#' + encodeURIComponent(query);
         }
 

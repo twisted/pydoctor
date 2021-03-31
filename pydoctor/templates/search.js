@@ -1,27 +1,35 @@
 'use strict';
 
+
+function httpGet(callback, url, mimeType) {   
+
+    var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType(mimeType);
+    xobj.open('GET', url, true); // Asynchronous
+    xobj.send(null);  
+    xobj.onload = function () {
+        if (xobj.readyState == 4){
+            if (xobj.status == "200") {
+                callback(xobj.responseText);
+            }
+            else{
+                throw( "Error during the XMLHttpRequest, status: " + xobj.status.toString() ); 
+            }
+        }
+    };
+}
+
 function setStatus(message) {
     document.getElementById('search-status').textContent = message;
 }
 
-async function buildIndex() {
-    return lunr(function () {
-        this.ref('i');
-        this.field('name', {boost: 10});
-        this.field('fullName', {boost: 5});
-        this.field('docstring', {boost: 2});
-        this.metadataWhitelist = ['position'];
-        INDEX.forEach((doc, i) => {
-            doc['i'] = i;
-            this.add(doc);
-        }, this);
-    });
-}
 
-var buildSearchResult = function (result) {
+
+function buildSearchResult(result, documents) {
     // Find the result model 
-    const dobj = INDEX[parseInt(result.ref)];
-
+    const dobj = documents.getElementById(parseInt(result.ref));
+    
+    // Build one result item
     var li = document.createElement('li'),
         article = document.createElement('article'),
         header = document.createElement('header'),
@@ -30,11 +38,16 @@ var buildSearchResult = function (result) {
         a = document.createElement('a'),
         p = document.createElement('p')
 
-    p.textContent = dobj.docstring;
-
-    a.setAttribute('href', dobj.url);
-    a.textContent = dobj.fullName + (dobj.kind == 'Function' ? '()' : '');
-
+    p.innerHTML = dobj.querySelector('.summary').innerHTML;
+    a.setAttribute('href', dobj.querySelector('.url').innerHTML);
+    a.textContent = dobj.querySelector('.fullName').innerHTML;
+    
+    // Adding '()' on functions and methods
+    if (["Function", "Method"].indexOf(dobj.querySelector('.kind').innerHTML) != -1){
+        a.textContent = a.textContent + '()'
+    }
+    
+    // Putting everything together
     li.appendChild(article);
     article.appendChild(header);
     article.appendChild(section);
@@ -60,33 +73,45 @@ function search(query) {
 
 async function _search(query) {
     if (!query) {
-        setStatus('No query provided.');
+        setStatus('No search query provided.');
         return;
     }
 
     // Call lunr.Index.search
-    const results = (await lunr_index).search(query);
-    if (!results.length) {
-        setStatus('No results matches "' + query + '"');
-        return;
-    }
-    
-    setStatus(
-        'Search for "' + query + '" yielded ' + results.length + ' ' +
-        (results.length === 1 ? 'result' : 'results') + ':');
-    
-    results.forEach(function (result) {
-        document.getElementById('search-results').appendChild(buildSearchResult(result));
-    });
+    httpGet(function(response) {
+        
+        // Parse JSON string into object
+        let data = JSON.parse(response);
+        // https://lunrjs.com/docs/lunr.Index.html
+        let lunr_index = lunr.Index.load(data);
+        let results = lunr_index.search(query);
+        if (!results.length) {
+            setStatus('No results matches "' + query + '"');
+            return;
+        }
+        setStatus(
+            'Search for "' + query + '" yielded ' + results.length + ' ' +
+            (results.length === 1 ? 'result' : 'results') + ':');
+        
+        // Get result data
+        httpGet(function(response2) {
+            let parser = new DOMParser();
+            let documents = parser.parseFromString(response2, "text/xml");
+            let results_list = document.getElementById('search-results');
+            
+            // Display results
+            results.forEach(function (result) {
+                results_list.appendChild(buildSearchResult(result, documents));
+            });
+
+        }, "all-documents.html", "application/xml");
+    }, "searchindex.json", "application/json");
 }
 
 setStatus("Searching...");
-
-
-// Build the index
-const lunr_index = buildIndex();
-
-// Launch the search
+// Get the query terms
 const _query = decodeURIComponent(new URL(window.location).hash.substring(1))
+// Setting the search box text to the query
 document.getElementById('search-box').value = _query
+// Launch the search
 search(_query);
