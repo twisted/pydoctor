@@ -5,19 +5,30 @@ function httpGet(callback, url) {
 
     var xobj = new XMLHttpRequest();
     xobj.open('GET', url, true); // Asynchronous
-    xobj.send(null);  
+    
     xobj.onload = function () {
         if (xobj.status == "200") {
             callback(xobj.responseText);
         }
         else{
-            throw( "Error during the XMLHttpRequest, status: " + xobj.status.toString() ); 
+            setErrorStatus()
+            throw( "HTTP Error during the XMLHttpRequest, status: " + xobj.status.toString() ); 
         }
     };
+
+    xobj.onerror = function () {
+        setErrorStatus()
+    };
+
+    xobj.send(null);  
 }
 
 function setStatus(message) {
     document.getElementById('search-status').textContent = message;
+}
+
+function setErrorStatus() {
+    setStatus("Something went wrong. See development console for details.");
 }
 
 function buildSearchResult(dobj) {
@@ -59,7 +70,7 @@ function search(query) {
             setStatus(e.message);
             return;
           } else {
-            setStatus("Something went wrong. See development console for details.");
+            setErrorStatus()
             throw err;
           }
     });
@@ -71,35 +82,34 @@ async function _search(query) {
         return;
     }
 
-    // Call lunr.Index.search
     httpGet(function(response) {
         
         // Parse JSON string into object
         let data = JSON.parse(response);
         // https://lunrjs.com/docs/lunr.Index.html
         let lunr_index = lunr.Index.load(data);
+        // Call lunr.Index.search
         let results = lunr_index.search(query);
         if (!results.length) {
             setStatus('No results matches "' + query + '"');
             return;
         }
-        setStatus(
-            'Search for "' + query + '" yielded ' + results.length + ' ' +
-            (results.length === 1 ? 'result' : 'results') + ':');
         
         // Get result data
         httpGet(function(response2) {
             let parser = new DOMParser();
-            let documents = parser.parseFromString(response2, "text/xml");
+            let all_documents = parser.parseFromString(response2, "text/html");
             let results_list = document.getElementById('search-results');
+
+            setStatus('Loading...');
             
             // Display results
             results.forEach(function (result) {
                 // Find the result model 
-                let dobj = documents.getElementById(result.ref);
+                let dobj = all_documents.getElementById(result.ref);
 
                 if (!dobj){
-                    setStatus("Something went wrong. See development console for details.");
+                    setErrorStatus()
                     throw( "Cannot find document ID: " + result.ref ); 
                 }
 
@@ -107,6 +117,10 @@ async function _search(query) {
                 results_list.appendChild(li);
 
             });
+
+            setStatus(
+                'Search for "' + query + '" yielded ' + results.length + ' ' +
+                (results.length === 1 ? 'result' : 'results') + ':');
 
         }, "all-documents.html");
     }, "searchindex.json");
