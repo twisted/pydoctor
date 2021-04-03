@@ -309,7 +309,7 @@ class UndocumentedSummaryPage(Page):
             tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
-summarypages: Iterable[Type[Page]] = [
+summarypages: List[Type[Page]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

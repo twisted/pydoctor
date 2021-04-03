@@ -1,6 +1,7 @@
+from os import PathLike
 from pathlib import Path
 from pydoctor.templatewriter import TemplateLookup
-from typing import Iterable, Optional, Type
+from typing import Iterable, List, Optional, Sequence, Type
 import json
 
 from twisted.web.iweb import IRenderable, IRequest, ITemplateLoader
@@ -26,7 +27,7 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: IRequest, tag: Tag) -> IRenderable:
+    def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:
         documents = [dict(id=str(i), name=ob.name, 
                           fullName=ob.fullName(), kind=ob.kind or '', 
                           summary=epydoc2stan.format_summary(ob), url=ob.url)   
@@ -36,12 +37,11 @@ class AllDocuments(Page):
 
 
 # https://lunr.readthedocs.io/en/latest/
-def write_lunr_index(output_dir: str, system: model.System) -> None:
+def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     @arg output_dir: Output directory.
     @arg allobjects: All objects in the system. 
     """
-    output_dir_path = Path(output_dir)
     # TODO: sanitize docstring in a proper way. 
     documents = [dict(ref=str(i), name=ob.name, 
                         fullName=ob.fullName(), kind=ob.kind or '', 
@@ -57,7 +57,7 @@ def write_lunr_index(output_dir: str, system: model.System) -> None:
     
     serialized_index = json.dumps(index.serialize())
 
-    with open(output_dir_path.joinpath('searchindex.json'), 'w', encoding='utf-8') as fobj:
+    with open(output_dir.joinpath('searchindex.json'), 'w', encoding='utf-8') as fobj:
         fobj.write(serialized_index)
 
-searchpages: Iterable[Type[Page]] = [SearchResultsPage, AllDocuments]
+searchpages: List[Type[Page]] = [SearchResultsPage, AllDocuments]
