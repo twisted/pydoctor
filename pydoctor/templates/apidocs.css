@@ -66,8 +66,13 @@ a.projecthome:hover {
     align-items: baseline;
 }
 
-.navlinks > a, .navlinks > form {
+.navlinks > a {
     padding: 10px 0 10px 15px;
+}
+
+.navlinks > form {
+    padding: 0px 0 8px 15px;
+    align-self: flex-end;
 }
 
 .navlinks > a:hover {

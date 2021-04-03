@@ -1,39 +1,44 @@
 
 <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <meta name="pydoctor-template-version" content="1" />
-  <div class="container" >
+  <div class="container">
 
     <div class="navbar-header">
       
       <div class="navlinks">
-          <span class="navbar-brand">
-            <t:slot name="project" /> <a href="index.html">API Documentation</a>
-          </span>
+        <span class="navbar-brand">
+          <t:slot name="project" /> <a href="index.html">API Documentation</a>
+        </span>
 
-          <a href="moduleIndex.html">
-            Modules
-          </a>
+        <a href="moduleIndex.html">
+          Modules
+        </a>
 
-          <a href="classIndex.html">
-            Classes
-          </a>
+        <a href="classIndex.html">
+          Classes
+        </a>
 
-          <a href="nameIndex.html">
-            Names
-          </a>
-          
-          <form>
-            <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" disabled="" minlength="2" />
-            <button type="submit" title="Search">&#10157;</button>
-            <span title="Search bar offers the following options:
+        <a href="nameIndex.html">
+          Names
+        </a>
 
-            - Term presence: The below example searches for documents that must contain “foo”, might contain “bar” and must not contain “baz”:
-            '+foo bar -baz'
+        <form>
+          <div class="input-group">
+            <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" disabled="" minlength="2" type="search" class="form-control" />
+            <span class="input-group-btn">
+              <span><button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" /></button></span>
 
-            - Fuzzy matches: The following search matches all documents that have a word within 1 edit distance of “foo”:
-            'foo~1'" style="height: 100%; padding 3px;">&#8505;</span>
-          </form>
+              <span class="btn btn-default" style="cursor: help;" title="Search bar offers the following options:
 
+                - Term presence: The below example searches for documents that must contain “foo”, might contain “bar” and must not contain “baz”:
+              '+foo bar -baz'
+
+                - Fuzzy matches: The following search matches all documents that have a word within 1 edit distance of “foo”:
+              'foo~1'"><img src="fonts/info.svg"/>
+              </span>
+            </span>
+          </div>
+        </form>
       </div>
 
       <script>
