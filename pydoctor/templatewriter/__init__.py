@@ -9,6 +9,7 @@ else:
 import abc
 from pathlib import Path
 import warnings
+import os
 from xml.dom import minidom
 
 from twisted.web.iweb import ITemplateLoader
@@ -30,6 +31,15 @@ def parse_xml(text: str) -> minidom.Document:
         return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
+
+def scandir(path: Path) -> Iterable['Template']:
+    """
+    Scan a directory for templates. 
+    """
+    for entry in os.scandir(path):
+        template = Template.fromfile(Path(entry))
+        if template:
+            yield template
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
@@ -84,7 +94,7 @@ class Template(abc.ABC):
         self.text = text
         """Template text: contents of the template file."""
 
-    TEMPLATE_FILES_SUFFIX = ('.html', '.xml', '.xhtml', '.css', '.js')
+    TEMPLATE_FILES_SUFFIX = ('.html', '.xml', '.xhtml', '.css', '.js', '.svg')
 
     @classmethod
     def fromfile(cls, path: Path) -> Optional['Template']:
@@ -94,23 +104,27 @@ class Template(abc.ABC):
 
         Warns if the template cannot be created.
 
-        @param path: A L{Path} that should point to a HTML, CSS or JS file.
+        @param path: A L{Path} that should point to a template file.
         @returns: The template object or C{None} if file is invalid.
         """
-        if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
-            try:
-                with path.open('r', encoding='utf-8') as fobj:
-                    text = fobj.read()
-            except IOError as e:
-                warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
-            else:
-                if path.suffix.lower() in ('.html', '.xml', '.xhtml'):
-                    return _HtmlTemplate(name=path.name, text=text)
+        if path.is_dir():
+            return _TemplateSubFolder(name=path.name, templates=scandir(path))
+        if path.is_file():
+            if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
+                try:
+                    with path.open('r', encoding='utf-8') as fobj:
+                        text = fobj.read()
+                except IOError as e:
+                    warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
                 else:
-                    return _StaticTemplate(name=path.name, text=text)
-        else:
-            warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
-                f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
+                    if path.suffix.lower() in ('.html', '.xml', '.xhtml'):
+                        return _HtmlTemplate(name=path.name, text=text)
+                    else:
+                        return _StaticTemplate(name=path.name, text=text)
+            else:
+                warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
+                    f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
+        
         return None
 
     def is_empty(self) -> bool:
@@ -157,6 +171,16 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None:
         return None
+
+class _TemplateSubFolder(_StaticTemplate):
+    """
+    Special template to hold a subfolder contents and copy it to the output folder.
+
+    Used for ``fonts``. 
+    """
+    def __init__(self, name: str, templates: Iterable[Template]):
+        super().__init__(name, '')
+        self.templates = templates
 
 class _HtmlTemplate(Template):
     """
@@ -238,15 +262,16 @@ class TemplateLookup:
 
         # Relative path from here is: ../templates
         default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
-
-        self._templates: Dict[str, Template] = {
-            t.name: t
-            for t in (Template.fromfile(f) for f in default_template_dir.iterdir())
-            if t
-            }
-
+        self._templates: Dict[str, Template] = {}
+        self._load_dir(default_template_dir)
         self._default_templates = self._templates.copy()
 
+    def _load_dir(self, templatedir: Path, add: bool = False) -> None:
+        for template in scandir(templatedir):
+            if add:
+                self.add_template(template)
+            else:
+                self._templates[template.name] = template
 
     def add_template(self, template: Template) -> None:
         """
@@ -281,10 +306,7 @@ class TemplateLookup:
         """
         Scan a directory and add all templates in the given directory to the lookup.
         """
-        for path in dir.iterdir():
-            template = Template.fromfile(path)
-            if template:
-                self.add_template(template)
+        self._load_dir(dir, add=True)
 
     def get_template(self, filename: str) -> Template:
         """

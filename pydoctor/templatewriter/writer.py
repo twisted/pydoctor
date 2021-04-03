@@ -6,7 +6,7 @@ import os
 from typing import IO
 from pathlib import Path
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate
+from pydoctor.templatewriter import IWriter, _StaticTemplate, _TemplateSubFolder, Template
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, search, TemplateLookup
 
@@ -58,9 +58,20 @@ class TemplateWriter(IWriter):
         Write static CSS and JS files to build directory.
         """
         os.makedirs(self.output_dir, exist_ok=True)
-        for template in self.template_lookup.templates:
-            if isinstance(template, _StaticTemplate):
-                with self.output_dir.joinpath(template.name).open('w', encoding='utf-8') as fobj:
+        self._writeStaticTemplates(self.template_lookup.templates)
+    
+    def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[str] = None) -> None:
+        _template_rel_path_t = f"{subfolder + os.sep if subfolder else ''}%s"
+        
+        for template in templates:
+            _template_rel_path = _template_rel_path_t % template.name
+            outfile = self.output_dir.joinpath(_template_rel_path)
+            if isinstance(template, _TemplateSubFolder):
+                os.makedirs(outfile, exist_ok=True)
+                self._writeStaticTemplates(template.templates, subfolder=_template_rel_path)
+                
+            elif isinstance(template, _StaticTemplate):
+                with outfile.open('w', encoding='utf-8') as fobj:
                     fobj.write(template.text)
 
     def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
