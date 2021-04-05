@@ -63,9 +63,9 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         fields=[dict(field_name='name', boost=3), 
                 dict(field_name='docstring', boost=2),
                 dict(field_name='fullName', boost=2),
-                dict(field_name='kind', boost=-1),
-                dict(field_name='type', boost=-1),
-                dict(field_name='privacy', boost=-1) ],
+                dict(field_name='kind', boost=-10),
+                dict(field_name='type', boost=-10),
+                dict(field_name='privacy', boost=-10) ],
         documents=documents )   
     
     serialized_index = json.dumps(index.serialize())
