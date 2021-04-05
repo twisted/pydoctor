@@ -22,34 +22,18 @@
           Names
         </a>
 
-        <form>
+        <form action="search-results.html">
           <div class="input-group">
-            <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" disabled="" minlength="2" type="search" class="form-control" />
+            <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" minlength="2" class="form-control"/>
             <span class="input-group-btn">
-              <span><button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" /></button></span>
-
-              <span class="btn btn-default" style="cursor: help;" title="Search bar offers the following options:
-
-                - Term presence: The below example searches for documents that must contain “foo”, might contain “bar” and must not contain “baz”:
-              '+foo bar -baz'
-
-                - Fuzzy matches: The following search matches all documents that have a word within 1 edit distance of “foo”:
-              'foo~1'"><img src="fonts/info.svg"/>
-              </span>
+            <button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" alt="Search!"/></button>
             </span>
           </div>
         </form>
+
+        <!-- <a href="apidocs-help.html">Help</a> -->
       </div>
 
-      <script>
-        document.getElementById('search-box').disabled = false;
-        var params = (new URL(document.location)).searchParams;
-        var query = params.get('search-query')
-        if (query){
-          // Redirect to the search result page
-          window.location.href = 'search-results.html#' + encodeURIComponent(query);
-        }
-      </script>
 
     </div>
   </div>

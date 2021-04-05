@@ -22,8 +22,31 @@ function updatePrivate() {
     document.querySelector('#showPrivate button').innerText =
         hidden ? 'Show Private API' : 'Hide Private API';
     if (history) {
-        var search = hidden ? document.location.pathname : '?private=1';
-        history.replaceState(null, '', search + document.location.hash);
+        // Ensure that search paramaters do not get overriden by private=1
+        var search_params = (new URL(document.URL)).searchParams;
+        
+        var new_location = document.location.pathname;
+
+        if (!hidden){
+            new_location = new_location + '?private=1';
+        }
+        else{
+            if (search_params.has('private')){
+                search_params.delete('private');
+            }
+        }
+
+        if (search_params.toString().length>0){
+            if (hidden){
+                new_location = new_location + '?';
+            }
+            else{
+                new_location = new_location + '&';
+            }
+            new_location = new_location + search_params;
+        }
+
+        history.replaceState(null, '', new_location + document.location.hash);
     }
 }
 initPrivate();

@@ -422,7 +422,8 @@ pre {
 
 body.private-hidden #splitTables .private,
 body.private-hidden #childList .private,
-body.private-hidden #summaryTree .private {
+body.private-hidden #summaryTree .private,
+body.private-hidden #search-results .private {
     display: none;
 }
 

@@ -11,21 +11,30 @@
     
     <div class="container">
         <noscript>
-            Cannot display the search results: JavaScript is not supported/enabled in your browser. 
+            <h1>Cannot search: JavaScript is not supported/enabled in your browser.</h1>
         </noscript>
-        <main>
-            <h4 id="search-status"></h4>
-            <ul id="search-results"></ul>
-        </main>
+          <div class="page-header">
+          <h1 id="search-status"></h1>
+          <div id="showPrivate">
+            <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+          </div>
+        </div>
+
+        <div class="rst-admonition note" id="search-infos-box" style="display:none;margin-top: 10px;">
+          <p class="rst-last"><span id="search-infos"></span></p>
+        </div>
+
+        <ul id="search-results"></ul>
 
         <div>
             <p>Search results provided by <a href="https://lunrjs.com">Lunr.js</a></p>
         </div>
-
-        <!-- lunr source -->
-        <script src="lunr.js"></script>
-        <!-- boilerplate search -->
-        <script src="search.js"></script>
+        
     </div>
+
+    <footer t:render="footer" />
+    <script src="ajax.js" type='text/javascript'></script>
+    <script src="search.js" type='text/javascript'></script>
+    <script src="pydoctor.js" type='text/javascript'></script>
   </body>
 </html>
