@@ -318,11 +318,17 @@ tr.private {
 }
 
 
-#childList > div {
+#childList > div, #search-results > li {
     margin: 10px;
     padding: 10px;
     padding-bottom: 5px;
+    display: block;
+    border-left-color: #03a9f4;
+    border-left-width: 1px;
+    border-left-style: solid;
+    background: #fafafa;
 }
+
 
 .functionBody {
     margin-left: 15px;
@@ -394,12 +400,7 @@ a.sourceLink {
 }
 
 
-#childList > div {
-    border-left-color: #03a9f4;
-    border-left-width: 1px;
-    border-left-style: solid;
-    background: #fafafa;
-}
+
 
 .moduleDocstring {
     margin: 20px;
@@ -423,7 +424,8 @@ pre {
 body.private-hidden #splitTables .private,
 body.private-hidden #childList .private,
 body.private-hidden #summaryTree .private,
-body.private-hidden #search-results .private {
+body.private-hidden #search-results .private,
+body.private-hidden .container > .private {
     display: none;
 }
 
@@ -525,4 +527,12 @@ div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p
 div.tip, div.hint, div.important {
     background-color: #d9edf7;
     border-color: #bce8f1;
+}
+
+#search-results {
+    margin: 0;
+}
+
+#search-results section {
+    padding: 5px 0 0 8px;
 }

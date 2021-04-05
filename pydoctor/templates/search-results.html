@@ -13,15 +13,24 @@
         <noscript>
             <h1>Cannot search: JavaScript is not supported/enabled in your browser.</h1>
         </noscript>
-          <div class="page-header">
+        
+        <div class="page-header">
           <h1 id="search-status"></h1>
           <div id="showPrivate">
             <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
           </div>
         </div>
 
-        <div class="rst-admonition note" id="search-infos-box" style="display:none;margin-top: 10px;">
+        <div class="rst-admonition note" id="search-infos-box" style="display:none;margin: 10px 0 0 0;">
           <p class="rst-last"><span id="search-infos"></span></p>
+        </div>
+
+        <div class="rst-admonition note private" style="margin: 10px 0 0 0;">
+          <p class="rst-last"><span id="search-private-infos"></span></p>
+        </div>
+
+        <div class="rst-admonition warning" id="search-warn-box" style="display:none;margin: 10px 0 0 0;">
+          <p class="rst-last"><span id="search-warn"></span></p>
         </div>
 
         <ul id="search-results"></ul>
