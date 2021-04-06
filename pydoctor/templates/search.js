@@ -2,13 +2,13 @@ function setStatus(message) {
   document.getElementById('search-status').textContent = message;
 }
 
-function setInfos(message) {
-  document.getElementById('search-infos').textContent = message;
+function _setInfos(message, box_id, text_id) {
+  document.getElementById(text_id).textContent = message;
   if (message.length>0){
-    document.getElementById('search-infos-box').style.display = 'block'
+    document.getElementById(box_id).style.display = 'block';
   }
   else{
-    document.getElementById('search-infos-box').style.display = 'none'
+    document.getElementById(box_id).style.display = 'none';
   }
 }
 
@@ -16,14 +16,12 @@ function setPrivateInfos(message) {
   document.getElementById('search-private-infos').textContent = message;
 }
 
+function setInfos(message) {
+  _setInfos(message, 'search-infos-box', 'search-infos');
+}
+
 function setWarning(message) {
-  document.getElementById('search-warn').textContent = message;
-  if (message.length>0){
-    document.getElementById('search-warn-box').style.display = 'block'
-  }
-  else{
-    document.getElementById('search-warn-box').style.display = 'none'
-  }
+  _setInfos(message, 'search-warn-box', 'search-warn');
 }
 
 function setErrorStatus() {
@@ -189,7 +187,17 @@ else{
           });
 
           if (response.data.results[0].score <= 15){
-            setWarning("Unfortunately, it looks like there aren't many great matches for your search.")
+            if (response.data.results.length > 200){
+              setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?")
+            }
+            else{
+              setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?")
+            }
+          }
+          else {
+            if (response.data.results.length > 200){
+              setWarning("Your search yielded a lot of results! Maybe try with other terms?")
+            }
           }
 
           let public_search_results = search_results_documents.filter(function(value){
