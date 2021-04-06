@@ -26,15 +26,64 @@
           <div class="input-group">
             <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" minlength="2" class="form-control"/>
             <span class="input-group-btn">
-            <button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" alt="Search!"/></button>
+              <button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" alt="Search!"/></button>
+              <a class="btn btn-default" id="search-help-button" title="Help" onclick="searchHelpText()"><img src="fonts/info.svg" alt="Help!"/></a>
             </span>
           </div>
         </form>
 
-        <!-- <a href="apidocs-help.html">Help</a> -->
+        <div class="rst-admonition hint" id="search-help-box" style="display:none;margin-top: 10px;">
+          <p class="rst-last">
+      
+            Search bar offers the following options:
+            <ul>   
+                <li>
+                  <strong>Term presence.</strong> The below example searches for documents that 
+                    must contain “foo”, might contain “bar” and must not contain “baz”:
+                  <br /> <code>'+foo bar -baz'</code>
+                </li> 
+
+                <li>
+                  <strong>Wildcards.</strong> The below example searches for documents with words beginning with “foo”:
+                  <br /> <code>'foo*'</code>
+                </li> 
+
+                <li>
+                  <strong>Search in specific fields.</strong> The following search matches all documents 
+                  that contains "foo" in their full dotted name and with “bar” in any field:
+                  <br /> <code>'+fullName:*foo* +bar'</code>
+
+                  <p>
+                    Possible fields: 'name', 'docstring', 'fullName'.
+                  </p>
+                </li>
+
+                <li>
+                  <strong>Fuzzy matches.</strong> The following search matches all documents 
+                  that have a word within 1 edit distance of “foo”:
+                  <br /> <code>'foo~1'</code>
+                </li>
+            </ul>
+
+          </p>
+        </div>
+        
       </div>
 
 
     </div>
   </div>
+
+  <script>
+    function searchHelpText() {
+        if (document.getElementById("search-help-box").style.display == "none"){
+          document.getElementById("search-help-box").style.display = "block";
+          document.getElementById("search-help-button").style.backgroundColor = '#e6e6e6';
+        }
+        else{
+          document.getElementById("search-help-box").style.display = "none";
+          document.getElementById("search-help-button").style.backgroundColor = '#fff';
+        }
+    }
+  </script>
 </nav>
