@@ -44,9 +44,9 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
 
     def get_ob_boost(ob) -> int:
-        if any(kind in ob.kind for kind in ['Class', 'Module', 'Package']):
+        if isinstance(ob, (model.Class, model.Package, model.Module)):
             return 3
-        elif any(kind in ob.kind for kind in ['Function', 'Method']):
+        elif isinstance(ob, model.Function):
             return 2
         else:
             return 1
@@ -60,12 +60,9 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
 
     index = lunr(
         ref='ref',
-        fields=[dict(field_name='name', boost=10), 
-                dict(field_name='docstring', boost=10),
-                dict(field_name='fullName', boost=5),
-                dict(field_name='kind', boost=-10),
-                dict(field_name='type', boost=-10),
-                dict(field_name='privacy', boost=-10) ],
+        fields=[dict(field_name='name', boost=2), 
+                dict(field_name='docstring', boost=1),
+                dict(field_name='fullName', boost=1) ],
         documents=documents )   
     
     serialized_index = json.dumps(index.serialize())
