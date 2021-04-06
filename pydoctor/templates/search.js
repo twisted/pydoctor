@@ -13,7 +13,7 @@ function _setInfos(message, box_id, text_id) {
 }
 
 function setPrivateInfos(message) {
-  document.getElementById('search-private-infos').textContent = message;
+  _setInfos(message, 'search-private-infos-box', 'search-private-infos');
 }
 
 function setInfos(message) {

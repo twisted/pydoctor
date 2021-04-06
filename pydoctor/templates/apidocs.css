@@ -329,7 +329,6 @@ tr.private {
     background: #fafafa;
 }
 
-
 .functionBody {
     margin-left: 15px;
 }
@@ -426,7 +425,7 @@ body.private-hidden #childList .private,
 body.private-hidden #summaryTree .private,
 body.private-hidden #search-results .private,
 body.private-hidden .container > .private {
-    display: none;
+    display: none!important;
 }
 
 /* Show private */
@@ -529,10 +528,33 @@ div.tip, div.hint, div.important {
     border-color: #bce8f1;
 }
 
+/* Search page */
+
 #search-results {
     margin: 0;
 }
 
 #search-results section {
     padding: 5px 0 0 8px;
+}
+
+#search-help-box {
+    margin: 10px;
+}
+
+#search-help-button {
+    background-color: #e6e6e6;
+}
+
+.search-help-hidden #search-help-box{
+    display: none;
+}
+
+.search-help-hidden #search-help-button{
+    background-color: #fff!important;
+}
+
+.search-results-container .rst-admonition{
+    display:none;
+    margin: 10px 0 0 0;
 }

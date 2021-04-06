@@ -9,7 +9,7 @@
 
     <div class="container" t:render="subheader" />
     
-    <div class="container">
+    <div class="container search-results-container">
         <noscript>
             <h1>Cannot search: JavaScript is not supported/enabled in your browser.</h1>
         </noscript>
@@ -21,21 +21,22 @@
           </div>
         </div>
 
-        <div class="rst-admonition note" id="search-infos-box" style="display:none;margin: 10px 0 0 0;">
+        <div class="rst-admonition note" id="search-infos-box">
           <p class="rst-last"><span id="search-infos"></span></p>
         </div>
 
-        <div class="rst-admonition note private" style="margin: 10px 0 0 0;">
+        <div class="rst-admonition note private" id="search-private-infos-box">
           <p class="rst-last"><span id="search-private-infos"></span></p>
         </div>
 
-        <div class="rst-admonition warning" id="search-warn-box" style="display:none;margin: 10px 0 0 0;">
+        <div class="rst-admonition warning" id="search-warn-box">
           <p class="rst-last"><span id="search-warn"></span></p>
         </div>
 
         <ul id="search-results"></ul>
 
         <div>
+            <hr />
             <p>Search results provided by <a href="https://lunrjs.com">Lunr.js</a></p>
         </div>
         

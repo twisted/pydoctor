@@ -27,12 +27,12 @@
             <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" minlength="2" class="form-control"/>
             <span class="input-group-btn">
               <button class="btn btn-default" type="submit" title="Search"><img src="fonts/search.svg" alt="Search!"/></button>
-              <a class="btn btn-default" id="search-help-button" title="Help" onclick="searchHelpText()"><img src="fonts/info.svg" alt="Help!"/></a>
+              <a class="btn btn-default" id="search-help-button" title="Help" onclick="toggleSearchHelpText()"><img src="fonts/info.svg" alt="Help!"/></a>
             </span>
           </div>
         </form>
 
-        <div class="rst-admonition hint" id="search-help-box" style="display:none;margin-top: 10px;">
+        <div class="rst-admonition hint" id="search-help-box">
           <p class="rst-last">
       
             Search bar offers the following options:
@@ -67,7 +67,7 @@
 
           </p>
         </div>
-        
+
       </div>
 
 
@@ -75,15 +75,11 @@
   </div>
 
   <script>
-    function searchHelpText() {
-        if (document.getElementById("search-help-box").style.display == "none"){
-          document.getElementById("search-help-box").style.display = "block";
-          document.getElementById("search-help-button").style.backgroundColor = '#e6e6e6';
-        }
-        else{
-          document.getElementById("search-help-box").style.display = "none";
-          document.getElementById("search-help-button").style.backgroundColor = '#fff';
-        }
+ 
+    function toggleSearchHelpText() {
+        document.body.classList.toggle("search-help-hidden");
     }
+    // Init searchHelpText
+    document.body.classList.add("search-help-hidden");
   </script>
 </nav>
