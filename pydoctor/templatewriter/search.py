@@ -60,9 +60,9 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
 
     index = lunr(
         ref='ref',
-        fields=[dict(field_name='name', boost=3), 
-                dict(field_name='docstring', boost=2),
-                dict(field_name='fullName', boost=2),
+        fields=[dict(field_name='name', boost=10), 
+                dict(field_name='docstring', boost=10),
+                dict(field_name='fullName', boost=5),
                 dict(field_name='kind', boost=-10),
                 dict(field_name='type', boost=-10),
                 dict(field_name='privacy', boost=-10) ],
