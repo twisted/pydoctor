@@ -10,11 +10,8 @@ nav.navbar {
     margin-bottom: 0;
 }
 
-nav.navbar > .navbar-header {
-    margin-right: 0;
-    margin-left: 0;
-    height: 100%;
-    display: inline-block;
+.navbar-header {
+    float: none;
 }
 
 .page-header {
@@ -29,6 +26,7 @@ nav.navbar > .navbar-header {
     margin-bottom: 3px;
     border-bottom: 0;
     box-shadow: 0 0 8px 8px #fff;
+    z-index: 99;
 }
 
 .navbar-brand {
@@ -70,10 +68,6 @@ a.projecthome:hover {
     padding: 10px 0 10px 15px;
 }
 
-.navlinks > form {
-    padding: 0px 0 8px 15px;
-    align-self: flex-end;
-}
 
 .navlinks > a:hover {
     background-color: transparent;
@@ -528,7 +522,13 @@ div.tip, div.hint, div.important {
     border-color: #bce8f1;
 }
 
-/* Search page */
+/* Search */
+
+.navlinks > .search-box-container {
+    padding: 0 0 8px 15px;
+    align-self: flex-end;
+    margin-left: auto;
+}
 
 #search-results {
     margin: 0;
@@ -557,4 +557,28 @@ div.tip, div.hint, div.important {
 .search-results-container .rst-admonition{
     display:none;
     margin: 10px 0 0 0;
+}
+
+.search-filter {
+    display: flex;
+    justify-content: space-between;
+}
+
+#search-filter-button:focus ~ ul.dropdown-menu{
+    display: block;
+}
+
+#search-filter-dropdown{
+    margin-left: 5px;
+    margin-right: 5px;
+    align-self: center;
+}
+
+#search-filter-dropdown-items hr {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+#search-filter-dropdown-items a {
+    cursor: pointer;
 }

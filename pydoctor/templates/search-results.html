@@ -26,7 +26,31 @@
         </div>
 
         <div class="rst-admonition note" id="search-infos-box">
-          <p class="rst-last"><span id="search-infos"></span></p>
+          <div class="search-filter">
+            <p class="rst-last">
+              <span id="search-infos">
+              </span>
+            </p>
+
+            <div class="dropdown" id="search-filter-dropdown">
+              <button class="btn btn-primary dropdown-toggle" type="button" id="search-filter-button" onclick="this.focus()">
+                <span class="button-label">Filter: Choose...</span>
+                <span class="caret"></span>
+              </button>
+              <ul class="dropdown-menu" id="search-filter-dropdown-items">
+                <li id="search-filter-show-all" onmousedown="showAllItems()">
+                  <a>No filter</a><hr /></li>
+                <li id="search-filter-show-modules" onmousedown="filterItems(['Module', 'Package'], 'Modules and Packages', this);">
+                  <a>Modules and Packages</a></li>
+                <li id="search-filter-show-classes" onmousedown="filterItems(['Class'], 'Classes', this);">
+                  <a>Classes</a></li>
+                <li id="search-filter-show-functions" onmousedown="filterItems(['Function'], 'Methods and Functions', this);">
+                  <a>Methods and Functions</a></li>
+                <li id="search-filter-show-attributes" onmousedown="filterItems(['Attribute'], 'Attributes', this);">
+                  <a>Attributes</a></li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div class="rst-admonition note private" id="search-private-infos-box">
