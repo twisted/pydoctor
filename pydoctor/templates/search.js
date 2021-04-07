@@ -108,7 +108,7 @@ function buildInfosString(search_results_documents, priv){
   return('Including ' + nb_module_or_package + (priv ? " private" : "")
     + ' module'+(nb_module_or_package>=2? 's and' : ' or')+' package'+(nb_module_or_package>=2? 's' : '') + ', '
     + nb_classes.toString() + (priv ? " private" : "") + ' class'+(nb_classes>=2 ? 'es' : '')+', ' + nb_methods_or_functions.toString() + (priv ? " private" : "")
-    + ' method'+(nb_methods_or_functions>=2? 's and' : ' or')+' function'+(nb_methods_or_functions>=2? 's' : '')+', '+' and ' + nb_var + (priv ? " private" : "") + ' attribute'+(nb_var>=2? 's' : '')+'.');
+    + ' method'+(nb_methods_or_functions>=2? 's and' : ' or')+' function'+(nb_methods_or_functions>=2? 's' : '')+', '+' and ' + nb_var + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+'.');
 }
 
 ///////////////////// FILTER //////////////////////////
