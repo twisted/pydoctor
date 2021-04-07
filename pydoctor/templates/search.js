@@ -68,67 +68,71 @@ function buildSearchResult(dobj) {
 
   // Set private
   if (dobj.querySelector('.privacy').innerHTML.includes('PRIVATE')){
-    li.setAttribute('class', 'private')
+    li.setAttribute('class', 'private');
   }
 
   //Add type metadata
-  let type_metadata = document.createElement('meta')
-  type_metadata.setAttribute('name', 'type')
-  type_metadata.setAttribute('class', 'type')
-  type_metadata.setAttribute('content', type_value)
-  type_metadata.innerHTML = type_value;
-  li.appendChild(type_metadata)
+  let type_metadata = document.createElement('meta');
+  type_metadata.setAttribute('name', 'type');
+  type_metadata.setAttribute('class', 'type');
+  type_metadata.setAttribute('content', type_value);
+  li.appendChild(type_metadata);
 
-  return li
+  return li;
 }
 
 function setLongSearchInfos(){
-  setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.")
+  setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.");
 }
 
 
 function buildInfosString(search_results_documents, priv){
 
   let nb_classes = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Class") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")))
+    return (value.querySelector('.type').innerHTML.endsWith("Class") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
   }).length;  
 
   let nb_methods_or_functions = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Function") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")))
+    return (value.querySelector('.type').innerHTML.endsWith("Function") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
   }).length;  
 
   let nb_module_or_package = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Module") || value.querySelector('.kind').innerHTML.endsWith("Package")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"))
+    return (value.querySelector('.type').innerHTML.endsWith("Module") || value.querySelector('.kind').innerHTML.endsWith("Package")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
   }).length;  
 
   let nb_var = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Attribute")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"))
+    return (value.querySelector('.type').innerHTML.endsWith("Attribute")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
 
   }).length; 
 
   return('Including ' + nb_module_or_package + (priv ? " private" : "")
-    + ' module'+(nb_module_or_package>=2? 's and' : ' or')+' package'+(nb_module_or_package>=2? 's' : '') + ','
+    + ' module'+(nb_module_or_package>=2? 's and' : ' or')+' package'+(nb_module_or_package>=2? 's' : '') + ', '
     + nb_classes.toString() + (priv ? " private" : "") + ' class'+(nb_classes>=2 ? 'es' : '')+', ' + nb_methods_or_functions.toString() + (priv ? " private" : "")
-    + ' method'+(nb_methods_or_functions>=2? 's and' : ' or')+' function'+(nb_methods_or_functions>=2? 's' : '')+', '+' and ' + nb_var + (priv ? " private" : "") + ' attribute'+(nb_var>=2? 's' : '')+'.')
+    + ' method'+(nb_methods_or_functions>=2? 's and' : ' or')+' function'+(nb_methods_or_functions>=2? 's' : '')+', '+' and ' + nb_var + (priv ? " private" : "") + ' attribute'+(nb_var>=2? 's' : '')+'.');
 }
+
+///////////////////// FILTER //////////////////////////
 
 function filterItems(types, label, dropdown_item_pressed){
 
-  console.log("Filtering search results: " + label)
+  console.log("Filtering search results: " + label);
 
-  let results_list = Array.prototype.slice.call(document.getElementById('search-results').children); 
+  let results_list = Array.prototype.slice.call(document.getElementById('search-results').childNodes); 
+  
+  var match_items = [];
 
   results_list.forEach(function(li, i, a){
-    var match = false
+    var match = false;
     
     types.forEach(function(type, i, a){
-      if (li.querySelector('.type').innerHTML.endsWith(type)){
-        match = true
+      if (li.querySelector('.type').getAttribute('content').endsWith(type)){
+        match = true;
       }
     })
 
     if (match){
       li.style.display = "block";
+      match_items.push(li);
     }
     else{
       li.style.display = "none";
@@ -140,9 +144,12 @@ function filterItems(types, label, dropdown_item_pressed){
   }
 
   // Reset filter dropdown
-  initFilterDropdown(results_list)
+  initFilterDropdown(results_list);
   document.getElementById("search-filter-show-all").style.display = 'block';
   dropdown_item_pressed.style.display = 'none';
+
+  console.log(match_items.length.toString() + " items matches the filter");
+  console.log(match_items);
 
 }
 
@@ -156,10 +163,10 @@ function _initSearchFilter(results_list, input, types){
     var match = false;
     types.forEach(function(type, i, a){
 
-      var _type = value.querySelector('.type').innerHTML;
+      var _type = value.querySelector('.type').getAttribute('content')
       if (!_type){
-        // Filter on 'content' attr meta tags if innerHTML is empty
-        _type = value.querySelector('.type').getAttribute('content')
+        // Filter on innerHTML if 'content' attr meta tags is undefined
+        _type = value.querySelector('.type').innerHTML;
       }
 
       if(_type.endsWith(type)){
@@ -180,7 +187,6 @@ function _initSearchFilter(results_list, input, types){
 function initFilterDropdown(results_list_p){
 
   let results_list = Array.prototype.slice.call(results_list_p);
-  console.log(results_list)
 
   document.getElementById("search-filter-show-all").style.display = "none";
 
@@ -190,7 +196,7 @@ function initFilterDropdown(results_list_p){
   _initSearchFilter(results_list, document.getElementById("search-filter-show-attributes"), ["Attribute"])
 }
 
-///////////////////// MAIN JS ROUTINE //////////////////////////
+///////////////////// SEARCH //////////////////////////
 
 function search(){
 
