@@ -113,6 +113,16 @@ function buildInfosString(search_results_documents, priv){
 
 ///////////////////// FILTER //////////////////////////
 
+// Close the dropdown if the user clicks outside of it
+window.addEventListener("click", function(event) {
+  let dropdown_input = document.getElementById("search-filter-dropdown-input")
+  if (event && !event.target.matches('#search-filter-dropdown-input') && dropdown_input.checked == true) {
+    setTimeout(function(){
+      dropdown_input.checked = false;
+    }, 1);
+  }
+});
+
 function filterItems(types, label, dropdown_item_pressed){
 
   console.log("Filtering search results: " + label);
@@ -146,6 +156,8 @@ function filterItems(types, label, dropdown_item_pressed){
   // Reset filter dropdown
   initFilterDropdown(results_list);
   document.getElementById("search-filter-show-all").style.display = 'block';
+  document.getElementById("search-filter-button").classList.add("active")
+
   dropdown_item_pressed.style.display = 'none';
 
   console.log(match_items.length.toString() + " items matches the filter");
@@ -155,6 +167,7 @@ function filterItems(types, label, dropdown_item_pressed){
 
 function showAllItems(){
   filterItems(['Class', 'Function', 'Module', 'Package', 'Attribute'], 'Choose...', document.getElementById("search-filter-show-all"))
+  document.getElementById("search-filter-button").classList.remove("active")
 }
 
 function _initSearchFilter(results_list, input, types){

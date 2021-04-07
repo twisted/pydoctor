@@ -33,20 +33,23 @@
             </p>
 
             <div class="dropdown" id="search-filter-dropdown">
-              <button class="btn btn-primary dropdown-toggle" type="button" id="search-filter-button" onclick="this.focus()">
+              
+              <label for="search-filter-dropdown-input" class="btn btn-primary dropdown-toggle" type="button" id="search-filter-button">
                 <span class="button-label">Filter: Choose...</span>
-                <span class="caret"></span>
-              </button>
+                  <span class="caret"></span></label>
+
+              <input id="search-filter-dropdown-input" type="checkbox" name="search-filter-dropdown-input"/>
+
               <ul class="dropdown-menu" id="search-filter-dropdown-items">
-                <li id="search-filter-show-all" onmousedown="showAllItems()">
+                <li id="search-filter-show-all" onclick="showAllItems()">
                   <a>No filter</a><hr /></li>
-                <li id="search-filter-show-modules" onmousedown="filterItems(['Module', 'Package'], 'Modules and Packages', this);">
+                <li id="search-filter-show-modules" onclick="filterItems(['Module', 'Package'], 'Modules and Packages', this);">
                   <a>Modules and Packages</a></li>
-                <li id="search-filter-show-classes" onmousedown="filterItems(['Class'], 'Classes', this);">
+                <li id="search-filter-show-classes" onclick="filterItems(['Class'], 'Classes', this);">
                   <a>Classes</a></li>
-                <li id="search-filter-show-functions" onmousedown="filterItems(['Function'], 'Methods and Functions', this);">
+                <li id="search-filter-show-functions" onclick="filterItems(['Function'], 'Methods and Functions', this);">
                   <a>Methods and Functions</a></li>
-                <li id="search-filter-show-attributes" onmousedown="filterItems(['Attribute'], 'Attributes', this);">
+                <li id="search-filter-show-attributes" onclick="filterItems(['Attribute'], 'Attributes', this);">
                   <a>Attributes</a></li>
               </ul>
             </div>

@@ -566,14 +566,31 @@ div.tip, div.hint, div.important {
     justify-content: space-between;
 }
 
-#search-filter-button:focus ~ ul.dropdown-menu{
-    display: block;
-}
 
 #search-filter-dropdown{
     margin-left: 5px;
     margin-right: 5px;
     align-self: center;
+}
+
+#search-filter-button{
+    background-color: #4a87bc;
+    border-color: #337ab7;
+}
+
+#search-filter-button.active{
+    background-color: #337ab7;
+    border-color: #2e6da4;
+}
+
+/* hide the checkbox */
+#search-filter-dropdown-input{
+    display: none;
+}
+  
+/* show the dropdown when input is checked (generic) */
+input:checked ~ ul.dropdown-menu {
+    display: block;
 }
 
 #search-filter-dropdown-items hr {
