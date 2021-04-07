@@ -4,7 +4,7 @@ importScripts('lunr.js', 'ajax.js');
 
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
-    console.log(message)
+    console.log(message.data)
     
     if (!message.data.query) {
         throw ('No search query provided.');

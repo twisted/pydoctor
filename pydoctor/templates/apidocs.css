@@ -12,6 +12,7 @@ nav.navbar {
 
 .navbar-header {
     float: none;
+    width: 100%;
 }
 
 .page-header {
@@ -540,6 +541,7 @@ div.tip, div.hint, div.important {
 
 #search-help-box {
     margin: 10px;
+    width: 100%;
 }
 
 #search-help-button {
