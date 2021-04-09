@@ -281,7 +281,7 @@ class ClassPage(CommonPage):
 
     def children(self):
         return sorted((o for o in self.ob.contents.values() if o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+                      key=lambda o2:(-o2.privacyClass.value, o2.kind, o2.fullName()))
 
     def extras(self):
         r = super().extras()
