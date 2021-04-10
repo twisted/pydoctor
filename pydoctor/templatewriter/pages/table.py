@@ -1,4 +1,3 @@
-from os import link
 from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
 
 from pydoctor import epydoc2stan
