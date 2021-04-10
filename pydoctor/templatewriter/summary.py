@@ -176,7 +176,7 @@ class LetterElement(Element):
             # category (class, method, etc.) an object belongs to.
             tag: Tag = tags.code(
                 epydoc2stan.taglink(obj, NameIndexPage.filename),
-                **{"data-type": obj.kind}
+                **{"data-type": obj.kind.name if obj.kind else ''}
                 )
             return tag
         name2obs = {}
@@ -268,7 +268,7 @@ class IndexPage(util.Page):
             root, = self.system.rootobjects
             return tag.clear()(
                 "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", root.kind.lower(), ".")
+                ", the root ", root.kind.name.lower(), ".")
 
     @renderer
     def onlyIfMultipleRoots(self, request, tag):
@@ -290,7 +290,7 @@ class IndexPage(util.Page):
     def rootkind(self, request, tag):
         rootkinds = {}
         for o in self.system.rootobjects:
-            rootkinds[o.kind.lower() + 's']  = 1
+            rootkinds[o.kind.name.lower() + 's']  = 1
         return tag.clear()('/'.join(sorted(rootkinds)))
 
     @renderer
@@ -332,7 +332,7 @@ class UndocumentedSummaryPage(util.Page):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
+            tag(tags.li(o.kind.name, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
 summarypages = [

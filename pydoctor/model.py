@@ -78,6 +78,34 @@ class PrivacyClass(Enum):
     PRIVATE = 1
     VISIBLE = 2
 
+class _KindEnum(Enum):
+    """
+    Abstract container for L{KindClass} values. 
+    """
+    @property
+    def name(self) -> str: # type: ignore[override]
+        return super().name.replace("_", " ")
+
+class KindClass(_KindEnum):
+    """
+    Values indicating the possible object types.
+
+    :note: Some new kinds can be dynamically created by using `zope.schema`.
+        New kinds will have lower values. 
+    """
+    Package = 1000
+    Module = 900
+    Interface = 850
+    Class = 800
+    Class_Method = 700
+    Static_Method = 600
+    Method = 500
+    Function = 400
+    Class_Variable = 300
+    Instance_Variable = 200
+    Attribute = 210
+    Property = 150
+    Variable = 100
 
 class Documentable:
     """An object that can be documented.
@@ -89,8 +117,6 @@ class Documentable:
     @ivar parent: ...
     @ivar parentMod: ...
     @ivar name: ...
-    @ivar sourceHref: ...
-    @ivar kind: ...
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
@@ -98,28 +124,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: Optional[str]
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        """Page location where we are documented.
-        The default implementation returns L{DocLocation.OWN_PAGE}.
-        """
-        return DocLocation.OWN_PAGE
-
-    @property
-    def css_class(self) -> str:
-        """A short, lower case description for use as a CSS class in HTML."""
-        kind = self.kind
-        assert kind is not None # if kind is None, object is invisible
-        class_ = kind.lower().replace(' ', '')
-        if self.privacyClass is PrivacyClass.PRIVATE:
-            class_ += ' private'
-        return class_
-
-    @property
-    def doctarget(self) -> 'Documentable':
-        return self
+    kind: Optional[_KindEnum] = None
 
     def __init__(
             self, system: 'System', name: str,
@@ -135,6 +140,27 @@ class Documentable:
         self.parentMod: Optional[Module] = None
         self.source_path = source_path
         self.setup()
+
+    @property
+    def documentation_location(self) -> DocLocation:
+        """Page location where we are documented.
+        The default implementation returns L{DocLocation.OWN_PAGE}.
+        """
+        return DocLocation.OWN_PAGE
+
+    @property
+    def css_class(self) -> str:
+        """A short, lower case description for use as a CSS class in HTML."""
+        kind = self.kind
+        assert kind is not None # if kind is None, object is invisible
+        class_ = kind.name.lower().replace(' ', '')
+        if self.privacyClass is PrivacyClass.PRIVATE:
+            class_ += ' private'
+        return class_
+
+    @property
+    def doctarget(self) -> 'Documentable':
+        return self
 
     def setup(self) -> None:
         # TODO: The actual value type is Documentable, but using that
@@ -364,7 +390,8 @@ class Documentable:
 
 
 class Package(Documentable):
-    kind = "Package"
+    kind: Optional[KindClass] = KindClass.Package
+    
     def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
     @property
@@ -395,7 +422,7 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind = "Module"
+    kind: Optional[KindClass] = KindClass.Module
     state = ProcessingState.UNPROCESSED
 
     @property
@@ -441,7 +468,7 @@ class Module(CanContainImportsDocumentable):
 
 
 class Class(CanContainImportsDocumentable):
-    kind = "Class"
+    kind: Optional[KindClass] = KindClass.Class
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
@@ -523,7 +550,7 @@ class Inheritable(Documentable):
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
-    kind = "Function"
+    kind: Optional[KindClass] = KindClass.Function
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
@@ -532,10 +559,10 @@ class Function(Inheritable):
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
-            self.kind = "Method"
+            self.kind = KindClass.Method
 
 class Attribute(Inheritable):
-    kind: Optional[str] = "Attribute"
+    kind: Optional[KindClass] = KindClass.Attribute
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 

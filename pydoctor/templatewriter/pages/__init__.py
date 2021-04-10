@@ -70,7 +70,7 @@ class CommonPage(util.Page):
     def category(self) -> str:
         kind = self.ob.kind
         assert kind is not None
-        return f"{kind.lower()} documentation"
+        return f"{kind.name.lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
         page_url = self.page_url

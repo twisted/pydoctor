@@ -1,6 +1,7 @@
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 from pydoctor.zopeinterface import ZopeInterfaceSystem
+from pydoctor import model
 
 from . import CapSys
 
@@ -122,11 +123,11 @@ def test_attribute(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
-    assert attr.kind == 'Attribute'
+    assert attr.kind == model.KindClass.Attribute
     assert attr.name == 'attr'
     assert attr.docstring == "documented attribute"
     bad_attr = mod.contents['C'].contents['bad_attr']
-    assert bad_attr.kind == 'Attribute'
+    assert bad_attr.kind == model.KindClass.Attribute
     assert bad_attr.name == 'bad_attr'
     assert bad_attr.docstring is None
     captured = capsys.readouterr().out
@@ -160,13 +161,13 @@ def test_zopeschema(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
-    assert text.kind == "TextLine"
+    assert text.kind.name == "TextLine"
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
-    assert undoc.kind == "Bool"
+    assert undoc.kind.name == "Bool"
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
-    assert bad.kind == "ASCII"
+    assert bad.kind.name == "ASCII"
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
@@ -180,7 +181,7 @@ def test_aliasing_in_class() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     attr = mod.contents['IMyInterface'].contents['attribute']
     assert attr.docstring == 'fun in a bun'
-    assert attr.kind == "Attribute"
+    assert attr.kind == model.KindClass.Attribute
 
 def test_zopeschema_inheritance() -> None:
     src = '''
@@ -198,12 +199,12 @@ def test_zopeschema_inheritance() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert mytext.kind == "MyTextLine"
+    assert mytext.kind.name == "MyTextLine"
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert myothertext.kind == "MyOtherTextLine"
+    assert myothertext.kind.name == "MyOtherTextLine"
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert myint.kind == "Int"
+    assert myint.kind.name == "Int"
 
 def test_docsources_includes_interface() -> None:
     src = '''
@@ -367,7 +368,7 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     C = mod.contents['C']
     impl = mod.contents['Implementation']
     assert not C.isinterface
-    assert C.kind == "Class"
+    assert C.kind == model.KindClass.Class
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == 'mod:5: Class "mod.C" is not an interface\n'

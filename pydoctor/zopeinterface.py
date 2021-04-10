@@ -6,6 +6,16 @@ import re
 
 from pydoctor import astbuilder, model
 
+def new_kind(name: str) -> model._KindEnum:
+    """
+    Dynamically create a new `_KindEnum` with `name` 
+    as it's only value and return the enum value. 
+    """
+    if not name.isidentifier():
+        raise ValueError(f"The new kind name must be a valid Python identifier, not : '{name}'")
+    kind =  getattr(model._KindEnum('NewKindClass', name), name)
+    assert isinstance(kind, model._KindEnum)
+    return kind
 
 class ZopeInterfaceModule(model.Module):
 
@@ -210,7 +220,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
 
         if funcName == 'zope.interface.Attribute':
-            attr.kind = 'Attribute'
+            attr.kind = model.KindClass.Attribute
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
                 attr.setDocstring(args[0])
@@ -221,13 +231,16 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     section='zopeinterface')
         else:
             match = schema_prog.match(funcName)
+
             if match:
-                attr.kind = match.group(1)
+                _name = match.group(1)
+                attr.kind = new_kind(_name)
             else:
                 cls = self.builder.system.objForFullName(funcName)
                 if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
                     return
-                attr.kind = cls.name
+                attr.kind = new_kind(cls.name)
+
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
             if isinstance(descrNode, ast.Str):
@@ -302,7 +315,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if any(namesInterface(self.system, b) for b in cls.bases):
             cls.isinterface = True
-            cls.kind = "Interface"
+            cls.kind = model.KindClass.Interface
             cls.implementedby_directly = []
 
         for n, o in zip(cls.bases, cls.baseobjects):

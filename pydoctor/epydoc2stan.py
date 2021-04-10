@@ -667,7 +667,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     subdocstrings: DefaultDict[str, int] = defaultdict(int)
     subcounts: DefaultDict[str, int]  = defaultdict(int)
     for subob in obj.contents.values():
-        k = subob.kind.lower()
+        k = subob.kind.name.lower()
         subcounts[k] += 1
         if subob.docstring is not None:
             subdocstrings[k] += 1
@@ -680,7 +680,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", kind.lower(), " docstring; ",
+            "No ", kind.name.lower(), " docstring; ",
             ', '.join(
                 f"{subdocstrings[k]}/{subcounts[k]} "
                 f"{plurals.get(k, k + 's')}"
@@ -802,10 +802,10 @@ class _AnnotationFormatter(ast.NodeVisitor):
         return ret
 
 
-field_name_to_human_name = {
-    'ivar': 'Instance Variable',
-    'cvar': 'Class Variable',
-    'var': 'Variable',
+field_name_to_kind = {
+    'ivar': model.KindClass.Instance_Variable,
+    'cvar': model.KindClass.Class_Variable,
+    'var': model.KindClass.Variable,
     }
 
 
@@ -839,4 +839,4 @@ def extract_fields(obj: model.Documentable) -> None:
                 attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
-                attrobj.kind = field_name_to_human_name[tag]
+                attrobj.kind = field_name_to_kind[tag]
