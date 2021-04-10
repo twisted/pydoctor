@@ -90,7 +90,7 @@ class KindClass(_KindEnum):
     """
     Values indicating the possible object types.
 
-    :note: Some new kinds can be dynamically created by using `zope.schema`.
+    @note: Some new kinds can be dynamically created by using `zope.schema`.
         New kinds will have lower values. 
     """
     Package = 1000
