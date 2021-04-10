@@ -13,7 +13,8 @@ def new_kind(name: str) -> model._KindEnum:
     """
     if not name.isidentifier():
         raise ValueError(f"The new kind name must be a valid Python identifier, not : '{name}'")
-    kind =  getattr(model._KindEnum('NewKindClass', name), name)
+    # Ignores mypy error: Too many arguments for "_KindEnum"
+    kind =  getattr(model._KindEnum('NewKindClass', name), name) #type: ignore[call-arg]
     assert isinstance(kind, model._KindEnum)
     return kind
 
