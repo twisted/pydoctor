@@ -107,7 +107,7 @@ pydoctor_args = {
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'custom_template_demo': [
-        '--html-output={outdir}/custom_template_demo/',  
+        '--html-output={outdir}/custom_template_demo/',
         '--project-name=pydoctor with a twisted theme',
         f'--project-version={version}',
         '--docformat=epytext',

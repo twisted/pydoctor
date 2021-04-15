@@ -1,10 +1,10 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Mapping, Sequence, Union, Type
+from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
 import abc
 
-from twisted.web.template import tags, renderer, Tag
+from twisted.web.template import tags, renderer, Tag, Element
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
@@ -44,7 +44,7 @@ class DocGetter:
 
 class Nav(TemplateElement):
     """
-    Common navigation header. 
+    Common navigation header.
     """
 
     filename = 'nav.html'
@@ -53,51 +53,61 @@ class Nav(TemplateElement):
         super().__init__(loader)
         self.system = system
 
-    @renderer
-    def project(self, request: IRequest, tag: Tag) -> Tag:
-        if self.system.options.projecturl:
-            return Tag('a', attributes=dict(href=self.system.options.projecturl, id="projecthome"), 
-                       children=[self.system.projectname])
-        else:
-            return Tag('span', children=[self.system.projectname])
-
 
 class Head(TemplateElement):
     """
-    Common metadata. 
+    Common metadata.
     """
 
     filename = 'head.html'
 
-    def __init__(self, title: str, loader: ITemplateLoader, ) -> None:
+    def __init__(self, title: str, loader: ITemplateLoader) -> None:
         super().__init__(loader)
         self._title = title
-    
+
     @renderer
     def title(self, request: IRequest, tag: Tag) -> str:
         return self._title
 
-    @renderer
-    def pydoctor_version(self, request: IRequest, tag: Tag) -> str:
-        return __version__
 
-class BasePage(TemplateElement):
+class Page(TemplateElement):
     """
-    Base page element. 
+    Abstract base class for output pages.
 
-    Defines special HTML placeholders that are designed to be overriden by users: 
+    Defines special HTML placeholders that are designed to be overriden by users:
     "header.html", "subheader.html" and "footer.html".
     """
 
-    def __init__(self, system: model.System, 
-                 template_lookup: TemplateLookup, 
+    def __init__(self, system: model.System,
+                 template_lookup: TemplateLookup,
                  loader: Optional[ITemplateLoader] = None):
         self.system = system
         self.template_lookup = template_lookup
         if not loader:
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
-        
+
+    def render(self, request: None) -> Tag:
+        tag: Tag
+        tag, = super().render(request)
+        tag.fillSlots(**self.slot_map)
+        return tag
+
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        system = self.system
+
+        if system.options.projecturl:
+            project_tag = tags.a(href=system.options.projecturl, class_="projecthome")
+        else:
+            project_tag = tags.transparent
+        project_tag(system.projectname)
+
+        return dict(
+            project=project_tag,
+            pydoctor_version=__version__,
+            buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+        )
 
     @abc.abstractmethod
     def title(self) -> str:
@@ -105,33 +115,26 @@ class BasePage(TemplateElement):
 
     @renderer
     def head(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Head(self.title(), Head.lookup_loader(self.template_lookup), )
-    
+        return Head(self.title(), Head.lookup_loader(self.template_lookup))
+
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Nav(self.system, Nav.lookup_loader(self.template_lookup), )
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
 
     @renderer
-    def header(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        # Tag is a IRenderable but mypy is not smart enough.
-
-        template = self.template_lookup.get_template('header.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def header(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('header.html'))
 
     @renderer
-    def subheader(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        template = self.template_lookup.get_template('subheader.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def subheader(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('subheader.html'))
 
     @renderer
-    def footer(self, request: IRequest, tag: Tag) -> Union[IRenderable, Tag]:
-        template = self.template_lookup.get_template('footer.html')
-        assert template.loader is not None
-        return template.loader.load() if not template.is_empty() else Tag('transparent')
+    def footer(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('footer.html'))
 
-class CommonPage(BasePage):
+
+class CommonPage(Page):
 
     filename = 'common.html'
     ob: model.Documentable
@@ -173,16 +176,6 @@ class CommonPage(BasePage):
         parts.reverse()
         return parts
 
-    # Deprecated: pydoctor's templates no longer use this, but it is kept
-    #             for now to not break customized templates like Twisted's.
-    #             NOTE: Remember to remove the CSS as well.
-    def part(self):
-        parent = self.ob.parent
-        if parent:
-            return 'Part of ', tags.code(self.namespace(parent))
-        else:
-            return []
-
     @renderer
     def deprecated(self, request, tag):
         if hasattr(self.ob, "_deprecated_info"):
@@ -222,7 +215,7 @@ class CommonPage(BasePage):
     def mainTable(self):
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children, 
+            return ChildTable(self.docgetter, self.ob, children,
                     ChildTable.lookup_loader(self.template_lookup))
         else:
             return ()
@@ -254,20 +247,19 @@ class CommonPage(BasePage):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    @renderer
-    def all(self, request, tag):
-        return tag.fillSlots(
-            project=self.system.projectname,
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        slot_map = super().slot_map
+        slot_map.update(
             heading=self.heading(),
             category=self.category(),
-            part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            version=__version__,
-            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        return slot_map
 
 
 class ModulePage(CommonPage):
@@ -363,7 +355,7 @@ class ClassPage(CommonPage):
 
     ob: model.Class
 
-    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup, 
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup,
                  docgetter:Optional[DocGetter] = None):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
@@ -435,7 +427,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value), 
+                                               sorted(attrs, key=lambda o:-o.privacyClass.value),
                                                loader))
                 for b, attrs in baselists]
 
@@ -512,11 +504,11 @@ class ZopeInterfaceClassPage(ClassPage):
                 )))
         r.extend(super().functionExtras(data))
         return r
-        
-commonpages: Mapping[str, Type[CommonPage]] = { 
+
+commonpages: Mapping[str, Type[CommonPage]] = {
     'Module': ModulePage,
-    'Package': PackagePage, 
-    'Class': ClassPage, 
-    'ZopeInterfaceClass': ZopeInterfaceClassPage, 
+    'Package': PackagePage,
+    'Class': ClassPage,
+    'ZopeInterfaceClass': ZopeInterfaceClassPage,
 }
 """List all page classes: ties documentable class name with the page class used for rendering"""

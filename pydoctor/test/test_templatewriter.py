@@ -74,7 +74,7 @@ def test_basic_package(tmp_path: Path) -> None:
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
-    w.writeModuleIndex(system)
+    w.writeSummaryPages(system)
     for ob in system.allobjects.values():
         url = ob.url
         if '#' in url:
@@ -131,7 +131,7 @@ def test_html_template_version() -> None:
             assert template.version >= 1
 
 def test_template_lookup_get_template() -> None:
-    
+
     lookup = TemplateLookup()
 
     here = Path(__file__).parent
@@ -148,7 +148,7 @@ def test_template_lookup_get_template() -> None:
 
     assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
 
-    assert lookup.get_template('footer.html').version == -1
+    assert lookup.get_template('subheader.html').version == -1
 
     assert lookup.get_template('table.html').version == 1
 
@@ -162,36 +162,36 @@ def test_template_lookup_add_template_warns() -> None:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'nav.html').open('r', encoding='utf-8') as fobj:
             lookup.add_template(_HtmlTemplate(text=fobj.read(), name='nav.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message) 
-    
+    assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message)
+
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'table.html').open('r', encoding='utf-8') as fobj:
             lookup.add_template(_HtmlTemplate(text=fobj.read(), name='table.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message) 
+    assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'summary.html').open('r', encoding='utf-8') as fobj:
             lookup.add_template(_HtmlTemplate(text=fobj.read(), name='summary.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message) 
+    assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'random.html').open('r', encoding='utf-8') as fobj:
             lookup.add_template(_HtmlTemplate(text=fobj.read(), name='random.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message) 
+    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
     assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_allok() -> None:
-    
+
     here = Path(__file__).parent
 
     with warnings.catch_warnings(record=True) as catch_warnings:
-        warnings.simplefilter("always", )
+        warnings.simplefilter("always")
         lookup = TemplateLookup()
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]

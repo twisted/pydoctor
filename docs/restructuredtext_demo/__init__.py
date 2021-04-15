@@ -1,9 +1,9 @@
 r"""
-Few general reStructuredText formating markups are documented here. 
+Few general reStructuredText formating markups are documented here.
 
-reStructuredText code related formating are demonstrated in the `demo_restructuredtext_module`. 
+reStructuredText code related formating are demonstrated in the `demo_restructuredtext_module`.
 
-Many examples are copied from `the docutils quickref 
+Many examples are copied from `the docutils quickref
 <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_.
 
 Scope and Purpose
@@ -19,9 +19,9 @@ Try to keep the example as condensed as possible.
 - Have it build as part of our continuous integration tests.
   To ensure we don't introduce regressions.
 
-.. note:: Even if most of the structural (i.e. not inline) reST markup appears to ressemble Epytext markup, 
+.. note:: Even if most of the structural (i.e. not inline) reST markup appears to ressemble Epytext markup,
     blank lines are often needed where Epytext allowed no blank line after parent element. Indentation
-    is also much more important, lists content and child items must be correctly indented.  
+    is also much more important, lists content and child items must be correctly indented.
 
 Lists
 =====
@@ -110,10 +110,10 @@ This is a paragraph following the doctest block.
 Python code Blocks
 ==================
 
-Using reStructuredText markup it is possible to specify Python code snippets in a ``.. python::`` directive . 
+Using reStructuredText markup it is possible to specify Python code snippets in a ``.. python::`` directive .
 
-If the Python prompt gets in your way when you try to copy and paste and you are not interested in self-testing docstrings, 
-the 
+If the Python prompt gets in your way when you try to copy and paste and you are not interested in self-testing docstrings,
+the
 
 This will let you obtain a simple block of colorized text:
 
@@ -139,7 +139,7 @@ reStructuredText defines a lot of inline markup, here's a few of the most common
 
 .. note::
     Inline markup cannot be nested.
-    A workaround is to use the ``.. replace::`` directive: 
+    A workaround is to use the ``.. replace::`` directive:
 
     I recommend you try |Python|_.
 
@@ -155,7 +155,7 @@ If you wish to use the URL as the text for the link, you can simply write the UR
 The following example illustrates how URLs can be used:
 
 - http://www.python.org (A standalone hyperlink.)
-- `docutils quickref 
+- `docutils quickref
   <https://docutils.sourceforge.io/docs/user/rst/quickref.html>`_
 - External hyperlinks with substitution, like Python_.
 
@@ -165,23 +165,23 @@ The following example illustrates how URLs can be used:
 Admonitions
 ===========
 
-.. note:: This is just a info. 
+.. note:: This is just a info.
 
-.. tip:: This is good for you. 
+.. tip:: This is good for you.
 
-.. hint:: This too. 
+.. hint:: This too.
 
-.. important:: Important information here. 
+.. important:: Important information here.
 
-.. warning:: This should be taken seriouly. 
+.. warning:: This should be taken seriouly.
 
-.. attention:: Beware. 
+.. attention:: Beware.
 
-.. caution:: This should be taken very seriouly. 
+.. caution:: This should be taken very seriouly.
 
 .. danger:: This function is a security whole!
 
-.. error:: This is not right. 
+.. error:: This is not right.
 
 .. raw:: html
 
@@ -196,7 +196,7 @@ Admonitions
 
 .. admonition:: Purple
 
-   This needs additionnal CSS for the new "rst-admonition-purple" class. 
+   This needs additionnal CSS for the new "rst-admonition-purple" class.
    Include additional CSS by defining a raw block::
 
     .. raw:: html
@@ -210,13 +210,13 @@ Admonitions
         }
     </style>
 
-   .. note:: The ``! important`` is required to overrride ``apidocs.css``. 
+   .. note:: The ``! important`` is required to overrride ``apidocs.css``.
 
 
 Symbols
 =======
 
-Any symbol can be rendered with the ``.. unicode::`` directive. 
+Any symbol can be rendered with the ``.. unicode::`` directive.
 
 Copyright |copy| 2021, |MojoInc (TM)| |---|
 all rights reserved.
@@ -240,11 +240,11 @@ Escaping
 ========
 
 Escaping is used to write text that would otherwise be interpreted as reStructuredText markup.
-ReStructuredText handles escaping with the backslash character. 
+ReStructuredText handles escaping with the backslash character.
 
-thisis\ *one*\ word. 
+thisis\ *one*\ word.
 
-.. note:: The docstring must be declared as a raw docstring: with the ``r`` prefix to prevent Python to interpret the backslashes. 
+.. note:: The docstring must be declared as a raw docstring: with the ``r`` prefix to prevent Python to interpret the backslashes.
 
 See more on escaping on `docutils documentation page <https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#escaping-mechanism>`_
 
