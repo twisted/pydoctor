@@ -562,7 +562,7 @@ class Function(Inheritable):
             self.kind = KindClass.Method
 
 class Attribute(Inheritable):
-    kind: Optional[KindClass] = KindClass.Attribute
+    kind = KindClass.Attribute
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 
