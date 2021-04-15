@@ -390,7 +390,7 @@ class Documentable:
 
 
 class Package(Documentable):
-    kind: Optional[KindClass] = KindClass.Package
+    kind = KindClass.Package
     
     def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
