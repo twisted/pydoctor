@@ -422,7 +422,7 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind: Optional[KindClass] = KindClass.Module
+    kind = KindClass.Module
     state = ProcessingState.UNPROCESSED
 
     @property
