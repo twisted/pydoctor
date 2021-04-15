@@ -514,7 +514,7 @@ def test_docformat_recognition(systemcls: Type[model.System]) -> None:
     assert '__docformat__' not in mod.contents
 
 @systemcls_param
-def test_docformat_warn_not_a_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     mod = fromText('''
     __docformat__ = [i for i in range(3)]
@@ -523,7 +523,21 @@ def test_docformat_warn_not_a_constant(systemcls: Type[model.System], capsys: Ca
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a constant\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
+    assert mod.docformat == None
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
+def test_docformat_warn_not_str2(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    __docformat__ = 3.14
+
+    def f():
+        pass
+    ''', systemcls=systemcls, modname='mod')
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
@@ -538,20 +552,6 @@ def test_docformat_warn_empty(systemcls: Type[model.System], capsys: CapSys) -> 
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
     assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", no value\n'
-    assert mod.docformat == None
-    assert '__docformat__' not in mod.contents
-
-@systemcls_param
-def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -> None:
-
-    mod = fromText('''
-    __docformat__ = 3.14
-
-    def f():
-        pass
-    ''', systemcls=systemcls, modname='mod')
-    captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 

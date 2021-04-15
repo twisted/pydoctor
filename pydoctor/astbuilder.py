@@ -1116,9 +1116,10 @@ def findDocformat(mod_ast: ast.Module, mod: model.Module) -> None:
                len(node.targets) == 1 and \
                isinstance(node.targets[0], ast.Name) and \
                node.targets[0].id == '__docformat__':
+            # Python < 3.8 ast node is ast.Str
             if not isinstance(node.value, (ast.Constant, ast.Str)):
                 mod.report(
-                    'Cannot parse value assigned to "__docformat__", not a constant',
+                    'Cannot parse value assigned to "__docformat__", not a string',
                     section='docformat', lineno_offset=node.lineno)
                 continue
 
