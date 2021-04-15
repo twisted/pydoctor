@@ -803,9 +803,9 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
 
 field_name_to_kind = {
-    'ivar': model.KindClass.Instance_Variable,
-    'cvar': model.KindClass.Class_Variable,
-    'var': model.KindClass.Variable,
+    'ivar': model.KindClass.INSTANCE_VARIABLE,
+    'cvar': model.KindClass.CLASS_VARIABLE,
+    'var': model.KindClass.VARIABLE,
     }
 
 

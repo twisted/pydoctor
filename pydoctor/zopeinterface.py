@@ -221,7 +221,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
 
         if funcName == 'zope.interface.Attribute':
-            attr.kind = model.KindClass.Attribute
+            attr.kind = model.KindClass.ATTRIBUTE
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
                 attr.setDocstring(args[0])
@@ -316,7 +316,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if any(namesInterface(self.system, b) for b in cls.bases):
             cls.isinterface = True
-            cls.kind = model.KindClass.Interface
+            cls.kind = model.KindClass.INTERFACE
             cls.implementedby_directly = []
 
         for n, o in zip(cls.bases, cls.baseobjects):

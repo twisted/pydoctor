@@ -93,19 +93,20 @@ class KindClass(_KindEnum):
     @note: Some new kinds can be dynamically created by using `zope.schema`.
         New kinds will have lower values. 
     """
-    Package = 1000
-    Module = 900
-    Interface = 850
-    Class = 800
-    Class_Method = 700
-    Static_Method = 600
-    Method = 500
-    Function = 400
-    Class_Variable = 300
-    Instance_Variable = 200
-    Attribute = 210
-    Property = 150
-    Variable = 100
+    PACKAGE = 1000
+    MODULE = 900
+    INTERFACE = 850
+    CLASS = 800
+    # ZOPE_SCHEMA = 801 # ? How to handle them ?
+    CLASS_METHOD = 700
+    STATIC_METHOD = 600
+    METHOD = 500
+    FUNCTION = 400
+    CLASS_VARIABLE = 300
+    ATTRIBUTE = 210
+    INSTANCE_VARIABLE = 200
+    PROPERTY = 150
+    VARIABLE = 100
 
 class Documentable:
     """An object that can be documented.
@@ -390,7 +391,7 @@ class Documentable:
 
 
 class Package(Documentable):
-    kind = KindClass.Package
+    kind = KindClass.PACKAGE
     
     def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
@@ -422,7 +423,7 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind = KindClass.Module
+    kind = KindClass.MODULE
     state = ProcessingState.UNPROCESSED
 
     @property
@@ -468,7 +469,7 @@ class Module(CanContainImportsDocumentable):
 
 
 class Class(CanContainImportsDocumentable):
-    kind = KindClass.Class
+    kind = KindClass.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
@@ -550,7 +551,7 @@ class Inheritable(Documentable):
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
-    kind = KindClass.Function
+    kind = KindClass.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
@@ -559,10 +560,10 @@ class Function(Inheritable):
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
-            self.kind = KindClass.Method
+            self.kind = KindClass.METHOD
 
 class Attribute(Inheritable):
-    kind = KindClass.Attribute
+    kind = KindClass.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 

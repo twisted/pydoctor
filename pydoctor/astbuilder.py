@@ -420,13 +420,13 @@ class ModuleVistor(ast.NodeVisitor):
         if target == arg.id and func_name in ['staticmethod', 'classmethod']:
             target_obj = self.builder.current.contents.get(target)
             if isinstance(target_obj, model.Function):
-                if target_obj.kind != model.KindClass.Method:
+                if target_obj.kind != model.KindClass.METHOD:
                     target_obj.report(section='ast', descr=f'Failed to parse "{func_name}" decorator: "{target_obj.name}" is not a method.')
                 else:
                     if func_name == 'staticmethod':
-                        target_obj.kind = model.KindClass.Static_Method
+                        target_obj.kind = model.KindClass.STATIC_METHOD
                     elif func_name == 'classmethod':
-                        target_obj.kind = model.KindClass.Class_Method
+                        target_obj.kind = model.KindClass.CLASS_METHOD
                     return True
         return False
 
@@ -446,7 +446,7 @@ class ModuleVistor(ast.NodeVisitor):
         if obj is None:
             obj = self.builder.addAttribute(target, None, parent)
         if isinstance(obj, model.Attribute):
-            obj.kind = model.KindClass.Variable
+            obj.kind = model.KindClass.VARIABLE
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
             obj.annotation = annotation
@@ -484,7 +484,7 @@ class ModuleVistor(ast.NodeVisitor):
                     node2fullname(annotation.value, cls) == 'typing.ClassVar'
                     )
                 )
-            obj.kind = model.KindClass.Instance_Variable if instance else model.KindClass.Class_Variable
+            obj.kind = model.KindClass.INSTANCE_VARIABLE if instance else model.KindClass.CLASS_VARIABLE
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)
@@ -511,7 +511,7 @@ class ModuleVistor(ast.NodeVisitor):
         obj = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name, None, cls)
-        obj.kind = model.KindClass.Instance_Variable
+        obj.kind = model.KindClass.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
         obj.annotation = annotation
@@ -694,9 +694,9 @@ class ModuleVistor(ast.NodeVisitor):
             if is_classmethod:
                 func.report(f'{func.fullName()} is both classmethod and staticmethod')
             else:
-                func.kind = model.KindClass.Static_Method
+                func.kind = model.KindClass.STATIC_METHOD
         elif is_classmethod:
-            func.kind = model.KindClass.Class_Method
+            func.kind = model.KindClass.CLASS_METHOD
 
         # Position-only arguments were introduced in Python 3.8.
         posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
@@ -749,7 +749,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno: int
             ) -> model.Attribute:
 
-        attr = self.builder.addAttribute(node.name, model.KindClass.Property, self.builder.current)
+        attr = self.builder.addAttribute(node.name, model.KindClass.PROPERTY, self.builder.current)
         attr.setLineNumber(lineno)
 
         if docstring is not None:
