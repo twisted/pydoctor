@@ -468,7 +468,7 @@ class Module(CanContainImportsDocumentable):
 
 
 class Class(CanContainImportsDocumentable):
-    kind: Optional[KindClass] = KindClass.Class
+    kind = KindClass.Class
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
