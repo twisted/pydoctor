@@ -1193,7 +1193,7 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     def type2html(obj: model.Documentable) -> str:
         parsed_type = get_parsed_type(obj)
         assert parsed_type is not None
-        return to_html(parsed_type)
+        return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
     C = mod.contents['C']
     a = C.contents['a']
