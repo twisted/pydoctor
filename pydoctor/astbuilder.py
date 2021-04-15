@@ -426,7 +426,7 @@ class ModuleVistor(ast.NodeVisitor):
                     if func_name == 'staticmethod':
                         target_obj.kind = model.KindClass.Static_Method
                     elif func_name == 'classmethod':
-                         target_obj.kind = model.KindClass.Class_Method
+                        target_obj.kind = model.KindClass.Class_Method
                     return True
         return False
 
