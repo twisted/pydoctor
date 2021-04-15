@@ -93,14 +93,14 @@ def test_index_contains_infos():
     """
     Test if index.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - link to the root package
         - pydoctor github link in the footer
     """
 
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
-              '<nav class="navbar navbar-default"', 
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
+              '<nav class="navbar navbar-default"',
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
@@ -116,14 +116,14 @@ def test_page_contains_infos():
     """
     Test if pydoctor.driver.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - js script source
         - pydoctor github link in the footer
     """
 
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
-              '<nav class="navbar navbar-default"', 
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
+              '<nav class="navbar navbar-default"',
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
@@ -139,15 +139,15 @@ def test_custom_template_contains_infos():
     """
     Test if the custom template index.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - pydoctor github link in the footer
         - the custom header
         - link to teh extra.css
     """
 
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
-              '<nav class="navbar navbar-default"', 
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
+              '<nav class="navbar navbar-default"',
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',

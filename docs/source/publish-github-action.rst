@@ -3,12 +3,12 @@
 Simple GitHub Action to publish API docs
 ----------------------------------------
 
-Here is an example of a simple GitHub Action to automatically 
+Here is an example of a simple GitHub Action to automatically
 generate your documentation with Pydoctor
-and publish it to your default GitHub Pages website. 
+and publish it to your default GitHub Pages website.
 
-Just substitute `(projectname)` and `(packagedirectory)` 
-with the appropriate information. 
+Just substitute `(projectname)` and `(packagedirectory)`
+with the appropriate information.
 
 ::
 
