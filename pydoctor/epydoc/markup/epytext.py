@@ -131,10 +131,12 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, List, Optional, Sequence, Union, cast, overload
+from typing import Any, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
 
+from docutils import nodes, utils
 from twisted.web.template import CharRef, Tag, tags
+
 from pydoctor.epydoc.doctest import colorize_doctest
 from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
 
@@ -1338,6 +1340,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._tree = body
         # Caching:
         self._stan: Optional[Tag] = None
+        self._document: Optional[nodes.document] = None
 
     def __str__(self) -> str:
         return str(self._tree)
@@ -1416,5 +1419,78 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
+        else:
+            raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")
+    
+    def to_node(self,) -> nodes.document:
+        if self._document is not None:
+            return self._document
+        self._document = utils.new_document('epytext')
+        if self._tree is not None:
+            self._document.children.extend(self._to_node(self._tree))
+        return self._document
+    
+    def _to_node(self,
+            tree: Union[Element, str],
+            seclevel: int = 0
+            ) -> Iterable[nodes.Node]:
+        if isinstance(tree, str):
+            return [nodes.Text(tree)]
+
+        if tree.tag == 'section':
+            seclevel += 1
+
+        # Process the children first.
+        variables: List[nodes.Node] = []
+        for c in tree.children:
+            variables.extend(self._to_node(c, seclevel))
+
+        # Perform the approriate action for the DOM tree type.
+        if tree.tag == 'para':
+            if tree.attribs.get('inline'):
+                return [nodes.inline('', '', *variables)]
+            else: 
+                return [nodes.paragraph('', '', *variables)]
+        elif tree.tag == 'code':
+            return [nodes.literal('', '', *variables)]
+        elif tree.tag == 'uri':
+            label, target = variables
+            return [nodes.reference(
+                    '', label, internal=False, refuri=target)]
+        elif tree.tag == 'link':
+            label, target = variables
+            return [nodes.title_reference(
+                    '', label, internal=False, refuri=target)]
+        elif tree.tag == 'target':
+            value, = variables
+            return [value]
+        elif tree.tag == 'italic':
+            return [nodes.emphasis('', '', *variables)]
+        elif tree.tag == 'math':
+            node = nodes.math('', '', *variables)
+            node.set_class('math')
+            return [node]
+        elif tree.tag == 'bold':
+            return [nodes.strong('', '', *variables)]
+        elif tree.tag == 'ulist':
+            return [nodes.bullet_list('', *variables)]
+        elif tree.tag == 'olist':
+            return [nodes.enumerated_list('', *variables)]
+        elif tree.tag == 'li':
+            return [nodes.list_item('', *variables)]
+        elif tree.tag == 'heading':
+            return [nodes.title('', '', *variables)]
+        elif tree.tag == 'literalblock':
+            return [nodes.literal_block('', '', *variables)]
+        elif tree.tag == 'doctestblock':
+            return [nodes.doctest_block(tree.children[0], tree.children[0])]
+        elif tree.tag in ('fieldlist', 'tag', 'arg'):
+            raise AssertionError("There should not be any field lists left")
+        elif tree.tag in ('epytext', 'section', 'name'):
+            return variables
+        elif tree.tag == 'symbol':
+            symbol = cast(str, tree.children[0])
+            char = chr(self.SYMBOL_TO_CODEPOINT[symbol])
+            return [nodes.inline('', '', char)]
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

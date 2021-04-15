@@ -20,6 +20,7 @@ from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 
+import docutils.nodes
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     formatname = obj.system.options.docformat
@@ -718,10 +719,16 @@ class AnnotationDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self.annotation = annotation
 
+    def has_body(self) -> bool:
+        return True
+
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         tag: Tag = tags.code
         tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
         return tag
+    
+    def to_node(self) -> docutils.nodes.document:
+        raise NotImplementedError()
 
 
 class _AnnotationFormatter(ast.NodeVisitor):
