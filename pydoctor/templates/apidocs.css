@@ -6,7 +6,8 @@ body {
 }
 
 .container-fluid{
-    max-width: 1330px;   
+    max-width: 1330px;
+    width: 100%;
 }
 
 nav.navbar {
@@ -934,7 +935,7 @@ input.tocChildrenToggle {
   }
 
 .expandableContent .childrenKindTitle {
-    font-size: 13px;
+    font-size: 14px;
     /* margin-left: 5px; */
 }
 
