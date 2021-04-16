@@ -222,7 +222,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             match = schema_prog.match(funcName)
 
             if match:
-                cls_name = match.group(1)
                 attr.kind = model.KindClass.SCHEMA_FIELD
 
             else:
@@ -230,7 +229,6 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
                     return
                 attr.kind = model.KindClass.SCHEMA_FIELD
-                cls_name = cls.name
 
             # Linking to zope.schema.* class if setup with intersphinx
             attr.parsed_type = epydoc2stan.AnnotationDocstring(expr.func)
