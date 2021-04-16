@@ -1541,7 +1541,7 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
 def test_property_conflict(
         decoration: str, systemcls: Type[model.System], capsys: CapSys
         ) -> None:
-    """Warn when a function is decorated as both property and class/staticmethod.
+    """Warn when a method is decorated as both property and class/staticmethod.
     These decoration combinations do not create class/static properties.
     """
     mod = fromText(f'''

@@ -404,7 +404,7 @@ class ModuleVistor(ast.NodeVisitor):
                 _localNameToFullName[asname] = fullname
 
 
-    def _handleOldSchoolDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
+    def _handleOldSchoolMethodDecoration(self, target: str, expr: Optional[ast.expr]) -> bool:
         if not isinstance(expr, ast.Call):
             return False
         func = expr.func
@@ -420,14 +420,15 @@ class ModuleVistor(ast.NodeVisitor):
         if target == arg.id and func_name in ['staticmethod', 'classmethod']:
             target_obj = self.builder.current.contents.get(target)
             if isinstance(target_obj, model.Function):
-                if target_obj.kind != model.KindClass.METHOD:
-                    target_obj.report(section='ast', descr=f'Failed to parse "{func_name}" decorator: "{target_obj.name}" is not a method.')
-                else:
-                    if func_name == 'staticmethod':
-                        target_obj.kind = model.KindClass.STATIC_METHOD
-                    elif func_name == 'classmethod':
-                        target_obj.kind = model.KindClass.CLASS_METHOD
-                    return True
+
+                # _handleOldSchoolMethodDecoration should only be called on methods. 
+                assert target_obj.kind is model.KindClass.METHOD
+
+                if func_name == 'staticmethod':
+                    target_obj.kind = model.KindClass.STATIC_METHOD
+                elif func_name == 'classmethod':
+                    target_obj.kind = model.KindClass.CLASS_METHOD
+                return True
         return False
 
     def _handleModuleVar(self,
@@ -589,7 +590,7 @@ class ModuleVistor(ast.NodeVisitor):
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno)
             elif isinstance(scope, model.Class):
-                if not self._handleOldSchoolDecoration(target, expr):
+                if not self._handleOldSchoolMethodDecoration(target, expr):
                     self._handleAssignmentInClass(target, annotation, expr, lineno)
         elif isinstance(targetNode, ast.Attribute):
             value = targetNode.value
