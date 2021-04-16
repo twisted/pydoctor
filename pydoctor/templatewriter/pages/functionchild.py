@@ -1,7 +1,7 @@
 from twisted.web.template import renderer, tags
 
 from pydoctor.templatewriter.pages import format_decorators, signature
-from pydoctor.templatewriter import TemplateElement
+from pydoctor.templatewriter import TemplateElement, util
 
 class FunctionChild(TemplateElement):
 

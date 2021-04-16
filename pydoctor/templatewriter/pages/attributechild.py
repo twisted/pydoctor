@@ -1,6 +1,6 @@
 from twisted.web.template import renderer, tags
 
-from pydoctor.templatewriter import TemplateElement
+from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
 
 
