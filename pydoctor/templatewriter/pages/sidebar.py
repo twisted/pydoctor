@@ -1,7 +1,7 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Iterable, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element
 
@@ -23,49 +23,40 @@ class SideBar(TemplateElement):
 
     filename = 'sidebar.html'
 
-    def __init__(self, docgetter: util.DocGetter, 
-                 loader: ITemplateLoader, ob: Documentable, 
+    def __init__(self, ob: Documentable, docgetter: util.DocGetter, 
                  template_lookup: TemplateLookup):
-        super().__init__(loader)
+        super().__init__(loader=self.lookup_loader(template_lookup))
         self.ob = ob
         self.template_lookup = template_lookup
         self.docgetter = docgetter
 
 
     @renderer
-    def sections(self, request: IRequest, tag: Tag) -> Sequence[Element]:
+    def sections(self, request: IRequest, tag: Tag) -> Iterator['SideBarSection']:
         """
         Sections are L{SideBarSection} elements. 
         """
-        r = []   
-        if isinstance(self.ob, (Package, Module)):
-            if isinstance(self.ob, Package):
-                # The object itself
-                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
-                            documented_ob=self.ob, template_lookup=self.template_lookup))
-            else:
-                # The object itself
-                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup))
-            if self.ob.parent:
-                # The parent of the object
-                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup))
-        else:
-            # The object itself
-            r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
-                          documented_ob=self.ob, template_lookup=self.template_lookup))
 
-            #TODO: check compatibility once https://github.com/twisted/pydoctor/pull/360/files is merged
+        # The object itself
+        yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
+                        documented_ob=self.ob, template_lookup=self.template_lookup)
+
+        if isinstance(self.ob, (Package, Module)):            
+            if self.ob.parent:
+                # The parent package of the module
+                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
+                              documented_ob=self.ob, template_lookup=self.template_lookup)
+        else:
+
+            #TODO: REMOVE once https://github.com/twisted/pydoctor/pull/360/files is merged
             if self.ob.module.name == "__init__" and self.ob.module.parent:
                 # The parent of the object
-                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup))
+                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
+                              documented_ob=self.ob, template_lookup=self.template_lookup)
             else:
                 # The parent of the object
-                r.append(SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup))
-        return r
+                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
+                              documented_ob=self.ob, template_lookup=self.template_lookup)
 
 class SideBarSection(Element):
     """
@@ -75,8 +66,8 @@ class SideBarSection(Element):
     Root modules have only one section. 
     """
     
-    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, 
-                 documented_ob: Documentable, template_lookup: TemplateLookup):
+    def __init__(self, ob: Documentable, documented_ob: Documentable, docgetter: util.DocGetter, 
+                 loader: ITemplateLoader, template_lookup: TemplateLookup):
         super().__init__(loader)
         self.ob = ob
         self.documented_ob = documented_ob
@@ -96,49 +87,42 @@ class SideBarSection(Element):
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
-        """Craft a <code><a> block for the title. """
+        """Craft a <code><a> block for the title with custom description when hovering. """
         name = self.ob.name
-        if name == "__init__" and self.ob.parent:
+        if name == "__init__" and self.ob.parent: #TODO: REMOVE once https://github.com/twisted/pydoctor/pull/360/files is merged
             name = self.ob.parent.name
         link = epydoc2stan.taglink(self.ob, self.ob.url, name)
         link.attributes['title'] = self.description()
         attributes = {}
         if self._represents_documented_ob:
-            attributes['class'] = 'thisObject'
+            attributes['class'] = 'thisobject'
         return Tag('code', children=[link], attributes=attributes)
     
     def description(self) -> str:
+        """
+        Short description of the sidebar section.
+        """
         return (f"This {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" if self._represents_documented_ob 
-                    else f"The parent{' ' + self.ob.kind.lower() if self.ob.kind else ''} of this {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" 
+                    else f"The parent of this {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" 
                     if self.ob in [self.documented_ob.parent, self.documented_ob.module.parent] else "")
 
     @renderer
-    def content(self, request: IRequest, tag: Tag) -> Union[Element, str]:
+    def content(self, request: IRequest, tag: Tag) -> 'ObjContent':
+
+        args: Dict[str, Any] = dict(docgetter=self.docgetter, 
+                    loader=TagLoader(tag), 
+                    documented_ob=self.documented_ob,
+                    template_lookup=self.template_lookup, 
+                    depth=self.ob.system.options.sidebarexpanddepth)
         
         if isinstance(self.ob, (Package, Module)):
-            if isinstance(self.ob, Package):
-                return PackageContent(docgetter=self.docgetter,
-                                    loader=TagLoader(tag), 
-                                    package=self.ob, 
-                                    init_module=self.ob.module, 
-                                    documented_ob=self.documented_ob,
-                                    template_lookup=self.template_lookup, 
-                                    depth=self.ob.system.options.sidebarexpanddepth)
+            if isinstance(self.ob, Package): #TODO: REMOVE once #360 is merged
+                return PackageContent(package=self.ob, 
+                                      init_module=self.ob.module, **args)
             else:
-                return ObjContent(docgetter=self.docgetter, 
-                                  loader=TagLoader(tag), 
-                                  ob=self.ob.module, 
-                                  documented_ob=self.documented_ob,
-                                  template_lookup=self.template_lookup, 
-                                    depth=self.ob.system.options.sidebarexpanddepth)
-
+                return ObjContent(ob=self.ob.module, **args)
         else:
-            return ObjContent(docgetter=self.docgetter, 
-                              loader=TagLoader(tag), 
-                              ob=self.ob, 
-                              documented_ob=self.documented_ob,
-                              template_lookup=self.template_lookup, 
-                              depth=self.ob.system.options.sidebarexpanddepth)
+            return ObjContent(ob=self.ob, **args)
 
 class ObjContent(Element):
     """
@@ -170,6 +154,31 @@ class ObjContent(Element):
 
         self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
         self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
+    
+    def _getListOf(self, type_: Union[Type[Documentable], 
+                            Tuple[Type[Documentable], ...]],
+                         inherited: bool = False) -> Optional['ContentList']:
+        children = self.children(inherited=inherited)
+        if children:
+            things = [ child for child in children if isinstance(child, type_) ]
+            return self._getListFrom(things, expand=self._isExpandable(type_))
+        else:
+            return None
+
+    #TODO: ensure not to crash if heterogeneous Documentable types are passed
+
+    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional['ContentList']:
+        if things:
+            assert self.loader is not None
+            return ContentList(ob=self.ob, children=things, 
+                    documented_ob=self.documented_ob,
+                    docgetter=self.docgetter,
+                    expand=expand,
+                    nested_content_loader=self.loader, 
+                    template_lookup=self.template_lookup,
+                    level_depth=(self._level, self._depth))
+        else:
+            return None
 
     def children(self, inherited: bool = False) -> Optional[List[Documentable]]:
         """
@@ -196,7 +205,7 @@ class ObjContent(Element):
                 [o for o in sorted(self.ob.contents.values(), key=lambda o:o.name) if o.isVisible], # type: ignore[no-any-return]
                  key=lambda o:-o.privacyClass.value)
 
-    def expand_list(self, list_type: Union[Type[Documentable], 
+    def _isExpandable(self, list_type: Union[Type[Documentable], 
                                             Tuple[Type[Documentable], ...]]) -> bool:
         """
         Should the list items be expandable?
@@ -205,9 +214,8 @@ class ObjContent(Element):
         can_be_expanded = False
 
         # Classes, modules and packages can be expanded in the sidebar. 
-        if isinstance(list_type, type) and issubclass(list_type, (Class, Module, Package)):
-            can_be_expanded = True
-        elif isinstance(list_type, tuple) and any([issubclass(t, (Class, Module, Package)) for t in list_type]):
+        if (isinstance(list_type, type) and issubclass(list_type, (Class, Module, Package))) or \
+            (isinstance(list_type, tuple) and any([issubclass(t, (Class, Module, Package)) for t in list_type])):
             can_be_expanded = True
         
         return self._level < self._depth and can_be_expanded
@@ -216,7 +224,11 @@ class ObjContent(Element):
     def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         
         toc = self.docgetter.get_toc(self.ob)
+
+        # Only show the TOC if visiting the object page itself, in other words, the TOC do dot show up
+        # in the object's parent section or any other subsections except the main one.
         if toc and self.documented_ob == self.ob:
+
             # mypy gets error: Returning Any from function declared to return "Union[Tag, str]"
             return tag.fillSlots(titles=toc) # type: ignore[no-any-return]
         else:
@@ -270,39 +282,12 @@ class ObjContent(Element):
     
     @renderer
     def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
-        return self.subModuleList or ""
-
-    def _getListOf(self, type_: Union[Type[Documentable], 
-                                Tuple[Type[Documentable], ...]],
-                         inherited: bool = False) -> Optional[Element]:
-        children = self.children(inherited=inherited)
-        if children:
-            things = [ child for child in children if isinstance(child, type_) ]
-            return self._getListFrom(things, expand=self.expand_list(type_))
-        else:
-            return None
-
-    #TODO: ensure not to crash if heterogeneous Documentable types are passed
-
-    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional[Element]:
-        if things:
-            assert self.loader is not None
-            return ContentList(ob=self.ob, children=things, 
-                    documented_ob=self.documented_ob,
-                    loader=ContentList.lookup_loader(self.template_lookup), 
-                    docgetter=self.docgetter,
-                    expand=expand,
-                    nested_content_loader=self.loader, 
-                    template_lookup=self.template_lookup,
-                    level_depth=(self._level, self._depth))
-        else:
-            return None
-        
+        return self.subModuleList or ""        
 
 class PackageContent(ObjContent):
     # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
 
-    def __init__(self,  docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, init_module: Module, 
+    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, init_module: Module, 
                  documented_ob: Documentable, template_lookup: TemplateLookup, depth: int, level: int = 0):
 
         self.init_module = init_module
@@ -316,7 +301,7 @@ class PackageContent(ObjContent):
     
     def _getListOf(self, type_: Union[Type[Documentable], 
                                 Tuple[Type[Documentable], ...]], inherited: bool = False
-                  ) -> Optional[Element]:
+                  ) -> Optional['ContentList']:
         children = self.children()
         if children:
             sub_modules = [ child for child in children if isinstance(child, type_) and child.name != '__init__' ]
@@ -326,11 +311,11 @@ class PackageContent(ObjContent):
         else:
             return None
 
-        return self._getListFrom(things, expand=self.expand_list(type_))
+        return self._getListFrom(things, expand=self._isExpandable(type_))
 
 class ContentList(TemplateElement):
     """
-    List of child objects that share the same kind. 
+    List of child objects that share the same type. 
 
     One L{ObjContent} element can have up to six C{ContentList}: 
         - classes 
@@ -340,15 +325,15 @@ class ContentList(TemplateElement):
         - inherited attributes
         - inherited methods
     """
-    # one table per module children kind: classes, functions, variables, modules
+    # one table per module children types: classes, functions, variables, modules
 
     filename = 'sidebar-list.html'
 
     def __init__(self, ob: Documentable, docgetter: util.DocGetter,
-                 children: Iterable[Documentable], documented_ob: Documentable, loader: ITemplateLoader, 
+                 children: Iterable[Documentable], documented_ob: Documentable, 
                  expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
-        super().__init__(loader)
+        super().__init__(loader=self.lookup_loader(template_lookup))
         self.ob = ob 
         self.children = children
         self.documented_ob = documented_ob
@@ -403,56 +388,43 @@ class ContentItem(Element):
     @renderer
     def class_(self, request: IRequest, tag: Tag) -> str:
         class_ = ''
-        # Uncomment if we want to keep same style as in the summary table. 
-        # I found it a little bit too colorful. 
-        # class_ += 'base' + self.child.css_class + ' '
+        # We could keep same style as in the summary table. 
+        # But I found it a little bit too colorful.
         if self.child.isPrivate:
             class_ += "private"
         if self.child == self.documented_ob:
-            class_ += " thisObject"
+            class_ += " thisobject"
         return class_
 
-    def nested_contents(self) -> ObjContent:
+    def _contents(self) -> ObjContent:
+
+        args: Dict[str, Any] = dict(docgetter=self.docgetter,
+                    loader=self.nested_content_loader, 
+                    documented_ob=self.documented_ob,
+                    level=self._level_depth[0], 
+                    depth=self._level_depth[1],
+                    template_lookup=self.template_lookup,)
 
         if isinstance(self.child, (Package, Module)):
             if isinstance(self.child, Package):
-                return PackageContent(docgetter=self.docgetter,
-                                    loader=self.nested_content_loader, 
-                                    package=self.child, 
-                                    init_module=self.child.module, 
-                                    documented_ob=self.documented_ob,
-                                    template_lookup=self.template_lookup,
-                                    level=self._level_depth[0], 
-                                    depth=self._level_depth[1])
+                return PackageContent(package=self.child, 
+                                      init_module=self.child.module, **args)
             else:
-                return ObjContent(docgetter=self.docgetter, 
-                                 loader=self.nested_content_loader, 
-                                 ob=self.child.module, 
-                                 documented_ob=self.documented_ob,
-                                 template_lookup=self.template_lookup, 
-                                 level=self._level_depth[0], 
-                                 depth=self._level_depth[1])
-
+                return ObjContent(ob=self.child.module, **args)
         else:
-            return ObjContent(docgetter=self.docgetter, 
-                              loader=self.nested_content_loader, 
-                              ob=self.child, 
-                              documented_ob=self.documented_ob,
-                              template_lookup=self.template_lookup, 
-                              level=self._level_depth[0], 
-                              depth=self._level_depth[1])
+            return ObjContent(ob=self.child, **args)
     
     @renderer
-    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, Element, Tag]:
+    def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, 'ExpandableItem']:
         if self._expand:
-            nested_contents = self.nested_contents()
+            nested_contents = self._contents()
             return ExpandableItem(TagLoader(tag), self.child, nested_contents, 
                     do_not_expand=self.child == self.documented_ob)
         else:
             return ""
 
     @renderer
-    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[str, Element]:
+    def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[str, 'LinkOnlyItem']:
         if not self._expand:
             return LinkOnlyItem(TagLoader(tag), self.child)
         else:
@@ -460,7 +432,7 @@ class ContentItem(Element):
 
 class LinkOnlyItem(Element):
     """
-    Sidebar leaf item.
+    Sidebar leaf item: just a link to an object.
 
     Used by L{ContentItem.linkOnlyItem}
     """
@@ -474,7 +446,7 @@ class LinkOnlyItem(Element):
 
 class ExpandableItem(LinkOnlyItem):
     """
-    Sidebar expandable item.
+    Sidebar expandable item: link to an object and have a triangle that expand/collapse it's contents
 
     Used by L{ContentItem.expandableItem}
 

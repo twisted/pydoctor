@@ -96,7 +96,6 @@ _common_args = [
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
-    '--sidebar-expand-depth=10', '--sidebar-toc-depth=3',
 ]
 pydoctor_args = {
     'main': [
@@ -122,6 +121,7 @@ pydoctor_args = {
         '--project-name=pydoctor-epytext-demo',
         '--project-version=1.3.0',
         '--docformat=epytext',
+        '--sidebar-toc-depth=3',
         '--project-url=../epytext.html',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
@@ -130,6 +130,7 @@ pydoctor_args = {
         '--project-name=pydoctor-restructuredtext-demo',
         '--project-version=1.0.0',
         '--docformat=restructuredtext',
+        '--sidebar-toc-depth=3',
         '--project-url=../restructuredtext.html',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,

@@ -728,7 +728,8 @@ div.tip, div.hint, div.important {
     max-width: 970px; /* Arbitrary "good for reading" width for the content */ 
 }
 
-.noSideBar {
+/* Special case for the --nosidebar option */ 
+.nosidebar {
     margin-left: 0!important;
 }
 
@@ -949,11 +950,10 @@ input.tocChildrenToggle {
     margin-left: 18px;
 }
 
-.thisObject a {
+/* Special cases to display the current object name in the sidebar */ 
+.thisobject a {
     color: #555;
 }
-
-/* Special case */ 
 .expandableItem label.notExpandable {
     cursor: not-allowed;
 }

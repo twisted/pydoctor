@@ -240,8 +240,8 @@ class CommonPage(Page):
         return self.docgetter.get(data)
 
     @renderer
-    def mainDivClass(self, request: IRequest, tag: Tag) -> str:
-        return 'noSideBar' if self.ob.system.options.nosidebar else ""
+    def maindivclass(self, request: IRequest, tag: Tag) -> str:
+        return 'nosidebar' if self.ob.system.options.nosidebar else ""
 
     @renderer
     def sidebarcontainer(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
@@ -250,8 +250,7 @@ class CommonPage(Page):
         else:
             # error: Returning Any from function declared to return "Tag"
             return tag.fillSlots(sidebar=SideBar(docgetter=self.docgetter, # type: ignore[no-any-return]
-                    loader=SideBar.lookup_loader(self.template_lookup), 
-                    ob=self.ob, template_lookup=self.template_lookup))
+                                 ob=self.ob, template_lookup=self.template_lookup))
 
     @property
     def slot_map(self) -> Dict[str, str]:
