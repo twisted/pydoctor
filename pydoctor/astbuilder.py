@@ -444,7 +444,7 @@ class ModuleVistor(ast.NodeVisitor):
         parent = self.builder.current
         obj = parent.resolveName(target)
         if obj is None:
-            obj = self.builder.addAttribute(target, None, parent)
+            obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
         if isinstance(obj, model.Attribute):
             obj.kind = model.KindClass.VARIABLE
             if annotation is None and expr is not None:
@@ -476,7 +476,7 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj: Optional[model.Attribute] = cls.contents.get(name)
         if obj is None:
-            obj = self.builder.addAttribute(name, None, cls)
+            obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
         if obj.kind is None:
             instance = is_attrib(expr, cls) or (
                 cls.auto_attribs and annotation is not None and not (
@@ -510,7 +510,7 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj = cls.contents.get(name)
         if obj is None:
-            obj = self.builder.addAttribute(name, None, cls)
+            obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
         obj.kind = model.KindClass.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
@@ -749,7 +749,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno: int
             ) -> model.Attribute:
 
-        attr = self.builder.addAttribute(node.name, model.KindClass.PROPERTY, self.builder.current)
+        attr = self.builder.addAttribute(name=node.name, kind=model.KindClass.PROPERTY, parent=self.builder.current)
         attr.setLineNumber(lineno)
 
         if docstring is not None:

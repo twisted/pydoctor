@@ -664,27 +664,28 @@ def format_summary(obj: model.Documentable) -> Tag:
 def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
-    subdocstrings: DefaultDict[str, int] = defaultdict(int)
-    subcounts: DefaultDict[str, int]  = defaultdict(int)
-    for subob in obj.contents.values():
-        k = subob.kind.name.lower()
-        subcounts[k] += 1
-        if subob.docstring is not None:
-            subdocstrings[k] += 1
+    sub_objects_with_docstring_count: DefaultDict[model.KindClass, int] = defaultdict(int)
+    sub_objects_total_count: DefaultDict[model.KindClass, int]  = defaultdict(int)
+    for sub_ob in obj.contents.values():
+        k = sub_ob.kind
+        sub_objects_total_count[k] += 1
+        if sub_ob.docstring is not None:
+            sub_objects_with_docstring_count[k] += 1
     if isinstance(obj, model.Package):
-        subcounts['module'] -= 1
+        sub_objects_total_count[model.KindClass.MODULE] -= 1
 
     tag: Tag = tags.span(class_='undocumented')
-    if subdocstrings:
-        plurals = {'class': 'classes', 'property': 'properties'}
+    if sub_objects_with_docstring_count:
+        
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", kind.name.lower(), " docstring; ",
+            "No ", format_kind(kind), " docstring; ",
             ', '.join(
-                f"{subdocstrings[k]}/{subcounts[k]} "
-                f"{plurals.get(k, k + 's')}"
-                for k in sorted(subcounts)
+                f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
+                f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
+                
+                for k in sorted(sub_objects_total_count, key=(lambda x:x.value))
                 ),
             " documented"
             )
@@ -840,3 +841,32 @@ def extract_fields(obj: model.Documentable) -> None:
             else:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_kind[tag]
+
+def format_kind(kind: model.KindClass, plural: bool = False) -> str:
+    """
+    Transform a `model.KindClass` Enum value to string. 
+    """
+    names = {
+        model.KindClass.PACKAGE         : 'Package',
+        model.KindClass.MODULE          : 'Module',
+        model.KindClass.INTERFACE       : 'Interface',
+        model.KindClass.CLASS           : 'Class',
+        model.KindClass.CLASS_METHOD    : 'Class Method',
+        model.KindClass.STATIC_METHOD   : 'Static Method',
+        model.KindClass.METHOD          : 'Method',
+        model.KindClass.FUNCTION        : 'Function',
+        model.KindClass.CLASS_VARIABLE  : 'Class Variable',
+        model.KindClass.ATTRIBUTE       : 'Attribute',
+        model.KindClass.INSTANCE_VARIABLE : 'Instance Variable',
+        model.KindClass.PROPERTY        : 'Property',
+        model.KindClass.VARIABLE        : 'Variable',
+        model.KindClass.SCHEMA_FIELD    : 'Schema Field',
+    }
+    plurals = {
+        model.KindClass.CLASS           : 'Classes', 
+        model.KindClass.PROPERTY        : 'Properties',
+    }
+    if plural:
+        return plurals.get(kind, names[kind] + 's')
+    else:
+        return names[kind]

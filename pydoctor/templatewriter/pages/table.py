@@ -15,7 +15,7 @@ class TableRow(Element):
 
     @renderer
     def class_(self, request, tag):
-        class_ = self.child.css_class
+        class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
@@ -23,7 +23,7 @@ class TableRow(Element):
     @renderer
     def kind(self, request, tag):
         child = self.child
-        kind_name = child.kind.name
+        kind_name = epydoc2stan.format_kind(child.kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.

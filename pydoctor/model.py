@@ -77,36 +77,27 @@ class PrivacyClass(Enum):
     HIDDEN = 0
     PRIVATE = 1
     VISIBLE = 2
+    
+class KindClass(Enum):
+    """
+    L{Enum} containing values indicating the possible object types.
 
-class _KindEnum(Enum):
+    @note: Presentation order is derived from the enum values
     """
-    Abstract container for L{KindClass} values. 
-    """
-    @property
-    def name(self) -> str: # type: ignore[override]
-        return super().name.replace("_", " ")
-
-class KindClass(_KindEnum):
-    """
-    Values indicating the possible object types.
-
-    @note: Some new kinds can be dynamically created by using `zope.schema`.
-        New kinds will have lower values. 
-    """
-    PACKAGE = 1000
-    MODULE = 900
-    INTERFACE = 850
-    CLASS = 800
-    # ZOPE_SCHEMA = 801 # ? How to handle them ?
-    CLASS_METHOD = 700
-    STATIC_METHOD = 600
-    METHOD = 500
-    FUNCTION = 400
-    CLASS_VARIABLE = 300
-    ATTRIBUTE = 210
-    INSTANCE_VARIABLE = 200
-    PROPERTY = 150
-    VARIABLE = 100
+    PACKAGE             = 1000
+    MODULE              = 900
+    CLASS               = 800
+    INTERFACE           = 850
+    CLASS_METHOD        = 700
+    STATIC_METHOD       = 600
+    METHOD              = 500
+    FUNCTION            = 400
+    CLASS_VARIABLE      = 300
+    SCHEMA_FIELD        = 220
+    ATTRIBUTE           = 210
+    INSTANCE_VARIABLE   = 200
+    PROPERTY            = 150
+    VARIABLE            = 100
 
 class Documentable:
     """An object that can be documented.
@@ -115,9 +106,7 @@ class Documentable:
 
     @ivar docstring: The object's docstring.  But also see docsources.
     @ivar system: The system the object is part of.
-    @ivar parent: ...
-    @ivar parentMod: ...
-    @ivar name: ...
+
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
@@ -125,7 +114,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: Optional[_KindEnum] = None
+    kind: Optional[KindClass] = None
 
     def __init__(
             self, system: 'System', name: str,
@@ -148,16 +137,6 @@ class Documentable:
         The default implementation returns L{DocLocation.OWN_PAGE}.
         """
         return DocLocation.OWN_PAGE
-
-    @property
-    def css_class(self) -> str:
-        """A short, lower case description for use as a CSS class in HTML."""
-        kind = self.kind
-        assert kind is not None # if kind is None, object is invisible
-        class_ = kind.name.lower().replace(' ', '')
-        if self.privacyClass is PrivacyClass.PRIVATE:
-            class_ += ' private'
-        return class_
 
     @property
     def doctarget(self) -> 'Documentable':
@@ -563,7 +542,7 @@ class Function(Inheritable):
             self.kind = KindClass.METHOD
 
 class Attribute(Inheritable):
-    kind = KindClass.ATTRIBUTE
+    kind: Optional[KindClass] = KindClass.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 

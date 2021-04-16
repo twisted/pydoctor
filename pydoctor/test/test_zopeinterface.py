@@ -161,19 +161,18 @@ def test_zopeschema(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
-    assert text.kind.name == "TextLine"
+    assert text.parsed_type == "TextLine"
+    assert text.kind is model.KindClass.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
-    assert undoc.kind.name == "Bool"
+    assert undoc.parsed_type == "Bool"
+    assert undoc.kind is model.KindClass.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
-    assert bad.kind.name == "ASCII"
+    assert bad.parsed_type == "ASCII"
+    assert bad.kind is model.KindClass.SCHEMA_FIELD
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
-    
-    assert text.parsed_type is None
-    assert undoc.parsed_type is None
-    assert bad.parsed_type is None
 
 def test_aliasing_in_class() -> None:
     src = '''
@@ -203,12 +202,15 @@ def test_zopeschema_inheritance() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert mytext.kind.name == "MyTextLine"
+    assert mytext.parsed_type == "MyTextLine"
+    assert mytext.kind is model.KindClass.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert myothertext.kind.name == "MyOtherTextLine"
+    assert myothertext.parsed_type == "MyOtherTextLine"
+    assert myothertext.kind is model.KindClass.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert myint.kind.name == "Int"
+    assert myint.parsed_type == "Int"
+    assert myint.kind is model.KindClass.SCHEMA_FIELD
 
 def test_docsources_includes_interface() -> None:
     src = '''

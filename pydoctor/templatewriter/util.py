@@ -1,12 +1,25 @@
-"""Miscellaneous utilities."""
+"""Miscellaneous utilities for the HTML writer."""
 
 from typing import Optional
 import os
 
-from pydoctor import model
 from twisted.python.filepath import FilePath
 from twisted.web.template import Element, Tag, renderer, tags
 
+from pydoctor import model
+from pydoctor.epydoc2stan import format_kind
+
+def css_class(o: model.Documentable) -> str:
+    """
+    A short, lower case description for use as a CSS class in HTML. 
+    Includes the kind and privacy. 
+    """
+    kind = o.kind
+    assert kind is not None # if kind is None, object is invisible
+    class_ = format_kind(kind).lower().replace(' ', '')
+    if o.privacyClass is model.PrivacyClass.PRIVATE:
+        class_ += ' private'
+    return class_
 
 def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref

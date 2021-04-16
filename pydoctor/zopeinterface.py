@@ -6,17 +6,6 @@ import re
 
 from pydoctor import astbuilder, model
 
-def new_kind(name: str) -> model._KindEnum:
-    """
-    Dynamically create a new `_KindEnum` with `name` 
-    as it's only value and return the enum value. 
-    """
-    if not name.isidentifier():
-        raise ValueError(f"The new kind name must be a valid Python identifier, not : '{name}'")
-    # Ignores mypy error: Too many arguments for "_KindEnum"
-    kind =  getattr(model._KindEnum('NewKindClass', name), name) #type: ignore[call-arg]
-    assert isinstance(kind, model._KindEnum)
-    return kind
 
 class ZopeInterfaceModule(model.Module):
 
@@ -234,13 +223,18 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             match = schema_prog.match(funcName)
 
             if match:
-                _name = match.group(1)
-                attr.kind = new_kind(_name)
+                cls_name = match.group(1)
+                attr.kind = model.KindClass.SCHEMA_FIELD
+
             else:
                 cls = self.builder.system.objForFullName(funcName)
                 if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
                     return
-                attr.kind = new_kind(cls.name)
+                attr.kind = model.KindClass.SCHEMA_FIELD
+                cls_name = cls.name
+
+            # TODO: Link to schema field apidocs with docstring linker
+            attr.parsed_type = cls_name
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
