@@ -3,7 +3,7 @@ from pydoctor.test.test_packages import processPackage
 from pydoctor.zopeinterface import ZopeInterfaceSystem
 from pydoctor import model
 
-from . import CapSys
+from . import CapSys, NotFoundLinker
 
 
 # we set up the same situation using both implements and
@@ -161,15 +161,15 @@ def test_zopeschema(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
-    assert text.parsed_type == "TextLine"
+    assert str(text.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.TextLine'])])"
     assert text.kind is model.KindClass.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
-    assert undoc.parsed_type == "Bool"
+    assert str(undoc.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.Bool'])])"
     assert undoc.kind is model.KindClass.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
-    assert bad.parsed_type == "ASCII"
+    assert str(bad.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.ASCII'])])"
     assert bad.kind is model.KindClass.SCHEMA_FIELD
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
@@ -199,17 +199,17 @@ def test_zopeschema_inheritance() -> None:
         myothertext = MyOtherTextLine(description="fun in another bun")
         myint = INTEGERSCHMEMAFIELD(description="not as much fun")
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert mytext.parsed_type == "MyTextLine"
+    assert str(mytext.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyTextLine'])])"
     assert mytext.kind is model.KindClass.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert myothertext.parsed_type == "MyOtherTextLine"
+    assert str(myothertext.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyOtherTextLine'])])"
     assert myothertext.kind is model.KindClass.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert myint.parsed_type == "Int"
+    assert str(myint.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['INTEGERSCHMEMAFIELD'])])"
     assert myint.kind is model.KindClass.SCHEMA_FIELD
 
 def test_docsources_includes_interface() -> None:

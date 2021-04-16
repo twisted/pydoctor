@@ -918,7 +918,7 @@ def format_kind(kind: model.KindClass, plural: bool = False) -> str:
         model.KindClass.INSTANCE_VARIABLE : 'Instance Variable',
         model.KindClass.PROPERTY        : 'Property',
         model.KindClass.VARIABLE        : 'Variable',
-        model.KindClass.SCHEMA_FIELD    : 'Schema Field',
+        model.KindClass.SCHEMA_FIELD    : 'Attribute',
     }
     plurals = {
         model.KindClass.CLASS           : 'Classes', 

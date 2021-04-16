@@ -4,8 +4,7 @@ from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
-from pydoctor import astbuilder, model
-
+from pydoctor import astbuilder, model, epydoc2stan
 
 class ZopeInterfaceModule(model.Module):
 
@@ -202,7 +201,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr = self.builder.current.contents.get(target)
+        attr: Optional[model.Documentable] = self.builder.current.contents.get(target)
         if attr is None:
             return
         funcName = astbuilder.node2fullname(expr.func, self.builder.current)
@@ -233,8 +232,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 attr.kind = model.KindClass.SCHEMA_FIELD
                 cls_name = cls.name
 
-            # TODO: Link to schema field apidocs with docstring linker
-            attr.parsed_type = cls_name
+            # Linking to zope.schema.* class if setup with intersphinx
+            attr.parsed_type = epydoc2stan.AnnotationDocstring(expr.func)
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
