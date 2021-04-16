@@ -1,4 +1,7 @@
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     overflow-y: scroll;
 }
 
@@ -70,7 +73,7 @@ nav div.layoutOptions {
     text-decoration: none;
 }
 
-#projecthome:hover {
+a.projecthome:hover {
     color: #23527c;
 }
 
@@ -98,6 +101,18 @@ nav div.layoutOptions {
     font-size: 24px;
     color: #777;
     margin-bottom: 1.8em;
+}
+
+/* Footer */
+
+footer.navbar {
+    margin: auto 0 0 0;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    background-color: #fff;
+    border-width: 1px 0 0 0;
+    border-radius: 0;
+    text-align: center;
 }
 
 a[name] {

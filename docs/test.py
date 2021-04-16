@@ -41,7 +41,7 @@ def test_rtd_pydoctor_multiple_call():
     """
     with open(BASE_DIR / 'docformat' / 'epytext' / 'index.html', 'r') as stream:
         page = stream.read()
-        assert '<a href="../epytext.html" id="projecthome">pydoctor-epytext-demo</a>' in page, page
+        assert '<a href="../epytext.html" class="projecthome">pydoctor-epytext-demo</a>' in page, page
 
 
 def test_rtd_extension_inventory():
@@ -93,7 +93,7 @@ def test_index_contains_infos():
     """
     Test if index.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - link to the root package
         - pydoctor github link in the footer
@@ -116,7 +116,7 @@ def test_page_contains_infos():
     """
     Test if pydoctor.driver.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - js script source
         - pydoctor github link in the footer
@@ -139,7 +139,7 @@ def test_custom_template_contains_infos():
     """
     Test if the custom template index.html contains the following informations:
 
-        - meta generator tag 
+        - meta generator tag
         - nav and links to modules, classes, names
         - pydoctor github link in the footer
         - the custom header

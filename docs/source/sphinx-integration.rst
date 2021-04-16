@@ -16,7 +16,7 @@ with the following cumulative configuration option::
 
 .. note:: The URL must point to the the ``objects.inv``.
 
-Then, your interpreted text, with backticks (`````) using `restructuredtext` and 
+Then, your interpreted text, with backticks (`````) using `restructuredtext` and
 with ``L{}`` tag using `epytext`, will be linked to the Python element. Example::
 
   `datetime.datetime`
@@ -27,7 +27,7 @@ Simple as that!
 Linking from Sphinx to your pydoctor API docs
 ---------------------------------------------
 
-pydoctor's HTML generator will also generate a Sphinx objects inventory that can be 
+pydoctor's HTML generator will also generate a Sphinx objects inventory that can be
 used with the following mapping:
 
 * packages, modules -> ``:py:mod:``

@@ -148,7 +148,7 @@ def test_template_lookup_get_template() -> None:
 
     assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
 
-    assert lookup.get_template('footer.html').version == -1
+    assert lookup.get_template('subheader.html').version == -1
 
     assert lookup.get_template('table.html').version == 1
 
@@ -191,7 +191,7 @@ def test_template_lookup_add_template_allok() -> None:
     here = Path(__file__).parent
 
     with warnings.catch_warnings(record=True) as catch_warnings:
-        warnings.simplefilter("always", )
+        warnings.simplefilter("always")
         lookup = TemplateLookup()
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]

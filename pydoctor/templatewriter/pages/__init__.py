@@ -44,15 +44,6 @@ class Nav(TemplateElement):
         self.system = system
         self.template_lookup = template_lookup
 
-    @renderer
-    def project(self, request: IRequest, tag: Tag) -> Tag:
-        if self.system.options.projecturl:
-            return Tag('a', attributes=dict(href=self.system.options.projecturl, id="projecthome"),
-                       children=[self.system.projectname])
-        else:
-            return Tag('span', children=[self.system.projectname])
-    
-
 
 class Head(TemplateElement):
     """
@@ -61,7 +52,7 @@ class Head(TemplateElement):
 
     filename = 'head.html'
 
-    def __init__(self, title: str, loader: ITemplateLoader, ) -> None:
+    def __init__(self, title: str, loader: ITemplateLoader) -> None:
         super().__init__(loader)
         self._title = title
 
@@ -95,9 +86,18 @@ class Page(TemplateElement):
 
     @property
     def slot_map(self) -> Dict[str, str]:
+        system = self.system
+
+        if system.options.projecturl:
+            project_tag = tags.a(href=system.options.projecturl, class_="projecthome")
+        else:
+            project_tag = tags.transparent
+        project_tag(system.projectname)
+
         return dict(
+            project=project_tag,
             pydoctor_version=__version__,
-            buildtime=self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+            buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
         )
 
     @abc.abstractmethod
@@ -167,16 +167,6 @@ class CommonPage(Page):
             ob = ob.parent
         parts.reverse()
         return parts
-
-    # Deprecated: pydoctor's templates no longer use this, but it is kept
-    #             for now to not break customized templates like Twisted's.
-    #             NOTE: Remember to remove the CSS as well.
-    def part(self):
-        parent = self.ob.parent
-        if parent:
-            return 'Part of ', tags.code(self.namespace(parent))
-        else:
-            return []
 
     @renderer
     def deprecated(self, request, tag):
@@ -267,10 +257,8 @@ class CommonPage(Page):
     def slot_map(self) -> Dict[str, str]:
         slot_map = super().slot_map
         slot_map.update(
-            project=self.system.projectname,
             heading=self.heading(),
             category=self.category(),
-            part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
             mainTable=self.mainTable(),
