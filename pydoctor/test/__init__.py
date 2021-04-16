@@ -1,13 +1,14 @@
 """PyDoctor's test suite."""
 
 from logging import LogRecord
-from typing import TYPE_CHECKING, Optional, Sequence
+from typing import Iterable, TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
+from pydoctor.templatewriter import IWriter
 from pydoctor.epydoc.markup import DocstringLinker
 
 
@@ -39,7 +40,7 @@ else:
     FixtureRequest = MonkeyPatch = TempPathFactory = object
 
 
-class InMemoryWriter:
+class InMemoryWriter(IWriter):
     """
     Minimal template writer that doesn't touches the filesystem but will
     trigger the rendering of epydoc for the targeted code.
@@ -53,14 +54,14 @@ class InMemoryWriter:
         Does nothing.
         """
 
-    def writeIndividualFiles(self, obs: Sequence[model.Documentable]) -> None:
+    def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """
         Trigger in memory rendering for all objects.
         """
         for ob in obs:
             self._writeDocsFor(ob)
 
-    def writeModuleIndex(self, system: model.System) -> None:
+    def writeSummaryPages(self, system: model.System) -> None:
         """
         Rig the system to not created the inter sphinx inventory.
         """

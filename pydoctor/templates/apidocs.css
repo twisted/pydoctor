@@ -1,9 +1,20 @@
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
     overflow-y: scroll;
 }
 
-.navbar {
-    margin-bottom: 0px;
+nav.navbar {
+    width:100%;
+    margin-bottom: 0;
+}
+
+nav.navbar > .navbar-header {
+    margin-right: 0;
+    margin-left: 0;
+    height: 100%;
+    display: inline-block;
 }
 
 .page-header {
@@ -17,16 +28,73 @@ body {
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
-    box-shadow: 0px 0px 8px 8px #fff;
+    box-shadow: 0 0 8px 8px #fff;
 }
+
+.navbar-brand {
+    padding: 0;
+}
+
+.navbar-brand a, .navbar-brand span {
+    color:#777777;
+    padding: 15px;
+    display: inline-block;
+}
+
+.navbar-brand *:first-child {
+    padding-right: 0;
+}
+
+.navbar-brand *:last-child {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.navbar-brand a:hover {
+    color: #444444;
+    text-decoration: none;
+}
+
+a.projecthome:hover {
+    color: #23527c;
+}
+
+.navlinks  {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.navlinks > a {
+    padding: 10px 0 10px 15px;
+}
+
+.navlinks > a:hover {
+    background-color: transparent;
+    text-decoration: none;
+}
+
 .page-header h1 {
-    margin-bottom: 0;
+    margin: 0;
 }
 
 .categoryHeader {
     font-size: 24px;
     color: #777;
     margin-bottom: 1.8em;
+}
+
+/* Footer */
+
+footer.navbar {
+    margin: auto 0 0 0;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    background-color: #fff;
+    border-width: 1px 0 0 0;
+    border-radius: 0;
+    text-align: center;
 }
 
 a[name] {
@@ -37,6 +105,7 @@ a[name] {
 
 ul {
     margin-top: 10px;
+    margin-left: 10px;
     padding-left: 10px;
 }
 
@@ -47,10 +116,6 @@ li {
 
 li a {
     text-decoration: none;
-}
-
-ul {
-    margin-left: 10px;
 }
 
 ul ul {
@@ -101,39 +166,118 @@ ul ul ul ul ul ul ul {
     margin-bottom: 5px;
 }
 
-#splitTables > table, .fieldTable {
+#splitTables > table {
     margin-bottom: 20px;
     width: 100%;
     border: 0;
-}
-
-#splitTables > table {
-    border: 1px solid #eee;
 }
 
 #splitTables > table tr {
     border-bottom-color: #eee;
     border-bottom-width: 1px;
     border-bottom-style: solid;
-}
-
-#splitTables > table tr td, .fieldTable tr td {
-    padding: 5px;
+    width: 100%;
 }
 
 #splitTables > table tr td {
+    padding: 5px;
     border-left-color: #eee;
     border-left-width: 1px;
     border-left-style: solid;
 }
 
-#splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
-    border-left: none;
+.fieldTable {
+    width: 100%;
+    display: block;
+    border: 0;
+}
+
+/* Arg name */
+.fieldArg {
+    margin-right: 7px;
+}
+
+.fieldArg:before {
+    margin-right: 6px;
+    content: "\2022";
+    font-size: 14px;
+}
+
+.fieldTable tr:not(.fieldStart) td:first-child{
+    padding-left: 10px;
+}
+
+.fieldTable tr td {
+    padding: 2px;
+}
+
+/* Section header */
+.fieldTable tr td:first-child.fieldName {
+    width: max-content;
+}
+
+/* Argument name + type column table  */
+.fieldTable tr td.fieldArgContainer {
+    width: 250px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Argument description column or return value desc, etc */
+.fieldTable tr td::nth-child(2) {
+    padding-left: 10px;
+}
+
+/* Kind column table  */
+#splitTables > table tr td:first-child {
+    /* border-left: none; */
     width: 150px;
 }
 
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+/* Attr name column table  */
+#splitTables > table tr td:nth-child(2) {
     width: 200px;
+}
+
+/* For smaller displays, i.e. half screen or mobile phone */
+@media only screen and (max-width: 1000px) {
+
+    /* Fix size of summary table columns */
+    #splitTables > table {
+        table-layout: fixed;
+    }
+
+    /* Kind column table  */
+    #splitTables > table tr td:first-child {
+        border-left: none;
+        width: 20%;
+    }
+
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2) {
+        width: 35%;
+    }
+
+    /* Summary column table */
+    #splitTables > table tr td:nth-child(3) {
+        width: 45%;
+    }
+
+}
+
+@media only screen and (max-width: 650px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 175px;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 125px;
+    }
 }
 
 tr.package {
@@ -164,10 +308,6 @@ tr.private {
     background-color: #f1f1f1;
 }
 
-.fieldTable {
-    margin-top: 10px;
-}
-
 .fieldName {
     font-weight: bold;
 }
@@ -194,6 +334,7 @@ tr.private {
 .functionBody .interfaceinfo {
     font-style: italic;
     margin-bottom: 3px;
+    margin-top: 3px;
 }
 
 .functionBody > .undocumented {
@@ -211,10 +352,10 @@ tr.private {
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
 code, .pre, #childList > div .functionHeader,
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
+#splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
-code, #childList > div .functionHeader, .fieldTable tr td.fieldArg {
+code, #childList > div .functionHeader, .fieldArg {
     font-size: 90%;
     color: #222222;
 }
@@ -241,8 +382,10 @@ code {
 }
 
 
-a.functionSourceLink {
+a.sourceLink {
+    color: #337ab7;
     font-weight: normal;
+    background-color: transparent;
 }
 
 
@@ -267,7 +410,7 @@ a.functionSourceLink {
 }
 
 pre {
-    padding-left: 0px;
+    padding-left: 0;
 }
 
 /* Private stuff */
@@ -278,8 +421,18 @@ body.private-hidden #summaryTree .private {
     display: none;
 }
 
-#showPrivate {
+/* Show private */
+
+#showPrivate:hover {
+    text-decoration: none;
+}
+
+#showPrivate button {
     padding: 10px;
+}
+
+#showPrivate button:hover {
+    text-decoration: none;
 }
 
 #current-docs-container {

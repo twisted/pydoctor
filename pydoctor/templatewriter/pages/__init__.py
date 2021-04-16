@@ -1,16 +1,17 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Iterator, List, Optional, Sequence, Union
+from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Union, Type
 import ast
+import abc
 
-from twisted.web.template import tags, renderer, Tag, XMLFile
+from twisted.web.template import tags, renderer, Tag, Element
 import astor
 
+from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
+from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter import util
-
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -30,22 +31,116 @@ def signature(function: model.Function) -> str:
     return str(function.signature)
 
 class DocGetter:
-    def get(self, ob, summary=False):
+    """L{epydoc2stan} bridge."""
+    def get(self, ob: model.Documentable, summary: bool = False) -> Tag:
         if summary:
             return epydoc2stan.format_summary(ob)
         else:
-            doc = epydoc2stan.format_docstring(ob)
-            typ = epydoc2stan.type2stan(ob)
-            if typ is None:
-                return doc
-            else:
-                return [doc, ' (type: ', typ, ')']
+            return epydoc2stan.format_docstring(ob)
+    def get_type(self, ob: model.Documentable) -> Optional[Tag]:
+        return epydoc2stan.type2stan(ob)
 
-class CommonPage(util.Page):
+
+
+class Nav(TemplateElement):
+    """
+    Common navigation header.
+    """
+
+    filename = 'nav.html'
+
+    def __init__(self, system: model.System, loader: ITemplateLoader) -> None:
+        super().__init__(loader)
+        self.system = system
+
+
+class Head(TemplateElement):
+    """
+    Common metadata.
+    """
+
+    filename = 'head.html'
+
+    def __init__(self, title: str, loader: ITemplateLoader) -> None:
+        super().__init__(loader)
+        self._title = title
+
+    @renderer
+    def title(self, request: IRequest, tag: Tag) -> str:
+        return self._title
+
+
+class Page(TemplateElement):
+    """
+    Abstract base class for output pages.
+
+    Defines special HTML placeholders that are designed to be overriden by users:
+    "header.html", "subheader.html" and "footer.html".
+    """
+
+    def __init__(self, system: model.System,
+                 template_lookup: TemplateLookup,
+                 loader: Optional[ITemplateLoader] = None):
+        self.system = system
+        self.template_lookup = template_lookup
+        if not loader:
+            loader = self.lookup_loader(template_lookup)
+        super().__init__(loader)
+
+    def render(self, request: None) -> Tag:
+        tag: Tag
+        tag, = super().render(request)
+        tag.fillSlots(**self.slot_map)
+        return tag
+
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        system = self.system
+
+        if system.options.projecturl:
+            project_tag = tags.a(href=system.options.projecturl, class_="projecthome")
+        else:
+            project_tag = tags.transparent
+        project_tag(system.projectname)
+
+        return dict(
+            project=project_tag,
+            pydoctor_version=__version__,
+            buildtime=system.buildtime.strftime("%Y-%m-%d %H:%M:%S"),
+        )
+
+    @abc.abstractmethod
+    def title(self) -> str:
+        raise NotImplementedError()
+
+    @renderer
+    def head(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Head(self.title(), Head.lookup_loader(self.template_lookup))
+
+    @renderer
+    def nav(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Nav(self.system, Nav.lookup_loader(self.template_lookup))
+
+    @renderer
+    def header(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('header.html'))
+
+    @renderer
+    def subheader(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('subheader.html'))
+
+    @renderer
+    def footer(self, request: IRequest, tag: Tag) -> IRenderable:
+        return Element(self.template_lookup.get_loader('footer.html'))
+
+
+class CommonPage(Page):
+
+    filename = 'common.html'
     ob: model.Documentable
 
-    def __init__(self, ob, docgetter=None):
-        super().__init__(ob.system)
+    def __init__(self, ob: model.Documentable, template_lookup: TemplateLookup, docgetter: Optional[DocGetter]=None):
+        super().__init__(ob.system, template_lookup)
         self.ob = ob
         if docgetter is None:
             docgetter = DocGetter()
@@ -54,10 +149,6 @@ class CommonPage(util.Page):
     @property
     def page_url(self) -> str:
         return self.ob.page_object.url
-
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('common.html'))
 
     def title(self):
         return self.ob.fullName()
@@ -79,21 +170,11 @@ class CommonPage(util.Page):
         while ob:
             if ob.documentation_location is model.DocLocation.OWN_PAGE:
                 if parts:
-                    parts.append('.')
+                    parts.extend(['.', tags.wbr])
                 parts.append(tags.code(epydoc2stan.taglink(ob, page_url, ob.name)))
             ob = ob.parent
         parts.reverse()
         return parts
-
-    # Deprecated: pydoctor's templates no longer use this, but it is kept
-    #             for now to not break customized templates like Twisted's.
-    #             NOTE: Remember to remove the CSS as well.
-    def part(self):
-        parent = self.ob.parent
-        if parent:
-            return 'Part of ', tags.code(self.namespace(parent))
-        else:
-            return []
 
     @renderer
     def deprecated(self, request, tag):
@@ -134,7 +215,8 @@ class CommonPage(util.Page):
     def mainTable(self):
         children = self.children()
         if children:
-            return ChildTable(self.docgetter, self.ob, children)
+            return ChildTable(self.docgetter, self.ob, children,
+                    ChildTable.lookup_loader(self.template_lookup))
         else:
             return ()
 
@@ -146,12 +228,17 @@ class CommonPage(util.Page):
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
         from pydoctor.templatewriter.pages.functionchild import FunctionChild
+
         r = []
+
+        func_loader = FunctionChild.lookup_loader(self.template_lookup)
+        attr_loader = AttributeChild.lookup_loader(self.template_lookup)
+
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), func_loader))
             else:
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c)))
+                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), attr_loader))
         return r
 
     def functionExtras(self, data):
@@ -160,23 +247,19 @@ class CommonPage(util.Page):
     def functionBody(self, data):
         return self.docgetter.get(data)
 
-    @renderer
-    def all(self, request, tag):
-        return tag.fillSlots(
-            title=self.title(),
+    @property
+    def slot_map(self) -> Dict[str, str]:
+        slot_map = super().slot_map
+        slot_map.update(
             heading=self.heading(),
             category=self.category(),
-            part=self.part(),
             extras=self.extras(),
             docstring=self.docstring(),
             mainTable=self.mainTable(),
             packageInitTable=self.packageInitTable(),
             childlist=self.childlist(),
-            # Note: This slot is not used anymore, but kept for backwards
-            #       compatibility until the new template system lands.
-            project=self.project_tag,
-            version=__version__,
-            buildtime=self.ob.system.buildtime.strftime("%Y-%m-%d %H:%M:%S"))
+        )
+        return slot_map
 
 
 class ModulePage(CommonPage):
@@ -185,7 +268,7 @@ class ModulePage(CommonPage):
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
-            r.append(tags.a("(source)", href=sourceHref))
+            r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
 
         return r
 
@@ -202,9 +285,10 @@ class PackagePage(ModulePage):
             [o for o in init.contents.values() if o.isVisible],
             key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
         if children:
+            loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
                            class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children)]
+                    ChildTable(self.docgetter, init, children, loader)]
         else:
             return ()
 
@@ -268,10 +352,12 @@ def assembleList(system, label, lst, idbase, page_url):
 
 
 class ClassPage(CommonPage):
+
     ob: model.Class
 
-    def __init__(self, ob, docgetter=None):
-        CommonPage.__init__(self, ob, docgetter)
+    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup,
+                 docgetter:Optional[DocGetter] = None):
+        super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
         for baselist in nested_bases(self.ob):
             attrs = unmasked_attrs(baselist)
@@ -284,7 +370,7 @@ class ClassPage(CommonPage):
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
-            source = (" ", tags.a("(source)", href=sourceHref))
+            source = (" ", tags.a("(source)", href=sourceHref, class_="sourceLink"))
         else:
             source = tags.transparent
         r.append(tags.p(tags.code(
@@ -337,10 +423,12 @@ class ClassPage(CommonPage):
             return []
         if baselists[0][0][0] == self.ob:
             del baselists[0]
+        loader = ChildTable.lookup_loader(self.template_lookup)
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value)))
+                                               sorted(attrs, key=lambda o:-o.privacyClass.value),
+                                               loader))
                 for b, attrs in baselists]
 
     def baseName(self, data):
@@ -416,3 +504,11 @@ class ZopeInterfaceClassPage(ClassPage):
                 )))
         r.extend(super().functionExtras(data))
         return r
+
+commonpages: Mapping[str, Type[CommonPage]] = {
+    'Module': ModulePage,
+    'Package': PackagePage,
+    'Class': ClassPage,
+    'ZopeInterfaceClass': ZopeInterfaceClassPage,
+}
+"""List all page classes: ties documentable class name with the page class used for rendering"""

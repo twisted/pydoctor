@@ -1,4 +1,5 @@
 <div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+  <meta name="pydoctor-template-version" content="1" />
   <t:attr name="class" t:render="class_" />
   <a>
     <t:attr name="name" t:render="functionAnchor" />
@@ -11,7 +12,7 @@
     <t:transparent t:render="functionDef">
       def functionName():
     </t:transparent>
-    <a class="functionSourceLink" t:render="sourceLink">
+    <a class="sourceLink" t:render="sourceLink">
       <t:attr name="href"><t:slot name="sourceHref" /></t:attr>
       (source)
     </a>

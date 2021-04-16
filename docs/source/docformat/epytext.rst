@@ -29,6 +29,7 @@ Here are the supported *epytext* fields:
     - ``@rtype:`` (synonym: ``@returntype:``)
     - ``@raise ValueError:`` (synonym: ``@raises ValueError:``)
     - ``@see:`` (synonym: ``@seealso:``)
+    - ``@since:``
     - And more
 
 .. note:: Not everything from the `epydoc fields manual
