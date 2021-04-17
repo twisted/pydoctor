@@ -4,7 +4,7 @@ importScripts('lunr.js', 'ajax.js');
 
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
-    console.log(message.data)
+    console.dir(message.data)
     
     if (!message.data.query) {
         throw ('No search query provided.');
@@ -25,7 +25,7 @@ onmessage = function (message) { // -> {'results': [lunr results]}
         postMessage({'results':search_results});
 
         }, function(error){
-            throw ('Error while requesting searchindex.json' + error.message);
+            throw ('Cannot load the search index: ' + error.message);
         });
 
   };
