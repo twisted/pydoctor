@@ -108,7 +108,7 @@ class Template(abc.ABC):
         @returns: The template object or C{None} if file is invalid.
         """
         if path.is_dir():
-            return _TemplateSubFolder(name=path.name, templates=scandir(path))
+            return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
         if path.is_file():
             if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
                 try:
@@ -174,13 +174,19 @@ class _StaticTemplate(Template):
 
 class _TemplateSubFolder(_StaticTemplate):
     """
-    Special template to hold a subfolder contents and copy it to the output folder.
+    Special template to hold a subfolder contents. 
 
-    Used for ``fonts``. 
+    Currently used for C{fonts}.
+
+    @see: L{TemplateWriter._writeStaticTemplates} 
     """
-    def __init__(self, name: str, templates: Iterable[Template]):
+    def __init__(self, name: str, lookup: 'TemplateLookup'):
         super().__init__(name, '')
-        self.templates = templates
+
+        self.lookup: 'TemplateLookup' = lookup
+        """
+        The lookup instance that contains the subfolder templates. 
+        """
 
 class _HtmlTemplate(Template):
     """
@@ -252,18 +258,22 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    _default_template_dir = 'templates'
+    _default_rel_template_dir = 'templates'
 
-    def __init__(self) -> None:
+    def __init__(self, template_dir: Optional[Path] = None) -> None:
         """
         Init L{TemplateLookup} with templates in C{pydoctor/templates}.
         This loads all templates into the lookup C{_templates} dict.
+
+        @param template_dir: A custom L{Path} to load the template from.
         """
 
         # Relative path from here is: ../templates
-        default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
+        _init_template_dir = template_dir or \
+            Path(__file__).parent.parent.joinpath(self._default_rel_template_dir)
+        
         self._templates: Dict[str, Template] = {}
-        self._load_dir(default_template_dir)
+        self._load_dir(_init_template_dir)
         self._default_templates = self._templates.copy()
 
     def _load_dir(self, templatedir: Path, add: bool = False) -> None:
@@ -358,7 +368,7 @@ class TemplateElement(Element, abc.ABC):
     @classmethod
     def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
         """
-        Lookup the element L{ITemplateLoader} with the the C{TemplateLookup}.
+        Lookup the element L{ITemplateLoader} with the C{TemplateLookup}.
         """
         return template_lookup.get_loader(cls.filename)
 

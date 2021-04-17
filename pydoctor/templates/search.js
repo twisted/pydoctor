@@ -77,14 +77,14 @@ function buildSearchResult(dobj) {
     li.setAttribute('class', ob_css_class)
   }
 
-  //Add type metadata
+  //Add type metadata in order to be able to filter
   let type_metadata = document.createElement('meta');
   type_metadata.setAttribute('name', 'type');
   type_metadata.setAttribute('class', 'type');
   type_metadata.setAttribute('content', type_value);
   li.appendChild(type_metadata);
 
-  //Add kind metadata
+  //Add kind metadata in order to be able to filter
   let kind_metadata = document.createElement('meta');
   kind_metadata.setAttribute('name', 'kind');
   kind_metadata.setAttribute('class', 'kind');
@@ -137,18 +137,23 @@ function buildInfosString(search_results_documents, priv){
     +
     (nb_functions>0 ? (nb_functions.toString() + (priv ? " private" : "")+ ' function'+(nb_functions>=2? 's' : '') + ', ' ) : '')
     + 
-    (nb_var>0 ? (nb_var.toString() + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+'.') : '') ;
+    (nb_var>0 ? (nb_var.toString() + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+', ') : '') ;
 
   // Dirty replacing of the commas so the output is a phrase that finishes by ' and xx things.',
   // which is more readable than commas everywhere.
   var pos = infoStr.lastIndexOf(',');
   var commas_count = (infoStr.match(/,/g) || []).length;
-  var infoStrPart1 = infoStr.substring(0,pos)
-  let infoStrPart2 = (commas_count>1 && infoStr.substring(pos+1).trim().length>0 ? ' and' : '.') + infoStr.substring(pos+1)
-  if (infoStr.substring(pos+1).trim().length == 0 && commas_count>1){
-    var pos2 = infoStr.substring(0,pos).lastIndexOf(',');
-    infoStrPart1 = infoStrPart1.substring(0,pos2) + ' and' + infoStrPart1.substring(pos2+1)
-  }
+  var infoStrPart1 = infoStr.substring(0,pos);
+  let infoStrPart2Init = infoStr.substring(pos+1);
+  var infoStrPart2 = infoStr.substring(pos+1);
+
+  if (infoStrPart2Init.trim().length==0){ 
+    infoStrPart2 = '.'; }
+  else{ 
+    infoStrPart2 = ' and' + infoStrPart2; }
+  if (commas_count>1 && infoStrPart2Init.trim().length == 0){
+    var pos2 = infoStrPart1.lastIndexOf(',');
+    infoStrPart1 = infoStrPart1.substring(0,pos2) + ' and' + infoStrPart1.substring(pos2+1); }
   return(infoStrPart1 + infoStrPart2);
 }
 
@@ -259,7 +264,7 @@ function initFilterDropdown(results_list_p){
   _initSearchFilter(results_list, document.getElementById("search-filter-show-interfaces"), ["Interface"]);
   _initSearchFilter(results_list, document.getElementById("search-filter-show-classes"), ["Class"]);
   _initSearchFilter(results_list, document.getElementById("search-filter-show-functions"), ["Function"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-methods"), ["Methods"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-methods"), ["Method"]);
   _initSearchFilter(results_list, document.getElementById("search-filter-show-modules"), ["Module", "Package"]);
   _initSearchFilter(results_list, document.getElementById("search-filter-show-attributes"), ["Attribute"]);
 }

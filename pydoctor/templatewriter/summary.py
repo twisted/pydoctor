@@ -1,6 +1,6 @@
 """Classes that generate the summary pages."""
 
-from typing import Dict, Iterable, List, Sequence, Tuple, Type, Union, cast
+from typing import Dict, List, Sequence, Tuple, Type, Union, cast
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup

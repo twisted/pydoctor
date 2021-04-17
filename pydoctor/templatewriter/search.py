@@ -1,14 +1,11 @@
-from os import PathLike
 from pathlib import Path
-from pydoctor.templatewriter import TemplateLookup
-from typing import Iterable, List, Optional, Sequence, Type
+from typing import Iterable, List, Type
 import json
-
-from twisted.web.iweb import IRenderable, IRequest, ITemplateLoader
 
 from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan
 
+from twisted.web.iweb import IRenderable, IRequest
 from twisted.web.template import Tag, renderer
 from lunr import lunr
 
@@ -17,7 +14,7 @@ class SearchResultsPage(Page):
     filename = 'search-results.html'
 
     def title(self) -> str:
-        return "Search"
+        return f"Search in {self.system.projectname} API Documentation"
 
 class AllDocuments(Page):
     
@@ -40,10 +37,10 @@ class AllDocuments(Page):
 def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     @arg output_dir: Output directory.
-    @arg allobjects: All objects in the system. 
+    @arg system: System. 
     """
 
-    def get_ob_boost(ob) -> int:
+    def get_ob_boost(ob: model.Documentable) -> int:
         if isinstance(ob, (model.Class, model.Package, model.Module)):
             return 3
         elif isinstance(ob, model.Function):
