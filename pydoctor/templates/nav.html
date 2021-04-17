@@ -74,6 +74,18 @@
     </div>
   </div>
 
+  <noscript>
+    <style>
+      /* The search cannot work if JS is not supported, so we hide everything */ 
+      .search-box-container{
+        display: none;
+      }
+      #search-help-box{
+        display: none;
+      }
+    </style>
+  </noscript>
+
   <script>
  
     function toggleSearchHelpText() {
@@ -81,5 +93,7 @@
     }
     // Init searchHelpText
     document.body.classList.add("search-help-hidden");
+
   </script>
+
 </nav>

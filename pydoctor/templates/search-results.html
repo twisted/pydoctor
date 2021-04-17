@@ -43,12 +43,16 @@
               <ul class="dropdown-menu" id="search-filter-dropdown-items">
                 <li id="search-filter-show-all" onclick="showAllItems()">
                   <a>No filter</a><hr /></li>
-                <li id="search-filter-show-modules" onclick="filterItems(['Module', 'Package'], 'Modules and Packages', this);">
-                  <a>Modules and Packages</a></li>
+                <li id="search-filter-show-modules" onclick="filterItems(['Module', 'Package'], 'Modules', this);">
+                  <a>Modules</a></li>
+                <li id="search-filter-show-interfaces" onclick="filterItems(['Interface'], 'Interfaces', this);">
+                  <a>Interfaces</a></li>
                 <li id="search-filter-show-classes" onclick="filterItems(['Class'], 'Classes', this);">
                   <a>Classes</a></li>
-                <li id="search-filter-show-functions" onclick="filterItems(['Function'], 'Methods and Functions', this);">
-                  <a>Methods and Functions</a></li>
+                <li id="search-filter-show-methods" onclick="filterItems(['Method'], 'Methods', this);">
+                  <a>Methods</a></li>
+                <li id="search-filter-show-functions" onclick="filterItems(['Function'], 'Functions', this);">
+                  <a>Functions</a></li>
                 <li id="search-filter-show-attributes" onclick="filterItems(['Attribute'], 'Variables', this);">
                   <a>Variables</a></li>
               </ul>

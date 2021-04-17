@@ -46,16 +46,18 @@ function buildSearchResult(dobj) {
       section = document.createElement('section'),
       code = document.createElement('code'),
       a = document.createElement('a'),
-      p = document.createElement('p')
+      p = document.createElement('p');
 
   p.innerHTML = dobj.querySelector('.summary').innerHTML;
   a.setAttribute('href', dobj.querySelector('.url').innerHTML);
   a.textContent = dobj.querySelector('.fullName').innerHTML;
   
+  let kind_value = dobj.querySelector('.kind').innerHTML;
+  let type_value = dobj.querySelector('.type').innerHTML;
+
   // Adding '()' on functions and methods
-  let type_value = dobj.querySelector('.type').innerHTML
   if (type_value.endsWith("Function")){
-      a.textContent = a.textContent + '()'
+      a.textContent = a.textContent + '()';
   }
   
   // Putting everything together
@@ -66,9 +68,13 @@ function buildSearchResult(dobj) {
   code.appendChild(a);
   section.appendChild(p);
 
-  // Set private
+  // Set private and kind as the CSS class
+  let ob_css_class = dobj.querySelector('.kind').innerHTML.toLowerCase().replace(' ', '');
   if (dobj.querySelector('.privacy').innerHTML.includes('PRIVATE')){
-    li.setAttribute('class', 'private');
+    li.setAttribute('class', 'private ' + ob_css_class);
+  }
+  else{
+    li.setAttribute('class', ob_css_class)
   }
 
   //Add type metadata
@@ -78,6 +84,13 @@ function buildSearchResult(dobj) {
   type_metadata.setAttribute('content', type_value);
   li.appendChild(type_metadata);
 
+  //Add kind metadata
+  let kind_metadata = document.createElement('meta');
+  kind_metadata.setAttribute('name', 'kind');
+  kind_metadata.setAttribute('class', 'kind');
+  kind_metadata.setAttribute('content', kind_value);
+  li.appendChild(kind_metadata);
+
   return li;
 }
 
@@ -85,30 +98,58 @@ function setLongSearchInfos(){
   setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.");
 }
 
-
 function buildInfosString(search_results_documents, priv){
 
   let nb_classes = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Class") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
+    return (value.querySelector('.kind').innerHTML.endsWith("Class") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
   }).length;  
 
-  let nb_methods_or_functions = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Function") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
+  let nb_interfaces = search_results_documents.filter(function(value){
+    return (value.querySelector('.kind').innerHTML.endsWith("Interface") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
   }).length;  
 
-  let nb_module_or_package = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Module") || value.querySelector('.kind').innerHTML.endsWith("Package")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
+  let nb_methods = search_results_documents.filter(function(value){
+    return (value.querySelector('.kind').innerHTML.endsWith("Method") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
   }).length;  
 
+  let nb_functions = search_results_documents.filter(function(value){
+    return (value.querySelector('.kind').innerHTML.endsWith("Function") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
+  }).length;  
+
+  let nb_modules = search_results_documents.filter(function(value){
+    return (value.querySelector('.kind').innerHTML.endsWith("Module") || value.querySelector('.kind').innerHTML.endsWith("Package")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
+  }).length;  
+  
+  // We don't go in the details of property/attribute/instance variable. 
   let nb_var = search_results_documents.filter(function(value){
     return (value.querySelector('.type').innerHTML.endsWith("Attribute")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
 
   }).length; 
 
-  return('Including ' + nb_module_or_package + (priv ? " private" : "")
-    + ' module'+(nb_module_or_package>=2? 's and' : ' or')+' package'+(nb_module_or_package>=2? 's' : '') + ', '
-    + nb_classes.toString() + (priv ? " private" : "") + ' class'+(nb_classes>=2 ? 'es' : '')+', ' + nb_methods_or_functions.toString() + (priv ? " private" : "")
-    + ' method'+(nb_methods_or_functions>=2? 's and' : ' or')+' function'+(nb_methods_or_functions>=2? 's' : '')+', '+' and ' + nb_var + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+'.');
+  var infoStr = 'Including ' + 
+    (nb_modules>0 ? (nb_modules.toString() + (priv ? " private" : "")+ ' module'+(nb_modules>=2? 's' : '')+', ') : '')
+    + 
+    (nb_interfaces>0 ? (nb_interfaces.toString() + (priv ? " private" : "") + ' interface'+(nb_interfaces>=2 ? 'es' : '')+', ') : '')
+    + 
+    (nb_classes>0 ? (nb_classes.toString() + (priv ? " private" : "") + ' class'+(nb_classes>=2 ? 'es' : '')+', ') : '')
+    + 
+    (nb_methods>0 ? (nb_methods.toString() + (priv ? " private" : "")+ ' method'+(nb_methods>=2? 's' : '')+', ') : '')
+    +
+    (nb_functions>0 ? (nb_functions.toString() + (priv ? " private" : "")+ ' function'+(nb_functions>=2? 's' : '') + ', ' ) : '')
+    + 
+    (nb_var>0 ? (nb_var.toString() + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+'.') : '') ;
+
+  // Dirty replacing of the commas so the output is a phrase that finishes by ' and xx things.',
+  // which is more readable than commas everywhere.
+  var pos = infoStr.lastIndexOf(',');
+  var commas_count = (infoStr.match(/,/g) || []).length;
+  var infoStrPart1 = infoStr.substring(0,pos)
+  let infoStrPart2 = (commas_count>1 && infoStr.substring(pos+1).trim().length>0 ? ' and' : '.') + infoStr.substring(pos+1)
+  if (infoStr.substring(pos+1).trim().length == 0 && commas_count>1){
+    var pos2 = infoStr.substring(0,pos).lastIndexOf(',');
+    infoStrPart1 = infoStrPart1.substring(0,pos2) + ' and' + infoStrPart1.substring(pos2+1)
+  }
+  return(infoStrPart1 + infoStrPart2);
 }
 
 ///////////////////// FILTER //////////////////////////
@@ -131,11 +172,14 @@ function filterItems(types, label, dropdown_item_pressed){
   
   var match_items = [];
 
-  results_list.forEach(function(li, i, a){
+  results_list.forEach(function(li){
     var match = false;
     
-    types.forEach(function(type, i, a){
-      if (li.querySelector('.type').getAttribute('content').endsWith(type)){
+    types.forEach(function(type){
+      // We don't go in the details of property/attribute/instance variable.
+      // So the when requesting to filter on 'Attribute', this is a special case.
+      let selector = type === 'Attribute' ? '.type' : '.kind';
+      if (li.querySelector(selector).getAttribute('content').endsWith(type)){
         match = true;
       }
     })
@@ -166,7 +210,7 @@ function filterItems(types, label, dropdown_item_pressed){
 }
 
 function showAllItems(){
-  filterItems(['Class', 'Function', 'Module', 'Package', 'Attribute'], 'Choose...', document.getElementById("search-filter-show-all"))
+  filterItems(['Class', 'Interface', 'Function', 'Method', 'Module', 'Package', 'Attribute'], 'Choose...', document.getElementById("search-filter-show-all"))
   document.getElementById("search-filter-button").classList.remove("active")
 }
 
@@ -174,19 +218,28 @@ function _initSearchFilter(results_list, input, types){
 
   let nb_things = results_list.filter(function(value){
     var match = false;
-    types.forEach(function(type, i, a){
-
-      var _type = value.querySelector('.type').getAttribute('content')
+    types.forEach(function(type){
+      
+      // We don't go in the details of property/attribute/instance variable
+      let selector = type === 'Attribute' ? '.type' : '.kind';
+      var _type = value.querySelector(selector).getAttribute('content')
+      
       if (!_type){
         // Filter on innerHTML if 'content' attr meta tags is undefined
-        _type = value.querySelector('.type').innerHTML;
+        // This is needed because initFilterDropdown() is both called on 
+        // the list of results build by buildSearchResult() with the kind/type data as meta tags
+        // and also on the the original data present on all-documents.html for initialisation, 
+        // where the data is stored in the innerHTML. 
+        _type = value.querySelector(selector).innerHTML;
       }
 
       if(_type.endsWith(type)){
         match = true;
       }
     })
+    
     return match;
+  
   }).length;  
 
   if (nb_things==0){
@@ -203,10 +256,12 @@ function initFilterDropdown(results_list_p){
 
   document.getElementById("search-filter-show-all").style.display = "none";
 
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-classes"), ["Class"])
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-functions"), ["Function"])
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-modules"), ["Module", "Package"])
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-attributes"), ["Attribute"])
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-interfaces"), ["Interface"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-classes"), ["Class"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-functions"), ["Function"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-methods"), ["Methods"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-modules"), ["Module", "Package"]);
+  _initSearchFilter(results_list, document.getElementById("search-filter-show-attributes"), ["Attribute"]);
 }
 
 ///////////////////// SEARCH //////////////////////////
@@ -299,8 +354,8 @@ function search(){
 
       });
 
-      if (response.data.results[0].score <= 10){
-        if (response.data.results.length > 200){
+      if (response.data.results[0].score <= 7){
+        if (response.data.results.length > 500){
           setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
         }
         else{
@@ -308,7 +363,7 @@ function search(){
         }
       }
       else {
-        if (response.data.results.length > 200){
+        if (response.data.results.length > 500){
           setWarning("Your search yielded a lot of results! Maybe try with other terms?");
         }
       }

@@ -29,8 +29,8 @@ class AllDocuments(Page):
     @renderer
     def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:
         documents = [dict(id=str(i), name=ob.name, 
-                          fullName=ob.fullName(), kind=ob.kind or '', type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob), url=ob.url, privacy=str(ob.privacyClass))   
+                          fullName=ob.fullName(), kind=str(ob.kind) or '', type=str(ob.__class__.__name__),
+                          summary=epydoc2stan.format_summary(ob), url=ob.url, privacy=str(ob.privacyClass.name))   
                           for i, ob in enumerate(self.system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
         for doc in documents:
             yield tag.clone().fillSlots(**doc)
