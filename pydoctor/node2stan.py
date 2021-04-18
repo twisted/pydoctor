@@ -6,7 +6,7 @@ import optparse
 from typing import Any, ClassVar, Optional
 
 from docutils.writers.html4css1 import HTMLTranslator, Writer
-from docutils.nodes import Node, SkipNode, document, Element, title
+from docutils.nodes import Node, SkipNode, document, Element, title, paragraph
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag
@@ -63,6 +63,11 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
     def should_be_compact_paragraph(self, node: Node) -> bool:
         if self.document.children == [node]:
             return True
+        # Fix TypeError: 'Element' object is not subscriptable in super().should_be_compact_paragraph().
+        # The docutils tree we create from epytext is not 100% compatible with some options of docutils, 
+        # more specifically, parent attribute is always a Element and never a list of Elements.
+        elif isinstance(node, paragraph):
+            return False
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 

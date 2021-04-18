@@ -99,9 +99,9 @@ class ParsedDocstring(abc.ABC):
     @abc.abstractmethod
     def to_node(self) -> nodes.document:
         """
-        Translate this docstring to a `douctils.nodes.document`.
+        Translate this docstring to a L{douctils.nodes.document}.
 
-        @return: The docstring presented as a `douctils.nodes.document`.
+        @return: The docstring presented as a L{douctils.nodes.document}.
         """
         raise NotImplementedError()
 

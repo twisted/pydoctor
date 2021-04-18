@@ -1363,6 +1363,8 @@ class ParsedEpytextDocstring(ParsedDocstring):
             linker: DocstringLinker,
             seclevel: int = 0
             ) -> Any:
+
+        #TODO: use node2stan and delete this. 
         if isinstance(tree, str):
             return tree
 
@@ -1432,10 +1434,17 @@ class ParsedEpytextDocstring(ParsedDocstring):
     
     def _to_node(self,
             tree: Union[Element, str],
-            seclevel: int = 0
+            seclevel: int = 0, 
+            parent: Optional[nodes.Node] = None,
             ) -> Iterable[nodes.Node]:
+
+        def _add_infos_to_node(node: nodes.Node) -> nodes.Node:
+            node.parent = parent
+            return node
+
         if isinstance(tree, str):
-            return [nodes.Text(tree)]
+            yield _add_infos_to_node(nodes.Text(tree))
+            return
 
         if tree.tag == 'section':
             seclevel += 1
@@ -1443,54 +1452,56 @@ class ParsedEpytextDocstring(ParsedDocstring):
         # Process the children first.
         variables: List[nodes.Node] = []
         for c in tree.children:
-            variables.extend(self._to_node(c, seclevel))
+            variables.extend(self._to_node(c, seclevel, tree))
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
             if tree.attribs.get('inline'):
-                return [nodes.inline('', '', *variables)]
+                yield _add_infos_to_node(nodes.inline('', '', *variables))
             else: 
-                return [nodes.paragraph('', '', *variables)]
+                yield _add_infos_to_node(nodes.paragraph('', '', *variables))
         elif tree.tag == 'code':
-            return [nodes.literal('', '', *variables)]
+            yield _add_infos_to_node(nodes.literal('', '', *variables))
         elif tree.tag == 'uri':
-            label, target = variables
-            return [nodes.reference(
-                    '', label, internal=False, refuri=target)]
+            label, target = variables[0], variables[1]
+            yield _add_infos_to_node(nodes.reference(
+                    '', label, internal=False, refuri=target))
         elif tree.tag == 'link':
             label, target = variables
-            return [nodes.title_reference(
-                    '', label, internal=False, refuri=target)]
+            yield _add_infos_to_node(nodes.title_reference(
+                    '', label, internal=False, refuri=target))
         elif tree.tag == 'target':
             value, = variables
-            return [value]
+            yield value
         elif tree.tag == 'italic':
-            return [nodes.emphasis('', '', *variables)]
+            yield _add_infos_to_node(nodes.emphasis('', '', *variables))
         elif tree.tag == 'math':
-            node = nodes.math('', '', *variables)
+            node = _add_infos_to_node(nodes.math('', '', *variables))
             node.set_class('math')
-            return [node]
+            yield node
         elif tree.tag == 'bold':
-            return [nodes.strong('', '', *variables)]
+            yield _add_infos_to_node(nodes.strong('', '', *variables))
         elif tree.tag == 'ulist':
-            return [nodes.bullet_list('', *variables)]
+            yield _add_infos_to_node(nodes.bullet_list('', *variables))
         elif tree.tag == 'olist':
-            return [nodes.enumerated_list('', *variables)]
+            yield _add_infos_to_node(nodes.enumerated_list('', *variables))
         elif tree.tag == 'li':
-            return [nodes.list_item('', *variables)]
+            yield _add_infos_to_node(nodes.list_item('', *variables))
         elif tree.tag == 'heading':
-            return [nodes.title('', '', *variables)]
+            yield _add_infos_to_node(nodes.title('', '', *variables))
         elif tree.tag == 'literalblock':
-            return [nodes.literal_block('', '', *variables)]
+            yield _add_infos_to_node(nodes.literal_block('', '', *variables))
         elif tree.tag == 'doctestblock':
-            return [nodes.doctest_block(tree.children[0], tree.children[0])]
+            yield _add_infos_to_node(nodes.doctest_block(tree.children[0], tree.children[0]))
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('epytext', 'section', 'name'):
-            return variables
+        elif tree.tag in ('epytext', 'section'):
+            yield nodes.section('', *variables)
+        elif tree.tag == 'name':
+            for v in variables: yield v
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
             char = chr(self.SYMBOL_TO_CODEPOINT[symbol])
-            return [nodes.inline('', '', char)]
+            yield _add_infos_to_node(nodes.inline(symbol, char))
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")
