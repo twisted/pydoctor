@@ -181,10 +181,11 @@ class LetterElement(Element):
         def link(obj: model.Documentable) -> Tag:
             # The "data-type" attribute helps doc2dash figure out what
             # category (class, method, etc.) an object belongs to.
+            attributes = {}
+            if obj.kind:
+                attributes["data-type"] = epydoc2stan.format_kind(obj.kind)
             tag: Tag = tags.code(
-                epydoc2stan.taglink(obj, NameIndexPage.filename),
-                **{"data-type": epydoc2stan.format_kind(obj.kind) if obj.kind else ''}
-                )
+                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes)
             return tag
         name2obs = {}
         for obj in self.initials[self.my_letter]:
