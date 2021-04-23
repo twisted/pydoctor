@@ -1,12 +1,11 @@
 """
-Helper functions and classes to convert `docutils` documents to Stan tree.
+Helper function to convert `docutils` nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, ClassVar, Optional
-
+from typing import Any, ClassVar, List, Optional, Sequence, Union
 from docutils.writers.html4css1 import HTMLTranslator, Writer
-from docutils.nodes import Node, SkipNode, document, Element, title, paragraph
+from docutils.nodes import Node, SkipNode, document, title, paragraph, GenericNodeVisitor, Element, Text, Inline, SkipChildren
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag
@@ -16,16 +15,27 @@ from pydoctor.epydoc.markup import (
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def node2stan(node: Element, docstring_linker: 'DocstringLinker') -> Tag:
+def node2stan(node: document, docstring_linker: 'DocstringLinker') -> Tag:
     """
-    Convert a `docutils.nodes.Element` to a Stan tree.
+    Convert a L{docutils.nodes.document} to a Stan tree.
 
-    @param node: An Element.
+    @param node: An docutils document.
     @return: The element as a stan tree.
     """
     visitor = _PydoctorHTMLTranslator(node, docstring_linker)
     node.walkabout(visitor)
     return html2stan(''.join(visitor.body))
+
+def gettext(node: Union[Node, List[Node]]) -> List[str]:
+    """Return the text inside the node(s)."""
+    filtered: List[str] = []
+    if isinstance(node, (Text)):
+        filtered.append(node.astext())
+    elif isinstance(node, (list, Element)):
+        for child in node[:]:
+            filtered.extend(gettext(child))
+    return filtered
+
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
@@ -47,16 +57,29 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
         super().__init__(document)
 
+        # don't allow <h1> tags, start at <h2>
+        self.section_level += 1
+
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
-        m = _TARGET_RE.match(node.astext())
-        if m:
-            label, target = m.groups()
+        if 'refuri' in node.attributes:
+            # Epytext parsed
+            label, target = node.astext(), node.attributes['refuri']
         else:
-            label = target = node.astext()
-        # TODO: 'node.line' is None for some reason.
+            m = _TARGET_RE.match(node.astext())
+            if m:
+                label, target = m.groups()
+            else:
+                label = target = node.astext()
+        
+        # TODO: 'node.line' is None for reStructuredText based docstring for some reason.
         #       https://github.com/twisted/pydoctor/issues/237
-        lineno = 0
+        lineno = node.line or 0
+
+        # Support linking to functions and methods with () at the end
+        if target.endswith('()'):
+            target = target[:len(target)-2]
+
         self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
         raise SkipNode()
 
@@ -76,6 +99,16 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
     def depart_document(self, node: Node) -> None:
         pass
+
+    def visit_title(self, node: Node) -> None:
+        # h1 is reserved for the page title. 
+        if isinstance(node.parent, document):
+            self.body.append(self.starttag(node, 'h2', '', CLASS='title'))
+            close_tag = '</h2>\n'
+            self.in_document_title = len(self.body)
+            self.context.append(close_tag)
+        else: 
+            super().visit_title(node)
 
     def starttag(self, node: Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
         """

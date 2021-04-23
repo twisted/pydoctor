@@ -96,6 +96,7 @@ _common_args = [
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
+    '--intersphinx=http://code.nabla.net/doc/docutils/objects.inv', 
 ]
 pydoctor_args = {
     'main': [

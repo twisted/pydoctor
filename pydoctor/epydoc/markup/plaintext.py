@@ -50,5 +50,5 @@ class ParsedPlaintextDocstring(ParsedDocstring):
             return self._document
         else:
             self._document = utils.new_document('plaintext')
-            self._document.children.append(nodes.Text(self._text))
+            self._document.children.append(nodes.literal_block(rawsource=self._text, text=self._text))
             return self._document

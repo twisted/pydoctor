@@ -79,8 +79,8 @@ def test_literal_braces() -> None:
     """SF bug #1562530 reported some trouble with literal braces.
     This test makes sure that braces are getting rendered as desired.
     """
-    assert epytext2html("{1:{2:3}}") == '<p>{1:{2:3}}</p>'
-    assert epytext2html("C{{1:{2:3}}}") == '<p><code>{1:{2:3}}</code></p>'
-    assert epytext2html("{1:C{{2:3}}}") == '<p>{1:<code>{2:3}</code>}</p>'
-    assert epytext2html("{{{}{}}{}}") == '<p>{{{}{}}{}}</p>'
-    assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '<p>{{{{{}}</p>'
+    assert epytext2html("{1:{2:3}}") == '{1:{2:3}}'
+    assert epytext2html("C{{1:{2:3}}}") == '<tt class="rst-docutils literal"><span class="pre">{1:{2:3}}</span></tt>'
+    assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils literal">{2:3}</tt>}'
+    assert epytext2html("{{{}{}}{}}") == '{{{}{}}{}}'
+    assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '{{{{{}}'

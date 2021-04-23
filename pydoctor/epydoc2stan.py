@@ -616,7 +616,8 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-
+# TODO: FIX https://github.com/twisted/pydoctor/issues/86 
+# Use to_node() and compute shortened HTML from node tree with a visitor intead of using the raw source. 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
@@ -659,7 +660,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     content = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content) # type: ignore[no-any-return]
+    return Tag('', children=content)
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
