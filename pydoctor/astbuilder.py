@@ -421,7 +421,7 @@ class ModuleVistor(ast.NodeVisitor):
             target_obj = self.builder.current.contents.get(target)
             if isinstance(target_obj, model.Function):
 
-                # _handleOldSchoolMethodDecoration should only be called on methods. 
+                # _handleOldSchoolMethodDecoration must only be called in a class scope.
                 assert target_obj.kind is model.DocumentableKind.METHOD
 
                 if func_name == 'staticmethod':
