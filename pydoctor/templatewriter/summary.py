@@ -272,10 +272,10 @@ class IndexPage(Page):
 
     @renderer
     def rootkind(self, request, tag):
-        rootkinds = {}
-        for o in self.system.rootobjects:
-            rootkinds[epydoc2stan.format_kind(o.kind, plural=True).lower()] = 1
-        return tag.clear()('/'.join(sorted(rootkinds)))
+        return tag.clear()('/'.join(sorted(
+             epydoc2stan.format_kind(o.kind, plural=True).lower()
+             for o in self.system.rootobjects
+             )))
 
 
 def hasdocstring(ob):
