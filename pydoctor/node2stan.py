@@ -3,9 +3,9 @@ Helper function to convert `docutils` nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, ClassVar, List, Optional, Sequence, Union
+from typing import Any, ClassVar, List, Optional, Union
 from docutils.writers.html4css1 import HTMLTranslator, Writer
-from docutils.nodes import Node, SkipNode, document, title, paragraph, GenericNodeVisitor, Element, Text, Inline, SkipChildren
+from docutils.nodes import Node, SkipNode, document, title, paragraph, Element, Text
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag

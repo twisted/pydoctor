@@ -7,8 +7,6 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-import pytest
-
 from pydoctor.epydoc.markup import ParseError, flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
 from pydoctor.node2stan import node2stan
