@@ -219,9 +219,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     'as its sole argument' % attr.name,
                     section='zopeinterface')
         else:
-            match = schema_prog.match(funcName)
-
-            if match:
+            if schema_prog.match(funcName):
                 attr.kind = model.KindClass.SCHEMA_FIELD
 
             else:
