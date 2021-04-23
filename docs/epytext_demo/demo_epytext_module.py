@@ -129,7 +129,8 @@ class IContact(zope.interface.Interface):
     """
     Example of an interface with schemas.
 
-    Provides access to basic contact information."""
+    Provides access to basic contact information.
+    """
 
     first = zope.schema.TextLine(description="First name")
 
