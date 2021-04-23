@@ -722,15 +722,15 @@ def format_summary(obj: model.Documentable) -> Tag:
 def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
-    sub_objects_with_docstring_count: DefaultDict[model.KindClass, int] = defaultdict(int)
-    sub_objects_total_count: DefaultDict[model.KindClass, int]  = defaultdict(int)
+    sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
+    sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
     for sub_ob in obj.contents.values():
         k = sub_ob.kind
         sub_objects_total_count[k] += 1
         if sub_ob.docstring is not None:
             sub_objects_with_docstring_count[k] += 1
     if isinstance(obj, model.Package):
-        sub_objects_total_count[model.KindClass.MODULE] -= 1
+        sub_objects_total_count[model.DocumentableKind.MODULE] -= 1
 
     tag: Tag = tags.span(class_='undocumented')
     if sub_objects_with_docstring_count:
@@ -862,9 +862,9 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
 
 field_name_to_kind = {
-    'ivar': model.KindClass.INSTANCE_VARIABLE,
-    'cvar': model.KindClass.CLASS_VARIABLE,
-    'var': model.KindClass.VARIABLE,
+    'ivar': model.DocumentableKind.INSTANCE_VARIABLE,
+    'cvar': model.DocumentableKind.CLASS_VARIABLE,
+    'var': model.DocumentableKind.VARIABLE,
     }
 
 
@@ -900,29 +900,29 @@ def extract_fields(obj: model.Documentable) -> None:
                 attrobj.parsed_docstring = field.body()
                 attrobj.kind = field_name_to_kind[tag]
 
-def format_kind(kind: model.KindClass, plural: bool = False) -> str:
+def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     """
-    Transform a `model.KindClass` Enum value to string. 
+    Transform a `model.DocumentableKind` Enum value to string. 
     """
     names = {
-        model.KindClass.PACKAGE         : 'Package',
-        model.KindClass.MODULE          : 'Module',
-        model.KindClass.INTERFACE       : 'Interface',
-        model.KindClass.CLASS           : 'Class',
-        model.KindClass.CLASS_METHOD    : 'Class Method',
-        model.KindClass.STATIC_METHOD   : 'Static Method',
-        model.KindClass.METHOD          : 'Method',
-        model.KindClass.FUNCTION        : 'Function',
-        model.KindClass.CLASS_VARIABLE  : 'Class Variable',
-        model.KindClass.ATTRIBUTE       : 'Attribute',
-        model.KindClass.INSTANCE_VARIABLE : 'Instance Variable',
-        model.KindClass.PROPERTY        : 'Property',
-        model.KindClass.VARIABLE        : 'Variable',
-        model.KindClass.SCHEMA_FIELD    : 'Attribute',
+        model.DocumentableKind.PACKAGE         : 'Package',
+        model.DocumentableKind.MODULE          : 'Module',
+        model.DocumentableKind.INTERFACE       : 'Interface',
+        model.DocumentableKind.CLASS           : 'Class',
+        model.DocumentableKind.CLASS_METHOD    : 'Class Method',
+        model.DocumentableKind.STATIC_METHOD   : 'Static Method',
+        model.DocumentableKind.METHOD          : 'Method',
+        model.DocumentableKind.FUNCTION        : 'Function',
+        model.DocumentableKind.CLASS_VARIABLE  : 'Class Variable',
+        model.DocumentableKind.ATTRIBUTE       : 'Attribute',
+        model.DocumentableKind.INSTANCE_VARIABLE : 'Instance Variable',
+        model.DocumentableKind.PROPERTY        : 'Property',
+        model.DocumentableKind.VARIABLE        : 'Variable',
+        model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
     }
     plurals = {
-        model.KindClass.CLASS           : 'Classes', 
-        model.KindClass.PROPERTY        : 'Properties',
+        model.DocumentableKind.CLASS           : 'Classes', 
+        model.DocumentableKind.PROPERTY        : 'Properties',
     }
     if plural:
         return plurals.get(kind, names[kind] + 's')

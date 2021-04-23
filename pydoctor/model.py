@@ -78,7 +78,7 @@ class PrivacyClass(Enum):
     PRIVATE = 1
     VISIBLE = 2
     
-class KindClass(Enum):
+class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
 
@@ -114,7 +114,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: Optional[KindClass] = None
+    kind: Optional[DocumentableKind] = None
 
     def __init__(
             self, system: 'System', name: str,
@@ -370,7 +370,7 @@ class Documentable:
 
 
 class Package(Documentable):
-    kind = KindClass.PACKAGE
+    kind = DocumentableKind.PACKAGE
     
     def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
@@ -402,7 +402,7 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind = KindClass.MODULE
+    kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
 
     @property
@@ -448,7 +448,7 @@ class Module(CanContainImportsDocumentable):
 
 
 class Class(CanContainImportsDocumentable):
-    kind = KindClass.CLASS
+    kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
@@ -530,7 +530,7 @@ class Inheritable(Documentable):
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
-    kind = KindClass.FUNCTION
+    kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
@@ -539,10 +539,10 @@ class Function(Inheritable):
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
-            self.kind = KindClass.METHOD
+            self.kind = DocumentableKind.METHOD
 
 class Attribute(Inheritable):
-    kind: Optional[KindClass] = KindClass.ATTRIBUTE
+    kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 

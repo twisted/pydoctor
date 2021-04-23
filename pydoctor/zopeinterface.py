@@ -209,7 +209,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
 
         if funcName == 'zope.interface.Attribute':
-            attr.kind = model.KindClass.ATTRIBUTE
+            attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
                 attr.setDocstring(args[0])
@@ -222,13 +222,13 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             match = schema_prog.match(funcName)
 
             if match:
-                attr.kind = model.KindClass.SCHEMA_FIELD
+                attr.kind = model.DocumentableKind.SCHEMA_FIELD
 
             else:
                 cls = self.builder.system.objForFullName(funcName)
                 if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
                     return
-                attr.kind = model.KindClass.SCHEMA_FIELD
+                attr.kind = model.DocumentableKind.SCHEMA_FIELD
 
             # Linking to zope.schema.* class if setup with intersphinx
             attr.parsed_type = epydoc2stan.AnnotationDocstring(expr.func)
@@ -307,7 +307,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if any(namesInterface(self.system, b) for b in cls.bases):
             cls.isinterface = True
-            cls.kind = model.KindClass.INTERFACE
+            cls.kind = model.DocumentableKind.INTERFACE
             cls.implementedby_directly = []
 
         for n, o in zip(cls.bases, cls.baseobjects):

@@ -422,12 +422,12 @@ class ModuleVistor(ast.NodeVisitor):
             if isinstance(target_obj, model.Function):
 
                 # _handleOldSchoolMethodDecoration should only be called on methods. 
-                assert target_obj.kind is model.KindClass.METHOD
+                assert target_obj.kind is model.DocumentableKind.METHOD
 
                 if func_name == 'staticmethod':
-                    target_obj.kind = model.KindClass.STATIC_METHOD
+                    target_obj.kind = model.DocumentableKind.STATIC_METHOD
                 elif func_name == 'classmethod':
-                    target_obj.kind = model.KindClass.CLASS_METHOD
+                    target_obj.kind = model.DocumentableKind.CLASS_METHOD
                 return True
         return False
 
@@ -447,7 +447,7 @@ class ModuleVistor(ast.NodeVisitor):
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
         if isinstance(obj, model.Attribute):
-            obj.kind = model.KindClass.VARIABLE
+            obj.kind = model.DocumentableKind.VARIABLE
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
             obj.annotation = annotation
@@ -485,7 +485,7 @@ class ModuleVistor(ast.NodeVisitor):
                     node2fullname(annotation.value, cls) == 'typing.ClassVar'
                     )
                 )
-            obj.kind = model.KindClass.INSTANCE_VARIABLE if instance else model.KindClass.CLASS_VARIABLE
+            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE if instance else model.DocumentableKind.CLASS_VARIABLE
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)
@@ -512,7 +512,7 @@ class ModuleVistor(ast.NodeVisitor):
         obj = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
-        obj.kind = model.KindClass.INSTANCE_VARIABLE
+        obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
         obj.annotation = annotation
@@ -695,9 +695,9 @@ class ModuleVistor(ast.NodeVisitor):
             if is_classmethod:
                 func.report(f'{func.fullName()} is both classmethod and staticmethod')
             else:
-                func.kind = model.KindClass.STATIC_METHOD
+                func.kind = model.DocumentableKind.STATIC_METHOD
         elif is_classmethod:
-            func.kind = model.KindClass.CLASS_METHOD
+            func.kind = model.DocumentableKind.CLASS_METHOD
 
         # Position-only arguments were introduced in Python 3.8.
         posonlyargs: Sequence[ast.arg] = getattr(node.args, 'posonlyargs', ())
@@ -750,7 +750,7 @@ class ModuleVistor(ast.NodeVisitor):
             lineno: int
             ) -> model.Attribute:
 
-        attr = self.builder.addAttribute(name=node.name, kind=model.KindClass.PROPERTY, parent=self.builder.current)
+        attr = self.builder.addAttribute(name=node.name, kind=model.DocumentableKind.PROPERTY, parent=self.builder.current)
         attr.setLineNumber(lineno)
 
         if docstring is not None:
@@ -1039,7 +1039,7 @@ class ASTBuilder:
         self._pop(self.system.Function)
 
     def addAttribute(self,
-            name: str, kind: Optional[model.KindClass], parent: model.Documentable
+            name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
             ) -> model.Attribute:
         system = self.system
         parentMod = self.currentMod

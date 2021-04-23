@@ -123,11 +123,11 @@ def test_attribute(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
-    assert attr.kind == model.KindClass.ATTRIBUTE
+    assert attr.kind == model.DocumentableKind.ATTRIBUTE
     assert attr.name == 'attr'
     assert attr.docstring == "documented attribute"
     bad_attr = mod.contents['C'].contents['bad_attr']
-    assert bad_attr.kind == model.KindClass.ATTRIBUTE
+    assert bad_attr.kind == model.DocumentableKind.ATTRIBUTE
     assert bad_attr.name == 'bad_attr'
     assert bad_attr.docstring is None
     captured = capsys.readouterr().out
@@ -162,15 +162,15 @@ def test_zopeschema(capsys: CapSys) -> None:
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert str(text.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.TextLine'])])"
-    assert text.kind is model.KindClass.SCHEMA_FIELD
+    assert text.kind is model.DocumentableKind.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
     assert str(undoc.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.Bool'])])"
-    assert undoc.kind is model.KindClass.SCHEMA_FIELD
+    assert undoc.kind is model.DocumentableKind.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
     assert str(bad.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['schema.ASCII'])])"
-    assert bad.kind is model.KindClass.SCHEMA_FIELD
+    assert bad.kind is model.DocumentableKind.SCHEMA_FIELD
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
@@ -184,7 +184,7 @@ def test_aliasing_in_class() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     attr = mod.contents['IMyInterface'].contents['attribute']
     assert attr.docstring == 'fun in a bun'
-    assert attr.kind == model.KindClass.ATTRIBUTE
+    assert attr.kind == model.DocumentableKind.ATTRIBUTE
 
 def test_zopeschema_inheritance() -> None:
     src = '''
@@ -203,14 +203,14 @@ def test_zopeschema_inheritance() -> None:
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
     assert str(mytext.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyTextLine'])])"
-    assert mytext.kind is model.KindClass.SCHEMA_FIELD
+    assert mytext.kind is model.DocumentableKind.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
     assert str(myothertext.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyOtherTextLine'])])"
-    assert myothertext.kind is model.KindClass.SCHEMA_FIELD
+    assert myothertext.kind is model.DocumentableKind.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
     assert str(myint.parsed_type.to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['INTEGERSCHMEMAFIELD'])])"
-    assert myint.kind is model.KindClass.SCHEMA_FIELD
+    assert myint.kind is model.DocumentableKind.SCHEMA_FIELD
 
 def test_docsources_includes_interface() -> None:
     src = '''
@@ -374,7 +374,7 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     C = mod.contents['C']
     impl = mod.contents['Implementation']
     assert not C.isinterface
-    assert C.kind == model.KindClass.CLASS
+    assert C.kind == model.DocumentableKind.CLASS
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == 'mod:5: Class "mod.C" is not an interface\n'
