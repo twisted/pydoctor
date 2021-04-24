@@ -738,7 +738,7 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", format_kind(kind), " docstring; ",
+            "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
                 f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
                 f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
