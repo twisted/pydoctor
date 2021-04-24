@@ -2,6 +2,7 @@ from twisted.web.template import TagLoader, renderer, tags, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Function
+from pydoctor.templatewriter import util
 from pydoctor.templatewriter.pages import TemplateElement
 
 
@@ -15,7 +16,7 @@ class TableRow(Element):
 
     @renderer
     def class_(self, request, tag):
-        class_ = self.child.css_class
+        class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
@@ -23,12 +24,12 @@ class TableRow(Element):
     @renderer
     def kind(self, request, tag):
         child = self.child
-        kind = child.kind
+        kind_name = epydoc2stan.format_kind(child.kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
-            kind = f'Async {kind}'
-        return tag.clear()(kind)
+            kind_name = f'Async {kind_name}'
+        return tag.clear()(kind_name)
 
     @renderer
     def name(self, request, tag):

@@ -6,7 +6,8 @@ Most part of this documentation is using Python type hinting.
 
 from abc import ABC
 from somelib import SomeInterface
-
+import zope.interface
+import zope.schema
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
@@ -122,3 +123,20 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
         """
         This is a docstring for deleter.
         """
+
+
+class IContact(zope.interface.Interface):
+    """
+    Example of an interface with schemas.
+
+    Provides access to basic contact information.
+    """
+
+    first = zope.schema.TextLine(description="First name")
+
+    email = zope.schema.TextLine(description="Electronic mail address")
+
+    address = zope.schema.Text(description="Postal address")
+
+    def send_email(text: str) -> None:
+        pass
