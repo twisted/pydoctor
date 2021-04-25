@@ -20,7 +20,7 @@ def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
     with open(path, 'rb') as f:
         src = f.read() + b'\n'
-    return _parse(src)
+    return _parse(src, filename=str(path))
 
 if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
