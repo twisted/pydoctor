@@ -305,6 +305,38 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
+def test_relative_import_in_package(systemcls: Type[model.System]) -> None:
+    """Relative imports in a package must be resolved by going up one level
+    less, since we don't count "__init__.py" as a level.
+
+    Hierarchy::
+
+      top: def f
+       - pkg: imports f and g
+          - mod: def g
+    """
+
+    top_src = '''
+    def f(): pass
+    '''
+    mod_src = '''
+    def g(): pass
+    '''
+    pkg_src = '''
+    from .. import f
+    from .mod import g
+    '''
+
+    system = systemcls()
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', system=system)
+    pkg = fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+
+    assert pkg.resolveName('f') is top.contents['f']
+    assert pkg.resolveName('g') is mod.contents['g']
+
+@systemcls_param
 @pytest.mark.parametrize('level', (1, 2, 3, 4))
 def test_relative_import_past_top(
         systemcls: Type[model.System],
