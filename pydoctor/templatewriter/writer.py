@@ -57,7 +57,7 @@ class TemplateWriter(IWriter):
         """
         Write static CSS and JS files to build directory.
         """
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(exist_ok=True, parents=True)
         self._writeStaticTemplates(self.template_lookup.templates)
     
     def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[PurePath] = None) -> None:
@@ -71,7 +71,7 @@ class TemplateWriter(IWriter):
             _template_rel_path = _template_rel_path_t.joinpath(template.name)
             outfile = self.output_dir.joinpath(_template_rel_path)
             if isinstance(template, _TemplateSubFolder):
-                outfile.mkdir(exist_ok=True)
+                outfile.mkdir(exist_ok=True, parents=True)
                 self._writeStaticTemplates(template.lookup.templates, subfolder=_template_rel_path)
                 
             elif isinstance(template, _StaticTemplate):
