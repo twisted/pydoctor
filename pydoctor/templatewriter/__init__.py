@@ -9,7 +9,6 @@ else:
 import abc
 from pathlib import Path
 import warnings
-import os
 from xml.dom import minidom
 
 from twisted.web.iweb import ITemplateLoader
