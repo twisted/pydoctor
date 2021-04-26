@@ -96,7 +96,7 @@ _common_args = [
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
-    '--intersphinx=http://code.nabla.net/doc/docutils/objects.inv', 
+    '--intersphinx=https://tristanlatr.github.io/apidocs/docutils/objects.inv',
 ]
 pydoctor_args = {
     'main': [
@@ -120,7 +120,9 @@ pydoctor_args = {
         '--html-output={outdir}/docformat/epytext',
         '--project-name=pydoctor-epytext-demo',
         '--project-version=1.3.0',
-        '--docformat=epytext',
+        '--docformat=epytext', 
+        '--intersphinx=https://zopeschema.readthedocs.io/en/latest/objects.inv',
+        '--intersphinx=https://zopeinterface.readthedocs.io/en/latest/objects.inv',
         '--project-url=../epytext.html',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,

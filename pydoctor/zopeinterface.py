@@ -4,8 +4,7 @@ from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
-from pydoctor import astbuilder, model
-
+from pydoctor import astbuilder, model, epydoc2stan
 
 class ZopeInterfaceModule(model.Module):
 
@@ -202,7 +201,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr = self.builder.current.contents.get(target)
+        attr: Optional[model.Documentable] = self.builder.current.contents.get(target)
         if attr is None:
             return
         funcName = astbuilder.node2fullname(expr.func, self.builder.current)
@@ -210,7 +209,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             return
 
         if funcName == 'zope.interface.Attribute':
-            attr.kind = 'Attribute'
+            attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
                 attr.setDocstring(args[0])
@@ -220,14 +219,18 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                     'as its sole argument' % attr.name,
                     section='zopeinterface')
         else:
-            match = schema_prog.match(funcName)
-            if match:
-                attr.kind = match.group(1)
+            if schema_prog.match(funcName):
+                attr.kind = model.DocumentableKind.SCHEMA_FIELD
+
             else:
                 cls = self.builder.system.objForFullName(funcName)
                 if not (isinstance(cls, ZopeInterfaceClass) and cls.isschemafield):
                     return
-                attr.kind = cls.name
+                attr.kind = model.DocumentableKind.SCHEMA_FIELD
+
+            # Link to zope.schema.* class, if setup with intersphinx.
+            attr.parsed_type = epydoc2stan.AnnotationDocstring(expr.func)
+
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
             if isinstance(descrNode, ast.Str):
@@ -302,7 +305,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if any(namesInterface(self.system, b) for b in cls.bases):
             cls.isinterface = True
-            cls.kind = "Interface"
+            cls.kind = model.DocumentableKind.INTERFACE
             cls.implementedby_directly = []
 
         for n, o in zip(cls.bases, cls.baseobjects):
