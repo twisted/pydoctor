@@ -83,7 +83,7 @@ class SideBarSection(Element):
 
     @renderer
     def kind(self, request: IRequest, tag: Tag) -> str:
-        return self.ob.kind or 'Unknown kind'
+        return epydoc2stan.format_kind(self.ob.kind) if self.ob.kind else 'Unknown kind'
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
@@ -102,8 +102,8 @@ class SideBarSection(Element):
         """
         Short description of the sidebar section.
         """
-        return (f"This {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" if self._represents_documented_ob 
-                    else f"The parent of this {self.documented_ob.kind.lower() if self.documented_ob.kind else 'object'}" 
+        return (f"This {epydoc2stan.format_kind(self.documented_ob.kind).lower() if self.documented_ob.kind else 'object'}" if self._represents_documented_ob 
+                    else f"The parent of this {epydoc2stan.format_kind(self.documented_ob.kind).lower() if self.documented_ob.kind else 'object'}" 
                     if self.ob in [self.documented_ob.parent, self.documented_ob.module.parent] else "")
 
     @renderer

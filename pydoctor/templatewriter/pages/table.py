@@ -27,12 +27,13 @@ class TableRow(Element):
     @renderer
     def kind(self, request: IRequest, tag: Tag) -> Tag:
         child = self.child
-        kind_name = epydoc2stan.format_kind(child.kind)
+        kind_name = epydoc2stan.format_kind(child.kind) if child.kind else 'Unknown kind'
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
             kind_name = f'Async {kind_name}'
-        return tag.clear()(kind_name)
+        # Ignoring mypy error "Returning Any from function declared to return "Tag""
+        return tag.clear()(kind_name) #type: ignore [no-any-return]
 
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
