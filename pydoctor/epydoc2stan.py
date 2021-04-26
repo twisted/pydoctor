@@ -1,5 +1,5 @@
 """
-Convert epydoc markup into renderable content.
+Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
@@ -219,6 +219,15 @@ class _EpydocLinker(DocstringLinker):
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
+    """
+    Combines informations from multiple L{Field} objects into one.
+
+    Example::
+
+       :param foo: description of parameter foo
+       :type foo:  SomeClass
+
+    """
     _UNDOCUMENTED: ClassVar[Tag] = tags.span(class_='undocumented')("Undocumented")
 
     name: Optional[str] = None
@@ -226,43 +235,80 @@ class FieldDesc:
     body: Optional[Tag] = None
 
     def format(self) -> Iterator[Tag]:
+        """
+        @return: Iterator that yields one or two C{tags.td}.
+        """
         formatted = self.body or self._UNDOCUMENTED
-        if self.type is not None:
-            formatted = tags.transparent(formatted, ' (type: ', self.type, ')')
-
-        name = self.name
-        if name is None:
-            yield tags.td(formatted, colspan="2")
+        fieldNameTd: List[Tag] = []
+        if self.name:
+            _name = tags.span(class_="fieldArg")(self.name)
+            if self.type:
+                _name(":")
+            fieldNameTd.append(_name)
+        if self.type:
+            fieldNameTd.append(self.type)
+        if fieldNameTd:
+            #  <name>: <type> | <desc>
+            yield tags.td(class_="fieldArgContainer")(*fieldNameTd)
+            yield tags.td(class_="fieldArgDesc")(formatted)
         else:
-            yield tags.td(name, class_="fieldArg")
-            yield tags.td(formatted)
-
+            #  <desc>
+            yield tags.td(formatted, colspan="2")
 
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
 
     def format(self) -> Iterator[Tag]:
-        yield tags.td(self.type, class_="fieldArg")
+        yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
-    first = True
-    for d in descs:
-        if first:
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            first = False
-        else:
-            row = tags.tr()
-            row(tags.td())
-        yield row(d.format())
+    """
+    Format list of L{FieldDesc}. Used for param, returns, raises, etc.
 
+    Generates a 2-columns layout as follow::
+
+        +------------------------------------+
+        | <label>                            |
+        | <name>: <type> |     <desc>        |
+        | <name>: <type> |     <desc>        |
+        +------------------------------------+
+
+    If the fields don't have type or name information,
+    generates the same output as L{format_field_list}::
+
+        +------------------------------------+
+        | <label>                            |
+        | <desc ... >                        |
+        +------------------------------------+
+
+    @returns: Each row as iterator or None if no C{descs} id provided.
+    """
+    if not descs:
+        return
+    # <label>
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    # yield the first row.
+    yield row
+    # yield descriptions.
+    for d in descs:
+        row = tags.tr()
+        # <name>: <type> |     <desc>
+        # or
+        # <desc ... >
+        row(d.format())
+        yield row
 
 @attr.s(auto_attribs=True)
 class Field:
-    """Like pydoctor.epydoc.markup.Field, but without the gross accessor
+    """Like L{pydoctor.epydoc.markup.Field}, but without the gross accessor
     methods and with a formatted body.
+
+    Example::
+
+        @note: some other information
     """
 
     tag: str
@@ -290,19 +336,30 @@ class Field:
 
 
 def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> Iterator[Tag]:
+    """
+    Format list of L{Field} object. Used for notes, see also, authors, etc.
+
+    Generates a 2-columns layout as follow::
+
+        +------------------------------------+
+        | <label>                            |
+        | <desc ... >                        |
+        +------------------------------------+
+
+    @returns: Each row as iterator
+    """
+    if not fields:
+        return
+
     label = singular if len(fields) == 1 else plural
-    first = True
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName", colspan="2")(label))
+    yield row
+
     for field in fields:
-        if first:
-            row = tags.tr(class_="fieldStart")
-            row(tags.td(class_="fieldName")(label))
-            first=False
-        else:
-            row = tags.tr()
-            row(tags.td())
+        row = tags.tr()
         row(tags.td(colspan="2")(field.format()))
         yield row
-
 
 class FieldHandler:
 
@@ -508,6 +565,7 @@ class FieldHandler:
         r += format_desc_list('Parameters', self.parameter_descs)
         if self.return_desc:
             r += format_desc_list('Returns', [self.return_desc])
+
         r += format_desc_list("Raises", self.raise_descs)
         for s_p_l in (('Author', 'Authors', self.authors),
                       ('See Also', 'See Also', self.seealsos),
@@ -664,27 +722,28 @@ def format_summary(obj: model.Documentable) -> Tag:
 def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
-    subdocstrings: DefaultDict[str, int] = defaultdict(int)
-    subcounts: DefaultDict[str, int]  = defaultdict(int)
-    for subob in obj.contents.values():
-        k = subob.kind.lower()
-        subcounts[k] += 1
-        if subob.docstring is not None:
-            subdocstrings[k] += 1
+    sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
+    sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
+    for sub_ob in obj.contents.values():
+        k = sub_ob.kind
+        sub_objects_total_count[k] += 1
+        if sub_ob.docstring is not None:
+            sub_objects_with_docstring_count[k] += 1
     if isinstance(obj, model.Package):
-        subcounts['module'] -= 1
+        sub_objects_total_count[model.DocumentableKind.MODULE] -= 1
 
     tag: Tag = tags.span(class_='undocumented')
-    if subdocstrings:
-        plurals = {'class': 'classes', 'property': 'properties'}
+    if sub_objects_with_docstring_count:
+        
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", kind.lower(), " docstring; ",
+            "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
-                f"{subdocstrings[k]}/{subcounts[k]} "
-                f"{plurals.get(k, k + 's')}"
-                for k in sorted(subcounts)
+                f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
+                f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
+                
+                for k in sorted(sub_objects_total_count, key=(lambda x:x.value))
                 ),
             " documented"
             )
@@ -749,7 +808,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
             if first:
                 first = False
             else:
-                tag(', ')
+                tag(', ', tags.wbr) # Add an potential line break for long types
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
@@ -777,7 +836,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
     def visit_Subscript(self, node: ast.Subscript) -> Tag:
         tag: Tag = tags.transparent
         tag(self.visit(node.value))
-        tag('[')
+        tag('[', tags.wbr)
         sub: ast.AST = node.slice
         if isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
@@ -791,7 +850,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
 
     def visit_List(self, node: ast.List) -> Tag:
         tag: Tag = tags.transparent
-        tag('[')
+        tag('[', tags.wbr)
         self._handle_sequence(tag, node.elts)
         tag(']')
         return tag
@@ -802,10 +861,10 @@ class _AnnotationFormatter(ast.NodeVisitor):
         return ret
 
 
-field_name_to_human_name = {
-    'ivar': 'Instance Variable',
-    'cvar': 'Class Variable',
-    'var': 'Variable',
+field_name_to_kind = {
+    'ivar': model.DocumentableKind.INSTANCE_VARIABLE,
+    'cvar': model.DocumentableKind.CLASS_VARIABLE,
+    'var': model.DocumentableKind.VARIABLE,
     }
 
 
@@ -839,4 +898,33 @@ def extract_fields(obj: model.Documentable) -> None:
                 attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
-                attrobj.kind = field_name_to_human_name[tag]
+                attrobj.kind = field_name_to_kind[tag]
+
+def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
+    """
+    Transform a `model.DocumentableKind` Enum value to string. 
+    """
+    names = {
+        model.DocumentableKind.PACKAGE         : 'Package',
+        model.DocumentableKind.MODULE          : 'Module',
+        model.DocumentableKind.INTERFACE       : 'Interface',
+        model.DocumentableKind.CLASS           : 'Class',
+        model.DocumentableKind.CLASS_METHOD    : 'Class Method',
+        model.DocumentableKind.STATIC_METHOD   : 'Static Method',
+        model.DocumentableKind.METHOD          : 'Method',
+        model.DocumentableKind.FUNCTION        : 'Function',
+        model.DocumentableKind.CLASS_VARIABLE  : 'Class Variable',
+        model.DocumentableKind.ATTRIBUTE       : 'Attribute',
+        model.DocumentableKind.INSTANCE_VARIABLE : 'Instance Variable',
+        model.DocumentableKind.PROPERTY        : 'Property',
+        model.DocumentableKind.VARIABLE        : 'Variable',
+        model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
+    }
+    plurals = {
+        model.DocumentableKind.CLASS           : 'Classes', 
+        model.DocumentableKind.PROPERTY        : 'Properties',
+    }
+    if plural:
+        return plurals.get(kind, names[kind] + 's')
+    else:
+        return names[kind]

@@ -1,21 +1,22 @@
-from twisted.web.template import Element, XMLFile, renderer, tags
+from twisted.web.template import renderer, tags
 
-from pydoctor.templatewriter import util
+from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators
 
 
-class AttributeChild(Element):
+class AttributeChild(TemplateElement):
 
-    loader = XMLFile(util.templatefilepath('attribute-child.html'))
+    filename = 'attribute-child.html'
 
-    def __init__(self, docgetter, ob, functionExtras):
+    def __init__(self, docgetter, ob, extras, loader):
+        super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
-        self._functionExtras = functionExtras
+        self._functionExtras = extras
 
     @renderer
     def class_(self, request, tag):
-        class_ = self.ob.css_class
+        class_ = util.css_class(self.ob)
         if self.ob.parent is not self.ob:
             class_ = 'base' + class_
         return class_
@@ -34,7 +35,11 @@ class AttributeChild(Element):
 
     @renderer
     def attribute(self, request, tag):
-        return tags.span(self.ob.name, class_='py-defname')
+        attr = [tags.span(self.ob.name, class_='py-defname')]
+        _type = self.docgetter.get_type(self.ob)
+        if _type:
+            attr.extend([': ', _type])
+        return attr
 
     @renderer
     def sourceLink(self, request, tag):

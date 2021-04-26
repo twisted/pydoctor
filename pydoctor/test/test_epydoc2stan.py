@@ -45,21 +45,24 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
+
 def docstring2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_docstring(obj)
     assert stan.tagName == 'div', stan
-    return flatten(stan.children).replace('><', '>\n<')
+    # We strip off break lines for the sake of simplicity.
+    return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
 def summary2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
     assert stan.tagName == 'span', stan
     return flatten(stan.children)
 
+
 def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    assert docstring2html(mod) == "<p>Empty module.</p>"
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
 
 
 def test_xref_link_not_found() -> None:
@@ -141,14 +144,20 @@ def test_func_undocumented_return_something() -> None:
         return 42
     ''')
     func = mod.contents['get_answer']
-    lines = docstring2html(func).split('\n')
-    ret_idx = lines.index('<td class="fieldName">Returns</td>')
+    lines = docstring2html(func).splitlines()
     expected_html = [
-        '<td class="fieldName">Returns</td>',
-        '<td colspan="2">',
-        '<span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>',
+        '<div>', '<p class="undocumented">Undocumented</p>',
+        '<table class="fieldTable">',
+        '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Returns</td>',
+        '</tr>',
+        '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
+        '</td>',
+        '<td class="fieldArgDesc">',
+        '<span class="undocumented">Undocumented</span>',
+        '</td>', '</tr>', '</table>', '</div>'
         ]
-    assert lines[ret_idx:ret_idx + 3] == expected_html
+    assert lines == expected_html, str(lines)
 
 
 def test_func_arg_and_ret_annotation() -> None:
@@ -330,7 +339,7 @@ def test_missing_param_computed_base(capsys: CapSys) -> None:
         """
     ''')
     html = docstring2html(mod.contents['Proxy'])
-    assert '<td>The wrapped instance.</td>' in html.split('\n')
+    assert '<td class="fieldArgDesc">The wrapped instance.</td>' in html.split('\n')
     captured = capsys.readouterr().out
     assert captured == ''
 
@@ -346,12 +355,12 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
             pass
     ''')
     html = docstring2html(mod.contents['C']).split('\n')
-    assert '<td>Constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Constructor parameter.</td>' in html
     # Non-existing parameters should still end up in the output, because:
     # - pydoctor might be wrong about them not existing
     # - the documentation may still be useful, for example if belongs to
     #   an existing parameter but the name in the @param field has a typo
-    assert '<td>Not a constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Not a constructor parameter.</td>' in html
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
@@ -507,21 +516,21 @@ def test_ivar_overriding_attribute() -> None:
     base_a = base.contents['a']
     assert isinstance(base_a, model.Attribute)
     assert summary2html(base_a) == "base doc"
-    assert docstring2html(base_a) == "<p>base doc</p>\n<p>details</p>"
+    assert docstring2html(base_a) == "<div>\n<p>base doc</p>\n<p>details</p>\n</div>"
     base_b = base.contents['b']
     assert isinstance(base_b, model.Attribute)
     assert summary2html(base_b) == "not overridden"
-    assert docstring2html(base_b) == "<p>not overridden</p>\n<p>details</p>"
+    assert docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
     sub = mod.contents['Sub']
     sub_a = sub.contents['a']
     assert isinstance(sub_a, model.Attribute)
     assert summary2html(sub_a) == 'sub doc'
-    assert docstring2html(sub_a) == "sub doc"
+    assert docstring2html(sub_a) == "<div>sub doc</div>"
     sub_b = sub.contents['b']
     assert isinstance(sub_b, model.Attribute)
     assert summary2html(sub_b) == 'not overridden'
-    assert docstring2html(sub_b) == "<p>not overridden</p>\n<p>details</p>"
+    assert docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
@@ -845,5 +854,5 @@ def test_annotation_formatter(annotation: str) -> None:
     html = flatten(stan)
     assert html.startswith('<code>')
     assert html.endswith('</code>')
-    text= html[6:-7]
-    assert text == expected_text
+    text = html[6:-7]
+    assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
