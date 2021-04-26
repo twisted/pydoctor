@@ -3,8 +3,10 @@ Classes for google-style and numpy-style docstring conversion.
 
 Forked from ``sphinx.ext.napoleon.docstring``. 
 
-:copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-:license: BSD, see LICENSE for details.
+::
+
+    :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+    :license: BSD, see LICENSE for details.
 """
 import ast
 import collections
@@ -139,7 +141,7 @@ class TypeDocstring:
           - `list` of `int` or `float` or `None`, *default*: `None`
 
         * -  \`complicated string\` or \`strIO <twisted.python.compat.NativeStringIO>\`
-          - `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`
+          - ``complicated string`` or `strIO <twisted.python.compat.NativeStringIO>`
 
     """
     _natural_language_delimiters_regex_str = (
@@ -1504,8 +1506,10 @@ class NumpyDocstring(GoogleDocstring):
     # overriden: do not use interpreted text role in links
     def _parse_numpydoc_see_also_section(self, content: List[str]) -> List[str]:
         """
-        Derived from the NumpyDoc implementation of _parse_see_also::
-
+        Derived from the NumpyDoc implementation of ``_parse_see_also``.
+        
+        Parses this kind of see also sections::
+        
             See Also
             --------
             func_name : Descriptive text

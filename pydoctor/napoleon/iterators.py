@@ -3,8 +3,10 @@ A collection of helpful iterators.
 
 Forked from ``sphinx.ext.napoleon.iterators``. 
 
-:copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-:license: BSD, see LICENSE for details.
+::
+
+    :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+    :license: BSD, see LICENSE for details.
 """
 
 import collections

@@ -22,20 +22,22 @@ and subpackages.
 :see: `The epydoc webpage <http://epydoc.sourceforge.net>`__
 :see: `The epytext markup language manual <http://epydoc.sourceforge.net/epytext.html>`__
 
-:license: IBM Open Source License
-:copyright: |copy| 2006 Edward Loper
+::
 
-:newfield contributor: Contributor, Contributors (Alphabetical Order)
-:contributor: `Glyph Lefkowitz  <mailto:glyph@twistedmatrix.com>`__
-:contributor: `Edward Loper  <mailto:edloper@gradient.cis.upenn.edu>`__
-:contributor: `Bruce Mitchener  <mailto:bruce@cubik.org>`__
-:contributor: `Jeff O'Halloran  <mailto:jeff@ohalloran.ca>`__
-:contributor: `Simon Pamies  <mailto:spamies@bipbap.de>`__
-:contributor: `Christian Reis  <mailto:kiko@async.com.br>`__
-:contributor: `Daniele Varrazzo  <mailto:daniele.varrazzo@gmail.com>`__
-:contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
+    :license: IBM Open Source License
+    :copyright: |copy| 2006 Edward Loper
 
-.. |copy| unicode:: 0xA9 .. copyright sign
+    :newfield contributor: Contributor, Contributors (Alphabetical Order)
+    :contributor: `Glyph Lefkowitz  <mailto:glyph@twistedmatrix.com>`__
+    :contributor: `Edward Loper  <mailto:edloper@gradient.cis.upenn.edu>`__
+    :contributor: `Bruce Mitchener  <mailto:bruce@cubik.org>`__
+    :contributor: `Jeff O'Halloran  <mailto:jeff@ohalloran.ca>`__
+    :contributor: `Simon Pamies  <mailto:spamies@bipbap.de>`__
+    :contributor: `Christian Reis  <mailto:kiko@async.com.br>`__
+    :contributor: `Daniele Varrazzo  <mailto:daniele.varrazzo@gmail.com>`__
+    :contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
+
+    .. |copy| unicode:: 0xA9 .. copyright sign
 """
 __docformat__ = 'restructuredtext en'
 

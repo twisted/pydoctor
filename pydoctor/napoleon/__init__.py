@@ -61,12 +61,14 @@ Docformat references:
     - U{Google-style <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>} 
     - U{NumpyDoc-style <https://numpydoc.readthedocs.io/en/latest/format.html>}
 
+::
+
+    @copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+    @license: BSD, see LICENSE for details.
 
 @note: Sphinx Napoleon related 
     U{PRs <https://github.com/sphinx-doc/sphinx/pulls?q=is%3Apr+napoleon>} and 
     U{issues <https://github.com/sphinx-doc/sphinx/labels/extensions%3Anapoleon>} 
     should be checked once in a while to make sure we don't miss any important updates. 
 
-@copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
-@license: BSD, see LICENSE for details.
 """
