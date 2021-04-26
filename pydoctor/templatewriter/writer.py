@@ -4,7 +4,7 @@
 from typing import Iterable, Type, Optional, List
 import os
 from typing import IO
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from pydoctor.templatewriter import IWriter, _StaticTemplate, _TemplateSubFolder, Template
 from pydoctor import model
@@ -60,15 +60,15 @@ class TemplateWriter(IWriter):
         os.makedirs(self.output_dir, exist_ok=True)
         self._writeStaticTemplates(self.template_lookup.templates)
     
-    def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[str] = None) -> None:
+    def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[PurePath] = None) -> None:
         """
         Write all L{_StaticTemplate} to output directory, inspect L{_TemplateSubFolder} 
         and reccursively write the static templates in subfolders.
         """
-        _template_rel_path_t = f"{subfolder + os.sep if subfolder else ''}%s"
+        _template_rel_path_t = subfolder if subfolder else PurePath()
         
         for template in templates:
-            _template_rel_path = _template_rel_path_t % template.name
+            _template_rel_path = _template_rel_path_t.joinpath(template.name)
             outfile = self.output_dir.joinpath(_template_rel_path)
             if isinstance(template, _TemplateSubFolder):
                 os.makedirs(outfile, exist_ok=True)

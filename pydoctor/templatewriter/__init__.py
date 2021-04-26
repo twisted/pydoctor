@@ -36,8 +36,8 @@ def scandir(path: Path) -> Iterable['Template']:
     """
     Scan a directory for templates. 
     """
-    for entry in os.scandir(path):
-        template = Template.fromfile(Path(entry))
+    for entry in path.iterdir():
+        template = Template.fromfile(entry)
         if template:
             yield template
 
