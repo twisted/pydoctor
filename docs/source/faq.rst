@@ -51,10 +51,21 @@ It looks `like this <http://twistedmatrix.com/documents/current/api/>`_, which i
 
 The output is reasonably simple.
 
-As a bonus here are other projects using ``pydoctor``:
-    - Wokkel
-    - msiempy
-    - An many others!
+Who is using ``pydoctor``?
+--------------------------
+
+Here are some projects using ``pydoctor``:
+    - `Twisted <https://twistedmatrix.com/trac/>`_
+    - `Incremental <https://github.com/twisted/incremental>`_
+    - `OTFBot <https://otfbot.org/start>`_
+    - `python-igraph <https://igraph.org/python/>`_
+    - `Wokkel <https://github.com/ralphm/wokkel>`_
+    - `msiempy <https://github.com/mfesiem/msiempy>`_
+    - `git-buildpackage <https://github.com/agx/git-buildpackage>`_
+    - `pycma <https://github.com/CMA-ES/pycma>`_
+    - `cocopp <https://github.com/numbbo/coco>`_
+    - `python-Wappalyzer <https://github.com/chorsley/python-Wappalyzer>`_
+    - and others
 
 
 How do I use it?

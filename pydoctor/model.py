@@ -77,7 +77,27 @@ class PrivacyClass(Enum):
     HIDDEN = 0
     PRIVATE = 1
     VISIBLE = 2
+    
+class DocumentableKind(Enum):
+    """
+    L{Enum} containing values indicating the possible object types.
 
+    @note: Presentation order is derived from the enum values
+    """
+    PACKAGE             = 1000
+    MODULE              = 900
+    CLASS               = 800
+    INTERFACE           = 850
+    CLASS_METHOD        = 700
+    STATIC_METHOD       = 600
+    METHOD              = 500
+    FUNCTION            = 400
+    CLASS_VARIABLE      = 300
+    SCHEMA_FIELD        = 220
+    ATTRIBUTE           = 210
+    INSTANCE_VARIABLE   = 200
+    PROPERTY            = 150
+    VARIABLE            = 100
 
 class Documentable:
     """An object that can be documented.
@@ -86,11 +106,7 @@ class Documentable:
 
     @ivar docstring: The object's docstring.  But also see docsources.
     @ivar system: The system the object is part of.
-    @ivar parent: ...
-    @ivar parentMod: ...
-    @ivar name: ...
-    @ivar sourceHref: ...
-    @ivar kind: ...
+
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
@@ -98,28 +114,7 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: Optional[str]
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        """Page location where we are documented.
-        The default implementation returns L{DocLocation.OWN_PAGE}.
-        """
-        return DocLocation.OWN_PAGE
-
-    @property
-    def css_class(self) -> str:
-        """A short, lower case description for use as a CSS class in HTML."""
-        kind = self.kind
-        assert kind is not None # if kind is None, object is invisible
-        class_ = kind.lower().replace(' ', '')
-        if self.privacyClass is PrivacyClass.PRIVATE:
-            class_ += ' private'
-        return class_
-
-    @property
-    def doctarget(self) -> 'Documentable':
-        return self
+    kind: Optional[DocumentableKind] = None
 
     def __init__(
             self, system: 'System', name: str,
@@ -135,6 +130,17 @@ class Documentable:
         self.parentMod: Optional[Module] = None
         self.source_path = source_path
         self.setup()
+
+    @property
+    def documentation_location(self) -> DocLocation:
+        """Page location where we are documented.
+        The default implementation returns L{DocLocation.OWN_PAGE}.
+        """
+        return DocLocation.OWN_PAGE
+
+    @property
+    def doctarget(self) -> 'Documentable':
+        return self
 
     def setup(self) -> None:
         # TODO: The actual value type is Documentable, but using that
@@ -364,7 +370,8 @@ class Documentable:
 
 
 class Package(Documentable):
-    kind = "Package"
+    kind = DocumentableKind.PACKAGE
+    
     def docsources(self) -> Iterator[Documentable]:
         yield self.contents['__init__']
     @property
@@ -395,7 +402,7 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind = "Module"
+    kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
 
     @property
@@ -457,7 +464,7 @@ class Module(CanContainImportsDocumentable):
 
 
 class Class(CanContainImportsDocumentable):
-    kind = "Class"
+    kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
@@ -539,7 +546,7 @@ class Inheritable(Documentable):
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
-    kind = "Function"
+    kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
@@ -548,10 +555,10 @@ class Function(Inheritable):
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
-            self.kind = "Method"
+            self.kind = DocumentableKind.METHOD
 
 class Attribute(Inheritable):
-    kind: Optional[str] = "Attribute"
+    kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 

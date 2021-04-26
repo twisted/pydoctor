@@ -20,7 +20,7 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
     # mypy gets errors: - Variable "cls" is not valid as a type
     #                   - Invalid base class "cls" 
     class NewCls(cls): #type: ignore
-        __init__ = functools.partialmethod(cls.__init__, *args, **kwds)
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
         __class__ = cls
     assert isinstance(NewCls, type)
     return NewCls
