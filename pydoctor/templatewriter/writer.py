@@ -2,7 +2,6 @@
 
 
 from typing import Iterable, Type, Optional, List
-import os
 from typing import IO
 from pathlib import Path, PurePath
 
