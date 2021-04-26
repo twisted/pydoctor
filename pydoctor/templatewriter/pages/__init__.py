@@ -203,7 +203,7 @@ class CommonPage(Page):
     def children(self):
         return sorted(
             [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o:-o.privacyClass.value)
+            key=lambda o: (-o.privacyClass.value, -o.kind.value))
 
     def packageInitTable(self):
         return ()
@@ -277,13 +277,13 @@ class PackagePage(ModulePage):
     def children(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+                      key=lambda o2:(-o2.privacyClass.value, -o2.kind.value, o2.fullName()))
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
         children = sorted(
             [o for o in init.contents.values() if o.isVisible],
-            key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+            key=lambda o2:(-o2.privacyClass.value, -o2.kind.value, o2.fullName()))
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
@@ -431,7 +431,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:(-o.privacyClass.value, o.fullName())),
+                                               sorted(attrs, key=lambda o:(-o.privacyClass.value, -o.kind.value, o.fullName())),
                                                loader))
                 for b, attrs in baselists]
 
