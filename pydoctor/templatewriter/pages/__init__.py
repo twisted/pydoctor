@@ -146,14 +146,14 @@ class CommonPage(Page):
         return self.ob.fullName()
 
     def heading(self):
-        return tags.h1(class_=self.ob.css_class)(
+        return tags.h1(class_=util.css_class(self.ob))(
             tags.code(self.namespace(self.ob))
             )
 
     def category(self) -> str:
         kind = self.ob.kind
         assert kind is not None
-        return f"{kind.lower()} documentation"
+        return f"{epydoc2stan.format_kind(kind).lower()} documentation"
 
     def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
         page_url = self.page_url

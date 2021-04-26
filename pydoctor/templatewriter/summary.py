@@ -181,10 +181,11 @@ class LetterElement(Element):
         def link(obj: model.Documentable) -> Tag:
             # The "data-type" attribute helps doc2dash figure out what
             # category (class, method, etc.) an object belongs to.
+            attributes = {}
+            if obj.kind:
+                attributes["data-type"] = epydoc2stan.format_kind(obj.kind)
             tag: Tag = tags.code(
-                epydoc2stan.taglink(obj, NameIndexPage.filename),
-                **{"data-type": obj.kind}
-                )
+                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes)
             return tag
         name2obs = {}
         for obj in self.initials[self.my_letter]:
@@ -251,7 +252,7 @@ class IndexPage(Page):
             root, = self.system.rootobjects
             return tag.clear()(
                 "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", root.kind.lower(), ".")
+                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
 
     @renderer
     def onlyIfMultipleRoots(self, request, tag):
@@ -271,10 +272,10 @@ class IndexPage(Page):
 
     @renderer
     def rootkind(self, request, tag):
-        rootkinds = {}
-        for o in self.system.rootobjects:
-            rootkinds[o.kind.lower() + 's']  = 1
-        return tag.clear()('/'.join(sorted(rootkinds)))
+        return tag.clear()('/'.join(sorted(
+             epydoc2stan.format_kind(o.kind, plural=True).lower()
+             for o in self.system.rootobjects
+             )))
 
 
 def hasdocstring(ob):
@@ -306,7 +307,7 @@ class UndocumentedSummaryPage(Page):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
+            tag(tags.li(epydoc2stan.format_kind(o.kind), " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
         return tag
 
 summarypages: Iterable[Type[Page]] = [

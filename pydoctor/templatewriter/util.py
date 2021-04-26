@@ -1,9 +1,10 @@
-"""Miscellaneous utilities."""
+"""Miscellaneous utilities for the HTML writer."""
 
 import warnings
 from typing import Iterator, List, Optional, Sequence, Tuple
 from pydoctor.model import Documentable, Class
 from pydoctor import epydoc2stan
+from pydoctor import model
 
 from twisted.web.template import Tag
 
@@ -24,6 +25,18 @@ def srclink(o: Documentable) -> Optional[str]:
     Get object source code URL, i.e. hosted on github. 
     """
     return o.sourceHref
+
+def css_class(o: model.Documentable) -> str:
+    """
+    A short, lower case description for use as a CSS class in HTML. 
+    Includes the kind and privacy. 
+    """
+    kind = o.kind
+    assert kind is not None # if kind is None, object is invisible
+    class_ = epydoc2stan.format_kind(kind).lower().replace(' ', '')
+    if o.privacyClass is model.PrivacyClass.PRIVATE:
+        class_ += ' private'
+    return class_    
 
 def overriding_subclasses(classobj: Class, name: str, firstcall: bool = True) -> Iterator[Class]:
     """

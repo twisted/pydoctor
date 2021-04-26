@@ -722,27 +722,28 @@ def format_summary(obj: model.Documentable) -> Tag:
 def format_undocumented(obj: model.Documentable) -> Tag:
     """Generate an HTML representation for an object lacking a docstring."""
 
-    subdocstrings: DefaultDict[str, int] = defaultdict(int)
-    subcounts: DefaultDict[str, int]  = defaultdict(int)
-    for subob in obj.contents.values():
-        k = subob.kind.lower()
-        subcounts[k] += 1
-        if subob.docstring is not None:
-            subdocstrings[k] += 1
+    sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
+    sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
+    for sub_ob in obj.contents.values():
+        k = sub_ob.kind
+        sub_objects_total_count[k] += 1
+        if sub_ob.docstring is not None:
+            sub_objects_with_docstring_count[k] += 1
     if isinstance(obj, model.Package):
-        subcounts['module'] -= 1
+        sub_objects_total_count[model.DocumentableKind.MODULE] -= 1
 
     tag: Tag = tags.span(class_='undocumented')
-    if subdocstrings:
-        plurals = {'class': 'classes', 'property': 'properties'}
+    if sub_objects_with_docstring_count:
+        
         kind = obj.kind
         assert kind is not None # if kind is None, object is invisible
         tag(
-            "No ", kind.lower(), " docstring; ",
+            "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
-                f"{subdocstrings[k]}/{subcounts[k]} "
-                f"{plurals.get(k, k + 's')}"
-                for k in sorted(subcounts)
+                f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
+                f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
+                
+                for k in sorted(sub_objects_total_count, key=(lambda x:x.value))
                 ),
             " documented"
             )
@@ -879,10 +880,10 @@ class _AnnotationFormatter(ast.NodeVisitor):
         return ret
 
 
-field_name_to_human_name = {
-    'ivar': 'Instance Variable',
-    'cvar': 'Class Variable',
-    'var': 'Variable',
+field_name_to_kind = {
+    'ivar': model.DocumentableKind.INSTANCE_VARIABLE,
+    'cvar': model.DocumentableKind.CLASS_VARIABLE,
+    'var': model.DocumentableKind.VARIABLE,
     }
 
 
@@ -916,4 +917,33 @@ def extract_fields(obj: model.Documentable) -> None:
                 attrobj.parsed_type = field.body()
             else:
                 attrobj.parsed_docstring = field.body()
-                attrobj.kind = field_name_to_human_name[tag]
+                attrobj.kind = field_name_to_kind[tag]
+
+def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
+    """
+    Transform a `model.DocumentableKind` Enum value to string. 
+    """
+    names = {
+        model.DocumentableKind.PACKAGE         : 'Package',
+        model.DocumentableKind.MODULE          : 'Module',
+        model.DocumentableKind.INTERFACE       : 'Interface',
+        model.DocumentableKind.CLASS           : 'Class',
+        model.DocumentableKind.CLASS_METHOD    : 'Class Method',
+        model.DocumentableKind.STATIC_METHOD   : 'Static Method',
+        model.DocumentableKind.METHOD          : 'Method',
+        model.DocumentableKind.FUNCTION        : 'Function',
+        model.DocumentableKind.CLASS_VARIABLE  : 'Class Variable',
+        model.DocumentableKind.ATTRIBUTE       : 'Attribute',
+        model.DocumentableKind.INSTANCE_VARIABLE : 'Instance Variable',
+        model.DocumentableKind.PROPERTY        : 'Property',
+        model.DocumentableKind.VARIABLE        : 'Variable',
+        model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
+    }
+    plurals = {
+        model.DocumentableKind.CLASS           : 'Classes', 
+        model.DocumentableKind.PROPERTY        : 'Properties',
+    }
+    if plural:
+        return plurals.get(kind, names[kind] + 's')
+    else:
+        return names[kind]
