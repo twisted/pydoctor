@@ -63,7 +63,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * HTML templates are now customizable with ``--template-dir`` option.
-* Change the fields layout to display the arguments type right after their name. Same goes for variables. 
+* Change the fields layout to display the arguments type right after their name. Same goes for variables.
 
 pydoctor 21.2.2
 ^^^^^^^^^^^^^^^

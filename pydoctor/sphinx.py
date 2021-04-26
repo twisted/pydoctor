@@ -256,7 +256,7 @@ class SphinxInventoryWriter:
         elif isinstance(obj, model.Class):
             domainname = 'class'
         elif isinstance(obj, model.Function):
-            if obj.kind == 'Function':
+            if obj.kind is model.DocumentableKind.FUNCTION:
                 domainname = 'function'
             else:
                 domainname = 'method'

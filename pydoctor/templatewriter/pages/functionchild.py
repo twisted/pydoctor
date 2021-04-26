@@ -1,7 +1,7 @@
 from twisted.web.template import renderer, tags
 
 from pydoctor.templatewriter.pages import format_decorators, signature
-from pydoctor.templatewriter import TemplateElement
+from pydoctor.templatewriter import TemplateElement, util
 
 class FunctionChild(TemplateElement):
 
@@ -15,7 +15,7 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def class_(self, request, tag):
-        class_ = self.ob.css_class
+        class_ = util.css_class(self.ob)
         if self.ob.parent is not self.ob:
             class_ = 'base' + class_
         return class_
