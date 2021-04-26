@@ -731,7 +731,7 @@ div.tip, div.hint, div.important {
         width: 317px; /* Set the width of the sidebar: 310px + 2px for the border + 5px for the scrollbar */
     }
     #main {
-        margin-left: 347px; /* Same as the width of the sidebar + 30px*/
+        margin-left: 347px!important; /* Same as the width of the sidebar + 30px*/
     }
 }
 
@@ -741,7 +741,7 @@ div.tip, div.hint, div.important {
         width: 257px; /* Set the width of the sidebar: 250px + 2px for the border + 5px for the scrollbar */
     }
     #main {
-        margin-left: 277px; /* Same as the width of the sidebar + 20px*/
+        margin-left: 277px!important; /* Same as the width of the sidebar + 20px*/
     }
 }
 
@@ -751,7 +751,7 @@ div.tip, div.hint, div.important {
         width: 207px; /* Set the width of the sidebar: 200px + 2px for the border + 5px for the scrollbar */
     }
     #main {
-        margin-left: 227px; /* Same as the width of the sidebar + 20px */
+        margin-left: 227px!important; /* Same as the width of the sidebar + 20px */
     }
 }
 
