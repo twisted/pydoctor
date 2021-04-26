@@ -38,6 +38,7 @@ and subpackages.
     :contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
 
     .. |copy| unicode:: 0xA9 .. copyright sign
+
 """
 __docformat__ = 'restructuredtext en'
 
