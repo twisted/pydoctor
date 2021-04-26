@@ -552,8 +552,7 @@ div.tip, div.hint, div.important {
     max-height: 100vh; /* Full-height: remove this if you want "auto" height */
     float: left;
     padding: 10px 0px 10px 5px;
-    margin-right: 20px;
-    margin-top: 24px;
+    margin:24px 20px 20px 0;
     border: 1px solid;
     border-radius: 4px;
     
