@@ -1,7 +1,7 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element
 

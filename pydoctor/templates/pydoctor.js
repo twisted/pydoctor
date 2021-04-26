@@ -69,6 +69,7 @@ function initSideBarCollapse() {
         setCookie("pydoctor-sidebar-collapsed", "no", 365);
     }
     updateSideBarCollapse();
+    document.querySelector('.sidebarcontainer').style.display = 'flex'; 
 }
 
 function toggleSideBarCollapse() {
@@ -92,7 +93,7 @@ function updateSideBarCollapse() {
     var sidebarcontainer = document.querySelector('.sidebarcontainer');
     sidebarcontainer.style.display='none';
     sidebarcontainer.offsetHeight; // no need to store this anywhere, the reference is enough
-    sidebarcontainer.style.display='';
+    sidebarcontainer.style.display='flex';
 }
 
 initSideBarCollapse();

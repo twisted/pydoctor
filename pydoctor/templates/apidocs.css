@@ -556,7 +556,10 @@ div.tip, div.hint, div.important {
     margin-top: 24px;
     border: 1px solid;
     border-radius: 4px;
-    display: flex;
+    
+    /* Will be overriden in JS or in <noscript></noscript> section to a display: flex; */
+    display: none; 
+    
     position: sticky;
     top: 0;
     overflow-wrap: break-word;
@@ -589,16 +592,6 @@ div.tip, div.hint, div.important {
     border-radius: 5px;
 } 
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-/* .sidebarcontainer::-webkit-scrollbar {
-    display: none;
-} */
-  
-/* Hide scrollbar for IE, Edge and Firefox */
-/* .sidebarcontainer {
-    -ms-overflow-style: none; 
-    scrollbar-width: none;
-}  */
 
 /* The sidebar menu */
 
@@ -848,13 +841,13 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
 /* On smaller screens, where width is less than 650px, simply hide sidebar */
 @media screen and (max-width: 650px) {
     .sidebar {
-        display: none;
+        display: none!important;
     }
     #main {
         margin: 0;
     }
     .sidebarcontainer {
-        display: none;
+        display: none!important;
     }
     #main {
         margin: 0!important;
