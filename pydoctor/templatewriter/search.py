@@ -25,10 +25,17 @@ class AllDocuments(Page):
 
     @renderer
     def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:
-        documents = [dict(id=str(i), name=ob.name, 
-                          fullName=ob.fullName(), kind=str(ob.kind) or '', type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob), url=ob.url, privacy=str(ob.privacyClass.name))   
+        documents = [dict(id=str(i), 
+                          name=ob.name, 
+                          fullName=ob.fullName(), 
+                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
+                          type=str(ob.__class__.__name__),
+                          summary=epydoc2stan.format_summary(ob), 
+                          url=ob.url, 
+                          privacy=str(ob.privacyClass.name))   
+
                           for i, ob in enumerate(self.system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
+        
         for doc in documents:
             yield tag.clone().fillSlots(**doc)
 
@@ -49,11 +56,15 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
             return 1
 
     # TODO: sanitize docstring in a proper way to be more easily indexable by lunr.
-    documents = [(dict(ref=str(i), name=ob.name, 
-                        fullName=ob.fullName(), kind=ob.kind or '', type=str(ob.__class__.__name__),
-                        docstring=ob.docstring, privacy=str(ob.privacyClass) ), 
+    # Once https://github.com/twisted/pydoctor/pull/386 is merged, use node2stan.gettext() to index the docstring text only.
+
+    documents = [(dict(ref=str(i), 
+                        name=ob.name, 
+                        fullName=ob.fullName(), 
+                        docstring=ob.docstring, ), 
                  dict(boost=get_ob_boost(ob)))   
-                        for i, ob in enumerate(system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
+                        
+                 for i, ob in enumerate(system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
 
     index = lunr(
         ref='ref',
