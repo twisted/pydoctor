@@ -721,8 +721,8 @@ div.tip, div.hint, div.important {
     max-width: 970px; /* Arbitrary "good for reading" width for the content */ 
 }
 
-/* Special case for the --nosidebar option */ 
-.nosidebar {
+/* Special case for the --nosidebar option */   
+.nosidebar, .sidebarloading {
     margin-left: 0!important;
 }
 

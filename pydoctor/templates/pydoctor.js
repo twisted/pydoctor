@@ -69,7 +69,10 @@ function initSideBarCollapse() {
         setCookie("pydoctor-sidebar-collapsed", "no", 365);
     }
     updateSideBarCollapse();
+    
+    // Set the sidebar display on load to avoid showing it for few miliseconds when loading..
     document.querySelector('.sidebarcontainer').style.display = 'flex'; 
+    document.querySelector('#main').classList.remove('sidebarloading') 
 }
 
 function toggleSideBarCollapse() {
