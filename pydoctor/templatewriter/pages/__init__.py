@@ -203,7 +203,7 @@ class CommonPage(Page):
     def children(self):
         return sorted(
             [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o: (-o.privacyClass.value, -o.kind.value))
+            key=lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName()))
 
     def packageInitTable(self):
         return ()
