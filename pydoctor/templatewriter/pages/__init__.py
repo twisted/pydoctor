@@ -1,6 +1,6 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Union, Type
+from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
 import ast
 import abc
 
@@ -8,12 +8,12 @@ from twisted.web.template import tags, renderer, Tag, Element
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 
-OBJECTS_ORDER = lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName())
+OBJECTS_ORDER = lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -385,7 +385,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
+        scs = sorted(self.ob.subclasses, key=OBJECTS_ORDER)
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
@@ -437,7 +437,7 @@ class ClassPage(CommonPage):
                                                loader))
                 for b, attrs in baselists]
 
-    def baseName(self, data):
+    def baseName(self, data: Tuple[model.Class, ...]) -> List[str]:
         page_url = self.page_url
         r = []
         source_base = data[0]
@@ -452,17 +452,17 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, data):
+    def functionExtras(self, ob):
         page_url = self.page_url
         r = []
         for b in self.ob.allbases(include_self=False):
-            if data.name not in b.contents:
+            if ob.name not in b.contents:
                 continue
-            overridden = b.contents[data.name]
+            overridden = b.contents[ob.name]
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
+        ocs = sorted(overriding_subclasses(self.ob, ob.name), key=OBJECTS_ORDER)
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
@@ -474,12 +474,13 @@ class ClassPage(CommonPage):
 
 
 class ZopeInterfaceClassPage(ClassPage):
+    ob: zopeinterface.ZopeInterfaceClass
+    
     def extras(self):
         r = [super().extras()]
         if self.ob.isinterface:
-            namelist = sorted(
-                    (o.fullName() for o in self.ob.implementedby_directly),
-                    key=lambda x:x.lower())
+            namelist = [o.fullName() for o in 
+                        sorted(self.ob.implementedby_directly, key=OBJECTS_ORDER)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
