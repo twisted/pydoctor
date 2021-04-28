@@ -10,3 +10,4 @@ _trial_temp/
 apidocs/
 *.egg-info
 .eggs
+*.docset
