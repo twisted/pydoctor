@@ -221,9 +221,10 @@ class CommonPage(Page):
             return ()
 
     def methods(self):
-        return [o for o in self.ob.contents.values()
-                if o.documentation_location is model.DocLocation.PARENT_PAGE
-                and o.isVisible]
+        return sorted([
+            o for o in self.ob.contents.values()
+            if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible
+        ], key=lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName()))
 
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
