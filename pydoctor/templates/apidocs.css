@@ -819,7 +819,7 @@ body.sidebar-collapsed .sidebarcontainer {
 }
 
 body.sidebar-collapsed #main {
-    margin: 0 0 0 25px;
+    margin: 0 0 0 25px!important;
 }
 
 body.sidebar-collapsed #collapseSideBar {
