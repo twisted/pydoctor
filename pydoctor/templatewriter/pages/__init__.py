@@ -367,10 +367,6 @@ class ClassPage(CommonPage):
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
 
-    def children(self):
-        return sorted((o for o in self.ob.contents.values() if o.isVisible),
-                      key=OBJECTS_ORDER)
-
     def extras(self):
         r = super().extras()
 
