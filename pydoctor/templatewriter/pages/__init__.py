@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Tuple
 import ast
 import abc
 
-from twisted.web.template import tags, renderer, Tag, Element
+from twisted.web.template import Element, Flattenable, Tag, renderer, tags
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
@@ -99,14 +99,11 @@ class Page(TemplateElement):
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
 
-    def render(self, request: None) -> Tag:
-        tag: Tag
-        tag, = super().render(request)
-        tag.fillSlots(**self.slot_map)
-        return tag
+    def render(self, request: Optional[IRequest]) -> Tag:
+        return tags.transparent(super().render(request)).fillSlots(**self.slot_map)
 
     @property
-    def slot_map(self) -> Dict[str, str]:
+    def slot_map(self) -> Dict[str, Flattenable]:
         system = self.system
 
         if system.options.projecturl:
@@ -260,7 +257,7 @@ class CommonPage(Page):
         return self.docgetter.get(data)
 
     @property
-    def slot_map(self) -> Dict[str, str]:
+    def slot_map(self) -> Dict[str, Flattenable]:
         slot_map = super().slot_map
         slot_map.update(
             heading=self.heading(),
@@ -402,8 +399,8 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def classSignature(self) -> Sequence[Union[Tag, str]]:
-        r = []
+    def classSignature(self) -> Flattenable:
+        r: List[Flattenable] = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
