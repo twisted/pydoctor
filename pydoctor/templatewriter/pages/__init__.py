@@ -13,6 +13,8 @@ from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 
+OBJECTS_ORDER = lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName())
+
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -202,8 +204,8 @@ class CommonPage(Page):
 
     def children(self):
         return sorted(
-            [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName()))
+            (o for o in self.ob.contents.values() if o.isVisible),
+            key=OBJECTS_ORDER)
 
     def packageInitTable(self):
         return ()
@@ -221,10 +223,9 @@ class CommonPage(Page):
             return ()
 
     def methods(self):
-        return sorted([
-            o for o in self.ob.contents.values()
-            if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible
-        ], key=lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName()))
+        return sorted((o for o in self.ob.contents.values()
+                       if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
+                      key=OBJECTS_ORDER)
 
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
@@ -278,13 +279,13 @@ class PackagePage(ModulePage):
     def children(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, -o2.kind.value, o2.fullName()))
+                      key=OBJECTS_ORDER)
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
         children = sorted(
-            [o for o in init.contents.values() if o.isVisible],
-            key=lambda o2:(-o2.privacyClass.value, -o2.kind.value, o2.fullName()))
+            (o for o in init.contents.values() if o.isVisible),
+            key=OBJECTS_ORDER)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
@@ -368,7 +369,7 @@ class ClassPage(CommonPage):
 
     def children(self):
         return sorted((o for o in self.ob.contents.values() if o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, -o2.kind.value, o2.fullName()))
+                      key=OBJECTS_ORDER)
 
     def extras(self):
         r = super().extras()
@@ -432,7 +433,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:(-o.privacyClass.value, -o.kind.value, o.fullName())),
+                                               sorted(attrs, key=OBJECTS_ORDER),
                                                loader))
                 for b, attrs in baselists]
 
