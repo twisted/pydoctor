@@ -775,9 +775,7 @@ class AnnotationDocstring(ParsedDocstring):
         self.annotation = annotation
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        tag: Tag = tags.code
-        tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
-        return tag
+        return tags.code(_AnnotationFormatter(docstring_linker).visit(self.annotation))
 
 
 class _AnnotationFormatter(ast.NodeVisitor):

@@ -185,9 +185,9 @@ class LetterElement(Element):
             attributes = {}
             if obj.kind:
                 attributes["data-type"] = epydoc2stan.format_kind(obj.kind)
-            tag: Tag = tags.code(
-                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes)
-            return tag
+            return tags.code(
+                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes
+                )
         name2obs = {}
         for obj in self.initials[self.my_letter]:
             name2obs.setdefault(obj.name, []).append(obj)
