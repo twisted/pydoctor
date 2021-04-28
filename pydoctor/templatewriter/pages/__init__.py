@@ -13,7 +13,17 @@ from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 
-OBJECTS_ORDER = lambda o: (-o.privacyClass.value, -o.kind.value, o.fullName().lower())
+def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
+    """
+    Function to use as the value of standard library's L{sorted} function C{key} argument
+    such that the objects are sorted by: Privacy, Kind and Name.
+
+    Example::
+
+        children = sorted((o for o in ob.contents.values() if o.isVisible),
+                      key=objects_order)
+    """
+    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -205,7 +215,7 @@ class CommonPage(Page):
     def children(self):
         return sorted(
             (o for o in self.ob.contents.values() if o.isVisible),
-            key=OBJECTS_ORDER)
+            key=objects_order)
 
     def packageInitTable(self):
         return ()
@@ -225,7 +235,7 @@ class CommonPage(Page):
     def methods(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
-                      key=OBJECTS_ORDER)
+                      key=objects_order)
 
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
@@ -279,13 +289,13 @@ class PackagePage(ModulePage):
     def children(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.name != '__init__' and o.isVisible),
-                      key=OBJECTS_ORDER)
+                      key=objects_order)
 
     def packageInitTable(self):
         init = self.ob.contents['__init__']
         children = sorted(
             (o for o in init.contents.values() if o.isVisible),
-            key=OBJECTS_ORDER)
+            key=objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [tags.p("From the ", tags.code("__init__.py"), " module:",
@@ -381,7 +391,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=OBJECTS_ORDER)
+        scs = sorted(self.ob.subclasses, key=objects_order)
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
@@ -429,7 +439,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=OBJECTS_ORDER),
+                                               sorted(attrs, key=objects_order),
                                                loader))
                 for b, attrs in baselists]
 
@@ -458,7 +468,7 @@ class ClassPage(CommonPage):
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(overriding_subclasses(self.ob, ob.name), key=OBJECTS_ORDER)
+        ocs = sorted(overriding_subclasses(self.ob, ob.name), key=objects_order)
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
@@ -476,7 +486,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r = [super().extras()]
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
-                        sorted(self.ob.implementedby_directly, key=OBJECTS_ORDER)]
+                        sorted(self.ob.implementedby_directly, key=objects_order)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
