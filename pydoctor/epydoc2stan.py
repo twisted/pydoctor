@@ -109,9 +109,9 @@ class _EpydocLinker(DocstringLinker):
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
-            return tags.a(label, href=url)  # type: ignore[no-any-return]
+            return tags.a(label, href=url)
 
-        return tags.transparent(label)  # type: ignore[no-any-return]
+        return tags.transparent(label)
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         xref: Union[Tag, str]
@@ -574,9 +574,9 @@ class FieldHandler:
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
-            return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
+            return tags.table(class_='fieldTable')(r)
         else:
-            return tags.transparent # type: ignore[no-any-return]
+            return tags.transparent
 
 
 def _is_none_literal(node: ast.expr) -> bool:
@@ -701,7 +701,7 @@ def format_summary(obj: model.Documentable) -> Tag:
                 )
             ]
         if len(lines) > 3:
-            return tags.span(class_='undocumented')("No summary") # type: ignore[no-any-return]
+            return tags.span(class_='undocumented')("No summary")
         pdoc = parse_docstring(obj, ' '.join(lines), source)
 
     try:
@@ -709,12 +709,12 @@ def format_summary(obj: model.Documentable) -> Tag:
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
-        return tags.span(class_='undocumented')("Broken description") # type: ignore[no-any-return]
+        return tags.span(class_='undocumented')("Broken description")
 
     content = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content) # type: ignore[no-any-return]
+    return tags.span(*content)
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
