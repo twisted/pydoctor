@@ -4,6 +4,7 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from typing import List, Optional, Type
 
+from docutils import nodes
 from twisted.web.template import Tag
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
@@ -97,22 +98,25 @@ class ParsedGoogleDocstring(ParsedDocstring):
 
     def __init__(
         self,
-        parsed_rst_docstring: ParsedDocstring,
+        parsed_docstring: ParsedDocstring,
         original_docstring: str,
         napoleon_processed_docstring: str,
     ):
-        super().__init__(fields=parsed_rst_docstring.fields)
-        self._parsed_rst_docstring = parsed_rst_docstring
+        super().__init__(fields=parsed_docstring.fields)
+        self._parsed_docstring = parsed_docstring
         self._original_docstring = original_docstring
         self._napoleon_processed_docstring = napoleon_processed_docstring
         """For test purposes"""
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return self._parsed_rst_docstring.to_stan(docstring_linker)
+        return self._parsed_docstring.to_stan(docstring_linker)
+    
+    def to_node(self) -> nodes.document:
+        return self._parsed_docstring.to_node()
 
     @property
     def has_body(self) -> bool:
-        return self._parsed_rst_docstring.has_body
+        return self._parsed_docstring.has_body
 
 
 class ParsedNumpyDocstring(ParsedGoogleDocstring):

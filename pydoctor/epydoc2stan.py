@@ -20,6 +20,7 @@ from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 
+import docutils.nodes
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     """
@@ -716,7 +717,8 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-
+# TODO: FIX https://github.com/twisted/pydoctor/issues/86 
+# Use to_node() and compute shortened HTML from node tree with a visitor intead of using the raw source. 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
@@ -759,7 +761,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     content = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content) # type: ignore[no-any-return]
+    return Tag('', children=content)
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
@@ -820,10 +822,16 @@ class AnnotationDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self.annotation = annotation
 
+    def has_body(self) -> bool:
+        return True
+
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         tag: Tag = tags.code
         tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
         return tag
+    
+    def to_node(self) -> docutils.nodes.document:
+        raise NotImplementedError()
 
 
 class _AnnotationFormatter(ast.NodeVisitor):

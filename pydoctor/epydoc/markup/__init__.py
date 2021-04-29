@@ -35,6 +35,9 @@ __docformat__ = 'epytext en'
 
 from typing import List, Optional, Sequence, Union
 import re
+import abc
+
+from docutils import nodes
 
 from twisted.python.failure import Failure
 from twisted.web.template import Tag, XMLString, flattenString
@@ -52,7 +55,7 @@ from twisted.web.template import Tag, XMLString, flattenString
 ##################################################
 ## ParsedDocstring
 ##################################################
-class ParsedDocstring():
+class ParsedDocstring(abc.ABC):
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
@@ -69,7 +72,7 @@ class ParsedDocstring():
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
 
-    @property
+    @abc.abstractproperty
     def has_body(self) -> bool:
         """Does this docstring have a non-empty body?
 
@@ -78,6 +81,7 @@ class ParsedDocstring():
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
@@ -88,7 +92,16 @@ class ParsedDocstring():
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
-        @return: The docstring presented as a tree.
+        @return: The docstring presented as a stan tree.
+        """
+        raise NotImplementedError()
+    
+    @abc.abstractmethod
+    def to_node(self) -> nodes.document:
+        """
+        Translate this docstring to a L{docutils.nodes.document}.
+
+        @return: The docstring presented as a L{docutils.nodes.document}.
         """
         raise NotImplementedError()
 
@@ -114,6 +127,7 @@ def html2stan(html: Union[bytes, str]) -> Tag:
     assert stan.tagName == 'div'
     stan.tagName = ''
     return stan
+
 
 def flatten(stan: Tag) -> str:
     """

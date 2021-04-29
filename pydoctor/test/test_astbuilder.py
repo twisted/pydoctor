@@ -1267,10 +1267,10 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert type2html(a) == 'string'
+    assert type2html(a) == '<span>string</span>'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert type2html(b) == 'string'
+    assert type2html(b) == '<span>string</span>'
     c = C.contents['c']
     assert c.docstring == """third"""
     assert type2html(c) == '<code>str</code>'
