@@ -123,29 +123,3 @@ def test_rst_directive_seealso() -> None:
         <p class="rst-last">Hey</p>
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
-
-
-def test_rst_directive_versionadded() -> None:
-    html = rst2html(".. versionadded:: 0.6")
-    expected_html="""<div class="rst-versionadded">
-<span class="rst-versionmodified rst-added">New in version 0.6.</span></div>
-"""
-    assert html==expected_html, html
-
-
-def test_rst_directive_versionchanged() -> None:
-    html = rst2html(""".. versionchanged:: 0.7
-    Add extras""")
-    expected_html="""<div class="rst-versionchanged">
-<span class="rst-versionmodified rst-changed">Changed in version 0.7: </span><span>Add extras</span></div>
-"""
-    assert html==expected_html, html
-
-
-def test_rst_directive_deprecated() -> None:
-    html = rst2html(""".. deprecated:: 0.2
-    For security reasons""")
-    expected_html="""<div class="rst-deprecated">
-<span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: </span><span>For security reasons</span></div>
-"""
-    assert html==expected_html, html
