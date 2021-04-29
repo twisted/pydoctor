@@ -447,11 +447,11 @@ class FieldHandler:
         if name is None:
             field.report('Parameter name missing')
             return None
-        if name and name.startswith('*'):
-            field.report('Parameter name "%s" should not include asterixes' % (name,))
-            return name.lstrip('*')
-        else:
-            return name
+        if name == 'args':
+            name = '*args'
+        elif name == 'kwargs':
+            name = '**kwargs'
+        return name
 
     def _handle_param_not_found(self, name: str, field: Field) -> None:
         """Figure out if the parameter might exist despite not being found
@@ -471,7 +471,8 @@ class FieldHandler:
             if name in source.constructor_params:
                 # Constructor parameters can be documented on the class.
                 return
-        field.report('Documented parameter "%s" does not exist' % (name,))
+        if not name.startswith('*'):
+            field.report('Documented parameter "%s" does not exist' % (name,))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):

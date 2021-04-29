@@ -414,10 +414,12 @@ def test_unexpected_field_args(capsys: CapSys) -> None:
 
 
 def test_func_starargs(capsys: CapSys) -> None:
-    """Var-args must be named in fields without asterixes.
-    But for compatibility, we warn and strip off the asterixes.
     """
-    bad_mod = fromText('''
+    Var-args should be named in fields with asterixes.
+    But for compatibility, we automatically add the asterixes from docstring if 
+    the arguments name are following the 'args', 'kwargs' convention. 
+    """
+    great_mod = fromText('''
     def f(*args: int, **kwargs) -> None:
         """
         Do something with var-positional and var-keyword arguments.
@@ -437,15 +439,11 @@ def test_func_starargs(capsys: CapSys) -> None:
         @type kwargs: C{str}
         """
     ''', modname='<good>')
-    bad_fmt = docstring2html(bad_mod.contents['f'])
+    bad_fmt = docstring2html(great_mod.contents['f'])
     good_fmt = docstring2html(good_mod.contents['f'])
     assert bad_fmt == good_fmt
     captured = capsys.readouterr().out
-    assert captured == (
-        '<bad>:6: Parameter name "*args" should not include asterixes\n'
-        '<bad>:7: Parameter name "**kwargs" should not include asterixes\n'
-        '<bad>:8: Parameter name "**kwargs" should not include asterixes\n'
-        )
+    assert not captured
 
 
 def test_summary() -> None:

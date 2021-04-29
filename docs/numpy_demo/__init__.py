@@ -48,6 +48,7 @@ module_level_variable1 : int
    https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
 """
+from typing import List, Union
 
 module_level_variable1 = 12345
 
@@ -253,7 +254,7 @@ class ExampleClass:
 
     See Also
     --------
-    example_google
+    ``example_google``
         The same document but for google-style. 
     """
 
