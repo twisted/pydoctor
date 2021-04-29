@@ -1,21 +1,22 @@
-from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
+from twisted.web.template import TagLoader, renderer, tags, Element
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Function
 from pydoctor.templatewriter import util
+from pydoctor.templatewriter.pages import TemplateElement
 
 
 class TableRow(Element):
 
     def __init__(self, loader, docgetter, ob, child):
-        Element.__init__(self, loader)
+        super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self.child = child
 
     @renderer
     def class_(self, request, tag):
-        class_ = self.child.css_class
+        class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
@@ -23,12 +24,12 @@ class TableRow(Element):
     @renderer
     def kind(self, request, tag):
         child = self.child
-        kind = child.kind
+        kind_name = epydoc2stan.format_kind(child.kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
-            kind = f'Async {kind}'
-        return tag.clear()(kind)
+            kind_name = f'Async {kind_name}'
+        return tag.clear()(kind_name)
 
     @renderer
     def name(self, request, tag):
@@ -41,13 +42,14 @@ class TableRow(Element):
         return tag.clear()(self.docgetter.get(self.child, summary=True))
 
 
-class ChildTable(Element):
-    loader = XMLFile(util.templatefilepath('table.html'))
+class ChildTable(TemplateElement):
     last_id = 0
 
-    def __init__(self, docgetter, ob, children):
+    filename = 'table.html'
+
+    def __init__(self, docgetter, ob, children, loader):
+        super().__init__(loader)
         self.docgetter = docgetter
-        self.system = ob.system
         self.children = children
         ChildTable.last_id += 1
         self._id = ChildTable.last_id
