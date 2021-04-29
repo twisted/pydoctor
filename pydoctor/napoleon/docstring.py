@@ -431,30 +431,32 @@ class GoogleDocstring:
 
     Example
     -------
-    >>> from pydoctor.napoleon import GoogleDocstring
-    >>> docstring = '''One line summary.
-    ...
-    ... Extended description.
-    ...
-    ... Args:
-    ...   arg1(int): Description of `arg1`
-    ...   arg2(str): Description of `arg2`
-    ... Returns:
-    ...   str: Description of return value.
-    ... '''
-    >>> print(GoogleDocstring(docstring))
-    One line summary.
-    <BLANKLINE>
-    Extended description.
-    <BLANKLINE>
-    :param arg1: Description of `arg1`
-    :type arg1: `int`
-    :param arg2: Description of `arg2`
-    :type arg2: `str`
-    <BLANKLINE>
-    :returns: Description of return value.
-    :rtype: `str`
-    <BLANKLINE>
+
+    .. python::
+        >>> from pydoctor.napoleon import GoogleDocstring
+        >>> docstring = '''One line summary.
+        ...
+        ... Extended description.
+        ...
+        ... Args:
+        ...   arg1(int): Description of `arg1`
+        ...   arg2(str): Description of `arg2`
+        ... Returns:
+        ...   str: Description of return value.
+        ... '''
+        >>> print(GoogleDocstring(docstring))
+        One line summary.
+
+        Extended description.
+
+        :param arg1: Description of `arg1`
+        :type arg1: `int`
+        :param arg2: Description of `arg2`
+        :type arg2: `str`
+
+        :returns: Description of return value.
+        :rtype: `str`
+
     """
 
     _name_rgx = re.compile(
@@ -1307,35 +1309,37 @@ class NumpyDocstring(GoogleDocstring):
 
     Example
     -------
-    >>> from pydoctor.napoleon import NumpyDocstring
-    >>> docstring = '''One line summary.
-    ...
-    ... Extended description.
-    ...
-    ... Parameters
-    ... ----------
-    ... arg1 : int
-    ...     Description of `arg1`
-    ... arg2 : str
-    ...     Description of `arg2`
-    ... Returns
-    ... -------
-    ... str
-    ...     Description of return value.
-    ... '''
-    >>> print(NumpyDocstring(docstring))
-    One line summary.
-    <BLANKLINE>
-    Extended description.
-    <BLANKLINE>
-    :param arg1: Description of `arg1`
-    :type arg1: `int`
-    :param arg2: Description of `arg2`
-    :type arg2: `str`
-    <BLANKLINE>
-    :returns: Description of return value.
-    :rtype: `str`
-    <BLANKLINE>
+    
+    .. python::
+        >>> from pydoctor.napoleon import NumpyDocstring
+        >>> docstring = '''One line summary.
+        ...
+        ... Extended description.
+        ...
+        ... Parameters
+        ... ----------
+        ... arg1 : int
+        ...     Description of `arg1`
+        ... arg2 : str
+        ...     Description of `arg2`
+        ... Returns
+        ... -------
+        ... str
+        ...     Description of return value.
+        ... '''
+        >>> print(NumpyDocstring(docstring))
+        One line summary.
+
+        Extended description.
+
+        :param arg1: Description of `arg1`
+        :type arg1: `int`
+        :param arg2: Description of `arg2`
+        :type arg2: `str`
+
+        :returns: Description of return value.
+        :rtype: `str`
+
     """
 
     def __init__(
