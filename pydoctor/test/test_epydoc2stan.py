@@ -6,12 +6,14 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import DocstringLinker, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten, get_parser_by_name
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
+from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
+from pydoctor.test.epydoc.test_to_node import doc2html, parse_docstring
 
-from . import CapSys
+from . import CapSys, NotFoundLinker
 
 
 def test_multiple_types() -> None:
@@ -897,3 +899,111 @@ def test_module_docformat(capsys: CapSys) -> None:
     
     assert ('Link to pydoctor: <a class="rst-reference external"'
         ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))
+
+def test_parsed_type_convert_obj_tokens_to_stan() -> None:
+    
+    convert_obj_tokens_cases = [
+                ([("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")], 
+                [(Tag('code', children=['list', '(', 'int', ')']), 'obj')]),    
+
+                ([("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim"), (", ", "obj_delim"), ("optional", "control")], 
+                [(Tag('code', children=['list', '(', 'int', ')']), 'obj'), (", ", "obj_delim"), ("optional", "control")]),
+            ] 
+
+    ann = ParsedTypeDocstring("")
+
+    for tokens_types, expected_token_types in convert_obj_tokens_cases:
+
+        assert str(ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker()))==str(expected_token_types)
+
+
+def typespec2htmlvianode(s: str, markup: str) -> str:
+    err: List[ParseError] = []
+    parsed_doc = get_parser_by_name(markup)(s, err)
+    assert not err
+    ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
+    html = flatten(ann.to_stan(NotFoundLinker()))
+    assert not ann.warnings()
+    return html
+
+def typespec2htmlviastr(s: str) -> str:
+    ann = ParsedTypeDocstring(s, warns_on_unknown_tokens=True)
+    html = flatten(ann.to_stan(NotFoundLinker()))
+    assert not ann.warnings()
+    return html
+
+def test_parsed_type() -> None:
+    
+    parsed_type_cases = [
+        ('list of int or float or None', 
+        '<span><code>list</code><span> of </span><code>int</code><span> or </span><code>float</code><span> or </span><code>None</code></span>'),
+
+        ("{'F', 'C', 'N'}, default 'N'",
+        """<span><span class_="literal">{'F', 'C', 'N'}</span><span>, </span><em>default</em><span> </span><span class_="literal">'N'</span></span>"""),
+
+        ("DataFrame, optional",
+        "<span><code>DataFrame</code><span>, </span><em>optional</em></span>"),
+
+        ("List[str] or list(bytes), optional", 
+        "<span><code>List</code><span>[</span><code>str</code><span>]</span><span> or </span><code>list</code><span>(</span><code>bytes</code><span>)</span><span>, </span><em>optional</em></span>"),
+
+        (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
+        '<span><code>complicated string</code><span> or </span><code>strIO</code></span>'),
+    ]
+
+    for string, excepted_html in parsed_type_cases:
+        rst_string = ''
+        epy_string = ''
+
+        if isinstance(string, tuple):
+            rst_string, epy_string = string
+        elif isinstance(string, str):
+            rst_string = epy_string = string
+        
+        assert typespec2htmlviastr(rst_string) == excepted_html
+        assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
+        assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
+
+def test_type_parsing(capsys: CapSys) -> None:
+
+    cases = [
+        (
+            (   
+                """
+                @param arg: A param.
+                @type arg: list of int or float or None
+                """,
+
+                """
+                :param arg: A param.
+                :type arg: list of int or float or None
+                """,
+
+                """
+                Args:
+                    arg (list of int or float or None): A param.
+                """,
+
+                """
+                Args
+                ----
+                arg: list of int or float or None
+                    A param.
+                """,
+            ), 
+
+                "list of int or float or None"
+
+        ),
+
+    ]
+
+    for strings, excepted_html in cases:
+        epy_string, rst_string, goo_string, numpy_string = strings
+
+        assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == f"<span>{excepted_html}</span>"
+        assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+
+        # TODO: Fix IndexError, fields Sequence is empty when parsing google or numpy docstring 
+        # assert flatten(parse_docstring(goo_string, 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+        # assert flatten(parse_docstring(numpy_string, 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
