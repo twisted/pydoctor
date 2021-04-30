@@ -284,6 +284,9 @@ class _SplitFieldsTranslator(NodeVisitor):
         field_doc = self.document.copy()
         for child in fbody: 
             field_doc.append(child)
+
+        # TODO: Use ParsedTypeDocstring for numpy and google by default and
+        # allow the other markup to use it as well with a CLI option like --process-types
         field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
 
