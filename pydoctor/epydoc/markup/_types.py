@@ -51,23 +51,25 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 self.rest = nodes.document
 
             def default_visit(self, node: nodes.Node) -> None:
-                # Tokenize only the first level text, pass the rest as is
-                #  root doc        para or list 
-                if node.parent and node.parent.parent:
-                    if isinstance(node.parent.parent, nodes.document):
-                        # only text in paragraph nodes are taken into account
-                        if isinstance(node.parent, nodes.paragraph):  
-                            if isinstance(node, nodes.Text):
-                                # Tokenize
-                                self.tokens.extend(cls._tokenize_type_spec(node.astext()))
-                                # # Remove the text from the tree.
-                                # node.parent.remove(node)
-                            else:
-                                self.tokens.append(node)
-                                raise nodes.SkipNode()
+                # Tokenize only the first level or second level text, pass the rest as is
+
+                parent = node.parent
+                super_parent = parent.parent if parent else None
+
+                if isinstance(super_parent, nodes.document):
+                    # only text in paragraph nodes are taken into account
+                    if isinstance(parent, nodes.TextElement):  
+                        if isinstance(node, nodes.Text):
+                            # Tokenize
+                            self.tokens.extend(cls._tokenize_type_spec(node.astext()))
+                            # # Remove the text from the tree.
+                            # node.parent.remove(node)
                         else:
-                            self.tokens.append(node.parent)
+                            self.tokens.append(node)
                             raise nodes.SkipNode()
+                    else:
+                        self.tokens.append(parent)
+                        raise nodes.SkipNode()
     
         tokenizer = Tokenizer(spec)
         spec.walk(tokenizer)

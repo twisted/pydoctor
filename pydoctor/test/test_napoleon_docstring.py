@@ -15,8 +15,8 @@ from pydoctor.napoleon.docstring import (GoogleDocstring, NumpyDocstring,
 from pydoctor.test import NotFoundLinker
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name, flatten
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
-import sphinx.ext.napoleon as sphinx_napoleon
 
+import sphinx.ext.napoleon as sphinx_napoleon
 from twisted.web.template import Tag
 
 __docformat__ = "restructuredtext"
@@ -322,13 +322,23 @@ class ParsedTypeDocstringTest(BaseDocstringTest):
             ("List[str] or list(bytes), optional", 
             "<span><code>List</code><span>[</span><code>str</code><span>]</span><span> or </span><code>list</code><span>(</span><code>bytes</code><span>)</span><span>, </span><em>optional</em></span>"),
 
+            (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
+            '<span><code>complicated string</code><span> or </span><code>strIO</code></span>'),
         ]
 
         for string, excepted_html in parsed_type_cases:
-            assert typespec2htmlvianode(string, 'restructuredtext') == excepted_html
-            # TODO: Make it work with epytext
-            # assert typespec2htmlvianode(string, 'epytext') == excepted_html
-            assert typespec2htmlviastr(string) == excepted_html
+            rst_string = ''
+            epy_string = ''
+
+            if isinstance(string, tuple):
+                rst_string, epy_string = string
+            else:
+                rst_string = epy_string = string
+            
+            assert typespec2htmlviastr(rst_string) == excepted_html
+            assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
+            assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
+
 
 class InlineAttributeTest(BaseDocstringTest):
 

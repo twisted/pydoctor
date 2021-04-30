@@ -1293,6 +1293,11 @@ def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError]], 
     """
     return parse_docstring
 
+def set_nodes_parent(nodes: Iterable[Node], parent: Node) -> Iterable[None]:
+    for node in nodes:
+        node.parent = parent
+        yield node
+
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {
         # Symbols
@@ -1373,7 +1378,8 @@ class ParsedEpytextDocstring(ParsedDocstring):
             children = list(self._to_node(self._tree))
             assert len(children)==1
             # The contents is encapsulated inside a section node. 
-            self._document.children.extend(children[0].children)
+            # Reparent the contents of the second level to the root level. 
+            self._document.children.extend(set_nodes_parent(children[0].children, self._document))
         
         return self._document
     
@@ -1382,17 +1388,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             seclevel: int = 0, 
             ) -> Iterable[Node]:
 
-        def set_parent(nodes: Iterable[Node], parent: Node) -> Iterable[None]:
-            for node in nodes:
-                node.parent = parent
-                yield node
-
         def craft_node(node: Node, children: Optional[List[Node]] = None) -> Node:
             node.line = lineno
             node.document = self._document
 
             if children:
-                node.extend(set_parent(children, node))
+                node.extend(set_nodes_parent(children, node))
 
             return node
         
@@ -1438,8 +1439,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             assert isinstance(_target, Text)
             assert isinstance(_label, Text)
 
+            args = {}
+            if _target.astext() != _label.astext():
+                args['refuri']=_target.astext()
+
             yield craft_node(title_reference(
-                   '', '', _label, internal=False, refuri=_target.astext()))
+                   '', '', _label, **args))
 
         elif tree.tag in ('name',):
             yield craft_node(Text(' '.join(node2stan.gettext(variables))))
