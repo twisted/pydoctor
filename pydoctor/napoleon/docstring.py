@@ -16,8 +16,9 @@ from functools import partial
 from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
 import attr
+from docutils import nodes
 
-from .iterators import modify_iter, peek_iter
+from pydoctor.napoleon.iterators import modify_iter, peek_iter
 
 __docformat__ = "numpy en"
 
@@ -169,13 +170,18 @@ class TypeDocstring:
         self._annotation = annotation
         self._warns_on_unknown_tokens = warns_on_unknown_tokens
 
-        _tokens = self._tokenize_type_spec(annotation)
+        _tokens: List[str] = self._tokenize_type_spec(annotation)
+        self._tokens: List[Tuple[str, str]] = self._build_tokens(_tokens)
+
+    def _build_tokens(self, _tokens: List[Union[str, nodes.Node]]) -> List[Tuple[Union[str, nodes.Node], str]]:
         _combined_tokens = self._recombine_set_tokens(_tokens)
 
         # Save tokens in the form : [("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")]
-        self._tokens: List[Tuple[str, str]] = [
+        _tokens_with_type_information: List[Tuple[str, str]] = [
             (token, self._token_type(token)) for token in _combined_tokens
         ]
+
+        return _tokens_with_type_information
 
     def __str__(self) -> str:
         """
@@ -283,7 +289,7 @@ class TypeDocstring:
         )
         return tokens
 
-    def _token_type(self, token: str) -> str:
+    def _token_type(self, token: Union[str, nodes.Node]) -> str:
         """
         Find the type of a token. Type can be  "literal", "obj",
         "delimiter", "control", "reference", or "unknown".
@@ -298,7 +304,9 @@ class TypeDocstring:
             else:
                 return True
 
-        if (
+        if not isinstance(token, str):
+            type_ = "unknown"
+        elif (
             self._natural_language_delimiters_regex.match(token)
             or not token.strip()
             or self._ast_like_delimiters_regex.match(token)

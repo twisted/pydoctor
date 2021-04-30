@@ -30,9 +30,9 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     """
     return ParsedPlaintextDocstring(docstring)
 
-def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError]], ParsedDocstring]:
     """
-    Just return the `parse_docstring` function. 
+    Just return the L{parse_docstring} function. 
     """
     return parse_docstring
 

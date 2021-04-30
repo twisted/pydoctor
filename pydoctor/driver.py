@@ -2,30 +2,22 @@
 
 from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
-from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
+from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
 import warnings
-from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
+from pydoctor.epydoc.markup import get_supported_docformats
 
 if TYPE_CHECKING:
     from typing_extensions import NoReturn
 else:
     NoReturn = None
-
-# On Python 3.7+, use importlib.resources from the standard library.
-# On older versions, a compatibility package must be installed from PyPI.
-try:
-    import importlib.resources as importlib_resources
-except ImportError:
-    if not TYPE_CHECKING:
-        import importlib_resources
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -84,17 +76,6 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
         return resolve_path(value)
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
-
-def get_supported_docformats() -> Iterator[str]:
-    """
-    Get the list of currently supported docformat.
-    """
-    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
-        moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName.startswith("_"):
-            continue
-        else:
-            yield moduleName
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)

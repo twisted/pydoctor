@@ -15,14 +15,14 @@ from pydoctor.epydoc.markup import (
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def node2stan(node: document, docstring_linker: 'DocstringLinker') -> Tag:
+def node2stan(node: Node, docstring_linker: 'DocstringLinker') -> Tag:
     """
     Convert a L{docutils.nodes.document} to a Stan tree.
 
     @param node: An docutils document.
     @return: The element as a stan tree.
     """
-    visitor = _PydoctorHTMLTranslator(node, docstring_linker)
+    visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
     node.walkabout(visitor)
     return html2stan(''.join(visitor.body))
 

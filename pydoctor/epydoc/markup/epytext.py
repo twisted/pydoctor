@@ -1287,7 +1287,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError]], ParsedDocstring]:
     """
     Get the L{parse_docstring} function. 
     """

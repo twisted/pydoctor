@@ -3,7 +3,6 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 """
 
 from collections import defaultdict
-from importlib import import_module
 from typing import (
     Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Tuple, Union
@@ -15,7 +14,7 @@ import astor
 import attr
 
 from pydoctor import model
-from pydoctor.epydoc.markup import Field as EpydocField, ParseError
+from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
@@ -30,13 +29,12 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], Par
     docformat = obj.module.docformat or obj.system.options.docformat
     
     try:
-        mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
+        return get_parser_by_name(docformat, obj)
     except ImportError as e:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
             docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
-        mod = pydoctor.epydoc.markup.plaintext
-    return mod.get_parser(obj) # type: ignore[attr-defined, no-any-return]
+        return pydoctor.epydoc.markup.plaintext.parse_docstring
 
 
 def get_docstring(

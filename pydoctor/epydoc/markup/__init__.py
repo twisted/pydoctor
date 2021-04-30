@@ -33,9 +33,19 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import List, Optional, Sequence, Union
+from importlib import import_module
+from typing import Any, Callable, List, Optional, Sequence, Union, Iterator, TYPE_CHECKING
 import re
 import abc
+from inspect import getmodulename
+
+# On Python 3.7+, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+try:
+    import importlib.resources as importlib_resources
+except ImportError:
+    if not TYPE_CHECKING:
+        import importlib_resources
 
 from docutils import nodes
 
@@ -51,6 +61,32 @@ from twisted.web.template import Tag, XMLString, flattenString
 # 3. Docstring Linker
 # 4. ParseError exceptions
 #
+
+def get_supported_docformats() -> Iterator[str]:
+    """
+    Get the list of currently supported docformat.
+    """
+    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName.startswith("_"):
+            continue
+        else:
+            yield moduleName
+
+# 'Any' avoids a circular import with model.Documentable
+def get_parser_by_name(docformat: str, obj: Optional[Any] = None) -> Callable[[str, List['ParseError']], 'ParsedDocstring']:
+    """
+    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function based on a parser name. 
+
+    @raises ValueError: If the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.  
+    @raises ImportError: If the parser could not be imported. 
+    """
+    docformats = get_supported_docformats()
+    if docformat not in docformats:
+        raise ValueError("Unrecognized doctormat. Must be in: {', '.join(docformats)}")
+    mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
+    
+    return mod.get_parser(obj) # type: ignore[attr-defined, no-any-return]
 
 ##################################################
 ## ParsedDocstring
