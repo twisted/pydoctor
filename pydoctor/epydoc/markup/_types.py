@@ -62,8 +62,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                         if isinstance(node, nodes.Text):
                             # Tokenize
                             self.tokens.extend(cls._tokenize_type_spec(node.astext()))
-                            # # Remove the text from the tree.
-                            # node.parent.remove(node)
+
                         else:
                             self.tokens.append(node)
                             raise nodes.SkipNode()
