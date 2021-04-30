@@ -35,9 +35,15 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         return len(self._tokens)>0
 
     def to_node(self) -> nodes.document:
+        """
+        Not implemented.
+        """
         raise NotImplementedError()
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+        """
+        Present the type as a stan tree. 
+        """
         return self._convert_type_spec_to_stan(docstring_linker)
 
     @classmethod

@@ -5,7 +5,7 @@ import re
 import optparse
 from typing import Any, ClassVar, List, Optional, Union
 from docutils.writers.html4css1 import HTMLTranslator, Writer
-from docutils.nodes import Node, SkipNode, document, title, paragraph, Element, Text
+from docutils.nodes import Node, SkipNode, document, title, Element, Text
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag

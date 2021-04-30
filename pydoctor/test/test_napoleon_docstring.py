@@ -332,7 +332,7 @@ class ParsedTypeDocstringTest(BaseDocstringTest):
 
             if isinstance(string, tuple):
                 rst_string, epy_string = string
-            else:
+            elif isinstance(string, str):
                 rst_string = epy_string = string
             
             assert typespec2htmlviastr(rst_string) == excepted_html
