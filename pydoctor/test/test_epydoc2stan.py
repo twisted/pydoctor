@@ -1,5 +1,6 @@
 from typing import List, Optional, cast
 import re
+from textwrap import dedent
 
 from pytest import mark, raises
 import pytest
@@ -1004,6 +1005,5 @@ def test_type_parsing(capsys: CapSys) -> None:
         assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == f"<span>{excepted_html}</span>"
         assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
 
-        # TODO: Fix IndexError, fields Sequence is empty when parsing google or numpy docstring 
-        # assert flatten(parse_docstring(goo_string, 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
-        # assert flatten(parse_docstring(numpy_string, 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+        assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+        assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
