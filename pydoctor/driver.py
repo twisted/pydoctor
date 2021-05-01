@@ -404,7 +404,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         # Type processing happends at the node level in the case of 
         # epytext or restructuredtext with the --process-types option.
         if system.options.processtypes and system.options.docformat in ['google', 'numpy']:
-            system.msg("Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
+            system.msg("warning", "Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
             system.options.processtypes = False
 
         # step 3: move the system to the desired state
