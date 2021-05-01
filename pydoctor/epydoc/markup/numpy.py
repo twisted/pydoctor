@@ -10,7 +10,7 @@ from pydoctor.epydoc.markup import ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._napoleon import NapoelonDocstringParser
 
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError]], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
     Returns the parser function. Behaviour will depend on the documentable type and system options.
     """

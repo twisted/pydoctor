@@ -21,9 +21,9 @@ import pydoctor.epydoc.markup.plaintext
 
 import docutils.nodes
 
-def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
+def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
-    Get the C{parse_docstring(str, List[ParseError]) -> ParsedDocstring} function. 
+    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function. 
     """    
     # Use module's __docformat__ if specified, else use system's.
     docformat = obj.module.docformat or obj.system.options.docformat
@@ -654,7 +654,7 @@ def parse_docstring(
     parser = get_parser(obj)
     errs: List[ParseError] = []
     try:
-        parsed_doc = parser(doc, errs)
+        parsed_doc = parser(doc, errs, getattr(obj.system.options, 'processtypes', False))
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)

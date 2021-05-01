@@ -62,6 +62,7 @@ from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring
 )
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
+from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.model import Documentable
 from pydoctor.node2stan import node2stan
 
@@ -86,7 +87,7 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -95,6 +96,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
+    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
@@ -110,12 +112,12 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
                                        'warning_stream':None})
 
     document = writer.document
-    visitor = _SplitFieldsTranslator(document, errors)
+    visitor = _SplitFieldsTranslator(document, errors, processtypes=processtypes)
     document.walk(visitor)
 
     return ParsedRstDocstring(document, visitor.fields)
 
-def get_parser(obj:Documentable) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj:Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
     Get the L{parse_docstring} function. 
     """
@@ -227,11 +229,12 @@ class _SplitFieldsTranslator(NodeVisitor):
     consolidated fields expressed as unordered lists still require
     backticks for now."""
 
-    def __init__(self, document: docutils.nodes.document, errors: List[ParseError]):
+    def __init__(self, document: docutils.nodes.document, errors: List[ParseError], processtypes: bool = False):
         NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
+        self._processtypes = processtypes
 
     def visit_document(self, node: Node) -> None:
         self.fields = []
@@ -285,9 +288,14 @@ class _SplitFieldsTranslator(NodeVisitor):
         for child in fbody: 
             field_doc.append(child)
 
-        # TODO: Use ParsedTypeDocstring for numpy and google by default and
-        # allow the other markup to use it as well with a CLI option like --process-types
-        field_parsed_doc = ParsedRstDocstring(field_doc, ())
+        # This allows restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types
+        field_parsed_doc: ParsedDocstring
+        if self._processtypes and tagname in ['type', 'rtype']:
+            field_parsed_doc = ParsedTypeDocstring(field_doc)
+            for warning_msg in field_parsed_doc.warnings():
+                    self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+        else:
+            field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
 
     def visit_field_list(self, node: Node) -> None:

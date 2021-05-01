@@ -11,14 +11,13 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with L{demo_typing_arguments} to
-    find an arbitrary function's zeros.
+    This function's ":type:" tags are taking advantage of the --process-types. 
 
-    :type  m: number
+    :type  m: numbers.Number
     :param m: The slope of the line.
-    :type  b: number
+    :type  b: numbers.Number
     :param b: The y intercept of the line.
-    :rtype:   number
+    :rtype:   numbers.Number
     :return:  the x intercept of the line M{y=m*x+b}.
     """
     return -b/m

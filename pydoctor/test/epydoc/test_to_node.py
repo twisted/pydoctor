@@ -1,5 +1,4 @@
 from typing import List
-from textwrap import dedent
 from pydoctor.epydoc.markup import ParseError, ParsedDocstring, get_parser_by_name, flatten
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 from pydoctor.test import NotFoundLinker
@@ -7,9 +6,9 @@ from pydoctor.test import NotFoundLinker
 def doc2html(doc: str, markup: str) -> str:
     return ''.join(prettify(flatten(parse_docstring(doc, markup).to_stan(NotFoundLinker()))).splitlines())
 
-def parse_docstring(doc: str, markup: str) -> ParsedDocstring:
+def parse_docstring(doc: str, markup: str, processtypes: bool = False) -> ParsedDocstring:
     errors: List[ParseError] = []
-    parsed = get_parser_by_name(markup)(doc, errors)
+    parsed = get_parser_by_name(markup)(doc, errors, processtypes)
     assert not errors
     return parsed
 

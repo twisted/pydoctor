@@ -32,7 +32,7 @@ class NapoelonDocstringParser:
         self.obj = obj
 
     def parse_google_docstring(
-        self, docstring: str, errors: List[ParseError]
+        self, docstring: str, errors: List[ParseError], processtypes: bool = True
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as Google style docstring.
@@ -47,7 +47,7 @@ class NapoelonDocstringParser:
         )
 
     def parse_numpy_docstring(
-        self, docstring: str, errors: List[ParseError]
+        self, docstring: str, errors: List[ParseError], processtypes: bool = True
     ) -> ParsedDocstring:
         """
         Parse the given docstring, which is formatted as NumPy style docstring.

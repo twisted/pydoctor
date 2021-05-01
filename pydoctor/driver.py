@@ -168,6 +168,9 @@ def getparser() -> OptionParser:
         help=("This should be the path to the trac browser for the top "
               "of the svn checkout we are documenting part of."), metavar='URL',)
     parser.add_option(
+        '--process-types', dest='processtypes', action='store_true', 
+        help="Process the 'type' and 'rtype' fields: add links and inline markup automatically. This settings should not be enabled when using google and numpy docformat because the types are already processed.",)
+    parser.add_option(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
               "Format: %s" % BUILDTIME_FORMAT), metavar='TIME')
@@ -395,6 +398,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 added_paths.add(path)
         else:
             error("No source paths given.")
+
+        # Avoid tokenizing twice the type information for google and numpy docformat.
+        # TODO: transform this into enforcing options.processtypes = True for google and numpy and use ParsedTypeDocstring everywhere. 
+        if system.options.processtypes and system.options.docformat in ['google', 'numpy']:
+            system.msg("Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
+            system.options.processtypes = False
 
         # step 3: move the system to the desired state
 

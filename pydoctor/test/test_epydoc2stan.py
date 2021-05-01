@@ -12,7 +12,7 @@ from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test.epydoc.test_to_node import doc2html, parse_docstring
+from pydoctor.test.epydoc.test_to_node import parse_docstring
 
 from . import CapSys, NotFoundLinker
 
@@ -920,7 +920,7 @@ def test_parsed_type_convert_obj_tokens_to_stan() -> None:
 
 def typespec2htmlvianode(s: str, markup: str) -> str:
     err: List[ParseError] = []
-    parsed_doc = get_parser_by_name(markup)(s, err)
+    parsed_doc = get_parser_by_name(markup)(s, err, False)
     assert not err
     ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
     html = flatten(ann.to_stan(NotFoundLinker()))
@@ -965,7 +965,13 @@ def test_parsed_type() -> None:
         assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
         assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
 
-def test_type_parsing(capsys: CapSys) -> None:
+def test_processtypes(capsys: CapSys) -> None:
+    """
+    Currently, numpy and google type parsong happens at the string level with pydoctor.napoleon.TypeDocstring
+    So the the --process-types argument should not be used with google and numpy docformat.
+    
+    This also explains why there is a little difference in the generated HTML with the <span> elements when using --process-types. 
+    """
 
     cases = [
         (
@@ -993,7 +999,40 @@ def test_type_parsing(capsys: CapSys) -> None:
                 """,
             ), 
 
-                "list of int or float or None"
+                ("list of int or float or None", 
+                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>", 
+                "<span><code>list</code><span> of </span><code>int</code><span> or </span><code>float</code><span> or </span><code>None</code></span>")
+
+        ),
+
+        (
+            (   
+                """
+                @param arg: A param.
+                @type arg: L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}, optional
+                """,
+
+                """
+                :param arg: A param.
+                :type arg: `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional
+                """,
+
+                """
+                Args:
+                    arg (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional): A param.
+                """,
+
+                """
+                Args
+                ----
+                arg: `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional
+                    A param.
+                """,
+            ), 
+
+                ("<code>complicated string</code> or <code>strIO</code>, optional", 
+                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>", 
+                "<span><code>complicated string</code><span> or </span><code>strIO</code><span>, </span><em>optional</em></span>")
 
         ),
 
@@ -1002,8 +1041,31 @@ def test_type_parsing(capsys: CapSys) -> None:
     for strings, excepted_html in cases:
         epy_string, rst_string, goo_string, numpy_string = strings
 
-        assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == f"<span>{excepted_html}</span>"
-        assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+        excepted_html_no_process_types, excepted_html_type_processed, excepted_html_type_processed_forced = excepted_html
 
-        assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
-        assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html
+        assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == f"<span>{excepted_html_no_process_types}</span>"
+        assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
+
+        assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+        assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+
+        assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed_forced
+        assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed_forced
+
+def test_processtypes_with_system() -> None:
+    system = model.System()
+    system.options.processtypes = True
+    mod = fromText('''
+    a = None
+    """
+    Variable documented by inline docstring.
+    @type a: list of int or float or None
+    """
+    ''', modname='test')
+    a = mod.contents['a']
+    ("<span><code>list</code><span>"
+    " of </span><code>int</code><span>"
+    " or </span><code>float</code><span>"
+    " or </span><code>None</code></span>") in ''.join(docstring2html(a).splitlines())
+
+# TODO test processtypes warnings

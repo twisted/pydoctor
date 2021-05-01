@@ -162,8 +162,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             "literal":      lambda _token: Tag('span', children=[_token], attributes=dict(class_="literal")),
             "control":      lambda _token: Tag('em', children=[_token]),
             "delimiter":    lambda _token: Tag('span', children=[_token]), 
-            "reference":    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            "unknown":      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            "reference":    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            "unknown":      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             "obj":          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
             "obj_delim":    lambda _token: _token, 
         }

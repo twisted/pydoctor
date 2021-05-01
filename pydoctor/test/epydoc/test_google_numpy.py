@@ -131,7 +131,7 @@ Some more text.
 
         errors: List[ParseError] = []
 
-        parse_docstring(docstring, errors)
+        parse_docstring(docstring, errors, False)
         
         self.assertEqual(len(errors), 3)
         

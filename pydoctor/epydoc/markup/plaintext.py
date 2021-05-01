@@ -19,7 +19,7 @@ from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
 from pydoctor.model import Documentable
 
-def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted as plain text; and
     return a L{ParsedDocstring} representation of its contents.
@@ -30,7 +30,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     """
     return ParsedPlaintextDocstring(docstring)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError], bool], ParsedDocstring]:
     """
     Just return the L{parse_docstring} function. 
     """

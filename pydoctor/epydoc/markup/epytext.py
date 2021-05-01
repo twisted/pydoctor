@@ -143,6 +143,7 @@ from twisted.web.template import Tag
 
 from pydoctor import node2stan
 from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.model import Documentable
 
 ##################################################
@@ -1243,7 +1244,7 @@ class ColorizingError(ParseError):
 ##                    SUPPORT FOR EPYDOC
 #################################################################
 
-def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using epytext; and
     return a L{ParsedDocstring} representation of its contents.
@@ -1251,6 +1252,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
+    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     tree = parse(docstring, errors)
     if tree is None:
@@ -1280,9 +1282,18 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
 
             # Process the field.
             field.tag = 'epytext'
-            fieldDoc = ParsedEpytextDocstring(field, ())
+
+            field_parsed_doc: ParsedDocstring = ParsedEpytextDocstring(field, ())
+
             lineno = int(field.attribs['lineno'])
-            fields.append(Field(tag, arg, fieldDoc, lineno))
+            
+            # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types
+            if processtypes and tag in ['type', 'rtype']:
+                field_parsed_doc = ParsedTypeDocstring(field_parsed_doc.to_node(), lineno=lineno)
+                for warning_msg in field_parsed_doc.warnings():
+                    errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+            
+            fields.append(Field(tag, arg, field_parsed_doc, lineno))
 
     # Save the remaining docstring as the description.
     if tree_children and tree_children[0].children:
@@ -1290,7 +1301,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     else:
         return ParsedEpytextDocstring(None, fields)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError]], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
     Get the L{parse_docstring} function. 
     """

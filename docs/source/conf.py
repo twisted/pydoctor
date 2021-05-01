@@ -133,6 +133,7 @@ pydoctor_args = {
         '--project-version=1.0.0',
         '--docformat=restructuredtext',
         '--project-url=../restructuredtext.html',
+        '--process-types',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,
     'numpy_demo': [
