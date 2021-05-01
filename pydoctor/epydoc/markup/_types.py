@@ -15,7 +15,8 @@ from twisted.web.template import Tag
 
 class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     """
-    Add L{ParsedDocstring} interface on top of L{TypeDocstring} and allow to parse L{nodes.document} objects.
+    Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
+    allow to parse types from L{nodes.document} objects, providing the L{--process-types} option.
     """
     _tokens: List[Tuple[Union[str, nodes.Node], str]]
 
@@ -83,11 +84,11 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], str]], 
                                     docstring_linker: DocstringLinker) -> List[Tuple[Union[str, Tag, nodes.Node], str]]:
         """
-        Convert "obj" and "obj_delim" type to L{Tag} objects, merge them together. Leave the rest untouched. 
+        Convert "obj" and "delimiter" type to L{Tag} objects, merge them together. Leave the rest untouched. 
 
         Exemple:
 
-        >>> tokens = [("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")]
+        >>> tokens = [("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")]
         >>> ann._convert_obj_tokens_to_stan(tokens, NotFoundLinker())
         ... [(Tag('code', children=['list', '(', 'int', ')']), 'obj')]
         
@@ -118,7 +119,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 else:
                     combined_tokens.append((new_token, _type))
 
-            elif _type == "obj_delim": 
+            elif _type == "delimiter": 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
 
@@ -142,11 +143,6 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             else:
                 combined_tokens.append((_token, _type))
 
-        if open_parenthesis != 0: #TODO: test
-            self._warnings.append("unbalanced parenthesis in type expression")
-        if open_square_braces != 0:
-            self._warnings.append("unbalanced square braces in type expression")
-
         return combined_tokens
 
     def _convert_type_spec_to_stan(self, docstring_linker: DocstringLinker) -> Tag:
@@ -161,17 +157,16 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         converters: Dict[str, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
             "literal":      lambda _token: Tag('span', children=[_token], attributes=dict(class_="literal")),
             "control":      lambda _token: Tag('em', children=[_token]),
-            "delimiter":    lambda _token: Tag('span', children=[_token]), 
             "reference":    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             "unknown":      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             "obj":          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
-            "obj_delim":    lambda _token: _token, 
+            "delimiter":    lambda _token: _token, 
         }
 
         for w in _warnings:
             self._warnings.append(w.descr())
 
-        converted = Tag('span')
+        converted = Tag('')
 
         for token, type_ in tokens:
             assert token is not None

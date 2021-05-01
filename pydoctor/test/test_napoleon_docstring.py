@@ -242,7 +242,7 @@ class TypeDocstringTest(BaseDocstringTest):
         )
 
         for spec, expected in zip(specs, converted):
-            actual = str(TypeDocstring(spec, 0))
+            actual = str(TypeDocstring(spec))
             self.assertEqual(expected, actual)
 
     def test_token_type_invalid(self):
@@ -263,8 +263,26 @@ class TypeDocstringTest(BaseDocstringTest):
             r"malformed string literal \(missing opening quote\):",
         )
         for token, error in zip(tokens, errors):
-            type_spec = TypeDocstring('', 0)
+            type_spec = TypeDocstring('')
             type_spec._token_type(token)
+            match_re = re.compile(error)
+            assert len(type_spec._warnings) == 1, type_spec._warnings
+            assert match_re.match(str(type_spec._warnings.pop()))
+
+    def test_unbalanced_parenthesis(self):
+        strings = (
+            "list[union[str, bytes]",
+            "list(union[str, bytes)",
+            "list[union(str, bytes]",
+        )
+        errors = (
+            r"unbalanced square braces",
+            r"unbalanced square braces",
+            r"unbalanced parenthesis",
+        )
+        for string, error in zip(strings, errors):
+            type_spec = TypeDocstring(string)
+
             match_re = re.compile(error)
             assert len(type_spec._warnings) == 1, type_spec._warnings
             assert match_re.match(str(type_spec._warnings.pop()))

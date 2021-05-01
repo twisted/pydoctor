@@ -16,7 +16,6 @@ from functools import partial
 from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
 import attr
-from docutils import nodes
 
 from pydoctor.napoleon.iterators import modify_iter, peek_iter
 
@@ -173,10 +172,12 @@ class TypeDocstring:
         _tokens: List[str] = self._tokenize_type_spec(annotation)
         self._tokens: List[Tuple[str, str]] = self._build_tokens(_tokens)
 
-    def _build_tokens(self, _tokens: List[Union[str, nodes.Node]]) -> List[Tuple[Union[str, nodes.Node], str]]:
+        self._warn(self._tokens)
+
+    def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[Union[str, Any], str]]:
         _combined_tokens = self._recombine_set_tokens(_tokens)
 
-        # Save tokens in the form : [("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")]
+        # Save tokens in the form : [("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")]
         _tokens_with_type_information: List[Tuple[str, str]] = [
             (token, self._token_type(token)) for token in _combined_tokens
         ]
@@ -198,6 +199,25 @@ class TypeDocstring:
         Warning messages triggered during the conversion.
         """
         return self._warnings
+    
+    def _warn(self, tokens) -> None:
+        """
+        Append unbalanced parenthesis warnings.
+        """
+        open_parenthesis = 0
+        open_square_braces = 0
+
+        for _token, _type in tokens:
+            if _type == "delimiter": 
+                if _token == "[": open_square_braces += 1
+                elif _token == "(": open_parenthesis += 1
+                elif _token == "]": open_square_braces -= 1
+                elif _token == ")": open_parenthesis -= 1
+        
+        if open_parenthesis != 0: #TODO: test
+            self._warnings.append("unbalanced parenthesis in type expression")
+        if open_square_braces != 0:
+            self._warnings.append("unbalanced square braces in type expression")
 
     @staticmethod
     def _recombine_set_tokens(tokens: List[str]) -> List[str]:
@@ -289,7 +309,7 @@ class TypeDocstring:
         )
         return tokens
 
-    def _token_type(self, token: Union[str, nodes.Node]) -> str:
+    def _token_type(self, token: Union[str, Any]) -> str:
         """
         Find the type of a token. Type can be  "literal", "obj",
         "delimiter", "control", "reference", or "unknown".

@@ -904,11 +904,11 @@ def test_module_docformat(capsys: CapSys) -> None:
 def test_parsed_type_convert_obj_tokens_to_stan() -> None:
     
     convert_obj_tokens_cases = [
-                ([("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim")], 
+                ([("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")], 
                 [(Tag('code', children=['list', '(', 'int', ')']), 'obj')]),    
 
-                ([("list", "obj"), ("(", "obj_delim"), ("int", "obj"), (")", "obj_delim"), (", ", "obj_delim"), ("optional", "control")], 
-                [(Tag('code', children=['list', '(', 'int', ')']), 'obj'), (", ", "obj_delim"), ("optional", "control")]),
+                ([("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter"), (", ", "delimiter"), ("optional", "control")], 
+                [(Tag('code', children=['list', '(', 'int', ')']), 'obj'), (", ", "delimiter"), ("optional", "control")]),
             ] 
 
     ann = ParsedTypeDocstring("")
@@ -937,19 +937,19 @@ def test_parsed_type() -> None:
     
     parsed_type_cases = [
         ('list of int or float or None', 
-        '<span><code>list</code><span> of </span><code>int</code><span> or </span><code>float</code><span> or </span><code>None</code></span>'),
+        '<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>'),
 
         ("{'F', 'C', 'N'}, default 'N'",
-        """<span><span class_="literal">{'F', 'C', 'N'}</span><span>, </span><em>default</em><span> </span><span class_="literal">'N'</span></span>"""),
+        """<span class_="literal">{'F', 'C', 'N'}</span>, <em>default</em> <span class_="literal">'N'</span>"""),
 
         ("DataFrame, optional",
-        "<span><code>DataFrame</code><span>, </span><em>optional</em></span>"),
+        "<code>DataFrame</code>, <em>optional</em>"),
 
         ("List[str] or list(bytes), optional", 
-        "<span><code>List</code><span>[</span><code>str</code><span>]</span><span> or </span><code>list</code><span>(</span><code>bytes</code><span>)</span><span>, </span><em>optional</em></span>"),
+        "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>"),
 
         (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
-        '<span><code>complicated string</code><span> or </span><code>strIO</code></span>'),
+        '<code>complicated string</code> or <code>strIO</code>'),
     ]
 
     for string, excepted_html in parsed_type_cases:
@@ -969,8 +969,12 @@ def test_processtypes(capsys: CapSys) -> None:
     """
     Currently, numpy and google type parsong happens at the string level with pydoctor.napoleon.TypeDocstring
     So the the --process-types argument should not be used with google and numpy docformat.
-    
+
     This also explains why there is a little difference in the generated HTML with the <span> elements when using --process-types. 
+    
+    TODO: transform this behaviour into enforcing options.processtypes = True for google and numpy docformat and use L{ParsedTypeDocstring} everywhere. 
+    YES BUT it's not as simple as it sounds because the numpy and google docformat are using type parsing in ways that are not supported by 
+    pydoctor yet, like in yields section. 
     """
 
     cases = [
@@ -1000,8 +1004,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("list of int or float or None", 
-                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>", 
-                "<span><code>list</code><span> of </span><code>int</code><span> or </span><code>float</code><span> or </span><code>None</code></span>")
+                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>")
 
         ),
 
@@ -1031,8 +1034,7 @@ def test_processtypes(capsys: CapSys) -> None:
             ), 
 
                 ("<code>complicated string</code> or <code>strIO</code>, optional", 
-                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>", 
-                "<span><code>complicated string</code><span> or </span><code>strIO</code><span>, </span><em>optional</em></span>")
+                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>")
 
         ),
 
@@ -1041,7 +1043,7 @@ def test_processtypes(capsys: CapSys) -> None:
     for strings, excepted_html in cases:
         epy_string, rst_string, goo_string, numpy_string = strings
 
-        excepted_html_no_process_types, excepted_html_type_processed, excepted_html_type_processed_forced = excepted_html
+        excepted_html_no_process_types, excepted_html_type_processed = excepted_html
 
         assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == f"<span>{excepted_html_no_process_types}</span>"
         assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
@@ -1049,8 +1051,8 @@ def test_processtypes(capsys: CapSys) -> None:
         assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
         assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
 
-        assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed_forced
-        assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed_forced
+        assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+        assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
 
 def test_processtypes_with_system() -> None:
     system = model.System()

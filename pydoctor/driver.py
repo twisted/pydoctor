@@ -399,8 +399,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         else:
             error("No source paths given.")
 
-        # Avoid tokenizing twice the type information for google and numpy docformat.
-        # TODO: transform this into enforcing options.processtypes = True for google and numpy and use ParsedTypeDocstring everywhere. 
+        # Avoid tokenizing twice the type information for google and numpy docformat, 
+        # because the type processing already happens at the string level. 
+        # Type processing happends at the node level in the case of 
+        # epytext or restructuredtext with the --process-types option.
         if system.options.processtypes and system.options.docformat in ['google', 'numpy']:
             system.msg("Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
             system.options.processtypes = False
