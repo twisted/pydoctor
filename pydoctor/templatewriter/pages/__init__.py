@@ -299,9 +299,10 @@ class PackagePage(ModulePage):
             key=objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
-            return [tags.p("From the ", tags.code("__init__.py"), " module:",
-                           class_="fromInitPy"),
-                    ChildTable(self.docgetter, self.ob, children, loader)]
+            return [
+                tags.p("From ", tags.code("__init__.py"), ":", class_="fromInitPy"),
+                ChildTable(self.docgetter, self.ob, children, loader)
+                ]
         else:
             return ()
 
