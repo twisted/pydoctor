@@ -22,7 +22,7 @@
           Names
         </a>
 
-        <form action="search-results.html" class="search-box-container">
+        <form action="search-results.html" id="search-box-container">
           <div class="input-group">
             <input id="search-box" name="search-query" placeholder="Search..." aria-label="Search" minlength="2" class="form-control"/>
             <span class="input-group-btn">
@@ -74,24 +74,14 @@
     </div>
   </div>
 
-  <noscript>
-    <style>
-      /* The search cannot work if JS is not supported, so we hide everything */ 
-      .search-box-container{
-        display: none;
-      }
-      #search-help-box{
-        display: none;
-      }
-    </style>
-  </noscript>
-
   <script>
  
     function toggleSearchHelpText() {
         document.body.classList.toggle("search-help-hidden");
     }
-    // Init searchHelpText
+    // Init search and help text
+    document.getElementById('search-box-container').style.display = 'block';
+    document.getElementById('search-help-box').style.display = 'block';
     document.body.classList.add("search-help-hidden");
 
   </script>

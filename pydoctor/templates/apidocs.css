@@ -525,10 +525,11 @@ div.tip, div.hint, div.important {
 
 /* Search */
 
-.navlinks > .search-box-container {
+.navlinks > #search-box-container {
     padding: 0 0 8px 15px;
     align-self: flex-end;
     margin-left: auto;
+    display: none;
 }
 
 #search-results {
@@ -542,6 +543,7 @@ div.tip, div.hint, div.important {
 #search-help-box {
     margin: 10px;
     width: 100%;
+    display: none;
 }
 
 #search-help-button {
@@ -549,7 +551,7 @@ div.tip, div.hint, div.important {
 }
 
 .search-help-hidden #search-help-box{
-    display: none;
+    display: none!important;
 }
 
 .search-help-hidden #search-help-button{
