@@ -1,7 +1,7 @@
 """
 Render types from L{docutils.nodes.document} objects. 
 
-This module holds another L{ParsedDocstring} subclass. 
+This module provides yet another L{ParsedDocstring} subclass.
 """
 
 from typing import Callable, Dict, List, Tuple, Union
@@ -16,7 +16,7 @@ from twisted.web.template import Tag
 class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     """
     Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
-    allow to parse types from L{nodes.document} objects, providing the L{--process-types} option.
+    allow to parse types from L{nodes.document} objects, providing the C{--process-types} option.
     """
     _tokens: List[Tuple[Union[str, nodes.Node], str]]
 
@@ -161,6 +161,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             "unknown":      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             "obj":          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
             "delimiter":    lambda _token: _token, 
+            "any":          lambda _token: _token, 
         }
 
         for w in _warnings:

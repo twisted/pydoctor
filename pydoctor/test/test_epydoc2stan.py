@@ -969,12 +969,10 @@ def test_processtypes(capsys: CapSys) -> None:
     """
     Currently, numpy and google type parsong happens at the string level with pydoctor.napoleon.TypeDocstring
     So the the --process-types argument should not be used with google and numpy docformat.
-
-    This also explains why there is a little difference in the generated HTML with the <span> elements when using --process-types. 
     
     TODO: transform this behaviour into enforcing options.processtypes = True for google and numpy docformat and use L{ParsedTypeDocstring} everywhere. 
     YES BUT it's not as simple as it sounds because the numpy and google docformat are using type parsing in ways that are not supported by 
-    pydoctor yet, like in yields section. 
+    pydoctor yet, like in yields section or in tuple-like returns values using numpy docformat. 
     """
 
     cases = [

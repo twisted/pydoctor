@@ -200,7 +200,7 @@ class TypeDocstring:
         """
         return self._warnings
     
-    def _warn(self, tokens) -> None:
+    def _warn(self, tokens: List[Tuple[Union[str, Any], str]]) -> None:
         """
         Append unbalanced parenthesis warnings.
         """
@@ -214,7 +214,7 @@ class TypeDocstring:
                 elif _token == "]": open_square_braces -= 1
                 elif _token == ")": open_parenthesis -= 1
         
-        if open_parenthesis != 0: #TODO: test
+        if open_parenthesis != 0:
             self._warnings.append("unbalanced parenthesis in type expression")
         if open_square_braces != 0:
             self._warnings.append("unbalanced square braces in type expression")
@@ -312,7 +312,7 @@ class TypeDocstring:
     def _token_type(self, token: Union[str, Any]) -> str:
         """
         Find the type of a token. Type can be  "literal", "obj",
-        "delimiter", "control", "reference", or "unknown".
+        "delimiter", "control", "reference", "any", or "unknown".
         """
 
         def is_numeric(token: str) -> bool:
@@ -324,8 +324,10 @@ class TypeDocstring:
             else:
                 return True
 
+        # If the token is not a string, it's tagged as 'any', 
+        # in practice this is used when a docutils.nodes.Element is passed as a token.
         if not isinstance(token, str):
-            type_ = "unknown"
+            type_ = "any"
         elif (
             self._natural_language_delimiters_regex.match(token)
             or not token.strip()
@@ -368,9 +370,10 @@ class TypeDocstring:
         else:
             # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a
             # identifier, leading into generating failures when tying to resolve links.
-            if self._warns_on_unknown_tokens:
-                self._warnings.append(f"unknown expresssion in type: {token}")
             type_ = "unknown"
+
+        if type_ == "unknown" and self._warns_on_unknown_tokens:
+            self._warnings.append(f"unknown expresssion in type: {token}")
 
         return type_
 
@@ -408,7 +411,7 @@ class TypeDocstring:
             return converted_token
 
         converters: Dict[
-            str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], str]
+            str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], Union[str, Any]]
         ] = {
             "literal": lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "``%s``"
@@ -428,6 +431,7 @@ class TypeDocstring:
             "obj": lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "`%s`"
             ),
+            "any": lambda _token, _, __: _token,
         }
 
         # "unknown" could have markup we just don't know!
@@ -1402,7 +1406,8 @@ class NumpyDocstring(GoogleDocstring):
         Raise
         -----
         FreeFormException
-            See `_convert_type_and_maybe_consume_free_form_field`
+           If allow_free_form=True and the type do not match `is_type` check.
+           See `_convert_type_and_maybe_consume_free_form_field`.
         """
 
         line = next(self._line_iter)
@@ -1514,7 +1519,7 @@ class NumpyDocstring(GoogleDocstring):
         self, _name: str, _type: str, allow_free_form: bool = False
     ) -> str:
         """
-        We guess if _type contains the type
+        Same as `_convert_type`, but can raise `FreeFormException`.
         Raises
         ------
         FreeFormException
