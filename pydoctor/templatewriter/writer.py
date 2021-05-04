@@ -2,13 +2,13 @@
 
 
 from typing import Iterable, Type, Optional, List
-import os
 from typing import IO
-from pathlib import Path
+from pathlib import Path, PurePath
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate
+from pydoctor.templatewriter import IWriter, _StaticTemplate, _TemplateSubFolder, Template
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
+
 from twisted.web.template import Element, flatten
 from twisted.python.failure import Failure
 
@@ -39,12 +39,12 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, filebase:str, template_lookup:Optional[TemplateLookup] = None):
+    def __init__(self, output_dir: str, template_lookup: Optional[TemplateLookup] = None):
         """
-        @arg filebase: Output directory.
+        @arg output_dir: Output directory.
         @arg template_lookup: Custom L{TemplateLookup} object.
         """
-        self.base: Path = Path(filebase)
+        self.output_dir: Path = Path(output_dir)
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
@@ -56,13 +56,28 @@ class TemplateWriter(IWriter):
         """
         Write static CSS and JS files to build directory.
         """
-        os.makedirs(self.base, exist_ok=True)
-        for template in self.template_lookup.templates:
-            if isinstance(template, _StaticTemplate):
-                with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
-                    jobj.write(template.text)
+        self.output_dir.mkdir(exist_ok=True, parents=True)
+        self._writeStaticTemplates(self.template_lookup.templates)
+    
+    def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[PurePath] = None) -> None:
+        """
+        Write all L{_StaticTemplate} to output directory, inspect L{_TemplateSubFolder} 
+        and reccursively write the static templates in subfolders.
+        """
+        _subfolder_path = subfolder if subfolder else PurePath()
+        
+        for template in templates:
+            _template_path = _subfolder_path.joinpath(template.name)
+            outfile = self.output_dir.joinpath(_template_path)
+            if isinstance(template, _TemplateSubFolder):
+                outfile.mkdir(exist_ok=True, parents=True)
+                self._writeStaticTemplates(template.lookup.templates, subfolder=_template_path)
+                
+            elif isinstance(template, _StaticTemplate):
+                with outfile.open('w', encoding='utf-8') as fobj:
+                    fobj.write(template.text)
 
-    def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
+    def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """
         Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}.
         """
@@ -79,23 +94,23 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj:
+            with self.output_dir.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob:model.Documentable) -> None:
+    def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
         if ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.base.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.output_dir.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
-    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
+    def _writeDocsForOne(self, ob: model.Documentable, fobj: IO[bytes]) -> None:
         if not ob.isVisible:
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage

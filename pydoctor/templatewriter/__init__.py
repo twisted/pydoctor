@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Optional, Dict, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Dict, overload, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -30,6 +30,15 @@ def parse_xml(text: str) -> minidom.Document:
         return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
+
+def scandir(path: Path) -> Iterator['Template']:
+    """
+    Scan a directory for templates. 
+    """
+    for entry in path.iterdir():
+        template = Template.fromfile(entry)
+        if template:
+            yield template
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
@@ -84,7 +93,7 @@ class Template(abc.ABC):
         self.text = text
         """Template text: contents of the template file."""
 
-    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js')
+    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', '.svg')
 
     @classmethod
     def fromfile(cls, path: Path) -> Optional['Template']:
@@ -94,23 +103,27 @@ class Template(abc.ABC):
 
         Warns if the template cannot be created.
 
-        @param path: A L{Path} that should point to a HTML, CSS or JS file.
+        @param path: A L{Path} that should point to a template file.
         @returns: The template object or C{None} if file is invalid.
         """
-        if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
-            try:
-                with path.open('r', encoding='utf-8') as fobj:
-                    text = fobj.read()
-            except IOError as e:
-                warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
-            else:
-                if path.suffix.lower() == '.html':
-                    return _HtmlTemplate(name=path.name, text=text)
+        if path.is_dir():
+            return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
+        if path.is_file():
+            if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
+                try:
+                    with path.open('r', encoding='utf-8') as fobj:
+                        text = fobj.read()
+                except IOError as e:
+                    warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
                 else:
-                    return _StaticTemplate(name=path.name, text=text)
-        else:
-            warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
-                f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
+                    if path.suffix.lower() == '.html':
+                        return _HtmlTemplate(name=path.name, text=text)
+                    else:
+                        return _StaticTemplate(name=path.name, text=text)
+            else:
+                warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
+                    f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
+        
         return None
 
     def is_empty(self) -> bool:
@@ -157,6 +170,22 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None:
         return None
+
+class _TemplateSubFolder(_StaticTemplate):
+    """
+    Special template to hold a subfolder contents. 
+
+    Currently used for C{fonts}.
+
+    @see: L{TemplateWriter._writeStaticTemplates} 
+    """
+    def __init__(self, name: str, lookup: 'TemplateLookup'):
+        super().__init__(name, '')
+
+        self.lookup: 'TemplateLookup' = lookup
+        """
+        The lookup instance that contains the subfolder templates. 
+        """
 
 class _HtmlTemplate(Template):
     """
@@ -228,25 +257,30 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    _default_template_dir = 'templates'
+    _default_rel_template_dir = 'templates'
 
-    def __init__(self) -> None:
+    def __init__(self, template_dir: Optional[Path] = None) -> None:
         """
         Init L{TemplateLookup} with templates in C{pydoctor/templates}.
         This loads all templates into the lookup C{_templates} dict.
+
+        @param template_dir: A custom L{Path} to load the template from.
         """
 
         # Relative path from here is: ../templates
-        default_template_dir = Path(__file__).parent.parent.joinpath(self._default_template_dir)
-
-        self._templates: Dict[str, Template] = {
-            t.name: t
-            for t in (Template.fromfile(f) for f in default_template_dir.iterdir())
-            if t
-            }
-
+        _init_template_dir = template_dir or \
+            Path(__file__).parent.parent.joinpath(self._default_rel_template_dir)
+        
+        self._templates: Dict[str, Template] = {}
+        self._load_dir(_init_template_dir)
         self._default_templates = self._templates.copy()
 
+    def _load_dir(self, templatedir: Path, add: bool = False) -> None:
+        for template in scandir(templatedir):
+            if add:
+                self.add_template(template)
+            else:
+                self._templates[template.name] = template
 
     def add_template(self, template: Template) -> None:
         """
@@ -281,10 +315,7 @@ class TemplateLookup:
         """
         Scan a directory and add all templates in the given directory to the lookup.
         """
-        for path in dir.iterdir():
-            template = Template.fromfile(path)
-            if template:
-                self.add_template(template)
+        self._load_dir(dir, add=True)
 
     def get_template(self, filename: str) -> Template:
         """
@@ -336,7 +367,7 @@ class TemplateElement(Element, abc.ABC):
     @classmethod
     def lookup_loader(cls, template_lookup: TemplateLookup) -> ITemplateLoader:
         """
-        Lookup the element L{ITemplateLoader} with the the C{TemplateLookup}.
+        Lookup the element L{ITemplateLoader} with the C{TemplateLookup}.
         """
         return template_lookup.get_loader(cls.filename)
 
