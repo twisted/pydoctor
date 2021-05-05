@@ -5,7 +5,7 @@ import re
 import optparse
 from typing import Any, ClassVar, List, Optional, Union
 from docutils.writers.html4css1 import HTMLTranslator, Writer
-from docutils.nodes import Node, SkipNode, document, title, paragraph, Element, Text
+from docutils.nodes import Node, SkipNode, document, title, Element, Text
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag
@@ -15,14 +15,14 @@ from pydoctor.epydoc.markup import (
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def node2stan(node: document, docstring_linker: 'DocstringLinker') -> Tag:
+def node2stan(node: Node, docstring_linker: 'DocstringLinker') -> Tag:
     """
     Convert a L{docutils.nodes.document} to a Stan tree.
 
     @param node: An docutils document.
     @return: The element as a stan tree.
     """
-    visitor = _PydoctorHTMLTranslator(node, docstring_linker)
+    visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
     node.walkabout(visitor)
     return html2stan(''.join(visitor.body))
 
@@ -38,6 +38,11 @@ def gettext(node: Union[Node, List[Node]]) -> List[str]:
 
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+_VALID_IDENTIFIER_RE = re.compile('[^0-9a-zA-Z_]')
+
+def _valid_identifier(s: str) -> str:
+    """Remove invalid characters to create valid CSS identifiers. """
+    return _VALID_IDENTIFIER_RE.sub('', s)
 
 class _PydoctorHTMLTranslator(HTMLTranslator):
     
@@ -86,11 +91,6 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
     def should_be_compact_paragraph(self, node: Node) -> bool:
         if self.document.children == [node]:
             return True
-        # Fix TypeError: 'Element' object is not subscriptable in super().should_be_compact_paragraph().
-        # The docutils tree we create from epytext is not 100% compatible with some options of docutils, 
-        # more specifically, parent attribute is always a Element and never a list of Elements.
-        elif isinstance(node, paragraph):
-            return False
         else:
             return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
 
@@ -172,7 +172,7 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
     # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
     def _visit_admonition(self, node: Node, name: str) -> None:
         self.body.append(self.starttag(
-            node, 'div', CLASS=('admonition ' + name)))
+            node, 'div', CLASS=('admonition ' + _valid_identifier(name))))
         node.insert(0, title(name, name.title()))
         self.set_first_last(node)
 

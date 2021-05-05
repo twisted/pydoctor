@@ -1,9 +1,12 @@
 from typing import List
+from textwrap import dedent
 
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
+from pydoctor.node2stan import node2stan
 
+from docutils import nodes
 from bs4 import BeautifulSoup
 import pytest
 
@@ -16,6 +19,40 @@ def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     parsed = parse_docstring(docstring, errors)
     assert not errors
     return flatten(parsed.to_stan(linker))
+    
+def node2html(node: nodes.Node, oneline: bool = True) -> str:
+    if oneline:
+        return ''.join(prettify(flatten(node2stan(node, NotFoundLinker()))).splitlines())
+    else:
+        return flatten(node2stan(node, NotFoundLinker()))
+
+def rst2node(s: str) -> nodes.document:
+    errors: List[ParseError] = []
+    parsed = parse_docstring(s, errors)
+    assert not errors
+    return parsed.to_node()
+
+def test_rst_partial() -> None:
+    doc = dedent('''
+        This is a paragraph.  Paragraphs can
+        span multiple lines, and can contain
+        `inline markup`.
+
+        This is another paragraph.  Paragraphs
+        are separated by blank lines.
+        ''')
+    expected = dedent('''
+        <p>This is another paragraph.  Paragraphs
+        are separated by blank lines.</p>
+        ''').lstrip()
+    
+    node = rst2node(doc)
+
+    for child in node[:]:
+          assert isinstance(child, nodes.paragraph)
+    
+    assert node2html(node[-1], oneline=False) == expected
+    assert node[-1].parent == node
 
 def test_rst_body_empty() -> None:
     src = """

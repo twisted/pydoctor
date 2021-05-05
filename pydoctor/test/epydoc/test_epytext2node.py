@@ -7,11 +7,9 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten
+from pydoctor.epydoc.markup import ParseError
 from pydoctor.epydoc.markup.epytext import parse_docstring
-from pydoctor.node2stan import node2stan
-from pydoctor.test import NotFoundLinker
-from pydoctor.test.epydoc.test_restructuredtext import prettify
+from pydoctor.test.epydoc.test_restructuredtext import prettify, node2html
 
 from docutils import nodes
 
@@ -22,8 +20,32 @@ def epytext2node(s: str) -> nodes.document:
     return parsed.to_node()
 
 def epytext2html(s: str) -> str:
-    return ''.join(prettify(flatten(node2stan(epytext2node(s), NotFoundLinker()))).splitlines())
+    node = epytext2node(s)
+    return node2html(node)
+
+def test_epytext_partial() -> None:
+    doc = '''
+        This is a paragraph.  Paragraphs can
+        span multiple lines, and can contain
+        I{inline markup}.
+
+        This is another paragraph.  Paragraphs
+        are separated by blank lines.
+        '''
+    expected = '''
+         <p>
+          This is another paragraph.  Paragraphs are separated by blank lines.
+         </p>
+        '''
     
+    node = epytext2node(doc)
+
+    for child in node[:]:
+          assert isinstance(child, nodes.paragraph)
+    
+    assert node2html(node[-1]) == ''.join(prettify(expected).splitlines())
+    assert node[-1].parent == node
+
 def test_epytext_paragraph() -> None:
     doc = '''
         This is a paragraph.  Paragraphs can
@@ -421,3 +443,4 @@ def test_nested_markup() -> None:
       '''
     
     assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+

@@ -270,15 +270,11 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
     @return: a DOM tree encoding the contents of an epytext string,
         or C{None} if non-fatal errors were encountered and no C{errors}
         accumulator was provided.
-    @raise ParseError: If C{errors} is C{None} and an error is
-        encountered while parsing.
+    @raise ParseError: If a fatal error is encountered while parsing.
     """
     # Initialize errors list.
     if errors is None:
         errors = []
-        raise_on_error = True
-    else:
-        raise_on_error = False
 
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
@@ -347,12 +343,11 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
                         "epytext string.")
                 errors.append(StructuringError(estr, token.startline))
 
-    # If there was an error, then signal it!
+    # If there was a fatal error, then raise exception!
+    # The exception was not raised by default leading into displaying literally nothing
+    # when an invalid epytext docstring was used. Now it will fall back to plaintext thanks to this exception.
     if any(e.is_fatal() for e in errors):
-        if raise_on_error:
-            raise errors[0]
-        else:
-            return None
+        raise errors[0]
 
     # Return the top-level epytext DOM element.
     return doc
@@ -1293,6 +1288,15 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
         return ParsedEpytextDocstring(None, fields)
 
 
+def set_nodes_parent(nodes: Iterable[Node], parent: Node) -> Iterable[None]:
+    """
+    Set the parent of the nodes to the defined C{parent} node and return an 
+    iterator containing the modified nodes.
+    """
+    for node in nodes:
+        node.parent = parent
+        yield node
+
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {
         # Symbols
@@ -1373,7 +1377,8 @@ class ParsedEpytextDocstring(ParsedDocstring):
             children = list(self._to_node(self._tree))
             assert len(children)==1
             # The contents is encapsulated inside a section node. 
-            self._document.children.extend(children[0].children)
+            # Reparent the contents of the second level to the root level. 
+            self._document.children.extend(set_nodes_parent(children[0].children, self._document))
         
         return self._document
     
@@ -1382,17 +1387,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             seclevel: int = 0, 
             ) -> Iterable[Node]:
 
-        def set_parent(nodes: Iterable[Node], parent: Node) -> Iterable[None]:
-            for node in nodes:
-                node.parent = parent
-                yield node
-
         def craft_node(node: Node, children: Optional[List[Node]] = None) -> Node:
             node.line = lineno
             node.document = self._document
 
             if children:
-                node.extend(set_parent(children, node))
+                node.extend(set_nodes_parent(children, node))
 
             return node
         
@@ -1438,8 +1438,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             assert isinstance(_target, Text)
             assert isinstance(_label, Text)
 
+            args = {}
+            if _target.astext() != _label.astext():
+                args['refuri']=_target.astext()
+
             yield craft_node(title_reference(
-                   '', '', _label, internal=False, refuri=_target.astext()))
+                   '', '', _label, **args))
 
         elif tree.tag in ('name',):
             yield craft_node(Text(' '.join(node2stan.gettext(variables))))
