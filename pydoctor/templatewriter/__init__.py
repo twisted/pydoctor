@@ -93,7 +93,13 @@ class Template(abc.ABC):
         self.text = text
         """Template text: contents of the template file."""
 
-    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', '.svg')
+    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', # Web
+    '.svg', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.tif', '.tiff', # Images
+    '.fnt', #Windows font file
+    '.fon', #Generic font file
+    '.otf', #Open type font file
+    '.ttf', #TrueType font file
+)
 
     @classmethod
     def fromfile(cls, path: Path) -> Optional['Template']:
