@@ -3,9 +3,9 @@
 
 from typing import Iterable, Type, Optional, List
 from typing import IO
-from pathlib import Path, PurePath
+from pathlib import Path
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate, _TemplateSubFolder, Template
+from pydoctor.templatewriter import IWriter, _StaticTemplate, Template
 from pydoctor import model
 from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
 
@@ -59,23 +59,14 @@ class TemplateWriter(IWriter):
         self.output_dir.mkdir(exist_ok=True, parents=True)
         self._writeStaticTemplates(self.template_lookup.templates)
     
-    def _writeStaticTemplates(self, templates: Iterable[Template], subfolder: Optional[PurePath] = None) -> None:
+    def _writeStaticTemplates(self, templates: Iterable[Template]) -> None:
         """
         Write all L{_StaticTemplate} to output directory, inspect L{_TemplateSubFolder} 
         and reccursively write the static templates in subfolders.
         """
-        _subfolder_path = subfolder if subfolder else PurePath()
-        
         for template in templates:
-            _template_path = _subfolder_path.joinpath(template.name)
-            outfile = self.output_dir.joinpath(_template_path)
-            if isinstance(template, _TemplateSubFolder):
-                outfile.mkdir(exist_ok=True, parents=True)
-                self._writeStaticTemplates(template.lookup.templates, subfolder=_template_path)
-                
-            elif isinstance(template, _StaticTemplate):
-                with outfile.open('w', encoding='utf-8') as fobj:
-                    fobj.write(template.text)
+            if isinstance(template, _StaticTemplate):
+                template.write(self.output_dir)
 
     def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """

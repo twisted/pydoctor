@@ -1,6 +1,7 @@
 from io import BytesIO
 from typing import Callable
 import pytest
+import shutil
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
@@ -228,28 +229,43 @@ def test_template() -> None:
     assert isinstance(html_template, _HtmlTemplate)
 
 def test_template_subfolders() -> None:
-    
     here = Path(__file__).parent
+    test_build_dir = Path('.').joinpath('build/testing')
 
-    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+    try:
 
-    atemplate = lookup.get_template('atemplate.html')
-    static = lookup.get_template('static')
-    assert isinstance(static, _TemplateSubFolder)
-    static_info = static.lookup.get_template('info.svg')
-    static_lol = static.lookup.get_template('lol.svg')
-    static_fonts = static.lookup.get_template('fonts')
-    assert isinstance(static_fonts, _TemplateSubFolder)
-    static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
-    static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+        lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 
-    assert isinstance(atemplate, _HtmlTemplate)
-    assert isinstance(static_info, _StaticTemplate)
-    assert isinstance(static_lol, _StaticTemplate)
-    assert isinstance(static_fonts_bar, _StaticTemplate)
-    assert isinstance(static_fonts_foo, _StaticTemplate)
+        atemplate = lookup.get_template('atemplate.html')
+        static = lookup.get_template('static')
+        assert isinstance(static, _TemplateSubFolder)
+        static_info = static.lookup.get_template('info.svg')
+        static_lol = static.lookup.get_template('lol.svg')
+        static_fonts = static.lookup.get_template('fonts')
+        assert isinstance(static_fonts, _TemplateSubFolder)
+        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
+        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
 
+        assert isinstance(atemplate, _HtmlTemplate)
+        assert isinstance(static_info, _StaticTemplate)
+        assert isinstance(static_lol, _StaticTemplate)
+        assert isinstance(static_fonts_bar, _StaticTemplate)
+        assert isinstance(static_fonts_foo, _StaticTemplate)
 
+        # writes only the static template
+
+        static.write(test_build_dir)
+
+        assert test_build_dir.joinpath('static').is_dir()
+        assert not test_build_dir.joinpath('atemplate.html').exists()
+        assert test_build_dir.joinpath('static/info.svg').is_file()
+        assert test_build_dir.joinpath('static/lol.svg').is_file()
+        assert test_build_dir.joinpath('static/fonts').is_dir()
+        assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+        assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
+    
+    finally:
+        shutil.rmtree(test_build_dir)
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:

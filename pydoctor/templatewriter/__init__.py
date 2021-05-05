@@ -7,7 +7,7 @@ else:
     def runtime_checkable(f):
         return f
 import abc
-from pathlib import Path
+from pathlib import Path, PurePath
 import warnings
 from xml.dom import minidom
 
@@ -176,14 +176,28 @@ class _StaticTemplate(Template):
     @property
     def loader(self) -> None:
         return None
+    
+    def write(self, output_dir: Path, subfolder: Optional[PurePath] = None) -> PurePath:
+        """
+        Directly write the contents of this static template as is to the output dir.
+
+        @returns: The relative path of the file that has been wrote.
+        """
+        _subfolder_path = subfolder if subfolder else PurePath()
+        _template_path = _subfolder_path.joinpath(self.name)
+        outfile = output_dir.joinpath(_template_path)
+        self._write(outfile)
+        return _template_path
+    
+    def _write(self, path: Path) -> None:
+        with path.open('w', encoding='utf-8') as fobj:
+            fobj.write(self.text)
 
 class _TemplateSubFolder(_StaticTemplate):
     """
     Special template to hold a subfolder contents. 
 
     Currently used for C{fonts}.
-
-    @see: L{TemplateWriter._writeStaticTemplates} 
     """
     def __init__(self, name: str, lookup: 'TemplateLookup'):
         super().__init__(name, '')
@@ -193,6 +207,19 @@ class _TemplateSubFolder(_StaticTemplate):
         The lookup instance that contains the subfolder templates. 
         """
 
+    def write(self, output_dir: Path, subfolder: Optional[PurePath] = None) -> PurePath:
+        """
+        Create the subfolder and reccursively write it's content to the output directory.
+        """
+        subfolder = super().write(output_dir, subfolder)
+        for template in self.lookup.templates:
+            if isinstance(template, _StaticTemplate):
+                template.write(output_dir, subfolder)
+        return subfolder
+
+    def _write(self, path: Path) -> None:
+        path.mkdir(exist_ok=True, parents=True)
+        
 class _HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system
