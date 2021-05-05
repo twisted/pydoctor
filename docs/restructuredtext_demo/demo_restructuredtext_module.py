@@ -7,7 +7,7 @@ Most part of this documentation is using Python type hinting.
 from typing import List
 
 
-def demo_fields_docstring_arguments(m, b):  # type: ignore
+def demo_fields_docstring_arguments(m, b = 0):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
@@ -15,7 +15,7 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
 
     :type  m: numbers.Number
     :param m: The slope of the line.
-    :type  b: numbers.Number
+    :type  b: numbers.Number, optional
     :param b: The y intercept of the line.
     :rtype:   numbers.Number
     :return:  the x intercept of the line M{y=m*x+b}.
