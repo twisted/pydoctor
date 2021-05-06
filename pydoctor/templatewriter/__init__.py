@@ -99,6 +99,7 @@ class Template(abc.ABC):
     '.fon', #Generic font file
     '.otf', #Open type font file
     '.ttf', #TrueType font file
+    '.woff', '.woff2', #Web Open Font Format, used by sphinx
 )
 
     @classmethod
