@@ -117,16 +117,28 @@ class Template(abc.ABC):
             return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
         if path.is_file():
             if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
+                text: Optional[str] # If none, means that the file could not be decoded as utf-8.
+                _bytes: Optional[bytes] = None
                 try:
                     with path.open('r', encoding='utf-8') as fobj:
                         text = fobj.read()
                 except IOError as e:
-                    warnings.warn(f"Cannot load Template: {path.as_posix()}. I/O error: {e}")
-                else:
+                    warnings.warn(f"Cannot load Template: '{path.as_posix()}'. I/O error: {e}")
+                    return None
+                except UnicodeDecodeError as e:
                     if path.suffix.lower() == '.html':
-                        return _HtmlTemplate(name=path.name, text=text)
-                    else:
-                        return _StaticTemplate(name=path.name, text=text)
+                        raise RuntimeError(f"Cannot decode '{path.as_posix()}' HTML Template as UTF-8: {e}") from e
+                    # If decoding fails, treat the file as binary data.
+                    with path.open('rb') as fobjb:
+                        _bytes = fobjb.read()
+                    text = None
+                
+                if path.suffix.lower() == '.html':
+                    return _HtmlTemplate(name=path.name, text=text)
+                elif text:
+                    return _StaticTemplate(name=path.name, text=text)
+                else:
+                    return _StaticTemplate(name=path.name, _bytes=_bytes)
             else:
                 warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
                     f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
@@ -171,6 +183,9 @@ class _StaticTemplate(Template):
 
     For CSS and JS templates.
     """
+    def __init__(self, name: str, text: Optional[str] = None, _bytes: Optional[bytes] = None):
+        super().__init__(name, text or '')
+        self._bytes: Optional[bytes] = _bytes
     @property
     def version(self) -> int:
         return -1
@@ -191,8 +206,12 @@ class _StaticTemplate(Template):
         return _template_path
     
     def _write(self, path: Path) -> None:
-        with path.open('w', encoding='utf-8') as fobj:
-            fobj.write(self.text)
+        if self.text:
+            with path.open('w', encoding='utf-8') as fobj:
+                fobj.write(self.text)
+        elif self._bytes:
+            with path.open('wb') as fobjb:
+                fobjb.write(self._bytes)
 
 class _TemplateSubFolder(_StaticTemplate):
     """
@@ -329,8 +348,8 @@ class TemplateLookup:
         try:
             default_version = self._default_templates[template.name].version
         except KeyError:
-            warnings.warn(f"Invalid template filename '{template.name}'. "
-                f"Valid filenames are: {list(self._templates)}")
+            # Passing the file as is
+            self._templates[template.name] = template
         else:
             template_version = template.version
             if default_version and template_version != -1:
