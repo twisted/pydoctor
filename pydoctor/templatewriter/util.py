@@ -80,6 +80,18 @@ def unmasked_attrs(baselist: Sequence[Class]) -> List[Documentable]:
     return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
+def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
+    """
+    Function to use as the value of standard library's L{sorted} function C{key} argument
+    such that the objects are sorted by: Privacy, Kind and Name.
+
+    Example::
+
+        children = sorted((o for o in ob.contents.values() if o.isVisible),
+                      key=objects_order)
+    """
+    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
+
 def templatefile(filename: str) -> None:
     """Deprecated: can be removed once Twisted stops patching this."""
     warnings.warn("pydoctor.templatewriter.util.templatefile() "

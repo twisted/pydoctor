@@ -177,17 +177,13 @@ class ObjContent(Element):
                         attrs = util.unmasked_attrs(baselist)
                         if attrs:
                             children.extend(attrs)
-                return sorted(
-                    [o for o in sorted(children, key=lambda o: o.name) if o.isVisible],
-                     key=lambda o:-o.privacyClass.value)
+                return sorted((o for o in children if o.isVisible),
+                              key=util.objects_order)
             else:
                 return None
         else:
-            return sorted(
-                # error: Returning Any from function declared to return "SupportsLessThan"
-                # because contents type is Dict[str, Any] for now
-                [o for o in sorted(self.ob.contents.values(), key=lambda o:o.name) if o.isVisible], # type: ignore[no-any-return]
-                 key=lambda o:-o.privacyClass.value)
+            return sorted((o for o in self.ob.contents.values() if o.isVisible),
+                              key=util.objects_order)
 
     def _isExpandable(self, list_type: Union[Type[Documentable], 
                                             Tuple[Type[Documentable], ...]]) -> bool:

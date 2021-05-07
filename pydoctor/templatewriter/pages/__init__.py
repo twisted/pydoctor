@@ -13,18 +13,6 @@ from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.pages.sidebar import SideBar
 
-def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
-    """
-    Function to use as the value of standard library's L{sorted} function C{key} argument
-    such that the objects are sorted by: Privacy, Kind and Name.
-
-    Example::
-
-        children = sorted((o for o in ob.contents.values() if o.isVisible),
-                      key=objects_order)
-    """
-    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
-
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -205,7 +193,7 @@ class CommonPage(Page):
     def children(self):
         return sorted(
             (o for o in self.ob.contents.values() if o.isVisible),
-            key=objects_order)
+            key=util.objects_order)
 
     def packageInitTable(self):
         return ()
@@ -225,7 +213,7 @@ class CommonPage(Page):
     def methods(self):
         return sorted((o for o in self.ob.contents.values()
                        if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
-                      key=objects_order)
+                      key=util.objects_order)
 
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
@@ -293,13 +281,13 @@ class PackagePage(ModulePage):
         return sorted(
             (o for o in self.ob.contents.values()
              if isinstance(o, model.Module) and o.isVisible),
-            key=objects_order)
+            key=util.objects_order)
 
     def packageInitTable(self):
         children = sorted(
             (o for o in self.ob.contents.values()
              if not isinstance(o, model.Module) and o.isVisible),
-            key=objects_order)
+            key=util.objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
             return [
@@ -372,7 +360,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=objects_order)
+        scs = sorted(self.ob.subclasses, key=util.objects_order)
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
@@ -420,7 +408,7 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=objects_order),
+                                               sorted(attrs, key=util.objects_order),
                                                loader))
                 for b, attrs in baselists]
 
@@ -449,7 +437,7 @@ class ClassPage(CommonPage):
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(util.overriding_subclasses(self.ob, ob.name), key=objects_order)
+        ocs = sorted(util.overriding_subclasses(self.ob, ob.name), key=util.objects_order)
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
@@ -467,7 +455,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r = [super().extras()]
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
-                        sorted(self.ob.implementedby_directly, key=objects_order)]
+                        sorted(self.ob.implementedby_directly, key=util.objects_order)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
