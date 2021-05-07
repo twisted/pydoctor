@@ -137,17 +137,17 @@ def test_template_lookup_get_template() -> None:
 
     here = Path(__file__).parent
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
 
     lookup.add_template(_HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
-    assert lookup.get_template('footer.html').text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
+    assert lookup.get_template('footer.html').data == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
 
     lookup = TemplateLookup()
 
-    assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
+    assert lookup.get_template('footer.html').data == filetext(here.parent / 'templates' / 'footer.html')
 
     assert lookup.get_template('subheader.html').version == -1
 
@@ -178,14 +178,8 @@ def test_template_lookup_add_template_warns() -> None:
     assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'random.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='random.html'))
-    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message)
-
-    with pytest.warns(UserWarning) as catch_warnings:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
-    assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
+    assert len(catch_warnings) == 3, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_allok() -> None:
 

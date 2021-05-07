@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Iterator, Optional, Dict, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Dict, Union, overload, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -86,12 +86,15 @@ class Template(abc.ABC):
     @see: L{TemplateLookup}
     """
 
-    def __init__(self, name: str, text: str):
+    def __init__(self, name: str, data: Union[str, bytes]):
         self.name = name
         """Template filename"""
 
-        self.text = text
-        """Template text: contents of the template file."""
+        self.data = data
+        """
+        Template data: contents of the template file as 
+        UFT-8 decoded L{str} or directly L{bytes} for static templates.
+        """
 
     TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', # Web
     '.svg', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.tif', '.tiff', # Images
@@ -117,28 +120,23 @@ class Template(abc.ABC):
             return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
         if path.is_file():
             if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
-                text: Optional[str] # If none, means that the file could not be decoded as utf-8.
-                _bytes: Optional[bytes] = None
-                try:
-                    with path.open('r', encoding='utf-8') as fobj:
-                        text = fobj.read()
-                except IOError as e:
-                    warnings.warn(f"Cannot load Template: '{path.as_posix()}'. I/O error: {e}")
-                    return None
-                except UnicodeDecodeError as e:
-                    if path.suffix.lower() == '.html':
+                if path.suffix.lower() == '.html':
+                    try:
+                        with path.open('r', encoding='utf-8') as fobj:
+                            text = fobj.read()
+                    except IOError as e:
+                        warnings.warn(f"Cannot load Template: '{path.as_posix()}'. I/O error: {e}")
+                        return None
+                    except UnicodeDecodeError as e:
                         raise RuntimeError(f"Cannot decode '{path.as_posix()}' HTML Template as UTF-8: {e}") from e
-                    # If decoding fails, treat the file as binary data.
+                    else:
+                        return _HtmlTemplate(name=path.name, text=text)
+                else:
+                    # treat the file as binary data.
                     with path.open('rb') as fobjb:
                         _bytes = fobjb.read()
-                    text = None
-                
-                if path.suffix.lower() == '.html':
-                    return _HtmlTemplate(name=path.name, text=text)
-                elif text:
-                    return _StaticTemplate(name=path.name, text=text)
-                else:
-                    return _StaticTemplate(name=path.name, _bytes=_bytes)
+                    return _StaticTemplate(name=path.name, data=_bytes)
+
             else:
                 warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
                     f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
@@ -150,7 +148,10 @@ class Template(abc.ABC):
         Does this template contain nothing except whitespace?
         Empty templates will not be rendered.
         """
-        return len(self.text.strip()) == 0
+        if isinstance(self.data, str):
+            return len(self.data.strip()) == 0
+        else:
+            return len(self.data) == 0
 
     @abc.abstractproperty
     def version(self) -> int:
@@ -183,9 +184,8 @@ class _StaticTemplate(Template):
 
     For CSS and JS templates.
     """
-    def __init__(self, name: str, text: Optional[str] = None, _bytes: Optional[bytes] = None):
-        super().__init__(name, text or '')
-        self._bytes: Optional[bytes] = _bytes
+    data: bytes
+
     @property
     def version(self) -> int:
         return -1
@@ -206,12 +206,8 @@ class _StaticTemplate(Template):
         return _template_path
     
     def _write(self, path: Path) -> None:
-        if self.text:
-            with path.open('w', encoding='utf-8') as fobj:
-                fobj.write(self.text)
-        elif self._bytes:
-            with path.open('wb') as fobjb:
-                fobjb.write(self._bytes)
+        with path.open('wb') as fobjb:
+            fobjb.write(self.data)
 
 class _TemplateSubFolder(_StaticTemplate):
     """
@@ -245,14 +241,16 @@ class _HtmlTemplate(Template):
     HTML template that works with the Twisted templating system
     and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag.
     """
+    data: str
+
     def __init__(self, name: str, text: str):
-        super().__init__(name=name, text=text)
+        super().__init__(name=name, data=text)
         if self.is_empty():
             self._dom: Optional[minidom.Document] = None
             self._version = -1
             self._loader: ITemplateLoader = TagLoader(tags.transparent)
         else:
-            self._dom = parse_xml(self.text)
+            self._dom = parse_xml(self.data)
             self._version = self._extract_version(self._dom, self.name)
             self._loader = XMLString(self._dom.toxml())
 
@@ -334,6 +332,11 @@ class TemplateLookup:
                 self.add_template(template)
             else:
                 self._templates[template.name] = template
+    
+    def _load_template(self, template: Template) -> None:
+        """
+        Load themplate inside the lookup, handle the subfolders etc.                                
+        """
 
     def add_template(self, template: Template) -> None:
         """
