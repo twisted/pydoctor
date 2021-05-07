@@ -352,7 +352,7 @@ class TemplateLookup:
             self._templates[template.name] = template
         else:
             template_version = template.version
-            if default_version and template_version != -1:
+            if default_version != -1 and template_version != -1 :
                 if template_version < default_version:
                     warnings.warn(f"Your custom template '{template.name}' is out of date, "
                                     "information might be missing. "
