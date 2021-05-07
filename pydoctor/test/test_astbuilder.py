@@ -23,46 +23,55 @@ systemcls_param = pytest.mark.parametrize(
 def fromAST(
         ast: ast.Module,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
+
     if system is None:
         _system = systemcls()
     else:
         _system = system
+
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
+
     if parent_name is None:
         full_name = modname
     else:
         full_name = f'{parent_name}.{modname}'
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
-    mod: model.Module = builder._push(_system.Module, modname, 0)
-    builder._pop(_system.Module)
+
+    factory = _system.Package if is_package else _system.Module
+    mod: model.Module = builder._push(factory, modname, 0)
+    builder._pop(factory)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
+
     if system is None:
         # Assume that an implicit system will only contain one module,
         # so post-process it as a convenience.
         _system.postProcess()
+
     return mod
 
 def fromText(
         text: str,
         *,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
     ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, parent_name, system, buildercls, systemcls)
+    return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
@@ -96,6 +105,11 @@ def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
         src = astor.to_source(type_expr)
         assert isinstance(src, str)
         return src.strip()
+
+def type2html(obj: model.Documentable) -> str:
+    parsed_type = get_parsed_type(obj)
+    assert parsed_type is not None
+    return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
 def ann_str_and_line(obj: model.Documentable) -> Tuple[str, int]:
     """Return the textual representation and line number of an object's
@@ -291,6 +305,38 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
+def test_relative_import_in_package(systemcls: Type[model.System]) -> None:
+    """Relative imports in a package must be resolved by going up one level
+    less, since we don't count "__init__.py" as a level.
+
+    Hierarchy::
+
+      top: def f
+       - pkg: imports f and g
+          - mod: def g
+    """
+
+    top_src = '''
+    def f(): pass
+    '''
+    mod_src = '''
+    def g(): pass
+    '''
+    pkg_src = '''
+    from .. import f
+    from .mod import g
+    '''
+
+    system = systemcls()
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', system=system)
+    pkg = fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+
+    assert pkg.resolveName('f') is top.contents['f']
+    assert pkg.resolveName('g') is mod.contents['g']
+
+@systemcls_param
 @pytest.mark.parametrize('level', (1, 2, 3, 4))
 def test_relative_import_past_top(
         systemcls: Type[model.System],
@@ -301,7 +347,7 @@ def test_relative_import_past_top(
     package.
     """
     system = systemcls()
-    system.ensurePackage('pkg')
+    fromText('', modname='pkg', is_package=True, system=system)
     fromText(f'''
     from {'.' * level + 'X'} import A
     ''', modname='mod', parent_name='pkg', system=system)
@@ -452,7 +498,7 @@ def test_documented_no_alias(systemcls: Type[model.System]) -> None:
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
     assert f.privacyClass is model.PrivacyClass.VISIBLE
-    assert f.kind == 'Instance Variable'
+    assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert f.linenumber
 
 @systemcls_param
@@ -652,14 +698,14 @@ def test_classmethod(systemcls: Type[model.System]) -> None:
         def f(klass):
             pass
     ''', systemcls=systemcls)
-    assert mod.contents['C'].contents['f'].kind == 'Class Method'
+    assert mod.contents['C'].contents['f'].kind is model.DocumentableKind.CLASS_METHOD
     mod = fromText('''
     class C:
         def f(klass):
             pass
         f = classmethod(f)
     ''', systemcls=systemcls)
-    assert mod.contents['C'].contents['f'].kind == 'Class Method'
+    assert mod.contents['C'].contents['f'].kind is model.DocumentableKind.CLASS_METHOD
 
 @systemcls_param
 def test_classdecorator(systemcls: Type[model.System]) -> None:
@@ -713,9 +759,9 @@ def test_methoddecorator(systemcls: Type[model.System], capsys: CapSys) -> None:
             pass
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.contents['method_undecorated'].kind == 'Method'
-    assert C.contents['method_static'].kind == 'Static Method'
-    assert C.contents['method_class'].kind == 'Class Method'
+    assert C.contents['method_undecorated'].kind is model.DocumentableKind.METHOD
+    assert C.contents['method_static'].kind is model.DocumentableKind.STATIC_METHOD
+    assert C.contents['method_class'].kind is model.DocumentableKind.CLASS_METHOD
     captured = capsys.readouterr().out
     assert captured == "mod:14: mod.C.method_both is both classmethod and staticmethod\n"
 
@@ -811,10 +857,9 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
     package C{a}, they import the function C{f} from the module C{a.__init__}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     mod_a = fromText('''
     def f(): pass
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', is_package=True, system=system)
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
@@ -843,10 +888,9 @@ def test_import_module_from_package(systemcls: Type[model.System]) -> None:
     it imports the module C{a.b} which contains C{f}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     fromText('''
     # This module intentionally left blank.
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', system=system)
     mod_b = fromText('''
     def f(): pass
     ''', modname='b', parent_name='a', system=system)
@@ -979,25 +1023,25 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
     assert a.privacyClass is model.PrivacyClass.VISIBLE
-    assert a.kind == 'Instance Variable'
+    assert a.kind is model.DocumentableKind.INSTANCE_VARIABLE
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
-    assert b.kind == 'Instance Variable'
+    assert b.kind is model.DocumentableKind.INSTANCE_VARIABLE
     c = C.contents['c']
     assert c.docstring == """inline doc for c"""
     assert c.privacyClass is model.PrivacyClass.VISIBLE
-    assert c.kind == 'Instance Variable'
+    assert c.kind is model.DocumentableKind.INSTANCE_VARIABLE
     d = C.contents['d']
     assert d.docstring == """inline doc for d"""
     assert d.privacyClass is model.PrivacyClass.VISIBLE
-    assert d.kind == 'Instance Variable'
+    assert d.kind is model.DocumentableKind.INSTANCE_VARIABLE
     e = C.contents['e']
     assert not e.docstring
     f = C.contents['f']
     assert f.docstring == """inline doc for f"""
     assert f.privacyClass is model.PrivacyClass.VISIBLE
-    assert f.kind == 'Instance Variable'
+    assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
 def test_inline_docstring_annotated_instancevar(systemcls: Type[model.System]) -> None:
@@ -1052,16 +1096,16 @@ def test_docstring_assignment(systemcls: Type[model.System], capsys: CapSys) -> 
         func.__doc__ = func.__doc__ + '\n\nUnavailable on this system.'
     ''', systemcls=systemcls)
     fun = mod.contents['fun']
-    assert fun.kind == 'Function'
+    assert fun.kind is model.DocumentableKind.FUNCTION
     assert fun.docstring == """Happy Happy Joy Joy"""
     CLS = mod.contents['CLS']
-    assert CLS.kind == 'Class'
+    assert CLS.kind is model.DocumentableKind.CLASS
     assert CLS.docstring == """Clears the screen"""
     method1 = CLS.contents['method1']
-    assert method1.kind == 'Method'
+    assert method1.kind is model.DocumentableKind.METHOD
     assert method1.docstring == "Updated docstring #1"
     method2 = CLS.contents['method2']
-    assert method2.kind == 'Method'
+    assert method2.kind is model.DocumentableKind.METHOD
     assert method2.docstring == "Updated docstring #2"
     captured = capsys.readouterr()
     lines = captured.out.split('\n')
@@ -1122,24 +1166,24 @@ def test_variable_scopes(systemcls: Type[model.System]) -> None:
             """instance l"""
     ''', modname='test', systemcls=systemcls)
     l1 = mod.contents['l']
-    assert l1.kind == 'Variable'
+    assert l1.kind is model.DocumentableKind.VARIABLE
     assert l1.docstring == """module-level l"""
     m1 = mod.contents['m']
-    assert m1.kind == 'Variable'
+    assert m1.kind is model.DocumentableKind.VARIABLE
     assert m1.docstring == """module-level m"""
     C = mod.contents['C']
     assert sorted(C.contents.keys()) == ['__init__', 'a', 'k', 'l', 'm']
     a = C.contents['a']
-    assert a.kind == 'Instance Variable'
+    assert a.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert a.docstring == """inline doc for a"""
     k = C.contents['k']
-    assert k.kind == 'Instance Variable'
+    assert k.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert unwrap(k.parsed_docstring) == """class level doc for k"""
     l2 = C.contents['l']
-    assert l2.kind == 'Instance Variable'
+    assert l2.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert l2.docstring == """instance l"""
     m2 = C.contents['m']
-    assert m2.kind == 'Class Variable'
+    assert m2.kind is model.DocumentableKind.CLASS_VARIABLE
     assert m2.docstring == """class-level m"""
 
 @systemcls_param
@@ -1193,31 +1237,31 @@ def test_variable_types(systemcls: Type[model.System]) -> None:
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
     assert str(unwrap(a.parsed_type)) == 'string'
-    assert a.kind == 'Class Variable'
+    assert a.kind is model.DocumentableKind.CLASS_VARIABLE
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
     assert str(unwrap(b.parsed_type)) == 'string'
-    assert b.kind == 'Class Variable'
+    assert b.kind is model.DocumentableKind.CLASS_VARIABLE
     c = C.contents['c']
     assert c.docstring == """third"""
     assert str(unwrap(c.parsed_type)) == 'string'
-    assert c.kind == 'Class Variable'
+    assert c.kind is model.DocumentableKind.CLASS_VARIABLE
     d = C.contents['d']
     assert unwrap(d.parsed_docstring) == """fourth"""
     assert str(unwrap(d.parsed_type)) == 'string'
-    assert d.kind == 'Instance Variable'
+    assert d.kind is model.DocumentableKind.INSTANCE_VARIABLE
     e = C.contents['e']
     assert unwrap(e.parsed_docstring) == """fifth"""
     assert str(unwrap(e.parsed_type)) == 'string'
-    assert e.kind == 'Instance Variable'
+    assert e.kind is model.DocumentableKind.INSTANCE_VARIABLE
     f = C.contents['f']
     assert f.docstring == """sixth"""
     assert str(unwrap(f.parsed_type)) == 'string'
-    assert f.kind == 'Instance Variable'
+    assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
     g = C.contents['g']
     assert g.docstring == """seventh"""
     assert str(unwrap(g.parsed_type)) == 'string'
-    assert g.kind == 'Instance Variable'
+    assert g.kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
 def test_annotated_variables(systemcls: Type[model.System]) -> None:
@@ -1258,11 +1302,6 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     m: bytes = b"M"
     """module-level"""
     ''', modname='test', systemcls=systemcls)
-
-    def type2html(obj: model.Documentable) -> str:
-        parsed_type = get_parsed_type(obj)
-        assert parsed_type is not None
-        return to_html(parsed_type).replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
     C = mod.contents['C']
     a = C.contents['a']
@@ -1427,7 +1466,7 @@ def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
         a = attr.ib(type=int)
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.contents['a'].kind == 'Instance Variable'
+    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
 def test_attrs_attrib_badargs(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1457,10 +1496,10 @@ def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
         d = 123  # ignored by auto_attribs because no annotation
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.contents['a'].kind == 'Instance Variable'
-    assert C.contents['b'].kind == 'Instance Variable'
-    assert C.contents['c'].kind == 'Class Variable'
-    assert C.contents['d'].kind == 'Class Variable'
+    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+    assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+    assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
+    assert C.contents['d'].kind is model.DocumentableKind.CLASS_VARIABLE
 
 @systemcls_param
 def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1521,13 +1560,13 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
 
     prop = C.contents['prop']
     assert isinstance(prop, model.Attribute)
-    assert prop.kind == 'Property'
+    assert prop.kind is model.DocumentableKind.PROPERTY
     assert prop.docstring == """For sale."""
     assert type2str(prop.annotation) == 'str'
 
     oldschool = C.contents['oldschool']
     assert isinstance(oldschool, model.Attribute)
-    assert oldschool.kind == 'Property'
+    assert oldschool.kind is model.DocumentableKind.PROPERTY
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
     assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
@@ -1559,17 +1598,17 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     getter = C.contents['prop']
     assert isinstance(getter, model.Attribute)
-    assert getter.kind == 'Property'
+    assert getter.kind is model.DocumentableKind.PROPERTY
     assert getter.docstring == """Getter."""
 
     setter = C.contents['prop.setter']
     assert isinstance(setter, model.Function)
-    assert setter.kind == 'Method'
+    assert setter.kind is model.DocumentableKind.METHOD
     assert setter.docstring == """Setter."""
 
     deleter = C.contents['prop.deleter']
     assert isinstance(deleter, model.Function)
-    assert deleter.kind == 'Method'
+    assert deleter.kind is model.DocumentableKind.METHOD
     assert deleter.docstring == """Deleter."""
 
 
@@ -1594,15 +1633,15 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     deprecated = C.contents['processes']
     assert isinstance(deprecated, model.Attribute)
-    assert deprecated.kind == 'Property'
+    assert deprecated.kind is model.DocumentableKind.PROPERTY
 
     async_prop = C.contents['remote_value']
     assert isinstance(async_prop, model.Attribute)
-    assert async_prop.kind == 'Property'
+    assert async_prop.kind is model.DocumentableKind.PROPERTY
 
     abstract_prop = C.contents['name']
     assert isinstance(abstract_prop, model.Attribute)
-    assert abstract_prop.kind == 'Property'
+    assert abstract_prop.kind is model.DocumentableKind.PROPERTY
 
 
 @pytest.mark.parametrize('decoration', ('classmethod', 'staticmethod'))
@@ -1610,7 +1649,7 @@ def test_property_custom(systemcls: Type[model.System], capsys: CapSys) -> None:
 def test_property_conflict(
         decoration: str, systemcls: Type[model.System], capsys: CapSys
         ) -> None:
-    """Warn when a function is decorated as both property and class/staticmethod.
+    """Warn when a method is decorated as both property and class/staticmethod.
     These decoration combinations do not create class/static properties.
     """
     mod = fromText(f'''
@@ -1621,7 +1660,7 @@ def test_property_conflict(
             raise NotImplementedError
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
-    assert C.contents['prop'].kind == 'Property'
+    assert C.contents['prop'].kind is model.DocumentableKind.PROPERTY
     captured = capsys.readouterr().out
     assert captured == f"mod:3: mod.C.prop is both property and {decoration}\n"
 
