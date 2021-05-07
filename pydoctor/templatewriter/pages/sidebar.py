@@ -41,22 +41,15 @@ class SideBar(TemplateElement):
         yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
                         documented_ob=self.ob, template_lookup=self.template_lookup)
 
-        if isinstance(self.ob, (Package, Module)):            
+        if isinstance(self.ob, Module):            
             if self.ob.parent:
                 # The parent package of the module
                 yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
                               documented_ob=self.ob, template_lookup=self.template_lookup)
         else:
-
-            #TODO: REMOVE once https://github.com/twisted/pydoctor/pull/360/files is merged
-            if self.ob.module.name == "__init__" and self.ob.module.parent:
-                # The parent of the object
-                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module.parent, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup)
-            else:
-                # The parent of the object
-                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup)
+            # The parent of the object
+            yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
+                            documented_ob=self.ob, template_lookup=self.template_lookup)
 
 class SideBarSection(Element):
     """
@@ -89,8 +82,6 @@ class SideBarSection(Element):
     def name(self, request: IRequest, tag: Tag) -> Tag:
         """Craft a <code><a> block for the title with custom description when hovering. """
         name = self.ob.name
-        if name == "__init__" and self.ob.parent: #TODO: REMOVE once https://github.com/twisted/pydoctor/pull/360/files is merged
-            name = self.ob.parent.name
         link = epydoc2stan.taglink(self.ob, self.ob.url, name)
         link.attributes['title'] = self.description()
         attributes = {}
@@ -115,14 +106,7 @@ class SideBarSection(Element):
                     template_lookup=self.template_lookup, 
                     depth=self.ob.system.options.sidebarexpanddepth)
         
-        if isinstance(self.ob, (Package, Module)):
-            if isinstance(self.ob, Package): #TODO: REMOVE once #360 is merged
-                return PackageContent(package=self.ob, 
-                                      init_module=self.ob.module, **args)
-            else:
-                return ObjContent(ob=self.ob.module, **args)
-        else:
-            return ObjContent(ob=self.ob, **args)
+        return ObjContent(ob=self.ob, **args)
 
 class ObjContent(Element):
     """
@@ -214,8 +198,8 @@ class ObjContent(Element):
         can_be_expanded = False
 
         # Classes, modules and packages can be expanded in the sidebar. 
-        if (isinstance(list_type, type) and issubclass(list_type, (Class, Module, Package))) or \
-            (isinstance(list_type, tuple) and any([issubclass(t, (Class, Module, Package)) for t in list_type])):
+        if (isinstance(list_type, type) and issubclass(list_type, (Class, Module))) or \
+            (isinstance(list_type, tuple) and any([issubclass(t, (Class, Module)) for t in list_type])):
             can_be_expanded = True
         
         return self._level < self._depth and can_be_expanded
@@ -283,35 +267,6 @@ class ObjContent(Element):
     @renderer
     def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
         return self.subModuleList or ""        
-
-class PackageContent(ObjContent):
-    # This class should be deleted once https://github.com/twisted/pydoctor/pull/360/files has been merged
-
-    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, package: Package, init_module: Module, 
-                 documented_ob: Documentable, template_lookup: TemplateLookup, depth: int, level: int = 0):
-
-        self.init_module = init_module
-        super().__init__(docgetter=docgetter, loader=loader, ob=package, documented_ob=documented_ob, 
-                         template_lookup=template_lookup, depth=depth, level=level)
-        
-    def init_module_children(self) -> Iterable[Documentable]:
-        return sorted(
-            [o for o in self.init_module.contents.values() if o.isVisible],
-            key=lambda o:-o.privacyClass.value)
-    
-    def _getListOf(self, type_: Union[Type[Documentable], 
-                                Tuple[Type[Documentable], ...]], inherited: bool = False
-                  ) -> Optional['ContentList']:
-        children = self.children()
-        if children:
-            sub_modules = [ child for child in children if isinstance(child, type_) and child.name != '__init__' ]
-            contents_filtered = [ child for child in self.init_module_children() 
-                                            if isinstance(child, type_) ] + sub_modules
-            things = contents_filtered
-        else:
-            return None
-
-        return self._getListFrom(things, expand=self._isExpandable(type_))
 
 class ContentList(TemplateElement):
     """
@@ -405,14 +360,7 @@ class ContentItem(Element):
                     depth=self._level_depth[1],
                     template_lookup=self.template_lookup,)
 
-        if isinstance(self.child, (Package, Module)):
-            if isinstance(self.child, Package):
-                return PackageContent(package=self.child, 
-                                      init_module=self.child.module, **args)
-            else:
-                return ObjContent(ob=self.child.module, **args)
-        else:
-            return ObjContent(ob=self.child, **args)
+        return ObjContent(ob=self.child, **args)
     
     @renderer
     def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, 'ExpandableItem']:
