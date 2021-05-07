@@ -5,8 +5,8 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 from collections import defaultdict
 from importlib import import_module
 from typing import (
-    Callable, ClassVar, DefaultDict, Dict, Generator, Iterable, Iterator, List,
-    Mapping, Optional, Sequence, Tuple, Union
+    TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
+    Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
 import itertools
@@ -16,9 +16,12 @@ import attr
 
 from pydoctor import model
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError
-from twisted.web.template import Flattenable, Tag, tags
+from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
@@ -712,7 +715,7 @@ def format_summary(obj: model.Documentable) -> Tag:
         # so don't spam the log.
         return tags.span(class_='undocumented')("Broken description")
 
-    content: Sequence[Flattenable] = [stan] if stan.tagName else stan.children
+    content: Sequence["Flattenable"] = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
     return tags.span(*content)

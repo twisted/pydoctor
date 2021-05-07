@@ -1,15 +1,14 @@
 from typing import TYPE_CHECKING, Collection
 
 from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import (
-    Element, Flattenable, Tag, TagLoader, renderer, tags
-)
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Documentable, Function
 from pydoctor.templatewriter import TemplateElement, util
 
 if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages import DocGetter
 
 
@@ -27,7 +26,7 @@ class TableRow(Element):
         self.child = child
 
     @renderer
-    def class_(self, request: object, tag: Tag) -> Flattenable:
+    def class_(self, request: object, tag: Tag) -> "Flattenable":
         class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
@@ -79,7 +78,7 @@ class ChildTable(TemplateElement):
         return f'id{self._id}'
 
     @renderer
-    def rows(self, request: object, tag: Tag) -> Flattenable:
+    def rows(self, request: object, tag: Tag) -> "Flattenable":
         return [
             TableRow(
                 TagLoader(tag),

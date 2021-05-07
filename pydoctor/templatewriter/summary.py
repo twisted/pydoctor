@@ -2,17 +2,18 @@
 
 from collections import defaultdict
 from typing import (
-    DefaultDict, Dict, Iterable, List, Mapping, MutableSet, Sequence, Tuple,
-    Type, Union, cast
+    TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
+    Sequence, Tuple, Type, Union, cast
 )
 
-from twisted.web.template import (
-    Element, Flattenable, Tag, TagLoader, renderer, tags
-)
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
 from pydoctor.templatewriter.pages import Page
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
@@ -189,7 +190,7 @@ class LetterElement(Element):
 
     @renderer
     def letterlinks(self, request: object, tag: Tag) -> Tag:
-        letterlinks: List[Flattenable] = []
+        letterlinks: List["Flattenable"] = []
         for initial in sorted(self.initials):
             if initial == self.my_letter:
                 letterlinks.append(initial)
@@ -202,7 +203,7 @@ class LetterElement(Element):
         return tag
 
     @renderer
-    def names(self, request: object, tag: Tag) -> Flattenable:
+    def names(self, request: object, tag: Tag) -> "Flattenable":
         def link(obj: model.Documentable) -> Tag:
             # The "data-type" attribute helps doc2dash figure out what
             # category (class, method, etc.) an object belongs to.
@@ -255,7 +256,7 @@ class NameIndexPage(Page):
         return tag.clear()("Index of Names")
 
     @renderer
-    def index(self, request: object, tag: Tag) -> Flattenable:
+    def index(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for i in sorted(self.initials):
             r.append(LetterElement(TagLoader(tag), self.initials, i))
@@ -270,7 +271,7 @@ class IndexPage(Page):
         return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def onlyIfOneRoot(self, request: object, tag: Tag) -> Flattenable:
+    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
         if len(self.system.rootobjects) != 1:
             return []
         else:
@@ -280,14 +281,14 @@ class IndexPage(Page):
                 ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
 
     @renderer
-    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> Flattenable:
+    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
         if len(self.system.rootobjects) == 1:
             return []
         else:
             return tag
 
     @renderer
-    def roots(self, request: object, tag: Tag) -> Flattenable:
+    def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
             r.append(tag.clone().fillSlots(root=tags.code(

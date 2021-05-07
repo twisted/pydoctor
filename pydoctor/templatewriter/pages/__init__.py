@@ -9,7 +9,7 @@ import abc
 
 import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from twisted.web.template import Element, Flattenable, Tag, renderer, tags
+from twisted.web.template import Element, Tag, renderer, tags
 
 from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
@@ -17,6 +17,7 @@ from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 
 if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
@@ -111,7 +112,7 @@ class Page(TemplateElement):
         return tags.transparent(super().render(request)).fillSlots(**self.slot_map)
 
     @property
-    def slot_map(self) -> Dict[str, Flattenable]:
+    def slot_map(self) -> Dict[str, "Flattenable"]:
         system = self.system
 
         if system.options.projecturl:
@@ -194,28 +195,28 @@ class CommonPage(Page):
         return parts
 
     @renderer
-    def deprecated(self, request: object, tag: Tag) -> Flattenable:
-        msg: Optional[Flattenable] = getattr(self.ob, "_deprecated_info", None)
+    def deprecated(self, request: object, tag: Tag) -> "Flattenable":
+        msg: Optional["Flattenable"] = getattr(self.ob, "_deprecated_info", None)
         if msg is None:
             return ()
         else:
             return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")
 
     @renderer
-    def source(self, request: object, tag: Tag) -> Flattenable:
+    def source(self, request: object, tag: Tag) -> "Flattenable":
         sourceHref = util.srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
 
     @renderer
-    def inhierarchy(self, request: object, tag: Tag) -> Flattenable:
+    def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self) -> List[Flattenable]:
+    def extras(self) -> List["Flattenable"]:
         return []
 
-    def docstring(self) -> Flattenable:
+    def docstring(self) -> "Flattenable":
         return self.docgetter.get(self.ob)
 
     def children(self) -> Sequence[model.Documentable]:
@@ -223,14 +224,14 @@ class CommonPage(Page):
             (o for o in self.ob.contents.values() if o.isVisible),
             key=objects_order)
 
-    def packageInitTable(self) -> Flattenable:
+    def packageInitTable(self) -> "Flattenable":
         return ()
 
     @renderer
-    def baseTables(self, request: object, tag: Tag) -> Flattenable:
+    def baseTables(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def mainTable(self) -> Flattenable:
+    def mainTable(self) -> "Flattenable":
         children = self.children()
         if children:
             return ChildTable(self.docgetter, self.ob, children,
@@ -261,14 +262,14 @@ class CommonPage(Page):
                 assert False, type(c)
         return r
 
-    def functionExtras(self, data: model.Documentable) -> List[Flattenable]:
+    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
         return []
 
-    def functionBody(self, data: model.Documentable) -> Flattenable:
+    def functionBody(self, data: model.Documentable) -> "Flattenable":
         return self.docgetter.get(data)
 
     @property
-    def slot_map(self) -> Dict[str, Flattenable]:
+    def slot_map(self) -> Dict[str, "Flattenable"]:
         slot_map = super().slot_map
         slot_map.update(
             heading=self.heading(),
@@ -283,7 +284,7 @@ class CommonPage(Page):
 
 
 class ModulePage(CommonPage):
-    def extras(self) -> List[Flattenable]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
         sourceHref = util.srclink(self.ob)
@@ -300,7 +301,7 @@ class PackagePage(ModulePage):
              if isinstance(o, model.Module) and o.isVisible),
             key=objects_order)
 
-    def packageInitTable(self) -> Flattenable:
+    def packageInitTable(self) -> "Flattenable":
         children = sorted(
             (o for o in self.ob.contents.values()
              if not isinstance(o, model.Module) and o.isVisible),
@@ -356,7 +357,7 @@ def assembleList(
         lst: Sequence[str],
         idbase: str,
         page_url: str
-        ) -> Optional[Flattenable]:
+        ) -> Optional["Flattenable"]:
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
@@ -365,19 +366,19 @@ def assembleList(
     lst = lst2
     if not lst:
         return None
-    def one(item: str) -> Flattenable:
+    def one(item: str) -> "Flattenable":
         if item in system.allobjects:
             return tags.code(epydoc2stan.taglink(system.allobjects[item], page_url))
         else:
             return item
-    def commasep(items: Sequence[str]) -> List[Flattenable]:
+    def commasep(items: Sequence[str]) -> List["Flattenable"]:
         r = []
         for item in items:
             r.append(one(item))
             r.append(', ')
         del r[-1]
         return r
-    p: List[Flattenable] = [label]
+    p: List["Flattenable"] = [label]
     p.extend(commasep(lst))
     return p
 
@@ -399,11 +400,11 @@ class ClassPage(CommonPage):
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
 
-    def extras(self) -> List[Flattenable]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
         sourceHref = util.srclink(self.ob)
-        source: Flattenable
+        source: "Flattenable"
         if sourceHref:
             source = (" ", tags.a("(source)", href=sourceHref, class_="sourceLink"))
         else:
@@ -423,8 +424,8 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def classSignature(self) -> Flattenable:
-        r: List[Flattenable] = []
+    def classSignature(self) -> "Flattenable":
+        r: List["Flattenable"] = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
@@ -452,7 +453,7 @@ class ClassPage(CommonPage):
         return tag(href="classIndex.html#"+self.ob.fullName())
 
     @renderer
-    def baseTables(self, request: object, item: Tag) -> Flattenable:
+    def baseTables(self, request: object, item: Tag) -> "Flattenable":
         baselists = self.baselists[:]
         if not baselists:
             return []
@@ -466,14 +467,14 @@ class ClassPage(CommonPage):
                                                loader))
                 for b, attrs in baselists]
 
-    def baseName(self, data: Sequence[model.Class]) -> Flattenable:
+    def baseName(self, data: Sequence[model.Class]) -> "Flattenable":
         page_url = self.page_url
-        r: List[Flattenable] = []
+        r: List["Flattenable"] = []
         source_base = data[0]
         r.append(tags.code(epydoc2stan.taglink(source_base, page_url, source_base.name)))
         bases_to_mention = data[1:-1]
         if bases_to_mention:
-            tail: List[Flattenable] = []
+            tail: List["Flattenable"] = []
             for b in reversed(bases_to_mention):
                 tail.append(tags.code(epydoc2stan.taglink(b, page_url, b.name)))
                 tail.append(', ')
@@ -481,10 +482,10 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, data: model.Documentable) -> List[Flattenable]:
+    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
         page_url = self.page_url
         name = data.name
-        r: List[Flattenable] = []
+        r: List["Flattenable"] = []
         for b in self.ob.allbases(include_self=False):
             if name not in b.contents:
                 continue
@@ -506,7 +507,7 @@ class ClassPage(CommonPage):
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
 
-    def extras(self) -> List[Flattenable]:
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
@@ -534,9 +535,9 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def functionExtras(self, data: model.Documentable) -> List[Flattenable]:
+    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
         imeth = self.interfaceMeth(data.name)
-        r: List[Flattenable] = []
+        r: List["Flattenable"] = []
         if imeth:
             iface = imeth.parent
             assert iface is not None

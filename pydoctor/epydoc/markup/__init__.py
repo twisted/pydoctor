@@ -33,11 +33,15 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import re
 
 from twisted.python.failure import Failure
-from twisted.web.template import Flattenable, Tag, XMLString, flattenString
+from twisted.web.template import Tag, XMLString, flattenString
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+
 
 ##################################################
 ## Contents
@@ -115,7 +119,7 @@ def html2stan(html: Union[bytes, str]) -> Tag:
     stan.tagName = ''
     return stan
 
-def flatten(stan: Flattenable) -> str:
+def flatten(stan: "Flattenable") -> str:
     """
     Convert a document fragment from a Stan tree to HTML.
 
