@@ -1,4 +1,4 @@
-from typing import Collection
+from typing import TYPE_CHECKING, Collection
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import (
@@ -7,15 +7,17 @@ from twisted.web.template import (
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Documentable, Function
-from pydoctor.templatewriter import util
-from pydoctor.templatewriter.pages import DocGetter, TemplateElement
+from pydoctor.templatewriter import TemplateElement, util
+
+if TYPE_CHECKING:
+    from pydoctor.templatewriter.pages import DocGetter
 
 
 class TableRow(Element):
 
     def __init__(self,
             loader: ITemplateLoader,
-            docgetter: DocGetter,
+            docgetter: "DocGetter",
             ob: Documentable,
             child: Documentable,
             ):
@@ -60,7 +62,7 @@ class ChildTable(TemplateElement):
     filename = 'table.html'
 
     def __init__(self,
-            docgetter: DocGetter,
+            docgetter: "DocGetter",
             ob: Documentable,
             children: Collection[Documentable],
             loader: ITemplateLoader,
