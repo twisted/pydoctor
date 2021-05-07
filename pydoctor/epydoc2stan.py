@@ -200,10 +200,8 @@ class _EpydocLinker(DocstringLinker):
         # Examine every module and package in the system and see if 'identifier'
         # names an object in each one.  Again, if more than one object is
         # found, complain.
-        target = self.look_for_name(identifier, itertools.chain(
-            self.obj.system.objectsOfType(model.Module),
-            self.obj.system.objectsOfType(model.Package)),
-            lineno)
+        target = self.look_for_name(
+            identifier, self.obj.system.objectsOfType(model.Module), lineno)
         if target is not None:
             return target
 
@@ -729,8 +727,6 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         sub_objects_total_count[k] += 1
         if sub_ob.docstring is not None:
             sub_objects_with_docstring_count[k] += 1
-    if isinstance(obj, model.Package):
-        sub_objects_total_count[model.DocumentableKind.MODULE] -= 1
 
     tag: Tag = tags.span(class_='undocumented')
     if sub_objects_with_docstring_count:
