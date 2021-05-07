@@ -103,6 +103,7 @@ class Template(abc.ABC):
     '.otf', #Open type font file
     '.ttf', #TrueType font file
     '.woff', '.woff2', #Web Open Font Format, used by sphinx
+    '.xml', '.json', # Data
 )
 
     @classmethod
