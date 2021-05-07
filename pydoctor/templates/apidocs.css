@@ -556,8 +556,7 @@ div.tip, div.hint, div.important {
     border: 1px solid;
     border-radius: 4px;
     
-    /* Will be overriden in JS or in <noscript></noscript> section to a display: flex; */
-    display: none; 
+    display: flex; 
     
     position: sticky;
     top: 0;
@@ -721,7 +720,7 @@ div.tip, div.hint, div.important {
 }
 
 /* Special case for the --nosidebar option */   
-.nosidebar, .sidebarloading {
+.nosidebar {
     margin-left: 0!important;
 }
 

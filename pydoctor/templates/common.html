@@ -9,19 +9,24 @@
     <div t:render="header" />
 
     <nav class="navbar navbar-default mainnavbar">
-      <t:transparent t:render="nav" />Nav</nav>
+      <t:transparent t:render="nav" /></nav>
     
     <div class="container-fluid">
 
       <!-- Side navigation -->
       <div class="sidebarcontainer" t:render="sidebarcontainer">
+        <script src="sidebartoggle.js" type='text/javascript'></script>
         <div class="sidebar"><t:slot name="sidebar">
           SideBar contents </t:slot>
         </div>
         <div id="collapseSideBar">
           <a class="btn btn-link" onclick="toggleSideBarCollapse()" title="Toggle Sidebar Collapse">
           </a>
-        </div>   
+        </div> 
+        <script>
+          var collapsed = document.body.classList.contains('sidebar-collapsed');
+          document.querySelector('#collapseSideBar a').innerText = collapsed ? '»' : '«';
+        </script>  
       </div>
 
       <div id="main">
@@ -73,18 +78,7 @@
     </div>
 
     <footer class="container-fluid" t:render="footer" />
-    
-    <noscript>
-      <style>
-          .sidebarcontainer {
-            display: flex; 
-          }
-          .sidebarloading {
-            margin-left: initial!important;
-          }
-      </style>
-    </noscript>
-
+  
     <script src="pydoctor.js" type='text/javascript'></script>
 
   </body>

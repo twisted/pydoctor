@@ -241,8 +241,7 @@ class CommonPage(Page):
 
     @renderer
     def maindivclass(self, request: IRequest, tag: Tag) -> str:
-        return ('nosidebar sidebarloading' 
-            if self.ob.system.options.nosidebar else 'sidebarloading')
+        return 'nosidebar' if self.ob.system.options.nosidebar else ''
 
     @renderer
     def sidebarcontainer(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
