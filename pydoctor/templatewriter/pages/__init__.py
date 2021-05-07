@@ -1,7 +1,5 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
-
-
-from typing import Any, Dict, Mapping, Iterable, Iterator, List, Optional, Sequence, Union, Type
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Mapping, Sequence, Tuple, Union, Type
 import ast
 import abc
 
@@ -9,11 +7,23 @@ from twisted.web.template import tags, renderer, Tag, Element
 import astor
 
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.pages.sidebar import SideBar
+
+def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
+    """
+    Function to use as the value of standard library's L{sorted} function C{key} argument
+    such that the objects are sorted by: Privacy, Kind and Name.
+
+    Example::
+
+        children = sorted((o for o in ob.contents.values() if o.isVisible),
+                      key=objects_order)
+    """
+    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -194,8 +204,8 @@ class CommonPage(Page):
 
     def children(self):
         return sorted(
-            [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o:-o.privacyClass.value)
+            (o for o in self.ob.contents.values() if o.isVisible),
+            key=objects_order)
 
     def packageInitTable(self):
         return ()
@@ -213,9 +223,9 @@ class CommonPage(Page):
             return ()
 
     def methods(self):
-        return [o for o in self.ob.contents.values()
-                if o.documentation_location is model.DocLocation.PARENT_PAGE
-                and o.isVisible]
+        return sorted((o for o in self.ob.contents.values()
+                       if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
+                      key=objects_order)
 
     def childlist(self):
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
@@ -280,25 +290,27 @@ class ModulePage(CommonPage):
 
 class PackagePage(ModulePage):
     def children(self):
-        return sorted((o for o in self.ob.contents.values()
-                       if o.name != '__init__' and o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+        return sorted(
+            (o for o in self.ob.contents.values()
+             if isinstance(o, model.Module) and o.isVisible),
+            key=objects_order)
 
     def packageInitTable(self):
-        init = self.ob.contents['__init__']
         children = sorted(
-            [o for o in init.contents.values() if o.isVisible],
-            key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+            (o for o in self.ob.contents.values()
+             if not isinstance(o, model.Module) and o.isVisible),
+            key=objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
-            return [tags.p("From the ", tags.code("__init__.py"), " module:",
-                           class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, loader)]
+            return [
+                tags.p("From ", tags.code("__init__.py"), ":", class_="fromInitPy"),
+                ChildTable(self.docgetter, self.ob, children, loader)
+                ]
         else:
             return ()
 
     def methods(self):
-        return [o for o in self.ob.contents['__init__'].contents.values()
+        return [o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
@@ -360,7 +372,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
+        scs = sorted(self.ob.subclasses, key=objects_order)
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
@@ -408,11 +420,11 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value),
+                                               sorted(attrs, key=objects_order),
                                                loader))
                 for b, attrs in baselists]
 
-    def baseName(self, data):
+    def baseName(self, data: Tuple[model.Class, ...]) -> List[str]:
         page_url = self.page_url
         r = []
         source_base = data[0]
@@ -427,17 +439,17 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, data):
+    def functionExtras(self, ob):
         page_url = self.page_url
         r = []
         for b in self.ob.allbases(include_self=False):
-            if data.name not in b.contents:
+            if ob.name not in b.contents:
                 continue
-            overridden = b.contents[data.name]
+            overridden = b.contents[ob.name]
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(util.overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
+        ocs = sorted(util.overriding_subclasses(self.ob, ob.name), key=objects_order)
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
@@ -449,12 +461,13 @@ class ClassPage(CommonPage):
 
 
 class ZopeInterfaceClassPage(ClassPage):
+    ob: zopeinterface.ZopeInterfaceClass
+    
     def extras(self):
         r = [super().extras()]
         if self.ob.isinterface:
-            namelist = sorted(
-                    (o.fullName() for o in self.ob.implementedby_directly),
-                    key=lambda x:x.lower())
+            namelist = [o.fullName() for o in 
+                        sorted(self.ob.implementedby_directly, key=objects_order)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())

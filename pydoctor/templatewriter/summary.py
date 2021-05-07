@@ -8,23 +8,24 @@ from pydoctor.templatewriter.pages import Page
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 
-def moduleSummary(modorpack, page_url):
-    r = tags.li(
-        tags.code(epydoc2stan.taglink(modorpack, page_url)), ' - ',
-        epydoc2stan.format_summary(modorpack)
+def moduleSummary(module: model.Module, page_url: str) -> Tag:
+    r: Tag = tags.li(
+        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        epydoc2stan.format_summary(module)
         )
-    if modorpack.isPrivate:
+    if module.isPrivate:
         r(class_='private')
-    if not isinstance(modorpack, model.Package):
+    if not isinstance(module, model.Package):
         return r
-    contents = [m for m in modorpack.contents.values()
-                if m.isVisible and m.name != '__init__']
+    contents = [m for m in module.contents.values()
+                if isinstance(m, model.Module) and m.isVisible]
     if not contents:
         return r
     ul = tags.ul()
     for m in sorted(contents, key=lambda m:m.fullName()):
         ul(moduleSummary(m, page_url))
-    return r(ul)
+    r(ul)
+    return r
 
 def _lckey(x):
     return (x.fullName().lower(), x.fullName())
