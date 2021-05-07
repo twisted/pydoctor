@@ -119,6 +119,7 @@ class Template(abc.ABC):
         if path.is_dir():
             return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
         if path.is_file():
+            # Remove this 'if/else' to copy ANY kind of files to build directory.
             if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
                 if path.suffix.lower() == '.html':
                     try:
@@ -331,12 +332,40 @@ class TemplateLookup:
             if add:
                 self.add_template(template)
             else:
-                self._templates[template.name] = template
+                self._load_template(template)
+    
+    def _load_lookup(self, lookup: 'TemplateLookup') -> None:
+        for template in lookup.templates:
+            self.add_template(template)
     
     def _load_template(self, template: Template) -> None:
         """
-        Load themplate inside the lookup, handle the subfolders etc.                                
+        Load the template inside the lookup, handle the subfolders etc.                                
         """
+        current_template = self._templates.get(template.name, None)
+        if current_template:
+            if isinstance(current_template, _TemplateSubFolder):
+                if isinstance(template, _TemplateSubFolder):
+                    current_template.lookup._load_lookup(template.lookup)
+                else:
+                    raise RuntimeError("Cannot override subfolder name with something else than a folder."
+                        f"Rename '{template.name}' to something else. ")
+            
+            elif isinstance(current_template, _StaticTemplate):
+                if isinstance(template, _StaticTemplate):
+                    self._templates[template.name] = template
+                else:
+                    raise RuntimeError("Cannot override static file with something else than a file."
+                        f"Rename '{template.name}' to something else. ")
+            
+            elif isinstance(current_template, _HtmlTemplate):
+                if isinstance(template, _HtmlTemplate):
+                    self._templates[template.name] = template
+                else:
+                    raise RuntimeError("Cannot override HTML file with something else than a HTML file. "
+                        f"Rename '{template.name}' to something else. ")
+        else:
+            self._templates[template.name] = template
 
     def add_template(self, template: Template) -> None:
         """
@@ -352,7 +381,7 @@ class TemplateLookup:
             default_version = self._default_templates[template.name].version
         except KeyError:
             # Passing the file as is
-            self._templates[template.name] = template
+            self._load_template(template)
         else:
             template_version = template.version
             if default_version != -1 and template_version != -1 :
@@ -365,7 +394,7 @@ class TemplateLookup:
                                         "is designed for a newer version of pydoctor."
                                         "Rendering will most probably fail. Upgrade to latest "
                                         "version of pydoctor with 'pip install -U pydoctor'. ")
-            self._templates[template.name] = template
+            self._load_template(template)
 
     def add_templatedir(self, dir: Path) -> None:
         """

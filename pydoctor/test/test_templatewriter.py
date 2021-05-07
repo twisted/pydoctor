@@ -257,7 +257,33 @@ def test_template_subfolders() -> None:
         assert test_build_dir.joinpath('static/fonts').is_dir()
         assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
         assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
-    
+
+        assert static_fonts_foo.is_empty()
+
+        # test override subfolder contents
+
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
+
+        # test nothing changed
+        atemplate = lookup.get_template('atemplate.html')
+        static = lookup.get_template('static')
+        assert isinstance(static, _TemplateSubFolder)
+        static_info = static.lookup.get_template('info.svg')
+        static_lol = static.lookup.get_template('lol.svg')
+        static_fonts = static.lookup.get_template('fonts')
+        assert isinstance(static_fonts, _TemplateSubFolder)
+        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
+        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+
+        assert isinstance(atemplate, _HtmlTemplate)
+        assert isinstance(static_info, _StaticTemplate)
+        assert isinstance(static_lol, _StaticTemplate)
+        assert isinstance(static_fonts_bar, _StaticTemplate)
+        assert isinstance(static_fonts_foo, _StaticTemplate)
+
+        # Except the overriden file
+        assert not static_fonts_foo.is_empty()
+
     finally:
         shutil.rmtree(test_build_dir)
 
