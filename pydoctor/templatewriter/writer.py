@@ -1,29 +1,33 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
-from typing import Iterable, Type, Optional, List
-import os
-from typing import IO
 from pathlib import Path
+from typing import IO, Iterable, Optional, Type
+import os
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate
-from pydoctor import model
-from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
-from twisted.web.template import Element, flatten
+from twisted.web.template import Element
 from twisted.python.failure import Failure
+from twisted.web.template import flattenString
+
+from pydoctor import model
+from pydoctor.templatewriter import (
+    DOCTYPE, pages, summary, TemplateLookup, IWriter, _StaticTemplate
+)
 
 
-def flattenToFile(fobj: IO[bytes], page: Element) -> None:
+def flattenToFile(fobj: IO[bytes], elem: Element) -> None:
     """
     This method writes a page to a HTML file.
     @raises Exception: If the L{flatten} call fails.
     """
     fobj.write(DOCTYPE)
-    err: List[Failure] = []
-    d = flatten(None, page, fobj.write).addErrback(err.append)
-    assert d.called
+    err = None
+    def e(r: Failure) -> None:
+        nonlocal err
+        err = r.value
+    flattenString(None, elem).addCallback(fobj.write).addErrback(e)
     if err:
-        raise err[0]
+        raise err
 
 
 class TemplateWriter(IWriter):
@@ -83,7 +87,7 @@ class TemplateWriter(IWriter):
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob:model.Documentable) -> None:
+    def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
         if ob.documentation_location is model.DocLocation.OWN_PAGE:
@@ -95,7 +99,7 @@ class TemplateWriter(IWriter):
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
-    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
+    def _writeDocsForOne(self, ob: model.Documentable, fobj: IO[bytes]) -> None:
         if not ob.isVisible:
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage
