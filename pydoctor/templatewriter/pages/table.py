@@ -24,7 +24,9 @@ class TableRow(Element):
     @renderer
     def kind(self, request, tag):
         child = self.child
-        kind_name = epydoc2stan.format_kind(child.kind)
+        kind = child.kind
+        assert kind is not None  # 'kind is None' makes the object invisible
+        kind_name = epydoc2stan.format_kind(kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
@@ -67,4 +69,6 @@ class ChildTable(TemplateElement):
                 self.docgetter,
                 self.ob,
                 child)
-            for child in self.children]
+            for child in self.children
+            if child.isVisible
+            ]

@@ -308,7 +308,12 @@ class UndocumentedSummaryPage(Page):
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(epydoc2stan.format_kind(o.kind), " - ", tags.code(epydoc2stan.taglink(o, self.filename))))
+            kind = o.kind
+            assert kind is not None  # 'kind is None' makes the object invisible
+            tag(tags.li(
+                epydoc2stan.format_kind(kind), " - ",
+                tags.code(epydoc2stan.taglink(o, self.filename))
+                ))
         return tag
 
 summarypages: Iterable[Type[Page]] = [
