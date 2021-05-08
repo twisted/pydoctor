@@ -425,6 +425,7 @@ class Module(CanContainImportsDocumentable):
         elif self.parent:
             _docformat = getattr(self.parent, "docformat", None)
             if _docformat:
+                assert isinstance(_docformat, str)
                 return _docformat
         return None
     

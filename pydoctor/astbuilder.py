@@ -1141,7 +1141,7 @@ def findDocformat(mod_ast: ast.Module, mod: model.Module) -> None:
             # Language is ignored and parser name is lowercased.
             value = value.split(" ", 1)[0].lower()
 
-            if mod.docformat is not None:
+            if mod._docformat is not None:
                 mod.report(
                     'Assignment to "__docformat__" overrides previous assignment',
                     section='docformat', lineno_offset=node.lineno)
