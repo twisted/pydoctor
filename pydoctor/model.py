@@ -389,21 +389,7 @@ class Module(CanContainImportsDocumentable):
         contents could not be parsed, this is L{None}.
         """
 
-        self.docformat: Optional[str] = None
-        """Value of the the C{__docformat__} variable of this module.
-
-        C{pydoctor} will try to parse all module's docstrings with the 
-        specified parser. Language is ignored and parser name is lowercased.
-        
-        This is all valid::
-
-            __docformat__ = "reStructuredText en"
-            __docformat__ = "epytext"
-            __docformat__ = "restructuredtext"
-
-        If no C{__docformat__} variable was found in the module, or its
-        contents could not be parsed, this is L{None}.
-        """
+        self._docformat: Optional[str] = None
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
@@ -418,6 +404,33 @@ class Module(CanContainImportsDocumentable):
     def module(self) -> 'Module':
         return self
 
+    @property
+    def docformat(self) -> Optional[str]:
+        """Value of the the C{__docformat__} variable of this module.
+
+        C{pydoctor} will try to parse all module's docstrings with the 
+        specified parser. Language is ignored and parser name is lowercased.
+        
+        This is all valid::
+
+            __docformat__ = "reStructuredText en"
+            __docformat__ = "epytext"
+            __docformat__ = "restructuredtext"
+
+        If no C{__docformat__} variable was found in the module, or its
+        contents could not be parsed, this is L{None}.
+        """
+        if self._docformat:
+            return self._docformat
+        elif self.parent:
+            _docformat = getattr(self.parent, "docformat", None)
+            if _docformat:
+                return _docformat
+        return None
+    
+    @docformat.setter
+    def docformat(self, value: str) -> None:
+        self._docformat = value
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE

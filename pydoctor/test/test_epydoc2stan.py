@@ -894,3 +894,39 @@ def test_module_docformat(capsys: CapSys) -> None:
     
     assert ('Link to pydoctor: <a class="rst-reference external"'
         ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))
+
+
+    top_src = '''
+    def f(a: str, b: int): 
+        """
+        :param a: string
+        :param b: integer
+        """
+        pass
+    '''
+    mod_src = '''
+    def f(a: str, b: int): 
+        """
+        @param a: string
+        @param b: integer
+        """
+        pass
+    '''
+    pkg_src = '''
+    __docformat__ = 'epytext'
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
+    
+
+
