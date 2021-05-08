@@ -1,29 +1,31 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
-from typing import Iterable, Type, Optional, List
-from typing import IO
 from pathlib import Path
+from typing import IO, Iterable, Optional, Type
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate, Template
 from pydoctor import model
-from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
+from pydoctor.templatewriter import (
+    DOCTYPE, pages, summary, TemplateLookup, IWriter, _StaticTemplate, Template
+)
 
-from twisted.web.template import Element, flatten
 from twisted.python.failure import Failure
+from twisted.web.template import flattenString, Element
 
 
-def flattenToFile(fobj: IO[bytes], page: Element) -> None:
+def flattenToFile(fobj: IO[bytes], elem: Element) -> None:
     """
     This method writes a page to a HTML file.
-    @raises Exception: If the L{flatten} call fails.
+    @raises Exception: If the L{twisted.web.template.flatten} call fails.
     """
     fobj.write(DOCTYPE)
-    err: List[Failure] = []
-    d = flatten(None, page, fobj.write).addErrback(err.append)
-    assert d.called
+    err = None
+    def e(r: Failure) -> None:
+        nonlocal err
+        err = r.value
+    flattenString(None, elem).addCallback(fobj.write).addErrback(e)
     if err:
-        raise err[0]
+        raise err
 
 
 class TemplateWriter(IWriter):
