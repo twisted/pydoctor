@@ -18,7 +18,7 @@ from pydoctor.templatewriter import (
 def flattenToFile(fobj: IO[bytes], elem: Element) -> None:
     """
     This method writes a page to a HTML file.
-    @raises Exception: If the L{flatten} call fails.
+    @raises Exception: If the L{twisted.web.template.flatten} call fails.
     """
     fobj.write(DOCTYPE)
     err = None
