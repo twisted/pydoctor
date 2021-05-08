@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
