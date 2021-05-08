@@ -70,7 +70,7 @@ class AttributeChild(TemplateElement):
 
     @renderer
     def functionDeprecated(self, request: object, tag: Tag) -> "Flattenable":
-        msg: Optional["Flattenable"] = getattr(self.ob, "_deprecated_info", None)
+        msg = self.ob._deprecated_info
         if msg is None:
             return ()
         else:
