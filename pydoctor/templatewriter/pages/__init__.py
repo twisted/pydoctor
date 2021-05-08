@@ -262,11 +262,11 @@ class CommonPage(Page):
                 assert False, type(c)
         return r
 
-    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         return []
 
-    def functionBody(self, data: model.Documentable) -> "Flattenable":
-        return self.docgetter.get(data)
+    def functionBody(self, ob: model.Documentable) -> "Flattenable":
+        return self.docgetter.get(ob)
 
     @property
     def slot_map(self) -> Dict[str, "Flattenable"]:
@@ -467,12 +467,12 @@ class ClassPage(CommonPage):
                                                loader))
                 for b, attrs in baselists]
 
-    def baseName(self, data: Sequence[model.Class]) -> "Flattenable":
+    def baseName(self, bases: Sequence[model.Class]) -> "Flattenable":
         page_url = self.page_url
         r: List["Flattenable"] = []
-        source_base = data[0]
+        source_base = bases[0]
         r.append(tags.code(epydoc2stan.taglink(source_base, page_url, source_base.name)))
-        bases_to_mention = data[1:-1]
+        bases_to_mention = bases[1:-1]
         if bases_to_mention:
             tail: List["Flattenable"] = []
             for b in reversed(bases_to_mention):
@@ -482,9 +482,9 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         page_url = self.page_url
-        name = data.name
+        name = ob.name
         r: List["Flattenable"] = []
         for b in self.ob.allbases(include_self=False):
             if name not in b.contents:
@@ -535,8 +535,8 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def functionExtras(self, data: model.Documentable) -> List["Flattenable"]:
-        imeth = self.interfaceMeth(data.name)
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+        imeth = self.interfaceMeth(ob.name)
         r: List["Flattenable"] = []
         if imeth:
             iface = imeth.parent
@@ -544,7 +544,7 @@ class ZopeInterfaceClassPage(ClassPage):
             r.append(tags.div(class_="interfaceinfo")('from ', tags.code(
                 epydoc2stan.taglink(imeth, self.page_url, iface.fullName())
                 )))
-        r.extend(super().functionExtras(data))
+        r.extend(super().functionExtras(ob))
         return r
 
 commonpages: Mapping[str, Type[CommonPage]] = {
