@@ -5,8 +5,8 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 from collections import defaultdict
 from importlib import import_module
 from typing import (
-    Callable, ClassVar, DefaultDict, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Tuple, Union
+    TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
+    Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
 import itertools
@@ -19,6 +19,9 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
@@ -109,9 +112,9 @@ class _EpydocLinker(DocstringLinker):
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
-            return tags.a(label, href=url)  # type: ignore[no-any-return]
+            return tags.a(label, href=url)
 
-        return tags.transparent(label)  # type: ignore[no-any-return]
+        return tags.transparent(label)
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         xref: Union[Tag, str]
@@ -232,7 +235,7 @@ class FieldDesc:
     type: Optional[Tag] = None
     body: Optional[Tag] = None
 
-    def format(self) -> Iterator[Tag]:
+    def format(self) -> Generator[Tag, None, None]:
         """
         @return: Iterator that yields one or two C{tags.td}.
         """
@@ -256,7 +259,8 @@ class FieldDesc:
 class RaisesDesc(FieldDesc):
     """Description of an exception that can be raised by function/method."""
 
-    def format(self) -> Iterator[Tag]:
+    def format(self) -> Generator[Tag, None, None]:
+        assert self.type is not None  # TODO: Why can't it be None?
         yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
 
@@ -574,9 +578,9 @@ class FieldHandler:
             r += format_desc_list(f"Unknown Field: {kind}", fieldlist)
 
         if any(r):
-            return tags.table(class_='fieldTable')(r) # type: ignore[no-any-return]
+            return tags.table(class_='fieldTable')(r)
         else:
-            return tags.transparent # type: ignore[no-any-return]
+            return tags.transparent
 
 
 def _is_none_literal(node: ast.expr) -> bool:
@@ -701,7 +705,7 @@ def format_summary(obj: model.Documentable) -> Tag:
                 )
             ]
         if len(lines) > 3:
-            return tags.span(class_='undocumented')("No summary") # type: ignore[no-any-return]
+            return tags.span(class_='undocumented')("No summary")
         pdoc = parse_docstring(obj, ' '.join(lines), source)
 
     try:
@@ -709,12 +713,12 @@ def format_summary(obj: model.Documentable) -> Tag:
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
-        return tags.span(class_='undocumented')("Broken description") # type: ignore[no-any-return]
+        return tags.span(class_='undocumented')("Broken description")
 
-    content = [stan] if stan.tagName else stan.children
+    content: Sequence["Flattenable"] = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content) # type: ignore[no-any-return]
+    return tags.span(*content)
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
@@ -774,9 +778,7 @@ class AnnotationDocstring(ParsedDocstring):
         self.annotation = annotation
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        tag: Tag = tags.code
-        tag(_AnnotationFormatter(docstring_linker).visit(self.annotation))
-        return tag
+        return tags.code(_AnnotationFormatter(docstring_linker).visit(self.annotation))
 
 
 class _AnnotationFormatter(ast.NodeVisitor):
