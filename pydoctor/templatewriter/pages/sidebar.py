@@ -1,12 +1,12 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import Iterable, Iterator, List, Optional, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Attribute, Class, Function, Documentable, Module, Package
+from pydoctor.model import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 class SideBar(TemplateElement):
@@ -99,14 +99,12 @@ class SideBarSection(Element):
 
     @renderer
     def content(self, request: IRequest, tag: Tag) -> 'ObjContent':
-
-        args: Dict[str, Any] = dict(docgetter=self.docgetter, 
+        
+        return ObjContent(ob=self.ob, docgetter=self.docgetter, 
                     loader=TagLoader(tag), 
                     documented_ob=self.documented_ob,
                     template_lookup=self.template_lookup, 
                     depth=self.ob.system.options.sidebarexpanddepth)
-        
-        return ObjContent(ob=self.ob, **args)
 
 class ObjContent(Element):
     """
@@ -134,13 +132,12 @@ class ObjContent(Element):
         self.classList = self._getListOf(Class)
         self.functionList = self._getListOf(Function)
         self.variableList = self._getListOf(Attribute)
-        self.subModuleList = self._getListOf((Module, Package))
+        self.subModuleList = self._getListOf(Module)
 
         self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
         self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
     
-    def _getListOf(self, type_: Union[Type[Documentable], 
-                            Tuple[Type[Documentable], ...]],
+    def _getListOf(self, type_: Type[Documentable],
                          inherited: bool = False) -> Optional['ContentList']:
         children = self.children(inherited=inherited)
         if children:
@@ -185,8 +182,7 @@ class ObjContent(Element):
             return sorted((o for o in self.ob.contents.values() if o.isVisible),
                               key=util.objects_order)
 
-    def _isExpandable(self, list_type: Union[Type[Documentable], 
-                                            Tuple[Type[Documentable], ...]]) -> bool:
+    def _isExpandable(self, list_type: Type[Documentable]) -> bool:
         """
         Should the list items be expandable?
         """
@@ -194,8 +190,7 @@ class ObjContent(Element):
         can_be_expanded = False
 
         # Classes, modules and packages can be expanded in the sidebar. 
-        if (isinstance(list_type, type) and issubclass(list_type, (Class, Module))) or \
-            (isinstance(list_type, tuple) and any([issubclass(t, (Class, Module)) for t in list_type])):
+        if issubclass(list_type, (Class, Module)):
             can_be_expanded = True
         
         return self._level < self._depth and can_be_expanded
@@ -349,14 +344,12 @@ class ContentItem(Element):
 
     def _contents(self) -> ObjContent:
 
-        args: Dict[str, Any] = dict(docgetter=self.docgetter,
+        return ObjContent(ob=self.child, docgetter=self.docgetter,
                     loader=self.nested_content_loader, 
                     documented_ob=self.documented_ob,
                     level=self._level_depth[0], 
                     depth=self._level_depth[1],
-                    template_lookup=self.template_lookup,)
-
-        return ObjContent(ob=self.child, **args)
+                    template_lookup=self.template_lookup)
     
     @renderer
     def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, 'ExpandableItem']:
