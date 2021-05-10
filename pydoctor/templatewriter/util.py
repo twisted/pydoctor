@@ -1,7 +1,7 @@
 """Miscellaneous utilities for the HTML writer."""
 
 import warnings
-from typing import Iterator, List, Optional, Sequence, Tuple
+from typing import Iterator, Optional, Sequence, Tuple
 from pydoctor.model import Documentable, Class
 from pydoctor import epydoc2stan
 from pydoctor import model
