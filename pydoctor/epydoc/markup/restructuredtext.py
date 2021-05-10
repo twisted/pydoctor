@@ -55,6 +55,7 @@ from docutils.frontend import OptionParser
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform
 import docutils.nodes
+import docutils.transforms.parts
 import docutils.transforms.frontmatter
 import docutils.utils
 
