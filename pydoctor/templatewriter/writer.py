@@ -1,29 +1,31 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
-from typing import Iterable, Type, Optional, List
-import os
-from typing import IO
 from pathlib import Path
+from typing import IO, Iterable, Optional, Type
 
-from pydoctor.templatewriter import IWriter, _StaticTemplate
 from pydoctor import model
-from pydoctor.templatewriter import DOCTYPE, pages, summary, TemplateLookup
-from twisted.web.template import Element, flatten
+from pydoctor.templatewriter import (
+    DOCTYPE, pages, summary, TemplateLookup, IWriter, _StaticTemplate, Template
+)
+
 from twisted.python.failure import Failure
+from twisted.web.template import flattenString, Element
 
 
-def flattenToFile(fobj: IO[bytes], page: Element) -> None:
+def flattenToFile(fobj: IO[bytes], elem: Element) -> None:
     """
     This method writes a page to a HTML file.
-    @raises Exception: If the L{flatten} call fails.
+    @raises Exception: If the L{twisted.web.template.flatten} call fails.
     """
     fobj.write(DOCTYPE)
-    err: List[Failure] = []
-    d = flatten(None, page, fobj.write).addErrback(err.append)
-    assert d.called
+    err = None
+    def e(r: Failure) -> None:
+        nonlocal err
+        err = r.value
+    flattenString(None, elem).addCallback(fobj.write).addErrback(e)
     if err:
-        raise err[0]
+        raise err
 
 
 class TemplateWriter(IWriter):
@@ -39,12 +41,12 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, filebase:str, template_lookup:Optional[TemplateLookup] = None):
+    def __init__(self, output_dir: str, template_lookup: Optional[TemplateLookup] = None):
         """
-        @arg filebase: Output directory.
+        @arg output_dir: Output directory.
         @arg template_lookup: Custom L{TemplateLookup} object.
         """
-        self.base: Path = Path(filebase)
+        self.output_dir: Path = Path(output_dir)
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
@@ -56,13 +58,19 @@ class TemplateWriter(IWriter):
         """
         Write static CSS and JS files to build directory.
         """
-        os.makedirs(self.base, exist_ok=True)
-        for template in self.template_lookup.templates:
+        self.output_dir.mkdir(exist_ok=True, parents=True)
+        self._writeStaticTemplates(self.template_lookup.templates)
+    
+    def _writeStaticTemplates(self, templates: Iterable[Template]) -> None:
+        """
+        Write all L{_StaticTemplate} to output directory, inspect L{_TemplateSubFolder} 
+        and reccursively write the static templates in subfolders.
+        """
+        for template in templates:
             if isinstance(template, _StaticTemplate):
-                with self.base.joinpath(template.name).open('w', encoding='utf-8') as jobj:
-                    jobj.write(template.text)
+                template.write(self.output_dir)
 
-    def writeIndividualFiles(self, obs:Iterable[model.Documentable]) -> None:
+    def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """
         Iterate through C{obs} and call L{_writeDocsFor} method for each L{Documentable}.
         """
@@ -79,23 +87,23 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.base.joinpath(pclass.filename).open('wb') as fobj:
+            with self.output_dir.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-    def _writeDocsFor(self, ob:model.Documentable) -> None:
+    def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
         if ob.documentation_location is model.DocLocation.OWN_PAGE:
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.base.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.output_dir.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)
 
-    def _writeDocsForOne(self, ob:model.Documentable, fobj:IO[bytes]) -> None:
+    def _writeDocsForOne(self, ob: model.Documentable, fobj: IO[bytes]) -> None:
         if not ob.isVisible:
             return
         pclass: Type[pages.CommonPage] = pages.CommonPage

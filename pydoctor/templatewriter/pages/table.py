@@ -1,51 +1,59 @@
+from typing import TYPE_CHECKING, Collection
 
-from typing import Iterable
-from twisted.web.iweb import IRequest, ITemplateLoader
-from twisted.web.template import TagLoader, renderer, tags, Tag, Element
+from twisted.web.iweb import ITemplateLoader
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Function, Documentable
-from pydoctor.templatewriter import util, TemplateElement
+from pydoctor.model import Documentable, Function
+from pydoctor.templatewriter import TemplateElement, util
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
 class TableRow(Element):
 
-    def __init__(self, loader: ITemplateLoader, docgetter: util.DocGetter, 
-                 ob: Documentable, child: Documentable):
+    def __init__(self,
+            loader: ITemplateLoader,
+            docgetter: util.DocGetter,
+            ob: Documentable,
+            child: Documentable,
+            ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self.child = child
 
     @renderer
-    def class_(self, request: IRequest, tag: Tag) -> str:
+    def class_(self, request: object, tag: Tag) -> "Flattenable":
         class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
 
     @renderer
-    def kind(self, request: IRequest, tag: Tag) -> Tag:
+    def kind(self, request: object, tag: Tag) -> Tag:
         child = self.child
-        kind_name = epydoc2stan.format_kind(child.kind) if child.kind else 'Unknown kind'
+        kind = child.kind
+        assert kind is not None  # 'kind is None' makes the object invisible
+        kind_name = epydoc2stan.format_kind(kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
             kind_name = f'Async {kind_name}'
-        # Ignoring mypy error "Returning Any from function declared to return "Tag""
-        return tag.clear()(kind_name) #type: ignore [no-any-return]
+
+        return tag.clear()(kind_name)
 
     @renderer
-    def name(self, request: IRequest, tag: Tag) -> Tag:
-        # mypy gets error: Returning Any from function declared to return "Tag"
-        return tag.clear()(tags.code( # type: ignore[no-any-return]
+    def name(self, request: object, tag: Tag) -> Tag:
+        return tag.clear()(tags.code(
             epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
             ))
 
     @renderer
-    def summaryDoc(self, request: IRequest, tag: Tag) -> Tag:
-        # mypy gets error: Returning Any from function declared to return "Tag"
-        return tag.clear()(self.docgetter.get(self.child, summary=True)) # type: ignore[no-any-return]
+    def summaryDoc(self, request: object, tag: Tag) -> Tag:
+        return tag.clear()(self.docgetter.get(self.child, summary=True))
+
 
 class ChildTable(TemplateElement):
 
@@ -53,8 +61,12 @@ class ChildTable(TemplateElement):
 
     filename = 'table.html'
 
-    def __init__(self, docgetter: util.DocGetter, ob: Documentable, 
-                 children: Iterable[Documentable], loader: ITemplateLoader):
+    def __init__(self,
+            docgetter: util.DocGetter,
+            ob: Documentable,
+            children: Collection[Documentable],
+            loader: ITemplateLoader,
+            ):
         super().__init__(loader)
         self.children = children
         ChildTable.last_id += 1
@@ -63,15 +75,17 @@ class ChildTable(TemplateElement):
         self.docgetter = docgetter
 
     @renderer
-    def id(self, request: IRequest, tag: Tag) -> str:
-        return 'id'+str(self._id)
+    def id(self, request: object, tag: Tag) -> str:
+        return f'id{self._id}'
 
     @renderer
-    def rows(self, request: IRequest, tag: Tag) -> Iterable[Element]:
+    def rows(self, request: object, tag: Tag) -> "Flattenable":
         return [
             TableRow(
-                loader=TagLoader(tag),
-                ob=self.ob,
-                child=child, 
-                docgetter=self.docgetter)
-            for child in self.children]
+                TagLoader(tag),
+                self.docgetter,
+                self.ob,
+                child)
+            for child in self.children
+            if child.isVisible
+            ]

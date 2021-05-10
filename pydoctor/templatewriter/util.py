@@ -38,7 +38,11 @@ def css_class(o: model.Documentable) -> str:
         class_ += ' private'
     return class_    
 
-def overriding_subclasses(classobj: Class, name: str, firstcall: bool = True) -> Iterator[Class]:
+def overriding_subclasses(
+        classobj: model.Class,
+        name: str,
+        firstcall: bool = True
+        ) -> Iterator[model.Class]:
     """
     Helper function to retreive the subclasses that override the given name from the parent class object. 
     """
@@ -49,7 +53,7 @@ def overriding_subclasses(classobj: Class, name: str, firstcall: bool = True) ->
             if subclass.isVisible:
                 yield from overriding_subclasses(subclass, name, firstcall=False)
 
-def nested_bases(classobj: Class) -> Iterator[Tuple[Class, ...]]:
+def nested_bases(classobj: Class) -> Iterator[Tuple[model.Class, ...]]:
     """
     Helper function to retreive the complete list of base classes chains (represented by tuples) for a given Class. 
     A chain of classes is used to compute the member inheritence from the first element to the last element of the chain.  
@@ -67,7 +71,7 @@ def nested_bases(classobj: Class) -> Iterator[Tuple[Class, ...]]:
         for nested_base in nested_bases(base):
             yield (nested_base + (classobj,))
 
-def unmasked_attrs(baselist: Sequence[Class]) -> List[Documentable]:
+def unmasked_attrs(baselist: Sequence[Class]) -> Sequence[model.Documentable]:
     """
     Helper function to reteive the list of inherited children given a base classes chain (As yielded by L{nested_bases}). 
     The returned members are inherited from the Class listed first in the chain to the Class listed last: they are not overriden in between. 

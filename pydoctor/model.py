@@ -28,6 +28,7 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
+    from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
 else:
     Literal = {True: bool, False: bool}
@@ -133,6 +134,7 @@ class Documentable:
         self.parent = parent
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
+        self._deprecated_info: Optional["Flattenable"] = None
         self.setup()
 
     @property

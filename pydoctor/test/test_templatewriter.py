@@ -1,10 +1,12 @@
 from io import BytesIO
 from typing import Callable
 import pytest
+import shutil
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import util, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import (util, writer, TemplateLookup, Template, _StaticTemplate, 
+                                     _HtmlTemplate, _TemplateSubFolder, UnsupportedTemplateVersion)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
@@ -80,7 +82,7 @@ def test_basic_package(tmp_path: Path) -> None:
         if '#' in url:
             url = url[:url.find('#')]
         assert (tmp_path / url).is_file()
-    with open(tmp_path / 'basic.html') as f:
+    with open(tmp_path / 'basic.html', encoding='utf-8') as f:
         assert 'Package docstring' in f.read()
 
 def test_hasdocstring() -> None:
@@ -136,17 +138,17 @@ def test_template_lookup_get_template() -> None:
 
     here = Path(__file__).parent
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
 
     lookup.add_template(_HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
-    assert lookup.get_template('footer.html').text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
+    assert lookup.get_template('footer.html').data == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
 
     lookup = TemplateLookup()
 
-    assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
+    assert lookup.get_template('footer.html').data == filetext(here.parent / 'templates' / 'footer.html')
 
     assert lookup.get_template('subheader.html').version == -1
 
@@ -177,14 +179,8 @@ def test_template_lookup_add_template_warns() -> None:
     assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'random.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='random.html'))
-    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message)
-
-    with pytest.warns(UserWarning) as catch_warnings:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
-    assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
+    assert len(catch_warnings) == 3, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_allok() -> None:
 
@@ -227,6 +223,70 @@ def test_template() -> None:
     assert isinstance(js_template, _StaticTemplate)
     assert isinstance(html_template, _HtmlTemplate)
 
+def test_template_subfolders() -> None:
+    here = Path(__file__).parent
+    test_build_dir = Path('.').joinpath('build/testing')
+
+    try:
+
+        lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+        atemplate = lookup.get_template('atemplate.html')
+        static = lookup.get_template('static')
+        assert isinstance(static, _TemplateSubFolder)
+        static_info = static.lookup.get_template('info.svg')
+        static_lol = static.lookup.get_template('lol.svg')
+        static_fonts = static.lookup.get_template('fonts')
+        assert isinstance(static_fonts, _TemplateSubFolder)
+        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
+        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+
+        assert isinstance(atemplate, _HtmlTemplate)
+        assert isinstance(static_info, _StaticTemplate)
+        assert isinstance(static_lol, _StaticTemplate)
+        assert isinstance(static_fonts_bar, _StaticTemplate)
+        assert isinstance(static_fonts_foo, _StaticTemplate)
+
+        # writes only the static template
+
+        static.write(test_build_dir)
+
+        assert test_build_dir.joinpath('static').is_dir()
+        assert not test_build_dir.joinpath('atemplate.html').exists()
+        assert test_build_dir.joinpath('static/info.svg').is_file()
+        assert test_build_dir.joinpath('static/lol.svg').is_file()
+        assert test_build_dir.joinpath('static/fonts').is_dir()
+        assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+        assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
+
+        assert static_fonts_foo.is_empty()
+
+        # test override subfolder contents
+
+        lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
+
+        # test nothing changed
+        atemplate = lookup.get_template('atemplate.html')
+        static = lookup.get_template('static')
+        assert isinstance(static, _TemplateSubFolder)
+        static_info = static.lookup.get_template('info.svg')
+        static_lol = static.lookup.get_template('lol.svg')
+        static_fonts = static.lookup.get_template('fonts')
+        assert isinstance(static_fonts, _TemplateSubFolder)
+        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
+        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+
+        assert isinstance(atemplate, _HtmlTemplate)
+        assert isinstance(static_info, _StaticTemplate)
+        assert isinstance(static_lol, _StaticTemplate)
+        assert isinstance(static_fonts_bar, _StaticTemplate)
+        assert isinstance(static_fonts_foo, _StaticTemplate)
+
+        # Except the overriden file
+        assert not static_fonts_foo.is_empty()
+
+    finally:
+        shutil.rmtree(test_build_dir)
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:

@@ -1,7 +1,7 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element
 
@@ -84,11 +84,11 @@ class SideBarSection(Element):
         name = self.ob.name
         link = epydoc2stan.taglink(self.ob, self.ob.url, name)
         link.attributes['title'] = self.description()
-        attributes = {}
+        tag = Tag('code')(link)
         if self._represents_documented_ob:
-            attributes['class'] = 'thisobject'
-        return Tag('code', children=[link], attributes=attributes)
-    
+            tag.attributes['class'] = 'thisobject'
+        return tag
+
     def description(self) -> str:
         """
         Short description of the sidebar section.
@@ -203,9 +203,7 @@ class ObjContent(Element):
         # Only show the TOC if visiting the object page itself, in other words, the TOC do dot show up
         # in the object's parent section or any other subsections except the main one.
         if toc and self.documented_ob == self.ob:
-
-            # mypy gets error: Returning Any from function declared to return "Union[Tag, str]"
-            return tag.fillSlots(titles=toc) # type: ignore[no-any-return]
+            return tag.fillSlots(titles=toc)
         else:
             return ""
 
@@ -404,7 +402,7 @@ class ExpandableItem(LinkOnlyItem):
     @renderer
     def labelClass(self, request: IRequest, tag: Tag) -> str:
         assert all(isinstance(child, str) for child in tag.children)
-        classes: List[str] = tag.children
+        classes: List[Any] = tag.children
         if self._do_not_expand:
             classes.append('notExpandable')
         return ' '.join(classes)
