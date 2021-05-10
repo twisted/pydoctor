@@ -570,7 +570,7 @@ div.tip, div.hint, div.important {
 }
 
 .sidebarcontainer::-webkit-scrollbar {
-    width: 1rem; /* Scrollbar width on Chromium-based browsers */
+    width: 10px; /* Scrollbar width on Chromium-based browsers */
     border: solid 1px rgb(229,229,229);
     background-color: rgb(249,249,249);
 }
