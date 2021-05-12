@@ -42,7 +42,9 @@ def scandir(path: Path) -> Iterator['Template']:
 
 class UnsupportedTemplateVersion(Exception):
     """Raised when custom template is designed for a newer version of pydoctor"""
-    pass
+
+class OverrideTemplateNotAllowed(Exception):
+    """Raised when a template if failling to be overriden because of a bogus path entry"""
 
 @runtime_checkable
 class IWriter(Protocol):
@@ -336,12 +338,16 @@ class TemplateLookup:
                 self._load_template(template)
     
     def _load_lookup(self, lookup: 'TemplateLookup') -> None:
+        # Currently, _load_lookup is only called when adding a subfolder to the TemplateLookup entries,
+        # so we call add_template() no matter what to check for version compat.
         for template in lookup.templates:
             self.add_template(template)
     
     def _load_template(self, template: Template) -> None:
         """
-        Load the template inside the lookup, handle the subfolders etc.                                
+        Load the template inside the lookup, handle the subfolders etc.     
+
+        @raises OverrideTemplateNotAllowed: If a template filname is bogus.                         
         """
         current_template = self._templates.get(template.name, None)
         if current_template:
@@ -349,21 +355,21 @@ class TemplateLookup:
                 if isinstance(template, _TemplateSubFolder):
                     current_template.lookup._load_lookup(template.lookup)
                 else:
-                    raise RuntimeError("Cannot override subfolder name with something else than a folder."
+                    raise OverrideTemplateNotAllowed(f"Cannot override _TemplateSubFolder with a {template.__class__.__name__}."
                         f"Rename '{template.name}' to something else. ")
             
             elif isinstance(current_template, _StaticTemplate):
                 if isinstance(template, _StaticTemplate):
                     self._templates[template.name] = template
                 else:
-                    raise RuntimeError("Cannot override static file with something else than a file."
+                    raise OverrideTemplateNotAllowed(f"Cannot override _StaticTemplate with a {template.__class__.__name__}."
                         f"Rename '{template.name}' to something else. ")
             
             elif isinstance(current_template, _HtmlTemplate):
                 if isinstance(template, _HtmlTemplate):
                     self._templates[template.name] = template
                 else:
-                    raise RuntimeError("Cannot override HTML file with something else than a HTML file. "
+                    raise OverrideTemplateNotAllowed(f"Cannot override _HtmlTemplate with a  {template.__class__.__name__}."
                         f"Rename '{template.name}' to something else. ")
         else:
             self._templates[template.name] = template
@@ -376,6 +382,7 @@ class TemplateLookup:
         issue warnings if template are outdated.
 
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
+        @raises OverrideTemplateNotAllowed: If a template filename is bogus.    
         """
 
         try:

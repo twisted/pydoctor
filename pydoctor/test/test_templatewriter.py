@@ -5,7 +5,10 @@ import shutil
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import _TemplateSubFolder, pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import (_TemplateSubFolder, pages, writer, 
+                                     TemplateLookup, Template, _StaticTemplate, 
+                                     _HtmlTemplate, UnsupportedTemplateVersion, 
+                                     OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
@@ -212,6 +215,34 @@ def test_template_lookup_add_template_raises() -> None:
         <span> Words </span>
         """))
 
+    here = Path(__file__).parent
+    
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(_TemplateSubFolder(name="nav.html", lookup=TemplateLookup(here / 'testcustomtemplates' / 'allok')))
+    
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(_HtmlTemplate(name="apidocs.css", text="""
+        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+            blabla
+        </nav>
+        """))
+    
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'subfolders')
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(_StaticTemplate(name="static", data=bytes()))
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+    
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(_TemplateSubFolder(name='atemplate.html', lookup=TemplateLookup(here / 'testcustomtemplates' / 'allok')))
+    
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(_HtmlTemplate(name="static", text="""
+        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+            blabla
+        </nav>
+        """))
+
 def test_template() -> None:
 
     here = Path(__file__).parent
@@ -221,6 +252,12 @@ def test_template() -> None:
 
     assert isinstance(js_template, _StaticTemplate)
     assert isinstance(html_template, _HtmlTemplate)
+
+def test_templatefromfile() -> None:
+    here = Path(__file__).parent
+    t = Template.fromfile(here / 'testcustomtemplates' / 'subfolders')
+    assert isinstance(t, _TemplateSubFolder)
+    assert t.lookup.get_template('static')
 
 def test_template_subfolders() -> None:
     here = Path(__file__).parent
