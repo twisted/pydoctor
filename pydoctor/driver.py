@@ -10,7 +10,7 @@ import warnings
 from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
+from pydoctor.templatewriter import IWriter, TemplateError, TemplateLookup
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -445,7 +445,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 try:
                     custom_lookup.add_templatedir(
                         Path(system.options.templatedir))
-                except UnsupportedTemplateVersion as e:
+                except TemplateError  as e:
                     error(str(e))
 
                 try:

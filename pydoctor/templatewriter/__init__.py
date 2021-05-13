@@ -40,11 +40,17 @@ def scandir(path: Path) -> Iterator['Template']:
         if template:
             yield template
 
-class UnsupportedTemplateVersion(Exception):
+class TemplateError(Exception):
+    pass
+
+class UnsupportedTemplateVersion(TemplateError):
     """Raised when custom template is designed for a newer version of pydoctor"""
 
-class OverrideTemplateNotAllowed(Exception):
-    """Raised when a template if failling to be overriden because of a bogus path entry"""
+class OverrideTemplateNotAllowed(TemplateError):
+    """Raised when a template is trying to be overriden because of a bogus path entry"""
+
+class FailedToCreateTemplate(TemplateError):
+    """Raised when a template could not be created because of an error"""
 
 @runtime_checkable
 class IWriter(Protocol):
@@ -124,22 +130,22 @@ class Template(abc.ABC):
         if path.is_file():
             # Remove this 'if/else' to copy ANY kind of files to build directory.
             if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
-                if path.suffix.lower() == '.html':
-                    try:
-                        with path.open('r', encoding='utf-8') as fobj:
-                            text = fobj.read()
-                    except IOError as e:
-                        warnings.warn(f"Cannot load Template: '{path.as_posix()}'. I/O error: {e}")
-                        return None
-                    except UnicodeDecodeError as e:
-                        raise RuntimeError(f"Cannot decode '{path.as_posix()}' HTML Template as UTF-8: {e}") from e
+                try:
+                    if path.suffix.lower() == '.html':
+                        try:
+                            with path.open('r', encoding='utf-8') as fobj:
+                                text = fobj.read()
+                        except UnicodeDecodeError as e:
+                            raise FailedToCreateTemplate(f"Cannot decode HTML Template as UTF-8: '{path.as_posix()}'. {e}") from e
+                        else:
+                            return _HtmlTemplate(name=path.name, text=text)
                     else:
-                        return _HtmlTemplate(name=path.name, text=text)
-                else:
-                    # treat the file as binary data.
-                    with path.open('rb') as fobjb:
-                        _bytes = fobjb.read()
-                    return _StaticTemplate(name=path.name, data=_bytes)
+                        # treat the file as binary data.
+                        with path.open('rb') as fobjb:
+                            _bytes = fobjb.read()
+                        return _StaticTemplate(name=path.name, data=_bytes)
+                except IOError as e:
+                    raise FailedToCreateTemplate(f"Cannot read Template: '{path.as_posix()}'. I/O error: {e}") from e
 
             else:
                 warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
