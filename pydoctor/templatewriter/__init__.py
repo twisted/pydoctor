@@ -59,9 +59,9 @@ class IWriter(Protocol):
     """
 
     @overload
-    def __init__(self, htmloutput: Path) -> None: ...
+    def __init__(self, build_directory: Path) -> None: ...
     @overload
-    def __init__(self, htmloutput: Path, template_lookup: 'TemplateLookup') -> None: ...
+    def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None: ...
 
     def prepOutputDirectory(self) -> None:
         """
@@ -288,17 +288,16 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    def __init__(self, template_dir: Union[Traversable, Path]) -> None:
+    def __init__(self, path: Union[Traversable, Path]) -> None:
         """
-        Init L{TemplateLookup} with templates in C{template_dir}.
-        This loads all templates into the lookup C{_templates} dict.
+        Loads all templates from the given C{path} into the lookup.
 
-        @param template_dir: A L{Path} or L{Traversable} object 
-            to load the templates from.
+        @param path: A L{Path} or L{Traversable} object pointing to a
+            directory to load the templates from.
         """
         self._templates: Dict[str, Template] = {}
 
-        self.add_templatedir(template_dir)
+        self.add_templatedir(path)
         
         self._default_templates = self._templates.copy()
     
@@ -351,11 +350,11 @@ class TemplateLookup:
         else:
             self._templates[template.name] = template
 
-    def add_templatedir(self, dir: Union[Path, Traversable]) -> None:
+    def add_templatedir(self, path: Union[Path, Traversable]) -> None:
         """
         Scan a directory and add all templates in the given directory to the lookup.
         """
-        for template in Template.fromdir(dir):
+        for template in Template.fromdir(path):
             self.add_template(template)
 
     def get_template(self, filename: str) -> Template:
