@@ -137,7 +137,7 @@ class Template(abc.ABC):
         def template_name(filename: str) -> str:
             # The template name is the relative path to the template.
             # Template files in subdirectories will have a name like: 'static/bar.svg'.
-            return str(subdir.joinpath(filename)) if subdir else filename
+            return subdir.joinpath(filename).as_posix() if subdir else filename
 
         if not path.is_file():
             return None
