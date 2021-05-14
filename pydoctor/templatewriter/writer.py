@@ -6,7 +6,7 @@ from typing import IO, Iterable, Optional, Type
 
 from pydoctor import model
 from pydoctor.templatewriter import (
-    DOCTYPE, pages, summary, TemplateLookup, IWriter, _StaticTemplate, Template
+    DOCTYPE, pages, summary, TemplateLookup, IWriter, StaticTemplate
 )
 
 from twisted.python.failure import Failure
@@ -59,15 +59,8 @@ class TemplateWriter(IWriter):
         Write static CSS and JS files to build directory.
         """
         self.output_dir.mkdir(exist_ok=True, parents=True)
-        self._writeStaticTemplates(self.template_lookup.templates)
-    
-    def _writeStaticTemplates(self, templates: Iterable[Template]) -> None:
-        """
-        Write all L{_StaticTemplate} to output directory, inspect L{_TemplateSubFolder} 
-        and reccursively write the static templates in subfolders.
-        """
-        for template in templates:
-            if isinstance(template, _StaticTemplate):
+        for template in self.template_lookup.templates:
+            if isinstance(template, StaticTemplate):
                 template.write(self.output_dir)
 
     def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:

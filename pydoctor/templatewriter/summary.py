@@ -49,7 +49,7 @@ class ModuleIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Module Index"
@@ -139,7 +139,7 @@ class ClassIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Class Hierarchy"
@@ -318,7 +318,7 @@ class UndocumentedSummaryPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Summary of Undocumented Objects"

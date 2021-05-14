@@ -88,7 +88,6 @@ class IWriter(Protocol):
         Called last.
         """
 
-
 class Template(abc.ABC):
     """
     Represents a pydoctor template file.
@@ -96,37 +95,22 @@ class Template(abc.ABC):
     It holds references to template information.
 
     It's an additionnal level of abstraction to hook to the
-    rendering system, it stores the loader object that
-    is going to be reused for each output file using this template.
+    rendering system. 
 
     Use L{Template.fromfile} to create Templates.
 
     @see: L{TemplateLookup}
     """
 
-    def __init__(self, name: str, data: Union[str, bytes]):
+    def __init__(self, name: str):
         self.name = name
         """Template filename"""
-
-        self.data = data
-        """
-        Template data: contents of the template file as 
-        UFT-8 decoded L{str} or directly L{bytes} for static templates.
-        """
-
-    TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', # Web
-    '.svg', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.tif', '.tiff', # Images
-    '.fnt', '.fon', '.otf','.ttf', '.woff', '.woff2', # Font Formats
-    '.xml', '.json', # Data
-    )
 
     @classmethod
     def fromfile(cls, path: Union[Traversable, Path]) -> Optional['Template']:
         """
         Create a concrete template object.
         Type depends on the file extension.
-
-        Warns if the template cannot be created.
 
         @param path: A L{Path} or L{Traversable} object that should point to a template file or folder. 
         @returns: The template object or C{None} if file extension is invalid.
@@ -140,85 +124,40 @@ class Template(abc.ABC):
             return ext
 
         if path.is_dir():
-            return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
-        if path.is_file():
-            file_extension = suffix(path.name).lower()
-
-            # Remove this 'if/else' to copy ANY kind of files to build directory.
-            if file_extension in cls.TEMPLATE_FILES_SUFFIX:
+            return StaticTemplateFolder(name=path.name, 
+                                      lookup=TemplateLookup(path))
+        if not path.is_file():
+            return None
+        file_extension = suffix(path.name).lower()
+        try:
+            if file_extension == '.html':
                 try:
-                    if file_extension == '.html':
-                        try:
-                            with path.open('r', encoding='utf-8') as fobj:
-                                text = fobj.read()
-                        except UnicodeDecodeError as e:
-                            raise FailedToCreateTemplate(f"Cannot decode HTML Template as UTF-8: '{path}'. {e}") from e
-                        else:
-                            return _HtmlTemplate(name=path.name, text=text)
-                    else:
-                        # treat the file as binary data.
-                        with path.open('rb') as fobjb:
-                            _bytes = fobjb.read()
-                        return _StaticTemplate(name=path.name, data=_bytes)
-                except IOError as e:
-                    raise FailedToCreateTemplate(f"Cannot read Template: '{path}'. I/O error: {e}") from e
-
+                    with path.open('r', encoding='utf-8') as fobj:
+                        text = fobj.read()
+                except UnicodeDecodeError as e:
+                    raise FailedToCreateTemplate("Cannot decode HTML Template"
+                                f" as UTF-8: '{path}'. {e}") from e
+                else:
+                    return HtmlTemplate(name=path.name, text=text)
             else:
-                warnings.warn(f"Cannot create Template: {path} is not recognized as template file. "
-                    f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
-        
-        return None
+                # treat the file as binary data.
+                with path.open('rb') as fobjb:
+                    _bytes = fobjb.read()
+                return StaticTemplateFile(name=path.name, data=_bytes)
+        except IOError as e:
+            raise FailedToCreateTemplate(f"Cannot read Template: '{path}'."
+                        " I/O error: {e}") from e
 
+    @abc.abstractmethod
     def is_empty(self) -> bool:
         """
-        Does this template contain nothing except whitespace?
-        Empty templates will not be rendered.
-        """
-        if isinstance(self.data, str):
-            return len(self.data.strip()) == 0
-        else:
-            return len(self.data) == 0
-
-    @abc.abstractproperty
-    def version(self) -> int:
-        """
-        Template version, C{-1} if no version.
-
-        HTML Templates should have a version identifier as follow::
-
-            <meta name="pydoctor-template-version" content="1" />
-
-        This is always C{-1} for CSS and JS templates.
+        Does this template is empty? Emptyness is defined by subclasses. 
+        Empty placeholder templates will not be rendered, but 
         """
         raise NotImplementedError()
 
-    @abc.abstractproperty
-    def loader(self) -> Optional[ITemplateLoader]:
-        """
-        Object used to render the final file.
+class StaticTemplate(Template):
 
-        For HTML templates, this is a L{ITemplateLoader}.
-
-        For CSS and JS templates, this is C{None}
-        because there is no rendering to do, it's already the final file.
-        """
-        raise NotImplementedError()
-
-class _StaticTemplate(Template):
-    """
-    Static template: no rendering, will be copied as is to build directory.
-
-    For CSS and JS templates.
-    """
-    data: bytes
-
-    @property
-    def version(self) -> int:
-        return -1
-    @property
-    def loader(self) -> None:
-        return None
-    
     def write(self, output_dir: Path, subfolder: Optional[PurePath] = None) -> PurePath:
         """
         Directly write the contents of this static template as is to the output dir.
@@ -231,18 +170,43 @@ class _StaticTemplate(Template):
         self._write(outfile)
         return _template_path
     
+    @abc.abstractmethod
+    def _write(self, path: Path) -> None:
+        raise NotImplementedError()
+
+class StaticTemplateFile(StaticTemplate):
+    """
+    Static template: no rendering, will be copied as is to build directory.
+
+    For CSS and JS templates.
+    """
+    data: bytes
+    
+    def __init__(self, name: str, data: bytes) -> None:
+        super().__init__(name)
+        self.data: bytes = data
+        """
+        Template data: contents of the template file as 
+        UFT-8 decoded L{str} or directly L{bytes} for static templates.
+        """
+    
+    def is_empty(self) -> bool:
+        return len(self.data)==0
+    
     def _write(self, path: Path) -> None:
         with path.open('wb') as fobjb:
             fobjb.write(self.data)
 
-class _TemplateSubFolder(_StaticTemplate):
+class StaticTemplateFolder(StaticTemplate):
     """
     Special template to hold a subfolder contents. 
+
+    Subfolders should only contains static files. 
 
     Currently used for C{fonts}.
     """
     def __init__(self, name: str, lookup: 'TemplateLookup'):
-        super().__init__(name, '')
+        super().__init__(name)
 
         self.lookup: 'TemplateLookup' = lookup
         """
@@ -255,14 +219,17 @@ class _TemplateSubFolder(_StaticTemplate):
         """
         subfolder = super().write(output_dir, subfolder)
         for template in self.lookup.templates:
-            if isinstance(template, _StaticTemplate):
+            if isinstance(template, StaticTemplate):
                 template.write(output_dir, subfolder)
         return subfolder
 
     def _write(self, path: Path) -> None:
         path.mkdir(exist_ok=True, parents=True)
+    
+    def is_empty(self) -> bool:
+        return len(list(self.lookup._templates))==0
         
-class _HtmlTemplate(Template):
+class HtmlTemplate(Template):
     """
     HTML template that works with the Twisted templating system
     and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag.
@@ -270,7 +237,8 @@ class _HtmlTemplate(Template):
     data: str
 
     def __init__(self, name: str, text: str):
-        super().__init__(name=name, data=text)
+        super().__init__(name=name)
+        self.data = text
         if self.is_empty():
             self._dom: Optional[minidom.Document] = None
             self._version = -1
@@ -282,10 +250,28 @@ class _HtmlTemplate(Template):
 
     @property
     def version(self) -> int:
+        """
+        Template version, C{-1} if no version could be read in the XML file.
+
+        HTML Templates should have a version identifier as follow::
+
+            <meta name="pydoctor-template-version" content="1" />
+
+        The version indentifier should be a integer.
+        """
         return self._version
+
     @property
     def loader(self) -> ITemplateLoader:
+        """
+        Object used to render the final file.
+
+        This is a L{ITemplateLoader}.
+        """
         return self._loader
+    
+    def is_empty(self) -> bool:
+        return len(self.data.strip()) == 0
 
     @staticmethod
     def _extract_version(dom: minidom.Document, template_name: str) -> int:
@@ -334,7 +320,8 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    def __init__(self, template_dir: Optional[Union[Traversable, Path]] = None, theme: str = 'classic') -> None:
+    def __init__(self, template_dir: Optional[Union[Traversable, Path]] = None, 
+                       theme: str = 'classic') -> None:
         """
         Init L{TemplateLookup} with templates in C{pydoctor/templates}.
         This loads all templates into the lookup C{_templates} dict.
@@ -346,91 +333,75 @@ class TemplateLookup:
 
         if not template_dir:
             theme_path = importlib_resources.files('pydoctor.themes') / theme
-            self._load_dir(theme_path)
+            self.add_templatedir(theme_path)
         else:
-            self._load_dir(template_dir)
+            self.add_templatedir(template_dir)
         
         self._default_templates = self._templates.copy()
-
-    def _load_dir(self, templatedir: Union[Traversable, Path], add: bool = False) -> None:
-        for template in scandir(templatedir):
-            if add:
-                self.add_template(template)
-            else:
-                self._load_template(template)
     
-    def _load_lookup(self, lookup: 'TemplateLookup') -> None:
-        # Currently, _load_lookup is only called when adding a subfolder to the TemplateLookup entries,
-        # so we call add_template() no matter what to check for version compat.
-        for template in lookup.templates:
-            self.add_template(template)
-    
-    def _load_template(self, template: Template) -> None:
-        """
-        Load the template inside the lookup, handle the subfolders etc.     
-
-        @raises OverrideTemplateNotAllowed: If a path in this template overrides a path of a different type (HTML/static/subdir).      
-        """
-        current_template = self._templates.get(template.name, None)
-        if current_template:
-            if isinstance(current_template, _TemplateSubFolder):
-                if isinstance(template, _TemplateSubFolder):
-                    current_template.lookup._load_lookup(template.lookup)
-                else:
-                    raise OverrideTemplateNotAllowed(f"Cannot override _TemplateSubFolder with a {template.__class__.__name__}."
-                        f"Rename '{template.name}' to something else. ")
-            
-            elif isinstance(current_template, _StaticTemplate):
-                if isinstance(template, _StaticTemplate):
-                    self._templates[template.name] = template
-                else:
-                    raise OverrideTemplateNotAllowed(f"Cannot override _StaticTemplate with a {template.__class__.__name__}."
-                        f"Rename '{template.name}' to something else. ")
-            
-            elif isinstance(current_template, _HtmlTemplate):
-                if isinstance(template, _HtmlTemplate):
-                    self._templates[template.name] = template
-                else:
-                    raise OverrideTemplateNotAllowed(f"Cannot override _HtmlTemplate with a  {template.__class__.__name__}."
-                        f"Rename '{template.name}' to something else. ")
-        else:
-            self._templates[template.name] = template
+    def _add_overriding_html_template(self, template: HtmlTemplate, current_template: HtmlTemplate) -> None:
+        default_version = current_template.version
+        template_version = template.version
+        if default_version != -1 and template_version != -1:
+            if template_version < default_version:
+                warnings.warn(f"Your custom template '{template.name}' is out of date, "
+                                "information might be missing. "
+                                "Latest templates are available to download from our github." )
+            elif template_version > default_version:
+                raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' "
+                                    "is designed for a newer version of pydoctor."
+                                    "Rendering will most probably fail. Upgrade to latest "
+                                    "version of pydoctor with 'pip install -U pydoctor'. ")
+        self._templates[template.name] = template
 
     def add_template(self, template: Template) -> None:
         """
-        Add a custom template to the lookup. The custom template override the default.
+        Add a template to the lookup. The custom template override the default. 
+        
+        If the file doesn't exist in the default template, we assume it is additional data used by the custom template.
 
-        Compare the passed Template version with default template,
+        For HTML, compare the passed Template version with default template,
         issue warnings if template are outdated.
 
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
         @raises OverrideTemplateNotAllowed: If a path in this template overrides a path of a different type (HTML/static/subdir).
         """
 
-        try:
-            default_version = self._default_templates[template.name].version
-        except KeyError:
-            # Passing the file as is
-            self._load_template(template)
+        current_template = self._templates.get(template.name, None)
+        if current_template:
+            if isinstance(current_template, StaticTemplateFolder):
+                if isinstance(template, StaticTemplateFolder):
+                    for t in template.lookup.templates:
+                        current_template.lookup.add_template(t)
+                else:
+                    raise OverrideTemplateNotAllowed("Cannot override StaticTemplateFolder with "
+                        f"a {template.__class__.__name__}. "
+                        f"Rename '{template.name}' to something else. ")
+            
+            elif isinstance(current_template, StaticTemplateFile):
+                if isinstance(template, StaticTemplateFile):
+                    self._templates[template.name] = template
+                else:
+                    raise OverrideTemplateNotAllowed(f"Cannot override StaticTemplateFile with "
+                        f"a {template.__class__.__name__}. "
+                        f"Rename '{template.name}' to something else. ")
+            
+            elif isinstance(current_template, HtmlTemplate):
+                if isinstance(template, HtmlTemplate):
+                    self._add_overriding_html_template(template, current_template)
+                else:
+                    raise OverrideTemplateNotAllowed(f"Cannot override HtmlTemplate with "
+                        f"a {template.__class__.__name__}. "
+                        f"Rename '{template.name}' to something else. ")
         else:
-            template_version = template.version
-            if default_version != -1 and template_version != -1 :
-                if template_version < default_version:
-                    warnings.warn(f"Your custom template '{template.name}' is out of date, "
-                                    "information might be missing. "
-                                   "Latest templates are available to download from our github." )
-                elif template_version > default_version:
-                    raise UnsupportedTemplateVersion(f"It appears that your custom template '{template.name}' "
-                                        "is designed for a newer version of pydoctor."
-                                        "Rendering will most probably fail. Upgrade to latest "
-                                        "version of pydoctor with 'pip install -U pydoctor'. ")
-            self._load_template(template)
+            self._templates[template.name] = template
 
-    def add_templatedir(self, dir: Path) -> None:
+    def add_templatedir(self, dir: Union[Path, Traversable]) -> None:
         """
         Scan a directory and add all templates in the given directory to the lookup.
         """
-        self._load_dir(dir, add=True)
+        for template in scandir(dir):
+            self.add_template(template)
 
     def get_template(self, filename: str) -> Template:
         """
@@ -454,10 +425,10 @@ class TemplateLookup:
         Lookup a HTML template loader based on its filename.
 
         @raises ValueError: If the template loader is C{None}.
-        """
+        """ 
         template = self.get_template(filename)
-        if template.loader is None:
-            raise ValueError(f"Failed to get loader of template '{filename}' (template.loader is None)")
+        if not isinstance(template, HtmlTemplate):
+            raise ValueError(f"Failed to get loader of template '{filename}': Not a HTML template.")
         return template.loader
 
     @property
