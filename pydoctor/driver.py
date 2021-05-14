@@ -7,6 +7,7 @@ import datetime
 import os
 import sys
 import warnings
+from enum import Enum
 from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
@@ -19,13 +20,15 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
-# On Python 3.7+, use importlib.resources from the standard library.
-# On older versions, a compatibility package must be installed from PyPI.
-try:
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
     import importlib.resources as importlib_resources
-except ImportError:
-    if not TYPE_CHECKING:
-        import importlib_resources
+
+class Theme(Enum):
+    CLASSIC_THEME = 'classic'
+    # READTHEDOCS_THEME = 'readthedocs'
+    # Soon
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -159,9 +162,13 @@ def getparser() -> OptionParser:
         help=("Format used for parsing docstrings. "
              f"Supported values: {', '.join(_docformat_choices)}"))
     parser.add_option(
-        '--template-dir',
-        dest='templatedir',
-        help=("Directory containing custom HTML templates."),
+        '--template-dir', action='append',
+        dest='templatedir', default=[],
+        help=("Directory containing custom HTML templates. Can repeat."),
+    )
+    parser.add_option('--theme', dest='theme', default=Theme.CLASSIC_THEME.value, 
+        choices=[t.value for t in Theme] ,
+        help=("The theme to use when building your API documentation. "),
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
@@ -439,26 +446,36 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writerclass.__name__))
 
             writer: IWriter
+            
+            # Always init the writer with the 'classic' set of templates at least.
+            template_lookup = TemplateLookup(
+                                importlib_resources.files('pydoctor.themes') / Theme.CLASSIC_THEME.value)
+            
+            # Handle other kinds of themes
+            if system.options.theme != Theme.CLASSIC_THEME.value:
+                try:
+                    template_lookup.add_templatedir(
+                        importlib_resources.files('pydoctor.themes') / system.options.theme)
+                except Exception:
+                    pass
+
             # Handle custom HTML templates
             if system.options.templatedir:
-                custom_lookup = TemplateLookup()
                 try:
-                    custom_lookup.add_templatedir(
-                        Path(system.options.templatedir))
+                    for t in system.options.templatedir:
+                        template_lookup.add_templatedir(Path(t))
                 except TemplateError  as e:
                     error(str(e))
 
-                try:
-                    # mypy error: Cannot instantiate abstract class 'IWriter'
-                    writer = writerclass(options.htmloutput, # type: ignore[abstract]
-                        template_lookup=custom_lookup)
-                except TypeError:
-                    # Custom class does not accept 'template_lookup' argument.
-                    writer = writerclass(options.htmloutput) # type: ignore[abstract]
-                    warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                        "HTML template customization with --template-dir.")
-            else:
+            try:
+                # mypy error: Cannot instantiate abstract class 'IWriter'
+                writer = writerclass(options.htmloutput, # type: ignore[abstract]
+                    template_lookup=template_lookup)
+            except TypeError:
+                # Custom class does not accept 'template_lookup' argument.
                 writer = writerclass(options.htmloutput) # type: ignore[abstract]
+                warnings.warn(f"Writer '{writerclass.__name__}' does not support "
+                    "HTML template customization with --template-dir.")
 
             writer.prepOutputDirectory()
 

@@ -15,10 +15,8 @@ from xml.dom import minidom
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if sys.version_info < (3, 9):
-    import importlib_resources
     from importlib_resources.abc import Traversable
 else:
-    import importlib.resources as importlib_resources
     from importlib.abc import Traversable
 
 from twisted.web.iweb import ITemplateLoader
@@ -49,7 +47,7 @@ class UnsupportedTemplateVersion(TemplateError):
     """Raised when custom template is designed for a newer version of pydoctor"""
 
 class OverrideTemplateNotAllowed(TemplateError):
-    """Raised when a template is trying to be overriden because of a bogus path entry"""
+    """Raised when a template path overrides a path of a different type (HTML/static/subdir)."""
 
 class FailedToCreateTemplate(TemplateError):
     """Raised when a template could not be created because of an error"""
@@ -102,15 +100,17 @@ class Template(abc.ABC):
     def fromdir(cls, path: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Iterator['Template']:
         """
         Scan a directory for templates. 
+
+        @raises FailedToCreateTemplate: If the path is not a directory or do not exist. 
         """
         if not path.is_dir():
-            raise ValueError(f"Not a directory: {path}")
+            raise FailedToCreateTemplate(f"Template folder do not exist or is not a directory: {path}")
         subdir = subdir.joinpath(path.name) if subdir else PurePath()
         for entry in path.iterdir():
             if entry.is_dir():
-                yield from cls.fromdir(entry, subdir=subdir)
+                yield from Template.fromdir(entry, subdir=subdir)
             else:
-                template = cls.fromfile(entry, subdir=subdir)
+                template = Template.fromfile(entry, subdir=subdir)
                 if template:
                     yield template
 
@@ -132,6 +132,10 @@ class Template(abc.ABC):
             return ext
         
         def template_name(filename: str) -> str:
+            # Figure the template identifier.
+            # If dealing with subdirectories, this will include the full relative path 
+            # to the template, subdirectories included.
+            # Template files in subdirectory will then have a name like: 'static/foo/bar.svg'.
             return str(subdir.joinpath(filename)) if subdir else filename
 
         if not path.is_file():
@@ -139,7 +143,10 @@ class Template(abc.ABC):
 
         file_extension = suffix(path.name).lower()
         
+        template: Template
+
         try:
+            # Only try to decode the file text only if the file is an HTML template
             if file_extension == '.html':
                 try:
                     with path.open('r', encoding='utf-8') as fobj:
@@ -148,15 +155,22 @@ class Template(abc.ABC):
                     raise FailedToCreateTemplate("Cannot decode HTML Template"
                                 f" as UTF-8: '{path}'. {e}") from e
                 else:
-                    return HtmlTemplate(name=template_name(path.name), text=text)
+                    template = HtmlTemplate(name=template_name(path.name), text=text)
+            
+            # else, treat the file as binary data.
             else:
-                # treat the file as binary data.
                 with path.open('rb') as fobjb:
-                    _bytes = fobjb.read()
-                return StaticTemplate(name=template_name(path.name), data=_bytes)
+                    data = fobjb.read()
+
+                template = StaticTemplate(name=template_name(path.name), data=data)
+        
+        # Catch io errors only once for the whole block, it'sok to do that since 
+        # we're reading only one file per call to fromfile()
         except IOError as e:
             raise FailedToCreateTemplate(f"Cannot read Template: '{path}'."
                         " I/O error: {e}") from e
+        
+        return template
 
     @abc.abstractmethod
     def is_empty(self) -> bool:
@@ -172,16 +186,11 @@ class StaticTemplate(Template):
 
     For CSS and JS templates.
     """
-
-
-
-    
     def __init__(self, name: str, data: bytes) -> None:
         super().__init__(name)
         self.data: bytes = data
         """
-        Template data: contents of the template file as 
-        UFT-8 decoded L{str} or directly L{bytes} for static templates.
+        Contents of the template file as L{bytes}.
         """
     
     def is_empty(self) -> bool:
@@ -208,17 +217,20 @@ class HtmlTemplate(Template):
     HTML template that works with the Twisted templating system
     and use L{xml.dom.minidom} to parse the C{pydoctor-template-version} meta tag.
     """
-    data: str
-
     def __init__(self, name: str, text: str):
         super().__init__(name=name)
-        self.data = text
+
+        self.text = text
+        """
+        Contents of the template file as 
+        UFT-8 decoded L{str}.
+        """
         if self.is_empty():
             self._dom: Optional[minidom.Document] = None
             self._version = -1
             self._loader: ITemplateLoader = TagLoader(tags.transparent)
         else:
-            self._dom = parse_xml(self.data)
+            self._dom = parse_xml(self.text)
             self._version = self._extract_version(self._dom, self.name)
             self._loader = XMLString(self._dom.toxml())
 
@@ -238,14 +250,15 @@ class HtmlTemplate(Template):
     @property
     def loader(self) -> ITemplateLoader:
         """
-        Object used to render the final file.
+        Object used to render the final HTML file 
+        with the Twisted templating system.
 
         This is a L{ITemplateLoader}.
         """
         return self._loader
     
     def is_empty(self) -> bool:
-        return len(self.data.strip()) == 0
+        return len(self.text.strip()) == 0
 
     @staticmethod
     def _extract_version(dom: minidom.Document, template_name: str) -> int:
@@ -294,22 +307,17 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    def __init__(self, template_dir: Optional[Union[Traversable, Path]] = None, 
-                       theme: str = 'classic') -> None:
+    def __init__(self, template_dir: Union[Traversable, Path]) -> None:
         """
-        Init L{TemplateLookup} with templates in C{pydoctor/templates}.
+        Init L{TemplateLookup} with templates in C{template_dir}.
         This loads all templates into the lookup C{_templates} dict.
 
-        @param template_dir: A custom L{Path} or L{Traversable} object to load the templates from.
-        @param theme: Load the theme if C{template_dir} is not defined.
+        @param template_dir: A L{Path} or L{Traversable} object 
+            to load the templates from.
         """
         self._templates: Dict[str, Template] = {}
 
-        if not template_dir:
-            theme_path = importlib_resources.files('pydoctor.themes') / theme
-            self.add_templatedir(theme_path)
-        else:
-            self.add_templatedir(template_dir)
+        self.add_templatedir(template_dir)
         
         self._default_templates = self._templates.copy()
     
@@ -338,7 +346,7 @@ class TemplateLookup:
         issue warnings if template are outdated.
 
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
-        @raises OverrideTemplateNotAllowed: If a path in this template overrides a path of a different type (HTML/static/subdir).
+        @raises OverrideTemplateNotAllowed: If this template path overrides a path of a different type (HTML/static/subdir).
         """
 
         current_template = self._templates.get(template.name, None)

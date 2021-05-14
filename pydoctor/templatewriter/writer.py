@@ -2,7 +2,7 @@
 
 
 from pathlib import Path
-from typing import IO, Iterable, Optional, Type
+from typing import IO, Iterable, Type
 
 from pydoctor import model
 from pydoctor.templatewriter import (
@@ -41,7 +41,7 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, output_dir: str, template_lookup: Optional[TemplateLookup] = None):
+    def __init__(self, output_dir: str, template_lookup: TemplateLookup):
         """
         @arg output_dir: Output directory.
         @arg template_lookup: Custom L{TemplateLookup} object.
@@ -50,8 +50,7 @@ class TemplateWriter(IWriter):
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
-        self.template_lookup:TemplateLookup = (
-            template_lookup if template_lookup else TemplateLookup() )
+        self.template_lookup: TemplateLookup = template_lookup
         """Writer's L{TemplateLookup} object"""
 
     def prepOutputDirectory(self) -> None:

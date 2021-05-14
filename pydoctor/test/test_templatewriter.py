@@ -3,6 +3,7 @@ from typing import Callable
 import pytest
 import shutil
 import warnings
+import sys
 from pathlib import Path
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import (StaticTemplate, pages, writer, 
@@ -13,6 +14,13 @@ from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
+
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
+template_dir = importlib_resources.files("pydoctor.themes") / "classic"
 
 def filetext(path: Path) -> str:
     with path.open('r', encoding='utf-8') as fobj:
@@ -26,7 +34,7 @@ def flatten(t: ChildTable) -> str:
 
 
 def getHTMLOf(ob: model.Documentable) -> str:
-    wr = templatewriter.TemplateWriter('')
+    wr = templatewriter.TemplateWriter('', TemplateLookup(template_dir))
     f = BytesIO()
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
@@ -43,13 +51,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -72,7 +80,7 @@ def test_document_code_in_init_module() -> None:
 
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
-    w = writer.TemplateWriter(str(tmp_path))
+    w = writer.TemplateWriter(str(tmp_path), TemplateLookup(template_dir))
     system.options.htmlusesplitlinks = True
     system.options.htmlusesorttable = True
     w.prepOutputDirectory()
@@ -129,14 +137,14 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     assert "methodB" in html
 
 def test_html_template_version() -> None:
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
     for template in lookup._templates.values():
         if isinstance(template, HtmlTemplate) and not template.is_empty():
             assert template.version >= 1
 
 def test_template_lookup_get_template() -> None:
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     here = Path(__file__).parent
 
@@ -144,7 +152,7 @@ def test_template_lookup_get_template() -> None:
 
     assert isinstance(index, HtmlTemplate)
 
-    assert index.data == filetext(here.parent / 'themes' / 'classic' / 'index.html')
+    assert index.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
     lookup.add_template(HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
@@ -152,21 +160,21 @@ def test_template_lookup_get_template() -> None:
 
     assert isinstance(footer, HtmlTemplate)
 
-    assert footer.data == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
+    assert footer.text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
     index2 = lookup.get_template('index.html')
 
     assert isinstance(index2, HtmlTemplate)
 
-    assert index2.data == filetext(here.parent / 'themes' / 'classic' / 'index.html')
+    assert index2.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     footer = lookup.get_template('footer.html')
 
     assert isinstance(footer, HtmlTemplate)
 
-    assert footer.data == filetext(here.parent / 'themes' / 'classic' / 'footer.html')
+    assert footer.text == filetext(here.parent / 'themes' / 'classic' / 'footer.html')
 
     subheader = lookup.get_template('subheader.html')
 
@@ -182,7 +190,7 @@ def test_template_lookup_get_template() -> None:
 
 def test_template_lookup_add_template_warns() -> None:
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     here = Path(__file__).parent
 
@@ -214,13 +222,13 @@ def test_template_lookup_add_template_allok() -> None:
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         warnings.simplefilter("always")
-        lookup = TemplateLookup()
+        lookup = TemplateLookup(template_dir)
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_raises() -> None:
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     with pytest.raises(UnsupportedTemplateVersion):
         lookup.add_template(HtmlTemplate(name="nav.html", text="""
