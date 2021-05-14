@@ -379,11 +379,11 @@ class TemplateLookup:
         """
         Lookup a HTML template loader based on its filename.
 
-        @raises ValueError: If the template loader is C{None}.
+        @raises ValueError: If the template is not an HTML file.
         """ 
         template = self.get_template(filename)
         if not isinstance(template, HtmlTemplate):
-            raise ValueError(f"Failed to get loader of template '{filename}': Not a HTML template.")
+            raise ValueError(f"Failed to get loader of template '{filename}': Not an HTML file.")
         return template.loader
 
     @property
