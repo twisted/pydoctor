@@ -192,15 +192,10 @@ class StaticTemplate(Template):
         """
         Directly write the contents of this static template as is to the output dir.
         """
-
         outfile = output_dir.joinpath(self.name)
-        self._write(outfile)
-    
-    def _write(self, path: Path) -> None:
-        path.parent.mkdir(exist_ok=True, parents=True)
-        with path.open('wb') as fobjb:
+        outfile.parent.mkdir(exist_ok=True, parents=True)
+        with outfile.open('wb') as fobjb:
             fobjb.write(self.data)
-
         
 class HtmlTemplate(Template):
     """
