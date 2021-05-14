@@ -41,26 +41,30 @@ class TemplateWriter(IWriter):
                     return False
         return True
 
-    def __init__(self, output_dir: str, template_lookup: TemplateLookup):
+    def __init__(self, build_directory: Path, template_lookup: TemplateLookup):
         """
-        @arg output_dir: Output directory.
-        @arg template_lookup: Custom L{TemplateLookup} object.
+        @arg build_directory: Build directory.
+        @arg template_lookup: L{TemplateLookup} object.
         """
-        self.output_dir: Path = Path(output_dir)
+        self.build_directory = build_directory
+        """Build directory"""
+
+        self.template_lookup: TemplateLookup = template_lookup
+        """Writer's L{TemplateLookup} object"""
+
         self.written_pages: int = 0
         self.total_pages: int = 0
         self.dry_run: bool = False
-        self.template_lookup: TemplateLookup = template_lookup
-        """Writer's L{TemplateLookup} object"""
+        
 
     def prepOutputDirectory(self) -> None:
         """
         Write static CSS and JS files to build directory.
         """
-        self.output_dir.mkdir(exist_ok=True, parents=True)
+        self.build_directory.mkdir(exist_ok=True, parents=True)
         for template in self.template_lookup.templates:
             if isinstance(template, StaticTemplate):
-                template.write(self.output_dir)
+                template.write(self.build_directory)
 
     def writeIndividualFiles(self, obs: Iterable[model.Documentable]) -> None:
         """
@@ -79,7 +83,7 @@ class TemplateWriter(IWriter):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
-            with self.output_dir.joinpath(pclass.filename).open('wb') as fobj:
+            with self.build_directory.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
@@ -90,7 +94,7 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.output_dir.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.build_directory.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)

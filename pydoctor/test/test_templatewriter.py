@@ -33,7 +33,7 @@ def flatten(t: ChildTable) -> str:
 
 
 def getHTMLOf(ob: model.Documentable) -> str:
-    wr = templatewriter.TemplateWriter('', TemplateLookup(template_dir))
+    wr = templatewriter.TemplateWriter(Path(), TemplateLookup(template_dir))
     f = BytesIO()
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
@@ -79,7 +79,7 @@ def test_document_code_in_init_module() -> None:
 
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
-    w = writer.TemplateWriter(str(tmp_path), TemplateLookup(template_dir))
+    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
     system.options.htmlusesplitlinks = True
     system.options.htmlusesorttable = True
     w.prepOutputDirectory()

@@ -59,9 +59,9 @@ class IWriter(Protocol):
     """
 
     @overload
-    def __init__(self, htmloutput: str) -> None: ...
+    def __init__(self, htmloutput: Path) -> None: ...
     @overload
-    def __init__(self, htmloutput: str, template_lookup: 'TemplateLookup') -> None: ...
+    def __init__(self, htmloutput: Path, template_lookup: 'TemplateLookup') -> None: ...
 
     def prepOutputDirectory(self) -> None:
         """
@@ -188,11 +188,11 @@ class StaticTemplate(Template):
         Contents of the template file as L{bytes}.
         """
     
-    def write(self, output_dir: Path) -> None:
+    def write(self, build_directory: Path) -> None:
         """
         Directly write the contents of this static template as is to the output dir.
         """
-        outfile = output_dir.joinpath(self.name)
+        outfile = build_directory.joinpath(self.name)
         outfile.parent.mkdir(exist_ok=True, parents=True)
         with outfile.open('wb') as fobjb:
             fobjb.write(self.data)
