@@ -26,9 +26,9 @@ else:
     import importlib.resources as importlib_resources
 
 class Theme(Enum):
+    BASE = 'base' # the base theme is always loaded 
     CLASSIC = 'classic'
-    # READTHEDOCS = 'readthedocs'
-    # Soon
+    # READTHEDOCS = 'readthedocs' # Soon
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -447,12 +447,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             writer: IWriter
             
-            # Always init the writer with the 'classic' set of templates at least.
+            # Always init the writer with the 'base' set of templates at least.
             template_lookup = TemplateLookup(
-                                importlib_resources.files('pydoctor.themes') / Theme.CLASSIC.value)
+                                importlib_resources.files('pydoctor.themes') / Theme.BASE.value)
             
-            # Handle other kinds of themes
-            if system.options.theme != Theme.CLASSIC.value:
+            # Handle theme selection, 'classic' by default.
+            if system.options.theme != Theme.BASE.value:
                 try:
                     template_lookup.add_templatedir(
                         importlib_resources.files('pydoctor.themes') / system.options.theme)

@@ -19,7 +19,7 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-template_dir = importlib_resources.files("pydoctor.themes") / "classic"
+template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
 def filetext(path: Path) -> str:
     with path.open('r', encoding='utf-8') as fobj:
@@ -149,24 +149,24 @@ def test_template_lookup_get_template() -> None:
 
     index = lookup.get_template('index.html')
     assert isinstance(index, HtmlTemplate)
-    assert index.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
+    assert index.text == filetext(template_dir / 'index.html')
 
     lookup.add_template(HtmlTemplate(name='footer.html', 
                             text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
-                            
+
     footer = lookup.get_template('footer.html')
     assert isinstance(footer, HtmlTemplate)
     assert footer.text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
     index2 = lookup.get_template('index.html')
     assert isinstance(index2, HtmlTemplate)
-    assert index2.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
+    assert index2.text == filetext(template_dir / 'index.html')
 
     lookup = TemplateLookup(template_dir)
 
     footer = lookup.get_template('footer.html')
     assert isinstance(footer, HtmlTemplate)
-    assert footer.text == filetext(here.parent / 'themes' / 'classic' / 'footer.html')
+    assert footer.text == filetext(template_dir / 'footer.html')
 
     subheader = lookup.get_template('subheader.html')
     assert isinstance(subheader, HtmlTemplate)
