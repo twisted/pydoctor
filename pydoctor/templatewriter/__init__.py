@@ -122,7 +122,7 @@ class Template(abc.ABC):
     '.ttf', #TrueType font file
     '.woff', '.woff2', #Web Open Font Format, used by sphinx
     '.xml', '.json', # Data
-)
+    )
 
     @classmethod
     def fromfile(cls, path: Union[Traversable, Path]) -> Optional['Template']:
