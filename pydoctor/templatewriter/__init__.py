@@ -338,7 +338,7 @@ class TemplateLookup:
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override StaticTemplate with "
                         f"a {template.__class__.__name__}. "
-                        f"Rename '{template.name}' to something else. ")
+                        f"Rename '{template.name}' to something else.")
             
             elif isinstance(current_template, HtmlTemplate):
                 if isinstance(template, HtmlTemplate):
@@ -346,7 +346,7 @@ class TemplateLookup:
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override HtmlTemplate with "
                         f"a {template.__class__.__name__}. "
-                        f"Rename '{template.name}' to something else. ")
+                        f"Rename '{template.name}' to something else.")
         else:
             self._templates[template.name] = template
 
