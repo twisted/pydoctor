@@ -349,7 +349,7 @@ class TemplateLookup:
         self._templates: Dict[str, Template] = {}
 
         if not template_dir:
-            theme_path = importlib_resources.files(f'pydoctor.themes.{theme}')
+            theme_path = importlib_resources.files('pydoctor.themes') / theme
             self._load_dir(theme_path)
         else:
             self._load_dir(template_dir)
