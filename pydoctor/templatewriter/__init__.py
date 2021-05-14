@@ -167,7 +167,7 @@ class Template(abc.ABC):
 
                 template = StaticTemplate(name=template_name(path.name), data=data)
         
-        # Catch io errors only once for the whole block, it'sok to do that since 
+        # Catch io errors only once for the whole block, it's ok to do that since 
         # we're reading only one file per call to fromfile()
         except IOError as e:
             raise FailedToCreateTemplate(f"Cannot read Template: '{path}'."
