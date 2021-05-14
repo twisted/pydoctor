@@ -191,8 +191,6 @@ class StaticTemplate(Template):
     def write(self, output_dir: Path) -> None:
         """
         Directly write the contents of this static template as is to the output dir.
-
-        @returns: The relative path of the file that has been wrote.
         """
 
         outfile = output_dir.joinpath(self.name)
