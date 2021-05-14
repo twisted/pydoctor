@@ -124,7 +124,7 @@ class Template(abc.ABC):
 
         @param path: A L{Path} or L{Traversable} object that should point to a template file.
         @param subdir: The subdirectory inside the template folder structure that holds this template file. 
-        @returns: The template object or C{None} if file extension is invalid.
+        @returns: The template object or C{None} if a the path entry is not a file.
         @raises FailedToCreateTemplate: If there is an error while creating the template.
         """
 
@@ -135,10 +135,8 @@ class Template(abc.ABC):
             return ext
         
         def template_name(filename: str) -> str:
-            # Figure the template identifier.
-            # If dealing with subdirectories, this will include the full relative path 
-            # to the template, subdirectories included.
-            # Template files in subdirectory will then have a name like: 'static/foo/bar.svg'.
+            # The template name is the relative path to the template.
+            # Template files in subdirectories will have a name like: 'static/bar.svg'.
             return str(subdir.joinpath(filename)) if subdir else filename
 
         if not path.is_file():
