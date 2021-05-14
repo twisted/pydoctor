@@ -62,6 +62,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for multiple themes, selectable with ``--theme`` option.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
 
