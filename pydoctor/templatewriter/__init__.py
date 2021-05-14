@@ -40,15 +40,7 @@ def parse_xml(text: str) -> minidom.Document:
         return minidom.parseString(text)
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
-
-def scandir(path: Union[Traversable, Path]) -> Iterator['Template']:
-    """
-    Scan a directory for templates. 
-    """
-    for entry in path.iterdir():
-        template = Template.fromfile(entry)
-        if template:
-            yield template
+    
 
 class TemplateError(Exception):
     pass
@@ -107,7 +99,23 @@ class Template(abc.ABC):
         """Template filename"""
 
     @classmethod
-    def fromfile(cls, path: Union[Traversable, Path]) -> Optional['Template']:
+    def fromdir(cls, path: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Iterator['Template']:
+        """
+        Scan a directory for templates. 
+        """
+        if not path.is_dir():
+            raise ValueError(f"Not a directory: {path}")
+        subdir = subdir.joinpath(path.name) if subdir else PurePath()
+        for entry in path.iterdir():
+            if entry.is_dir():
+                yield from cls.fromdir(entry, subdir=subdir)
+            else:
+                template = cls.fromfile(entry, subdir=subdir)
+                if template:
+                    yield template
+
+    @classmethod
+    def fromfile(cls, path: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Optional['Template']:
         """
         Create a concrete template object.
         Type depends on the file extension.
@@ -122,13 +130,15 @@ class Template(abc.ABC):
             # importlib.abc.Traversable objects do not include .suffix property.
             _, ext = splitext(name)
             return ext
+        
+        def template_name(filename: str) -> str:
+            return str(subdir.joinpath(filename)) if subdir else filename
 
-        if path.is_dir():
-            return StaticTemplateFolder(name=path.name, 
-                                      lookup=TemplateLookup(path))
         if not path.is_file():
             return None
+
         file_extension = suffix(path.name).lower()
+        
         try:
             if file_extension == '.html':
                 try:
@@ -138,12 +148,12 @@ class Template(abc.ABC):
                     raise FailedToCreateTemplate("Cannot decode HTML Template"
                                 f" as UTF-8: '{path}'. {e}") from e
                 else:
-                    return HtmlTemplate(name=path.name, text=text)
+                    return HtmlTemplate(name=template_name(path.name), text=text)
             else:
                 # treat the file as binary data.
                 with path.open('rb') as fobjb:
                     _bytes = fobjb.read()
-                return StaticTemplateFile(name=path.name, data=_bytes)
+                return StaticTemplate(name=template_name(path.name), data=_bytes)
         except IOError as e:
             raise FailedToCreateTemplate(f"Cannot read Template: '{path}'."
                         " I/O error: {e}") from e
@@ -157,30 +167,14 @@ class Template(abc.ABC):
         raise NotImplementedError()
 
 class StaticTemplate(Template):
-
-    def write(self, output_dir: Path, subfolder: Optional[PurePath] = None) -> PurePath:
-        """
-        Directly write the contents of this static template as is to the output dir.
-
-        @returns: The relative path of the file that has been wrote.
-        """
-        _subfolder_path = subfolder if subfolder else PurePath()
-        _template_path = _subfolder_path.joinpath(self.name)
-        outfile = output_dir.joinpath(_template_path)
-        self._write(outfile)
-        return _template_path
-    
-    @abc.abstractmethod
-    def _write(self, path: Path) -> None:
-        raise NotImplementedError()
-
-class StaticTemplateFile(StaticTemplate):
     """
     Static template: no rendering, will be copied as is to build directory.
 
     For CSS and JS templates.
     """
-    data: bytes
+
+
+
     
     def __init__(self, name: str, data: bytes) -> None:
         super().__init__(name)
@@ -193,41 +187,21 @@ class StaticTemplateFile(StaticTemplate):
     def is_empty(self) -> bool:
         return len(self.data)==0
     
+    def write(self, output_dir: Path) -> None:
+        """
+        Directly write the contents of this static template as is to the output dir.
+
+        @returns: The relative path of the file that has been wrote.
+        """
+
+        outfile = output_dir.joinpath(self.name)
+        self._write(outfile)
+    
     def _write(self, path: Path) -> None:
+        path.parent.mkdir(exist_ok=True, parents=True)
         with path.open('wb') as fobjb:
             fobjb.write(self.data)
 
-class StaticTemplateFolder(StaticTemplate):
-    """
-    Special template to hold a subfolder contents. 
-
-    Subfolders should only contains static files. 
-
-    Currently used for C{fonts}.
-    """
-    def __init__(self, name: str, lookup: 'TemplateLookup'):
-        super().__init__(name)
-
-        self.lookup: 'TemplateLookup' = lookup
-        """
-        The lookup instance that contains the subfolder templates. 
-        """
-
-    def write(self, output_dir: Path, subfolder: Optional[PurePath] = None) -> PurePath:
-        """
-        Create the subfolder and reccursively write it's content to the output directory.
-        """
-        subfolder = super().write(output_dir, subfolder)
-        for template in self.lookup.templates:
-            if isinstance(template, StaticTemplate):
-                template.write(output_dir, subfolder)
-        return subfolder
-
-    def _write(self, path: Path) -> None:
-        path.mkdir(exist_ok=True, parents=True)
-    
-    def is_empty(self) -> bool:
-        return len(list(self.lookup._templates))==0
         
 class HtmlTemplate(Template):
     """
@@ -369,20 +343,12 @@ class TemplateLookup:
 
         current_template = self._templates.get(template.name, None)
         if current_template:
-            if isinstance(current_template, StaticTemplateFolder):
-                if isinstance(template, StaticTemplateFolder):
-                    for t in template.lookup.templates:
-                        current_template.lookup.add_template(t)
-                else:
-                    raise OverrideTemplateNotAllowed("Cannot override StaticTemplateFolder with "
-                        f"a {template.__class__.__name__}. "
-                        f"Rename '{template.name}' to something else. ")
             
-            elif isinstance(current_template, StaticTemplateFile):
-                if isinstance(template, StaticTemplateFile):
+            if isinstance(current_template, StaticTemplate):
+                if isinstance(template, StaticTemplate):
                     self._templates[template.name] = template
                 else:
-                    raise OverrideTemplateNotAllowed(f"Cannot override StaticTemplateFile with "
+                    raise OverrideTemplateNotAllowed(f"Cannot override StaticTemplate with "
                         f"a {template.__class__.__name__}. "
                         f"Rename '{template.name}' to something else. ")
             
@@ -400,7 +366,7 @@ class TemplateLookup:
         """
         Scan a directory and add all templates in the given directory to the lookup.
         """
-        for template in scandir(dir):
+        for template in Template.fromdir(dir):
             self.add_template(template)
 
     def get_template(self, filename: str) -> Template:

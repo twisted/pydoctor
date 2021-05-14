@@ -5,8 +5,8 @@ import shutil
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import (StaticTemplateFolder, pages, writer, 
-                                     TemplateLookup, Template, StaticTemplateFile, 
+from pydoctor.templatewriter import (StaticTemplate, pages, writer, 
+                                     TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -242,26 +242,16 @@ def test_template_lookup_add_template_raises() -> None:
     here = Path(__file__).parent
     
     with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(StaticTemplateFolder(name="nav.html", lookup=TemplateLookup(here / 'testcustomtemplates' / 'allok')))
-    
-    with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(HtmlTemplate(name="apidocs.css", text="""
         <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
             blabla
         </nav>
         """))
-    
-    lookup.add_templatedir(here / 'testcustomtemplates' / 'subfolders')
-    with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(StaticTemplateFile(name="static", data=bytes()))
 
     lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
     
     with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(StaticTemplateFolder(name='atemplate.html', lookup=TemplateLookup(here / 'testcustomtemplates' / 'allok')))
-    
-    with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(HtmlTemplate(name="static", text="""
+        lookup.add_template(HtmlTemplate(name="static/fonts/bar.svg", text="""
         <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
             blabla
         </nav>
@@ -274,14 +264,9 @@ def test_template() -> None:
     js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'pydoctor.js')
     html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'nav.html')
 
-    assert isinstance(js_template, StaticTemplateFile)
+    assert isinstance(js_template, StaticTemplate)
     assert isinstance(html_template, HtmlTemplate)
 
-def test_templatefromfile() -> None:
-    here = Path(__file__).parent
-    t = Template.fromfile(here / 'testcustomtemplates' / 'subfolders')
-    assert isinstance(t, StaticTemplateFolder)
-    assert t.lookup.get_template('static')
 
 def test_template_subfolders() -> None:
     here = Path(__file__).parent
@@ -292,24 +277,24 @@ def test_template_subfolders() -> None:
         lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 
         atemplate = lookup.get_template('atemplate.html')
-        static = lookup.get_template('static')
-        assert isinstance(static, StaticTemplateFolder)
-        static_info = static.lookup.get_template('info.svg')
-        static_lol = static.lookup.get_template('lol.svg')
-        static_fonts = static.lookup.get_template('fonts')
-        assert isinstance(static_fonts, StaticTemplateFolder)
-        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
-        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+
+        static_info = lookup.get_template('static/info.svg')
+        static_lol = lookup.get_template('static/lol.svg')
+
+        static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+        static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
 
         assert isinstance(atemplate, HtmlTemplate)
-        assert isinstance(static_info, StaticTemplateFile)
-        assert isinstance(static_lol, StaticTemplateFile)
-        assert isinstance(static_fonts_bar, StaticTemplateFile)
-        assert isinstance(static_fonts_foo, StaticTemplateFile)
+        assert isinstance(static_info, StaticTemplate)
+        assert isinstance(static_lol, StaticTemplate)
+        assert isinstance(static_fonts_bar, StaticTemplate)
+        assert isinstance(static_fonts_foo, StaticTemplate)
 
         # writes only the static template
 
-        static.write(test_build_dir)
+        for t in lookup.templates:
+            if isinstance(t, StaticTemplate):
+                t.write(test_build_dir)
 
         assert test_build_dir.joinpath('static').is_dir()
         assert not test_build_dir.joinpath('atemplate.html').exists()
@@ -327,20 +312,18 @@ def test_template_subfolders() -> None:
 
         # test nothing changed
         atemplate = lookup.get_template('atemplate.html')
-        static = lookup.get_template('static')
-        assert isinstance(static, StaticTemplateFolder)
-        static_info = static.lookup.get_template('info.svg')
-        static_lol = static.lookup.get_template('lol.svg')
-        static_fonts = static.lookup.get_template('fonts')
-        assert isinstance(static_fonts, StaticTemplateFolder)
-        static_fonts_bar = static_fonts.lookup.get_template('bar.svg')
-        static_fonts_foo = static_fonts.lookup.get_template('foo.svg')
+
+        static_info = lookup.get_template('static/info.svg')
+        static_lol = lookup.get_template('static/lol.svg')
+
+        static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+        static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
 
         assert isinstance(atemplate, HtmlTemplate)
-        assert isinstance(static_info, StaticTemplateFile)
-        assert isinstance(static_lol, StaticTemplateFile)
-        assert isinstance(static_fonts_bar, StaticTemplateFile)
-        assert isinstance(static_fonts_foo, StaticTemplateFile)
+        assert isinstance(static_info, StaticTemplate)
+        assert isinstance(static_lol, StaticTemplate)
+        assert isinstance(static_fonts_bar, StaticTemplate)
+        assert isinstance(static_fonts_foo, StaticTemplate)
 
         # Except the overriden file
         assert not static_fonts_foo.is_empty()
