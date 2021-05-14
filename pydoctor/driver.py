@@ -26,8 +26,8 @@ else:
     import importlib.resources as importlib_resources
 
 class Theme(Enum):
-    CLASSIC_THEME = 'classic'
-    # READTHEDOCS_THEME = 'readthedocs'
+    CLASSIC = 'classic'
+    # READTHEDOCS = 'readthedocs'
     # Soon
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -166,7 +166,7 @@ def getparser() -> OptionParser:
         dest='templatedir', default=[],
         help=("Directory containing custom HTML templates. Can repeat."),
     )
-    parser.add_option('--theme', dest='theme', default=Theme.CLASSIC_THEME.value, 
+    parser.add_option('--theme', dest='theme', default=Theme.CLASSIC.value, 
         choices=[t.value for t in Theme] ,
         help=("The theme to use when building your API documentation. "),
     )
@@ -449,15 +449,15 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             
             # Always init the writer with the 'classic' set of templates at least.
             template_lookup = TemplateLookup(
-                                importlib_resources.files('pydoctor.themes') / Theme.CLASSIC_THEME.value)
+                                importlib_resources.files('pydoctor.themes') / Theme.CLASSIC.value)
             
             # Handle other kinds of themes
-            if system.options.theme != Theme.CLASSIC_THEME.value:
+            if system.options.theme != Theme.CLASSIC.value:
                 try:
                     template_lookup.add_templatedir(
                         importlib_resources.files('pydoctor.themes') / system.options.theme)
-                except Exception:
-                    pass
+                except TemplateError  as e:
+                    error(str(e))
 
             # Handle custom HTML templates
             if system.options.templatedir:

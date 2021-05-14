@@ -275,69 +275,64 @@ def test_template() -> None:
     assert isinstance(js_template, StaticTemplate)
     assert isinstance(html_template, HtmlTemplate)
 
-
-def test_template_subfolders() -> None:
+def test_template_subfolders_write(tmp_path: Path) -> None:
     here = Path(__file__).parent
-    test_build_dir = Path('.').joinpath('build/testing')
+    test_build_dir = tmp_path
 
-    try:
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 
-        lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+     # writes only the static template
 
-        atemplate = lookup.get_template('atemplate.html')
+    for t in lookup.templates:
+        if isinstance(t, StaticTemplate):
+            t.write(test_build_dir)
 
-        static_info = lookup.get_template('static/info.svg')
-        static_lol = lookup.get_template('static/lol.svg')
+    assert test_build_dir.joinpath('static').is_dir()
+    assert not test_build_dir.joinpath('atemplate.html').exists()
+    assert test_build_dir.joinpath('static/info.svg').is_file()
+    assert test_build_dir.joinpath('static/lol.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts').is_dir()
+    assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
 
-        static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
-        static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
+def test_template_subfolders_overrides() -> None:
+    here = Path(__file__).parent
 
-        assert isinstance(atemplate, HtmlTemplate)
-        assert isinstance(static_info, StaticTemplate)
-        assert isinstance(static_lol, StaticTemplate)
-        assert isinstance(static_fonts_bar, StaticTemplate)
-        assert isinstance(static_fonts_foo, StaticTemplate)
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 
-        # writes only the static template
+    atemplate = lookup.get_template('atemplate.html')
+    static_info = lookup.get_template('static/info.svg')
+    static_lol = lookup.get_template('static/lol.svg')
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
 
-        for t in lookup.templates:
-            if isinstance(t, StaticTemplate):
-                t.write(test_build_dir)
+    assert isinstance(atemplate, HtmlTemplate)
+    assert isinstance(static_info, StaticTemplate)
+    assert isinstance(static_lol, StaticTemplate)
+    assert isinstance(static_fonts_bar, StaticTemplate)
+    assert isinstance(static_fonts_foo, StaticTemplate)
 
-        assert test_build_dir.joinpath('static').is_dir()
-        assert not test_build_dir.joinpath('atemplate.html').exists()
-        assert test_build_dir.joinpath('static/info.svg').is_file()
-        assert test_build_dir.joinpath('static/lol.svg').is_file()
-        assert test_build_dir.joinpath('static/fonts').is_dir()
-        assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
-        assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
+    assert static_fonts_foo.is_empty()
 
-        assert static_fonts_foo.is_empty()
+    # Load subfolder contents that will override only one template: static/fonts/foo.svg
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
 
-        # test override subfolder contents
+    # test nothing changed
+    atemplate = lookup.get_template('atemplate.html')
+    static_info = lookup.get_template('static/info.svg')
+    static_lol = lookup.get_template('static/lol.svg')
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
 
-        lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
+    assert isinstance(atemplate, HtmlTemplate)
+    assert isinstance(static_info, StaticTemplate)
+    assert isinstance(static_lol, StaticTemplate)
+    assert isinstance(static_fonts_bar, StaticTemplate)
+    assert isinstance(static_fonts_foo, StaticTemplate)
 
-        # test nothing changed
-        atemplate = lookup.get_template('atemplate.html')
+    # Except for the overriden file
+    assert not static_fonts_foo.is_empty()
 
-        static_info = lookup.get_template('static/info.svg')
-        static_lol = lookup.get_template('static/lol.svg')
-
-        static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
-        static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
-
-        assert isinstance(atemplate, HtmlTemplate)
-        assert isinstance(static_info, StaticTemplate)
-        assert isinstance(static_lol, StaticTemplate)
-        assert isinstance(static_fonts_bar, StaticTemplate)
-        assert isinstance(static_fonts_foo, StaticTemplate)
-
-        # Except the overriden file
-        assert not static_fonts_foo.is_empty()
-
-    finally:
-        shutil.rmtree(test_build_dir)
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
