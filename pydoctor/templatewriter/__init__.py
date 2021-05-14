@@ -116,11 +116,7 @@ class Template(abc.ABC):
 
     TEMPLATE_FILES_SUFFIX = ('.html', '.css', '.js', # Web
     '.svg', '.bmp', '.gif', '.ico', '.jpeg', '.jpg', '.png', '.tif', '.tiff', # Images
-    '.fnt', #Windows font file
-    '.fon', #Generic font file
-    '.otf', #Open type font file
-    '.ttf', #TrueType font file
-    '.woff', '.woff2', #Web Open Font Format, used by sphinx
+    '.fnt', '.fon', '.otf','.ttf', '.woff', '.woff2', # Font Formats
     '.xml', '.json', # Data
     )
 
@@ -373,7 +369,7 @@ class TemplateLookup:
         """
         Load the template inside the lookup, handle the subfolders etc.     
 
-        @raises OverrideTemplateNotAllowed: If a template filname is bogus.                         
+        @raises OverrideTemplateNotAllowed: If a path in this template overrides a path of a different type (HTML/static/subdir).      
         """
         current_template = self._templates.get(template.name, None)
         if current_template:
@@ -408,7 +404,7 @@ class TemplateLookup:
         issue warnings if template are outdated.
 
         @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
-        @raises OverrideTemplateNotAllowed: If a template filename is bogus.    
+        @raises OverrideTemplateNotAllowed: If a path in this template overrides a path of a different type (HTML/static/subdir).
         """
 
         try:
