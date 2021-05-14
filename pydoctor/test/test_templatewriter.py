@@ -140,17 +140,17 @@ def test_template_lookup_get_template() -> None:
 
     here = Path(__file__).parent
 
-    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
     lookup.add_template(_HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
     assert lookup.get_template('footer.html').data == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
-    assert lookup.get_template('index.html').data == filetext(here.parent / 'templates' / 'index.html')
+    assert lookup.get_template('index.html').data == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
     lookup = TemplateLookup()
 
-    assert lookup.get_template('footer.html').data == filetext(here.parent / 'templates' / 'footer.html')
+    assert lookup.get_template('footer.html').data == filetext(here.parent / 'themes' / 'classic' / 'footer.html')
 
     assert lookup.get_template('subheader.html').version == -1
 

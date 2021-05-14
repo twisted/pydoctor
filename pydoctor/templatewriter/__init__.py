@@ -8,8 +8,18 @@ else:
         return f
 import abc
 from pathlib import Path, PurePath
+from os.path import splitext
 import warnings
+import sys
 from xml.dom import minidom
+
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+if sys.version_info < (3, 9):
+    import importlib_resources
+    from importlib_resources.abc import Traversable
+else:
+    import importlib.resources as importlib_resources
+    from importlib.abc import Traversable
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
@@ -31,7 +41,7 @@ def parse_xml(text: str) -> minidom.Document:
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
 
-def scandir(path: Path) -> Iterator['Template']:
+def scandir(path: Union[Traversable, Path]) -> Iterator['Template']:
     """
     Scan a directory for templates. 
     """
@@ -73,7 +83,7 @@ class IWriter(Protocol):
         Called second.
         """
 
-    def writeIndividualFiles(self, obs:Iterable[Documentable]) -> None:
+    def writeIndividualFiles(self, obs: Iterable[Documentable]) -> None:
         """
         Called last.
         """
@@ -115,28 +125,38 @@ class Template(abc.ABC):
 )
 
     @classmethod
-    def fromfile(cls, path: Path) -> Optional['Template']:
+    def fromfile(cls, path: Union[Traversable, Path]) -> Optional['Template']:
         """
         Create a concrete template object.
         Type depends on the file extension.
 
         Warns if the template cannot be created.
 
-        @param path: A L{Path} that should point to a template file.
-        @returns: The template object or C{None} if file is invalid.
+        @param path: A L{Path} or L{Traversable} object that should point to a template file or folder. 
+        @returns: The template object or C{None} if file extension is invalid.
+        @raises FailedToCreateTemplate: If there is an error while creating the template.
         """
+
+        def suffix(name: str) -> str:
+            # Workaround to get a filename extension because
+            # importlib.abc.Traversable objects do not include .suffix property.
+            _, ext = splitext(name)
+            return ext
+
         if path.is_dir():
             return _TemplateSubFolder(name=path.name, lookup=TemplateLookup(path))
         if path.is_file():
+            file_extension = suffix(path.name).lower()
+
             # Remove this 'if/else' to copy ANY kind of files to build directory.
-            if path.suffix.lower() in cls.TEMPLATE_FILES_SUFFIX:
+            if file_extension in cls.TEMPLATE_FILES_SUFFIX:
                 try:
-                    if path.suffix.lower() == '.html':
+                    if file_extension == '.html':
                         try:
                             with path.open('r', encoding='utf-8') as fobj:
                                 text = fobj.read()
                         except UnicodeDecodeError as e:
-                            raise FailedToCreateTemplate(f"Cannot decode HTML Template as UTF-8: '{path.as_posix()}'. {e}") from e
+                            raise FailedToCreateTemplate(f"Cannot decode HTML Template as UTF-8: '{path}'. {e}") from e
                         else:
                             return _HtmlTemplate(name=path.name, text=text)
                     else:
@@ -145,10 +165,10 @@ class Template(abc.ABC):
                             _bytes = fobjb.read()
                         return _StaticTemplate(name=path.name, data=_bytes)
                 except IOError as e:
-                    raise FailedToCreateTemplate(f"Cannot read Template: '{path.as_posix()}'. I/O error: {e}") from e
+                    raise FailedToCreateTemplate(f"Cannot read Template: '{path}'. I/O error: {e}") from e
 
             else:
-                warnings.warn(f"Cannot create Template: {path.as_posix()} is not recognized as template file. "
+                warnings.warn(f"Cannot create Template: {path} is not recognized as template file. "
                     f"Template files must have one of the following extensions: {', '.join(cls.TEMPLATE_FILES_SUFFIX)}")
         
         return None
@@ -318,25 +338,25 @@ class TemplateLookup:
     @see: L{Template}
     """
 
-    _default_rel_template_dir = 'templates'
-
-    def __init__(self, template_dir: Optional[Path] = None) -> None:
+    def __init__(self, template_dir: Optional[Union[Traversable, Path]] = None, theme: str = 'classic') -> None:
         """
         Init L{TemplateLookup} with templates in C{pydoctor/templates}.
         This loads all templates into the lookup C{_templates} dict.
 
-        @param template_dir: A custom L{Path} to load the template from.
+        @param template_dir: A custom L{Path} or L{Traversable} object to load the templates from.
+        @param theme: Load the theme if C{template_dir} is not defined.
         """
-
-        # Relative path from here is: ../templates
-        _init_template_dir = template_dir or \
-            Path(__file__).parent.parent.joinpath(self._default_rel_template_dir)
-        
         self._templates: Dict[str, Template] = {}
-        self._load_dir(_init_template_dir)
+
+        if not template_dir:
+            theme_path = importlib_resources.files(f'pydoctor.themes.{theme}')
+            self._load_dir(theme_path)
+        else:
+            self._load_dir(template_dir)
+        
         self._default_templates = self._templates.copy()
 
-    def _load_dir(self, templatedir: Path, add: bool = False) -> None:
+    def _load_dir(self, templatedir: Union[Traversable, Path], add: bool = False) -> None:
         for template in scandir(templatedir):
             if add:
                 self.add_template(template)
