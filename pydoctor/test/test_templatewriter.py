@@ -5,7 +5,7 @@ import warnings
 import sys
 from pathlib import Path
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import (StaticTemplate, pages, writer, 
+from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
@@ -148,43 +148,32 @@ def test_template_lookup_get_template() -> None:
     here = Path(__file__).parent
 
     index = lookup.get_template('index.html')
-
     assert isinstance(index, HtmlTemplate)
-
     assert index.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
-    lookup.add_template(HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
-
+    lookup.add_template(HtmlTemplate(name='footer.html', 
+                            text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
+                            
     footer = lookup.get_template('footer.html')
-
     assert isinstance(footer, HtmlTemplate)
-
     assert footer.text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
     index2 = lookup.get_template('index.html')
-
     assert isinstance(index2, HtmlTemplate)
-
     assert index2.text == filetext(here.parent / 'themes' / 'classic' / 'index.html')
 
     lookup = TemplateLookup(template_dir)
 
     footer = lookup.get_template('footer.html')
-
     assert isinstance(footer, HtmlTemplate)
-
     assert footer.text == filetext(here.parent / 'themes' / 'classic' / 'footer.html')
 
     subheader = lookup.get_template('subheader.html')
-
     assert isinstance(subheader, HtmlTemplate)
-
     assert subheader.version == -1
 
     table = lookup.get_template('table.html')
-
     assert isinstance(table, HtmlTemplate)
-
     assert table.version == 1
 
 def test_template_lookup_add_template_warns() -> None:
@@ -245,8 +234,6 @@ def test_template_lookup_add_template_raises() -> None:
         </nav>
         <span> Words </span>
         """))
-
-    here = Path(__file__).parent
     
     with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(HtmlTemplate(name="apidocs.css", text="""
@@ -255,14 +242,22 @@ def test_template_lookup_add_template_raises() -> None:
         </nav>
         """))
 
-    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
-    
     with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(HtmlTemplate(name="static/fonts/bar.svg", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-            blabla
-        </nav>
-        """))
+        lookup.add_template(StaticTemplate(name="index.html", data=bytes()))
+
+def test_template_fromdir_fromfile_failure() -> None:
+
+    here = Path(__file__).parent
+    
+    with pytest.raises(FailedToCreateTemplate):
+        for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist'):
+            pass
+    
+    template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders')
+    assert not template
+
+    template = Template.fromfile(here / 'testcustomtemplates' / 'thisfolderdonotexist')
+    assert not template
 
 def test_template() -> None:
 
