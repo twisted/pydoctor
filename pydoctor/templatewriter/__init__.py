@@ -89,7 +89,7 @@ class Template(abc.ABC):
 
     Use L{Template.fromfile} to create Templates.
 
-    @see: L{TemplateLookup}
+    @see: L{TemplateLookup}, L{StaticTemplate} and L{HtmlTemplate}
     """
 
     def __init__(self, name: str):
@@ -101,6 +101,8 @@ class Template(abc.ABC):
         """
         Scan a directory for templates. 
 
+        @param path: A L{Path} or L{Traversable} object that should point to a template folder.
+        @param subdir: The subdirectory inside the template folder structure that holds this template directory. 
         @raises FailedToCreateTemplate: If the path is not a directory or do not exist. 
         """
         if not path.is_dir():
@@ -120,7 +122,8 @@ class Template(abc.ABC):
         Create a concrete template object.
         Type depends on the file extension.
 
-        @param path: A L{Path} or L{Traversable} object that should point to a template file or folder. 
+        @param path: A L{Path} or L{Traversable} object that should point to a template file.
+        @param subdir: The subdirectory inside the template folder structure that holds this template file. 
         @returns: The template object or C{None} if file extension is invalid.
         @raises FailedToCreateTemplate: If there is an error while creating the template.
         """
@@ -172,14 +175,6 @@ class Template(abc.ABC):
         
         return template
 
-    @abc.abstractmethod
-    def is_empty(self) -> bool:
-        """
-        Does this template is empty? Emptyness is defined by subclasses. 
-        Empty placeholder templates will not be rendered, but 
-        """
-        raise NotImplementedError()
-
 class StaticTemplate(Template):
     """
     Static template: no rendering, will be copied as is to build directory.
@@ -192,9 +187,6 @@ class StaticTemplate(Template):
         """
         Contents of the template file as L{bytes}.
         """
-    
-    def is_empty(self) -> bool:
-        return len(self.data)==0
     
     def write(self, output_dir: Path) -> None:
         """
@@ -225,7 +217,8 @@ class HtmlTemplate(Template):
         Contents of the template file as 
         UFT-8 decoded L{str}.
         """
-        if self.is_empty():
+
+        if len(self.text.strip()) == 0:
             self._dom: Optional[minidom.Document] = None
             self._version = -1
             self._loader: ITemplateLoader = TagLoader(tags.transparent)
@@ -256,9 +249,6 @@ class HtmlTemplate(Template):
         This is a L{ITemplateLoader}.
         """
         return self._loader
-    
-    def is_empty(self) -> bool:
-        return len(self.text.strip()) == 0
 
     @staticmethod
     def _extract_version(dom: minidom.Document, template_name: str) -> int:

@@ -1,7 +1,6 @@
 from io import BytesIO
 from typing import Callable
 import pytest
-import shutil
 import warnings
 import sys
 from pathlib import Path
@@ -139,7 +138,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
 def test_html_template_version() -> None:
     lookup = TemplateLookup(template_dir)
     for template in lookup._templates.values():
-        if isinstance(template, HtmlTemplate) and not template.is_empty():
+        if isinstance(template, HtmlTemplate) and not len(template.text.strip()) == 0:
             assert template.version >= 1
 
 def test_template_lookup_get_template() -> None:
@@ -312,7 +311,7 @@ def test_template_subfolders_overrides() -> None:
     assert isinstance(static_fonts_bar, StaticTemplate)
     assert isinstance(static_fonts_foo, StaticTemplate)
 
-    assert static_fonts_foo.is_empty()
+    assert len(static_fonts_foo.data) == 0
 
     # Load subfolder contents that will override only one template: static/fonts/foo.svg
     lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
@@ -331,8 +330,7 @@ def test_template_subfolders_overrides() -> None:
     assert isinstance(static_fonts_foo, StaticTemplate)
 
     # Except for the overriden file
-    assert not static_fonts_foo.is_empty()
-
+    assert len(static_fonts_foo.data) > 0
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
