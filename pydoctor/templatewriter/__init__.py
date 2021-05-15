@@ -307,14 +307,6 @@ class TemplateLookup:
                                     "version of pydoctor with 'pip install -U pydoctor'. ")
         self._templates[template.name] = template
 
-    def _is_template_overriding_subdir(self, template: Template) -> bool:
-        # Since we cannot have a file named the same as a directory, 
-        # we must reject files that overrides direcotries.
-        for t in self.templates:
-            if f"{template.name}/" in t.name:
-                return True
-        return False
-
     def add_template(self, template: Template) -> None:
         """
         Add a template to the lookup. The custom template override the default. 
@@ -328,9 +320,12 @@ class TemplateLookup:
         @raises OverrideTemplateNotAllowed: If this template path overrides a path of a different type (HTML/static/directory).
         """
 
-        if self._is_template_overriding_subdir(template):
-            raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
-                        f"a template. Rename '{template.name}' to something else.")
+        # Since we cannot have a file named the same as a directory, 
+        # we must reject files that overrides direcotries.
+        for t in self.templates:
+            if t.name.startswith(f"{template.name}/"):
+                raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
+                            f"a template. Rename '{template.name}' to something else.")
 
         current_template = self._templates.get(template.name, None)
         if current_template:

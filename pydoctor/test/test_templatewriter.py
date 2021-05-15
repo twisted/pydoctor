@@ -257,14 +257,16 @@ def test_template_lookup_add_template_raises() -> None:
             blabla
         </nav>
         """))
+    # Should not fail
+    lookup.add_template(StaticTemplate('tatic/fonts', data=bytes()))
+
 
 def test_template_fromdir_fromfile_failure() -> None:
 
     here = Path(__file__).parent
     
     with pytest.raises(FailedToCreateTemplate):
-        for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist'):
-            pass
+        [t for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist')]
     
     template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders')
     assert not template
