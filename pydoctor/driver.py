@@ -7,7 +7,6 @@ import datetime
 import os
 import sys
 import warnings
-from enum import Enum
 from inspect import getmodulename
 
 from pydoctor import model, zopeinterface, __version__
@@ -24,11 +23,6 @@ if sys.version_info < (3, 9):
     import importlib_resources
 else:
     import importlib.resources as importlib_resources
-
-class Theme(Enum):
-    BASE = 'base' # the base theme is always loaded 
-    CLASSIC = 'classic'
-    # READTHEDOCS = 'readthedocs' # Soon
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -99,6 +93,14 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
+def get_themes() -> Iterator[str]:
+    """
+    Get the list of the available themes.
+    """
+    for path in importlib_resources.contents('pydoctor.themes'):
+        if not path.startswith('_'):
+            yield path
+
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
@@ -166,8 +168,8 @@ def getparser() -> OptionParser:
         dest='templatedir', default=[],
         help=("Directory containing custom HTML templates. Can repeat."),
     )
-    parser.add_option('--theme', dest='theme', default=Theme.CLASSIC.value, 
-        choices=[t.value for t in Theme] ,
+    parser.add_option('--theme', dest='theme', default='classic', 
+        choices=list(get_themes()) ,
         help=("The theme to use when building your API documentation. "),
     )
     parser.add_option(
@@ -449,10 +451,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             
             # Always init the writer with the 'base' set of templates at least.
             template_lookup = TemplateLookup(
-                                importlib_resources.files('pydoctor.themes') / Theme.BASE.value)
+                                importlib_resources.files('pydoctor.themes') / 'base')
             
             # Handle theme selection, 'classic' by default.
-            if system.options.theme != Theme.BASE.value:
+            if system.options.theme != 'base':
                 try:
                     template_lookup.add_templatedir(
                         importlib_resources.files('pydoctor.themes') / system.options.theme)
