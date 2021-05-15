@@ -216,6 +216,8 @@ def test_template_lookup_add_template_allok() -> None:
 
 def test_template_lookup_add_template_raises() -> None:
 
+    here = Path(__file__).parent
+
     lookup = TemplateLookup(template_dir)
 
     with pytest.raises(UnsupportedTemplateVersion):
@@ -244,6 +246,17 @@ def test_template_lookup_add_template_raises() -> None:
 
     with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(StaticTemplate(name="index.html", data=bytes()))
+
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'subfolders')
+
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(StaticTemplate('static', data=bytes()))
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(HtmlTemplate('static/fonts', text="""
+        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+            blabla
+        </nav>
+        """))
 
 def test_template_fromdir_fromfile_failure() -> None:
 
