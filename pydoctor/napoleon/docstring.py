@@ -88,12 +88,13 @@ def is_google_typed_arg(string: str, parse_type: bool = True) -> bool:
 
     Valid strings are like::
 
+        param (list(str), optional)
         list(str), optional
         ValueError
 
-    When ``parse_type=True`` (default), this google-style field name and type is recognized::
+    When ``parse_type=True`` (default), this multi-word field name and type is even recognized::
 
-        param (list(str), optional)
+        multiple words parameter (list(str), optional)
 
     """
     if is_type(string):

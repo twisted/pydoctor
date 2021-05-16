@@ -112,6 +112,10 @@ class TypeDocstringTest(BaseDocstringTest):
         self.assertTrue(is_google_typed_arg("foo (list of int or float or None, default: None)"))
         self.assertTrue(is_google_typed_arg("foo (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`)"))
 
+        self.assertTrue(is_google_typed_arg("Random words are not a type spec (List[str] or list(bytes), optional)"))
+        self.assertTrue(is_google_typed_arg("Random words are not a type spec (list of int or float or None, default: None)"))
+        self.assertTrue(is_google_typed_arg("Random words are not a type spec (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional)"))
+
     def test_token_type(self):
         tokens = (
         ("1", "literal"),
@@ -582,6 +586,24 @@ Single line summary
 :type arg1: `list`\ (`int`)
 :param arg2: desc arg2.
 :type arg2: `list`\ [`int`]
+"""
+    ),(
+        """
+Single line summary
+
+Args:
+    my first argument (list(int)):
+        desc arg1. 
+    my second argument (list[int]):
+        desc arg2.
+""",
+r"""
+Single line summary
+
+:param my first argument: desc arg1.
+:type my first argument: `list`\ (`int`)
+:param my second argument: desc arg2.
+:type my second argument: `list`\ [`int`]
 """
     ), ]
 
@@ -1562,7 +1584,25 @@ class NumpyDocstringTest(BaseDocstringTest):
                 continued text
             another_func_name : Descriptive text
             func_name1, func_name2, :meth:`func_name`, func_name3
-        """)]
+        """),(
+        """
+        Single line summary
+
+        Args
+        ----
+        my first argument: list(int)
+            desc arg1. 
+        my second argument: list[int]
+            desc arg2.
+        """,
+        r"""
+        Single line summary
+
+        :param my first argument: desc arg1.
+        :type my first argument: `list`\ (`int`)
+        :param my second argument: desc arg2.
+        :type my second argument: `list`\ [`int`]
+        """),]
 
     def test_docstrings(self):
     
