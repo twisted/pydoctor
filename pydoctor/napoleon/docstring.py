@@ -768,7 +768,7 @@ class GoogleDocstring:
     # new method: handle type pre-processing the same way for google and numpy style.
     def _convert_type(self, _type: str) -> str:
         """
-        Tokenize the string type and convert it with additional markup and auto linking.
+        Tokenize the string type and convert it with additional markup and auto linking with L{TypeDocstring}.
         """
         # handle warnings line number
         linenum = self._line_iter.counter
