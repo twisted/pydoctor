@@ -1433,10 +1433,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
-            if tree.attribs.get('inline'):
-                yield craft_node(inline('', ''), variables)
-            else: 
-                yield craft_node(paragraph('', ''), variables)
+            # we yield a paragraph node even if tree.attribs.get('inline') is True because
+            # the choice to render the <p> tags is handled in _PydoctorHTMLTranslator.should_be_compact_paragraph(), not here anymore
+            yield craft_node(paragraph('', ''), variables)
         elif tree.tag == 'code':
             yield craft_node(literal('', ''), variables)
         elif tree.tag == 'uri':

@@ -1267,10 +1267,10 @@ def test_annotated_variables(systemcls: Type[model.System]) -> None:
     C = mod.contents['C']
     a = C.contents['a']
     assert unwrap(a.parsed_docstring) == """first"""
-    assert type2html(a) == '<span>string</span>'
+    assert type2html(a) == 'string'
     b = C.contents['b']
     assert unwrap(b.parsed_docstring) == """second"""
-    assert type2html(b) == '<span>string</span>'
+    assert type2html(b) == 'string'
     c = C.contents['c']
     assert c.docstring == """third"""
     assert type2html(c) == '<code>str</code>'
@@ -1530,7 +1530,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert oldschool.kind is model.DocumentableKind.PROPERTY
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
-    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
+    assert flatten(format_summary(oldschool)) == 'For rent.'
     assert isinstance(oldschool.parsed_type, ParsedEpytextDocstring)
     assert str(unwrap(oldschool.parsed_type)) == 'string'
     fields = oldschool.parsed_docstring.fields
