@@ -7,9 +7,11 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError
+from pydoctor.epydoc.markup import ParseError, flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
-from pydoctor.test.epydoc.test_restructuredtext import prettify, node2html
+from pydoctor.node2stan import node2stan
+from pydoctor.test import NotFoundLinker
+from pydoctor.test.epydoc.test_restructuredtext import prettify
 
 from docutils import nodes
 
@@ -20,32 +22,8 @@ def epytext2node(s: str) -> nodes.document:
     return parsed.to_node()
 
 def epytext2html(s: str) -> str:
-    node = epytext2node(s)
-    return node2html(node)
-
-def test_epytext_partial() -> None:
-    doc = '''
-        This is a paragraph.  Paragraphs can
-        span multiple lines, and can contain
-        I{inline markup}.
-
-        This is another paragraph.  Paragraphs
-        are separated by blank lines.
-        '''
-    expected = '''
-         <p>
-          This is another paragraph.  Paragraphs are separated by blank lines.
-         </p>
-        '''
+    return ''.join((l.strip() for l in prettify(flatten(node2stan(epytext2node(s), NotFoundLinker()))).splitlines()))
     
-    node = epytext2node(doc)
-
-    for child in node[:]:
-          assert isinstance(child, nodes.paragraph)
-    
-    assert node2html(node[-1]) == ''.join(prettify(expected).splitlines())
-    assert node[-1].parent == node
-
 def test_epytext_paragraph() -> None:
     doc = '''
         This is a paragraph.  Paragraphs can
@@ -70,7 +48,7 @@ def test_epytext_paragraph() -> None:
          </p>
 
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_ordered_list() -> None:
@@ -89,37 +67,14 @@ def test_epytext_ordered_list() -> None:
           4. This new list starts at four.
         '''
     expected = '''
-
-          <ol>
-           <li>
-            <span class="rst-first">
-             This is an ordered list item.
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             This is another ordered list item.
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             This is a third list item.  Note that the paragraph may be indented more than the bullet.
-            </span>
-           </li>
-          </ol>
-          <p>
-           This ends the list.
-          </p>
-          <ol>
-           <li>
-            <span class="rst-first">
-             This new list starts at four.
-            </span>
-           </li>
-          </ol>
-
+        <ol class="rst-simple"> <li>  This is an ordered list item. </li> 
+        <li>  This is another ordered list item. </li> 
+        <li>  This is a third list item.  Note that the paragraph may be indented more than the bullet. </li>
+        </ol>
+        <p> This ends the list.</p>
+        <ol class="rst-simple"> <li>  This new list starts at four. </li></ol>
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_nested_list() -> None:
@@ -131,32 +86,10 @@ def test_epytext_nested_list() -> None:
                  - This is a sublist.
         '''
     expected = '''
-
-          <p>
-           This is a paragraph.
-          </p>
-          <ol>
-           <li>
-            <span class="rst-first">
-             This is a list item.
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             This is a second list item.
-            </span>
-            <ul>
-             <li>
-              <span class="rst-first">
-               This is a sublist.
-              </span>
-             </li>
-            </ul>
-           </li>
-          </ol>
-
-        '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    <p>This is a paragraph.</p><ol class="rst-simple"><li>This is a list item.</li>
+    <li>This is a second list item.<ul><li>This is a sublist.</li></ul></li></ol>
+    '''
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_complex_list() -> None:
@@ -178,51 +111,15 @@ def test_epytext_complex_list() -> None:
              This is the second paragraph.
         '''
     expected = '''
-
-          <p>
-           This is a paragraph.
-          </p>
-          <ol>
-           <li>
-            <span class="rst-first">
-             This is a list item.
-            </span>
-            <ul>
-             <li>
-              <span class="rst-first">
-               This is a sublist.
-              </span>
-             </li>
-             <li>
-              <span class="rst-first">
-               The sublist contains two items.
-              </span>
-              <ul>
-               <li>
-                <span class="rst-first">
-                 The second item of the sublist has its own sublist.
-                </span>
-               </li>
-              </ul>
-             </li>
-            </ul>
-           </li>
-           <li>
-            <span class="rst-first">
-             This list item contains two paragraphs and a doctest block.
-            </span>
-            <pre class="py-doctest">
-<span class="py-prompt">&gt;&gt;&gt; </span><span class="py-builtin">len</span>(<span class="py-string">'This is a doctest block'</span>)
-<span class="py-output">23</span>
-</pre>
-            <p>
-             This is the second paragraph.
-            </p>
-           </li>
-          </ol>
-
+        <p>This is a paragraph.</p><ol><li><p class="rst-first">This is a list item.</p>
+        <ul class="rst-simple"><li>This is a sublist.</li><li>The sublist contains two items.
+        <ul><li>The second item of the sublist has its own sublist.</li></ul></li></ul></li>
+        <li><p class="rst-first">This list item contains two paragraphs and a doctest block.</p>
+        <pre class="py-doctest"><span class="py-prompt">&gt;&gt;&gt; </span>
+        <span class="py-builtin">len</span>(<span class="py-string">'This is a doctest block'</span>)
+        <span class="py-output">23</span></pre><p>This is the second paragraph.</p></li></ol>
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_sections() -> None:
@@ -272,7 +169,7 @@ def test_epytext_sections() -> None:
           </div>
 
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_literal_block() -> None:
@@ -299,7 +196,7 @@ def test_epytext_literal_block() -> None:
           </p>
 
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_inline() -> None:
@@ -317,70 +214,14 @@ def test_epytext_inline() -> None:
         C{my_dict={1:2, 3:4}}.
         '''
     expected = '''
-
-          <p>
-           <em>
-            <strong>
-             Inline markup
-            </strong>
-            may be nested; and it may span
-           </em>
-           multiple lines.
-          </p>
-          <ul>
-           <li>
-            <span class="rst-first">
-             <em>
-              Italicized text
-             </em>
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             <strong>
-              Bold-faced text
-             </strong>
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             <tt class="rst-docutils literal">
-              Source code
-             </tt>
-            </span>
-           </li>
-           <li>
-            <span class="rst-first">
-             Math:
-             <span class="rst-math rst-formula">
-              <i>
-               m
-              </i>
-              *
-              <i>
-               x
-              </i>
-              +
-              <i>
-               b
-              </i>
-             </span>
-            </span>
-           </li>
-          </ul>
-          <p>
-           Without the capital letter, matching braces are not interpreted as markup:
-           <tt class="rst-docutils literal">
-            <span class="pre">
-             my_dict={1:2,
-            </span>
-            3:4}
-           </tt>
-           .
-          </p>
-
+        <p> <em>  <strong>   Inline markup  </strong>  may be nested; and it may span </em> multiple lines.</p>
+        <ul class="rst-simple"> <li>  <em>   Italicized text  </em> </li> <li>  <strong>   Bold-faced text  </strong> </li> 
+        <li>  <tt class="rst-docutils literal">   Source code  </tt> </li> 
+        <li>  Math:  <span class="rst-math rst-formula">   <i>    m   </i>   *   <i>    x   </i>   +   <i>    b   </i>  </span> </li></ul>
+        <p> Without the capital letter, matching braces are not interpreted as markup: <tt class="rst-docutils literal">  
+        <span class="pre">   my_dict={1:2,  </span>  3:4} </tt> .</p>
         '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
     
 
 def test_epytext_url() -> None:
@@ -395,16 +236,14 @@ def test_epytext_url() -> None:
           gradient.cis.upenn.edu>}
         '''
     expected = '''
-        <ul> <li>  <span class="rst-first">   
-        <a class="rst-reference external" href="http://www.python.org" target="_top">    www.python.org   </a>  
-        </span> </li> <li>  <span class="rst-first">   <a class="rst-reference external" href="http://www.python.org" target="_top">    http://www.python.org   </a>  
-        </span> </li> <li>  <span class="rst-first">   <a class="rst-reference external" href="http://epydoc.sourceforge.net" target="_top">    The epydoc homepage   </a>  
-        </span> </li> <li>  <span class="rst-first">   <a class="rst-reference external" href="http://www.python.org" target="_top">    The  Python  homepage   </a>  
-        </span> </li> <li>  <span class="rst-first">   <a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">    Edward Loper   </a> 
-        </span> </li></ul>
+        <ul class="rst-simple"> <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   www.python.org  </a> </li> 
+        <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   http://www.python.org  </a> </li> 
+        <li>  <a class="rst-reference external" href="http://epydoc.sourceforge.net" target="_top">   The epydoc homepage  </a> </li> 
+        <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   The  Python  homepage  </a> </li> 
+        <li>  <a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">   Edward Loper  </a> </li></ul>
         '''
 
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
 
 def test_epytext_symbol() -> None:
     doc = '''
@@ -416,15 +255,11 @@ def test_epytext_symbol() -> None:
         S{rarr}, S{uarr}, and S{darr}.
         '''
     expected = '''
-
-        <p>Symbols can be used in equations:</p>
-        <ul>
-            <li><span class="rst-first"><span>&#8721;</span><span>&#945;</span>/x <span>&#8804;</span> <span>&#946;</span></span></li>
-        </ul>
-        <p><span>&#8592;</span> and <span>&#8592</span> both give left arrows.  Some other arrows are <span>&#8594;</span>, <span>&#8593;</span>, and <span>&#8595;</span>.</p>
-
-        '''
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    <p> Symbols can be used in equations:</p>
+    <ul class="rst-simple"> <li>  <span>   ∑  </span>  <span>   α  </span>  /x  <span>   ≤  </span>  <span>   β  </span> </li></ul>
+    <p> <span>  ← </span> and <span>  ← </span> both give left arrows.  Some other arrows are <span>  → </span> , <span>  ↑ </span> , and <span>  ↓ </span> .</p>
+    '''
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
 
 def test_nested_markup() -> None:
     doc = '''
@@ -433,7 +268,7 @@ def test_nested_markup() -> None:
         '''
     expected = '''<em> <strong>  Inline markup </strong> may be nested; and it may span</em>multiple lines.'''
     
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
 
     doc = '''
         It becomes a little bit complicated with U{B{custom} links <https://google.ca>}
@@ -442,5 +277,4 @@ def test_nested_markup() -> None:
       It becomes a little bit complicated with<a class="rst-reference external" href="https://google.ca" target="_top"> custom  links</a>
       '''
     
-    assert epytext2html(doc) == ''.join(prettify(expected).splitlines())
-
+    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())

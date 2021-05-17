@@ -344,7 +344,7 @@ def test_missing_param_computed_base(capsys: CapSys) -> None:
         """
     ''')
     html = ''.join(docstring2html(mod.contents['Proxy']).splitlines())
-    assert '<td class="fieldArgDesc"><span>The wrapped instance.</span></td>' in html
+    assert '<td class="fieldArgDesc">The wrapped instance.</td>' in html
     captured = capsys.readouterr().out
     assert captured == ''
 
@@ -360,12 +360,12 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
             pass
     ''')
     html = ''.join(docstring2html(mod.contents['C']).splitlines())
-    assert '<td class="fieldArgDesc"><span>Constructor parameter.</span></td>' in html
+    assert '<td class="fieldArgDesc">Constructor parameter.</td>' in html
     # Non-existing parameters should still end up in the output, because:
     # - pydoctor might be wrong about them not existing
     # - the documentation may still be useful, for example if belongs to
     #   an existing parameter but the name in the @param field has a typo
-    assert '<td class="fieldArgDesc"><span>Not a constructor parameter.</span></td>' in html
+    assert '<td class="fieldArgDesc">Not a constructor parameter.</td>' in html
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
@@ -530,8 +530,8 @@ def test_ivar_overriding_attribute() -> None:
     sub = mod.contents['Sub']
     sub_a = sub.contents['a']
     assert isinstance(sub_a, model.Attribute)
-    assert summary2html(sub_a) == '<span>sub doc</span>'
-    assert docstring2html(sub_a) == "<div>\n<span>sub doc</span>\n</div>"
+    assert summary2html(sub_a) == 'sub doc'
+    assert docstring2html(sub_a) == "<div>sub doc</div>"
     sub_b = sub.contents['b']
     assert isinstance(sub_b, model.Attribute)
     assert summary2html(sub_b) == 'not overridden'
