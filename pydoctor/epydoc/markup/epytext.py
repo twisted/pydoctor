@@ -346,8 +346,9 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
     # If there was a fatal error, then raise exception!
     # The exception was not raised by default leading into displaying literally nothing
     # when an invalid epytext docstring was used. Now it will fall back to plaintext thanks to this exception.
-    if any(e.is_fatal() for e in errors):
-        raise errors[0]
+    for e in errors:
+        if e.is_fatal():
+            raise e
 
     # Return the top-level epytext DOM element.
     return doc
