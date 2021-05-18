@@ -8,7 +8,7 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.node2stan import node2stan
-from pydoctor.napoleon.docstring import TypeDocstring
+from pydoctor.napoleon.docstring import TokenType, TypeDocstring
 
 from docutils import nodes
 from twisted.web.template import Tag, tags
@@ -18,17 +18,21 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
     allow to parse types from L{nodes.Node} objects, providing the C{--process-types} option.
     """
-    _tokens: List[Tuple[Union[str, nodes.Node], str]]
+    _tokens: List[Tuple[Union[str, nodes.Node], TokenType]]
 
     def __init__(self, annotation: Union[nodes.document, str],
                  warns_on_unknown_tokens: bool = False, lineno: int = 0) -> None:
+        ParsedDocstring.__init__(self, ())
         if isinstance(annotation, nodes.document):
-            super().__init__('', warns_on_unknown_tokens)
+            TypeDocstring.__init__(self, '', warns_on_unknown_tokens)
 
             _tokens = self._tokenize_node_type_spec(annotation)
             self._tokens = self._build_tokens(_tokens)
         else:
-            super().__init__(annotation, warns_on_unknown_tokens)
+            TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
+        
+        
+        # TODO: do we really need the line number here ?
         self._lineno = lineno
 
     @property
@@ -85,28 +89,28 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         self._warnings.extend(tokenizer.warnings)
         return tokenizer.tokens
 
-    def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], str]], 
-                                    docstring_linker: DocstringLinker) -> List[Tuple[Union[str, Tag, nodes.Node], str]]:
+    def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], TokenType]], 
+                                    docstring_linker: DocstringLinker) -> List[Tuple[Union[str, Tag, nodes.Node], TokenType]]:
         """
-        Convert "obj" and "delimiter" type to L{Tag} objects, merge them together. Leave the rest untouched. 
+        Convert L{TokenType.OBJ} and PEP 484 like L{TokenType.DELIMITER} type to stan, merge them together. Leave the rest untouched. 
 
         Exemple:
 
-        >>> tokens = [("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")]
+        >>> tokens = [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
         >>> ann._convert_obj_tokens_to_stan(tokens, NotFoundLinker())
-        ... [(Tag('code', children=['list', '(', 'int', ')']), 'obj')]
+        ... [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]
         
         @param tokens: List of tuples: C{(token, type)}
         """
 
-        combined_tokens: List[Tuple[Union[str, Tag], str]] = []
+        combined_tokens: List[Tuple[Union[str, Tag], TokenType]] = []
 
         open_parenthesis = 0
         open_square_braces = 0
 
         for _token, _type in tokens:
 
-            if _type == "obj":
+            if _type is TokenType.OBJ:
                 new_token = docstring_linker.link_xref(_token, _token, self._lineno)
                 if open_square_braces + open_parenthesis > 0:
                     try: last_processed_token = combined_tokens[-1]
@@ -114,7 +118,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                         # weird
                         combined_tokens.append((_token, _type))
                     else:
-                        if last_processed_token[1] == "obj" and isinstance(last_processed_token[0], Tag):
+                        if last_processed_token[1] is TokenType.OBJ and isinstance(last_processed_token[0], Tag):
                             # Merge with last Tag
                             last_processed_token[0](*new_token.children)
                         else:
@@ -123,7 +127,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 else:
                     combined_tokens.append((new_token, _type))
 
-            elif _type == "delimiter": 
+            elif _type is TokenType.DELIMITER: 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
 
@@ -133,7 +137,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                         # weird
                         combined_tokens.append((_token, _type))
                     else:
-                        if last_processed_token[1] == "obj" and isinstance(last_processed_token[0], Tag): 
+                        if last_processed_token[1] is TokenType.OBJ and isinstance(last_processed_token[0], Tag): 
                             # Merge with last Tag
                             last_processed_token[0](_token)
                         else:
@@ -158,14 +162,14 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         _warnings: List[ParseError] = []
 
-        converters: Dict[str, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
-            "literal":      lambda _token: tags.span(_token, class_="literal"),
-            "control":      lambda _token: tags.em(_token),
-            "reference":    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            "unknown":      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            "obj":          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
-            "delimiter":    lambda _token: _token, 
-            "any":          lambda _token: _token, 
+        converters: Dict[TokenType, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
+            TokenType.LITERAL:      lambda _token: tags.span(_token, class_="literal"),
+            TokenType.CONTROL:      lambda _token: tags.em(_token),
+            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.OBJ:          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
+            TokenType.DELIMITER:    lambda _token: _token, 
+            TokenType.ANY:          lambda _token: _token, 
         }
 
         for w in _warnings:

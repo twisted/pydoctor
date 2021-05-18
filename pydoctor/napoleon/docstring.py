@@ -10,6 +10,7 @@ Forked from ``sphinx.ext.napoleon.docstring``.
 """
 import ast
 import collections
+from enum import Enum, auto
 import re
 
 from functools import partial
@@ -108,6 +109,14 @@ def is_google_typed_arg(string: str, parse_type: bool = True) -> bool:
                     return True
     return False
 
+class TokenType(Enum):
+    LITERAL     = auto()
+    OBJ         = auto()
+    DELIMITER   = auto()
+    CONTROL     = auto()
+    REFERENCE   = auto()
+    UNKNOWN     = auto()
+    ANY         = auto()
 
 @attr.s(auto_attribs=True)
 class FreeFormException(Exception):
@@ -171,15 +180,15 @@ class TypeDocstring:
         self._warns_on_unknown_tokens = warns_on_unknown_tokens
 
         _tokens: List[str] = self._tokenize_type_spec(annotation)
-        self._tokens: List[Tuple[str, str]] = self._build_tokens(_tokens)
+        self._tokens: List[Tuple[str, TokenType]] = self._build_tokens(_tokens)
 
         self._warn_unbalanced_parenthesis(self._tokens)
 
-    def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[Union[str, Any], str]]:
+    def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[str, TokenType]]:
         _combined_tokens = self._recombine_set_tokens(_tokens)
 
-        # Save tokens in the form : [("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")]
-        _tokens_with_type_information: List[Tuple[str, str]] = [
+        # Save tokens in the form : [("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)]
+        _tokens_with_type_information: List[Tuple[str, TokenType]] = [
             (token, self._token_type(token)) for token in _combined_tokens
         ]
 
@@ -201,7 +210,7 @@ class TypeDocstring:
         """
         return self._warnings
     
-    def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[Union[str, Any], str]]) -> None:
+    def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[str, TokenType]]) -> None:
         """
         Append unbalanced parenthesis warnings.
         """
@@ -209,7 +218,7 @@ class TypeDocstring:
         open_square_braces = 0
 
         for _token, _type in tokens:
-            if _type == "delimiter": 
+            if _type is TokenType.DELIMITER: 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
                 elif _token == "]": open_square_braces -= 1
@@ -310,10 +319,9 @@ class TypeDocstring:
         )
         return tokens
 
-    def _token_type(self, token: Union[str, Any]) -> str:
+    def _token_type(self, token: Union[str, Any]) -> TokenType:
         """
-        Find the type of a token. Type can be  "literal", "obj",
-        "delimiter", "control", "reference", "any", or "unknown".
+        Find the type of a token. Types are defined in C{TokenType} enum.
         """
 
         def is_numeric(token: str) -> bool:
@@ -328,52 +336,52 @@ class TypeDocstring:
         # If the token is not a string, it's tagged as 'any', 
         # in practice this is used when a docutils.nodes.Element is passed as a token.
         if not isinstance(token, str):
-            type_ = "any"
+            type_ = TokenType.ANY
         elif (
             self._natural_language_delimiters_regex.match(token)
             or not token.strip()
             or self._ast_like_delimiters_regex.match(token)
         ):
-            type_ = "delimiter"
+            type_ = TokenType.DELIMITER
         elif (
             is_numeric(token)
             or (token.startswith("{") and token.endswith("}"))
             or (token.startswith('"') and token.endswith('"'))
             or (token.startswith("'") and token.endswith("'"))
         ):
-            type_ = "literal"
+            type_ = TokenType.LITERAL
         elif token.startswith("{"):
             self._warnings.append(f"invalid value set (missing closing brace): {token}")
-            type_ = "literal"
+            type_ = TokenType.LITERAL
         elif token.endswith("}"):
             self._warnings.append(f"invalid value set (missing opening brace): {token}")
-            type_ = "literal"
+            type_ = TokenType.LITERAL
         elif token.startswith("'") or token.startswith('"'):
             self._warnings.append(
                 f"malformed string literal (missing closing quote): {token}"
             )
-            type_ = "literal"
+            type_ = TokenType.LITERAL
         elif token.endswith("'") or token.endswith('"'):
             self._warnings.append(
                 f"malformed string literal (missing opening quote): {token}"
             )
-            type_ = "literal"
+            type_ = TokenType.LITERAL
         # keyword supported by the reference implementation (numpydoc)
         elif token in (
             "optional",
             "default",
         ):
-            type_ = "control"
+            type_ = TokenType.CONTROL
         elif _xref_regex.match(token):
-            type_ = "reference"
+            type_ = TokenType.REFERENCE
         elif is_obj_identifier(token):
-            type_ = "obj"
+            type_ = TokenType.OBJ
         else:
             # sphinx.ext.napoleon would consider the type as "obj" even if the string is not a
             # identifier, leading into generating failures when tying to resolve links.
-            type_ = "unknown"
+            type_ = TokenType.UNKNOWN
 
-        if type_ == "unknown" and self._warns_on_unknown_tokens:
+        if type_ is TokenType.UNKNOWN and self._warns_on_unknown_tokens:
             self._warnings.append(f"unknown expresssion in type: {token}")
 
         return type_
@@ -381,9 +389,9 @@ class TypeDocstring:
     # add espaced space when necessary
     def _convert_type_spec_to_rst(self) -> str:
         def _convert(
-            _token: Tuple[str, str],
-            _last_token: Tuple[str, str],
-            _next_token: Tuple[str, str],
+            _token: Tuple[str, TokenType],
+            _last_token: Tuple[str, TokenType],
+            _next_token: Tuple[str, TokenType],
             _translation: Optional[str] = None,
         ) -> str:
             translation = _translation or "%s"
@@ -412,47 +420,45 @@ class TypeDocstring:
             return converted_token
 
         converters: Dict[
-            str, Callable[[Tuple[str, str], Tuple[str, str], Tuple[str, str]], Union[str, Any]]
+            TokenType, Callable[[Tuple[str, TokenType], Tuple[str, TokenType], Tuple[str, TokenType]], Union[str, Any]]
         ] = {
-            "literal": lambda _token, _last_token, _next_token: _convert(
+            TokenType.LITERAL: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "``%s``"
             ),
-            "control": lambda _token, _last_token, _next_token: _convert(
+            TokenType.CONTROL: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "*%s*"
             ),
-            "delimiter": lambda _token, _last_token, _next_token: _convert(
+            TokenType.DELIMITER: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token
             ),
-            "reference": lambda _token, _last_token, _next_token: _convert(
+            TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token
             ),
-            "unknown": lambda _token, _last_token, _next_token: _convert(
+            TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token
             ),
-            "obj": lambda _token, _last_token, _next_token: _convert(
+            TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(
                 _token, _last_token, _next_token, "`%s`"
             ),
-            "any": lambda _token, _, __: _token,
+            TokenType.ANY: lambda _token, _, __: _token,
         }
 
         # "unknown" could have markup we just don't know!
         token_type_using_rest_markup = [
-            "literal",
-            "obj",
-            "control",
-            "reference",
-            "unknown",
+            TokenType.LITERAL,
+            TokenType.OBJ,
+            TokenType.CONTROL,
+            TokenType.REFERENCE,
+            TokenType.UNKNOWN,
         ]
 
         converted = ""
         last_token = ("", "")
 
-        iter_types: peek_iter[Tuple[str, str]] = peek_iter(self._tokens)
+        iter_types: peek_iter[Tuple[str, TokenType]] = peek_iter(self._tokens)
         for token, type_ in iter_types:
             next_token = iter_types.peek()
-            converted_token = converters.get(type_, converters["unknown"])(
-                (token, type_), last_token, next_token
-            )
+            converted_token = converters[type_]((token, type_), last_token, next_token)
             converted += converted_token
             last_token = (converted_token, type_)
 

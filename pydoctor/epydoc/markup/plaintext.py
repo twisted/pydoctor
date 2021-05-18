@@ -30,7 +30,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     """
     return ParsedPlaintextDocstring(docstring)
 
-def get_parser(obj: Optional[Documentable]) -> Callable[[str,List[ParseError], bool], ParsedDocstring]:
+def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
     Just return the L{parse_docstring} function. 
     """

@@ -10,7 +10,7 @@ from unittest import TestCase
 from textwrap import dedent
 import functools
 
-from pydoctor.napoleon.docstring import (GoogleDocstring, NumpyDocstring, 
+from pydoctor.napoleon.docstring import (GoogleDocstring, NumpyDocstring, TokenType,
         TypeDocstring, is_type, is_google_typed_arg)
 
 import sphinx.ext.napoleon as sphinx_napoleon
@@ -118,34 +118,35 @@ class TypeDocstringTest(BaseDocstringTest):
 
     def test_token_type(self):
         tokens = (
-        ("1", "literal"),
-        ("-4.6", "literal"),
-        ("2j", "literal"),
-        ("'string'", "literal"),
-        ('"another_string"', "literal"),
-        ("{1, 2}", "literal"),
-        ("{'va{ue', 'set'}", "literal"),
-        ("optional", "control"),
-        ("default", "control"),
-        (", ", "delimiter"),
-        (" of ", "delimiter"),
-        (" or ", "delimiter"),
-        (": ", "delimiter"),
-        ("]", "delimiter"),
-        ("[", "delimiter"),
-        (")", "delimiter"),
-        ("(", "delimiter"),
-        ("True", "obj"),
-        ("None", "obj"),
-        ("name", "obj"),
-        (":py:class:`Enum`", "reference"),
-        ("`a complicated string`", "reference"),
-        ("just a string", "unknown"),
+        ("1", TokenType.LITERAL),
+        ("-4.6", TokenType.LITERAL),
+        ("2j", TokenType.LITERAL),
+        ("'string'", TokenType.LITERAL),
+        ('"another_string"', TokenType.LITERAL),
+        ("{1, 2}", TokenType.LITERAL),
+        ("{'va{ue', 'set'}", TokenType.LITERAL),
+        ("optional", TokenType.CONTROL),
+        ("default", TokenType.CONTROL),
+        (", ", TokenType.DELIMITER),
+        (" of ", TokenType.DELIMITER),
+        (" or ", TokenType.DELIMITER),
+        (": ", TokenType.DELIMITER),
+        ("]", TokenType.DELIMITER),
+        ("[", TokenType.DELIMITER),
+        (")", TokenType.DELIMITER),
+        ("(", TokenType.DELIMITER),
+        ("True", TokenType.OBJ),
+        ("None", TokenType.OBJ),
+        ("name", TokenType.OBJ),
+        (":py:class:`Enum`", TokenType.REFERENCE),
+        ("`a complicated string`",  TokenType.REFERENCE),
+        ("just a string",  TokenType.UNKNOWN),
+        (len("not a string"),  TokenType.ANY),
         )
         type_spec = TypeDocstring('', 0)
-        for token, expected in tokens:
+        for token, _type in tokens:
             actual = type_spec._token_type(token)
-            self.assertEqual(expected.rstrip(), actual)
+            self.assertEqual(_type, actual)
 
     def test_tokenize_type_spec(self):
         specs = (

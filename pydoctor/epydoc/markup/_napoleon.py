@@ -43,8 +43,7 @@ class NapoelonDocstringParser:
             will be stored.
         """
         return self._parse_docstring(
-            docstring, errors, GoogleDocstring, ParsedGoogleDocstring
-        )
+            docstring, errors, GoogleDocstring, )
 
     def parse_numpy_docstring(
         self, docstring: str, errors: List[ParseError], processtypes: bool = True
@@ -58,15 +57,13 @@ class NapoelonDocstringParser:
             will be stored.
         """
         return self._parse_docstring(
-            docstring, errors, NumpyDocstring, ParsedNumpyDocstring
-        )
+            docstring, errors, NumpyDocstring, )
 
     def _parse_docstring(
         self,
         docstring: str,
         errors: List[ParseError],
         docstring_cls: Type[GoogleDocstring],
-        parsed_docstring_cls: Type["ParsedGoogleDocstring"],
     ) -> ParsedDocstring:
 
         docstring_obj = docstring_cls(
@@ -75,7 +72,7 @@ class NapoelonDocstringParser:
 
         parsed_doc = self._parse_docstring_obj(docstring_obj, errors)
 
-        return parsed_docstring_cls(parsed_doc, docstring, str(docstring_obj))
+        return parsed_doc
 
     @staticmethod
     def _parse_docstring_obj(
@@ -89,37 +86,3 @@ class NapoelonDocstringParser:
             errors.append(ParseError(warn, lineno - 2, is_fatal=False))
         # Get the converted reST string and parse it with docutils
         return restructuredtext.parse_docstring(str(docstring_obj), errors)
-
-
-class ParsedGoogleDocstring(ParsedDocstring):
-    """
-    Encapsulate an existing L{ParsedDocstring}.
-    """
-
-    def __init__(
-        self,
-        parsed_docstring: ParsedDocstring,
-        original_docstring: str,
-        napoleon_processed_docstring: str,
-    ):
-        super().__init__(fields=parsed_docstring.fields)
-        self._parsed_docstring = parsed_docstring
-        self._original_docstring = original_docstring
-        self._napoleon_processed_docstring = napoleon_processed_docstring
-        """For test purposes"""
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return self._parsed_docstring.to_stan(docstring_linker)
-    
-    def to_node(self) -> nodes.document:
-        return self._parsed_docstring.to_node()
-
-    @property
-    def has_body(self) -> bool:
-        return self._parsed_docstring.has_body
-
-
-class ParsedNumpyDocstring(ParsedGoogleDocstring):
-    """
-    Just like L{ParsedGoogleDocstring}.
-    """

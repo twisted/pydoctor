@@ -13,6 +13,7 @@ from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test.epydoc.test_to_node import parse_docstring
+from pydoctor.napoleon.docstring import TokenType
 
 from . import CapSys, NotFoundLinker
 
@@ -904,11 +905,11 @@ def test_module_docformat(capsys: CapSys) -> None:
 def test_parsed_type_convert_obj_tokens_to_stan() -> None:
     
     convert_obj_tokens_cases = [
-                ([("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter")], 
-                [(Tag('code', children=['list', '(', 'int', ')']), 'obj')]),    
+                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)], 
+                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]),    
 
-                ([("list", "obj"), ("(", "delimiter"), ("int", "obj"), (")", "delimiter"), (", ", "delimiter"), ("optional", "control")], 
-                [(Tag('code', children=['list', '(', 'int', ')']), 'obj'), (", ", "delimiter"), ("optional", "control")]),
+                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)], 
+                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)]),
             ] 
 
     ann = ParsedTypeDocstring("")

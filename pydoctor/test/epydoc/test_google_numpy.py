@@ -1,7 +1,9 @@
 from typing import List
 from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
+from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, System, Function
+from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
 from pydoctor.epydoc.markup.numpy import get_parser as get_numpy_parser
 
@@ -19,12 +21,9 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
+        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
         
-        expected = """\
-super-dooper attribute
-
-:type: `numpy.ndarray`"""
+        expected = """<code>numpy.ndarray</code>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
@@ -40,13 +39,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
-        
-        expected = """\
-numpy.ndarray: super-dooper attribute"""
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(errors, [])
+        assert not parse_docstring(docstring, errors, False).fields
 
     # the numpy inline attribute parsing is the same as google-style
     # as shown in the example_numpy.py from Sphinx docs
@@ -61,12 +54,9 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
+        actual = flatten(parse_docstring(docstring, errors, False).fields[-1].body().to_stan(NotFoundLinker()))
         
-        expected = """\
-super-dooper attribute
-
-:type: `numpy.ndarray`"""
+        expected = """<code>numpy.ndarray</code>"""
 
         self.assertEqual(expected, actual)
         self.assertEqual(errors, [])
@@ -82,13 +72,7 @@ numpy.ndarray: super-dooper attribute"""
 
         errors: List[ParseError] = []
 
-        actual = parse_docstring(docstring, errors)._napoleon_processed_docstring #type: ignore
-        
-        expected = """\
-numpy.ndarray: super-dooper attribute"""
-
-        self.assertEqual(expected, actual)
-        self.assertEqual(errors, [])
+        assert not parse_docstring(docstring, errors, False).fields
 
 
 class TestWarnings(TestCase):

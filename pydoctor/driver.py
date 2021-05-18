@@ -169,7 +169,8 @@ def getparser() -> OptionParser:
               "of the svn checkout we are documenting part of."), metavar='URL',)
     parser.add_option(
         '--process-types', dest='processtypes', action='store_true', 
-        help="Process the 'type' and 'rtype' fields: add links and inline markup automatically. This settings should not be enabled when using google and numpy docformat because the types are already processed.",)
+        help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "
+            "This settings should not be enabled when using google or numpy docformat because the types are always processed by default.",)
     parser.add_option(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
@@ -399,12 +400,11 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         else:
             error("No source paths given.")
 
-        # Avoid tokenizing twice the type information for google and numpy docformat, 
+        # Disable the tokenizing of the type information for google and numpy docformat, 
         # because the type processing already happens at the string level. 
-        # Type processing happends at the node level in the case of 
-        # epytext or restructuredtext with the --process-types option.
         if system.options.processtypes and system.options.docformat in ['google', 'numpy']:
             system.msg("warning", "Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
+            # it's ignored by google and numpy parsers anyway, but we still set it to False
             system.options.processtypes = False
 
         # step 3: move the system to the desired state
@@ -417,7 +417,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             system.projectname = system.options.projectname
 
         system.process()
-
 
         # step 4: make html, if desired
 
