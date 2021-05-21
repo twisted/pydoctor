@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if sys.version_info < (3, 9):
     import importlib_resources
 else:
