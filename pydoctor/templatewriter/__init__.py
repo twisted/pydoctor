@@ -132,13 +132,6 @@ class Template(abc.ABC):
         @returns: The template object or C{None} if a the path entry is not a file.
         @raises FailedToCreateTemplate: If there is an error while creating the template.
         """
-
-        def suffix(name: str) -> str:
-            # Workaround to get a filename extension because
-            # importlib.abc.Traversable objects do not include .suffix property.
-            _, ext = splitext(name)
-            return ext
-        
         def template_name(filename: str) -> str:
             # The template name is the relative path to the template.
             # Template files in subdirectories will have a name like: 'static/bar.svg'.
@@ -146,14 +139,12 @@ class Template(abc.ABC):
 
         if not path.is_file():
             return None
-
-        file_extension = suffix(path.name).lower()
         
         template: Template
 
         try:
             # Only try to decode the file text if the file is an HTML template
-            if file_extension == '.html':
+            if path.name.lower().endswith('.html'):
                 try:
                     text = path.read_text(encoding='utf-8')
                 except UnicodeDecodeError as e:
