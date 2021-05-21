@@ -14,10 +14,13 @@ import sys
 from xml.dom import minidom
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-if sys.version_info < (3, 9):
-    from importlib_resources.abc import Traversable
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 9):
+        from importlib.abc import Traversable
+    else:
+        Traversable = Path
 else:
-    from importlib.abc import Traversable
+    Traversable = object
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
