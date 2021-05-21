@@ -153,8 +153,8 @@ class Template(abc.ABC):
                 else:
                     template = HtmlTemplate(name=template_name(path.name), text=text)
             
-            # else, treat the file as binary data.
             else:
+                # Treat the file as binary data.
                 data = path.read_bytes()
                 template = StaticTemplate(name=template_name(path.name), data=data)
         
