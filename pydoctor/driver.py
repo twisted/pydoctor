@@ -449,11 +449,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             
             # Handle theme selection, 'classic' by default.
             if system.options.theme != 'base':
-                try:
-                    template_lookup.add_templatedir(
-                        importlib_resources.files('pydoctor.themes') / system.options.theme)
-                except TemplateError  as e:
-                    error(str(e))
+                template_lookup.add_templatedir(
+                    importlib_resources.files('pydoctor.themes') / system.options.theme)
+
 
             # Handle custom HTML templates
             if system.options.templatedir:
