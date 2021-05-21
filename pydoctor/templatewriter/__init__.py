@@ -43,7 +43,7 @@ def parse_xml(text: str) -> minidom.Document:
     
 
 class TemplateError(Exception):
-    pass
+    """Raised when there is an problem with a template. TemplateErrors are fatal."""
 
 class UnsupportedTemplateVersion(TemplateError):
     """Raised when custom template is designed for a newer version of pydoctor"""
@@ -104,40 +104,41 @@ class Template(abc.ABC):
         """Template filename, may include subdirectories."""
 
     @classmethod
-    def fromdir(cls, path: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Iterator['Template']:
+    def fromdir(cls, basedir: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Iterator['Template']:
         """
         Scan a directory for templates. 
 
-        @param path: A L{Path} or L{Traversable} object that should point to a template folder.
-        @param subdir: The subdirectory inside the template folder structure that holds this template directory. 
+        @param basedir: A L{Path} or L{Traversable} object that should point to the root directory of the template directory structure.
+        @param subdir: The subdirectory inside the template directory structure that we want to scan, relative to the C{basedir}. 
+            Scan the C{basedir} if C{None}. 
         @raises FailedToCreateTemplate: If the path is not a directory or do not exist. 
         """
+        path = basedir.joinpath(subdir.as_posix()) if subdir else basedir
+        subdir = subdir or PurePath()
         if not path.is_dir():
             raise FailedToCreateTemplate(f"Template folder do not exist or is not a directory: {path}")
-        subdir = subdir.joinpath(path.name) if subdir else PurePath()
+        
         for entry in path.iterdir():
+            entry_path = subdir.joinpath(entry.name)
             if entry.is_dir():
-                yield from Template.fromdir(entry, subdir=subdir)
+                yield from Template.fromdir(basedir, entry_path)
             else:
-                template = Template.fromfile(entry, subdir=subdir)
+                template = Template.fromfile(basedir, entry_path)
                 if template:
                     yield template
 
     @classmethod
-    def fromfile(cls, path: Union[Traversable, Path], subdir: Optional[PurePath] = None) -> Optional['Template']:
+    def fromfile(cls, basedir: Union[Traversable, Path], templatepath: PurePath) -> Optional['Template']:
         """
         Create a concrete template object.
         Type depends on the file extension.
 
-        @param path: A L{Path} or L{Traversable} object that should point to a template file.
-        @param subdir: The subdirectory inside the template folder structure that holds this template file. 
+        @param basedir: A L{Path} or L{Traversable} object that should point to the root directory of the template directory structure.
+        @param templatepath: The path to the template file, relative to the C{basedir}.
         @returns: The template object or C{None} if a the path entry is not a file.
         @raises FailedToCreateTemplate: If there is an error while creating the template.
         """
-        def template_name(filename: str) -> str:
-            # The template name is the relative path to the template.
-            # Template files in subdirectories will have a name like: 'static/bar.svg'.
-            return subdir.joinpath(filename).as_posix() if subdir else filename
+        path = basedir.joinpath(templatepath.as_posix())
 
         if not path.is_file():
             return None
@@ -146,19 +147,21 @@ class Template(abc.ABC):
 
         try:
             # Only try to decode the file text if the file is an HTML template
-            if path.name.lower().endswith('.html'):
+            if templatepath.suffix == '.html':
                 try:
                     text = path.read_text(encoding='utf-8')
                 except UnicodeDecodeError as e:
                     raise FailedToCreateTemplate("Cannot decode HTML Template"
                                 f" as UTF-8: '{path}'. {e}") from e
                 else:
-                    template = HtmlTemplate(name=template_name(path.name), text=text)
+                    # The template name is the relative path to the template.
+                    # Template files in subdirectories will have a name like: 'static/bar.svg'.
+                    template = HtmlTemplate(name=templatepath.as_posix(), text=text)
             
             else:
                 # Treat the file as binary data.
                 data = path.read_bytes()
-                template = StaticTemplate(name=template_name(path.name), data=data)
+                template = StaticTemplate(name=templatepath.as_posix(), data=data)
         
         # Catch io errors only once for the whole block, it's ok to do that since 
         # we're reading only one file per call to fromfile()

@@ -3,7 +3,7 @@ from typing import Callable
 import pytest
 import warnings
 import sys
-from pathlib import Path
+from pathlib import Path, PurePath
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
                                      TemplateLookup, Template, 
@@ -268,18 +268,18 @@ def test_template_fromdir_fromfile_failure() -> None:
     with pytest.raises(FailedToCreateTemplate):
         [t for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist')]
     
-    template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders')
+    template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders', PurePath())
     assert not template
 
-    template = Template.fromfile(here / 'testcustomtemplates' / 'thisfolderdonotexist')
+    template = Template.fromfile(here / 'testcustomtemplates' / 'thisfolderdonotexist', PurePath('whatever'))
     assert not template
 
 def test_template() -> None:
 
     here = Path(__file__).parent
 
-    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'pydoctor.js')
-    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'nav.html')
+    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('pydoctor.js'))
+    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('nav.html'))
 
     assert isinstance(js_template, StaticTemplate)
     assert isinstance(html_template, HtmlTemplate)
