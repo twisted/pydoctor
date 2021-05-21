@@ -20,9 +20,8 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
-# On Python 3.7+, use importlib.resources from the standard library.
-# On older versions, a compatibility package must be installed from PyPI.
-if sys.version_info < (3, 7):
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+if sys.version_info < (3, 9):
     import importlib_resources
 else:
     import importlib.resources as importlib_resources
