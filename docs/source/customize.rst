@@ -16,7 +16,7 @@ and use the following option::
 
   --template-dir=./pydoctor_templates
 
-If you want more customization, you can override the defaults templates in
+If you want more customization, you can override the default templates in
 `pydoctor/themes/base <https://github.com/twisted/pydoctor/tree/master/pydoctor/themes/base>`_
 with the same method.
 
