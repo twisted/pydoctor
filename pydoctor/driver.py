@@ -98,9 +98,10 @@ def get_themes() -> Iterator[str]:
     """
     Get the list of the available themes.
     """
-    for path in importlib_resources.contents('pydoctor.themes'):
-        if not path.startswith('_'):
-            yield path
+    for name in importlib_resources.contents('pydoctor.themes'):
+        if (not name.startswith('_') and not
+            importlib_resources.is_resource('pydoctor.themes', name)) :
+            yield name
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
