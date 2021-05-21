@@ -8,7 +8,6 @@ else:
         return f
 import abc
 from pathlib import Path, PurePath
-from os.path import splitext
 import warnings
 import sys
 from xml.dom import minidom
