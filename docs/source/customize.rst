@@ -16,11 +16,11 @@ and use the following option::
 
   --template-dir=./pydoctor_templates
 
-If you want more customization, you can override the defaults templates in
+If you want more customization, you can override the default templates in
 `pydoctor/themes/base <https://github.com/twisted/pydoctor/tree/master/pydoctor/themes/base>`_
 with the same method.
 
-HTML templates have their own versionning system and warnings will be triggered if oudated custom template are used.
+HTML templates have their own versioning system and warnings will be triggered when an outdated custom template is used.
 
 .. admonition:: Ugly working example
 
