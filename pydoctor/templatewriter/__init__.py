@@ -273,7 +273,7 @@ class TemplateLookup:
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
 
-    @note: Templates names are handled in an case insensitive manner.
+    @note: Lookups ares are handled in an case insensitive manner.
 
     @see: L{Template}, L{StaticTemplate}, L{HtmlTemplate}
     """
@@ -333,7 +333,12 @@ class TemplateLookup:
         except KeyError:
             self._templates[template.name] = template
         else:
-            
+            # The L{Template.name} attribute might be overriden 
+            # to make it match the original (case sensitive) name.
+            # This way, we are sure to stay consistent in the output file names
+            # while accepting any casing variation in the template directory.
+            template.name = current_template.name
+
             if isinstance(current_template, StaticTemplate):
                 if isinstance(template, StaticTemplate):
                     self._templates[template.name] = template

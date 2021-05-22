@@ -357,13 +357,13 @@ def test_templatelookup_casing() -> None:
     assert lookup.get_template('atemplate.html') == lookup.get_template('ATemplaTe.HTML')
     assert lookup.get_template('static/fonts/bar.svg') == lookup.get_template('StAtic/Fonts/BAr.svg')
 
-    static_fonts_bar = lookup.get_template('Static/Fonts/Bar.svg')
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
     assert static_fonts_bar.name == 'static/fonts/bar.svg'
 
     lookup.add_template(StaticTemplate('Static/Fonts/Bar.svg', bytes()))
 
     static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
-    assert static_fonts_bar.name == 'Static/Fonts/Bar.svg'
+    assert static_fonts_bar.name == 'static/fonts/bar.svg' # the Template.name attribute has been changed by add_template()
 
 def is_fs_case_sensitive():
     # From https://stackoverflow.com/a/36580834
@@ -387,17 +387,12 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
         if isinstance(t, StaticTemplate):
             t.write(test_build_dir)
 
-    assert test_build_dir.joinpath('static').is_dir()
-    assert not test_build_dir.joinpath('atemplate.html').exists()
-    assert not test_build_dir.joinpath('static/info.svg').is_file()
-    assert test_build_dir.joinpath('static/Info.svg').is_file()
+    assert test_build_dir.joinpath('static/info.svg').is_file()
+    assert not test_build_dir.joinpath('static/Info.svg').is_file()
 
-    assert test_build_dir.joinpath('static/lol.svg').is_file()
-    assert test_build_dir.joinpath('static/fonts').is_dir()
-    assert test_build_dir.joinpath('Static/Fonts').is_dir()
-    assert not test_build_dir.joinpath('static/fonts/bar.svg').is_file()
-    assert test_build_dir.joinpath('Static/Fonts/Bar.svg').is_file()
-    assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
+    assert not test_build_dir.joinpath('Static/Fonts').is_dir()
+    assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
