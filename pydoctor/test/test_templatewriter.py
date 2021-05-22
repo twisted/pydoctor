@@ -331,8 +331,26 @@ def test_template_subfolders_overrides() -> None:
     # Except for the overriden file
     assert len(static_fonts_foo.data) > 0
 
+def test_template_casing() -> None:
+    
+    here = Path(__file__).parent
+
+    html_template1 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test1/nav.HTML'))
+    html_template2 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test2/nav.Html'))
+    html_template3 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test3/nav.htmL'))
+
+    assert isinstance(html_template1, HtmlTemplate)
+    assert isinstance(html_template2, HtmlTemplate)
+    assert isinstance(html_template3, HtmlTemplate)
+
 def test_templatelookup_casing() -> None:
     here = Path(__file__).parent
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'casing' / 'test1')
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'casing' / 'test2')
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'casing' / 'test3')
+
+    assert len(list(lookup.templates)) == 1
 
     lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
 

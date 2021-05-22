@@ -148,7 +148,7 @@ class Template(abc.ABC):
 
         try:
             # Only try to decode the file text if the file is an HTML template
-            if templatepath.suffix == '.html':
+            if templatepath.suffix.lower() == '.html':
                 try:
                     text = path.read_text(encoding='utf-8')
                 except UnicodeDecodeError as e:
@@ -273,7 +273,7 @@ class TemplateLookup:
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
 
-    @note: Templates names are handled in an case insensitives manner.
+    @note: Templates names are handled in an case insensitive manner.
 
     @see: L{Template}, L{StaticTemplate}, L{HtmlTemplate}
     """
@@ -283,13 +283,11 @@ class TemplateLookup:
         Loads all templates from the given C{path} into the lookup.
 
         @param path: A L{Path} or L{Traversable} object pointing to a
-            directory to load the templates from.
+            directory to load the default set of templates from.
         """
         self._templates: CaseInsensitiveDict[Template] = CaseInsensitiveDict()
 
         self.add_templatedir(path)
-        
-        self._default_templates = self._templates.copy()
     
     def _add_overriding_html_template(self, template: HtmlTemplate, current_template: HtmlTemplate) -> None:
         default_version = current_template.version
@@ -308,15 +306,19 @@ class TemplateLookup:
 
     def add_template(self, template: Template) -> None:
         """
-        Add a template to the lookup. The custom template override the default. 
+        Add a template to the lookup. 
+        The custom template override the default. 
         
-        If the file doesn't exist in the default template, we assume it is additional data used by the custom template.
+        If the file doesn't already exist in the lookup, 
+        we assume it is additional data used by the custom template.
 
-        For HTML, compare the passed Template version with default template,
+        For HTML, compare the new Template version with the currently loaded template,
         issue warnings if template are outdated.
 
-        @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
-        @raises OverrideTemplateNotAllowed: If this template path overrides a path of a different type (HTML/static/directory).
+        @raises UnsupportedTemplateVersion: 
+            If the custom template is designed for a newer version of pydoctor.
+        @raises OverrideTemplateNotAllowed: 
+            If this template path overrides a path of a different type (HTML/static/directory).
         """
 
         # Since we cannot have a file named the same as a directory, 
