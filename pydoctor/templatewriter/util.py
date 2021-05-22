@@ -28,6 +28,8 @@ def templatefile(filename: str) -> None:
         "Please use the templating system.")
     return None
 
+LowerStr = str
+
 _VT = TypeVar('_VT')
 
 class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
@@ -53,7 +55,7 @@ class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
     """
 
     def __init__(self, data: Optional[Union[Mapping[str, _VT], Iterable[Tuple[str, _VT]]]] = None, **kwargs: Any) -> None:
-        self._store: Dict[str, Tuple[str, _VT]] = collections.OrderedDict()
+        self._store: Dict[LowerStr, Tuple[str, _VT]] = collections.OrderedDict()
         if data is None:
             data = {}
         self.update(data, **kwargs)
@@ -75,7 +77,7 @@ class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
     def __len__(self) -> int:
         return len(self._store)
 
-    def lower_items(self) -> Iterator[Tuple[str, _VT]]:
+    def lower_items(self) -> Iterator[Tuple[LowerStr, _VT]]:
         """Like iteritems(), but with all lowercase keys."""
         return (
             (lowerkey, keyval[1])

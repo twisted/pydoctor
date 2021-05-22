@@ -24,7 +24,7 @@ else:
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
-from pydoctor.templatewriter.util import CaseInsensitiveDict
+from pydoctor.templatewriter.util import CaseInsensitiveDict, LowerStr
 from pydoctor.model import System, Documentable
 
 DOCTYPE = b'''\
@@ -304,6 +304,15 @@ class TemplateLookup:
                                     "version of pydoctor with 'pip install -U pydoctor'. ")
         self._templates[template.name] = template
 
+    def _raise_if_overrides_directory(self, template_lowername: LowerStr, template_name: str) -> None:
+        # Since we cannot have a file named the same as a directory, 
+        # we must reject files that overrides direcotries.
+        for t in self.templates:
+            current_lowername: LowerStr = t.name.lower()
+            if current_lowername.startswith(f"{template_lowername}/"):
+                raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
+                            f"a template. Rename '{template_name}' to something else.")
+
     def add_template(self, template: Template) -> None:
         """
         Add a template to the lookup. 
@@ -321,21 +330,20 @@ class TemplateLookup:
             If this template path overrides a path of a different type (HTML/static/directory).
         """
 
-        # Since we cannot have a file named the same as a directory, 
-        # we must reject files that overrides direcotries.
-        for t in self.templates:
-            if t.name.lower().startswith(f"{template.name.lower()}/"):
-                raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
-                            f"a template. Rename '{template.name}' to something else.")
+        self._raise_if_overrides_directory(template.name.lower(), template.name)
 
         try:
             current_template = self._templates[template.name]
         except KeyError:
             self._templates[template.name] = template
         else:
+            # The real template name might not have the same casing as current_template.name.
+            # This variable is only used in error messages.
+            _real_template_name = template.name 
+            
             # The L{Template.name} attribute might be overriden 
             # to make it match the original (case sensitive) name.
-            # This way, we are sure to stay consistent in the output file names
+            # This way, we are sure to stay consistent in the output file names (keeping the original),
             # while accepting any casing variation in the template directory.
             template.name = current_template.name
 
@@ -344,7 +352,7 @@ class TemplateLookup:
                     self._templates[template.name] = template
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override a static template with "
-                        f"a HTML template. Rename '{template.name}' to something else.")
+                        f"a HTML template. Rename '{_real_template_name}' to something else.")
                         # we can assume the template is HTML since there is only 
                         # two types of concrete templates
             
@@ -353,7 +361,7 @@ class TemplateLookup:
                     self._add_overriding_html_template(template, current_template)
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override an HTML template with "
-                        f"a static template. Rename '{template.name}' to something else.")
+                        f"a static template. Rename '{_real_template_name}' to something else.")
 
     def add_templatedir(self, path: Union[Path, Traversable]) -> None:
         """
