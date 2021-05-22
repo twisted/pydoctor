@@ -272,8 +272,8 @@ class TemplateLookup:
 
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
-
-    @note: Lookups ares are handled in an case insensitive manner.
+    
+    @note: Template operations are case insensitive.
 
     @see: L{Template}, L{StaticTemplate}, L{HtmlTemplate}
     """
