@@ -11,7 +11,6 @@ from pathlib import Path, PurePath
 import warnings
 import sys
 from xml.dom import minidom
-from pydoctor.templatewriter.util import CaseInsensitiveDict
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if TYPE_CHECKING:
@@ -25,6 +24,7 @@ else:
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
+from pydoctor.templatewriter.util import CaseInsensitiveDict
 from pydoctor.model import System, Documentable
 
 DOCTYPE = b'''\

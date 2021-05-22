@@ -365,7 +365,7 @@ def test_templatelookup_casing() -> None:
     static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
     assert static_fonts_bar.name == 'static/fonts/bar.svg' # the Template.name attribute has been changed by add_template()
 
-def is_fs_case_sensitive():
+def is_fs_case_sensitive() -> bool:
     # From https://stackoverflow.com/a/36580834
     with tempfile.NamedTemporaryFile(prefix='TmP') as tmp_file:
         return(not os.path.exists(tmp_file.name.lower()))
