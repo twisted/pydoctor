@@ -3,6 +3,8 @@ from typing import Callable
 import pytest
 import warnings
 import sys
+import tempfile
+import os
 from pathlib import Path, PurePath
 from pydoctor import model, templatewriter
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
@@ -222,27 +224,16 @@ def test_template_lookup_add_template_raises() -> None:
 
     with pytest.raises(UnsupportedTemplateVersion):
         lookup.add_template(HtmlTemplate(name="nav.html", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+        <nav>
             <meta name="pydoctor-template-version" content="2050" />
-            <div class="container"> </div>
         </nav>
         """))
 
     with pytest.raises(ValueError):
-        lookup.add_template(HtmlTemplate(name="nav.html", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-            <meta name="pydoctor-template-version" content="1" />
-            <div class="container"> </div>
-        </nav>
-        <span> Words </span>
-        """))
+        lookup.add_template(HtmlTemplate(name="nav.html", text="<nav></nav><span> Words </span>"))
     
     with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(HtmlTemplate(name="apidocs.css", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-            blabla
-        </nav>
-        """))
+        lookup.add_template(HtmlTemplate(name="apidocs.css", text="<nav></nav>"))
 
     with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(StaticTemplate(name="index.html", data=bytes()))
@@ -252,11 +243,9 @@ def test_template_lookup_add_template_raises() -> None:
     with pytest.raises(OverrideTemplateNotAllowed):
         lookup.add_template(StaticTemplate('static', data=bytes()))
     with pytest.raises(OverrideTemplateNotAllowed):
-        lookup.add_template(HtmlTemplate('static/fonts', text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-            blabla
-        </nav>
-        """))
+        lookup.add_template(HtmlTemplate('static/fonts', text="<nav></nav>"))
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(HtmlTemplate('Static/Fonts', text="<nav></nav>"))
     # Should not fail
     lookup.add_template(StaticTemplate('tatic/fonts', data=bytes()))
 
@@ -341,6 +330,56 @@ def test_template_subfolders_overrides() -> None:
 
     # Except for the overriden file
     assert len(static_fonts_foo.data) > 0
+
+def test_templatelookup_casing() -> None:
+    here = Path(__file__).parent
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+    assert lookup.get_template('atemplate.html') == lookup.get_template('ATemplaTe.HTML')
+    assert lookup.get_template('static/fonts/bar.svg') == lookup.get_template('StAtic/Fonts/BAr.svg')
+
+    static_fonts_bar = lookup.get_template('Static/Fonts/Bar.svg')
+    assert static_fonts_bar.name == 'static/fonts/bar.svg'
+
+    lookup.add_template(StaticTemplate('Static/Fonts/Bar.svg', bytes()))
+
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    assert static_fonts_bar.name == 'Static/Fonts/Bar.svg'
+
+def is_fs_case_sensitive():
+    # From https://stackoverflow.com/a/36580834
+    with tempfile.NamedTemporaryFile(prefix='TmP') as tmp_file:
+        return(not os.path.exists(tmp_file.name.lower()))
+
+@pytest.mark.skipif(not is_fs_case_sensitive(), reason="This test requires a case sensitive file system.")
+def test_template_subfolders_write_casing(tmp_path: Path) -> None:
+
+    here = Path(__file__).parent
+    test_build_dir = tmp_path
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+    lookup.add_template(StaticTemplate('static/Info.svg', data=bytes()))
+    lookup.add_template(StaticTemplate('Static/Fonts/Bar.svg', data=bytes()))
+
+    # writes only the static template
+
+    for t in lookup.templates:
+        if isinstance(t, StaticTemplate):
+            t.write(test_build_dir)
+
+    assert test_build_dir.joinpath('static').is_dir()
+    assert not test_build_dir.joinpath('atemplate.html').exists()
+    assert not test_build_dir.joinpath('static/info.svg').is_file()
+    assert test_build_dir.joinpath('static/Info.svg').is_file()
+
+    assert test_build_dir.joinpath('static/lol.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts').is_dir()
+    assert test_build_dir.joinpath('Static/Fonts').is_dir()
+    assert not test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+    assert test_build_dir.joinpath('Static/Fonts/Bar.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:

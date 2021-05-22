@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Iterator, Optional, Dict, Union, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Union, overload, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -11,6 +11,7 @@ from pathlib import Path, PurePath
 import warnings
 import sys
 from xml.dom import minidom
+from pydoctor.templatewriter.util import CaseInsensitiveDict
 
 # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
 if TYPE_CHECKING:
@@ -272,6 +273,8 @@ class TemplateLookup:
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
 
+    @note: Templates names are handled in an case insensitives manner.
+
     @see: L{Template}, L{StaticTemplate}, L{HtmlTemplate}
     """
 
@@ -282,7 +285,7 @@ class TemplateLookup:
         @param path: A L{Path} or L{Traversable} object pointing to a
             directory to load the templates from.
         """
-        self._templates: Dict[str, Template] = {}
+        self._templates: CaseInsensitiveDict[Template] = CaseInsensitiveDict()
 
         self.add_templatedir(path)
         
@@ -319,12 +322,15 @@ class TemplateLookup:
         # Since we cannot have a file named the same as a directory, 
         # we must reject files that overrides direcotries.
         for t in self.templates:
-            if t.name.startswith(f"{template.name}/"):
+            if t.name.lower().startswith(f"{template.name.lower()}/"):
                 raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
                             f"a template. Rename '{template.name}' to something else.")
 
-        current_template = self._templates.get(template.name, None)
-        if current_template:
+        try:
+            current_template = self._templates[template.name]
+        except KeyError:
+            self._templates[template.name] = template
+        else:
             
             if isinstance(current_template, StaticTemplate):
                 if isinstance(template, StaticTemplate):
@@ -341,8 +347,6 @@ class TemplateLookup:
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override an HTML template with "
                         f"a static template. Rename '{template.name}' to something else.")
-        else:
-            self._templates[template.name] = template
 
     def add_templatedir(self, path: Union[Path, Traversable]) -> None:
         """
