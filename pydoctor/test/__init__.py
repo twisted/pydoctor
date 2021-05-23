@@ -84,10 +84,10 @@ class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
 
     def link_to(self, target: str, label: str) -> Tag:
-        return tags.transparent(label)  # type: ignore[no-any-return]
+        return tags.transparent(label)
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
-        return tags.code(label)  # type: ignore[no-any-return]
+        return tags.code(label)
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None

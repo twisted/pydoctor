@@ -271,10 +271,13 @@ class ModuleVistor(ast.NodeVisitor):
             return
 
         modname = node.module
-        if node.level:
+        level = node.level
+        if level:
             # Relative import.
             parent: Optional[model.Documentable] = ctx.parentMod
-            for _ in range(node.level):
+            if isinstance(ctx.module, model.Package):
+                level -= 1
+            for _ in range(level):
                 if parent is None:
                     break
                 parent = parent.parent
@@ -332,13 +335,7 @@ class ModuleVistor(ast.NodeVisitor):
         """Handle a C{from <modname> import <names>} statement."""
 
         # Process the module we're importing from.
-        # If we're importing from a package, 'mod' will be the __init__ module.
         mod = self.system.getProcessedModule(modname)
-        obj = self.system.objForFullName(modname)
-
-        # Are we importing from a package?
-        is_package = isinstance(obj, model.Package)
-        assert is_package or obj is mod or mod is None
 
         # Fetch names to export.
         current = self.builder.current
@@ -375,7 +372,7 @@ class ModuleVistor(ast.NodeVisitor):
 
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
-            if is_package:
+            if isinstance(mod, model.Package):
                 self.system.getProcessedModule(f'{modname}.{orgname}')
 
             _localNameToFullName[asname] = f'{modname}.{orgname}'
