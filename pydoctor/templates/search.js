@@ -377,6 +377,10 @@ function search(){
         return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
       })
 
+      let private_search_results = search_results_documents.filter(function(value){
+        return value.querySelector('.privacy').innerHTML.includes("PRIVATE");
+      })
+
       if (public_search_results.length==0){
         setStatus('No results matches "' + _query + '"');
         setInfos('Some private objects matches your search though.');
@@ -393,8 +397,14 @@ function search(){
       }
 
       // Build PRIVATE complementary information string
-
-      setPrivateInfos(buildInfosString(search_results_documents, true));
+      if (private_search_results.length > 0){
+        setPrivateInfos(buildInfosString(search_results_documents, true));
+      }
+      else{
+        // Hide the cell
+        setPrivateInfos('')
+      }
+      
 
       initFilterDropdown(search_results_documents)
 
