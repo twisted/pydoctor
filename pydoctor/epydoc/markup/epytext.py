@@ -1427,26 +1427,23 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'uri':
             _label, _target = variables[0], variables[1]
             yield craft_node(reference(
-                    '', _label, internal=False, refuri=_target))
+                    '', internal=False, refuri=_target), _label.children)
         
-        # TODO: Fix Issue with nested markup inside links. 
-        #    - U{The B{Python} homepage <www.python.org>}
-        # The current behaviour is to transform the node to text with node2stan.gettext()
-        # So the nested markup inside link epytext Element are simply ignored. 
         elif tree.tag == 'link':
             _label, _target = variables
             assert isinstance(_target, Text)
-            assert isinstance(_label, Text)
+            assert isinstance(_label, inline)
 
             args = {}
             if _target.astext() != _label.astext():
                 args['refuri']=_target.astext()
 
             yield craft_node(title_reference(
-                   '', '', _label, **args))
+                   '', '', **args), _label.children)
 
         elif tree.tag in ('name',):
-            yield craft_node(Text(' '.join(node2stan.gettext(variables))))
+            yield craft_node(inline('', ''), variables)
+            # yield craft_node(Text(' '.join(node2stan.gettext(variables))))
         elif tree.tag == 'target':
             value, = variables
             yield craft_node(Text(value))

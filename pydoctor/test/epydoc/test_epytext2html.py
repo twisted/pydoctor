@@ -236,12 +236,12 @@ def test_epytext_url() -> None:
           gradient.cis.upenn.edu>}
         '''
     expected = '''
-        <ul class="rst-simple"> <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   www.python.org  </a> </li> 
-        <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   http://www.python.org  </a> </li> 
-        <li>  <a class="rst-reference external" href="http://epydoc.sourceforge.net" target="_top">   The epydoc homepage  </a> </li> 
-        <li>  <a class="rst-reference external" href="http://www.python.org" target="_top">   The  Python  homepage  </a> </li> 
-        <li>  <a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">   Edward Loper  </a> </li></ul>
-        '''
+        <ul class="rst-simple">
+        <li><a class="rst-reference external" href="http://www.python.org" target="_top">www.python.org</a></li>
+        <li><a class="rst-reference external" href="http://www.python.org" target="_top">http://www.python.org</a></li>
+        <li><a class="rst-reference external" href="http://epydoc.sourceforge.net" target="_top">The epydoc homepage</a></li>
+        <li><a class="rst-reference external" href="http://www.python.org" target="_top">The<strong><em>Python</em></strong>homepage</a></li>
+        <li><a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">Edward Loper</a></li></ul>'''
 
     assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
 
@@ -274,7 +274,7 @@ def test_nested_markup() -> None:
         It becomes a little bit complicated with U{B{custom} links <https://google.ca>}
         '''
     expected = '''
-      It becomes a little bit complicated with<a class="rst-reference external" href="https://google.ca" target="_top"> custom  links</a>
+      It becomes a little bit complicated with<a class="rst-reference external" href="https://google.ca" target="_top"><strong>custom</strong>links</a>
       '''
     
     assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())

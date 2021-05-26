@@ -3,28 +3,40 @@ Helper function to convert `docutils` nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, ClassVar, List, Optional, Union
+from typing import Any, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers.html4css1 import HTMLTranslator, Writer
 from docutils.nodes import Node, SkipNode, document, title, Element, Text
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 from pydoctor.epydoc.markup import (
     DocstringLinker, flatten, html2stan
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def node2stan(node: Node, docstring_linker: 'DocstringLinker') -> Tag:
+def _node2html(node: Node, docstring_linker: 'DocstringLinker') -> List[str]:
+    visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
+    node.walkabout(visitor)
+    return visitor.body
+
+def node2stan(node: Union[Node, Iterable[Node]], docstring_linker: 'DocstringLinker') -> Tag:
     """
-    Convert a L{docutils.nodes.document} to a Stan tree.
+    Convert L{docutils.nodes.Node} objects to a Stan tree.
 
     @param node: An docutils document.
     @return: The element as a stan tree.
     """
-    visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
-    node.walkabout(visitor)
-    return html2stan(''.join(visitor.body))
+    html = []
+    if isinstance(node, Node):
+        html += _node2html(node, docstring_linker)
+    else:
+        for child in node:
+            html += _node2html(child, docstring_linker)
+    return html2stan(''.join(html))
+
 
 def gettext(node: Union[Node, List[Node]]) -> List[str]:
     """Return the text inside the node(s)."""
@@ -47,6 +59,7 @@ def _valid_identifier(s: str) -> str:
 class _PydoctorHTMLTranslator(HTMLTranslator):
     
     settings: ClassVar[Optional[optparse.Values]] = None
+    body: List[str]
 
     def __init__(self,
             document: document,
@@ -67,9 +80,10 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
+        label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed
-            label, target = node.astext(), node.attributes['refuri']
+            label, target = node2stan(node.children, self._linker), node.attributes['refuri']
         else:
             m = _TARGET_RE.match(node.astext())
             if m:
