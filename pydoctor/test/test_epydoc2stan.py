@@ -815,7 +815,7 @@ class RecordingAnnotationLinker(DocstringLinker):
 
     def link_to(self, target: str, label: str) -> Tag:
         self.resolve_identifier(target)
-        return tags.transparent(label)  # type: ignore[no-any-return]
+        return tags.transparent(label)
 
     def link_xref(self, target: str, label: str, lineno: int) -> Tag:
         assert False
