@@ -111,6 +111,7 @@ class ObjContent(Element):
     Object content displayed on the sidebar. 
 
     Each L{SideBarSection} object uses one of these in the L{SideBarSection.content} renderer. 
+    This object is also used to represent the contents of nested expandable items.
 
     Composed by L{ContentList} elements. 
     """
@@ -139,7 +140,7 @@ class ObjContent(Element):
     
     def _getListOf(self, type_: Type[Documentable],
                          inherited: bool = False) -> Optional['ContentList']:
-        children = self.children(inherited=inherited)
+        children = self._children(inherited=inherited)
         if children:
             things = [ child for child in children if isinstance(child, type_) ]
             return self._getListFrom(things, expand=self._isExpandable(type_))
@@ -148,7 +149,7 @@ class ObjContent(Element):
 
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
-    def _getListFrom(self, things: Iterable[Documentable], expand: bool) -> Optional['ContentList']:
+    def _getListFrom(self, things: List[Documentable], expand: bool) -> Optional['ContentList']:
         if things:
             assert self.loader is not None
             return ContentList(ob=self.ob, children=things, 
@@ -160,10 +161,11 @@ class ObjContent(Element):
                     level_depth=(self._level, self._depth))
         else:
             return None
+    
 
-    def children(self, inherited: bool = False) -> Optional[List[Documentable]]:
+    def _children(self, inherited: bool = False) -> Optional[List[Documentable]]:
         """
-        Sorted by name and privacy. 
+        Compute the children of this object.
         """
         if inherited:
             if isinstance(self.ob, Class):
@@ -255,7 +257,11 @@ class ObjContent(Element):
     
     @renderer
     def subModules(self, request: IRequest, tag: Tag) -> Union[Element, str]:
-        return self.subModuleList or ""        
+        return self.subModuleList or ""    
+
+    @property
+    def has_contents(self) -> bool:
+        return self.classList or self.functionList or self.variableList or self.subModuleList or self.inheritedFunctionList or self.inheritedVariableList    
 
 class ContentList(TemplateElement):
     """
@@ -311,7 +317,6 @@ class ContentItem(Element):
     L{ContentList} item. 
     """
 
-    #TODO: Show a text like "No members" when an object do not have any members, instead of expanding on an empty div. 
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, documented_ob: Documentable,
                  docgetter: util.DocGetter, expand: bool, nested_content_loader: ITemplateLoader, 
@@ -353,8 +358,11 @@ class ContentItem(Element):
     def expandableItem(self, request: IRequest, tag: Tag) -> Union[str, 'ExpandableItem']:
         if self._expand:
             nested_contents = self._contents()
+
+            # pass do_not_expand=True also when an object do not have any members, 
+            # instead of expanding on an empty div. 
             return ExpandableItem(TagLoader(tag), self.child, nested_contents, 
-                    do_not_expand=self.child == self.documented_ob)
+                    do_not_expand=self.child == self.documented_ob or not nested_contents.has_contents)
         else:
             return ""
 
