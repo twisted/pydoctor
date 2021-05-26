@@ -4,10 +4,7 @@ L{pydoctor.epydoc.markup.numpy} and L{pydoctor.epydoc.markup.google}.
 """
 from typing import List, Optional, Type
 
-from docutils import nodes
-from twisted.web.template import Tag
-
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
+from pydoctor.epydoc.markup import ParsedDocstring, ParseError
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
 from pydoctor.model import Attribute, Documentable
