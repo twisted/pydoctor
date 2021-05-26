@@ -49,7 +49,7 @@ def get_docstring(
     return None, None
 
 
-def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -> Tag:
+def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"] = None) -> Tag:
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
 
@@ -103,7 +103,7 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def link_to(self, identifier: str, label: str) -> Tag:
+    def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)
@@ -116,8 +116,8 @@ class _EpydocLinker(DocstringLinker):
 
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
-        xref: Union[Tag, str]
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        xref: "Flattenable"
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:

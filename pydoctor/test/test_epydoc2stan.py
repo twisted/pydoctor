@@ -1,4 +1,4 @@
-from typing import List, Optional, cast
+from typing import List, Optional, cast, TYPE_CHECKING
 import re
 
 from pytest import mark, raises
@@ -10,6 +10,9 @@ from pydoctor.epydoc.markup import DocstringLinker, flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 from . import CapSys
 
@@ -818,11 +821,11 @@ class RecordingAnnotationLinker(DocstringLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
-    def link_to(self, target: str, label: str) -> Tag:
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
         self.resolve_identifier(target)
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         assert False
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
