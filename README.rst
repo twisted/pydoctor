@@ -55,13 +55,14 @@ pydoctor currently supports the following markup languages in docstrings:
 __ http://epydoc.sourceforge.net/manual-epytext.html
 __ https://docutils.sourceforge.io/rst.html
 
-You can select a different format using the ``--docformat`` option.
+You can select a different format using the ``--docformat`` option or the ``__docformat__`` module variable. 
 
 What's New?
 ~~~~~~~~~~~
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for the ``__docformat__`` module variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
 
