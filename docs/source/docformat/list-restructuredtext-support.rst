@@ -100,15 +100,15 @@ List of ReST directives
 
    * - ``.. versionadded::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionadded>`__
-     - Yes
+     - No
 
    * - ``.. versionchanged::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-versionchanged>`__
-     - Yes
+     - No
 
    * - ``.. deprecated::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-deprecated>`__
-     - Yes
+     - No
 
    * - ``.. centered::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-centered>`__
