@@ -78,9 +78,13 @@ class _PrivateClass:
         return True
 
 
-class DemoClass:
+class DemoClass(_PrivateClass):
     """
     This is the docstring of this class.
+
+    .. versionchanged:: 2021-05
+        This class now inherits from `_PrivateClass` and 
+        demonstrate the ``.. versionchanged::`` directive support.
     """
 
     def __init__(self, one: str, two: bytes) -> None:

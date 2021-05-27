@@ -520,3 +520,9 @@ div.tip, div.hint, div.important {
     background-color: #d9edf7;
     border-color: #bce8f1;
 }
+
+/* Version modified style */
+.rst-versionmodified {
+    display: block;
+    font-weight: bold;
+}

@@ -8,7 +8,6 @@ from pydoctor.node2stan import node2stan
 
 from docutils import nodes
 from bs4 import BeautifulSoup
-import pytest
 
 
 def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
