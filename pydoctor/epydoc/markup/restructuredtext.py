@@ -41,13 +41,14 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Iterable, List, Optional, Sequence, Set
+from typing import Iterable, List, Optional, Sequence, Set, cast
 
 from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.nodes import Node, NodeVisitor, Text, document
+from docutils.nodes import (Node, NodeVisitor, Text, document, Admonition, 
+                            TextElement, paragraph, inline)
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform
 import docutils.nodes
@@ -375,6 +376,68 @@ class _SplitFieldsTranslator(NodeVisitor):
     def unknown_visit(self, node: Node) -> None:
         'Ignore all unknown nodes'
 
+versionlabels = {
+    'versionadded':   'New in version %s',
+    'versionchanged': 'Changed in version %s',
+    'deprecated':     'Deprecated since version %s',
+}
+
+versionlabel_classes = {
+    'versionadded':     'added',
+    'versionchanged':   'changed',
+    'deprecated':       'deprecated',
+}
+
+class VersionChange(Directive):
+    """
+    Directive to describe a change/addition/deprecation in a specific version.
+    """
+    class versionmodified(Admonition, TextElement):
+        """Node for version change entries.
+        Currently used for "versionadded", "versionchanged" and "deprecated"
+        directives.
+        """
+    
+    has_content = True
+    required_arguments = 1
+    optional_arguments = 1
+    final_argument_whitespace = True
+
+    def run(self) -> List[Node]:
+        node = self.versionmodified()
+        node.document = self.state.document
+        node['type'] = self.name
+        node['version'] = self.arguments[0]
+        text = versionlabels[self.name] % self.arguments[0]
+        if len(self.arguments) == 2:
+            inodes, messages = self.state.inline_text(self.arguments[1],
+                                                      self.lineno + 1)
+            para = paragraph(self.arguments[1], '', *inodes)
+            node.append(para)
+        else:
+            messages = []
+        if self.content:
+            self.state.nested_parse(self.content, self.content_offset, node)
+        classes = ['versionmodified', versionlabel_classes[self.name]]
+        if len(node):
+            if isinstance(node[0], paragraph) and node[0].rawsource:
+                content = inline(node[0].rawsource)
+                content.source = node[0].source
+                content.line = node[0].line
+                content += node[0].children
+                node[0].replace_self(paragraph('', '', content))
+
+            para = cast(paragraph, node[0])
+            para.insert(0, inline('', '%s: ' % text, classes=classes))
+        else:
+            para = paragraph('', '',
+                                   inline('', '%s.' % text,
+                                                classes=classes), )
+            node.append(para)
+
+        ret = [node]  # type: List[Node]
+        ret += messages
+        return ret
 
 
 
@@ -397,3 +460,6 @@ class PythonCodeDirective(Directive):
         return [ node ]
 
 directives.register_directive('python', PythonCodeDirective)
+directives.register_directive('versionadded', VersionChange)
+directives.register_directive('versionchanged', VersionChange)
+directives.register_directive('deprecated', VersionChange)

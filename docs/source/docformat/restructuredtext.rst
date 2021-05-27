@@ -106,7 +106,7 @@ Here is a list of the supported ReST directives by package of origin:
   ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::``
   and other admonitions, and a few others.
 - `epydoc`: None
-- `Sphinx`: None
+- `Sphinx`: ``.. deprecated::``, ``.. versionchanged::``, ``.. versionadded::``
 - `pydoctor`: ``.. python::``
 
 `Full list of supported and unsupported directives <list-restructuredtext-support.html>`_

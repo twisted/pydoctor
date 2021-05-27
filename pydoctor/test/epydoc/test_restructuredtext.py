@@ -17,7 +17,7 @@ def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
-    assert not errors
+    assert not errors, [str(error) for error in errors]
     return flatten(parsed.to_stan(linker))
     
 def node2html(node: nodes.Node, oneline: bool = True) -> str:
@@ -152,31 +152,26 @@ def test_rst_directive_adnomitions() -> None:
 
         assert prettify(expect)==prettify(actual)
 
-@pytest.mark.xfail
+
 def test_rst_directive_versionadded() -> None:
     html = rst2html(".. versionadded:: 0.6")
-    expected_html="""
-        <div class="versionadded">
-        <p><span class="versionmodified added">New in version 0.6.</span></p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    expected_html="""<div class="rst-versionadded">
+<span class="rst-versionmodified rst-added">New in version 0.6.</span></div>
+"""
+    assert html==expected_html, html
 
-@pytest.mark.xfail
 def test_rst_directive_versionchanged() -> None:
     html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
-    expected_html="""
-        <div class="versionchanged">
-        <p><span class="versionmodified changed">Changed in version 0.7: Add extras</span></p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    expected_html="""<div class="rst-versionchanged">
+<span class="rst-versionmodified rst-changed">Changed in version 0.7: </span><span>Add extras</span></div>
+"""
+    assert html==expected_html, html
 
-@pytest.mark.xfail
 def test_rst_directive_deprecated() -> None:
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
-    expected_html="""
-        <div class="deprecated">
-        <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    expected_html="""<div class="rst-deprecated">
+<span class="rst-versionmodified rst-deprecated">Deprecated since version 0.2: </span><span>For security reasons</span></div>
+"""
+    assert html==expected_html, html

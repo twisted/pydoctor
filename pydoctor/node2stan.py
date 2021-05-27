@@ -243,3 +243,9 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
+
+    def visit_versionmodified(self, node: Node) -> None:
+        self.body.append(self.starttag(node, 'div', CLASS=node['type']))
+
+    def depart_versionmodified(self, node: Node) -> None:
+        self.body.append('</div>\n')
