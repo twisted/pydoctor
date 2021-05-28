@@ -408,27 +408,18 @@ class Module(CanContainImportsDocumentable):
 
     @property
     def docformat(self) -> Optional[str]:
-        """Value of the the C{__docformat__} variable of this module.
-
-        C{pydoctor} will try to parse all module's docstrings with the 
-        specified parser. Language is ignored and parser name is lowercased.
+        """The name of the format to be used for parsing docstrings in this module.
         
-        This is all valid::
+        The docformat value are inherited from packages if a C{__docformat__} variable 
+        is defined in the C{__init__.py} file.
 
-            __docformat__ = "reStructuredText en"
-            __docformat__ = "epytext"
-            __docformat__ = "restructuredtext"
-
-        If no C{__docformat__} variable was found in the module, or its
+        If no C{__docformat__} variable was found or its
         contents could not be parsed, this is L{None}.
         """
         if self._docformat:
             return self._docformat
-        elif self.parent:
-            _docformat = getattr(self.parent, "docformat", None)
-            if _docformat:
-                assert isinstance(_docformat, str)
-                return _docformat
+        elif isinstance(self.parent, Package):
+            return self.parent.docformat
         return None
     
     @docformat.setter

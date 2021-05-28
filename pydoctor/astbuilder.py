@@ -1121,6 +1121,12 @@ def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
     """
     Find C{__docformat__} variable of this 
     module's AST and set L{Module.docformat} accordingly.
+        
+    This is all valid::
+
+        __docformat__ = "reStructuredText en"
+        __docformat__ = "epytext"
+        __docformat__ = "restructuredtext"
     """
     
     # Python < 3.8 ast node is ast.Str

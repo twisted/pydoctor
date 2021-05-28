@@ -23,3 +23,6 @@ To override the default markup language for a module, define a module-level stri
         __docformat__ = "reStructuredText en"
 
 Parser name and language code are **case insensitve**.
+
+The docformat value are inherited from packages if a ``__docformat__`` variable is defined in 
+the ``__init__.py`` file.
