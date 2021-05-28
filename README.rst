@@ -62,7 +62,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-* Add support for the ``__docformat__`` module variable.
+* Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
 

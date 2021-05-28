@@ -570,7 +570,7 @@ def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
     assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
-    assert mod.docformat == None
+    assert mod.docformat is None
     assert '__docformat__' not in mod.contents
 
 @systemcls_param
