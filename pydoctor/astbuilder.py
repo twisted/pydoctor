@@ -1128,16 +1128,15 @@ def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
         __docformat__ = "epytext"
         __docformat__ = "restructuredtext"
     """
-    
-    # Python < 3.8 ast node is ast.Str
-    if not isinstance(node.value, (ast.Constant, ast.Str)):
+
+    try:
+        value = ast.literal_eval(node.value)
+    except ValueError:
         mod.report(
             'Cannot parse value assigned to "__docformat__": not a string',
             section='docformat', lineno_offset=node.lineno)
         return
-
-    value = node.value.s if isinstance(node.value, ast.Str) else node.value.value
-
+    
     if not isinstance(value, str):
         mod.report(
             'Cannot parse value assigned to "__docformat__": not a string',
