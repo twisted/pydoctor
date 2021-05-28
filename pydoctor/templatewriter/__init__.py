@@ -342,7 +342,7 @@ class TemplateLookup:
             # This variable is only used in error messages.
             _real_template_name = template.name 
             
-            # The L{Template.name} attribute might be overriden 
+            # The L{Template.name} attribute is overriden 
             # to make it match the original (case sensitive) name.
             # This way, we are sure to stay consistent in the output file names (keeping the original),
             # while accepting any casing variation in the template directory.
