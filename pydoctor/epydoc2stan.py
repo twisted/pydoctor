@@ -614,7 +614,8 @@ def parse_docstring(
         This can differ from C{obj} if the docstring is inherited.
     """
 
-    parser = get_parser(obj)
+    # the docstring should be parsed using the format of the module it was inherited from
+    parser = get_parser(source)
     errs: List[ParseError] = []
     try:
         pdoc = parser(doc, errs)
