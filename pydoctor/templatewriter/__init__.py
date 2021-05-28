@@ -24,7 +24,7 @@ else:
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
-from pydoctor.templatewriter.util import CaseInsensitiveDict, LowerStr
+from pydoctor.templatewriter.util import CaseInsensitiveDict
 from pydoctor.model import System, Documentable
 
 DOCTYPE = b'''\
@@ -304,11 +304,12 @@ class TemplateLookup:
                                     "version of pydoctor with 'pip install -U pydoctor'. ")
         self._templates[template.name] = template
 
-    def _raise_if_overrides_directory(self, template_lowername: LowerStr, template_name: str) -> None:
+    def _raise_if_overrides_directory(self, template_name: str) -> None:
         # Since we cannot have a file named the same as a directory, 
         # we must reject files that overrides direcotries.
+        template_lowername = template_name.lower()
         for t in self.templates:
-            current_lowername: LowerStr = t.name.lower()
+            current_lowername = t.name.lower()
             if current_lowername.startswith(f"{template_lowername}/"):
                 raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
                             f"a template. Rename '{template_name}' to something else.")
@@ -330,7 +331,7 @@ class TemplateLookup:
             If this template path overrides a path of a different type (HTML/static/directory).
         """
 
-        self._raise_if_overrides_directory(template.name.lower(), template.name)
+        self._raise_if_overrides_directory(template.name)
 
         try:
             current_template = self._templates[template.name]
