@@ -8,13 +8,12 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
 import astor
 from pydoctor import epydoc2stan, model
-
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -434,11 +433,9 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if target in ['__all__', '__docformat__']:
-            # This is metadata, not a variable that needs to be documented.
-            # It is handled by findAll(), or other findDocformat() functions, 
-            # which operates on the AST and
-            # therefore doesn't need an Attribute instance.
+        if target in MODULE_VARIABLES_META_PARSERS.keys():
+            # This is metadata, not a variable that needs to be documented,
+            # and therefore doesn't need an Attribute instance.
             return
         parent = self.builder.current
         obj = parent.resolveName(target)
@@ -1051,8 +1048,14 @@ class ASTBuilder:
         self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
-        findAll(mod_ast, mod)
-        findDocformat(mod_ast, mod)
+
+        for name, node in findModuleLevelAssign(mod_ast):
+            try:
+                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
+            except KeyError:
+                continue
+            else:
+                module_var_parser(node, mod)
 
         self.ModuleVistor(self, mod).visit(mod_ast)
 
@@ -1070,80 +1073,88 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
-    """Find and attempt to parse into a list of names the 
-    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
+def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
+    """
+    Find module level Assign. 
+    Yields tuples containing the assigment name and the Assign node.
+    """
     for node in mod_ast.body:
         if isinstance(node, ast.Assign) and \
-               len(node.targets) == 1 and \
-               isinstance(node.targets[0], ast.Name) and \
-               node.targets[0].id == '__all__':
-            if not isinstance(node.value, (ast.List, ast.Tuple)):
+            len(node.targets) == 1 and \
+            isinstance(node.targets[0], ast.Name):
+                yield (node.targets[0].id, node)
+
+def parseAll(node: ast.Assign, mod: model.Module) -> None:
+    """Find and attempt to parse into a list of names the 
+    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
+
+    if not isinstance(node.value, (ast.List, ast.Tuple)):
+        mod.report(
+            'Cannot parse value assigned to "__all__"',
+            section='all', lineno_offset=node.lineno)
+        return
+
+    names = []
+    for idx, item in enumerate(node.value.elts):
+        try:
+            name: object = ast.literal_eval(item)
+        except ValueError:
+            mod.report(
+                f'Cannot parse element {idx} of "__all__"',
+                section='all', lineno_offset=node.lineno)
+        else:
+            if isinstance(name, str):
+                names.append(name)
+            else:
                 mod.report(
-                    'Cannot parse value assigned to "__all__"',
+                    f'Element {idx} of "__all__" has '
+                    f'type "{type(name).__name__}", expected "str"',
                     section='all', lineno_offset=node.lineno)
-                continue
 
-            names = []
-            for idx, item in enumerate(node.value.elts):
-                try:
-                    name: object = ast.literal_eval(item)
-                except ValueError:
-                    mod.report(
-                        f'Cannot parse element {idx} of "__all__"',
-                        section='all', lineno_offset=node.lineno)
-                else:
-                    if isinstance(name, str):
-                        names.append(name)
-                    else:
-                        mod.report(
-                            f'Element {idx} of "__all__" has '
-                            f'type "{type(name).__name__}", expected "str"',
-                            section='all', lineno_offset=node.lineno)
+    if mod.all is not None:
+        mod.report(
+            'Assignment to "__all__" overrides previous assignment',
+            section='all', lineno_offset=node.lineno)
+    mod.all = names
 
-            if mod.all is not None:
-                mod.report(
-                    'Assignment to "__all__" overrides previous assignment',
-                    section='all', lineno_offset=node.lineno)
-            mod.all = names
-
-def findDocformat(mod_ast: ast.Module, mod: model.Module) -> None:
+def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
     """
     Find C{__docformat__} variable of this 
     module's AST and set L{Module.docformat} accordingly.
     """
-    for node in mod_ast.body:
-        if isinstance(node, ast.Assign) and \
-               len(node.targets) == 1 and \
-               isinstance(node.targets[0], ast.Name) and \
-               node.targets[0].id == '__docformat__':
-            # Python < 3.8 ast node is ast.Str
-            if not isinstance(node.value, (ast.Constant, ast.Str)):
-                mod.report(
-                    'Cannot parse value assigned to "__docformat__", not a string',
-                    section='docformat', lineno_offset=node.lineno)
-                continue
+    
+    # Python < 3.8 ast node is ast.Str
+    if not isinstance(node.value, (ast.Constant, ast.Str)):
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": not a string',
+            section='docformat', lineno_offset=node.lineno)
+        return
 
-            value = node.value.s if isinstance(node.value, ast.Str) else node.value.value
+    value = node.value.s if isinstance(node.value, ast.Str) else node.value.value
 
-            if not isinstance(value, str):
-                mod.report(
-                    'Cannot parse value assigned to "__docformat__": not a string',
-                    section='docformat', lineno_offset=node.lineno)
-                continue
-                
-            if not value.strip():
-                mod.report(
-                    'Cannot parse value assigned to "__docformat__": empty value',
-                    section='docformat', lineno_offset=node.lineno)
-                continue
-            
-            # Language is ignored and parser name is lowercased.
-            value = value.split(" ", 1)[0].lower()
+    if not isinstance(value, str):
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": not a string',
+            section='docformat', lineno_offset=node.lineno)
+        return
+        
+    if not value.strip():
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": empty value',
+            section='docformat', lineno_offset=node.lineno)
+        return
+    
+    # Language is ignored and parser name is lowercased.
+    value = value.split(" ", 1)[0].lower()
 
-            if mod._docformat is not None:
-                mod.report(
-                    'Assignment to "__docformat__" overrides previous assignment',
-                    section='docformat', lineno_offset=node.lineno)
+    if mod._docformat is not None:
+        mod.report(
+            'Assignment to "__docformat__" overrides previous assignment',
+            section='docformat', lineno_offset=node.lineno)
 
-            mod.docformat = value
+    mod.docformat = value
+
+MODULE_VARIABLES_META_PARSERS: Dict[str, Callable[[ast.Assign, model.Module], None]] = {
+    '__all__': parseAll,
+    '__docformat__': parseDocformat
+}

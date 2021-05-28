@@ -569,7 +569,7 @@ def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
     assert mod.docformat is None
     assert '__docformat__' not in mod.contents
 
@@ -583,7 +583,7 @@ def test_docformat_warn_not_str2(systemcls: Type[model.System], capsys: CapSys) 
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
@@ -597,7 +597,7 @@ def test_docformat_warn_empty(systemcls: Type[model.System], capsys: CapSys) -> 
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", no value\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": empty value\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
