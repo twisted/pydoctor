@@ -863,7 +863,7 @@ def test_module_docformat(capsys: CapSys) -> None:
     """
 
     system = model.System()
-    system.options.docformat = 'restructuredtext'
+    system.options.docformat = 'plaintext'
 
     mod = fromText('''
     """
