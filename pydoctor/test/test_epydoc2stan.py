@@ -889,13 +889,12 @@ def test_module_docformat(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert ('Link to pydoctor: <a href="https://github.com/twisted/pydoctor"'
-        ' target="_top">pydoctor</a>' in flatten(epytext_output))
+    assert ('href="https://github.com/twisted/pydoctor"' in flatten(epytext_output))
     
-    assert ('Link to pydoctor: <a class="rst-reference external"'
-        ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))
+    assert ('href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output))
 
 
+def test_module_docformat_inheritence(capsys: CapSys) -> None:
     top_src = '''
     def f(a: str, b: int): 
         """
