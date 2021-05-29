@@ -1612,3 +1612,46 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     outer = mod.contents['outer']
     assert not outer.contents
+
+@systemcls_param
+def test_constant_module(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    LANG = 'FR'
+    ''', systemcls=systemcls)
+    assert getattr(mod.contents['LANG'], 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.contents['LANG'], 'value') is not None
+
+@systemcls_param
+def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    from typing import Final
+    lang: Final = 'fr'
+    ''', systemcls=systemcls)
+    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.contents['lang'], 'value') is not None
+
+@systemcls_param
+def test_constant_class(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    from typing import Final
+    from datetime import datetime
+    class Clazz:
+        """Class."""
+        LANG = 'FR'
+    ''', systemcls=systemcls)
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.resolveName('Clazz.LANG'), 'value') is not None
+
+
+@systemcls_param
+def test_constant_init(systemcls: Type[model.System]) -> None:
+    mod = fromText('''
+    from typing import Final
+    from datetime import datetime
+    class Clazz:
+        """Class."""
+        def __init__(**args):
+            self.LANG = 'FR'
+    ''', systemcls=systemcls)
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.resolveName('Clazz.LANG'), 'value') is not None

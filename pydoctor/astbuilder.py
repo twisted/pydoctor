@@ -168,6 +168,17 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
                 )
     return None
 
+def is_constant(name:str, annotation: Optional[ast.expr], 
+                ctx: model.Documentable) -> bool:
+    """
+    Determine if the given assignment is a constant. 
+
+    To detect whether a assignment is a constant, this checks two things:
+        - all-caps variable name
+        - typing.Final annotation
+    """
+    return name == name.upper() or \
+        node2fullname(annotation, ctx) == "typing.Final"
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -447,6 +458,11 @@ class ModuleVistor(ast.NodeVisitor):
             obj.kind = model.DocumentableKind.VARIABLE
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
+            
+            if is_constant(target, annotation, obj):
+                obj.kind = model.DocumentableKind.CONSTANT
+                obj.value = expr
+            
             obj.annotation = annotation
             obj.setLineNumber(lineno)
             self.newAttr = obj
@@ -488,6 +504,11 @@ class ModuleVistor(ast.NodeVisitor):
                 annotation = self._annotation_from_attrib(expr, cls)
             if annotation is None:
                 annotation = _infer_type(expr)
+
+        if is_constant(name, annotation, obj):
+            obj.kind = model.DocumentableKind.CONSTANT
+            obj.value = expr
+    
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj
@@ -512,6 +533,12 @@ class ModuleVistor(ast.NodeVisitor):
         obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
+
+        if is_constant(name, annotation, obj):
+            # stuff like: self.DOCUMENT = ""
+            obj.kind = model.DocumentableKind.CONSTANT
+            obj.value = expr
+
         obj.annotation = annotation
         obj.setLineNumber(lineno)
         self.newAttr = obj

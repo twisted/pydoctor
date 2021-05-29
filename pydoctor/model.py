@@ -95,6 +95,7 @@ class DocumentableKind(Enum):
     STATIC_METHOD       = 600
     METHOD              = 500
     FUNCTION            = 400
+    CONSTANT            = 310
     CLASS_VARIABLE      = 300
     SCHEMA_FIELD        = 220
     ATTRIBUTE           = 210
@@ -504,7 +505,7 @@ class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
-
+    value: Optional[ast.expr] = None
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module

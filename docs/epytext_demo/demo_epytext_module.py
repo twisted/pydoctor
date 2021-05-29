@@ -9,6 +9,11 @@ from somelib import SomeInterface
 import zope.interface
 import zope.schema
 
+LANG = 'Fr'
+"""
+This is a constant.
+"""
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
