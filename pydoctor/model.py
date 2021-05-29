@@ -509,7 +509,7 @@ class Attribute(Inheritable):
     """
     The value of the assignment expression. 
 
-    This attribute is set only if the attribute kind is L{DocumentableKind.CONSTANTS}
+    This attribute is set only if the attribute kind is L{DocumentableKind.CONSTANT}
     """
 
 # Work around the attributes of the same name within the System class.
