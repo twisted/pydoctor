@@ -76,6 +76,7 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
+        # h1 is reserved for the page title. 
         self.section_level += 1
 
     # Handle interpreted text (crossreferences)
@@ -113,16 +114,6 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
     def depart_document(self, node: Node) -> None:
         pass
-
-    def visit_title(self, node: Node) -> None:
-        # h1 is reserved for the page title. 
-        if isinstance(node.parent, document):
-            self.body.append(self.starttag(node, 'h2', '', CLASS='title'))
-            close_tag = '</h2>\n'
-            self.in_document_title = len(self.body)
-            self.context.append(close_tag)
-        else: 
-            super().visit_title(node)
 
     def starttag(self, node: Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
         """
