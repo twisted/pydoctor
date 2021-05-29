@@ -1633,8 +1633,6 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
     mod = fromText('''
-    from typing import Final
-    from datetime import datetime
     class Clazz:
         """Class."""
         LANG = 'FR'
@@ -1646,8 +1644,6 @@ def test_constant_class(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_init(systemcls: Type[model.System]) -> None:
     mod = fromText('''
-    from typing import Final
-    from datetime import datetime
     class Clazz:
         """Class."""
         def __init__(**args):
@@ -1659,8 +1655,6 @@ def test_constant_init(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
     mod = fromText('''
-    from typing import Final
-    from datetime import datetime
     class Clazz:
         """Class."""
         LANG = 'EN'
@@ -1673,4 +1667,24 @@ def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) 
     assert ast.literal_eval(val) == 'FR'
 
     captured = capsys.readouterr().out
-    assert f"mod:6: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
+    assert "mod:4: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
+
+@systemcls_param
+def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+    mod = fromText('''
+    from enum import Enum
+    class PrivacyClass(Enum):
+        """
+        @cvar HIDDEN: Don't show the object at all.
+        @cvar PRIVATE: Show, but de-emphasize the object.
+        @cvar VISIBLE: Show the object as normal.
+        """
+        HIDDEN = 0
+        PRIVATE = 1
+        VISIBLE = 2
+    ''', systemcls=systemcls, modname="mod")
+    assert getattr(mod.resolveName('PrivacyClass.HIDDEN'), 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.resolveName('PrivacyClass.PRIVATE'), 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.resolveName('PrivacyClass.VISIBLE'), 'kind') == model.DocumentableKind.CONSTANT
+    captured = capsys.readouterr().out
+    assert not captured

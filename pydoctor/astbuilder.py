@@ -444,11 +444,13 @@ class ModuleVistor(ast.NodeVisitor):
                 obj: model.Attribute, is_first_assignment: bool) -> None:
         if is_constant(name, annotation, obj):
             obj.kind = model.DocumentableKind.CONSTANT
-            obj.value = value
-            if not is_first_assignment:
+            
+            if not is_first_assignment and obj.value is not None:
                 # This warning will be useful when #377 is implemented.
                 obj.report(f'Assignment to constant "{name}" overrides previous assignment.', 
                             section='ast')
+            
+            obj.value = value
 
     def _handleModuleVar(self,
             target: str,
