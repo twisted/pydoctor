@@ -1,7 +1,7 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten, ParsedDocstring
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
@@ -10,15 +10,17 @@ from docutils import nodes
 from bs4 import BeautifulSoup
 import pytest
 
+def parse_rst(s: str) -> ParsedDocstring:
+    errors: List[ParseError] = []
+    parsed = parse_docstring(s, errors)
+    assert not errors
+    return parsed
 
 def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     Render a docstring to HTML.
     """
-    errors: List[ParseError] = []
-    parsed = parse_docstring(docstring, errors)
-    assert not errors
-    return flatten(parsed.to_stan(linker))
+    return flatten(parse_rst(docstring).to_stan(linker))
     
 def node2html(node: nodes.Node, oneline: bool = True) -> str:
     if oneline:
@@ -27,10 +29,7 @@ def node2html(node: nodes.Node, oneline: bool = True) -> str:
         return flatten(node2stan(node, NotFoundLinker()))
 
 def rst2node(s: str) -> nodes.document:
-    errors: List[ParseError] = []
-    parsed = parse_docstring(s, errors)
-    assert not errors
-    return parsed.to_node()
+    return parse_rst(s).to_node()
 
 def test_rst_partial() -> None:
     doc = dedent('''

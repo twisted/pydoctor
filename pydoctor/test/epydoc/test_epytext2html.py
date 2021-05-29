@@ -7,7 +7,7 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten
+from pydoctor.epydoc.markup import ParseError, flatten, ParsedDocstring
 from pydoctor.epydoc.markup.epytext import parse_docstring
 from pydoctor.node2stan import node2stan
 from pydoctor.test import NotFoundLinker
@@ -15,11 +15,14 @@ from pydoctor.test.epydoc.test_restructuredtext import prettify
 
 from docutils import nodes
 
-def epytext2node(s: str) -> nodes.document:
+def parse_epytext(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
     parsed = parse_docstring(s, errors)
     assert not errors
-    return parsed.to_node()
+    return parsed
+
+def epytext2node(s: str)-> nodes.document:
+    return parse_epytext(s).to_node()
 
 def epytext2html(s: str) -> str:
     return ''.join((l.strip() for l in prettify(flatten(node2stan(epytext2node(s), NotFoundLinker()))).splitlines()))
