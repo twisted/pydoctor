@@ -10,6 +10,9 @@ from docutils import nodes
 from bs4 import BeautifulSoup
 import pytest
 
+def prettify(html: str) -> str:
+    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
+
 def parse_rst(s: str) -> ParsedDocstring:
     errors: List[ParseError] = []
     parsed = parse_docstring(s, errors)
@@ -91,8 +94,15 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
-def prettify(html: str) -> str:
-    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
+def test_rst_xref_with_target() -> None:
+    src = "`mapping <typing.MutableMapping>`"
+    html = rst2html(src)
+    assert html.startswith('<code>mapping</code>')
+
+def test_rst_xref_implicit_target() -> None:
+    src = "`func()`"
+    html = rst2html(src)
+    assert html.startswith('<code>func()</code>')
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""
