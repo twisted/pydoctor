@@ -62,6 +62,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Mark variables as contants when their names is all caps or if using `typing.Final` annotation.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
 

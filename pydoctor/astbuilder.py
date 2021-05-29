@@ -438,6 +438,17 @@ class ModuleVistor(ast.NodeVisitor):
                     target_obj.kind = model.DocumentableKind.CLASS_METHOD
                 return True
         return False
+    
+    @staticmethod
+    def _handleMaybeConstant(name:str, annotation: Optional[ast.expr], value: Optional[ast.expr], 
+                obj: model.Attribute, is_first_assignment: bool) -> None:
+        if is_constant(name, annotation, obj):
+            obj.kind = model.DocumentableKind.CONSTANT
+            obj.value = value
+            if not is_first_assignment:
+                # This warning will be useful when #377 is implemented.
+                obj.report(f'Assignment to constant "{name}" overrides previous assignment.', 
+                            section='ast')
 
     def _handleModuleVar(self,
             target: str,
@@ -452,16 +463,19 @@ class ModuleVistor(ast.NodeVisitor):
             return
         parent = self.builder.current
         obj = parent.resolveName(target)
+        
+        first_assignment = False
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
+            first_assignment = True
+        
         if isinstance(obj, model.Attribute):
             obj.kind = model.DocumentableKind.VARIABLE
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
             
-            if is_constant(target, annotation, obj):
-                obj.kind = model.DocumentableKind.CONSTANT
-                obj.value = expr
+            self._handleMaybeConstant(name=target, annotation=annotation, value=expr, obj=obj, 
+                is_first_assignment=first_assignment)
             
             obj.annotation = annotation
             obj.setLineNumber(lineno)
@@ -489,8 +503,12 @@ class ModuleVistor(ast.NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
         obj: Optional[model.Attribute] = cls.contents.get(name)
+        
+        first_assignment = False
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
+            first_assignment = True
+
         if obj.kind is None:
             instance = is_attrib(expr, cls) or (
                 cls.auto_attribs and annotation is not None and not (
@@ -499,15 +517,15 @@ class ModuleVistor(ast.NodeVisitor):
                     )
                 )
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE if instance else model.DocumentableKind.CLASS_VARIABLE
+        
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)
             if annotation is None:
                 annotation = _infer_type(expr)
 
-        if is_constant(name, annotation, obj):
-            obj.kind = model.DocumentableKind.CONSTANT
-            obj.value = expr
+        self._handleMaybeConstant(name=name, annotation=annotation, value=expr, obj=obj, 
+                is_first_assignment=first_assignment)
     
         obj.annotation = annotation
         obj.setLineNumber(lineno)
@@ -527,17 +545,19 @@ class ModuleVistor(ast.NodeVisitor):
             return
         if not _maybeAttribute(cls, name):
             return
+
+        first_assignment = False
         obj = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
+            first_assignment = True
+
         obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
 
-        if is_constant(name, annotation, obj):
-            # stuff like: self.DOCUMENT = ""
-            obj.kind = model.DocumentableKind.CONSTANT
-            obj.value = expr
+        self._handleMaybeConstant(name=name, annotation=annotation, value=expr, obj=obj, 
+                is_first_assignment=first_assignment)
 
         obj.annotation = annotation
         obj.setLineNumber(lineno)

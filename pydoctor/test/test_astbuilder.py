@@ -1655,3 +1655,22 @@ def test_constant_init(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
     assert getattr(mod.resolveName('Clazz.LANG'), 'value') is not None
+
+@systemcls_param
+def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+    mod = fromText('''
+    from typing import Final
+    from datetime import datetime
+    class Clazz:
+        """Class."""
+        LANG = 'EN'
+        def __init__(**args):
+            self.LANG = 'FR'
+    ''', systemcls=systemcls, modname="mod")
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    val = getattr(mod.resolveName('Clazz.LANG'), 'value')
+    assert val is not None
+    assert ast.literal_eval(val) == 'FR'
+
+    captured = capsys.readouterr().out
+    assert f"mod:6: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured

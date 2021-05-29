@@ -506,6 +506,11 @@ class Attribute(Inheritable):
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
+    """
+    The value of the assignment expression. 
+
+    This attribute is set only if the attribute kind is L{DocumentableKind.CONSTANTS}
+    """
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
