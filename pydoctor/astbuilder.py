@@ -1159,7 +1159,7 @@ def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
 
     mod.docformat = value
 
-MODULE_VARIABLES_META_PARSERS: Dict[str, Callable[[ast.Assign, model.Module], None]] = {
+MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module], None]] = {
     '__all__': parseAll,
     '__docformat__': parseDocformat
 }
