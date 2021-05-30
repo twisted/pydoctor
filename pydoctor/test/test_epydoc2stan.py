@@ -856,3 +856,112 @@ def test_annotation_formatter(annotation: str) -> None:
     assert html.endswith('</code>')
     text = html[6:-7]
     assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+def test_module_docformat(capsys: CapSys) -> None:
+    """
+    Test if Module.docformat effectively override System.options.docformat
+    """
+
+    system = model.System()
+    system.options.docformat = 'plaintext'
+
+    mod = fromText('''
+    """
+    Link to pydoctor: U{pydoctor <https://github.com/twisted/pydoctor>}.
+    """
+    __docformat__ = "epytext"
+    ''', modname='test_epy', system=system)
+
+    epytext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    mod = fromText('''
+    """
+    Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
+    """
+    __docformat__ = "restructuredtext en"
+    ''', modname='test_rst', system=system)
+
+    restructuredtext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(epytext_output)
+    
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output)
+
+
+def test_module_docformat_inheritence(capsys: CapSys) -> None:
+    top_src = '''
+    def f(a: str, b: int): 
+        """
+        :param a: string
+        :param b: integer
+        """
+        pass
+    '''
+    mod_src = '''
+    def f(a: str, b: int): 
+        """
+        @param a: string
+        @param b: integer
+        """
+        pass
+    '''
+    pkg_src = '''
+    __docformat__ = 'epytext'
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
+    
+
+def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
+
+    mod_src = '''
+    __docformat__ = "restructuredtext"
+
+    class A:
+        def f(self, a: str, b: int): 
+            """
+            .. note:: Note.
+            """
+    '''
+
+    mod2_src = '''
+    from mod import A
+    __docformat__ = "epytext"
+
+    class B(A):
+        def f(self, a: str, b: int): 
+            pass
+    '''
+
+    system = model.System()
+    system.options.docformat = 'epytext'
+
+    mod = fromText(mod_src, modname='mod', system=system)
+    mod2 = fromText(mod2_src, modname='mod2', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    B_f = mod2.resolveName('B.f')
+    A_f = mod.resolveName('A.f')
+
+    assert B_f
+    assert A_f
+
+    assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
