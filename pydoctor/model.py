@@ -391,6 +391,8 @@ class Module(CanContainImportsDocumentable):
         contents could not be parsed, this is L{None}.
         """
 
+        self._docformat: Optional[str] = None
+
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
@@ -404,6 +406,25 @@ class Module(CanContainImportsDocumentable):
     def module(self) -> 'Module':
         return self
 
+    @property
+    def docformat(self) -> Optional[str]:
+        """The name of the format to be used for parsing docstrings in this module.
+        
+        The docformat value are inherited from packages if a C{__docformat__} variable 
+        is defined in the C{__init__.py} file.
+
+        If no C{__docformat__} variable was found or its
+        contents could not be parsed, this is L{None}.
+        """
+        if self._docformat:
+            return self._docformat
+        elif isinstance(self.parent, Package):
+            return self.parent.docformat
+        return None
+    
+    @docformat.setter
+    def docformat(self, value: str) -> None:
+        self._docformat = value
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE

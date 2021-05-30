@@ -25,12 +25,15 @@ if TYPE_CHECKING:
 
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
-    formatname = obj.system.options.docformat
+    
+    # Use module's __docformat__ if specified, else use system's.
+    docformat = obj.module.docformat or obj.system.options.docformat
+    
     try:
-        mod = import_module('pydoctor.epydoc.markup.' + formatname)
+        mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
     except ImportError as e:
         msg = 'Error trying to import %r parser:\n\n    %s: %s\n\nUsing plain text formatting only.'%(
-            formatname, e.__class__.__name__, e)
+            docformat, e.__class__.__name__, e)
         obj.system.msg('epydoc2stan', msg, thresh=-1, once=True)
         mod = pydoctor.epydoc.markup.plaintext
     return mod.parse_docstring # type: ignore[attr-defined, no-any-return]
@@ -611,7 +614,8 @@ def parse_docstring(
         This can differ from C{obj} if the docstring is inherited.
     """
 
-    parser = get_parser(obj)
+    # the docstring should be parsed using the format of the module it was inherited from
+    parser = get_parser(source)
     errs: List[ParseError] = []
     try:
         pdoc = parser(doc, errs)
