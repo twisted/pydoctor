@@ -8,10 +8,16 @@ from abc import ABC
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
+from typing import Final
 
 LANG = 'Fr'
 """
 This is a constant.
+"""
+
+lang: Final = ['Fr', 'En']
+"""
+This is also a constant.
 """
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore

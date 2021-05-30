@@ -3,10 +3,16 @@ This is a module demonstrating reST code documentation features.
 
 Most part of this documentation is using Python type hinting.
 """
+from typing import Final
 
 LANG = 'Fr'
 """
 This is a constant.
+"""
+
+lang: Final = ['Fr', 'En']
+"""
+This is also a constant.
 """
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
