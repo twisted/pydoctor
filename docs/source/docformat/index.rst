@@ -24,5 +24,4 @@ To override the default markup language for a module, define a module-level stri
 
 Parser name and language code are **case insensitve**.
 
-The docformat value are inherited from packages if a ``__docformat__`` variable is defined in 
-the ``__init__.py`` file.
+If a package defines ``__docformat__`` in its ``__init__.py`` file, all modules (including subpackages) in that package will inherit its value.

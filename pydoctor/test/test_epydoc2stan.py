@@ -889,9 +889,9 @@ def test_module_docformat(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert ('href="https://github.com/twisted/pydoctor"' in flatten(epytext_output))
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(epytext_output)
     
-    assert ('href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output))
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output)
 
 
 def test_module_docformat_inheritence(capsys: CapSys) -> None:

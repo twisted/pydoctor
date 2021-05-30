@@ -433,7 +433,7 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if target in MODULE_VARIABLES_META_PARSERS.keys():
+        if target in MODULE_VARIABLES_META_PARSERS:
             # This is metadata, not a variable that needs to be documented,
             # and therefore doesn't need an Attribute instance.
             return
