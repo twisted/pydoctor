@@ -1615,34 +1615,46 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants define as module members.
+    """
     mod = fromText('''
     LANG = 'FR'
     ''', systemcls=systemcls)
     assert getattr(mod.contents['LANG'], 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.contents['LANG'], 'value') is not None
+    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value') or '') == 'FR'
 
 @systemcls_param
 def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final
+    """
     mod = fromText('''
     from typing import Final
     lang: Final = 'fr'
     ''', systemcls=systemcls)
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.contents['lang'], 'value') is not None
+    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value') or '') == 'fr'
 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants define as class members.
+    """
     mod = fromText('''
     class Clazz:
         """Class."""
         LANG = 'FR'
     ''', systemcls=systemcls)
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.resolveName('Clazz.LANG'), 'value') is not None
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
 
 
 @systemcls_param
 def test_constant_init(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants define as instance members.
+    """
     mod = fromText('''
     class Clazz:
         """Class."""
@@ -1650,10 +1662,13 @@ def test_constant_init(systemcls: Type[model.System]) -> None:
             self.LANG = 'FR'
     ''', systemcls=systemcls)
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.resolveName('Clazz.LANG'), 'value') is not None
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
 
 @systemcls_param
 def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It does warn and override the Attribute.value property when a constant is beeing re defined. 
+    """
     mod = fromText('''
     class Clazz:
         """Class."""
@@ -1662,29 +1677,35 @@ def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) 
             self.LANG = 'FR'
     ''', systemcls=systemcls, modname="mod")
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    val = getattr(mod.resolveName('Clazz.LANG'), 'value')
-    assert val is not None
-    assert ast.literal_eval(val) == 'FR'
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
 
     captured = capsys.readouterr().out
     assert "mod:4: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Constant can be documented as variables at docstring level without any warnings.
+    """
     mod = fromText('''
-    from enum import Enum
-    class PrivacyClass(Enum):
+    class Clazz:
         """
-        @cvar HIDDEN: Don't show the object at all.
-        @cvar PRIVATE: Show, but de-emphasize the object.
-        @cvar VISIBLE: Show the object as normal.
+        @cvar LANG: French.
         """
-        HIDDEN = 0
-        PRIVATE = 1
-        VISIBLE = 2
+        LANG = 99
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('PrivacyClass.HIDDEN'), 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.resolveName('PrivacyClass.PRIVATE'), 'kind') == model.DocumentableKind.CONSTANT
-    assert getattr(mod.resolveName('PrivacyClass.VISIBLE'), 'kind') == model.DocumentableKind.CONSTANT
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 99
+    captured = capsys.readouterr().out
+    assert not captured
+
+    mod = fromText('''
+    """
+    @var LANG: French.
+    """
+    LANG = 99
+    ''', systemcls=systemcls, modname="mod")
+    assert getattr(mod.resolveName('LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value') or '') == 99
     captured = capsys.readouterr().out
     assert not captured
