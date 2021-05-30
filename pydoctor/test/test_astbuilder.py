@@ -1749,7 +1749,7 @@ def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) 
     assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
 
     captured = capsys.readouterr().out
-    assert "mod:4: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
+    assert "mod:6: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
 
     mod = fromText('''
     """Mod."""
@@ -1762,7 +1762,7 @@ def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) 
     assert ast.literal_eval(getattr(mod.resolveName('IS_64BITS'), 'value') or '') == True
 
     captured = capsys.readouterr().out
-    assert "mod:4: Assignment to constant \"IS_64BITS\" overrides previous assignment.\n" in captured
+    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment.\n" in captured
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
