@@ -8,14 +8,14 @@ from abc import ABC
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
-from typing import Final
+from typing import Final, Sequence
 
 LANG = 'Fr'
 """
 This is a constant.
 """
 
-lang: Final = ['Fr', 'En']
+lang: Final[Sequence[str]] = ['Fr', 'En']
 """
 This is also a constant.
 """

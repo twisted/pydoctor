@@ -181,8 +181,15 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
     if name.isupper():
         return True
     fullName = node2fullname(obj.annotation, obj)
-    if isinstance(fullName, str):
-        if fullName.startswith("typing.Final"):
+    if fullName == "typing.Final":
+        return True
+    if isinstance(obj.annotation, ast.Subscript):
+        value = obj.annotation.value
+        if isinstance(value, ast.Name) and value.id == 'Final':
+            # Final[...] expressions
+            return True
+        elif isinstance(value, ast.Attribute) and value.attr == 'Final':
+            # typing.Final[...] expressions
             return True
     return False
 
@@ -454,18 +461,16 @@ class ModuleVistor(ast.NodeVisitor):
         return False
     
     def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
-        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
         obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
                     f'at line {obj.linenumber}, the original value will not be part of the docs.', 
                             section='ast', lineno_offset=lineno_offset)
                             
     def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
-        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
         obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
                         section='ast', lineno_offset=lineno_offset)
 
     def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
-        
+        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
         if is_attribute_overridden(obj, value):
             
             if obj.kind in (model.DocumentableKind.CONSTANT, 
@@ -509,7 +514,7 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleConstant(obj=obj, value=expr, lineno=lineno)
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
-                # We store the expr value for all Attribute in order to able to 
+                # We store the expr value for all Attribute in order to be able to 
                 # check if they have been initiated or not.
                 obj.value = expr
 

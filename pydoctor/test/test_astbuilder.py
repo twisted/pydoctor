@@ -1705,7 +1705,18 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
     assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == 'fr'
 
-@pytest.mark.xfail
+@systemcls_param
+def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final[something]
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final[Sequence[str]] = ('fr', 'en')
+    ''', systemcls=systemcls)
+    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == ('fr', 'en')
+
 @systemcls_param
 def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> None:
     """
