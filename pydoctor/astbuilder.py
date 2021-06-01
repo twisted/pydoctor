@@ -177,7 +177,7 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
     """
     # Must be called after setting obj.annotation to detect variables using Final.
 
-    return name == name.upper() or \
+    return name.isupper() or \
         node2fullname(obj.annotation, obj) == "typing.Final"
 
 class ModuleVistor(ast.NodeVisitor):
