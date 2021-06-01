@@ -1696,7 +1696,7 @@ def test_constant_module(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants defined with typing.Final
+    Module variables annotated with typing.Final are recognized as constants.
     """
     mod = fromText('''
     from typing import Final
