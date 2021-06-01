@@ -1691,7 +1691,7 @@ def test_constant_module(systemcls: Type[model.System]) -> None:
     LANG = 'FR'
     ''', systemcls=systemcls)
     assert getattr(mod.contents['LANG'], 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value') or '') == 'FR'
+    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 'FR'
 
 @systemcls_param
 def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
@@ -1703,7 +1703,20 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     lang: Final = 'fr'
     ''', systemcls=systemcls)
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value') or '') == 'fr'
+    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == 'fr'
+
+@pytest.mark.xfail
+@systemcls_param
+def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final[something]
+    """
+    mod = fromText('''
+    from typing import Final, Sequence
+    lang: Final[Sequence[str]] = ('fr', 'en')
+    ''', systemcls=systemcls)
+    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == ('fr', 'en')
 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
@@ -1716,40 +1729,65 @@ def test_constant_class(systemcls: Type[model.System]) -> None:
         LANG = 'FR'
     ''', systemcls=systemcls)
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'FR'
 
 
 @systemcls_param
-def test_constant_init(systemcls: Type[model.System]) -> None:
+def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It can recognize constants define as instance members.
+    Currently, it does not mark instance members as constants, never.
     """
     mod = fromText('''
+    from typing import Final
     class Clazz:
         """Class."""
         def __init__(**args):
-            self.LANG = 'FR'
+            self.LANG: Final = 'FR'
     ''', systemcls=systemcls)
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.INSTANCE_VARIABLE
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'FR'
+    captured = capsys.readouterr().out
+    assert not captured
 
 @systemcls_param
-def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It does warn and override the Attribute.value property when a constant is beeing re defined. 
+    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
     """
     mod = fromText('''
     class Clazz:
         """Class."""
         LANG = 'EN'
-        def __init__(**args):
+        def __init__(self, **args):
             self.LANG = 'FR'
     ''', systemcls=systemcls, modname="mod")
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 'FR'
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'EN'
 
     captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"LANG\" overrides previous assignment.\n" in captured
+    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" in captured
+
+@systemcls_param
+def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    Even if the actual constant definition is detected after the instance variable of the same name.
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+        def __init__(self, **args):
+            self.LANG = 'FR'
+        LANG = 'EN'
+    ''', systemcls=systemcls, modname="mod")
+    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'EN'
+
+    captured = capsys.readouterr().out
+    assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+
+@systemcls_param
+def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     mod = fromText('''
     """Mod."""
@@ -1759,13 +1797,13 @@ def test_constant_override_warns(systemcls: Type[model.System], capsys: CapSys) 
         IS_64BITS = True
     ''', systemcls=systemcls, modname="mod")
     assert getattr(mod.resolveName('IS_64BITS'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('IS_64BITS'), 'value') or '') == True
+    assert ast.literal_eval(getattr(mod.resolveName('IS_64BITS'), 'value')) == True
 
     captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment.\n" in captured
+    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" in captured
 
 @systemcls_param
-def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     Constant can be documented as variables at docstring level without any warnings.
     """
@@ -1777,9 +1815,12 @@ def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Typ
         LANG = 99
     ''', systemcls=systemcls, modname="mod")
     assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value') or '') == 99
+    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
 
     mod = fromText('''
     """
@@ -1788,6 +1829,6 @@ def test_constant_override_do_not_warns_when_defined_in_docstring(systemcls: Typ
     LANG = 99
     ''', systemcls=systemcls, modname="mod")
     assert getattr(mod.resolveName('LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value') or '') == 99
+    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 99
     captured = capsys.readouterr().out
     assert not captured

@@ -174,11 +174,25 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
     To detect whether a assignment is a constant, this checks two things:
         - all-caps variable name
         - typing.Final annotation
+    
+    @note: Must be called after setting obj.annotation to detect variables using Final.
     """
-    # Must be called after setting obj.annotation to detect variables using Final.
+    # TODO: Make it understand stuff like Final[Sequence[str]]
+    if name.isupper():
+        return True
+    fullName = node2fullname(obj.annotation, obj)
+    if isinstance(fullName, str):
+        if fullName.startswith("typing.Final"):
+            return True
+    return False
 
-    return name == name.upper() or \
-        node2fullname(obj.annotation, obj) == "typing.Final"
+def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
+    """
+    Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
+    """
+    if obj.value is not None and new_value is not None:
+        return True
+    return False
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -439,20 +453,33 @@ class ModuleVistor(ast.NodeVisitor):
                 return True
         return False
     
-    @staticmethod
-    def _handleMaybeConstant(name:str, value: Optional[ast.expr], 
-                obj: model.Attribute, is_first_assignment: bool, lineno: int) -> None:
-        # Must be called after obj.setLineNumber() to have the right line number in the warning.
+    def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
+        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
+        obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
+                    f'at line {obj.linenumber}, the original value will not be part of the docs.', 
+                            section='ast', lineno_offset=lineno_offset)
+                            
+    def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
+        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
+        obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
+                        section='ast', lineno_offset=lineno_offset)
+
+    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
         
-        if is_constant(name, obj):
-            obj.kind = model.DocumentableKind.CONSTANT
+        if is_attribute_overridden(obj, value):
             
-            if not is_first_assignment and obj.value is not None:
-                # This warning will be useful when #377 is implemented.
-                obj.report(f'Assignment to constant "{name}" overrides previous assignment.', 
-                            section='ast', lineno_offset=lineno-obj.linenumber)
-            
-            obj.value = value
+            if obj.kind in (model.DocumentableKind.CONSTANT, 
+                                model.DocumentableKind.VARIABLE, 
+                                model.DocumentableKind.CLASS_VARIABLE):
+                # Module/Class level warning, regular override.
+                self._warnsConstantAssigmentOverride(obj=obj, lineno_offset=lineno-obj.linenumber)
+            else:
+                # Instance level warning caught at the time of the constant detection.
+                self._warnsConstantReAssigmentInInstance(obj)
+
+        obj.value = value
+        
+        obj.kind = model.DocumentableKind.CONSTANT
 
     def _handleModuleVar(self,
             target: str,
@@ -467,22 +494,25 @@ class ModuleVistor(ast.NodeVisitor):
         parent = self.builder.current
         obj = parent.resolveName(target)
         
-        first_assignment = False
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
-            first_assignment = True
         
         if isinstance(obj, model.Attribute):
-            obj.kind = model.DocumentableKind.VARIABLE
+            
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
             
             obj.annotation = annotation
             obj.setLineNumber(lineno)
             
-            self._handleMaybeConstant(name=target, value=expr, obj=obj, 
-                is_first_assignment=first_assignment, lineno=lineno)
-            
+            if is_constant(target, obj):
+                self._handleConstant(obj=obj, value=expr, lineno=lineno)
+            else:
+                obj.kind = model.DocumentableKind.VARIABLE
+                # We store the expr value for all Attribute in order to able to 
+                # check if they have been initiated or not.
+                obj.value = expr
+
             self.newAttr = obj
 
     def _handleAssignmentInModule(self,
@@ -508,10 +538,8 @@ class ModuleVistor(ast.NodeVisitor):
             return
         obj: Optional[model.Attribute] = cls.contents.get(name)
         
-        first_assignment = False
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
-            first_assignment = True
 
         if obj.kind is None:
             instance = is_attrib(expr, cls) or (
@@ -521,7 +549,7 @@ class ModuleVistor(ast.NodeVisitor):
                     )
                 )
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE if instance else model.DocumentableKind.CLASS_VARIABLE
-        
+
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)
@@ -531,9 +559,11 @@ class ModuleVistor(ast.NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        self._handleMaybeConstant(name=name, value=expr, obj=obj, 
-                is_first_assignment=first_assignment, lineno=lineno)
-        
+        if is_constant(name, obj):
+            self._handleConstant(obj=obj, value=expr, lineno=lineno)
+        else:
+            obj.value = expr
+
         self.newAttr = obj
 
     def _handleInstanceVar(self,
@@ -551,22 +581,23 @@ class ModuleVistor(ast.NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
 
-        first_assignment = False
         obj = cls.contents.get(name)
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
-            first_assignment = True
 
-        obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
         
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        self._handleMaybeConstant(name=name, value=expr, obj=obj, 
-                is_first_assignment=first_assignment, lineno=lineno)
-        
+        # Maybe an instance variable matches the rules to be flagged as constant, 
+        # so we check if it doesn't override one before setting the kind to INSTANCE_VARIABLE
+        if obj.kind is model.DocumentableKind.CONSTANT:
+            self._warnsConstantReAssigmentInInstance(obj, lineno_offset=lineno-obj.linenumber)
+        else:
+            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
+            obj.value = expr
         self.newAttr = obj
 
     def _handleAssignmentInClass(self,

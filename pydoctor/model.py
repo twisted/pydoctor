@@ -530,7 +530,7 @@ class Attribute(Inheritable):
     """
     The value of the assignment expression. 
 
-    This attribute is set only if the attribute kind is L{DocumentableKind.CONSTANT}
+    None value means the value is not initated yet at the current point of the the build process. 
     """
 
 # Work around the attributes of the same name within the System class.
