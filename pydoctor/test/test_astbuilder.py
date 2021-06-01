@@ -1685,7 +1685,7 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants define as module members.
+    Module variables with all-uppercase names are recognized as constants.
     """
     mod = fromText('''
     LANG = 'FR'
