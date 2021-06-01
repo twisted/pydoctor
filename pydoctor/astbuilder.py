@@ -512,6 +512,8 @@ class ModuleVistor(ast.NodeVisitor):
             
             if is_constant(target, obj):
                 self._handleConstant(obj=obj, value=expr, lineno=lineno)
+                if isinstance(obj.annotation, ast.Subscript):
+                    obj.annotation = obj.annotation.slice
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
                 # We store the expr value for all Attribute in order to be able to 
@@ -566,6 +568,8 @@ class ModuleVistor(ast.NodeVisitor):
 
         if is_constant(name, obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
+            if isinstance(obj.annotation, ast.Subscript):
+                obj.annotation = obj.annotation.slice
         else:
             obj.value = expr
 
