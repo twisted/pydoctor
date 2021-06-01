@@ -1685,7 +1685,7 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants define as module members.
+    Module variables with all-uppercase names are recognized as constants.
     """
     mod = fromText('''
     LANG = 'FR'
@@ -1696,7 +1696,7 @@ def test_constant_module(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants defined with typing.Final
+    Module variables annotated with typing.Final are recognized as constants.
     """
     mod = fromText('''
     from typing import Final
@@ -1721,7 +1721,7 @@ def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants define as class members.
+    Class variables with all-uppercase names are recognized as constants.
     """
     mod = fromText('''
     class Clazz:
