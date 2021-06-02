@@ -27,7 +27,7 @@ else:
     _parse = ast.parse
 
 
-def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
+def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     parts = []
     while isinstance(node, ast.Attribute):
         parts.append(node.attr)
@@ -40,7 +40,7 @@ def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
     return parts
 
 
-def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
+def node2fullname(expr: Optional[ast.AST], ctx: model.Documentable) -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
@@ -494,10 +494,12 @@ class ModuleVistor(ast.NodeVisitor):
         if is_using_typing_final(obj):
             if isinstance(obj.annotation, ast.Subscript):
                 # Will not display as "Final[str]" but rather only "str"
-                # obj.annotation = obj.annotation.slice
                 ann_slice = obj.annotation.slice
                 if isinstance(ann_slice, ast.Index):
                     obj.annotation = ann_slice.value
+                else:
+                    # Python 3.9
+                    obj.annotation = ann_slice
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.

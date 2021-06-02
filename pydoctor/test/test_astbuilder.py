@@ -96,9 +96,9 @@ def to_html(
 def type2str(type_expr: None) -> None: ...
 
 @overload
-def type2str(type_expr: ast.expr) -> str: ...
+def type2str(type_expr: ast.AST) -> str: ...
 
-def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
+def type2str(type_expr: Optional[ast.AST]) -> Optional[str]:
     if type_expr is None:
         return None
     else:
@@ -1733,6 +1733,23 @@ def test_constant_module_with_final_subscript_annotation_gets_changed(systemcls:
     assert constant.value is not None
     assert ast.literal_eval(constant.value) == ('fr', 'en')
     assert astbuilder.node2fullname(constant.annotation, constant) == "tuple"
+
+@systemcls_param
+def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final. 
+    It will infer the type of the constant if Final do not use subscripts.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final = 'fr'
+    ''', systemcls=systemcls)
+    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
+    constant = mod.resolveName('lang')
+    assert isinstance(constant, model.Attribute)
+    assert constant.value is not None
+    assert ast.literal_eval(constant.value) == 'fr'
+    assert astbuilder.node2fullname(constant.annotation, constant) == "str"
 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
