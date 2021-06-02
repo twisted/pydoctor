@@ -1706,19 +1706,23 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == 'fr'
 
 @systemcls_param
-def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> None:
+def test_constant_module_with_final_subscript1(systemcls: Type[model.System]) -> None:
     """
     It can recognize constants defined with typing.Final[something]
     """
     mod = fromText('''
-    import typing
-    lang: typing.Final[Sequence[str]] = ('fr', 'en')
+    from typing import Final
+    lang: Final[Sequence[str]] = ('fr', 'en')
     ''', systemcls=systemcls)
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == ('fr', 'en')
+    constant = mod.resolveName('lang')
+    assert isinstance(constant, model.Attribute)
+    assert constant.value is not None
+    assert ast.literal_eval(constant.value) == ('fr', 'en')
+    assert astor.to_source(constant.annotation).strip() == "Sequence[str]"
 
 @systemcls_param
-def test_constant_module_with_final_subscript_annotation_gets_changed(systemcls: Type[model.System]) -> None:
+def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) -> None:
     """
     It can recognize constants defined with typing.Final[something]. 
     And it automatically remove the Final part from the annotation.
