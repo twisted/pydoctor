@@ -167,19 +167,7 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
                 )
     return None
 
-def is_constant(name:str, obj: model.Attribute) -> bool:
-    """
-    Determine if the given assignment is a constant. 
-
-    To detect whether a assignment is a constant, this checks two things:
-        - all-caps variable name
-        - typing.Final annotation
-    
-    @note: Must be called after setting obj.annotation to detect variables using Final.
-    """
-    # TODO: Make it understand stuff like Final[Sequence[str]]
-    if name.isupper():
-        return True
+def is_using_typing_final(obj: model.Attribute) -> bool:
     fullName = node2fullname(obj.annotation, obj)
     if fullName == "typing.Final":
         return True
@@ -192,6 +180,21 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
             # typing.Final[...] expressions
             return True
     return False
+
+def is_constant(name:str, obj: model.Attribute) -> bool:
+    """
+    Determine if the given assignment is a constant. 
+
+    To detect whether a assignment is a constant, this checks two things:
+        - all-caps variable name
+        - typing.Final annotation
+    
+    @note: Must be called after setting obj.annotation to detect variables using Final.
+    """
+
+    if name.isupper():
+        return True
+    return is_using_typing_final(obj)
 
 def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
     """
@@ -471,6 +474,7 @@ class ModuleVistor(ast.NodeVisitor):
 
     def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
         """Must be called after obj.setLineNumber() to have the right line number in the warning."""
+        
         if is_attribute_overridden(obj, value):
             
             if obj.kind in (model.DocumentableKind.CONSTANT, 
@@ -485,6 +489,22 @@ class ModuleVistor(ast.NodeVisitor):
         obj.value = value
         
         obj.kind = model.DocumentableKind.CONSTANT
+
+        # A hack to to display variables annotated with Final with the real type instead.
+        if is_using_typing_final(obj):
+            if isinstance(obj.annotation, ast.Subscript):
+                # Will not display as "Final[str]" but rather only "str"
+                # obj.annotation = obj.annotation.slice
+                ann_slice = obj.annotation.slice
+                if isinstance(ann_slice, ast.Index):
+                    obj.annotation = ann_slice.value
+            else:
+                # Just plain "Final" annotation.
+                # Simply ignore it because it's duplication of information.
+                if value is not None:
+                    obj.annotation = _infer_type(value)
+                else:
+                    obj.annotation = None
 
     def _handleModuleVar(self,
             target: str,
@@ -512,8 +532,6 @@ class ModuleVistor(ast.NodeVisitor):
             
             if is_constant(target, obj):
                 self._handleConstant(obj=obj, value=expr, lineno=lineno)
-                if isinstance(obj.annotation, ast.Subscript):
-                    obj.annotation = obj.annotation.slice
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
                 # We store the expr value for all Attribute in order to be able to 
@@ -568,8 +586,6 @@ class ModuleVistor(ast.NodeVisitor):
 
         if is_constant(name, obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
-            if isinstance(obj.annotation, ast.Subscript):
-                obj.annotation = obj.annotation.slice
         else:
             obj.value = expr
 
