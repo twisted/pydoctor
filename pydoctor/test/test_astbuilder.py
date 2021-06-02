@@ -1730,6 +1730,7 @@ def test_constant_module_with_final_subscript_annotation_gets_changed(systemcls:
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
     constant = mod.resolveName('lang')
     assert isinstance(constant, model.Attribute)
+    assert constant.value is not None
     assert ast.literal_eval(constant.value) == ('fr', 'en')
     assert astbuilder.node2fullname(constant.annotation, constant) == "tuple"
 
