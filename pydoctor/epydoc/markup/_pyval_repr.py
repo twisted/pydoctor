@@ -146,7 +146,7 @@ class PyvalColorizer:
     LINEWRAP = Element('symbol', 'crarr')
     UNKNOWN_REPR = Element('code', '??', css_class='variable-unknown')
 
-    GENERIC_OBJECT_RE = re.compile(r'^<.* at 0x[0-9a-f]+>$', re.IGNORECASE)
+    GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
     def _str_escape(self, s):
         def enc(c):
@@ -237,9 +237,16 @@ class PyvalColorizer:
                 state.score -= 100
                 state.result.append(self.UNKNOWN_REPR)
             else:
-                if self.GENERIC_OBJECT_RE.match(pyval_repr):
+                match = self.GENERIC_OBJECT_RE.search(pyval_repr)
+                if match:
                     state.score -= 5
-                self._output(pyval_repr, None, state)
+                    pyval_repr = match.groupdict().get('descr')
+                    if not pyval_repr:
+                        state.result.append(self.UNKNOWN_REPR)
+                    else:
+                        pyval_repr = f"<{pyval_repr}>"
+                if pyval_repr:
+                    self._output(pyval_repr, None, state)
 
     def _sort(self, items):
         if not self.sort: return items
@@ -362,7 +369,7 @@ class PyvalColorizer:
             flags = b'(?%s)' % b''.join(flags)
             self._output(flags, self.RE_FLAGS_TAG, state)
 
-    def _colorize_re_tree(self, tree, state, noparen, groups):
+    def _colorize_re_tree(self, tree, state, noparen: bool, groups):
         b = functools.partial(bytes, encoding='utf-8', errors='replace')
         assert noparen in (True, False)
         try:
