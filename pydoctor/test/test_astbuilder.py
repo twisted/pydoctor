@@ -1718,16 +1718,20 @@ def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> 
     assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == ('fr', 'en')
 
 @systemcls_param
-def test_constant_module_with_final_subscript(systemcls: Type[model.System]) -> None:
+def test_constant_module_with_final_subscript_annotation_gets_changed(systemcls: Type[model.System]) -> None:
     """
-    It can recognize constants defined with typing.Final[something]
+    It can recognize constants defined with typing.Final[something]. 
+    And it automatically remove the Final part from the annotation.
     """
     mod = fromText('''
-    from typing import Final, Sequence
-    lang: Final[Sequence[str]] = ('fr', 'en')
+    import typing
+    lang: typing.Final[tuple] = ('fr', 'en')
     ''', systemcls=systemcls)
     assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == ('fr', 'en')
+    constant = mod.resolveName('lang')
+    assert isinstance(constant, model.Attribute)
+    assert ast.literal_eval(constant.value) == ('fr', 'en')
+    assert astbuilder.node2fullname(constant.annotation, constant) == "tuple"
 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
