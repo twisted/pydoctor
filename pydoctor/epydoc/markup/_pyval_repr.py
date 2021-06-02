@@ -363,6 +363,7 @@ class PyvalColorizer:
             self._output(flags, self.RE_FLAGS_TAG, state)
 
     def _colorize_re_tree(self, tree, state, noparen, groups):
+        b = functools.partial(bytes, encoding='utf-8', errors='replace')
         assert noparen in (True, False)
         try:
             if len(tree) > 1 and not noparen:
@@ -377,15 +378,15 @@ class PyvalColorizer:
             if op == sre_constants.LITERAL:
                 c = chr(args)
                 # Add any appropriate escaping.
-                if c in '.^$\\*+?{}[]|()\'': c = b'\\' + bytes(c)
+                if c in '.^$\\*+?{}[]|()\'': c = b'\\' + b(c)
                 elif c == '\t': c = b'\\t'
                 elif c == '\r': c = '\\r'
                 elif c == '\n': c = '\\n'
                 elif c == '\f': c = '\\f'
                 elif c == '\v': c = '\\v'
-                elif ord(c) > 0xffff: c = bytes(r'\U%08x') % ord(c)
-                elif ord(c) > 0xff: c = bytes(r'\u%04x') % ord(c)
-                elif ord(c)<32 or ord(c)>=127: c = bytes(r'\x%02x') % ord(c)
+                elif ord(c) > 0xffff: c = b(r'\U%08x') % ord(c)
+                elif ord(c) > 0xff: c = b(r'\u%04x') % ord(c)
+                elif ord(c)<32 or ord(c)>=127: c = b(r'\x%02x') % ord(c)
                 self._output(c, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.ANY:
@@ -409,22 +410,22 @@ class PyvalColorizer:
                     self._output(b']', self.RE_GROUP_TAG, state)
 
             elif op == sre_constants.CATEGORY:
-                if args == sre_constants.CATEGORY_DIGIT: val = bytes(r'\d')
-                elif args == sre_constants.CATEGORY_NOT_DIGIT: val = bytes(r'\D')
-                elif args == sre_constants.CATEGORY_SPACE: val = bytes(r'\s')
-                elif args == sre_constants.CATEGORY_NOT_SPACE: val = bytes(r'\S')
-                elif args == sre_constants.CATEGORY_WORD: val = bytes(r'\w')
-                elif args == sre_constants.CATEGORY_NOT_WORD: val = bytes(r'\W')
+                if args == sre_constants.CATEGORY_DIGIT: val = b(r'\d')
+                elif args == sre_constants.CATEGORY_NOT_DIGIT: val = b(r'\D')
+                elif args == sre_constants.CATEGORY_SPACE: val = b(r'\s')
+                elif args == sre_constants.CATEGORY_NOT_SPACE: val = b(r'\S')
+                elif args == sre_constants.CATEGORY_WORD: val = b(r'\w')
+                elif args == sre_constants.CATEGORY_NOT_WORD: val = b(r'\W')
                 else: raise ValueError('Unknown category %s' % args)
                 self._output(val, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.AT:
-                if args == sre_constants.AT_BEGINNING_STRING: val = bytes(r'\A')
-                elif args == sre_constants.AT_BEGINNING: val = bytes(r'^')
-                elif args == sre_constants.AT_END: val = bytes(r'$')
-                elif args == sre_constants.AT_BOUNDARY: val = bytes(r'\b')
-                elif args == sre_constants.AT_NON_BOUNDARY: val = bytes(r'\B')
-                elif args == sre_constants.AT_END_STRING: val = bytes(r'\Z')
+                if args == sre_constants.AT_BEGINNING_STRING: val = b(r'\A')
+                elif args == sre_constants.AT_BEGINNING: val = b(r'^')
+                elif args == sre_constants.AT_END: val = b(r'$')
+                elif args == sre_constants.AT_BOUNDARY: val = b(r'\b')
+                elif args == sre_constants.AT_NON_BOUNDARY: val = b(r'\B')
+                elif args == sre_constants.AT_END_STRING: val = b(r'\Z')
                 else: raise ValueError('Unknown position %s' % args)
                 self._output(val, self.RE_CHAR_TAG, state)
 
@@ -432,77 +433,77 @@ class PyvalColorizer:
                 minrpt = args[0]
                 maxrpt = args[1]
                 if maxrpt == sre_constants.MAXREPEAT:
-                    if minrpt == 0:   val = bytes('*')
-                    elif minrpt == 1: val = bytes('+')
-                    else: val = bytes('{%d,}') % (minrpt)
+                    if minrpt == 0:   val = b('*')
+                    elif minrpt == 1: val = b('+')
+                    else: val = b('{%d,}') % (minrpt)
                 elif minrpt == 0:
-                    if maxrpt == 1: val = bytes('?')
-                    else: val = bytes('{,%d}') % (maxrpt)
+                    if maxrpt == 1: val = b('?')
+                    else: val = b('{,%d}') % (maxrpt)
                 elif minrpt == maxrpt:
-                    val = bytes('{%d}') % (maxrpt)
+                    val = b('{%d}') % (maxrpt)
                 else:
-                    val = bytes('{%d,%d}') % (minrpt, maxrpt)
+                    val = b('{%d,%d}') % (minrpt, maxrpt)
                 if op == sre_constants.MIN_REPEAT:
-                    val += bytes('?')
+                    val += b('?')
 
                 self._colorize_re_tree(args[2], state, False, groups)
                 self._output(val, self.RE_OP_TAG, state)
 
             elif op == sre_constants.SUBPATTERN:
                 if args[0] is None:
-                    self._output(bytes('(?:'), self.RE_GROUP_TAG, state)
+                    self._output(b('(?:'), self.RE_GROUP_TAG, state)
                 elif args[0] in groups:
-                    self._output(bytes('(?P<'), self.RE_GROUP_TAG, state)
+                    self._output(b('(?P<'), self.RE_GROUP_TAG, state)
                     self._output(groups[args[0]], self.RE_REF_TAG, state)
-                    self._output(bytes('>'), self.RE_GROUP_TAG, state)
+                    self._output(b('>'), self.RE_GROUP_TAG, state)
                 elif isinstance(args[0], int):
                     # This is cheating:
-                    self._output(bytes('('), self.RE_GROUP_TAG, state)
+                    self._output(b('('), self.RE_GROUP_TAG, state)
                 else:
-                    self._output(bytes('(?P<'), self.RE_GROUP_TAG, state)
+                    self._output(b('(?P<'), self.RE_GROUP_TAG, state)
                     self._output(args[0], self.RE_REF_TAG, state)
-                    self._output(bytes('>'), self.RE_GROUP_TAG, state)
+                    self._output(b('>'), self.RE_GROUP_TAG, state)
                 self._colorize_re_tree(args[3], state, True, groups)
-                self._output(bytes(')'), self.RE_GROUP_TAG, state)
+                self._output(b(')'), self.RE_GROUP_TAG, state)
 
             elif op == sre_constants.GROUPREF:
-                self._output(bytes('\\%d') % args, self.RE_REF_TAG, state)
+                self._output(b('\\%d') % args, self.RE_REF_TAG, state)
 
             elif op == sre_constants.RANGE:
                 self._colorize_re_tree( ((sre_constants.LITERAL, args[0]),),
                                         state, False, groups )
-                self._output(bytes('-'), self.RE_OP_TAG, state)
+                self._output(b('-'), self.RE_OP_TAG, state)
                 self._colorize_re_tree( ((sre_constants.LITERAL, args[1]),),
                                         state, False, groups )
 
             elif op == sre_constants.NEGATE:
-                self._output(bytes('^'), self.RE_OP_TAG, state)
+                self._output(b('^'), self.RE_OP_TAG, state)
 
             elif op == sre_constants.ASSERT:
                 if args[0] > 0:
-                    self._output(bytes('(?='), self.RE_GROUP_TAG, state)
+                    self._output(b('(?='), self.RE_GROUP_TAG, state)
                 else:
-                    self._output(bytes('(?<='), self.RE_GROUP_TAG, state)
+                    self._output(b('(?<='), self.RE_GROUP_TAG, state)
                 self._colorize_re_tree(args[1], state, True, groups)
-                self._output(bytes(')'), self.RE_GROUP_TAG, state)
+                self._output(b(')'), self.RE_GROUP_TAG, state)
 
             elif op == sre_constants.ASSERT_NOT:
                 if args[0] > 0:
-                    self._output(bytes('(?!'), self.RE_GROUP_TAG, state)
+                    self._output(b('(?!'), self.RE_GROUP_TAG, state)
                 else:
-                    self._output(bytes('(?<!'), self.RE_GROUP_TAG, state)
+                    self._output(b('(?<!'), self.RE_GROUP_TAG, state)
                 self._colorize_re_tree(args[1], state, True, groups)
-                self._output(bytes(')'), self.RE_GROUP_TAG, state)
+                self._output(b(')'), self.RE_GROUP_TAG, state)
 
             elif op == sre_constants.NOT_LITERAL:
-                self._output(bytes('[^'), self.RE_GROUP_TAG, state)
+                self._output(b('[^'), self.RE_GROUP_TAG, state)
                 self._colorize_re_tree( ((sre_constants.LITERAL, args),),
                                         state, False, groups )
-                self._output(bytes(']'), self.RE_GROUP_TAG, state)
+                self._output(b(']'), self.RE_GROUP_TAG, state)
             else:
                 raise RuntimeError("Error colorizing regexp: unknown elt %r" % elt)
         if len(tree) > 1 and not noparen:
-            self._output(bytes(')'), self.RE_GROUP_TAG, state)
+            self._output(b(')'), self.RE_GROUP_TAG, state)
 
     #////////////////////////////////////////////////////////////
     # Output function
