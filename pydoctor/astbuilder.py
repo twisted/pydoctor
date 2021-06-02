@@ -618,8 +618,8 @@ class ModuleVistor(ast.NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        # Maybe an instance variable matches the rules to be flagged as constant, 
-        # so we check if it doesn't override one before setting the kind to INSTANCE_VARIABLE
+        # Maybe an instance variable overrides a constant, 
+        # so we check before setting the kind to INSTANCE_VARIABLE.
         if obj.kind is model.DocumentableKind.CONSTANT:
             self._warnsConstantReAssigmentInInstance(obj, lineno_offset=lineno-obj.linenumber)
         else:
