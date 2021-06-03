@@ -192,17 +192,13 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
 
-    if name.isupper():
-        return True
-    return is_using_typing_final(obj)
+    return name.isupper() or is_using_typing_final(obj)
 
 def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
     """
     Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
     """
-    if obj.value is not None and new_value is not None:
-        return True
-    return False
+    return obj.value is not None and new_value is not None
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -503,10 +499,7 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                if value is not None:
-                    obj.annotation = _infer_type(value)
-                else:
-                    obj.annotation = None
+                obj.annotation = None if value is None else _infer_type(value)
 
     def _handleModuleVar(self,
             target: str,
@@ -537,7 +530,7 @@ class ModuleVistor(ast.NodeVisitor):
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
                 # We store the expr value for all Attribute in order to be able to 
-                # check if they have been initiated or not.
+                # check if they have been initialized or not.
                 obj.value = expr
 
             self.newAttr = obj

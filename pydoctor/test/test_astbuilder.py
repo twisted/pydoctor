@@ -1690,7 +1690,9 @@ def test_constant_module(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     LANG = 'FR'
     ''', systemcls=systemcls)
-    assert getattr(mod.contents['LANG'], 'kind') == model.DocumentableKind.CONSTANT
+    lang = mod.contents['LANG']
+    assert isinstance(lang, model.Attribute)
+    assert lang.kind is model.DocumentableKind.CONSTANT
     assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 'FR'
 
 @systemcls_param
