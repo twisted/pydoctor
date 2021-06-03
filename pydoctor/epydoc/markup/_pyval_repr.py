@@ -38,7 +38,7 @@ from typing import Any, Union, Optional, Mapping
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
 def is_re_pattern(pyval):
-    return type(pyval).__name__ == 'SRE_Pattern'
+    return type(pyval).__name__ == 'Pattern'
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -355,7 +355,7 @@ class PyvalColorizer:
         # Parse the regexp pattern.
         tree = sre_parse.parse(pat, flags)
         groups = dict([(num,name) for (name,num) in
-                       tree.pattern.groupdict.items()])
+                       tree.state.groupdict.items()])
         # Colorize it!
         self._output(b"re.compile(r'", None, state)
         self._colorize_re_flags(flags, state)
@@ -366,7 +366,7 @@ class PyvalColorizer:
         if flags:
             flags = [c for (c,n) in sorted(sre_parse.FLAGS.items())
                      if (n&flags)]
-            flags = b'(?%s)' % b''.join(flags)
+            flags = '(?%s)' % ''.join(flags)
             self._output(flags, self.RE_FLAGS_TAG, state)
 
     def _colorize_re_tree(self, tree, state, noparen: bool, groups):
