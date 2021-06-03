@@ -88,6 +88,7 @@ Description::
    <!ATTLIST code style CDATA #IMPLIED>
 
    <!ELEMENT symbol (#PCDATA)>
+   <!ELEMENT wbr>
 
 @var SYMBOLS: A list of the of escape symbols that are supported by epydoc.  Currently the following symbols are supported ::
 
@@ -1416,5 +1417,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
             return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
+        elif tree.tag == 'wbr':
+            return tags.wbr(*variables)
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")
