@@ -32,9 +32,13 @@ __docformat__ = 'epytext en'
 # __repr__.
 
 import re
+import ast
 import functools
 import sre_parse, sre_constants
-from typing import Any, Union, Optional, Mapping
+from typing import Any, Iterable, Union, Optional, List, Tuple, cast
+
+import astor
+
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 
 def is_re_pattern(pyval):
@@ -107,10 +111,10 @@ class ColorizedPyvalRepr(ParsedEpytextDocstring):
         self.score = score
         self.is_complete = is_complete
 
-def colorize_pyval(pyval, parse_repr=None, min_score=None,
+def colorize_pyval(pyval, min_score=None,
                    linelen=75, maxlines=5, linebreakok=True, sort=True):
     return PyvalColorizer(linelen, maxlines, linebreakok, sort).colorize(
-        pyval, parse_repr, min_score)
+        pyval, min_score)
 
 
 class PyvalColorizer:
@@ -145,6 +149,7 @@ class PyvalColorizer:
     ELLIPSIS = Element('code', '...', css_class='variable-ellipsis')
     LINEWRAP = Element('symbol', 'crarr')
     UNKNOWN_REPR = Element('code', '??', css_class='variable-unknown')
+    # WORD_BREAK_OPPORTUNITY = Element('wbr', '')
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
@@ -226,6 +231,8 @@ class PyvalColorizer:
             self._multiline(self._colorize_iter, pyval, state, '[', ']')
         elif is_re_pattern(pyval):
             self._colorize_re(pyval, state)
+        elif issubclass(pyval_type, ast.AST):
+            self._colorize_ast(pyval, state)
         else:
             try:
                 pyval_repr = repr(pyval)
@@ -307,7 +314,7 @@ class PyvalColorizer:
             self._colorize(elt, state)
         self._output(suffix, self.GROUP_TAG, state)
 
-    def _colorize_dict(self, items: Mapping[Any, Any], state: _ColorizerState, prefix: str, suffix: str):
+    def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str):
         self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
         for i, (key, val) in enumerate(items):
@@ -348,6 +355,168 @@ class PyvalColorizer:
         # Close quote.
         self._output(quote, self.QUOTE_TAG, state)
 
+    #////////////////////////////////////////////////////////////
+    # Support for AST
+    #////////////////////////////////////////////////////////////
+
+    # TODO: find the right css_class in the calls to _output()
+
+    # TODO: Add support for comparators and generator expressions.
+
+    @staticmethod
+    def _is_ast_constant(node):
+        return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
+                                 ast.Constant, ast.NameConstant, ast.Ellipsis))
+    @staticmethod
+    def _get_ast_constant_val(node):
+        # Deprecated since version 3.8: Replaced by Constant
+        if isinstance(node, ast.Num): 
+            return(node.n)
+        if isinstance(node, (ast.Str, ast.Bytes)):
+           return(node.s)
+        if isinstance(node, (ast.Constant, ast.NameConstant)):
+            return(node.value)
+        if isinstance(node, ast.Ellipsis):
+            return(...)
+
+    def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState):
+
+        if self._is_ast_constant(pyval): 
+            self._colorize(self._get_ast_constant_val(pyval), state)
+        elif isinstance(pyval, ast.UnaryOp):
+            self._colorize_ast_unary_op(pyval, state)
+        elif isinstance(pyval, ast.BinOp):
+            self._colorize_ast_binary_op(pyval, state)
+        elif isinstance(pyval, ast.BoolOp):
+            self._colorize_ast_bool_op(pyval, state)
+        elif isinstance(pyval, ast.List):
+            self._multiline(self._colorize_iter, pyval.elts, state, '[', ']')
+        elif isinstance(pyval, ast.Tuple):
+            self._multiline(self._colorize_iter, pyval.elts, state, '(', ')')
+        elif isinstance(pyval, ast.Set):
+            self._multiline(self._colorize_iter, pyval.elts, state, 'set([', '])')
+        elif isinstance(pyval, ast.Dict):
+            items = list(zip(pyval.keys, pyval.values))
+            self._multiline(self._colorize_dict, items, state, '{', '}')
+        elif isinstance(pyval, ast.Name):
+            self._colorize_ast_name(pyval, state)
+        elif isinstance(pyval, ast.Attribute):
+            self._colorize_ast_attribute(pyval, state)
+        elif isinstance(pyval, ast.Subscript):
+            self._colorize_ast_subscript(pyval, state)
+        else:
+            self._colorize_ast_generic(pyval, state)
+    
+    def _colorize_ast_unary_op(self, pyval: ast.UnaryOp, state: _ColorizerState) -> None:
+        if isinstance(pyval.op, ast.USub):
+            self._output('-', '', state)
+        elif isinstance(pyval.op, ast.UAdd):
+            self._output('+', '', state)
+        elif isinstance(pyval.op, ast.Not):
+            self._output('not ', '', state)
+        elif isinstance(pyval.op, ast.Invert):
+            self._output('~', '', state)
+
+        # self._output(astor.to_source(pyval.op), '', state)
+        # if isinstance(pyval.op, ast.Not):
+        #     self._output(' ', '', state)
+
+        self._colorize(pyval.operand, state)
+    
+    def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
+        self._colorize(pyval.left, state)
+        
+        # self._output(f" {astor.to_source(pyval.op)} ", '', state)
+
+        if isinstance(pyval.op, ast.Sub):
+            self._output(' - ', '', state)
+        elif isinstance(pyval.op, ast.Add):
+            self._output(' + ', '', state)
+        elif isinstance(pyval.op, ast.Mult):
+            self._output(' * ', '', state)
+        elif isinstance(pyval.op, ast.Div):
+            self._output(' / ', '', state)
+        elif isinstance(pyval.op, ast.FloorDiv):
+            self._output(' // ', '', state)
+        elif isinstance(pyval.op, ast.Mod):
+            self._output(' % ', '', state)
+        elif isinstance(pyval.op, ast.Pow):
+            self._output(' ** ', '', state)
+        elif isinstance(pyval.op, ast.LShift):
+            self._output(' << ', '', state)
+        elif isinstance(pyval.op, ast.RShift):
+            self._output(' >> ', '', state)
+        elif isinstance(pyval.op, ast.BitOr):
+            self._output(' | ', '', state)
+        elif isinstance(pyval.op, ast.BitXor):
+            self._output(' ^ ', '', state)
+        elif isinstance(pyval.op, ast.BitAnd):
+            self._output(' & ', '', state)
+        elif isinstance(pyval.op, ast.MatMult):
+            self._output(' @ ', '', state)
+        # else:
+        #     self._colorize_ast_generic(pyval, state)
+
+        self._colorize(pyval.right, state)
+    
+    def _colorize_ast_bool_op(self, pyval: ast.BoolOp, state: _ColorizerState) -> None:
+        _maxindex = len(pyval.values)-1
+
+        for index, value in enumerate(pyval.values):
+            self._colorize(value, state)
+
+            if index != _maxindex:
+                # self._output(f' {astor.to_source(pyval.op)} ', '', state)
+                if isinstance(pyval.op, ast.And):
+                    self._output(' and ', '', state)
+                elif isinstance(pyval.op, ast.Or):
+                    self._output(' or ', '', state)
+
+    def _colorize_ast_name(self, pyval: ast.Name, state: _ColorizerState) -> None:
+        return self._output(pyval.id, None, state) # TODO: should be a link
+
+    def _colorize_ast_attribute(self, pyval: ast.Attribute, state: _ColorizerState) -> None:
+        parts = []
+        curr: ast.expr = pyval
+        while isinstance(curr, ast.Attribute):
+            parts.append(curr.attr)
+            curr = curr.value
+        if not isinstance(curr, ast.Name):
+            self._colorize_ast_generic(pyval, state)
+            return
+        parts.append(curr.id)
+        parts.reverse()
+        return self._output('.'.join(parts), None, state) # TODO: should be a link
+
+    def _colorize_ast_subscript(self, node: ast.Subscript, state: _ColorizerState) -> None:
+
+        self._colorize(node.value, state)
+
+        sub: ast.AST = node.slice
+        if isinstance(sub, ast.Index):
+            # In Python < 3.9, non-slices are always wrapped in an Index node.
+            sub = sub.value
+        self._output('[', self.GROUP_TAG, state)
+        if isinstance(sub, ast.Tuple):
+            self._multiline(self._colorize_iter, sub.elts, state)
+        elif isinstance(sub, (ast.Slice, ast.ExtSlice)):
+            self._output(astor.to_source(sub), '', state)
+        else:
+            self._colorize(sub, state)
+        self._output(']', self.GROUP_TAG, state)
+
+    def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
+        try:
+            source = astor.to_source(pyval)
+        except Exception: #  No defined handler for node of type <type>
+            state.result.append(self.UNKNOWN_REPR)
+        else:
+            self._output(source.strip(), '', state)
+        
+    #////////////////////////////////////////////////////////////
+    # Support for Regexes
+    #////////////////////////////////////////////////////////////
+
     def _colorize_re(self, pyval, state):
         # Extract the flag & pattern from the regexp.
         pat, flags = pyval.pattern, pyval.flags
@@ -383,7 +552,7 @@ class PyvalColorizer:
             args = elt[1]
 
             if op == sre_constants.LITERAL:
-                c = chr(args)
+                c = chr(cast(int, args))
                 # Add any appropriate escaping.
                 if c in '.^$\\*+?{}[]|()\'': c = b'\\' + b(c)
                 elif c == '\t': c = b'\\t'
@@ -516,7 +685,7 @@ class PyvalColorizer:
     # Output function
     #////////////////////////////////////////////////////////////
 
-    def _output(self, s: Union[str, bytes], css_class: str, state):
+    def _output(self, s: Union[str, bytes], css_class: Optional[str], state):
         """
         Add the string `s` to the result list, tagging its contents
         with css class `css_class`.  Any lines that go beyond `self.linelen` will

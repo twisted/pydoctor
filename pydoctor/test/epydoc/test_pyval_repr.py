@@ -1,14 +1,14 @@
-
+import re
+import ast
+from textwrap import dedent
 from typing import Any, Optional, Union
-from requests.structures import CaseInsensitiveDict
+
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
 from pydoctor.epydoc.markup import flatten
-import re
 
-colorizer = PyvalColorizer(linelen=40)
-def color(v: Any, linebreakok:bool=True, maxlines:int=5):
-    colorizer = PyvalColorizer(linelen=40, linebreakok=linebreakok, maxlines=maxlines)
+def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40):
+    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v, None)
     s = flatten(parsed_doc.to_stan(NotFoundLinker()))
     s = s.encode('ascii', 'xmlcharrefreplace').decode('ascii')
@@ -142,6 +142,59 @@ def test_dictionaries() -> None:
        <code>{</code>7<code>: </code><code>'</code><code>oooooooooooooooooooooooooooo</code>&#8629;
 <code>...</code>"""
 
+def extract_expr(_ast: ast.Module) -> ast.AST:
+    elem = _ast.body[0]
+    assert isinstance(elem, ast.Expr)
+    return elem.value
+
+def test_ast_constants() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    'Hello'
+    """)))) == "<code>'</code><code>Hello</code><code>'</code>"
+
+def test_ast_unary_op() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    not True
+    """)))) == "not True"
+
+def test_ast_bin_op() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    2.3*6
+    """)))) == "2.3 * 6"
+
+def test_ast_bool_op() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    True and 9
+    """)))) == "True and 9"
+
+def test_ast_list_tuple() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    [1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]
+    """)))) == """<code>[</code>1<code>,</code>
+ 2<code>,</code>
+ <code>[</code>5<code>, </code>6<code>, </code><code>[</code><code>(</code>11<code>, </code>22<code>, </code>33<code>)</code><code>, </code>9<code>]</code><code>, </code>10<code>]</code><code>,</code>
+ 11<code>]</code> + <code>[</code>99<code>, </code>98<code>, </code>97<code>, </code>96<code>, </code>95<code>]</code>"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (('1', 2, 3.14), (4, '5', 6.66))
+    """)))) == """<code>(</code><code>(</code><code>'</code><code>1</code><code>'</code><code>, </code>2<code>, </code>3.14<code>)</code><code>, </code><code>(</code>4<code>, </code><code>'</code><code>5</code><code>'</code><code>, </code>6.66<code>)</code><code>)</code>"""
+
+def test_ast_dict() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    {'1':33, '2':[1,2,3,{7:'oo'*20}]}
+    """)))) == """<code>{</code><code>'</code><code>1</code><code>'</code><code>: </code>33<code>,</code>
+ <code>'</code><code>2</code><code>'</code><code>: </code><code>[</code>1<code>, </code>2<code>, </code>3<code>, </code><code>{</code>7<code>: </code><code>'</code><code>oo</code><code>'</code> * 20<code>}</code><code>]</code><code>}</code>"""
+
+def test_ast_annotation() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    bar[typing.Sequence[dict[str, bytes]], 7:-1]
+    """))), linelen=999) == """bar<code>[</code>(typing.Sequence[dict[str, bytes]]), 7:-1
+<code>]</code>"""
+
+def test_ast_call() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    list(range(100))
+    """)))) == "list(range(100))" # TODO: Add links to ast.Call nodes
 
 def textcontent(elt):
     if isinstance(elt, (str, bytes)): return elt
@@ -153,7 +206,7 @@ def color_re(s: Union[bytes, str], pre:Optional[str]=None,
     # Currently, we never set check_roundtrip to True
     # It does not pass the test currently because it initially relied on "val.to_plaintext()".
     # A method that has been removed from the ParsedDocstring interface.
-    # I've replaced it with "textcontent(val._tree)", so that's the issue I guess. 
+    # I've replaced it with "textcontent(val._tree)", but the results are not the same as to_plaintext(). 
 
     colorizer = PyvalColorizer(linelen=55)
     val = colorizer.colorize(re.compile(s))
