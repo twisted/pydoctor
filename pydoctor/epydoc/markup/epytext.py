@@ -1387,7 +1387,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
                 target = variables[1]
             else:
                 target = label
-            lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
+            _target_elem = tree.children[-1]
+            if isinstance(_target_elem, Element):
+                lineno = int(_target_elem.attribs.get('lineno', 0))
+            else:
+                lineno = 0
             return linker.link_xref(target, label, lineno)
         elif tree.tag == 'target':
             value, = variables
