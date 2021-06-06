@@ -149,7 +149,7 @@ class PyvalColorizer:
     ELLIPSIS = Element('code', '...', css_class='variable-ellipsis')
     LINEWRAP = Element('symbol', 'crarr')
     UNKNOWN_REPR = Element('code', '??', css_class='variable-unknown')
-    # WORD_BREAK_OPPORTUNITY = Element('wbr', '')
+    WORD_BREAK_OPPORTUNITY = Element('wbr', '')
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
@@ -207,8 +207,12 @@ class PyvalColorizer:
         pyval_type = type(pyval)
         state.score += 1
         
-        if pyval is None or pyval is True or pyval is False:
-            self._output(str(pyval), self.CONST_TAG, state)
+        if pyval in (False, True, None, NotImplemented):
+            # Link built-in constants to the standard library.
+            # Ellipsis is not included here, both because its code syntax is
+            # different from its constant's name and because its documentation
+            # is not relevant to annotations.
+            self._output(str(pyval), self.CONST_TAG, state, tag='link')
         elif issubclass(pyval_type, (int, float, complex)):
             self._output(str(pyval), self.NUMBER_TAG, state)
         elif issubclass(pyval_type, str):
@@ -301,8 +305,10 @@ class PyvalColorizer:
             state.restore(mark)
             func(pyval, state, *args)
 
-    def _colorize_iter(self, pyval, state, prefix, suffix):
-        self._output(prefix, self.GROUP_TAG, state)
+    def _colorize_iter(self, pyval: Iterable[Any], state: _ColorizerState, 
+                       prefix: Optional[Union[str, bytes]] = None, suffix: Optional[Union[str, bytes]] = None):
+        if prefix:
+            self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
         for i, elt in enumerate(pyval):
             if i>=1:
@@ -311,8 +317,11 @@ class PyvalColorizer:
                     self._output('\n'+' '*indent, None, state)
                 else:
                     self._output(', ', self.COMMA_TAG, state)
+                    # word break opportunity for inline values
+                    # state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(elt, state)
-        self._output(suffix, self.GROUP_TAG, state)
+        if suffix:
+            self._output(suffix, self.GROUP_TAG, state)
 
     def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str):
         self._output(prefix, self.GROUP_TAG, state)
@@ -324,6 +333,8 @@ class PyvalColorizer:
                     self._output(b'\n'+b' '*indent, None, state)
                 else:
                     self._output(b', ', self.COMMA_TAG, state)
+                    # word break opportunity for inline values
+                    # state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(key, state)
             self._output(b': ', self.COLON_TAG, state)
             self._colorize(val, state)
@@ -409,51 +420,51 @@ class PyvalColorizer:
     
     def _colorize_ast_unary_op(self, pyval: ast.UnaryOp, state: _ColorizerState) -> None:
         if isinstance(pyval.op, ast.USub):
-            self._output('-', '', state)
+            self._output('-', None, state)
         elif isinstance(pyval.op, ast.UAdd):
-            self._output('+', '', state)
+            self._output('+', None, state)
         elif isinstance(pyval.op, ast.Not):
-            self._output('not ', '', state)
+            self._output('not ', None, state)
         elif isinstance(pyval.op, ast.Invert):
-            self._output('~', '', state)
+            self._output('~', None, state)
 
-        # self._output(astor.to_source(pyval.op), '', state)
+        # self._output(astor.to_source(pyval.op), None, state)
         # if isinstance(pyval.op, ast.Not):
-        #     self._output(' ', '', state)
+        #     self._output(' ', None, state)
 
         self._colorize(pyval.operand, state)
     
     def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
         self._colorize(pyval.left, state)
         
-        # self._output(f" {astor.to_source(pyval.op)} ", '', state)
+        # self._output(f" {astor.to_source(pyval.op)} ", None, state)
 
         if isinstance(pyval.op, ast.Sub):
-            self._output(' - ', '', state)
+            self._output(' - ', None, state)
         elif isinstance(pyval.op, ast.Add):
-            self._output(' + ', '', state)
+            self._output(' + ', None, state)
         elif isinstance(pyval.op, ast.Mult):
-            self._output(' * ', '', state)
+            self._output(' * ', None, state)
         elif isinstance(pyval.op, ast.Div):
-            self._output(' / ', '', state)
+            self._output(' / ', None, state)
         elif isinstance(pyval.op, ast.FloorDiv):
-            self._output(' // ', '', state)
+            self._output(' // ', None, state)
         elif isinstance(pyval.op, ast.Mod):
-            self._output(' % ', '', state)
+            self._output(' % ', None, state)
         elif isinstance(pyval.op, ast.Pow):
-            self._output(' ** ', '', state)
+            self._output(' ** ', None, state)
         elif isinstance(pyval.op, ast.LShift):
-            self._output(' << ', '', state)
+            self._output(' << ', None, state)
         elif isinstance(pyval.op, ast.RShift):
-            self._output(' >> ', '', state)
+            self._output(' >> ', None, state)
         elif isinstance(pyval.op, ast.BitOr):
-            self._output(' | ', '', state)
+            self._output(' | ', None, state)
         elif isinstance(pyval.op, ast.BitXor):
-            self._output(' ^ ', '', state)
+            self._output(' ^ ', None, state)
         elif isinstance(pyval.op, ast.BitAnd):
-            self._output(' & ', '', state)
+            self._output(' & ', None, state)
         elif isinstance(pyval.op, ast.MatMult):
-            self._output(' @ ', '', state)
+            self._output(' @ ', None, state)
         # else:
         #     self._colorize_ast_generic(pyval, state)
 
@@ -466,14 +477,14 @@ class PyvalColorizer:
             self._colorize(value, state)
 
             if index != _maxindex:
-                # self._output(f' {astor.to_source(pyval.op)} ', '', state)
+                # self._output(f' {astor.to_source(pyval.op)} ', None, state)
                 if isinstance(pyval.op, ast.And):
-                    self._output(' and ', '', state)
+                    self._output(' and ', None, state)
                 elif isinstance(pyval.op, ast.Or):
-                    self._output(' or ', '', state)
+                    self._output(' or ', None, state)
 
     def _colorize_ast_name(self, pyval: ast.Name, state: _ColorizerState) -> None:
-        return self._output(pyval.id, None, state) # TODO: should be a link
+        self._output(pyval.id, None, state, tag='link')
 
     def _colorize_ast_attribute(self, pyval: ast.Attribute, state: _ColorizerState) -> None:
         parts = []
@@ -486,7 +497,7 @@ class PyvalColorizer:
             return
         parts.append(curr.id)
         parts.reverse()
-        return self._output('.'.join(parts), None, state) # TODO: should be a link
+        self._output('.'.join(parts), None, state, tag='link')
 
     def _colorize_ast_subscript(self, node: ast.Subscript, state: _ColorizerState) -> None:
 
@@ -500,7 +511,8 @@ class PyvalColorizer:
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
         elif isinstance(sub, (ast.Slice, ast.ExtSlice)):
-            self._output(astor.to_source(sub), '', state)
+            source = astor.to_source(sub).strip()
+            self._output(source, None, state)
         else:
             self._colorize(sub, state)
         self._output(']', self.GROUP_TAG, state)
@@ -511,7 +523,8 @@ class PyvalColorizer:
         except Exception: #  No defined handler for node of type <type>
             state.result.append(self.UNKNOWN_REPR)
         else:
-            self._output(source.strip(), '', state)
+            # TODO: Maybe try to colorize anyway, without links, with epydoc.doctest ?
+            self._output(source.strip(), None, state)
         
     #////////////////////////////////////////////////////////////
     # Support for Regexes
@@ -685,7 +698,8 @@ class PyvalColorizer:
     # Output function
     #////////////////////////////////////////////////////////////
 
-    def _output(self, s: Union[str, bytes], css_class: Optional[str], state):
+    def _output(self, s: Union[str, bytes], css_class: Optional[str], 
+                state: _ColorizerState, tag: str = 'code'):
         """
         Add the string `s` to the result list, tagging its contents
         with css class `css_class`.  Any lines that go beyond `self.linelen` will
@@ -712,14 +726,21 @@ class PyvalColorizer:
                 state.result.append('\n')
                 state.lineno += 1
                 state.charpos = 0
+            
+            segment_len = len(segment) 
 
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
-            if state.charpos + len(segment) <= self.linelen:
-                state.charpos += len(segment)
-                if css_class:
-                    segment = Element('code', segment, css_class=css_class)
-                state.result.append(segment)
+            # Don't break links into separate segments. 
+            if (state.charpos + segment_len <= self.linelen) or tag == "link":
+                state.charpos += segment_len
+                element: Union[str, Element]
+                
+                if css_class is not None or tag == "link":
+                    element = Element(tag, segment, css_class=css_class)
+                else:
+                    element = segment
+                state.result.append(element)
 
             # If the segment doesn't fit on the current line, then
             # line-wrap it, and insert the remainder of the line into
@@ -730,6 +751,10 @@ class PyvalColorizer:
                 split = self.linelen-state.charpos
                 segments.insert(i+1, segment[split:])
                 segment = segment[:split]
-                if css_class:
-                    segment = Element('code', segment, css_class=css_class)
-                state.result += [segment, self.LINEWRAP]
+                element: Union[str, Element]
+                if css_class is not None:
+                    element = Element(tag, segment, css_class=css_class)
+                else:
+                    element = segment
+                state.result += [element, self.LINEWRAP]
+	
