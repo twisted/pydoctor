@@ -1377,7 +1377,12 @@ class ParsedEpytextDocstring(ParsedDocstring):
             else:
                 return tags.p(*variables)
         elif tree.tag == 'code':
-            return tags.code(*variables)
+            # Allow to pass css_class as <code> attribute
+            kargs = {}
+            class_ = tree.attribs.get('css_class')
+            if class_:
+                kargs['class_'] = class_
+            return tags.code(*variables, **kargs)
         elif tree.tag == 'uri':
             return tags.a(variables[0], href=variables[1], target='_top')
         elif tree.tag == 'link':
