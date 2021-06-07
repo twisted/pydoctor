@@ -96,9 +96,9 @@ def to_html(
 def type2str(type_expr: None) -> None: ...
 
 @overload
-def type2str(type_expr: ast.AST) -> str: ...
+def type2str(type_expr: ast.expr) -> str: ...
 
-def type2str(type_expr: Optional[ast.AST]) -> Optional[str]:
+def type2str(type_expr: Optional[ast.expr]) -> Optional[str]:
     if type_expr is None:
         return None
     else:
@@ -1741,6 +1741,24 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
     assert astbuilder.node2fullname(constant.annotation, constant) == "tuple"
 
 @systemcls_param
+def test_constant_module_with_final_subscript_invalid_warn(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns if there is an invalif annotation.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final[tuple, 12:13] = ('fr', 'en')
+    ''', systemcls=systemcls, modname='mod')
+    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
+    constant = mod.resolveName('lang')
+    assert isinstance(constant, model.Attribute)
+    assert constant.value is not None
+    assert ast.literal_eval(constant.value) == ('fr', 'en')
+    assert constant.annotation is None
+    captured = capsys.readouterr().out
+    assert "mod:3: Annotation is invalid, it should not contain slices.\n" == captured
+
+@systemcls_param
 def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[model.System]) -> None:
     """
     It can recognize constants defined with typing.Final. 
@@ -1804,7 +1822,7 @@ def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsy
     assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'EN'
 
     captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" in captured
+    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
 
 @systemcls_param
 def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1839,7 +1857,7 @@ def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys
     assert ast.literal_eval(getattr(mod.resolveName('IS_64BITS'), 'value')) == True
 
     captured = capsys.readouterr().out
-    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" in captured
+    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
 
 @systemcls_param
 def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:

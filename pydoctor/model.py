@@ -524,7 +524,7 @@ class Function(Inheritable):
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
-    annotation: Optional[ast.AST]
+    annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
     """

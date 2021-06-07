@@ -8,7 +8,7 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Mapping, NoReturn, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
@@ -27,7 +27,7 @@ else:
     _parse = ast.parse
 
 
-def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
+def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
     parts = []
     while isinstance(node, ast.Attribute):
         parts.append(node.attr)
@@ -40,7 +40,7 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     return parts
 
 
-def node2fullname(expr: Optional[ast.AST], ctx: model.Documentable) -> Optional[str]:
+def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
@@ -168,22 +168,25 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
     return None
 
 def is_using_typing_final(obj: model.Attribute) -> bool:
+    """
+    Detect if C{obj}'s L{Attribute.annotation} value is using L{typing.Final}.
+    """
     fullName = node2fullname(obj.annotation, obj)
     if fullName == "typing.Final":
         return True
     if isinstance(obj.annotation, ast.Subscript):
-        value = obj.annotation.value
-        if isinstance(value, ast.Name) and value.id == 'Final':
-            # Final[...] expressions
-            return True
-        elif isinstance(value, ast.Attribute) and value.attr == 'Final':
-            # typing.Final[...] expressions
-            return True
+        # Final[...] or typing.Final[...] expressions
+        if isinstance(obj.annotation.value, (ast.Name, ast.Attribute)):
+            value = obj.annotation.value
+            fullName = node2fullname(value, obj)
+            if fullName == "typing.Final":
+                return True
+
     return False
 
-def is_constant(name:str, obj: model.Attribute) -> bool:
+def is_constant(obj: model.Attribute) -> bool:
     """
-    Determine if the given assignment is a constant. 
+    Detect if the given assignment is a constant. 
 
     To detect whether a assignment is a constant, this checks two things:
         - all-caps variable name
@@ -192,13 +195,33 @@ def is_constant(name:str, obj: model.Attribute) -> bool:
     @note: Must be called after setting obj.annotation to detect variables using Final.
     """
 
-    return name.isupper() or is_using_typing_final(obj)
+    return obj.name.isupper() or is_using_typing_final(obj)
 
 def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
     """
     Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
     """
     return obj.value is not None and new_value is not None
+
+def extract_annotation_subscript(annotation: ast.Subscript) -> ast.expr:
+    """
+    Extract the "str" part from annotations like  "Final[str]".
+
+    @raises ValueError: If the annotation is not valid (on versions before Python3.9 only).
+    """
+    def _raise() -> NoReturn:
+        raise ValueError("Annotation is invalid, it should not contain slices.")
+    ann_slice = annotation.slice
+    if isinstance(ann_slice, ast.Index):
+        return ann_slice.value
+    elif isinstance(ann_slice, (ast.ExtSlice, ast.Slice)):
+        _raise()
+    else:
+        # Python 3.9
+        if isinstance(ann_slice, ast.Tuple):
+            _raise()
+        assert isinstance(ann_slice, ast.expr)
+        return ann_slice
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -489,13 +512,14 @@ class ModuleVistor(ast.NodeVisitor):
         # A hack to to display variables annotated with Final with the real type instead.
         if is_using_typing_final(obj):
             if isinstance(obj.annotation, ast.Subscript):
-                # Will not display as "Final[str]" but rather only "str"
-                ann_slice = obj.annotation.slice
-                if isinstance(ann_slice, ast.Index):
-                    obj.annotation = ann_slice.value
+                try:
+                    annotation = extract_annotation_subscript(obj.annotation)
+                except ValueError as e:
+                    obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
+                    obj.annotation = None
                 else:
-                    # Python 3.9
-                    obj.annotation = ann_slice
+                    # Will not display as "Final[str]" but rather only "str"
+                    obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
@@ -525,7 +549,7 @@ class ModuleVistor(ast.NodeVisitor):
             obj.annotation = annotation
             obj.setLineNumber(lineno)
             
-            if is_constant(target, obj):
+            if is_constant(obj):
                 self._handleConstant(obj=obj, value=expr, lineno=lineno)
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
@@ -579,7 +603,7 @@ class ModuleVistor(ast.NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        if is_constant(name, obj):
+        if is_constant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
         else:
             obj.value = expr
