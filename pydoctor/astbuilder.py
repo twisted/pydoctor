@@ -169,7 +169,7 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
 
 def is_using_typing_final(obj: model.Attribute) -> bool:
     """
-    Detect if C{obj}'s L{Attribute.annotation} value is using L{typing.Final}.
+    Detect if C{obj}'s L{Attribute.annotation} is using L{typing.Final}.
     """
     fullName = node2fullname(obj.annotation, obj)
     if fullName == "typing.Final":
@@ -207,7 +207,7 @@ def extract_annotation_subscript(annotation: ast.Subscript) -> ast.expr:
     """
     Extract the "str" part from annotations like  "Final[str]".
 
-    @raises ValueError: If the annotation is not valid (on versions before Python3.9 only).
+    @raises ValueError: If the annotation is not valid.
     """
     def _raise() -> NoReturn:
         raise ValueError("Annotation is invalid, it should not contain slices.")
