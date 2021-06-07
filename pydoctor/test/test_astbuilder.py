@@ -1745,13 +1745,32 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
     assert astbuilder.node2fullname(attr.annotation, attr) == "tuple"
 
 @systemcls_param
-def test_constant_module_with_final_subscript_invalid_warn(systemcls: Type[model.System], capsys: CapSys) -> None:
+def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    It warns if there is an invalif annotation.
+    It warns if there is an invalid Final annotation.
     """
     mod = fromText('''
     import typing
     lang: typing.Final[tuple, 12:13] = ('fr', 'en')
+    ''', systemcls=systemcls, modname='mod')
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert isinstance(attr, model.Attribute)
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert attr.annotation is None
+    captured = capsys.readouterr().out
+    assert "mod:3: Annotation is invalid, it should not contain slices.\n" == captured
+
+@systemcls_param
+def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns if there is an invalid Final annotation.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final[12:13] = ('fr', 'en')
     ''', systemcls=systemcls, modname='mod')
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
