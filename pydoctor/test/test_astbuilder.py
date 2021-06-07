@@ -1704,8 +1704,11 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     from typing import Final
     lang: Final = 'fr'
     ''', systemcls=systemcls)
-    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('lang'), 'value')) == 'fr'
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
 
 @systemcls_param
 def test_constant_module_with_final_subscript1(systemcls: Type[model.System]) -> None:
@@ -1716,12 +1719,12 @@ def test_constant_module_with_final_subscript1(systemcls: Type[model.System]) ->
     from typing import Final
     lang: Final[Sequence[str]] = ('fr', 'en')
     ''', systemcls=systemcls)
-    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    constant = mod.resolveName('lang')
-    assert isinstance(constant, model.Attribute)
-    assert constant.value is not None
-    assert ast.literal_eval(constant.value) == ('fr', 'en')
-    assert astor.to_source(constant.annotation).strip() == "Sequence[str]"
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert astor.to_source(attr.annotation).strip() == "Sequence[str]"
 
 @systemcls_param
 def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) -> None:
@@ -1733,12 +1736,13 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
     import typing
     lang: typing.Final[tuple] = ('fr', 'en')
     ''', systemcls=systemcls)
-    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    constant = mod.resolveName('lang')
-    assert isinstance(constant, model.Attribute)
-    assert constant.value is not None
-    assert ast.literal_eval(constant.value) == ('fr', 'en')
-    assert astbuilder.node2fullname(constant.annotation, constant) == "tuple"
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert isinstance(attr, model.Attribute)
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert astbuilder.node2fullname(attr.annotation, attr) == "tuple"
 
 @systemcls_param
 def test_constant_module_with_final_subscript_invalid_warn(systemcls: Type[model.System], capsys: CapSys) -> None:
@@ -1749,12 +1753,13 @@ def test_constant_module_with_final_subscript_invalid_warn(systemcls: Type[model
     import typing
     lang: typing.Final[tuple, 12:13] = ('fr', 'en')
     ''', systemcls=systemcls, modname='mod')
-    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    constant = mod.resolveName('lang')
-    assert isinstance(constant, model.Attribute)
-    assert constant.value is not None
-    assert ast.literal_eval(constant.value) == ('fr', 'en')
-    assert constant.annotation is None
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert isinstance(attr, model.Attribute)
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert attr.annotation is None
     captured = capsys.readouterr().out
     assert "mod:3: Annotation is invalid, it should not contain slices.\n" == captured
 
@@ -1768,12 +1773,13 @@ def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[mode
     import typing
     lang: typing.Final = 'fr'
     ''', systemcls=systemcls)
-    assert getattr(mod.contents['lang'], 'kind') == model.DocumentableKind.CONSTANT
-    constant = mod.resolveName('lang')
-    assert isinstance(constant, model.Attribute)
-    assert constant.value is not None
-    assert ast.literal_eval(constant.value) == 'fr'
-    assert astbuilder.node2fullname(constant.annotation, constant) == "str"
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert isinstance(attr, model.Attribute)
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
+    assert astbuilder.node2fullname(attr.annotation, attr) == "str"
 
 @systemcls_param
 def test_constant_class(systemcls: Type[model.System]) -> None:
@@ -1785,8 +1791,11 @@ def test_constant_class(systemcls: Type[model.System]) -> None:
         """Class."""
         LANG = 'FR'
     ''', systemcls=systemcls)
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'FR'
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'FR'
 
 
 @systemcls_param
@@ -1801,8 +1810,11 @@ def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.S
         def __init__(**args):
             self.LANG: Final = 'FR'
     ''', systemcls=systemcls)
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.INSTANCE_VARIABLE
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'FR'
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'FR'
     captured = capsys.readouterr().out
     assert not captured
 
@@ -1818,8 +1830,11 @@ def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsy
         def __init__(self, **args):
             self.LANG = 'FR'
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'EN'
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'EN'
 
     captured = capsys.readouterr().out
     assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
@@ -1837,8 +1852,11 @@ def test_constant_override_in_instace_warns2(systemcls: Type[model.System], caps
             self.LANG = 'FR'
         LANG = 'EN'
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 'EN'
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'EN'
 
     captured = capsys.readouterr().out
     assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
@@ -1853,8 +1871,11 @@ def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys
     if sys.maxsize > 2**32:
         IS_64BITS = True
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('IS_64BITS'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('IS_64BITS'), 'value')) == True
+    attr = mod.resolveName('IS_64BITS')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == True
 
     captured = capsys.readouterr().out
     assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
@@ -1871,8 +1892,11 @@ def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcl
         """
         LANG = 99
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('Clazz.LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('Clazz.LANG'), 'value')) == 99
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
 
@@ -1885,7 +1909,10 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     """
     LANG = 99
     ''', systemcls=systemcls, modname="mod")
-    assert getattr(mod.resolveName('LANG'), 'kind') == model.DocumentableKind.CONSTANT
-    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 99
+    attr = mod.resolveName('LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
