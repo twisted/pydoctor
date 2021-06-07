@@ -530,7 +530,7 @@ class Attribute(Inheritable):
     """
     The value of the assignment expression. 
 
-    None value means the value is not initated yet at the current point of the the build process. 
+    None value means the value is not initialized at the current point of the the process. 
     """
 
 # Work around the attributes of the same name within the System class.
