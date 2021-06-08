@@ -13,6 +13,7 @@ colorization support for:
   - numbers
   - strings
   - compiled regexps
+  - a variety of AST expressions
 
 The highlighter also takes care of line-wrapping, and automatically
 stops generating repr output as soon as it has exceeded the specified
@@ -35,7 +36,7 @@ import re
 import ast
 import functools
 import sre_parse, sre_constants
-from typing import Any, Iterable, Union, Optional, List, Tuple, cast
+from typing import Any, Callable, Iterable, Mapping, Union, Optional, List, Tuple, cast
 
 import astor
 
@@ -112,8 +113,8 @@ class ColorizedPyvalRepr(ParsedEpytextDocstring):
         self.is_complete = is_complete
 
 def colorize_pyval(pyval, min_score=None,
-                   linelen=75, maxlines=5, linebreakok=True, sort=True):
-    return PyvalColorizer(linelen, maxlines, linebreakok, sort).colorize(
+                   linelen=75, maxlines=5, linebreakok=True):
+    return PyvalColorizer(linelen, maxlines, linebreakok).colorize(
         pyval, min_score)
 
 
@@ -122,11 +123,10 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen=75, maxlines=5, linebreakok=True, sort=True):
+    def __init__(self, linelen=75, maxlines=5, linebreakok=True):
         self.linelen = linelen
         self.maxlines = maxlines
         self.linebreakok = linebreakok
-        self.sort = sort
 
     #////////////////////////////////////////////////////////////
     # Colorization Tags & other constants
@@ -139,6 +139,7 @@ class PyvalColorizer:
     NUMBER_TAG = None                # ints, floats, etc
     QUOTE_TAG = 'variable-quote'     # Quotes around strings.
     STRING_TAG = 'variable-string'   # Body of string literals
+    LINK_TAG = 'variable-link'       # Links to other documentables, extracted from AST names and attributes.
 
     RE_CHAR_TAG = None
     RE_GROUP_TAG = 're-group'
@@ -185,7 +186,6 @@ class PyvalColorizer:
         # ellipsis marker and call it a day.
         try:
             self._colorize(pyval, state)
-            is_complete = True
         except (_Maxlines, _Linebreak):
             if self.linebreakok:
                 state.result.append('\n')
@@ -196,6 +196,8 @@ class PyvalColorizer:
                 self._trim_result(state.result, 3)
                 state.result.append(self.ELLIPSIS)
             is_complete = False
+        else:
+            is_complete = True
         # If we didn't score high enough, then use UNKNOWN_REPR
         if (min_score is not None and state.score < min_score):
             state.result = [PyvalColorizer.UNKNOWN_REPR]
@@ -220,19 +222,19 @@ class PyvalColorizer:
         elif issubclass(pyval_type, bytes):
             self._colorize_str(pyval, state, b'b', self._bytes_escape)
         elif issubclass(pyval_type, tuple):
-            self._multiline(self._colorize_iter, pyval, state, '(', ')')
+            self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
         elif issubclass(pyval_type, set):
-            self._multiline(self._colorize_iter, self._sort(pyval),
-                            state, 'set([', '])')
+            self._multiline(self._colorize_iter, pyval,
+                            state, prefix='set([', suffix='])')
         elif issubclass(pyval_type, frozenset):
-            self._multiline(self._colorize_iter, self._sort(pyval),
-                            state, 'frozenset([', '])')
+            self._multiline(self._colorize_iter, pyval,
+                            state, prefix='frozenset([', suffix='])')
         elif issubclass(pyval_type, dict):
             self._multiline(self._colorize_dict,
-                            self._sort(list(pyval.items())),
-                            state, '{', '}')
+                            list(pyval.items()),
+                            state, prefix='{', suffix='}')
         elif issubclass(pyval_type, list):
-            self._multiline(self._colorize_iter, pyval, state, '[', ']')
+            self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
         elif is_re_pattern(pyval):
             self._colorize_re(pyval, state)
         elif issubclass(pyval_type, ast.AST):
@@ -259,12 +261,6 @@ class PyvalColorizer:
                 if pyval_repr:
                     self._output(pyval_repr, None, state)
 
-    def _sort(self, items):
-        if not self.sort: return items
-        try: return sorted(items)
-        except KeyboardInterrupt: raise
-        except: return items
-
     def _trim_result(self, result, num_chars):
         while num_chars > 0:
             if not result: 
@@ -285,10 +281,10 @@ class PyvalColorizer:
     # Object Colorization Functions
     #////////////////////////////////////////////////////////////
 
-    def _multiline(self, func, pyval, state, *args):
+    def _multiline(self, func: Callable[..., None], pyval, state, **kwargs: Any):
         """
         Helper for container-type colorizers.  First, try calling
-        C{func(pyval, state, *args)} with linebreakok set to false;
+        C{func(pyval, state, **kwargs)} with linebreakok set to false;
         and if that fails, then try again with it set to true.
         """
         linebreakok = state.linebreakok
@@ -296,14 +292,14 @@ class PyvalColorizer:
 
         try:
             state.linebreakok = False
-            func(pyval, state, *args)
+            func(pyval, state, **kwargs)
             state.linebreakok = linebreakok
 
         except _Linebreak:
             if not linebreakok:
                 raise
             state.restore(mark)
-            func(pyval, state, *args)
+            func(pyval, state, **kwargs)
 
     def _colorize_iter(self, pyval: Iterable[Any], state: _ColorizerState, 
                        prefix: Optional[Union[str, bytes]] = None, suffix: Optional[Union[str, bytes]] = None):
@@ -329,14 +325,14 @@ class PyvalColorizer:
         for i, (key, val) in enumerate(items):
             if i>=1:
                 if state.linebreakok:
-                    self._output(b',', self.COMMA_TAG, state)
-                    self._output(b'\n'+b' '*indent, None, state)
+                    self._output(',', self.COMMA_TAG, state)
+                    self._output('\n'+' '*indent, None, state)
                 else:
-                    self._output(b', ', self.COMMA_TAG, state)
+                    self._output(', ', self.COMMA_TAG, state)
                     # word break opportunity for inline values
                     # state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(key, state)
-            self._output(b': ', self.COLON_TAG, state)
+            self._output(': ', self.COLON_TAG, state)
             self._colorize(val, state)
         self._output(suffix, self.GROUP_TAG, state)
 
@@ -401,14 +397,14 @@ class PyvalColorizer:
         elif isinstance(pyval, ast.BoolOp):
             self._colorize_ast_bool_op(pyval, state)
         elif isinstance(pyval, ast.List):
-            self._multiline(self._colorize_iter, pyval.elts, state, '[', ']')
+            self._multiline(self._colorize_iter, pyval.elts, state, prefix='[', suffix=']')
         elif isinstance(pyval, ast.Tuple):
-            self._multiline(self._colorize_iter, pyval.elts, state, '(', ')')
+            self._multiline(self._colorize_iter, pyval.elts, state, prefix='(', suffix=')')
         elif isinstance(pyval, ast.Set):
-            self._multiline(self._colorize_iter, pyval.elts, state, 'set([', '])')
+            self._multiline(self._colorize_iter, pyval.elts, state, prefix='set([', suffix='])')
         elif isinstance(pyval, ast.Dict):
             items = list(zip(pyval.keys, pyval.values))
-            self._multiline(self._colorize_dict, items, state, '{', '}')
+            self._multiline(self._colorize_dict, items, state, prefix='{', suffix='}')
         elif isinstance(pyval, ast.Name):
             self._colorize_ast_name(pyval, state)
         elif isinstance(pyval, ast.Attribute):
@@ -435,39 +431,40 @@ class PyvalColorizer:
         self._colorize(pyval.operand, state)
     
     def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
+        # Colorize first operand
         self._colorize(pyval.left, state)
-        
-        # self._output(f" {astor.to_source(pyval.op)} ", None, state)
 
+        # Colorize operator
         if isinstance(pyval.op, ast.Sub):
-            self._output(' - ', None, state)
+            self._output('-', None, state)
         elif isinstance(pyval.op, ast.Add):
-            self._output(' + ', None, state)
+            self._output('+', None, state)
         elif isinstance(pyval.op, ast.Mult):
-            self._output(' * ', None, state)
+            self._output('*', None, state)
         elif isinstance(pyval.op, ast.Div):
-            self._output(' / ', None, state)
+            self._output('/', None, state)
         elif isinstance(pyval.op, ast.FloorDiv):
-            self._output(' // ', None, state)
+            self._output('//', None, state)
         elif isinstance(pyval.op, ast.Mod):
-            self._output(' % ', None, state)
+            self._output('%', None, state)
         elif isinstance(pyval.op, ast.Pow):
-            self._output(' ** ', None, state)
+            self._output('**', None, state)
         elif isinstance(pyval.op, ast.LShift):
-            self._output(' << ', None, state)
+            self._output('<<', None, state)
         elif isinstance(pyval.op, ast.RShift):
-            self._output(' >> ', None, state)
+            self._output('>>', None, state)
         elif isinstance(pyval.op, ast.BitOr):
-            self._output(' | ', None, state)
+            self._output('|', None, state)
         elif isinstance(pyval.op, ast.BitXor):
-            self._output(' ^ ', None, state)
+            self._output('^', None, state)
         elif isinstance(pyval.op, ast.BitAnd):
-            self._output(' & ', None, state)
+            self._output('&', None, state)
         elif isinstance(pyval.op, ast.MatMult):
-            self._output(' @ ', None, state)
-        # else:
-        #     self._colorize_ast_generic(pyval, state)
+            self._output('@', None, state)
+        else:
+            self._colorize_ast_generic(pyval, state)
 
+        # Colorize second operand
         self._colorize(pyval.right, state)
     
     def _colorize_ast_bool_op(self, pyval: ast.BoolOp, state: _ColorizerState) -> None:
@@ -484,7 +481,7 @@ class PyvalColorizer:
                     self._output(' or ', None, state)
 
     def _colorize_ast_name(self, pyval: ast.Name, state: _ColorizerState) -> None:
-        self._output(pyval.id, None, state, tag='link')
+        self._output(pyval.id, self.LINK_TAG, state, tag='link')
 
     def _colorize_ast_attribute(self, pyval: ast.Attribute, state: _ColorizerState) -> None:
         parts = []
@@ -497,7 +494,7 @@ class PyvalColorizer:
             return
         parts.append(curr.id)
         parts.reverse()
-        self._output('.'.join(parts), None, state, tag='link')
+        self._output('.'.join(parts), self.LINK_TAG, state, tag='link')
 
     def _colorize_ast_subscript(self, node: ast.Subscript, state: _ColorizerState) -> None:
 
@@ -511,10 +508,10 @@ class PyvalColorizer:
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
         elif isinstance(sub, (ast.Slice, ast.ExtSlice)):
-            source = astor.to_source(sub).strip()
-            self._output(source, None, state)
+            self._colorize_ast_generic(sub, state)
         else:
-            self._colorize(sub, state)
+            self._colorize_ast(sub, state)
+       
         self._output(']', self.GROUP_TAG, state)
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
@@ -524,7 +521,7 @@ class PyvalColorizer:
             state.result.append(self.UNKNOWN_REPR)
         else:
             # TODO: Maybe try to colorize anyway, without links, with epydoc.doctest ?
-            self._output(source.strip(), None, state)
+            self._output(source, None, state)
         
     #////////////////////////////////////////////////////////////
     # Support for Regexes
@@ -556,7 +553,7 @@ class PyvalColorizer:
         assert noparen in (True, False)
         try:
             if len(tree) > 1 and not noparen:
-                self._output(b'(', self.RE_GROUP_TAG, state)
+                self._output('(', self.RE_GROUP_TAG, state)
         except TypeError:
             print("tree: %r" % tree)
             raise
@@ -565,10 +562,10 @@ class PyvalColorizer:
             args = elt[1]
 
             if op == sre_constants.LITERAL:
-                c = chr(cast(int, args))
+                c: Union[str, bytes] = chr(cast(int, args))
                 # Add any appropriate escaping.
                 if c in '.^$\\*+?{}[]|()\'': c = b'\\' + b(c)
-                elif c == '\t': c = b'\\t'
+                elif c == '\t': c = '\\t'
                 elif c == '\r': c = '\\r'
                 elif c == '\n': c = '\\n'
                 elif c == '\f': c = '\\f'
@@ -579,7 +576,7 @@ class PyvalColorizer:
                 self._output(c, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.ANY:
-                self._output(b'.', self.RE_CHAR_TAG, state)
+                self._output('.', self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.BRANCH:
                 if args[0] is not None:
@@ -587,16 +584,16 @@ class PyvalColorizer:
                                      % args[0])
                 for i, item in enumerate(args[1]):
                     if i > 0:
-                        self._output(b'|', self.RE_OP_TAG, state)
+                        self._output('|', self.RE_OP_TAG, state)
                     self._colorize_re_tree(item, state, True, groups)
 
             elif op == sre_constants.IN:
                 if (len(args) == 1 and args[0][0] == sre_constants.CATEGORY):
                     self._colorize_re_tree(args, state, False, groups)
                 else:
-                    self._output(b'[', self.RE_GROUP_TAG, state)
+                    self._output('[', self.RE_GROUP_TAG, state)
                     self._colorize_re_tree(args, state, True, groups)
-                    self._output(b']', self.RE_GROUP_TAG, state)
+                    self._output(']', self.RE_GROUP_TAG, state)
 
             elif op == sre_constants.CATEGORY:
                 if args == sre_constants.CATEGORY_DIGIT: val = b(r'\d')

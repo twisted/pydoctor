@@ -102,45 +102,51 @@ def test_bytes_str() -> None:
     assert color(b"Hello world") == """<code class="variable-quote">b'</code><code class="variable-string">Hello world</code><code class="variable-quote">'</code>"""
     assert color(b"\x00 And \xff") == r"""<code class="variable-quote">b'</code><code class="variable-string">\x00 And \xff</code><code class="variable-quote">'</code>"""
 
-def test_list_tuples_etc() -> None:
+def test_inline_list() -> None:
     """Lists, tuples, and sets are all colorized using the same method.  The
     braces and commas are tagged with "op".  If the value can fit on the
     current line, it is displayed on one line.  Otherwise, each value is
     listed on a separate line, indented by the size of the open-bracket."""
 
-    assert color(list(range(10))) == """<code class="variable-group">[</code>0<code class="variable-op">, </code>1<code class="variable-op">, </code>2<code class="variable-op">, </code>3<code class="variable-op">, </code>4<code class="variable-op">, </code>5<code class="variable-op">, </code>6<code class="variable-op">, </code>7<code class="variable-op">, </code>8<code class="variable-op">, </code>9<code class="variable-group">]</code>"""
+    assert color(list(range(10))) == """<code class="variable-group">[</code><code>0</code><code class="variable-op">, </code><code>1</code><code class="variable-op">, </code>2<code class="variable-op">, </code>3<code class="variable-op">, </code>4<code class="variable-op">, </code>5<code class="variable-op">, </code>6<code class="variable-op">, </code>7<code class="variable-op">, </code>8<code class="variable-op">, </code>9<code class="variable-group">]</code>"""
+
+def test_multiline_list() -> None:
+
+    assert color(list(range(100))) == """<code class="variable-group">[</code><code>0</code><code class="variable-op">,</code>
+ <code>1</code><code class="variable-op">,</code>
+ 2<code class="variable-op">,</code>
+ 3<code class="variable-op">,</code>
+ 4<code class="variable-op">,</code>
+<code class="variable-ellipsis">...</code>"""
+
+def test_multiline_list2() -> None:
+
+    assert color([1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]) == """<code class="variable-group">[</code><code>1</code><code class="variable-op">,</code>
+ 2<code class="variable-op">,</code>
+ <code class="variable-group">[</code>5<code class="variable-op">, </code>6<code class="variable-op">, </code><code class="variable-group">[</code><code class="variable-group">(</code>11<code class="variable-op">, </code>22<code class="variable-op">, </code>33<code class="variable-group">)</code><code class="variable-op">, </code>9<code class="variable-group">]</code><code class="variable-op">, </code>10<code class="variable-group">]</code><code class="variable-op">,</code>
+ 11<code class="variable-op">,</code>
+ 99<code class="variable-op">,</code>
+<code class="variable-ellipsis">...</code>"""
     
-    assert color(list(range(100))) == """<code>[</code>0<code>,</code>
- 1<code>,</code>
- 2<code>,</code>
- 3<code>,</code>
- 4<code>,</code>
-<code>...</code>"""
-    
-    assert color([1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]) == """<code>[</code>1<code>,</code>
- 2<code>,</code>
- <code>[</code>5<code>, </code>6<code>, </code><code>[</code><code>(</code>11<code>, </code>22<code>, </code>33<code>)</code><code>, </code>9<code>]</code><code>, </code>10<code>]</code><code>,</code>
- 11<code>,</code>
- 99<code>,</code>
-<code>...</code>"""
-    
-    assert color(set(range(20))) == """<code>set([</code>0<code>,</code>
-     1<code>,</code>
-     2<code>,</code>
-     3<code>,</code>
-     4<code>,</code>
-<code>...</code>"""
+def test_multiline_set() -> None:
+
+    assert color(set(range(20))) == """<code class="variable-group">set([</code><code>0</code><code class="variable-op">,</code>
+     <code>1</code><code class="variable-op">,</code>
+     2<code class="variable-op">,</code>
+     3<code class="variable-op">,</code>
+     4<code class="variable-op">,</code>
+<code class="variable-ellipsis">...</code>"""
 
 def test_dictionaries() -> None:
     """Dicts are treated just like lists, except that the ":" is also tagged as
     "op"."""
 
-    assert color({'1':33, '2':[1,2,3,{7:'oo'*20}]}) == """<code>{</code><code>'</code><code>1</code><code>'</code><code>: </code>33<code>,</code>
- <code>'</code><code>2</code><code>'</code><code>: </code><code>[</code>1<code>,</code>
-       2<code>,</code>
-       3<code>,</code>
-       <code>{</code>7<code>: </code><code>'</code><code>oooooooooooooooooooooooooooo</code>&#8629;
-<code>...</code>"""
+    assert color({'1':33, '2':[1,2,3,{7:'oo'*20}]}) == """<code class="variable-group">{</code><code class="variable-quote">'</code><code class="variable-string">1</code><code class="variable-quote">'</code><code class="variable-op">: </code>33<code class="variable-op">,</code>
+ <code class="variable-quote">'</code><code class="variable-string">2</code><code class="variable-quote">'</code><code class="variable-op">: </code><code class="variable-group">[</code><code>1</code><code class="variable-op">,</code>
+       2<code class="variable-op">,</code>
+       3<code class="variable-op">,</code>
+       <code class="variable-group">{</code>7<code class="variable-op">: </code><code class="variable-quote">'</code><code class="variable-string">oooooooooooooooooooooooooooo</code>&#8629;
+<code class="variable-ellipsis">...</code>"""
 
 def extract_expr(_ast: ast.Module) -> ast.AST:
     elem = _ast.body[0]
@@ -160,7 +166,7 @@ def test_ast_unary_op() -> None:
 def test_ast_bin_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     2.3*6
-    """)))) == "2.3 * 6"
+    """)))) == "2.3*6"
 
 def test_ast_bool_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
@@ -170,20 +176,19 @@ def test_ast_bool_op() -> None:
 def test_ast_list_tuple() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     [1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]
-    """)))) == """<code>[</code><code>1</code><code>,</code>
- 2<code>,</code>
- <code>[</code>5<code>, </code>6<code>, </code><code>[</code><code>(</code>11<code>, </code>22<code>, </code>33<code>)</code><code>, </code>9<code>]</code><code>, </code>10<code>]</code><code>,</code>
- 11<code>]</code> + <code>[</code>99<code>, </code>98<code>, </code>97<code>, </code>96<code>, </code>95<code>]</code>"""
+    """)))) == """<code class="variable-group">[</code><code>1</code><code class="variable-op">,</code>
+ 2<code class="variable-op">,</code>
+ <code class="variable-group">[</code>5<code class="variable-op">, </code>6<code class="variable-op">, </code><code class="variable-group">[</code><code class="variable-group">(</code>11<code class="variable-op">, </code>22<code class="variable-op">, </code>33<code class="variable-group">)</code><code class="variable-op">, </code>9<code class="variable-group">]</code><code class="variable-op">, </code>10<code class="variable-group">]</code><code class="variable-op">,</code>
+ 11<code class="variable-group">]</code>+<code class="variable-group">[</code>99<code class="variable-op">, </code>98<code class="variable-op">, </code>97<code class="variable-op">, </code>96<code class="variable-op">, </code>95<code class="variable-group">]</code>"""
 
     assert color(extract_expr(ast.parse(dedent("""
     (('1', 2, 3.14), (4, '5', 6.66))
-    """)))) == """<code>(</code><code>(</code><code>'</code><code>1</code><code>'</code><code>, </code>2<code>, </code>3.14<code>)</code><code>, </code><code>(</code>4<code>, </code><code>'</code><code>5</code><code>'</code><code>, </code>6.66<code>)</code><code>)</code>"""
+    """)))) == """<code class="variable-group">(</code><code class="variable-group">(</code><code class="variable-quote">'</code><code class="variable-string">1</code><code class="variable-quote">'</code><code class="variable-op">, </code>2<code class="variable-op">, </code>3.14<code class="variable-group">)</code><code class="variable-op">, </code><code class="variable-group">(</code>4<code class="variable-op">, </code><code class="variable-quote">'</code><code class="variable-string">5</code><code class="variable-quote">'</code><code class="variable-op">, </code>6.66<code class="variable-group">)</code><code class="variable-group">)</code>"""
 
 def test_ast_dict() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     {'1':33, '2':[1,2,3,{7:'oo'*20}]}
-    """)))) == """<code>{</code><code>'</code><code>1</code><code>'</code><code>: </code>33<code>,</code>
- <code>'</code><code>2</code><code>'</code><code>: </code><code>[</code><code>1</code><code>, </code>2<code>, </code>3<code>, </code><code>{</code>7<code>: </code><code>'</code><code>oo</code><code>'</code> * 20<code>}</code><code>]</code><code>}</code>"""
+    """)))) == """<code class="variable-group">{</code><code class="variable-quote">'</code><code class="variable-string">1</code><code class="variable-quote">'</code><code class="variable-op">: </code>33<code class="variable-op">, </code><code class="variable-quote">'</code><code class="variable-string">2</code><code class="variable-quote">'</code><code class="variable-op">: </code><code class="variable-group">[</code><code>1</code><code class="variable-op">, </code>2<code class="variable-op">, </code>3<code class="variable-op">, </code><code class="variable-group">{</code>7<code class="variable-op">: </code><code class="variable-quote">'</code><code class="variable-string">oo</code><code class="variable-quote">'</code>*20<code class="variable-group">}</code><code class="variable-group">]</code><code class="variable-group">}</code>"""
 
 def test_ast_annotation() -> None:
     assert color(extract_expr(ast.parse(dedent("""
@@ -193,7 +198,7 @@ def test_ast_annotation() -> None:
 def test_ast_call() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     list(range(100))
-    """)))) == "list(range(100))" # TODO: Add links to ast.Call nodes
+    """)))) == "list(range(100))\n" # TODO: Add links to ast.Call nodes
 
 def textcontent(elt):
     if isinstance(elt, (str, bytes)): 
@@ -335,12 +340,12 @@ def test_repr_score() -> None:
     instance at 0x12345>`` get low scores.  Currently, the scoring
     algorithm is:
 
-    - [+1] for each object colorized.  When the colorizer recurses into
-    a structure, this will add one for each element contained.
-    - [-5] when repr(obj) looks like <xyz instance at ...>, for any
-    colorized object (including objects in structures).
-    - [-100] if repr(obj) raises an exception, for any colorized object
-    (including objects in structures).
+        - [+1] for each object colorized.  When the colorizer recurses into
+        a structure, this will add one for each element contained.
+        - [-5] when repr(obj) looks like <xyz instance at ...>, for any
+        colorized object (including objects in structures).
+        - [-100] if repr(obj) raises an exception, for any colorized object
+        (including objects in structures).
 
     The ``min_score`` arg to colorize can be used to set a cutoff-point for
     scores; if the score is too low, then `PyvalColorizer.colorize` will use UNKNOWN_REPR instead.
