@@ -218,12 +218,10 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     Extract the "str" part from annotations like  "Final[str]".
 
     @raises ValueError: If the "Final" annotation is not valid.
-    """
-    def _raise() -> NoReturn:
-        raise ValueError("Annotation is invalid, it should not contain slices.")
+    """ 
     ann_slice = _extract_annotation_subscript(annotation)
     if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
-        _raise()
+        raise ValueError("Annotation is invalid, it should not contain slices.")
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
@@ -521,14 +519,14 @@ class ModuleVistor(ast.NodeVisitor):
                     annotation = extract_final_subscript(obj.annotation)
                 except ValueError as e:
                     obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = _infer_type(value)
+                    obj.annotation = _infer_type(value) if value else None
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = _infer_type(value)
+                obj.annotation = _infer_type(value) if value else None
 
     def _handleModuleVar(self,
             target: str,
@@ -1060,13 +1058,11 @@ class _AnnotationStringParser(ast.NodeTransformer):
     def visit_Str(self, node: ast.Str) -> ast.expr:
         return ast.copy_location(self._parse_string(node.s), node)
 
-def _infer_type(expr: Optional[ast.expr]) -> Optional[ast.expr]:
+def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     """Infer an expression's type.
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
     """
-    if expr is None:
-        return None
     try:
         value: object = ast.literal_eval(expr)
     except ValueError:
