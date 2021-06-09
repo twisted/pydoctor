@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable
+from typing import Callable, cast
 import pytest
 import warnings
 from pathlib import Path
@@ -242,11 +242,11 @@ def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
             pass
     ''')
     public = mod.contents['Public']
-    assert not func(public)
-    assert not func(public.contents['Inner'])
+    assert not func(cast(model.Class, public))
+    assert not func(cast(model.Class, public.contents['Inner']))
     private = mod.contents['_Private']
-    assert func(private)
-    assert func(private.contents['Inner'])
+    assert func(cast(model.Class, private))
+    assert func(cast(model.Class, private.contents['Inner']))
 
 
 def test_isClassNodePrivate() -> None:
@@ -261,7 +261,7 @@ def test_isClassNodePrivate() -> None:
     class _Private(_BaseForPrivate):
         pass
     ''')
-    assert not isClassNodePrivate(mod.contents['Public'])
-    assert isClassNodePrivate(mod.contents['_Private'])
-    assert not isClassNodePrivate(mod.contents['_BaseForPublic'])
-    assert isClassNodePrivate(mod.contents['_BaseForPrivate'])
+    assert not isClassNodePrivate(cast(model.Class, mod.contents['Public']))
+    assert isClassNodePrivate(cast(model.Class, mod.contents['_Private']))
+    assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
+    assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))

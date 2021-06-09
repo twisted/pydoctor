@@ -731,10 +731,11 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
     sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
     for sub_ob in obj.contents.values():
-        k = sub_ob.kind
-        sub_objects_total_count[k] += 1
-        if sub_ob.docstring is not None:
-            sub_objects_with_docstring_count[k] += 1
+        kind = sub_ob.kind
+        if kind is not None:
+            sub_objects_total_count[kind] += 1
+            if sub_ob.docstring is not None:
+                sub_objects_with_docstring_count[kind] += 1
 
     tag: Tag = tags.span(class_='undocumented')
     if sub_objects_with_docstring_count:
@@ -744,10 +745,10 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         tag(
             "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
-                f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
-                f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
+                f"{sub_objects_with_docstring_count[kind]}/{sub_objects_total_count[kind]} "
+                f"{format_kind(kind, plural=sub_objects_with_docstring_count[kind]>=2).lower()}"
                 
-                for k in sorted(sub_objects_total_count, key=(lambda x:x.value))
+                for kind in sorted(sub_objects_total_count, key=(lambda x:x.value))
                 ),
             " documented"
             )
