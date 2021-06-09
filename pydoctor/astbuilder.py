@@ -521,14 +521,14 @@ class ModuleVistor(ast.NodeVisitor):
                     annotation = extract_final_subscript(obj.annotation)
                 except ValueError as e:
                     obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
-                    obj.annotation = None
+                    obj.annotation = _infer_type(value)
                 else:
                     # Will not display as "Final[str]" but rather only "str"
                     obj.annotation = annotation
             else:
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
-                obj.annotation = None if value is None else _infer_type(value)
+                obj.annotation = _infer_type(value)
 
     def _handleModuleVar(self,
             target: str,
@@ -925,8 +925,7 @@ class ModuleVistor(ast.NodeVisitor):
             if typ is not None:
                 return self._unstring_annotation(typ)
             default = args.arguments.get('default')
-            if default is not None:
-                return _infer_type(default)
+            return _infer_type(default)
         return None
 
     def _annotations_from_function(
@@ -1061,12 +1060,13 @@ class _AnnotationStringParser(ast.NodeTransformer):
     def visit_Str(self, node: ast.Str) -> ast.expr:
         return ast.copy_location(self._parse_string(node.s), node)
 
-def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
+def _infer_type(expr: Optional[ast.expr]) -> Optional[ast.expr]:
     """Infer an expression's type.
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
     """
-
+    if expr is None:
+        return None
     try:
         value: object = ast.literal_eval(expr)
     except ValueError:
