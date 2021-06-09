@@ -1,5 +1,5 @@
 """
-Collection of helper functions related to L{docutils}.
+Collection of helper functions related to the creation L{docutils} nodes.
 """
 from typing import Iterable, Iterator, Optional, List
 
@@ -14,12 +14,17 @@ def set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Node) -> Iterato
         node.parent = parent
         yield node
 
-def set_node_attributes(node: nodes.Node, lineno: int, document: nodes.document, children: Optional[List[nodes.Node]] = None) -> nodes.Node:
+def set_node_attributes(node: nodes.Node, 
+                        document: nodes.document, 
+                        lineno: Optional[int] = None, 
+                        children: Optional[List[nodes.Node]] = None) -> nodes.Node:
     """
     Set the attributes to the Node. 
     This is required to manually construct a docutils document that is consistent.
     """
-    node.line = lineno
+    if lineno is not None:
+        node.line = lineno
+
     node.document = document
 
     if children:

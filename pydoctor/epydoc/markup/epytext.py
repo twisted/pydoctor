@@ -1380,19 +1380,8 @@ class ParsedEpytextDocstring(ParsedDocstring):
             seclevel: int = 0, 
             ) -> Iterable[Node]:
         
-        lineno = 0
-
-        if isinstance(tree, Element):
-            if tree.tag == 'link':
-                # Set links line number in node repr to be able to warn on precise lines. 
-                elem = tree.children[1]
-                if isinstance(elem, Element):
-                    lineno = int(elem.attribs['lineno'])
-            else:
-                lineno = int(tree.attribs.get('lineno', 0))
-        
         if isinstance(tree, str):
-            yield set_node_attributes(Text(tree), lineno=lineno, document=self._document)
+            yield set_node_attributes(Text(tree), document=self._document)
             return
 
         if tree.tag == 'section':
@@ -1407,13 +1396,13 @@ class ParsedEpytextDocstring(ParsedDocstring):
         if tree.tag == 'para':
             # we yield a paragraph node even if tree.attribs.get('inline') is True because
             # the choice to render the <p> tags is handled in _PydoctorHTMLTranslator.should_be_compact_paragraph(), not here anymore
-            yield set_node_attributes(paragraph('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(paragraph('', ''), document=self._document, children=variables)
         elif tree.tag == 'code':
-            yield set_node_attributes(literal('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(literal('', ''), document=self._document, children=variables)
         elif tree.tag == 'uri':
             _label, _target = variables[0], variables[1]
             yield set_node_attributes(reference(
-                    '', internal=False, refuri=_target), lineno=lineno, document=self._document, children=_label.children)
+                    '', internal=False, refuri=_target), document=self._document, children=_label.children)
         
         elif tree.tag == 'link':
             _label, _target = variables
@@ -1423,44 +1412,51 @@ class ParsedEpytextDocstring(ParsedDocstring):
             args = {}
             if _target.astext() != _label.astext():
                 args['refuri']=_target.astext()
+            
+            # Figure the line number to warn on precise lines. 
+            # This is needed only for links currently.
+            lineno: Optional[int] = None
+            elem = tree.children[1]
+            if isinstance(elem, Element):
+                lineno = int(elem.attribs['lineno'])
 
             yield set_node_attributes(title_reference(
-                   '', '', **args), lineno=lineno, document=self._document, children=_label.children)
+                   '', '', **args), document=self._document, lineno=lineno, children=_label.children)
 
         elif tree.tag in ('name',):
-            yield set_node_attributes(inline('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(inline('', ''), document=self._document, children=variables)
             # yield set_node_attributes(Text(' '.join(node2stan.gettext(variables))))
         elif tree.tag == 'target':
             value, = variables
-            yield set_node_attributes(Text(value), lineno=lineno, document=self._document)
+            yield set_node_attributes(Text(value), document=self._document)
 
         elif tree.tag == 'italic':
-            yield set_node_attributes(emphasis('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(emphasis('', ''), document=self._document, children=variables)
         elif tree.tag == 'math':
-            node = set_node_attributes(math('', ''), lineno=lineno, document=self._document, children=variables)
+            node = set_node_attributes(math('', ''), document=self._document, children=variables)
             node.set_class('math')
             yield node
         elif tree.tag == 'bold':
-            yield set_node_attributes(strong('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(strong('', ''), document=self._document, children=variables)
         elif tree.tag == 'ulist':
-            yield set_node_attributes(bullet_list(''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(bullet_list(''), document=self._document, children=variables)
         elif tree.tag == 'olist':
-            yield set_node_attributes(enumerated_list(''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(enumerated_list(''), document=self._document, children=variables)
         elif tree.tag == 'li':
-            yield set_node_attributes(list_item(''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(list_item(''), document=self._document, children=variables)
         elif tree.tag == 'heading':
-            yield set_node_attributes(title('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(title('', ''), document=self._document, children=variables)
         elif tree.tag == 'literalblock':
-            yield set_node_attributes(literal_block('', ''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(literal_block('', ''), document=self._document, children=variables)
         elif tree.tag == 'doctestblock':
-            yield set_node_attributes(doctest_block(tree.children[0], tree.children[0]), lineno=lineno, document=self._document)
+            yield set_node_attributes(doctest_block(tree.children[0], tree.children[0]), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag in ('section', 'epytext'):
-            yield set_node_attributes(section(''), lineno=lineno, document=self._document, children=variables)
+            yield set_node_attributes(section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
             char = chr(self.SYMBOL_TO_CODEPOINT[symbol])
-            yield set_node_attributes(inline(symbol, char), lineno=lineno, document=self._document)
+            yield set_node_attributes(inline(symbol, char), document=self._document)
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")
