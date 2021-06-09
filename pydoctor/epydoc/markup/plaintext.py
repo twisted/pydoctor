@@ -11,8 +11,9 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from typing import List
+from typing import List, Optional
 
+from docutils import nodes, utils
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
@@ -34,6 +35,8 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     def __init__(self, text: str):
         ParsedDocstring.__init__(self, ())
         self._text = text
+         # Caching:
+        self._document: Optional[nodes.document] = None
 
     @property
     def has_body(self) -> bool:
@@ -41,3 +44,11 @@ class ParsedPlaintextDocstring(ParsedDocstring):
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.p(self._text, class_='pre')
+    
+    def to_node(self) -> nodes.document:
+        if self._document is not None:
+            return self._document
+        else:
+            self._document = utils.new_document('plaintext')
+            self._document.children.append(nodes.literal_block(rawsource=self._text, text=self._text))
+            return self._document

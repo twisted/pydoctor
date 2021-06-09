@@ -1569,7 +1569,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert oldschool.kind is model.DocumentableKind.PROPERTY
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
-    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
+    assert flatten(format_summary(oldschool)) == 'For rent.'
     assert isinstance(oldschool.parsed_type, ParsedEpytextDocstring)
     assert str(unwrap(oldschool.parsed_type)) == 'string'
     fields = oldschool.parsed_docstring.fields

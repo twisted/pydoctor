@@ -35,6 +35,9 @@ __docformat__ = 'epytext en'
 
 from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import re
+import abc
+
+from docutils import nodes
 
 from twisted.python.failure import Failure
 from twisted.web.template import Tag, XMLString, flattenString
@@ -56,7 +59,7 @@ if TYPE_CHECKING:
 ##################################################
 ## ParsedDocstring
 ##################################################
-class ParsedDocstring:
+class ParsedDocstring(abc.ABC):
     """
     A standard intermediate representation for parsed docstrings that
     can be used to generate output.  Parsed docstrings are produced by
@@ -73,7 +76,7 @@ class ParsedDocstring:
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
 
-    @property
+    @abc.abstractproperty
     def has_body(self) -> bool:
         """Does this docstring have a non-empty body?
 
@@ -82,6 +85,7 @@ class ParsedDocstring:
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
@@ -92,7 +96,16 @@ class ParsedDocstring:
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
-        @return: The docstring presented as a tree.
+        @return: The docstring presented as a stan tree.
+        """
+        raise NotImplementedError()
+    
+    @abc.abstractmethod
+    def to_node(self) -> nodes.document:
+        """
+        Translate this docstring to a L{docutils.nodes.document}.
+
+        @return: The docstring presented as a L{docutils.nodes.document}.
         """
         raise NotImplementedError()
 
@@ -193,7 +206,7 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
-    def link_to(self, target: str, label: str) -> Tag:
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
         """
         Format a link to a Python identifier.
         This will resolve the identifier like Python itself would.
@@ -205,7 +218,7 @@ class DocstringLinker:
         """
         raise NotImplementedError()
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
         This will resolve the identifier to any reasonable target,
