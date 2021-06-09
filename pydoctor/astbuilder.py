@@ -203,23 +203,28 @@ def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr])
     """
     return obj.value is not None and new_value is not None
 
-def extract_annotation_subscript(annotation: ast.Subscript) -> ast.expr:
+def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     """
-    Extract the "str" part from annotations like  "Final[str]".
-
-    @raises ValueError: If the annotation is not valid.
+    Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
     """
-    def _raise() -> NoReturn:
-        raise ValueError("Annotation is invalid, it should not contain slices.")
     ann_slice = annotation.slice
     if isinstance(ann_slice, ast.Index):
         return ann_slice.value
-    elif isinstance(ann_slice, (ast.ExtSlice, ast.Slice)):
+    else:
+        return ann_slice
+
+def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
+    """
+    Extract the "str" part from annotations like  "Final[str]".
+
+    @raises ValueError: If the "Final" annotation is not valid.
+    """
+    def _raise() -> NoReturn:
+        raise ValueError("Annotation is invalid, it should not contain slices.")
+    ann_slice = _extract_annotation_subscript(annotation)
+    if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
         _raise()
     else:
-        # Python 3.9
-        if isinstance(ann_slice, ast.Tuple):
-            _raise()
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
@@ -513,7 +518,7 @@ class ModuleVistor(ast.NodeVisitor):
         if is_using_typing_final(obj):
             if isinstance(obj.annotation, ast.Subscript):
                 try:
-                    annotation = extract_annotation_subscript(obj.annotation)
+                    annotation = extract_final_subscript(obj.annotation)
                 except ValueError as e:
                     obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
                     obj.annotation = None
