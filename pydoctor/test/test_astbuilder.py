@@ -1739,7 +1739,6 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     assert astbuilder.node2fullname(attr.annotation, attr) == "tuple"
@@ -1756,7 +1755,6 @@ def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[mode
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     
@@ -1777,7 +1775,6 @@ def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[mod
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     
@@ -1799,7 +1796,6 @@ def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[mode
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == 'fr'
     assert astbuilder.node2fullname(attr.annotation, attr) == "str"
