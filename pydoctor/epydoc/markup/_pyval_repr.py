@@ -36,11 +36,13 @@ import re
 import ast
 import functools
 import sre_parse, sre_constants
-from typing import Any, Callable, Iterable, Mapping, Union, Optional, List, Tuple, cast
+from typing import Any, Callable, Iterable, Union, Optional, List, Tuple, cast
 
 import astor
+from docutils import nodes, utils
 
-from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
+from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline
 
 def is_re_pattern(pyval):
     return type(pyval).__name__ == 'Pattern'
@@ -76,7 +78,7 @@ class _ColorizerState:
     the parse-derived repr instead.
     """
     def __init__(self):
-        self.result = []
+        self.result: List[Union[nodes.inline, nodes.title_reference, nodes.Text]] = []
         self.charpos = 0
         self.lineno = 1
         self.linebreakok = True
@@ -101,14 +103,14 @@ class _Linebreak(Exception):
     generates a string containing a newline, but the state object's
     linebreakok variable is False."""
 
-class ColorizedPyvalRepr(ParsedEpytextDocstring):
+class ColorizedPyvalRepr(ParsedRstDocstring):
     """
     @ivar score: A score, evaluating how good this repr is.
     @ivar is_complete: True if this colorized repr completely describes
        the object.
     """
-    def __init__(self, tree, score, is_complete):
-        super().__init__(tree, ())
+    def __init__(self, document: nodes.document, score: int, is_complete: bool):
+        super().__init__(document, ())
         self.score = score
         self.is_complete = is_complete
 
@@ -147,10 +149,10 @@ class PyvalColorizer:
     RE_OP_TAG = 're-op'
     RE_FLAGS_TAG = 're-flags'
 
-    ELLIPSIS = Element('code', '...', css_class='variable-ellipsis')
-    LINEWRAP = Element('symbol', 'crarr')
-    UNKNOWN_REPR = Element('code', '??', css_class='variable-unknown')
-    WORD_BREAK_OPPORTUNITY = Element('wbr', '')
+    ELLIPSIS = nodes.inline('...', '...', classes=['variable-ellipsis'])
+    LINEWRAP = nodes.inline('crarr', chr(8629))
+    UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
+    WORD_BREAK_OPPORTUNITY = wbr()
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
@@ -188,7 +190,7 @@ class PyvalColorizer:
             self._colorize(pyval, state)
         except (_Maxlines, _Linebreak):
             if self.linebreakok:
-                state.result.append('\n')
+                state.result.append(newline())
                 state.result.append(self.ELLIPSIS)
             else:
                 if state.result[-1] is self.LINEWRAP:
@@ -198,12 +200,15 @@ class PyvalColorizer:
             is_complete = False
         else:
             is_complete = True
+        
         # If we didn't score high enough, then use UNKNOWN_REPR
         if (min_score is not None and state.score < min_score):
             state.result = [PyvalColorizer.UNKNOWN_REPR]
+        
         # Put it all together.
-        tree = Element('epytext', *state.result)
-        return ColorizedPyvalRepr(tree, state.score, is_complete)
+        document = utils.new_document('epytext')
+        set_node_attributes(document, document=document, children=state.result)
+        return ColorizedPyvalRepr(document, state.score, is_complete)
     
     def _colorize(self, pyval: Any, state: _ColorizerState) -> None:
         pyval_type = type(pyval)
@@ -214,7 +219,7 @@ class PyvalColorizer:
             # Ellipsis is not included here, both because its code syntax is
             # different from its constant's name and because its documentation
             # is not relevant to annotations.
-            self._output(str(pyval), self.CONST_TAG, state, tag='link')
+            self._output(str(pyval), self.CONST_TAG, state, link=True)
         elif issubclass(pyval_type, (int, float, complex)):
             self._output(str(pyval), self.NUMBER_TAG, state)
         elif issubclass(pyval_type, str):
@@ -265,16 +270,26 @@ class PyvalColorizer:
         while num_chars > 0:
             if not result: 
                 return
-            if isinstance(result[-1], Element):
-                assert len(result[-1].children) == 1
-                trim = min(num_chars, len(result[-1].children[0]))
-                result[-1].children[0] = result[-1].children[0][:-trim]
-                if not result[-1].children[0]: result.pop()
+            if isinstance(result[-1], nodes.Element):
+                if len(result[-1].children) >= 1:
+                    data = result[-1][-1].astext()
+                    trim = min(num_chars, len(data))
+                    result[-1][-1] = nodes.Text(data[:-trim])
+                    if not result[-1][-1].astext(): 
+                        if len(result[-1].children) == 1:
+                            result.pop()
+                        else:
+                            result[-1].pop()
+                else:
+                    trim = 0
+                    result.pop()
                 num_chars -= trim
             else:
+                # Must be Text if it's not an Element
                 trim = min(num_chars, len(result[-1]))
-                result[-1] = result[-1][:-trim]
-                if not result[-1]: result.pop()
+                result[-1] = nodes.Text(result[-1].astext()[:-trim])
+                if not result[-1].astext(): 
+                    result.pop()
                 num_chars -= trim
 
     #////////////////////////////////////////////////////////////
@@ -481,7 +496,7 @@ class PyvalColorizer:
                     self._output(' or ', None, state)
 
     def _colorize_ast_name(self, pyval: ast.Name, state: _ColorizerState) -> None:
-        self._output(pyval.id, self.LINK_TAG, state, tag='link')
+        self._output(pyval.id, self.LINK_TAG, state, link=True)
 
     def _colorize_ast_attribute(self, pyval: ast.Attribute, state: _ColorizerState) -> None:
         parts = []
@@ -494,7 +509,7 @@ class PyvalColorizer:
             return
         parts.append(curr.id)
         parts.reverse()
-        self._output('.'.join(parts), self.LINK_TAG, state, tag='link')
+        self._output('.'.join(parts), self.LINK_TAG, state, link=True)
 
     def _colorize_ast_subscript(self, node: ast.Subscript, state: _ColorizerState) -> None:
 
@@ -696,7 +711,7 @@ class PyvalColorizer:
     #////////////////////////////////////////////////////////////
 
     def _output(self, s: Union[str, bytes], css_class: Optional[str], 
-                state: _ColorizerState, tag: str = 'code'):
+                state: _ColorizerState, link: bool = False):
         """
         Add the string `s` to the result list, tagging its contents
         with css class `css_class`.  Any lines that go beyond `self.linelen` will
@@ -720,7 +735,7 @@ class PyvalColorizer:
                     raise _Maxlines()
                 if not state.linebreakok:
                     raise _Linebreak()
-                state.result.append('\n')
+                state.result.append(newline())
                 state.lineno += 1
                 state.charpos = 0
             
@@ -729,14 +744,17 @@ class PyvalColorizer:
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
             # Don't break links into separate segments. 
-            if (state.charpos + segment_len <= self.linelen) or tag == "link":
+            if (state.charpos + segment_len <= self.linelen) or link:
                 state.charpos += segment_len
-                element: Union[str, Element]
+                element: nodes.Node
                 
-                if css_class is not None or tag == "link":
-                    element = Element(tag, segment, css_class=css_class)
+                if css_class is not None or link:
+                    if link:
+                        element = nodes.title_reference('', segment, refuid=segment, classes=[css_class])
+                    else:
+                        element = nodes.inline('', segment, classes=[css_class])
                 else:
-                    element = segment
+                    element = nodes.Text(segment)
                 state.result.append(element)
 
             # If the segment doesn't fit on the current line, then
@@ -748,10 +766,10 @@ class PyvalColorizer:
                 split = self.linelen-state.charpos
                 segments.insert(i+1, segment[split:])
                 segment = segment[:split]
-                element: Union[str, Element]
+                element: nodes.Node
                 if css_class is not None:
-                    element = Element(tag, segment, css_class=css_class)
+                    element = nodes.inline('', segment, classes=[css_class])
                 else:
-                    element = segment
+                    element = nodes.Text(segment)
                 state.result += [element, self.LINEWRAP]
 	
