@@ -139,12 +139,17 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
                 # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
                 if key.lower() in ('class', 'id', 'name'):
-                    attr_dict[key] = f'rst-{val}'
+                    if not val.startswith('rst-'):
+                        attr_dict[key] = f'rst-{val}'
                 elif key.lower() in ('classes', 'ids', 'names'):
-                    attr_dict[key] = [f'rst-{cls}' for cls in val]
+                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in val]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
-                        attr_dict[key] = f'#rst-{attr_dict[key][1:]}'
+                        href = attr_dict[key][1:]
+                        # We check that the class doesn't alrealy start with "rst-"
+                        if not href.startswith('rst-'):
+                            attr_dict[key] = f'#rst-{href}'
                     else:
                         # If it's an external link, open it in a new
                         # page.
