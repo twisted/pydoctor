@@ -167,7 +167,7 @@ class PyvalColorizer:
     RE_FLAGS_TAG = 're-flags'
 
     ELLIPSIS = nodes.inline('...', '...', classes=['variable-ellipsis'])
-    LINEWRAP = nodes.inline('crarr', chr(8629))
+    LINEWRAP = nodes.Text(chr(8629))
     UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
     WORD_BREAK_OPPORTUNITY = wbr()
 
@@ -568,7 +568,7 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pyval: re.Pattern[str], state: _ColorizerState) -> None:
+    def _colorize_re(self, pyval: re.Pattern, state: _ColorizerState) -> None:
         # Extract the flag & pattern from the regexp.
         pat, flags = pyval.pattern, pyval.flags
 
