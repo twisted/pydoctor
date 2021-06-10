@@ -45,3 +45,8 @@ class newline(nodes.inline):
     """
     def __init__(self) -> None:
         super().__init__('', '')
+
+class obj_reference(nodes.title_reference):
+    """
+    A reference to a documentable object.
+    """

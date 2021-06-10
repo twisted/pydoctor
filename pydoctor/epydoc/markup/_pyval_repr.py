@@ -42,9 +42,11 @@ from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, Lis
 import attr
 import astor
 from docutils import nodes, utils
+from twisted.web.template import Tag
 
+from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
-from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline
+from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline, obj_reference
 
 def is_re_pattern(pyval: Any) -> bool:
     return type(pyval).__name__ == 'Pattern'
@@ -129,6 +131,9 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         super().__init__(document, ())
         self.score = score
         self.is_complete = is_complete
+    
+    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+        return Tag('code', children=[super().to_stan(docstring_linker)])
 
 def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
                    linelen:int=75, maxlines:int=5, linebreakok:bool=True) -> ColorizedPyvalRepr:
@@ -151,14 +156,15 @@ class PyvalColorizer:
     # Colorization Tags & other constants
     #////////////////////////////////////////////////////////////
 
-    GROUP_TAG = 'variable-group'     # e.g., "[" and "]"
-    COMMA_TAG = 'variable-op'        # The "," that separates elements
-    COLON_TAG = 'variable-op'        # The ":" in dictionaries
+    GROUP_TAG = None #'variable-group'     # e.g., "[" and "]"
+    COMMA_TAG = None #'variable-op'        # The "," that separates elements
+    COLON_TAG = None #'variable-op'        # The ":" in dictionaries
     CONST_TAG = None                 # None, True, False
     NUMBER_TAG = None                # ints, floats, etc
     QUOTE_TAG = 'variable-quote'     # Quotes around strings.
     STRING_TAG = 'variable-string'   # Body of string literals
     LINK_TAG = 'variable-link'       # Links to other documentables, extracted from AST names and attributes.
+    ELLIPSIS_TAG = None #'variable-ellipsis'
 
     RE_CHAR_TAG = None
     RE_GROUP_TAG = 're-group'
@@ -166,7 +172,7 @@ class PyvalColorizer:
     RE_OP_TAG = 're-op'
     RE_FLAGS_TAG = 're-flags'
 
-    ELLIPSIS = nodes.inline('...', '...', classes=['variable-ellipsis'])
+    ELLIPSIS = nodes.inline('...', '...', classes=[ELLIPSIS_TAG])
     LINEWRAP = nodes.Text(chr(8629))
     UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
     WORD_BREAK_OPPORTUNITY = wbr()
@@ -335,8 +341,9 @@ class PyvalColorizer:
             func(pyval, state, **kwargs)
 
     def _colorize_iter(self, pyval: Iterable[Any], state: _ColorizerState, 
-                       prefix: Optional[Union[str, bytes]] = None, suffix: Optional[Union[str, bytes]] = None) -> None:
-        if prefix:
+                       prefix: Optional[Union[str, bytes]] = None, 
+                       suffix: Optional[Union[str, bytes]] = None) -> None:
+        if prefix is not None:
             self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
         for i, elt in enumerate(pyval):
@@ -349,7 +356,7 @@ class PyvalColorizer:
                     # word break opportunity for inline values
                     # state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(elt, state)
-        if suffix:
+        if suffix is not None:
             self._output(suffix, self.GROUP_TAG, state)
 
     def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str) -> None:
@@ -426,11 +433,19 @@ class PyvalColorizer:
             return(node.value)
         if isinstance(node, ast.Ellipsis):
             return(...)
+        
+    def _colorize_ast_constant(self, pyval: ast.AST, state: _ColorizerState) -> None:
+        val = self._get_ast_constant_val(pyval)
+        # Handle elipsis
+        if val != ...:
+            self._colorize(val, state)
+        else:
+            self._output('...', self.ELLIPSIS_TAG, state)
 
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
 
         if self._is_ast_constant(pyval): 
-            self._colorize(self._get_ast_constant_val(pyval), state)
+            self._colorize_ast_constant(pyval, state)
         elif isinstance(pyval, ast.UnaryOp):
             self._colorize_ast_unary_op(pyval, state)
         elif isinstance(pyval, ast.BinOp):
@@ -793,7 +808,7 @@ class PyvalColorizer:
                 
                 if css_class is not None or link:
                     if link:
-                        element = nodes.title_reference('', segment, refuid=segment, classes=[css_class])
+                        element = obj_reference('', segment, refuid=segment, classes=[css_class])
                     else:
                         element = nodes.inline('', segment, classes=[css_class])
                 else:

@@ -4,7 +4,9 @@ from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
-from pydoctor import astbuilder, model, epydoc2stan
+from pydoctor import astbuilder
+from pydoctor import model
+from pydoctor.epydoc.markup._pyval_repr import colorize_pyval
 
 class ZopeInterfaceModule(model.Module):
 
@@ -229,7 +231,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 attr.kind = model.DocumentableKind.SCHEMA_FIELD
 
             # Link to zope.schema.* class, if setup with intersphinx.
-            attr.parsed_type = epydoc2stan.AnnotationDocstring(expr.func)
+            attr.parsed_type = colorize_pyval(expr.func, linelen=999, maxlines=1, linebreakok=False)
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
