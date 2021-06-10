@@ -1,13 +1,15 @@
 import re
 import ast
 from textwrap import dedent
-from typing import Any, Optional, Union
+from typing import Any, Optional, Tuple, Union
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
 from pydoctor.epydoc.markup import flatten
+from pydoctor.epydoc.markup.epytext import Element
+from pydoctor.node2stan import gettext
 
-def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40):
+def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v, None)
     s = flatten(parsed_doc.to_stan(NotFoundLinker()))
@@ -200,9 +202,11 @@ def test_ast_call() -> None:
     list(range(100))
     """)))) == "list(range(100))\n" # TODO: Add links to ast.Call nodes
 
-def textcontent(elt):
-    if isinstance(elt, (str, bytes)): 
+def textcontent(elt: Union[Element, str, bytes]) -> str:
+    if isinstance(elt, str): 
         return elt
+    if isinstance(elt, bytes): 
+        return elt.decode(encoding='utf-8', errors='replace')
     else: 
         return ''.join([textcontent(c) for c in elt.children])
 
@@ -212,7 +216,7 @@ def color_re(s: Union[bytes, str], pre:Optional[str]=None,
     # Currently, we never set check_roundtrip to True
     # It does not pass the test currently because it initially relied on "val.to_plaintext()".
     # A method that has been removed from the ParsedDocstring interface.
-    # I've replaced it with "textcontent(val._tree)", but the results are not the same as to_plaintext(). 
+    # I've replaced it with "''.join(gettext(val.to_node()))", but the results are not the same as to_plaintext(). 
 
     colorizer = PyvalColorizer(linelen=55)
     val = colorizer.colorize(re.compile(s))
@@ -226,7 +230,7 @@ def color_re(s: Union[bytes, str], pre:Optional[str]=None,
         p = re.compile(r"^(\(\?\w+\)|)")
         s = re.sub(p, pre, s)
 
-        tc = textcontent(val._tree)[13:-2]
+        tc = ''.join(gettext(val.to_node()))[13:-2]
         assert tc == s, "%s != %s" % (repr(tc), repr(s))
 
     return flatten(val.to_stan(NotFoundLinker()))[13:-2]
@@ -326,10 +330,10 @@ def test_line_wrapping() -> None:
 
     assert color('x'*100, linebreakok=False) == """<code class="variable-quote">'</code><code class="variable-string">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code><code class="variable-ellipsis">...</code>"""
 
-def color2(v):
+def color2(v: Any) -> Tuple[str, int, bool]:
     colorizer = PyvalColorizer(linelen=50)
     pds = colorizer.colorize(v)
-    text = textcontent(pds._tree)
+    text = ''.join(gettext(pds.to_node()))
     score = pds.score
     is_ok = pds.score>0
     return text, score, is_ok
@@ -375,8 +379,8 @@ def test_summary() -> None:
     """To generate summary-reprs, use maxlines=1 and linebreakok=False:
     """
     summarizer = PyvalColorizer(linelen=60, maxlines=1, linebreakok=False)
-    def summarize(v:str) -> str:
-        return(textcontent(summarizer.colorize(v)._tree))
+    def summarize(v:Any) -> str:
+        return(''.join(gettext(summarizer.colorize(v).to_node())))
 
     assert summarize(list(range(100))) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16..."
     assert summarize('hello\nworld') == r"'hello\nworld'"

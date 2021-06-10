@@ -32,19 +32,21 @@ __docformat__ = 'epytext en'
 # rather than using isinstance, because subclasses might override
 # __repr__.
 
+from pydoctor.epydoc.markup import ParsedDocstring
 import re
 import ast
 import functools
 import sre_parse, sre_constants
-from typing import Any, Callable, Iterable, Union, Optional, List, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, List, Tuple, cast, overload
 
+import attr
 import astor
 from docutils import nodes, utils
 
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline
 
-def is_re_pattern(pyval):
+def is_re_pattern(pyval: Any) -> bool:
     return type(pyval).__name__ == 'Pattern'
 
 def decode_with_backslashreplace(s: bytes) -> str:
@@ -64,6 +66,14 @@ def decode_with_backslashreplace(s: bytes) -> str:
             .encode('ascii', 'backslashreplace')
             .decode('ascii'))
 
+@attr.s(auto_attribs=True)
+class _MarkedColorizerState:
+    length: int
+    charpos: int
+    lineno: int
+    linebreakok: bool
+    score: int
+
 class _ColorizerState:
     """
     An object uesd to keep track of the current state of the pyval
@@ -77,8 +87,8 @@ class _ColorizerState:
     at 0x12345>' get low scores.  If the score is too low, we'll use
     the parse-derived repr instead.
     """
-    def __init__(self):
-        self.result: List[Union[nodes.inline, nodes.title_reference, nodes.Text]] = []
+    def __init__(self) -> None:
+        self.result: List[nodes.Node] = []
         self.charpos = 0
         self.lineno = 1
         self.linebreakok = True
@@ -86,13 +96,19 @@ class _ColorizerState:
         #: How good this represention is?
         self.score = 0
 
-    def mark(self):
-        return (len(self.result), self.charpos,
-                self.lineno, self.linebreakok, self.score)
+    def mark(self) -> _MarkedColorizerState:
+        return _MarkedColorizerState(
+                    length=len(self.result), 
+                    charpos=self.charpos,
+                    lineno=self.lineno, 
+                    linebreakok=self.linebreakok, 
+                    score=self.score)
 
-    def restore(self, mark):
-        n, self.charpos, self.lineno, self.linebreakok, self.score = mark
-        del self.result[n:]
+    def restore(self, mark: _MarkedColorizerState) -> None:
+        (self.charpos, self.lineno, 
+        self.linebreakok, self.score) = (mark.charpos, mark.lineno, 
+                                        mark.linebreakok, mark.score)
+        del self.result[mark.length:]
 
 class _Maxlines(Exception):
     """A control-flow exception that is raised when PyvalColorizer
@@ -109,13 +125,14 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     @ivar is_complete: True if this colorized repr completely describes
        the object.
     """
-    def __init__(self, document: nodes.document, score: int, is_complete: bool):
+    def __init__(self, document: nodes.document, score: int, is_complete: bool) -> None:
         super().__init__(document, ())
         self.score = score
         self.is_complete = is_complete
 
-def colorize_pyval(pyval, min_score=None,
-                   linelen=75, maxlines=5, linebreakok=True):
+def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
+                   linelen:int=75, maxlines:int=5, linebreakok:bool=True) -> ColorizedPyvalRepr:
+    
     return PyvalColorizer(linelen, maxlines, linebreakok).colorize(
         pyval, min_score)
 
@@ -125,7 +142,7 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen=75, maxlines=5, linebreakok=True):
+    def __init__(self, linelen:int=75, maxlines:int=5, linebreakok:bool=True):
         self.linelen = linelen
         self.maxlines = maxlines
         self.linebreakok = linebreakok
@@ -156,8 +173,9 @@ class PyvalColorizer:
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
-    def _str_escape(self, s):
-        def enc(c):
+    @staticmethod
+    def _str_escape(s: str) -> str:
+        def enc(c: str) -> str:
             if c == "'":
                 return r"\'"
             elif ord(c) <= 0xff:
@@ -166,11 +184,9 @@ class PyvalColorizer:
                 return c
         return ''.join(map(enc, s))
 
-    def _bytes_escape(self, b):
+    @staticmethod
+    def _bytes_escape(b: bytes) -> str:
         return repr(b)[2:-1]
-
-    def _unicode_escape(self, u):
-        return u
 
     #////////////////////////////////////////////////////////////
     # Entry Point
@@ -223,9 +239,10 @@ class PyvalColorizer:
         elif issubclass(pyval_type, (int, float, complex)):
             self._output(str(pyval), self.NUMBER_TAG, state)
         elif issubclass(pyval_type, str):
-            self._colorize_str(pyval, state, '', self._str_escape)
+            self._colorize_str(pyval, state, '', escape_fcn=self._str_escape, str_func=str)
         elif issubclass(pyval_type, bytes):
-            self._colorize_str(pyval, state, b'b', self._bytes_escape)
+            self._colorize_str(pyval, state, b'b', escape_fcn=self._bytes_escape, 
+                               str_func=functools.partial(bytes, encoding='utf-8', errors='replace'))
         elif issubclass(pyval_type, tuple):
             self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
         elif issubclass(pyval_type, set):
@@ -248,7 +265,7 @@ class PyvalColorizer:
             try:
                 pyval_repr = repr(pyval)
                 if not isinstance(pyval_repr, str):
-                    pyval_repr = str(pyval_repr)
+                    pyval_repr = str(pyval_repr) #type: ignore[unreachable]
             except KeyboardInterrupt:
                 raise
             except:
@@ -258,15 +275,16 @@ class PyvalColorizer:
                 match = self.GENERIC_OBJECT_RE.search(pyval_repr)
                 if match:
                     state.score -= 5
-                    pyval_repr = match.groupdict().get('descr')
-                    if not pyval_repr:
-                        state.result.append(self.UNKNOWN_REPR)
+                    generic_object_match_groups = match.groupdict()
+                    if 'descr' in generic_object_match_groups:
+                        pyval_repr = f"<{generic_object_match_groups['descr']}>"
+                        self._output(pyval_repr, None, state)
                     else:
-                        pyval_repr = f"<{pyval_repr}>"
-                if pyval_repr:
+                        state.result.append(self.UNKNOWN_REPR)
+                else:
                     self._output(pyval_repr, None, state)
 
-    def _trim_result(self, result, num_chars):
+    def _trim_result(self, result: List[nodes.Node], num_chars: int) -> None:
         while num_chars > 0:
             if not result: 
                 return
@@ -296,7 +314,7 @@ class PyvalColorizer:
     # Object Colorization Functions
     #////////////////////////////////////////////////////////////
 
-    def _multiline(self, func: Callable[..., None], pyval, state, **kwargs: Any):
+    def _multiline(self, func: Callable[..., None], pyval: Iterable[Any], state: _ColorizerState, **kwargs: Any) -> None:
         """
         Helper for container-type colorizers.  First, try calling
         C{func(pyval, state, **kwargs)} with linebreakok set to false;
@@ -317,7 +335,7 @@ class PyvalColorizer:
             func(pyval, state, **kwargs)
 
     def _colorize_iter(self, pyval: Iterable[Any], state: _ColorizerState, 
-                       prefix: Optional[Union[str, bytes]] = None, suffix: Optional[Union[str, bytes]] = None):
+                       prefix: Optional[Union[str, bytes]] = None, suffix: Optional[Union[str, bytes]] = None) -> None:
         if prefix:
             self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
@@ -334,7 +352,7 @@ class PyvalColorizer:
         if suffix:
             self._output(suffix, self.GROUP_TAG, state)
 
-    def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str):
+    def _colorize_dict(self, items: Iterable[Tuple[Any, Any]], state: _ColorizerState, prefix: str, suffix: str) -> None:
         self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
         for i, (key, val) in enumerate(items):
@@ -350,19 +368,27 @@ class PyvalColorizer:
             self._output(': ', self.COLON_TAG, state)
             self._colorize(val, state)
         self._output(suffix, self.GROUP_TAG, state)
-
-    def _colorize_str(self, pyval, state, prefix, escape_fcn):
+    
+    @overload
+    def _colorize_str(self, pyval: str, state: _ColorizerState, prefix: str, 
+        escape_fcn: Callable[[str], str], str_func: Callable[[str], str]) -> None: 
+        ...
+    @overload
+    def _colorize_str(self, pyval: bytes, state: _ColorizerState, prefix: bytes, 
+        escape_fcn: Callable[[bytes], str], str_func: Callable[[str], bytes]) -> None: 
+        ...
+    def _colorize_str(self, pyval, state, prefix, escape_fcn, str_func) -> None: #type: ignore[no-untyped-def]
+        
         # TODO: Double check implementation bytes/str
-        s = functools.partial(bytes, encoding='utf-8', errors='replace') \
-            if isinstance(pyval, bytes) else str
-        # Decide which quote to use.
-        if s('\n') in pyval and state.linebreakok: 
-            quote = s("'''")
+
+        #  Decide which quote to use.
+        if str_func('\n') in pyval and state.linebreakok: 
+            quote = str_func("'''")
         else: 
-            quote = s("'")
+            quote = str_func("'")
         # Divide the string into lines.
         if state.linebreakok:
-            lines = pyval.split(s('\n'))
+            lines: List[Union[str, bytes]] = pyval.split(str_func('\n'))
         else:
             lines = [pyval]
         # Open quote.
@@ -370,7 +396,7 @@ class PyvalColorizer:
         # Body
         for i, line in enumerate(lines):
             if i>0: 
-                self._output(s('\n'), None, state)
+                self._output(str_func('\n'), None, state)
             if escape_fcn:
                 line = escape_fcn(line)
             self._output(line, self.STRING_TAG, state)
@@ -386,11 +412,11 @@ class PyvalColorizer:
     # TODO: Add support for comparators and generator expressions.
 
     @staticmethod
-    def _is_ast_constant(node):
+    def _is_ast_constant(node: ast.AST) -> bool:
         return isinstance(node, (ast.Num, ast.Str, ast.Bytes, 
                                  ast.Constant, ast.NameConstant, ast.Ellipsis))
     @staticmethod
-    def _get_ast_constant_val(node):
+    def _get_ast_constant_val(node: ast.AST) -> Any:
         # Deprecated since version 3.8: Replaced by Constant
         if isinstance(node, ast.Num): 
             return(node.n)
@@ -401,7 +427,7 @@ class PyvalColorizer:
         if isinstance(node, ast.Ellipsis):
             return(...)
 
-    def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState):
+    def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
 
         if self._is_ast_constant(pyval): 
             self._colorize(self._get_ast_constant_val(pyval), state)
@@ -542,7 +568,7 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pyval, state):
+    def _colorize_re(self, pyval: re.Pattern[str], state: _ColorizerState) -> None:
         # Extract the flag & pattern from the regexp.
         pat, flags = pyval.pattern, pyval.flags
 
@@ -556,16 +582,18 @@ class PyvalColorizer:
         self._colorize_re_tree(tree, state, True, groups)
         self._output(b"')", None, state)
 
-    def _colorize_re_flags(self, flags, state):
+    def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
-            flags = [c for (c,n) in sorted(sre_parse.FLAGS.items())
+            flags_list = [c for (c,n) in sorted(sre_parse.FLAGS.items())
                      if (n&flags)]
-            flags = '(?%s)' % ''.join(flags)
-            self._output(flags, self.RE_FLAGS_TAG, state)
+            flags_str = '(?%s)' % ''.join(flags_list)
+            self._output(flags_str, self.RE_FLAGS_TAG, state)
 
-    def _colorize_re_tree(self, tree, state, noparen: bool, groups):
-        b = functools.partial(bytes, encoding='utf-8', errors='replace')
-        assert noparen in (True, False)
+    def _colorize_re_tree(self, tree: Union[sre_parse.SubPattern, Sequence[Tuple[sre_constants._NamedIntConstant, Any]]], state: _ColorizerState, noparen: bool, groups: Dict[int, str]) -> None:
+        
+        # TODO: Double check is it necessary ?
+        b: Callable[..., bytes] = functools.partial(bytes, encoding='utf-8', errors='replace')
+
         try:
             if len(tree) > 1 and not noparen:
                 self._output('(', self.RE_GROUP_TAG, state)
@@ -579,15 +607,24 @@ class PyvalColorizer:
             if op == sre_constants.LITERAL:
                 c: Union[str, bytes] = chr(cast(int, args))
                 # Add any appropriate escaping.
-                if c in '.^$\\*+?{}[]|()\'': c = b'\\' + b(c)
-                elif c == '\t': c = '\\t'
-                elif c == '\r': c = '\\r'
-                elif c == '\n': c = '\\n'
-                elif c == '\f': c = '\\f'
-                elif c == '\v': c = '\\v'
-                elif ord(c) > 0xffff: c = b(r'\U%08x') % ord(c)
-                elif ord(c) > 0xff: c = b(r'\u%04x') % ord(c)
-                elif ord(c)<32 or ord(c)>=127: c = b(r'\x%02x') % ord(c)
+                if cast(str, c) in '.^$\\*+?{}[]|()\'': 
+                    c = b'\\' + b(c)
+                elif c == '\t': 
+                    c = '\\t'
+                elif c == '\r': 
+                    c = '\\r'
+                elif c == '\n': 
+                    c = '\\n'
+                elif c == '\f': 
+                    c = '\\f'
+                elif c == '\v': 
+                    c = '\\v'
+                elif ord(c) > 0xffff: 
+                    c = b(r'\U%08x') % ord(c)
+                elif ord(c) > 0xff: 
+                    c = b(r'\u%04x') % ord(c)
+                elif ord(c)<32 or ord(c)>=127: 
+                    c = b(r'\x%02x') % ord(c)
                 self._output(c, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.ANY:
@@ -702,16 +739,23 @@ class PyvalColorizer:
                                         state, False, groups )
                 self._output(b(']'), self.RE_GROUP_TAG, state)
             else:
-                raise RuntimeError("Error colorizing regexp: unknown elt %r" % elt)
+                raise RuntimeError(f"Error colorizing regexp, unknown element :{elt}")
         if len(tree) > 1 and not noparen:
             self._output(b(')'), self.RE_GROUP_TAG, state)
 
     #////////////////////////////////////////////////////////////
     # Output function
     #////////////////////////////////////////////////////////////
-
+    @overload
+    def _output(self, s: str, css_class: Optional[str], 
+                state: _ColorizerState, link: bool = False) -> None:
+        ...
+    @overload
+    def _output(self, s: bytes, css_class: Optional[str], 
+                state: _ColorizerState, link: bool = False) -> None:
+        ...
     def _output(self, s: Union[str, bytes], css_class: Optional[str], 
-                state: _ColorizerState, link: bool = False):
+                state: _ColorizerState, link: bool = False) -> None:
         """
         Add the string `s` to the result list, tagging its contents
         with css class `css_class`.  Any lines that go beyond `self.linelen` will
@@ -746,7 +790,6 @@ class PyvalColorizer:
             # Don't break links into separate segments. 
             if (state.charpos + segment_len <= self.linelen) or link:
                 state.charpos += segment_len
-                element: nodes.Node
                 
                 if css_class is not None or link:
                     if link:
@@ -766,7 +809,7 @@ class PyvalColorizer:
                 split = self.linelen-state.charpos
                 segments.insert(i+1, segment[split:])
                 segment = segment[:split]
-                element: nodes.Node
+
                 if css_class is not None:
                     element = nodes.inline('', segment, classes=[css_class])
                 else:

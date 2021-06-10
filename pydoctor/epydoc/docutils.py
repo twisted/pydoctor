@@ -36,12 +36,12 @@ class wbr(nodes.inline):
     """
     Word break opportunity.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('', '')
 
 class newline(nodes.inline):
     """
     Newline in HTML output.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('', '')
