@@ -1,5 +1,5 @@
 """
-Collection of helper functions related to the creation L{docutils} nodes.
+Collection of helper functions and classes related to the creation L{docutils} nodes.
 """
 from typing import Iterable, Iterator, Optional, List
 
@@ -31,3 +31,17 @@ def set_node_attributes(node: nodes.Node,
         node.extend(set_nodes_parent(children, node))
 
     return node
+
+class wbr(nodes.inline):
+    """
+    Word break opportunity.
+    """
+    def __init__(self):
+        super().__init__('', '')
+
+class newline(nodes.inline):
+    """
+    Newline in HTML output.
+    """
+    def __init__(self):
+        super().__init__('', '')

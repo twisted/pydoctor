@@ -234,3 +234,15 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
     def depart_tip(self, node: Node) -> None:
         self.depart_admonition(node)
+
+    def visit_wbr(self, node: Node) -> None:
+        self.body.append('<wbr></wbr>')
+    
+    def depart_wbr(self, node: Node) -> None:
+        pass
+
+    def visit_newline(self, node: Node) -> None:
+        self.body.append('\n')
+    
+    def depart_newline(self, node: Node) -> None:
+        pass
