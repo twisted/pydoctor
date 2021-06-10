@@ -8,7 +8,7 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, NoReturn, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
@@ -923,7 +923,8 @@ class ModuleVistor(ast.NodeVisitor):
             if typ is not None:
                 return self._unstring_annotation(typ)
             default = args.arguments.get('default')
-            return _infer_type(default)
+            if default is not None:
+                return _infer_type(default)
         return None
 
     def _annotations_from_function(
