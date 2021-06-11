@@ -6,7 +6,7 @@ import re
 
 from pydoctor import astbuilder
 from pydoctor import model
-from pydoctor.epydoc.markup._pyval_repr import colorize_pyval
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 class ZopeInterfaceModule(model.Module):
 
@@ -231,7 +231,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
                 attr.kind = model.DocumentableKind.SCHEMA_FIELD
 
             # Link to zope.schema.* class, if setup with intersphinx.
-            attr.parsed_type = colorize_pyval(expr.func, linelen=999, maxlines=1, linebreakok=False)
+            attr.parsed_type = colorize_inline_pyval(expr.func)
 
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')

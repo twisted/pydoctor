@@ -201,12 +201,17 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
-    '(s=\'theory\', t="con\'text")',
+    # '(s=\'theory\', t="con\'text")', does not work anymore for strings.
     ))
 @systemcls_param
 def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
-    """A round trip from source to inspect.Signature and back produces
+    """
+    A round trip from source to inspect.Signature and back produces
     the original text.
+
+    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags.
+        So we cannot always back produce the original text. It doesn't work for strings for example.
+        And the rest might change in the future if we need to add more colorizing to the PyvalColorizer.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()

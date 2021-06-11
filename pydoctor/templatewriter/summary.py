@@ -3,7 +3,7 @@
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
-    Sequence, Tuple, Type, Union, cast
+    Sequence, Tuple, Type, Union, cast, Final
 )
 
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
@@ -341,7 +341,7 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: Iterable[Type[Page]] = [
+summarypages: Final[Iterable[Type[Page]]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

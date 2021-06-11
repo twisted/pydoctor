@@ -20,6 +20,7 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
+from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -388,7 +389,7 @@ class FieldHandler:
             ) -> None:
         formatted_annotations = {
             name: None if value is None
-                       else AnnotationDocstring(value).to_stan(self._linker)
+                       else colorize_inline_pyval(value).to_stan(self._linker)
             for name, value in annotations.items()
             }
         ret_type = formatted_annotations.pop('return', None)
@@ -771,103 +772,9 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
 
     annotation: Optional[ast.expr] = getattr(obj, 'annotation', None)
     if annotation is not None:
-        return AnnotationDocstring(annotation)
+        return colorize_inline_pyval(annotation)
 
     return None
-
-
-class AnnotationDocstring(ParsedDocstring):
-
-    def __init__(self, annotation: ast.expr) -> None:
-        ParsedDocstring.__init__(self, ())
-        self.annotation = annotation
-
-    def has_body(self) -> bool:
-        return True
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return tags.code(_AnnotationFormatter(docstring_linker).visit(self.annotation))
-    
-    def to_node(self) -> docutils.nodes.document:
-        raise NotImplementedError()
-
-
-class _AnnotationFormatter(ast.NodeVisitor):
-
-    def __init__(self, linker: DocstringLinker):
-        super().__init__()
-        self.linker = linker
-
-    def _handle_name(self, identifier: str) -> Tag:
-        return self.linker.link_to(identifier, identifier)
-
-    def _handle_constant(self, node: ast.expr, value: object) -> Tag:
-        if value in (False, True, None, NotImplemented):
-            # Link built-in constants to the standard library.
-            # Ellipsis is not included here, both because its code syntax is
-            # different from its constant's name and because its documentation
-            # is not relevant to annotations.
-            return self._handle_name(str(value))
-        else:
-            return self.generic_visit(node)
-
-    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
-        first = True
-        for elem in sequence:
-            if first:
-                first = False
-            else:
-                tag(', ', tags.wbr) # Add an potential line break for long types
-            tag(self.visit(elem))
-
-    def visit_Name(self, node: ast.Name) -> Tag:
-        return self._handle_name(node.id)
-
-    def visit_Attribute(self, node: ast.Attribute) -> Tag:
-        parts = []
-        curr: ast.expr = node
-        while isinstance(curr, ast.Attribute):
-            parts.append(curr.attr)
-            curr = curr.value
-        if not isinstance(curr, ast.Name):
-            return self.generic_visit(node)
-        parts.append(curr.id)
-        parts.reverse()
-        return self._handle_name('.'.join(parts))
-
-    def visit_Constant(self, node: ast.Constant) -> Tag:
-        return self._handle_constant(node, node.value)
-
-    # Deprecated since Python 3.8, but required on older versions.
-    def visit_NameConstant(self, node: 'ast.NameConstant') -> Tag:
-        return self._handle_constant(node, node.value)
-
-    def visit_Subscript(self, node: ast.Subscript) -> Tag:
-        tag: Tag = tags.transparent
-        tag(self.visit(node.value))
-        tag('[', tags.wbr)
-        sub: ast.AST = node.slice
-        if isinstance(sub, ast.Index):
-            # In Python < 3.9, non-slices are always wrapped in an Index node.
-            sub = sub.value
-        if isinstance(sub, ast.Tuple):
-            self._handle_sequence(tag, sub.elts)
-        else:
-            tag(self.visit(sub))
-        tag(']')
-        return tag
-
-    def visit_List(self, node: ast.List) -> Tag:
-        tag: Tag = tags.transparent
-        tag('[', tags.wbr)
-        self._handle_sequence(tag, node.elts)
-        tag(']')
-        return tag
-
-    def generic_visit(self, node: ast.AST) -> Tag:
-        src = astor.to_source(node).strip()
-        ret: Tag = tags.transparent(src)
-        return ret
 
 
 field_name_to_kind = {
@@ -938,3 +845,21 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         return plurals.get(kind, names[kind] + 's')
     else:
         return names[kind]
+
+def _format_constant_value(constant: model.Attribute) -> Iterator["Flattenable"]:
+    # yield the table title, "Value"
+    row = tags.tr(class_="fieldStart")
+    row(tags.td(class_="fieldName")("Value"))
+    # yield the first row.
+    yield row
+
+    value_repr = colorize_pyval(constant.value).to_stan(_EpydocLinker(constant))
+
+    # yield the value repr.
+    row = tags.tr()
+    row(tags.td(tags.pre(value_repr)))
+    yield row
+
+def format_constant_value(constant: model.Attribute) -> "Flattenable":
+    rows = list(_format_constant_value(constant))
+    return tags.table(class_='valueTable')(*rows)

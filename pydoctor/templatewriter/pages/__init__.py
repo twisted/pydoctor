@@ -2,7 +2,7 @@
 
 from typing import (
     TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
-    Tuple, Type, Union
+    Tuple, Type, Union, Final
 )
 import ast
 import abc
@@ -11,6 +11,7 @@ import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
+from pydoctor.epydoc.markup import html2stan
 from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
@@ -47,9 +48,12 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
         text = '@' + astor.to_source(dec).strip()
         yield text, tags.br()
 
-def signature(function: model.Function) -> str:
-    """Return a nicely-formatted source-like function signature."""
-    return str(function.signature)
+def signature(function: model.Function) -> "Flattenable":
+    """
+    Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
+    Arguments default values are linked to the appropriate objects when possible.
+    """
+    return html2stan(str(function.signature))
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
@@ -547,7 +551,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(ob))
         return r
 
-commonpages: Mapping[str, Type[CommonPage]] = {
+commonpages: Final[Mapping[str, Type[CommonPage]]] = {
     'Module': ModulePage,
     'Package': PackagePage,
     'Class': ClassPage,

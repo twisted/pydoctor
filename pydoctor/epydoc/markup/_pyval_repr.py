@@ -135,18 +135,20 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         return Tag('code', children=[super().to_stan(docstring_linker)])
 
 def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
-                   linelen:int=75, maxlines:int=5, linebreakok:bool=True) -> ColorizedPyvalRepr:
+                   linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
     
     return PyvalColorizer(linelen, maxlines, linebreakok).colorize(
         pyval, min_score)
 
+def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
+    return colorize_pyval(pyval, linelen=None, linebreakok=False)
 
 class PyvalColorizer:
     """
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen:int=75, maxlines:int=5, linebreakok:bool=True):
+    def __init__(self, linelen:Optional[int]=75, maxlines:int=5, linebreakok:bool=True):
         self.linelen = linelen
         self.maxlines = maxlines
         self.linebreakok = linebreakok
@@ -175,6 +177,7 @@ class PyvalColorizer:
     LINEWRAP = nodes.Text(chr(8629))
     UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
     WORD_BREAK_OPPORTUNITY = wbr()
+    NEWLINE = newline()
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 
@@ -211,7 +214,7 @@ class PyvalColorizer:
             self._colorize(pyval, state)
         except (_Maxlines, _Linebreak):
             if self.linebreakok:
-                state.result.append(newline())
+                state.result.append(self.NEWLINE)
                 state.result.append(self.ELLIPSIS)
             else:
                 if state.result[-1] is self.LINEWRAP:
@@ -352,8 +355,8 @@ class PyvalColorizer:
                     self._output('\n'+' '*indent, None, state)
                 else:
                     self._output(', ', self.COMMA_TAG, state)
-                    # word break opportunity for inline values
-                    # state.result.append(self.WORD_BREAK_OPPORTUNITY)
+            # word break opportunity for inline values
+            state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(elt, state)
         if suffix is not None:
             self._output(suffix, self.GROUP_TAG, state)
@@ -368,8 +371,7 @@ class PyvalColorizer:
                     self._output('\n'+' '*indent, None, state)
                 else:
                     self._output(', ', self.COMMA_TAG, state)
-                    # word break opportunity for inline values
-                    # state.result.append(self.WORD_BREAK_OPPORTUNITY)
+            state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(key, state)
             self._output(': ', self.COLON_TAG, state)
             self._colorize(val, state)
@@ -413,9 +415,7 @@ class PyvalColorizer:
     # Support for AST
     #////////////////////////////////////////////////////////////
 
-    # TODO: find the right css_class in the calls to _output()
-
-    # TODO: Add support for comparators and generator expressions.
+    # TODO: Add support for regexps, callables, comparators and generator expressions.
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
@@ -563,8 +563,10 @@ class PyvalColorizer:
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
         elif isinstance(sub, (ast.Slice, ast.ExtSlice)):
+            state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize_ast_generic(sub, state)
         else:
+            state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize_ast(sub, state)
        
         self._output(']', self.GROUP_TAG, state)
@@ -760,14 +762,7 @@ class PyvalColorizer:
     #////////////////////////////////////////////////////////////
     # Output function
     #////////////////////////////////////////////////////////////
-    @overload
-    def _output(self, s: str, css_class: Optional[str], 
-                state: _ColorizerState, link: bool = False) -> None:
-        ...
-    @overload
-    def _output(self, s: bytes, css_class: Optional[str], 
-                state: _ColorizerState, link: bool = False) -> None:
-        ...
+
     def _output(self, s: Union[str, bytes], css_class: Optional[str], 
                 state: _ColorizerState, link: bool = False) -> None:
         """
@@ -793,7 +788,7 @@ class PyvalColorizer:
                     raise _Maxlines()
                 if not state.linebreakok:
                     raise _Linebreak()
-                state.result.append(newline())
+                state.result.append(self.NEWLINE)
                 state.lineno += 1
                 state.charpos = 0
             
@@ -802,13 +797,12 @@ class PyvalColorizer:
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
             # Don't break links into separate segments. 
-            if (state.charpos + segment_len <= self.linelen) or link:
+            if (self.linelen is None or 
+                state.charpos + segment_len <= self.linelen or link):
                 state.charpos += segment_len
                 
                 if css_class is not None or link:
-                    if link and css_class:
-                        element = obj_reference('', segment, refuid=segment, classes=[css_class])
-                    elif link:
+                    if link:
                         element = obj_reference('', segment, refuid=segment)
                     else:
                         element = nodes.inline('', segment, classes=[css_class])
@@ -822,6 +816,7 @@ class PyvalColorizer:
             # the the beginning of the next line at the start of the
             # next iteration through the loop.)
             else:
+                assert isinstance(self.linelen, int)
                 split = self.linelen-state.charpos
                 segments.insert(i+1, segment[split:])
                 segment = segment[:split]

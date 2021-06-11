@@ -14,6 +14,8 @@ from typing import (
 
 import astor
 from pydoctor import epydoc2stan, model
+from pydoctor.epydoc.markup import flatten
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -838,9 +840,9 @@ class ModuleVistor(ast.NodeVisitor):
             index -= default_offset
             return None if index < 0 else defaults[index]
 
-        parameters = []
+        parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default)
+            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
             parameters.append(Parameter(name, kind, default=default_val))
 
         for index, arg in enumerate(posonlyargs):
@@ -980,32 +982,33 @@ class ModuleVistor(ast.NodeVisitor):
             assert isinstance(expr, ast.expr), expr
             return expr
 
-
 class _ValueFormatter:
-    """Formats values stored in AST expressions.
+    """
+    Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
     Used for presenting default values of parameters.
     """
 
-    def __init__(self, value: ast.expr):
-        self.value = value
+    def __init__(self, value: Any, ctx: model.Documentable):
+        self._colorized = colorize_inline_pyval(value)
+        """
+        The colorized value as L{ParsedDocstring}.
+        """
+
+        self._linker = epydoc2stan._EpydocLinker(ctx)
+        """
+        Linker.
+        """
 
     def __repr__(self) -> str:
-        value = self.value
-        if isinstance(value, ast.Num):
-            return str(value.n)
-        if isinstance(value, ast.Str):
-            return repr(value.s)
-        if isinstance(value, ast.Constant):
-            return repr(value.value)
-        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
-            operand = value.operand
-            if isinstance(operand, ast.Num):
-                return f'-{operand.n}'
-            if isinstance(operand, ast.Constant):
-                return f'-{operand.value}'
-        source: str = astor.to_source(value)
-        return source.strip()
+        """
+        Present the python value as HTML. 
+        Without the englobing <code> tags.
 
+        Maybe it would be best to keep the englobing <code> tags.
+        Links would be in red directly instead of having to add some 
+        special style for those. But it would also break some tests.
+        """
+        return flatten(self._colorized.to_stan(self._linker).children)
 
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
