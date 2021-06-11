@@ -16,6 +16,7 @@ import astor
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor.astutils import bind_args, node2dottedname
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -27,19 +28,6 @@ if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
 else:
     _parse = ast.parse
-
-
-def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
-    parts = []
-    while isinstance(node, ast.Attribute):
-        parts.append(node.attr)
-        node = node.value
-    if isinstance(node, ast.Name):
-        parts.append(node.id)
-    else:
-        return None
-    parts.reverse()
-    return parts
 
 
 def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
@@ -77,21 +65,6 @@ def _handleAliasing(
         return False
     ctx._localNameToFullName_map[target] = full_name
     return True
-
-
-def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
-    """Binds the arguments of a function call to that function's signature.
-    @raise TypeError: If the arguments do not match the signature.
-    """
-    kwargs = {
-        kw.arg: kw.value
-        for kw in call.keywords
-        # When keywords are passed using '**kwargs', the 'arg' field will
-        # be None. We don't currently support keywords passed that way.
-        if kw.arg is not None
-        }
-    return sig.bind(*call.args, **kwargs)
-
 
 _attrs_decorator_signature = signature(attrs)
 """Signature of the L{attr.s} class decorator."""

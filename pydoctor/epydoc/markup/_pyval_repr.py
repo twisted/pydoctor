@@ -36,6 +36,7 @@ import re
 import ast
 import functools
 import sre_parse, sre_constants
+from inspect import BoundArguments, signature
 from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, List, Tuple, cast, overload
 
 import attr
@@ -46,9 +47,7 @@ from twisted.web.template import Tag
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline, obj_reference
-
-def is_re_pattern(pyval: Any) -> bool:
-    return type(pyval).__name__ == 'Pattern'
+from pydoctor.astutils import node2dottedname, bind_args
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -157,15 +156,17 @@ class PyvalColorizer:
     # Colorization Tags & other constants
     #////////////////////////////////////////////////////////////
 
-    GROUP_TAG = None #'variable-group'     # e.g., "[" and "]"
-    COMMA_TAG = None #'variable-op'        # The "," that separates elements
-    COLON_TAG = None #'variable-op'        # The ":" in dictionaries
+    GROUP_TAG = None # was 'variable-group'     # e.g., "[" and "]"
+    COMMA_TAG = None # was 'variable-op'        # The "," that separates elements
+    COLON_TAG = None # was 'variable-op'        # The ":" in dictionaries
     CONST_TAG = None                 # None, True, False
     NUMBER_TAG = None                # ints, floats, etc
     QUOTE_TAG = 'variable-quote'     # Quotes around strings.
     STRING_TAG = 'variable-string'   # Body of string literals
     LINK_TAG = 'variable-link'       # Links to other documentables, extracted from AST names and attributes.
-    ELLIPSIS_TAG = None #'variable-ellipsis'
+    ELLIPSIS_TAG = 'variable-ellipsis'
+    LINEWRAP_TAG = 'variable-linewrap'
+    UNKNOWN_TAG = 'variable-unknown'
 
     RE_CHAR_TAG = None
     RE_GROUP_TAG = 're-group'
@@ -173,13 +174,15 @@ class PyvalColorizer:
     RE_OP_TAG = 're-op'
     RE_FLAGS_TAG = 're-flags'
 
-    ELLIPSIS = nodes.Text('...')
-    LINEWRAP = nodes.Text(chr(8629))
-    UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
+    ELLIPSIS = nodes.inline('...', '...', classes=[ELLIPSIS_TAG])
+    LINEWRAP = nodes.inline('', chr(8629), classes=[LINEWRAP_TAG])
+    UNKNOWN_REPR = nodes.inline('??', '??', classes=[UNKNOWN_TAG])
     WORD_BREAK_OPPORTUNITY = wbr()
     NEWLINE = newline()
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
+
+    RE_COMPILE_SIGNATURE = signature(re.compile)
 
     @staticmethod
     def _str_escape(s: str) -> str:
@@ -265,8 +268,9 @@ class PyvalColorizer:
                             state, prefix='{', suffix='}')
         elif issubclass(pyval_type, list):
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
-        elif is_re_pattern(pyval):
-            self._colorize_re(pyval, state)
+        elif issubclass(pyval_type, re.Pattern):
+            # Extract the flag & pattern from the regexp.
+            self._colorize_re(pyval.pattern, pyval.flags, state)
         elif issubclass(pyval_type, ast.AST):
             self._colorize_ast(pyval, state)
         else:
@@ -322,6 +326,13 @@ class PyvalColorizer:
     # Object Colorization Functions
     #////////////////////////////////////////////////////////////
 
+    def _insert_comma(self, indent: int, state: _ColorizerState) -> None:
+        if state.linebreakok:
+            self._output(',', self.COMMA_TAG, state)
+            self._output('\n'+' '*indent, None, state)
+        else:
+            self._output(', ', self.COMMA_TAG, state)
+
     def _multiline(self, func: Callable[..., None], pyval: Iterable[Any], state: _ColorizerState, **kwargs: Any) -> None:
         """
         Helper for container-type colorizers.  First, try calling
@@ -350,11 +361,7 @@ class PyvalColorizer:
         indent = state.charpos
         for i, elt in enumerate(pyval):
             if i>=1:
-                if state.linebreakok:
-                    self._output(',', self.COMMA_TAG, state)
-                    self._output('\n'+' '*indent, None, state)
-                else:
-                    self._output(', ', self.COMMA_TAG, state)
+                self._insert_comma(indent, state)
             # word break opportunity for inline values
             state.result.append(self.WORD_BREAK_OPPORTUNITY)
             self._colorize(elt, state)
@@ -415,7 +422,7 @@ class PyvalColorizer:
     # Support for AST
     #////////////////////////////////////////////////////////////
 
-    # TODO: Add support for regexps, callables, comparators and generator expressions.
+    # TODO: Add support for comparators and generator expressions.
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
@@ -466,6 +473,18 @@ class PyvalColorizer:
             self._colorize_ast_attribute(pyval, state)
         elif isinstance(pyval, ast.Subscript):
             self._colorize_ast_subscript(pyval, state)
+        elif isinstance(pyval, ast.Call):
+            self._colorize_ast_call(pyval, state)
+        elif isinstance(pyval, ast.Starred):
+            self._output('*', None, state)
+            self._colorize_ast(pyval.value, state)
+        elif isinstance(pyval, ast.keyword):
+            if pyval.arg is not None:
+                self._output(pyval.arg, None, state)
+                self._output('=', None, state)
+            else:
+                self._output('**', None, state)
+            self._colorize_ast(pyval.value, state)
         else:
             self._colorize_ast_generic(pyval, state)
     
@@ -570,6 +589,60 @@ class PyvalColorizer:
             self._colorize_ast(sub, state)
        
         self._output(']', self.GROUP_TAG, state)
+    
+    def _colorize_ast_call(self, node: ast.Call, state: _ColorizerState) -> None:
+        
+        if node2dottedname(node.func) == ['re', 'compile']:
+            # Colorize regexps from re.compile AST arguments.
+            try:
+                # Can raise TypeError
+                args = bind_args(self.RE_COMPILE_SIGNATURE, node)
+            except TypeError:
+                self._colorize_ast_call_generic(node, state)
+            else:
+                mark = state.mark()
+                try:
+                    # Can raise ValueError or re.error
+                    self._colorize_ast_re(args, node, state)
+                except (ValueError, re.error):
+                    state.restore(mark)
+                    self._colorize_ast_call_generic(args, node, state)
+        else:
+            # Colorize other forms of callables.
+            self._colorize_ast_call_generic(node, state)
+
+    def _colorize_ast_call_generic(self, node: ast.Call, state: _ColorizerState) -> None:
+        self._colorize_ast(node.func, state)
+        self._output('(', self.GROUP_TAG, state)
+        indent = state.charpos
+        self._multiline(self._colorize_iter, node.args, state)
+        if node.keywords:
+            if node.args:
+                self._insert_comma(indent, state)
+            self._multiline(self._colorize_iter, node.keywords, state)
+        self._output(')', self.GROUP_TAG, state)
+
+    def _colorize_ast_re(self, args: BoundArguments, node:ast.Call, state: _ColorizerState) -> None:
+        ast_pattern = args.arguments.get('pattern')
+        if ast_pattern is not None:
+            if self._is_ast_constant(ast_pattern):
+                self._colorize_ast(node.func, state)
+                self._output('(', self.GROUP_TAG, state)
+                indent = state.charpos
+                self._output('r', None, state)
+                self._output("'", self.QUOTE_TAG, state)
+                pat = self._get_ast_constant_val(ast_pattern)
+                self._colorize_re_pattern(pat, 0, state)
+                self._output("'", self.QUOTE_TAG, state)
+                ast_flags = args.arguments.get('flags')
+                if ast_flags is not None:
+                    self._insert_comma(indent, state)
+                    self._colorize_ast(ast_flags, state)
+                self._output(')', self.GROUP_TAG, state)
+            else: 
+                self._colorize_ast_call_generic(node, state)
+        else:
+            self._colorize_ast_call_generic(node, state)
 
     def _colorize_ast_generic(self, pyval: ast.AST, state: _ColorizerState) -> None:
         try:
@@ -584,19 +657,22 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pyval: re.Pattern, state: _ColorizerState) -> None:
-        # Extract the flag & pattern from the regexp.
-        pat, flags = pyval.pattern, pyval.flags
-
+    def _colorize_re(self, pat: Union[str, bytes], flags: int, state: _ColorizerState) -> None:
+        # This method is only used for live re.Pattern objects
+        self._output("re.compile(r'", None, state)
+        self._colorize_re_flags(flags, state)
+        self._colorize_re_pattern(pat, flags, state)
+        self._output("')", None, state)
+    
+    def _colorize_re_pattern(self, pat: Union[str, bytes], flags: int, state: _ColorizerState) -> None:
         # Parse the regexp pattern.
-        tree = sre_parse.parse(pat, flags)
+        if isinstance(pat, bytes):
+            pat = pat.decode()
+        tree: sre_parse.SubPattern = sre_parse.parse(pat, flags)
         groups = dict([(num,name) for (name,num) in
                        tree.state.groupdict.items()])
         # Colorize it!
-        self._output(b"re.compile(r'", None, state)
-        self._colorize_re_flags(flags, state)
-        self._colorize_re_tree(tree, state, True, groups)
-        self._output(b"')", None, state)
+        self._colorize_re_tree(tree.data, state, True, groups)
 
     def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
@@ -605,17 +681,15 @@ class PyvalColorizer:
             flags_str = '(?%s)' % ''.join(flags_list)
             self._output(flags_str, self.RE_FLAGS_TAG, state)
 
-    def _colorize_re_tree(self, tree: Union[sre_parse.SubPattern, Sequence[Tuple[sre_constants._NamedIntConstant, Any]]], state: _ColorizerState, noparen: bool, groups: Dict[int, str]) -> None:
+    def _colorize_re_tree(self, tree: Sequence[Tuple[sre_constants._NamedIntConstant, Any]],
+                          state: _ColorizerState, noparen: bool, groups: Dict[int, str]) -> None:
         
         # TODO: Double check is it necessary ?
         b: Callable[..., bytes] = functools.partial(bytes, encoding='utf-8', errors='replace')
 
-        try:
-            if len(tree) > 1 and not noparen:
-                self._output('(', self.RE_GROUP_TAG, state)
-        except TypeError:
-            print("tree: %r" % tree)
-            raise
+        if len(tree) > 1 and not noparen:
+            self._output('(', self.RE_GROUP_TAG, state)
+
         for elt in tree:
             op = elt[0]
             args = elt[1]

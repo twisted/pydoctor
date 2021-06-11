@@ -857,7 +857,7 @@ def _format_constant_value(constant: model.Attribute) -> Iterator["Flattenable"]
 
     # yield the value repr.
     row = tags.tr()
-    row(tags.td(tags.pre(value_repr)))
+    row(tags.td(tags.pre(class_='constant-value')(value_repr)))
     yield row
 
 def format_constant_value(constant: model.Attribute) -> "Flattenable":
