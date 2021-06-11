@@ -32,7 +32,6 @@ __docformat__ = 'epytext en'
 # rather than using isinstance, because subclasses might override
 # __repr__.
 
-from pydoctor.epydoc.markup import ParsedDocstring
 import re
 import ast
 import functools
@@ -172,7 +171,7 @@ class PyvalColorizer:
     RE_OP_TAG = 're-op'
     RE_FLAGS_TAG = 're-flags'
 
-    ELLIPSIS = nodes.inline('...', '...', classes=[ELLIPSIS_TAG])
+    ELLIPSIS = nodes.Text('...')
     LINEWRAP = nodes.Text(chr(8629))
     UNKNOWN_REPR = nodes.inline('??', '??', classes=['variable-unknown'])
     WORD_BREAK_OPPORTUNITY = wbr()
@@ -807,8 +806,10 @@ class PyvalColorizer:
                 state.charpos += segment_len
                 
                 if css_class is not None or link:
-                    if link:
+                    if link and css_class:
                         element = obj_reference('', segment, refuid=segment, classes=[css_class])
+                    elif link:
+                        element = obj_reference('', segment, refuid=segment)
                     else:
                         element = nodes.inline('', segment, classes=[css_class])
                 else:
