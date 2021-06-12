@@ -111,9 +111,9 @@ class ParsedDocstring(abc.ABC):
 
 _RE_CONTROL = re.compile((
     '[' + ''.join(
-    ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
+    ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f\v'
     ) + ']'
-    ).encode())
+    ).encode('ascii', 'xmlcharrefreplace'))
 
 def html2stan(html: Union[bytes, str]) -> Tag:
     """
@@ -123,14 +123,14 @@ def html2stan(html: Union[bytes, str]) -> Tag:
     @return: The fragment as a tree with a transparent root node.
     """
     if isinstance(html, str):
-        html = html.encode('utf8')
+        html = html.encode('ascii', 'xmlcharrefreplace')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
     try:
         stan = XMLString(b'<div>%s</div>' % html).load()[0]
     except Exception as e:
         # More informative error message.
-        raise ValueError(f"Cannot read HTML fragment: {html}") from e
+        raise ValueError(f"Cannot read HTML fragment: {html}. {str(e)}") from e
     assert isinstance(stan, Tag)
     assert stan.tagName == 'div'
     stan.tagName = ''
