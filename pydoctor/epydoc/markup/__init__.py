@@ -126,7 +126,11 @@ def html2stan(html: Union[bytes, str]) -> Tag:
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    stan = XMLString(b'<div>%s</div>' % html).load()[0]
+    try:
+        stan = XMLString(b'<div>%s</div>' % html).load()[0]
+    except Exception as e:
+        # More informative error message.
+        raise ValueError(f"Cannot read HTML fragment: {html}") from e
     assert isinstance(stan, Tag)
     assert stan.tagName == 'div'
     stan.tagName = ''
