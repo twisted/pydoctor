@@ -17,7 +17,10 @@ from pydoctor.epydoc.markup import (
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def _node2html(node: Node, docstring_linker: 'DocstringLinker') -> List[str]:
+def node2html(node: Node, docstring_linker: 'DocstringLinker') -> List[str]:
+    """
+    Convert a L{docutils.nodes.Node} object to HTML strings.
+    """
     visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
     node.walkabout(visitor)
     return visitor.body
@@ -31,10 +34,10 @@ def node2stan(node: Union[Node, Iterable[Node]], docstring_linker: 'DocstringLin
     """
     html = []
     if isinstance(node, Node):
-        html += _node2html(node, docstring_linker)
+        html += node2html(node, docstring_linker)
     else:
         for child in node:
-            html += _node2html(child, docstring_linker)
+            html += node2html(child, docstring_linker)
     return html2stan(''.join(html))
 
 

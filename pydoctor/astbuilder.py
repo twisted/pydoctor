@@ -13,7 +13,7 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import bind_args, node2dottedname
@@ -981,7 +981,9 @@ class _ValueFormatter:
         Links would be in red directly instead of having to add some 
         special style for those. But it would also break some tests.
         """
-        return flatten(self._colorized.to_stan(self._linker).children)
+        # Using node2stan.node2html instead of flatten(to_stan()). 
+        # This avoids calling flatten() twice.
+        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
