@@ -48,6 +48,7 @@ from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, newline, obj_reference
 from pydoctor.astutils import node2dottedname, bind_args
+from pydoctor.node2stan import gettext
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
@@ -55,8 +56,8 @@ def decode_with_backslashreplace(s: bytes) -> str:
     character c such that ord(c)<128 as an ascii character, and
     converting any c such that ord(c)>128 into a backslashed escape
     sequence.
-        >>> decode_with_backslashreplace('abc\xff\xe8')
-        u'abc\\xff\\xe8'
+        >>> decode_with_backslashreplace(b'abc\xff\xe8')
+        'abc\\xff\\xe8'
     """
     # s.encode('string-escape') is not appropriate here, since it
     # also adds backslashes to some ascii chars (eg \ and ').
@@ -92,6 +93,7 @@ class _ColorizerState:
         self.charpos = 0
         self.lineno = 1
         self.linebreakok = True
+        self.warnings: List[str] = []
 
         #: How good this represention is?
         self.score = 0
@@ -125,13 +127,21 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     @ivar is_complete: True if this colorized repr completely describes
        the object.
     """
-    def __init__(self, document: nodes.document, score: int, is_complete: bool) -> None:
+    def __init__(self, document: nodes.document, score: int, is_complete: bool, warnings: List[str]) -> None:
         super().__init__(document, ())
         self.score = score
         self.is_complete = is_complete
+        self.warnings = warnings
     
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return Tag('code', children=[super().to_stan(docstring_linker)])
+        try:
+            return Tag('code', children=[super().to_stan(docstring_linker)])
+        except ValueError as e:
+            # Turns out we can make the html2stan() function crash with special caracters.
+            # Like unescaped "\xff" give error: "reference to invalid character number".
+            # This error should be fixed anyway, but better safe than sorry...
+            self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
+            return Tag('code', children=gettext(self.to_node()))
 
 def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
                    linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
@@ -199,6 +209,18 @@ class PyvalColorizer:
     def _bytes_escape(b: bytes) -> str:
         return repr(b)[2:-1]
 
+    @overload
+    @staticmethod
+    def _get_str_func(pyval:  str) -> Callable[[str], str]: ...
+    @overload
+    @staticmethod
+    def _get_str_func(pyval:  bytes) -> Callable[[str], bytes]: ...
+    @staticmethod
+    def _get_str_func(pyval:  Union[str, bytes]) -> Callable[[str], Union[str, bytes]]:
+        func = cast(Callable[[str], Union[str, bytes]], str if isinstance(pyval, str) else \
+            functools.partial(bytes, encoding='utf-8', errors='replace'))
+        return func
+
     #////////////////////////////////////////////////////////////
     # Entry Point
     #////////////////////////////////////////////////////////////
@@ -236,7 +258,7 @@ class PyvalColorizer:
         document = utils.new_document('pyval_repr')
         # This ensure the .parent and .document attributes of the child nodes are set correcly.
         set_node_attributes(document, children=[set_node_attributes(node, document=document) for node in state.result])
-        return ColorizedPyvalRepr(document, state.score, is_complete)
+        return ColorizedPyvalRepr(document, state.score, is_complete, state.warnings)
     
     def _colorize(self, pyval: Any, state: _ColorizerState) -> None:
         pyval_type = type(pyval)
@@ -251,10 +273,9 @@ class PyvalColorizer:
         elif issubclass(pyval_type, (int, float, complex)):
             self._output(str(pyval), self.NUMBER_TAG, state)
         elif issubclass(pyval_type, str):
-            self._colorize_str(pyval, state, '', escape_fcn=self._str_escape, str_func=str)
+            self._colorize_str(pyval, state, '', escape_fcn=self._str_escape)
         elif issubclass(pyval_type, bytes):
-            self._colorize_str(pyval, state, b'b', escape_fcn=self._bytes_escape, 
-                               str_func=functools.partial(bytes, encoding='utf-8', errors='replace'))
+            self._colorize_str(pyval, state, b'b', escape_fcn=self._bytes_escape)
         elif issubclass(pyval_type, tuple):
             self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
         elif issubclass(pyval_type, set):
@@ -270,8 +291,9 @@ class PyvalColorizer:
         elif issubclass(pyval_type, list):
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
         elif issubclass(pyval_type, re.Pattern):
-            # Extract the flag & pattern from the regexp.
-            self._colorize_re(pyval.pattern, pyval.flags, state)
+            # Extract the pattern from the regexp.
+            # Flags passed as re.compile() parameters are currently ignored for live re.Pattern objects.
+            self._colorize_re(pyval.pattern, state)
         elif issubclass(pyval_type, ast.AST):
             self._colorize_ast(pyval, state)
         else:
@@ -279,9 +301,7 @@ class PyvalColorizer:
                 pyval_repr = repr(pyval)
                 if not isinstance(pyval_repr, str):
                     pyval_repr = str(pyval_repr) #type: ignore[unreachable]
-            except KeyboardInterrupt:
-                raise
-            except:
+            except Exception:
                 state.score -= 100
                 state.result.append(self.UNKNOWN_REPR)
             else:
@@ -383,21 +403,19 @@ class PyvalColorizer:
     
     @overload
     def _colorize_str(self, pyval: str, state: _ColorizerState, prefix: str, 
-        escape_fcn: Optional[Callable[[str], str]], str_func: Callable[[str], str], 
-        colorize_func: Optional[Callable[[str, _ColorizerState], None]]=None) -> None: 
+        escape_fcn: Optional[Callable[[str], str]]) -> None: 
         ...
     @overload
     def _colorize_str(self, pyval: bytes, state: _ColorizerState, prefix: bytes, 
-        escape_fcn: Optional[Callable[[bytes], str]], str_func: Callable[[str], bytes],
-        colorize_func: Optional[Callable[[str, _ColorizerState], None]]=None) -> None: 
+        escape_fcn: Optional[Callable[[bytes], str]]) -> None: 
         ...
-    def _colorize_str(self, pyval, state, prefix, escape_fcn, str_func, colorize_func=None) -> None: #type: ignore[no-untyped-def]
+    def _colorize_str(self, pyval, state, prefix, escape_fcn) -> None: #type: ignore[no-untyped-def]
         
         # TODO: Double check implementation bytes/str
+        str_func = self._get_str_func(pyval)
 
         #  Decide which quote to use.
-        if (str_func('\n') in pyval and state.linebreakok or
-            str_func('r') in prefix and str_func("'") in pyval): # Raw strings are not escaped so we triple quote also if the simple quote is in the string.
+        if str_func('\n') in pyval and state.linebreakok:
             quote = str_func("'''")
         else: 
             quote = str_func("'")
@@ -406,22 +424,19 @@ class PyvalColorizer:
         self._output(prefix, None, state)
         self._output(quote, self.QUOTE_TAG, state)
 
-        if colorize_func:
-            colorize_func(pyval, state) 
+        # Divide the string into lines.
+        if state.linebreakok:
+            lines: List[Union[str, bytes]] = pyval.split(str_func('\n'))
         else:
-            # Divide the string into lines.
-            if state.linebreakok:
-                lines: List[Union[str, bytes]] = pyval.split(str_func('\n'))
-            else:
-                lines = [pyval]
-            # Body
-            for i, line in enumerate(lines):
-                if i>0: 
-                    self._output(str_func('\n'), None, state)
-                if escape_fcn:
-                    line = escape_fcn(line)
-                
-                self._output(line, self.STRING_TAG, state)
+            lines = [pyval]
+        # Body
+        for i, line in enumerate(lines):
+            if i>0:
+                self._output(str_func('\n'), None, state)
+            if escape_fcn:
+                line = escape_fcn(line)
+            
+            self._output(line, self.STRING_TAG, state)
         # Close quote.
         self._output(quote, self.QUOTE_TAG, state)
 
@@ -429,7 +444,7 @@ class PyvalColorizer:
     # Support for AST
     #////////////////////////////////////////////////////////////
 
-    # TODO: Add support for comparators and generator expressions.
+    # TODO: Add support for f-strings, comparators and generator expressions.
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
@@ -601,19 +616,7 @@ class PyvalColorizer:
         
         if node2dottedname(node.func) == ['re', 'compile']:
             # Colorize regexps from re.compile AST arguments.
-            try:
-                # Can raise TypeError
-                args = bind_args(self.RE_COMPILE_SIGNATURE, node)
-            except TypeError:
-                self._colorize_ast_call_generic(node, state)
-            else:
-                mark = state.mark()
-                try:
-                    # Can raise ValueError or re.error
-                    self._colorize_ast_re(args, node, state)
-                except (ValueError, re.error):
-                    state.restore(mark)
-                    self._colorize_ast_call_generic(node, state)
+            self._colorize_ast_re(node, state)
         else:
             # Colorize other forms of callables.
             self._colorize_ast_call_generic(node, state)
@@ -629,39 +632,49 @@ class PyvalColorizer:
             self._multiline(self._colorize_iter, node.keywords, state)
         self._output(')', self.GROUP_TAG, state)
 
-    def _colorize_ast_re(self, args: BoundArguments, node:ast.Call, state: _ColorizerState) -> None:
-        ast_pattern = args.arguments.get('pattern')
+    def _colorize_ast_re(self, node:ast.Call, state: _ColorizerState) -> None:
         
+        try:
+            # Can raise TypeError
+            args = bind_args(self.RE_COMPILE_SIGNATURE, node)
+        except TypeError:
+            self._colorize_ast_call_generic(node, state)
+            return
+        
+        ast_pattern = args.arguments.get('pattern')
+
+        # Cannot colorize regex
         if ast_pattern is None:
             self._colorize_ast_call_generic(node, state)
             return
+        # Cannot colorize regex
         if not self._is_ast_constant(ast_pattern):
             self._colorize_ast_call_generic(node, state)
             return
-        
-        mark = state.mark()
-        self._output("re.compile", None, state, link=True)
-        self._output('(', self.GROUP_TAG, state)
 
         pat = self._get_ast_constant_val(ast_pattern)
         
-        # Just in case
+        # Just in case regex pattern is not valid type
         if not isinstance(pat, (bytes, str)):
-            state.restore(mark)
+            state.warnings.append("Cannot colorize regular expression: pattern must be bytes or str.")
             self._colorize_ast_call_generic(node, state)
             return
-        
-        indent = state.charpos
 
-        # Currently, the colorizer do not render multiline regex patterns correctly. (Newlines are mixed up with literals \n and probably more fun stuff like that.)
-        # If the pattern string is composed by mutiple lines, simply use the string colorizer instead. 
-        if isinstance(pat, str):
-            self._colorize_str(pat, state, prefix='r', escape_fcn=None, str_func=str, 
-                colorize_func=self._colorize_re_pattern if '\n' not in pat else None)
-        elif isinstance(pat, bytes):
-            self._colorize_str(pat, state, prefix=b'rb', escape_fcn=self._bytes_escape, 
-                str_func=functools.partial(bytes, encoding='utf-8', errors='replace'), 
-                colorize_func=self._colorize_re_pattern if b'\n' not in pat else None)
+        mark = state.mark()
+        
+        self._output("re.compile", None, state, link=True)
+        self._output('(', self.GROUP_TAG, state)
+        indent = state.charpos
+        
+        try:
+            # Can raise ValueError or re.error
+            self._colorize_re_pattern_str(pat, state)
+        except (ValueError, re.error) as e:
+            # Colorize the ast.Call as any other node if the pattern parsing fails.
+            state.restore(mark)
+            state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
+            self._colorize_ast_call_generic(node, state)
+            return
 
         ast_flags = args.arguments.get('flags')
         if ast_flags is not None:
@@ -683,35 +696,82 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pat: Union[str, bytes], flags: int, state: _ColorizerState) -> None:
-        # This method is only used for live re.Pattern objects (only in tests).
-        
+    def _colorize_re(self, pat: Union[str, bytes], state: _ColorizerState) -> None:
+        # Used for live re.Pattern objects, for testing only.
+
         self._output("re.compile", None, state, link=True)
         self._output('(', self.GROUP_TAG, state)
-        if isinstance(pat, str):
-            self._colorize_str(pat, state, prefix='r', escape_fcn=None, str_func=str, 
-                colorize_func=self._colorize_re_pattern if '\n' not in pat else None)
-        elif isinstance(pat, bytes):
-            self._colorize_str(pat, state, prefix=b'rb', escape_fcn=self._bytes_escape, 
-                str_func=functools.partial(bytes, encoding='utf-8', errors='replace'), 
-                colorize_func=self._colorize_re_pattern if b'\n' not in pat else None)
+        mark = state.mark()
+        try:
+            # Can raise ValueError or re.error
+            self._colorize_re_pattern_str(pat, state)
+        except (ValueError, re.error) as e:
+            state.restore(mark)
+            state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
+            # Colorize it as string if the pattern parsing fails.
+            if isinstance(pat, bytes):
+                self._colorize_str(pat, state, b'b', escape_fcn=self._bytes_escape)
+            else:
+                self._colorize_str(pat, state, '', escape_fcn=self._str_escape)
+        
         self._output(")", self.GROUP_TAG, state)
+
+    def _colorize_re_pattern_str(self, pat: Union[str, bytes], state) -> None:
+        # Currently, the colorizer do not render multiline regex patterns correctly. 
+        # Newlines are mixed up with literals \n and probably more fun stuff like that.
+        #   (After investiguation, turns out the sre_parse.parse() function treat caracters "\n" and "\\n" the same way)
+        
+        # If the pattern string is composed by mutiple lines, simply use the string colorizer instead.
+        # It's more informative to have the proper newlines than the fancy regex colors.  
+
+        str_func = self._get_str_func(pat)
+        if str_func('\n') in pat:
+            if isinstance(pat, bytes):
+                self._colorize_str(pat, state, b'b', escape_fcn=self._bytes_escape)
+            else:
+                self._colorize_str(pat, state, '', escape_fcn=self._str_escape)
+        else:
+            if isinstance(pat, bytes):
+                self._colorize_re_pattern(pat, state, b'rb')
+            else:
+                self._colorize_re_pattern(pat, state, 'r')
     
-    def _colorize_re_pattern(self, pat: Union[str, bytes], state: _ColorizerState) -> None:
-        # TODO: Double check bytes/str and add a test with a regex from bytes.
-        if isinstance(pat, bytes):
-            pat = pat.decode()
+    def _colorize_re_pattern(self, pat: Union[str, bytes], state: _ColorizerState, prefix: Union[str, bytes]) -> None:
 
         # Parse the regexp pattern.
         # The AST regex pattern strings are always parsed with the default flags.
         # I've no idea if this has any incidence on the way the colorizing works, honestly.
         # Recovering the flags value from AST seems possible, though, might not be worth it.
-        tree: sre_parse.SubPattern = sre_parse.parse(pat, 0)
+
+        # Mypy gets error: error: Argument 1 to "parse" has incompatible type "Union[str, bytes]"; expected "str".
+        # But actuall sre_parse.parse() can parse regex as bytes.
+        tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
         groups = dict([(num,name) for (name,num) in
                        tree.state.groupdict.items()])
+        flags: int = tree.state.flags
+        
+        # Open quote. Never triple quote regex patterns string
+        quote = "'"
+        self._output(prefix, None, state)
+        self._output(quote, self.QUOTE_TAG, state)
+        
+        if flags != sre_constants.SRE_FLAG_UNICODE:
+            # If developers included flags in the regex string, display them.
+            # By default, do not display the '(?u)'
+            self._colorize_re_flags(flags, state)
+        
         # Colorize it!
         self._colorize_re_tree(tree.data, state, True, groups)
 
+        # Close quote.
+        self._output(quote, self.QUOTE_TAG, state)
+
+    def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
+        if flags:
+            flags_list = [c for (c,n) in sorted(sre_parse.FLAGS.items())
+                        if (n&flags)]
+            flags_str = '(?%s)' % ''.join(flags_list)
+            self._output(flags_str, self.RE_FLAGS_TAG, state)
 
     def _colorize_re_tree(self, tree: Sequence[Tuple[sre_constants._NamedIntConstant, Any]],
                           state: _ColorizerState, noparen: bool, groups: Dict[int, str]) -> None:
@@ -731,21 +791,31 @@ class PyvalColorizer:
                 # Add any appropriate escaping.
                 if cast(str, c) in '.^$\\*+?{}[]|()\'': 
                     c = b'\\' + b(c)
+                # For the record, the special literal caracters are parsed the same way or not. 
+                # So we can't tell the difference between "\n" and "\\n".
+                # We always escape them to produce a valid regular expression (and avoid crashing htmltostan() function).
+                # >>> sre_parse.parse(r'\n').dump()
+                # LITERAL 10
+                # >>> sre_parse.parse('\n').dump()
+                # LITERAL 10
+                # >>> sre_parse.parse('\\n').dump()
+                # LITERAL 10
                 elif c == '\t': 
-                    c = '\\t'
+                    c = r'\t'
                 elif c == '\r': 
-                    c = '\\r'
+                    c = r'\r'
                 elif c == '\n': 
-                    c = '\\n'
+                    c = r'\n'
                 elif c == '\f': 
-                    c = '\\f'
+                    c = r'\f'
                 elif c == '\v': 
-                    c = '\\v'
-                elif ord(c) > 0xffff: 
-                    c = b(r'\U%08x') % ord(c)
-                elif ord(c) > 0xff: 
-                    c = b(r'\u%04x') % ord(c)
-                elif ord(c)<32 or ord(c)>=127: 
+                    c = r'\v'
+                # Keep unicode chars as is
+                # elif ord(c) > 65535: 
+                #     c = b(r'\U%08x') % ord(c)
+                elif ord(c) > 255 and ord(c) <= 65535: 
+                   c = b(r'\u%04x') % ord(c)
+                elif (ord(c)<32 or ord(c)>=127) and ord(c) <= 65535: 
                     c = b(r'\x%02x') % ord(c)
                 self._output(c, self.RE_CHAR_TAG, state)
 
