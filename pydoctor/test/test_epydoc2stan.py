@@ -846,8 +846,8 @@ def test_annotation_formatting(annotation: str) -> None:
     """
     Perform two checks on the annotation formatting:
 
-    - all type names in the annotation are passed to the linker
-    - the plain text version of the output matches the input
+        - all type names in the annotation are passed to the linker
+        - the plain text version of the output matches the input
 
     @note: The annotation formatting is now handled by L{PyvalColorizer}.
         So we cannot always back produce the original text. It doesn't work for elipsis for example.
