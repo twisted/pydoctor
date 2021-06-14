@@ -15,7 +15,7 @@ def set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Node) -> Iterato
         yield node
 
 def set_node_attributes(node: nodes.Node, 
-                        document: nodes.document, 
+                        document: Optional[nodes.document] = None, 
                         lineno: Optional[int] = None, 
                         children: Optional[List[nodes.Node]] = None) -> nodes.Node:
     """
@@ -24,12 +24,10 @@ def set_node_attributes(node: nodes.Node,
     """
     if lineno is not None:
         node.line = lineno
-
-    node.document = document
-
+    if document is not None:
+        node.document = document
     if children:
         node.extend(set_nodes_parent(children, node))
-
     return node
 
 class wbr(nodes.inline):
