@@ -264,7 +264,8 @@ class PyvalColorizer:
         pyval_type = type(pyval)
         state.score += 1
         
-        if pyval in (False, True, None, NotImplemented):
+        # Individual "is" checks are required here to be sure we don't consider 0 as True and 1 as False!
+        if pyval is False or pyval is True or pyval is None or pyval is NotImplemented:
             # Link built-in constants to the standard library.
             # Ellipsis is not included here, both because its code syntax is
             # different from its constant's name and because its documentation
@@ -799,7 +800,7 @@ class PyvalColorizer:
                 # Add any appropriate escaping.
                 if cast(str, c) in '.^$\\*+?{}[]|()\'': 
                     c = b'\\' + b(c)
-                # For the record, the special literal caracters are parsed the same way or not. 
+                # For the record, the special literal caracters are parsed the same way escaped or not. 
                 # So we can't tell the difference between "\n" and "\\n".
                 # We always escape them to produce a valid regular expression (and avoid crashing htmltostan() function).
                 # >>> sre_parse.parse(r'\n').dump()
@@ -982,16 +983,16 @@ class PyvalColorizer:
             # markup to tag it, and store the result.
             # Don't break links into separate segments. 
             if (self.linelen is None or 
-                state.charpos + segment_len <= self.linelen or link):
+                state.charpos + segment_len <= self.linelen or link is True):
                 state.charpos += segment_len
-                
-                if css_class is not None or link:
-                    if link:
-                        element = obj_reference('', segment, refuid=segment)
-                    else:
-                        element = nodes.inline('', segment, classes=[css_class])
+
+                if link is True:
+                    element = obj_reference('', segment, refuid=segment)
+                elif css_class is not None:
+                    element = nodes.inline('', segment, classes=[css_class])
                 else:
                     element = nodes.Text(segment)
+
                 state.result.append(element)
 
             # If the segment doesn't fit on the current line, then
