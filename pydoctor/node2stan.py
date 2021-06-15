@@ -7,6 +7,7 @@ from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYP
 from docutils.writers.html4css1 import HTMLTranslator, Writer
 from docutils.nodes import Node, SkipNode, document, title, Element, Text
 from docutils.frontend import OptionParser
+from pydoctor.epydoc.docutils import newline
 
 from twisted.web.template import Tag
 if TYPE_CHECKING:
@@ -47,8 +48,11 @@ def gettext(node: Union[Node, List[Node]]) -> List[str]:
     if isinstance(node, (Text)):
         filtered.append(node.astext())
     elif isinstance(node, (list, Element)):
-        for child in node[:]:
-            filtered.extend(gettext(child))
+        if isinstance(node, newline):
+            filtered.append('\n') 
+        else:
+            for child in node[:]:
+                filtered.extend(gettext(child))
     return filtered
 
 
