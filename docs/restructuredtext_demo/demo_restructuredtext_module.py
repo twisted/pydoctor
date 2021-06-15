@@ -3,16 +3,20 @@ This is a module demonstrating reST code documentation features.
 
 Most part of this documentation is using Python type hinting.
 """
-from typing import Final, Sequence
+import re
+from abc import ABC
+import zope.interface
+import zope.schema
+from typing import Final, Sequence, Optional
 
 LANG = 'Fr'
 """
-This is a constant.
+This is a constant. See `constants` for more examples.
 """
 
 lang: Final[Sequence[str]] = ['Fr', 'En']
 """
-This is also a constant.
+This is also a constant, but annotated with typing.Final.
 """
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
@@ -43,13 +47,13 @@ def demo_consolidated_fields(a:float, b):  # type: ignore
     """
     return -b/a
 
-def demo_typing_arguments(name: str, size: bytes) -> bool:
+def demo_typing_arguments(name: str, size: Optional[bytes] = None) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
 
     :param name: The human readable name for something.
-    :param size: How big the name should be.
-    :return: Always `True`.
+    :param size: How big the name should be. Leave none if you don't care.
+    :return: Always C{True}.
     """
     return True
 
@@ -89,7 +93,7 @@ class _PrivateClass:
         return True
 
 
-class DemoClass:
+class DemoClass(ABC, _PrivateClass):
     """
     This is the docstring of this class.
     """
@@ -140,3 +144,19 @@ class DemoClass:
         """
         This is a docstring for deleter.
         """
+
+class IContact(zope.interface.Interface):
+    """
+    Example of an interface with schemas.
+
+    Provides access to basic contact information.
+    """
+
+    first = zope.schema.TextLine(description="First name")
+
+    email = zope.schema.TextLine(description="Electronic mail address")
+
+    address = zope.schema.Text(description="Postal address")
+
+    def send_email(text: str) -> None:
+        pass
