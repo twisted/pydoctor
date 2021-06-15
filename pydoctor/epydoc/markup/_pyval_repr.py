@@ -36,7 +36,7 @@ import re
 import ast
 import functools
 import sre_parse, sre_constants
-from inspect import BoundArguments, signature
+from inspect import signature
 from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, List, Tuple, cast, overload
 
 import attr
@@ -132,6 +132,9 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         self.score = score
         self.is_complete = is_complete
         self.warnings = warnings
+        """
+        List of warnings
+        """
     
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         try:
@@ -151,6 +154,15 @@ def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
 
 def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
     return colorize_pyval(pyval, linelen=None, linebreakok=False)
+
+@overload
+def _get_str_func(pyval:  str) -> Callable[[str], str]: ...
+@overload
+def _get_str_func(pyval:  bytes) -> Callable[[str], bytes]: ...
+def _get_str_func(pyval:  Union[str, bytes]) -> Callable[[str], Union[str, bytes]]:
+    func = cast(Callable[[str], Union[str, bytes]], str if isinstance(pyval, str) else \
+        functools.partial(bytes, encoding='utf-8', errors='replace'))
+    return func
 
 class PyvalColorizer:
     """
@@ -208,18 +220,6 @@ class PyvalColorizer:
     @staticmethod
     def _bytes_escape(b: bytes) -> str:
         return repr(b)[2:-1]
-
-    @overload
-    @staticmethod
-    def _get_str_func(pyval:  str) -> Callable[[str], str]: ...
-    @overload
-    @staticmethod
-    def _get_str_func(pyval:  bytes) -> Callable[[str], bytes]: ...
-    @staticmethod
-    def _get_str_func(pyval:  Union[str, bytes]) -> Callable[[str], Union[str, bytes]]:
-        func = cast(Callable[[str], Union[str, bytes]], str if isinstance(pyval, str) else \
-            functools.partial(bytes, encoding='utf-8', errors='replace'))
-        return func
 
     #////////////////////////////////////////////////////////////
     # Entry Point
@@ -293,10 +293,12 @@ class PyvalColorizer:
         elif issubclass(pyval_type, re.Pattern):
             # Extract the pattern from the regexp.
             # Flags passed as re.compile() parameters are currently ignored for live re.Pattern objects.
+            # Though, this block is only used in the tests.
             self._colorize_re(pyval.pattern, state)
         elif issubclass(pyval_type, ast.AST):
             self._colorize_ast(pyval, state)
         else:
+            # Unknow object 
             try:
                 pyval_repr = repr(pyval)
                 if not isinstance(pyval_repr, str):
@@ -412,7 +414,7 @@ class PyvalColorizer:
     def _colorize_str(self, pyval, state, prefix, escape_fcn) -> None: #type: ignore[no-untyped-def]
         
         # TODO: Double check implementation bytes/str
-        str_func = self._get_str_func(pyval)
+        str_func = _get_str_func(pyval)
 
         #  Decide which quote to use.
         if str_func('\n') in pyval and state.linebreakok:
@@ -716,15 +718,21 @@ class PyvalColorizer:
         
         self._output(")", self.GROUP_TAG, state)
 
-    def _colorize_re_pattern_str(self, pat: Union[str, bytes], state) -> None:
+    @overload
+    def _colorize_re_pattern_str(self, pat: str, state: _ColorizerState) -> None: 
+        ...
+    @overload
+    def _colorize_re_pattern_str(self, pat: bytes, state: _ColorizerState) -> None: 
+        ...
+    def _colorize_re_pattern_str(self, pat, state) -> None: # type: ignore
         # Currently, the colorizer do not render multiline regex patterns correctly. 
         # Newlines are mixed up with literals \n and probably more fun stuff like that.
-        #   (After investiguation, turns out the sre_parse.parse() function treat caracters "\n" and "\\n" the same way)
+        # Turns out the sre_parse.parse() function treats caracters "\n" and "\\n" the same way.
         
         # If the pattern string is composed by mutiple lines, simply use the string colorizer instead.
         # It's more informative to have the proper newlines than the fancy regex colors.  
 
-        str_func = self._get_str_func(pat)
+        str_func = _get_str_func(pat)
         if str_func('\n') in pat:
             if isinstance(pat, bytes):
                 self._colorize_str(pat, state, b'b', escape_fcn=self._bytes_escape)
@@ -744,7 +752,7 @@ class PyvalColorizer:
         # Recovering the flags value from AST seems possible, though, might not be worth it.
 
         # Mypy gets error: error: Argument 1 to "parse" has incompatible type "Union[str, bytes]"; expected "str".
-        # But actuall sre_parse.parse() can parse regex as bytes.
+        # But actually, sre_parse.parse() can parse regex as bytes.
         tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
         groups = dict([(num,name) for (name,num) in
                        tree.state.groupdict.items()])
