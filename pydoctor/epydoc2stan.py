@@ -846,20 +846,29 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
     else:
         return names[kind]
 
-def _format_constant_value(constant: model.Attribute) -> Iterator["Flattenable"]:
+def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     # yield the table title, "Value"
     row = tags.tr(class_="fieldStart")
     row(tags.td(class_="fieldName")("Value"))
     # yield the first row.
     yield row
+    
+    doc = colorize_pyval(obj.value)
+    
+    value_repr = doc.to_stan(_EpydocLinker(obj))
 
-    value_repr = colorize_pyval(constant.value).to_stan(_EpydocLinker(constant))
+    # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+    for message in doc.warnings:
+        obj.report(message)
 
     # yield the value repr.
     row = tags.tr()
     row(tags.td(tags.pre(class_='constant-value')(value_repr)))
     yield row
 
-def format_constant_value(constant: model.Attribute) -> "Flattenable":
-    rows = list(_format_constant_value(constant))
+def format_constant_value(obj: model.Attribute) -> "Flattenable":
+    """
+    Should be only called for L{Attribute} objects that have the L{Attribute.value} property set.
+    """
+    rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
