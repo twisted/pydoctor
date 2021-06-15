@@ -211,7 +211,7 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
 
     @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags.
         So we cannot always back produce the original text. It doesn't work for strings for example.
-        And the rest might change in the future if we need to add more colorizing to the PyvalColorizer.
+        And the rest might change in the future if we need to add more colorizing to the L{PyvalColorizer}.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
