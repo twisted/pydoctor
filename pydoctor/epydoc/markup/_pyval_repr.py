@@ -139,11 +139,14 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
             return Tag('code', children=gettext(self.to_node()))
 
 def colorize_pyval(pyval: Any, linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
-    
+    """
+    @return: A L{ColorizedPyvalRepr} describing the given pyval.
+    """
     return PyvalColorizer(linelen, maxlines, linebreakok).colorize(pyval)
 
 def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
     """
+    Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
     """
     return colorize_pyval(pyval, linelen=None, linebreakok=False)
@@ -156,6 +159,17 @@ def _get_str_func(pyval:  Union[str, bytes]) -> Callable[[str], Union[str, bytes
     func = cast(Callable[[str], Union[str, bytes]], str if isinstance(pyval, str) else \
         functools.partial(bytes, encoding='utf-8', errors='replace'))
     return func
+def _str_escape(s: str) -> str:
+    def enc(c: str) -> str:
+        if c == "'":
+            return r"\'"
+        elif ord(c) <= 0xff:
+            return c.encode('unicode-escape').decode('utf-8')
+        else:
+            return c
+    return ''.join(map(enc, s))
+def _bytes_escape(b: bytes) -> str:
+    return repr(b)[2:-1]
 
 class PyvalColorizer:
     """
@@ -199,30 +213,10 @@ class PyvalColorizer:
 
     RE_COMPILE_SIGNATURE = signature(re.compile)
 
-    @staticmethod
-    def _str_escape(s: str) -> str:
-        def enc(c: str) -> str:
-            if c == "'":
-                return r"\'"
-            elif ord(c) <= 0xff:
-                return c.encode('unicode-escape').decode('utf-8')
-            else:
-                return c
-        return ''.join(map(enc, s))
-
-    @staticmethod
-    def _bytes_escape(b: bytes) -> str:
-        return repr(b)[2:-1]
-
-    #////////////////////////////////////////////////////////////
-    # Entry Point
-    #////////////////////////////////////////////////////////////
-
     def colorize(self, pyval: Any) -> ColorizedPyvalRepr:
         """
-        @return: A L{ColorizedPyvalRepr} describing the given pyval.
+        Entry Point.
         """
-
         # Create an object to keep track of the colorization.
         state = _ColorizerState()
         state.linebreakok = self.linebreakok
@@ -263,9 +257,9 @@ class PyvalColorizer:
         elif pyvaltype is int or pyvaltype is float or pyvaltype is complex:
             self._output(str(pyval), self.NUMBER_TAG, state)
         elif pyvaltype is str:
-            self._colorize_str(pyval, state, '', escape_fcn=self._str_escape)
+            self._colorize_str(pyval, state, '', escape_fcn=_str_escape)
         elif pyvaltype is bytes:
-            self._colorize_str(pyval, state, b'b', escape_fcn=self._bytes_escape)
+            self._colorize_str(pyval, state, b'b', escape_fcn=_bytes_escape)
         elif pyvaltype is tuple:
             self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
         elif pyvaltype is set:
@@ -701,9 +695,9 @@ class PyvalColorizer:
             state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
             # Colorize it as string if the pattern parsing fails.
             if isinstance(pat, bytes):
-                self._colorize_str(pat, state, b'b', escape_fcn=self._bytes_escape)
+                self._colorize_str(pat, state, b'b', escape_fcn=_bytes_escape)
             else:
-                self._colorize_str(pat, state, '', escape_fcn=self._str_escape)
+                self._colorize_str(pat, state, '', escape_fcn=_str_escape)
         
         self._output(")", self.GROUP_TAG, state)
 
@@ -724,9 +718,9 @@ class PyvalColorizer:
         str_func = _get_str_func(pat)
         if str_func('\n') in pat:
             if isinstance(pat, bytes):
-                self._colorize_str(pat, state, b'b', escape_fcn=self._bytes_escape)
+                self._colorize_str(pat, state, b'b', escape_fcn=_bytes_escape)
             else:
-                self._colorize_str(pat, state, '', escape_fcn=self._str_escape)
+                self._colorize_str(pat, state, '', escape_fcn=_str_escape)
         else:
             if isinstance(pat, bytes):
                 self._colorize_re_pattern(pat, state, b'rb')
@@ -939,10 +933,10 @@ class PyvalColorizer:
     def _output(self, s: Union[str, bytes], css_class: Optional[str], 
                 state: _ColorizerState, link: bool = False) -> None:
         """
-        Add the string `s` to the result list, tagging its contents
-        with css class `css_class`.  Any lines that go beyond `self.linelen` will
+        Add the string C{s} to the result list, tagging its contents
+        with the specified C{css_class}. Any lines that go beyond L{PyvalColorizer.linelen} will
         be line-wrapped.  If the total number of lines exceeds
-        `self.maxlines`, then raise a `_Maxlines` exception.
+        L{PyvalColorizer.maxlines}, then raise a L{_Maxlines} exception.
         """
         # Make sure the string is unicode.
         if isinstance(s, bytes):
