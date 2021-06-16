@@ -24,13 +24,16 @@ because maxlines is typically around 5, so it's really not worth it.
 The syntax-highlighted output is encoded using a
 L{ParsedDocstring}, which can then be used to generate output in
 a variety of formats.
+
+B{Implementation note}: we use exact tests for builtin classes (list, etc)
+rather than using isinstance, because subclasses might override
+C{__repr__}.
+
+B{Usage}: 
+>>> 
 """
 
 __docformat__ = 'epytext en'
-
-# Implementation note: we use exact tests for classes (list, etc)
-# rather than using isinstance, because subclasses might override
-# __repr__.
 
 import re
 import ast
@@ -73,7 +76,6 @@ class _MarkedColorizerState:
     charpos: int
     lineno: int
     linebreakok: bool
-    score: int
 
 class _ColorizerState:
     """
@@ -82,11 +84,7 @@ class _ColorizerState:
     a backup point, and restore back to that backup point.  This is
     used by several colorization methods that first try colorizing
     their object on a single line (setting linebreakok=False); and
-    then fall back on a multi-line output if that fails.  The L{score}
-    variable is used to keep track of a 'score', reflecting how good
-    we think this repr is.  E.g., unhelpful values like '<Foo instance
-    at 0x12345>' get low scores.  If the score is too low, we'll use
-    the parse-derived repr instead.
+    then fall back on a multi-line output if that fails.  
     """
     def __init__(self) -> None:
         self.result: List[nodes.Node] = []
@@ -95,21 +93,17 @@ class _ColorizerState:
         self.linebreakok = True
         self.warnings: List[str] = []
 
-        #: How good this represention is?
-        self.score = 0
-
     def mark(self) -> _MarkedColorizerState:
         return _MarkedColorizerState(
                     length=len(self.result), 
                     charpos=self.charpos,
                     lineno=self.lineno, 
-                    linebreakok=self.linebreakok, 
-                    score=self.score)
+                    linebreakok=self.linebreakok)
 
     def restore(self, mark: _MarkedColorizerState) -> None:
         (self.charpos, self.lineno, 
-        self.linebreakok, self.score) = (mark.charpos, mark.lineno, 
-                                        mark.linebreakok, mark.score)
+        self.linebreakok) = (mark.charpos, mark.lineno, 
+                                        mark.linebreakok)
         del self.result[mark.length:]
 
 class _Maxlines(Exception):
@@ -123,13 +117,11 @@ class _Linebreak(Exception):
 
 class ColorizedPyvalRepr(ParsedRstDocstring):
     """
-    @ivar score: A score, evaluating how good this repr is.
     @ivar is_complete: True if this colorized repr completely describes
        the object.
     """
-    def __init__(self, document: nodes.document, score: int, is_complete: bool, warnings: List[str]) -> None:
+    def __init__(self, document: nodes.document, is_complete: bool, warnings: List[str]) -> None:
         super().__init__(document, ())
-        self.score = score
         self.is_complete = is_complete
         self.warnings = warnings
         """
@@ -146,13 +138,14 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
             self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
             return Tag('code', children=gettext(self.to_node()))
 
-def colorize_pyval(pyval: Any, min_score:Optional[int]=None,
-                   linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
+def colorize_pyval(pyval: Any, linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
     
-    return PyvalColorizer(linelen, maxlines, linebreakok).colorize(
-        pyval, min_score)
+    return PyvalColorizer(linelen, maxlines, linebreakok).colorize(pyval)
 
 def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
+    """
+    @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
+    """
     return colorize_pyval(pyval, linelen=None, linebreakok=False)
 
 @overload
@@ -225,7 +218,7 @@ class PyvalColorizer:
     # Entry Point
     #////////////////////////////////////////////////////////////
 
-    def colorize(self, pyval: Any, min_score: Optional[int] = None) -> ColorizedPyvalRepr:
+    def colorize(self, pyval: Any) -> ColorizedPyvalRepr:
         """
         @return: A L{ColorizedPyvalRepr} describing the given pyval.
         """
@@ -250,19 +243,15 @@ class PyvalColorizer:
         else:
             is_complete = True
         
-        # If we didn't score high enough, then use UNKNOWN_REPR
-        if (min_score is not None and state.score < min_score):
-            state.result = [PyvalColorizer.UNKNOWN_REPR]
-        
         # Put it all together.
         document = utils.new_document('pyval_repr')
         # This ensure the .parent and .document attributes of the child nodes are set correcly.
         set_node_attributes(document, children=[set_node_attributes(node, document=document) for node in state.result])
-        return ColorizedPyvalRepr(document, state.score, is_complete, state.warnings)
+        return ColorizedPyvalRepr(document, is_complete, state.warnings)
     
     def _colorize(self, pyval: Any, state: _ColorizerState) -> None:
-        pyval_type = type(pyval)
-        state.score += 1
+
+        pyvaltype = type(pyval)
         
         # Individual "is" checks are required here to be sure we don't consider 0 as True and 1 as False!
         if pyval is False or pyval is True or pyval is None or pyval is NotImplemented:
@@ -271,46 +260,45 @@ class PyvalColorizer:
             # different from its constant's name and because its documentation
             # is not relevant to annotations.
             self._output(str(pyval), self.CONST_TAG, state, link=True)
-        elif issubclass(pyval_type, (int, float, complex)):
+        elif pyvaltype is int or pyvaltype is float or pyvaltype is complex:
             self._output(str(pyval), self.NUMBER_TAG, state)
-        elif issubclass(pyval_type, str):
+        elif pyvaltype is str:
             self._colorize_str(pyval, state, '', escape_fcn=self._str_escape)
-        elif issubclass(pyval_type, bytes):
+        elif pyvaltype is bytes:
             self._colorize_str(pyval, state, b'b', escape_fcn=self._bytes_escape)
-        elif issubclass(pyval_type, tuple):
+        elif pyvaltype is tuple:
             self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
-        elif issubclass(pyval_type, set):
+        elif pyvaltype is set:
             self._multiline(self._colorize_iter, pyval,
                             state, prefix='set([', suffix='])')
-        elif issubclass(pyval_type, frozenset):
+        elif pyvaltype is frozenset:
             self._multiline(self._colorize_iter, pyval,
                             state, prefix='frozenset([', suffix='])')
-        elif issubclass(pyval_type, dict):
+        elif pyvaltype is dict:
             self._multiline(self._colorize_dict,
                             list(pyval.items()),
                             state, prefix='{', suffix='}')
-        elif issubclass(pyval_type, list):
+        elif pyvaltype is list:
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
-        elif issubclass(pyval_type, re.Pattern):
+        elif pyvaltype is re.Pattern:
             # Extract the pattern from the regexp.
             # Flags passed as re.compile() parameters are currently ignored for live re.Pattern objects.
             # Though, this block is only used in the tests.
             self._colorize_re(pyval.pattern, state)
-        elif issubclass(pyval_type, ast.AST):
+        elif issubclass(pyvaltype, ast.AST):
             self._colorize_ast(pyval, state)
         else:
-            # Unknow object 
+            # Unknow live object
             try:
                 pyval_repr = repr(pyval)
                 if not isinstance(pyval_repr, str):
                     pyval_repr = str(pyval_repr) #type: ignore[unreachable]
             except Exception:
-                state.score -= 100
+                state.warnings.append(f"Cannot colorize object '{pyval}', repr() raised an exception.")
                 state.result.append(self.UNKNOWN_REPR)
             else:
                 match = self.GENERIC_OBJECT_RE.search(pyval_repr)
                 if match:
-                    state.score -= 5
                     generic_object_match_groups = match.groupdict()
                     if 'descr' in generic_object_match_groups:
                         pyval_repr = f"<{generic_object_match_groups['descr']}>"
@@ -522,10 +510,9 @@ class PyvalColorizer:
             self._output('not ', None, state)
         elif isinstance(pyval.op, ast.Invert):
             self._output('~', None, state)
-
-        # self._output(astor.to_source(pyval.op), None, state)
-        # if isinstance(pyval.op, ast.Not):
-        #     self._output(' ', None, state)
+        else:
+            state.warnings.append(f"Unknow unrary operator: {pyval}")
+            self._colorize_ast_generic(pyval, state)
 
         self._colorize(pyval.operand, state)
     
@@ -561,6 +548,7 @@ class PyvalColorizer:
         elif isinstance(pyval.op, ast.MatMult):
             self._output('@', None, state)
         else:
+            state.warnings.append(f"Unknow binary operator: {pyval}")
             self._colorize_ast_generic(pyval, state)
 
         # Colorize second operand

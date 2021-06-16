@@ -1,9 +1,9 @@
 import re
 import ast
 from textwrap import dedent
-from typing import Any, Optional, Tuple, Union, overload
+from typing import Any, Union
 
-from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer, _get_str_func
+from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup.epytext import Element
@@ -11,7 +11,7 @@ from pydoctor.node2stan import gettext
 
 def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
-    parsed_doc = colorizer.colorize(v, None)
+    parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat() #type: ignore
 
 def test_simple_types() -> None:
@@ -925,50 +925,33 @@ def test_line_wrapping() -> None:
     <inline classes="variable-ellipsis">
         ...\n"""
 
-def color2(v: Any) -> Tuple[str, int, bool]:
+def color2(v: Any) -> str:
     colorizer = PyvalColorizer(linelen=50)
     pds = colorizer.colorize(v)
     text = ''.join(gettext(pds.to_node()))
-    score = pds.score
-    is_ok = pds.score>0
-    return text, score, is_ok
+    return text
 
-def test_repr_score() -> None:
-    """When colorized representations are built, a score is computed
-    evaluating how helpful the repr is.  E.g., unhelpful values like ``<Foo
-    instance at 0x12345>`` get low scores.  Currently, the scoring
-    algorithm is:
-
-        - [+1] for each object colorized.  When the colorizer recurses into
-        a structure, this will add one for each element contained.
-        - [-5] when repr(obj) looks like <xyz instance at ...>, for any
-        colorized object (including objects in structures).
-        - [-100] if repr(obj) raises an exception, for any colorized object
-        (including objects in structures).
-
-    The ``min_score`` arg to colorize can be used to set a cutoff-point for
-    scores; if the score is too low, then `PyvalColorizer.colorize` will use UNKNOWN_REPR instead.
+def test_repr_text() -> None:
+    """Test a few representations, with a plain text version.
     """
     class A: pass
 
-    assert color2('hello') == ("'hello'", 1, True)
+    assert color2('hello') == "'hello'"
 
-    assert color2(["hello", 123]) == ("['hello', 123]", 3, True)
+    assert color2(["hello", 123]) == "['hello', 123]"
 
     assert color2(A()) == ('<pydoctor.test.epydoc.test_pyval_repr.test_repr_sc↵\n'
-                            'ore.<locals>.A object>', -4, False)
+                            'ore.<locals>.A object>')
 
     assert color2([A()]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_s↵\n'
-                             'core.<locals>.A object>]', -3, False)
+                             'core.<locals>.A object>]')
 
     assert color2([A(),1,2,3,4,5,6,7]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_s↵\n'
                                             'core.<locals>.A object>,\n'
                                             ' 1,\n'
                                             ' 2,\n'
                                             ' 3,\n'
-                                            '...',
-                                            0,
-                                            False,)
+                                            '...')
 
 def test_summary() -> None:
     """To generate summary-reprs, use maxlines=1 and linebreakok=False:
