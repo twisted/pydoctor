@@ -48,7 +48,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
         text = '@' + astor.to_source(dec).strip()
         yield text, tags.br()
 
-def signature(function: model.Function) -> "Flattenable":
+def format_signature(function: model.Function) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
