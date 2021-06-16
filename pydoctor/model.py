@@ -808,6 +808,7 @@ class System:
             module_full_name = f'{package.fullName()}.{module_name}'
 
         spec = importlib.util.spec_from_file_location(module_full_name, path)
+        assert spec is not None, f"Cannot find spec for module {module_full_name} at {path}"
         py_mod = importlib.util.module_from_spec(spec)
         loader = spec.loader
         assert isinstance(loader, importlib.abc.Loader), loader
