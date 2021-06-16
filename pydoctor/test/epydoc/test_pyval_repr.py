@@ -940,8 +940,8 @@ def test_repr_text() -> None:
 
     assert color2(["hello", 123]) == "['hello', 123]"
 
-    assert color2(A()) == ('<pydoctor.test.epydoc.test_pyval_repr.test_repr_sc↵\n'
-                            'ore.<locals>.A object>')
+    assert color2(A()) == ('<pydoctor.test.epydoc.test_pyval_repr.test_repr_te↵\n'
+                            'xt.<locals>.A object>')
 
     assert color2([A()]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_s↵\n'
                              'core.<locals>.A object>]')
