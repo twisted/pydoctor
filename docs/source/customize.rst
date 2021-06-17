@@ -2,8 +2,8 @@
 Customize Output
 ================
 
-Include custom HTML
--------------------
+Tweak HTML templates
+--------------------
 
 They are 3 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
 
@@ -16,19 +16,21 @@ and use the following option::
 
   --template-dir=./pydoctor_templates
 
-.. note::
+If you want more customization, you can override the default templates in
+`pydoctor/themes/base <https://github.com/twisted/pydoctor/tree/master/pydoctor/themes/base>`_
+with the same method.
 
-  If you want more customization, you can override the defaults
-  HTML, CSS and JS templates in
-  `pydoctor/templates <https://github.com/twisted/pydoctor/tree/master/pydoctor/templates>`_
-  with the same method.
+HTML templates have their own versioning system and warnings will be triggered when an outdated custom template is used.
 
-  HTML templates have their own versionning system and warnings will be triggered if oudated custom template are used.
+.. admonition:: Ugly working example
 
-.. admonition:: Example
+  - The `template directory  <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_. 
+  - The `output <custom_template_demo/pydoctor.html>`_.
 
-    See this `sample template <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_
-    output `here <custom_template_demo/pydoctor.html>`_.
+  .. note:: 
+
+    This example is using new ``pydoctor`` option, ``--theme=base``. 
+    This means that bootstrap CSS will not be copied to build directory.
 
 Use a custom system class
 -------------------------

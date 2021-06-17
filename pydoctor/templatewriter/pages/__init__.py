@@ -1,17 +1,38 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
-from typing import Any, Dict, Iterator, List, Optional, Mapping, Sequence, Union, Type
+from typing import (
+    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
+    Tuple, Type, Union
+)
 import ast
 import abc
 
-from twisted.web.template import tags, renderer, Tag, Element
 import astor
-
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
-from pydoctor import epydoc2stan, model, __version__
+from twisted.web.template import Element, Tag, renderer, tags
+
+from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+    from pydoctor.templatewriter.pages.attributechild import AttributeChild
+    from pydoctor.templatewriter.pages.functionchild import FunctionChild
+
+
+def objects_order(o: model.Documentable) -> Tuple[int, int, str]: 
+    """
+    Function to use as the value of standard library's L{sorted} function C{key} argument
+    such that the objects are sorted by: Privacy, Kind and Name.
+
+    Example::
+
+        children = sorted((o for o in ob.contents.values() if o.isVisible),
+                      key=objects_order)
+    """
+    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
     for dec in obj.decorators or ():
@@ -87,14 +108,11 @@ class Page(TemplateElement):
             loader = self.lookup_loader(template_lookup)
         super().__init__(loader)
 
-    def render(self, request: None) -> Tag:
-        tag: Tag
-        tag, = super().render(request)
-        tag.fillSlots(**self.slot_map)
-        return tag
+    def render(self, request: Optional[IRequest]) -> Tag:
+        return tags.transparent(super().render(request)).fillSlots(**self.slot_map)
 
     @property
-    def slot_map(self) -> Dict[str, str]:
+    def slot_map(self) -> Dict[str, "Flattenable"]:
         system = self.system
 
         if system.options.projecturl:
@@ -150,10 +168,10 @@ class CommonPage(Page):
     def page_url(self) -> str:
         return self.ob.page_object.url
 
-    def title(self):
+    def title(self) -> str:
         return self.ob.fullName()
 
-    def heading(self):
+    def heading(self) -> Tag:
         return tags.h1(class_=util.css_class(self.ob))(
             tags.code(self.namespace(self.ob))
             )
@@ -163,7 +181,7 @@ class CommonPage(Page):
         assert kind is not None
         return f"{epydoc2stan.format_kind(kind).lower()} documentation"
 
-    def namespace(self, obj: model.Documentable) -> Sequence[Union[Tag, str]]:
+    def namespace(self, obj: model.Documentable) -> List[Union[Tag, str]]:
         page_url = self.page_url
         parts: List[Union[Tag, str]] = []
         ob: Optional[model.Documentable] = obj
@@ -177,42 +195,43 @@ class CommonPage(Page):
         return parts
 
     @renderer
-    def deprecated(self, request, tag):
-        if hasattr(self.ob, "_deprecated_info"):
-            return (tags.div(self.ob._deprecated_info, role="alert", class_="deprecationNotice alert alert-warning"),)
-        else:
+    def deprecated(self, request: object, tag: Tag) -> "Flattenable":
+        msg = self.ob._deprecated_info
+        if msg is None:
             return ()
+        else:
+            return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")
 
     @renderer
-    def source(self, request, tag):
+    def source(self, request: object, tag: Tag) -> "Flattenable":
         sourceHref = util.srclink(self.ob)
         if not sourceHref:
             return ()
         return tag(href=sourceHref)
 
     @renderer
-    def inhierarchy(self, request, tag):
+    def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self):
+    def extras(self) -> List["Flattenable"]:
         return []
 
-    def docstring(self):
+    def docstring(self) -> "Flattenable":
         return self.docgetter.get(self.ob)
 
-    def children(self):
+    def children(self) -> Sequence[model.Documentable]:
         return sorted(
-            [o for o in self.ob.contents.values() if o.isVisible],
-            key=lambda o:-o.privacyClass.value)
+            (o for o in self.ob.contents.values() if o.isVisible),
+            key=objects_order)
 
-    def packageInitTable(self):
+    def packageInitTable(self) -> "Flattenable":
         return ()
 
     @renderer
-    def baseTables(self, request, tag):
+    def baseTables(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def mainTable(self):
+    def mainTable(self) -> "Flattenable":
         children = self.children()
         if children:
             return ChildTable(self.docgetter, self.ob, children,
@@ -220,16 +239,16 @@ class CommonPage(Page):
         else:
             return ()
 
-    def methods(self):
-        return [o for o in self.ob.contents.values()
-                if o.documentation_location is model.DocLocation.PARENT_PAGE
-                and o.isVisible]
+    def methods(self) -> Sequence[model.Documentable]:
+        return sorted((o for o in self.ob.contents.values()
+                       if o.documentation_location is model.DocLocation.PARENT_PAGE and o.isVisible), 
+                      key=objects_order)
 
-    def childlist(self):
+    def childlist(self) -> List[Union["AttributeChild", "FunctionChild"]]:
         from pydoctor.templatewriter.pages.attributechild import AttributeChild
         from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
-        r = []
+        r: List[Union["AttributeChild", "FunctionChild"]] = []
 
         func_loader = FunctionChild.lookup_loader(self.template_lookup)
         attr_loader = AttributeChild.lookup_loader(self.template_lookup)
@@ -237,18 +256,20 @@ class CommonPage(Page):
         for c in self.methods():
             if isinstance(c, model.Function):
                 r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), func_loader))
-            else:
+            elif isinstance(c, model.Attribute):
                 r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), attr_loader))
+            else:
+                assert False, type(c)
         return r
 
-    def functionExtras(self, data):
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         return []
 
-    def functionBody(self, data):
-        return self.docgetter.get(data)
+    def functionBody(self, ob: model.Documentable) -> "Flattenable":
+        return self.docgetter.get(ob)
 
     @property
-    def slot_map(self) -> Dict[str, str]:
+    def slot_map(self) -> Dict[str, "Flattenable"]:
         slot_map = super().slot_map
         slot_map.update(
             heading=self.heading(),
@@ -263,7 +284,7 @@ class CommonPage(Page):
 
 
 class ModulePage(CommonPage):
-    def extras(self):
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
         sourceHref = util.srclink(self.ob)
@@ -274,31 +295,37 @@ class ModulePage(CommonPage):
 
 
 class PackagePage(ModulePage):
-    def children(self):
-        return sorted((o for o in self.ob.contents.values()
-                       if o.name != '__init__' and o.isVisible),
-                      key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+    def children(self) -> Sequence[model.Documentable]:
+        return sorted(
+            (o for o in self.ob.contents.values()
+             if isinstance(o, model.Module) and o.isVisible),
+            key=objects_order)
 
-    def packageInitTable(self):
-        init = self.ob.contents['__init__']
+    def packageInitTable(self) -> "Flattenable":
         children = sorted(
-            [o for o in init.contents.values() if o.isVisible],
-            key=lambda o2:(-o2.privacyClass.value, o2.fullName()))
+            (o for o in self.ob.contents.values()
+             if not isinstance(o, model.Module) and o.isVisible),
+            key=objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
-            return [tags.p("From the ", tags.code("__init__.py"), " module:",
-                           class_="fromInitPy"),
-                    ChildTable(self.docgetter, init, children, loader)]
+            return [
+                tags.p("From ", tags.code("__init__.py"), ":", class_="fromInitPy"),
+                ChildTable(self.docgetter, self.ob, children, loader)
+                ]
         else:
             return ()
 
-    def methods(self):
-        return [o for o in self.ob.contents['__init__'].contents.values()
+    def methods(self) -> Sequence[model.Documentable]:
+        return [o for o in self.ob.contents.values()
                 if o.documentation_location is model.DocLocation.PARENT_PAGE
                 and o.isVisible]
 
 
-def overriding_subclasses(c, name, firstcall=True):
+def overriding_subclasses(
+        c: model.Class,
+        name: str,
+        firstcall: bool = True
+        ) -> Iterator[model.Class]:
     if not firstcall and name in c.contents:
         yield c
     else:
@@ -306,8 +333,8 @@ def overriding_subclasses(c, name, firstcall=True):
             if sc.isVisible:
                 yield from overriding_subclasses(sc, name, False)
 
-def nested_bases(b):
-    r = [(b,)]
+def nested_bases(b: model.Class) -> Sequence[Tuple[model.Class, ...]]:
+    r: List[Tuple[model.Class, ...]] = [(b,)]
     for b2 in b.baseobjects:
         if b2 is None:
             continue
@@ -315,7 +342,7 @@ def nested_bases(b):
             r.append(n + (b,))
     return r
 
-def unmasked_attrs(baselist):
+def unmasked_attrs(baselist: Sequence[model.Documentable]) -> Sequence[model.Documentable]:
     maybe_masking = {
         o.name
         for b in baselist[1:]
@@ -324,8 +351,13 @@ def unmasked_attrs(baselist):
     return [o for o in baselist[0].contents.values()
             if o.isVisible and o.name not in maybe_masking]
 
-
-def assembleList(system, label, lst, idbase, page_url):
+def assembleList(
+        system: model.System,
+        label: str,
+        lst: Sequence[str],
+        idbase: str,
+        page_url: str
+        ) -> Optional["Flattenable"]:
     lst2 = []
     for name in lst:
         o = system.allobjects.get(name)
@@ -334,19 +366,19 @@ def assembleList(system, label, lst, idbase, page_url):
     lst = lst2
     if not lst:
         return None
-    def one(item):
+    def one(item: str) -> "Flattenable":
         if item in system.allobjects:
             return tags.code(epydoc2stan.taglink(system.allobjects[item], page_url))
         else:
             return item
-    def commasep(items):
+    def commasep(items: Sequence[str]) -> List["Flattenable"]:
         r = []
         for item in items:
             r.append(one(item))
             r.append(', ')
         del r[-1]
         return r
-    p = [label]
+    p: List["Flattenable"] = [label]
     p.extend(commasep(lst))
     return p
 
@@ -355,8 +387,11 @@ class ClassPage(CommonPage):
 
     ob: model.Class
 
-    def __init__(self, ob:model.Documentable, template_lookup:TemplateLookup,
-                 docgetter:Optional[DocGetter] = None):
+    def __init__(self,
+            ob: model.Documentable,
+            template_lookup: TemplateLookup,
+            docgetter: Optional[DocGetter] = None
+            ):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = []
         for baselist in nested_bases(self.ob):
@@ -365,10 +400,11 @@ class ClassPage(CommonPage):
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
 
-    def extras(self):
+    def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
         sourceHref = util.srclink(self.ob)
+        source: "Flattenable"
         if sourceHref:
             source = (" ", tags.a("(source)", href=sourceHref, class_="sourceLink"))
         else:
@@ -379,7 +415,7 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=lambda o:o.fullName().lower())
+        scs = sorted(self.ob.subclasses, key=objects_order)
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
@@ -388,8 +424,8 @@ class ClassPage(CommonPage):
             r.append(tags.p(p))
         return r
 
-    def classSignature(self) -> Sequence[Union[Tag, str]]:
-        r = []
+    def classSignature(self) -> "Flattenable":
+        r: List["Flattenable"] = []
         zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
         if zipped:
             r.append('(')
@@ -413,11 +449,11 @@ class ClassPage(CommonPage):
         return r
 
     @renderer
-    def inhierarchy(self, request, tag):
+    def inhierarchy(self, request: object, tag: Tag) -> Tag:
         return tag(href="classIndex.html#"+self.ob.fullName())
 
     @renderer
-    def baseTables(self, request, item):
+    def baseTables(self, request: object, item: Tag) -> "Flattenable":
         baselists = self.baselists[:]
         if not baselists:
             return []
@@ -427,18 +463,18 @@ class ClassPage(CommonPage):
         return [item.clone().fillSlots(
                           baseName=self.baseName(b),
                           baseTable=ChildTable(self.docgetter, self.ob,
-                                               sorted(attrs, key=lambda o:-o.privacyClass.value),
+                                               sorted(attrs, key=objects_order),
                                                loader))
                 for b, attrs in baselists]
 
-    def baseName(self, data):
+    def baseName(self, bases: Sequence[model.Class]) -> "Flattenable":
         page_url = self.page_url
-        r = []
-        source_base = data[0]
+        r: List["Flattenable"] = []
+        source_base = bases[0]
         r.append(tags.code(epydoc2stan.taglink(source_base, page_url, source_base.name)))
-        bases_to_mention = data[1:-1]
+        bases_to_mention = bases[1:-1]
         if bases_to_mention:
-            tail = []
+            tail: List["Flattenable"] = []
             for b in reversed(bases_to_mention):
                 tail.append(tags.code(epydoc2stan.taglink(b, page_url, b.name)))
                 tail.append(', ')
@@ -446,17 +482,18 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, data):
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
         page_url = self.page_url
-        r = []
+        name = ob.name
+        r: List["Flattenable"] = []
         for b in self.ob.allbases(include_self=False):
-            if data.name not in b.contents:
+            if name not in b.contents:
                 continue
-            overridden = b.contents[data.name]
+            overridden = b.contents[name]
             r.append(tags.div(class_="interfaceinfo")(
                 'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
             break
-        ocs = sorted(overriding_subclasses(self.ob, data.name), key=lambda o:o.fullName().lower())
+        ocs = sorted(overriding_subclasses(self.ob, name), key=objects_order)
         if ocs:
             self.overridenInCount += 1
             idbase = 'overridenIn' + str(self.overridenInCount)
@@ -468,12 +505,13 @@ class ClassPage(CommonPage):
 
 
 class ZopeInterfaceClassPage(ClassPage):
-    def extras(self):
-        r = [super().extras()]
+    ob: zopeinterface.ZopeInterfaceClass
+
+    def extras(self) -> List["Flattenable"]:
+        r = super().extras()
         if self.ob.isinterface:
-            namelist = sorted(
-                    (o.fullName() for o in self.ob.implementedby_directly),
-                    key=lambda x:x.lower())
+            namelist = [o.fullName() for o in 
+                        sorted(self.ob.implementedby_directly, key=objects_order)]
             label = 'Known implementations: '
         else:
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
@@ -485,24 +523,28 @@ class ZopeInterfaceClassPage(ClassPage):
                 r.append(tags.p(l))
         return r
 
-    def interfaceMeth(self, methname):
+    def interfaceMeth(self, methname: str) -> Optional[model.Documentable]:
         system = self.ob.system
         for interface in self.ob.allImplementedInterfaces:
             if interface in system.allobjects:
                 io = system.allobjects[interface]
+                assert isinstance(io, zopeinterface.ZopeInterfaceClass)
                 for io2 in io.allbases(include_self=True):
-                    if methname in io2.contents:
-                        return io2.contents[methname]
+                    method: Optional[model.Documentable] = io2.contents.get(methname)
+                    if method is not None:
+                        return method
         return None
 
-    def functionExtras(self, data):
-        imeth = self.interfaceMeth(data.name)
-        r = []
+    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+        imeth = self.interfaceMeth(ob.name)
+        r: List["Flattenable"] = []
         if imeth:
+            iface = imeth.parent
+            assert iface is not None
             r.append(tags.div(class_="interfaceinfo")('from ', tags.code(
-                epydoc2stan.taglink(imeth, self.page_url, imeth.parent.fullName())
+                epydoc2stan.taglink(imeth, self.page_url, iface.fullName())
                 )))
-        r.extend(super().functionExtras(data))
+        r.extend(super().functionExtras(ob))
         return r
 
 commonpages: Mapping[str, Type[CommonPage]] = {

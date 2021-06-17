@@ -59,31 +59,6 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
 
-def test_package_sourceHref() -> None:
-    """
-    A package reports its __init__.py location as its source link.
-    """
-
-    project_dir = Path("/foo/bar/ProjectName")
-
-    options = FakeOptions()
-    options.projectbasedirectory = project_dir
-
-    system = model.System()
-    system.ensurePackage('pkg')
-    system.sourcebase = "https://git.example.org/proj/main"
-    system.options = cast(Values, options)
-
-    mod_init = fromText('''
-    """Docstring."""
-    ''', modname='__init__', parent_name='pkg', system=system)
-    system.setSourceHref(mod_init, project_dir / 'src' / 'pkg' / '__init__.py')
-
-    package = system.objForFullName('pkg')
-    assert isinstance(package, model.Package)
-    assert package.sourceHref == "https://git.example.org/proj/main/src/pkg/__init__.py"
-
-
 def test_initialization_default() -> None:
     """
     When initialized without options, will use default options and default
@@ -232,7 +207,7 @@ class Dummy:
 def test_introspection_python() -> None:
     """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
-    system.introspectModule(Path(__file__), __name__)
+    system.introspectModule(Path(__file__), __name__, None)
 
     module = system.objForFullName(__name__)
     assert module is not None
@@ -255,12 +230,20 @@ def test_introspection_extension() -> None:
         pytest.skip("cython_test_exception_raiser not installed")
 
     system = model.System()
-    system.introspectModule(
+    package = system.introspectModule(
+        Path(cython_test_exception_raiser.__file__),
+        'cython_test_exception_raiser',
+        None)
+    assert isinstance(package, model.Package)
+    module = system.introspectModule(
         Path(cython_test_exception_raiser.raiser.__file__),
-        'cython_test_exception_raiser.raiser')
+        'raiser',
+        package)
+    assert not isinstance(module, model.Package)
 
-    module = system.objForFullName('cython_test_exception_raiser.raiser')
-    assert module is not None
+    assert system.objForFullName('cython_test_exception_raiser') is package
+    assert system.objForFullName('cython_test_exception_raiser.raiser') is module
+
     assert module.docstring is not None
     assert module.docstring.strip().split('\n')[0] == "A trivial extension that just raises an exception."
 
