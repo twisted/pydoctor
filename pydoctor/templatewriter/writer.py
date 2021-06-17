@@ -6,7 +6,7 @@ from typing import IO, Iterable, Type
 
 from pydoctor import model
 from pydoctor.templatewriter import (
-    DOCTYPE, pages, summary, TemplateLookup, IWriter, StaticTemplate
+    DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
 )
 
 from twisted.python.failure import Failure
