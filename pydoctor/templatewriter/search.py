@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, List, Type
+from typing import Iterable, List, Type, Final
 import json
 
 from pydoctor.templatewriter.pages import Page
@@ -74,7 +74,7 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     
     serialized_index = json.dumps(index.serialize())
 
-    with open(output_dir.joinpath('searchindex.json'), 'w', encoding='utf-8') as fobj:
+    with output_dir.joinpath('searchindex.json').open('w', encoding='utf-8') as fobj:
         fobj.write(serialized_index)
 
-searchpages: List[Type[Page]] = [SearchResultsPage, AllDocuments]
+searchpages: Final[List[Type[Page]]] = [SearchResultsPage, AllDocuments]
