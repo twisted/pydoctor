@@ -325,8 +325,8 @@ function search(){
     console.dir(response.data)
 
     if (!response.data.results){
-      return ;
-      // Error will be reported by onerror
+      setErrorStatus();
+      throw("No data received from worker")
     }
 
     if (response.data.results.length == 0){
@@ -348,6 +348,7 @@ function search(){
           var dobj = all_documents.getElementById(result.ref);
           
           if (!dobj){
+              setErrorStatus();
               throw ("Cannot find document ID: " + result.ref)
           }
           // Save
@@ -410,6 +411,7 @@ function search(){
 
     },
     function(error){
+      console.log(error);
       setErrorStatus();
       setErrorInfos(error.message);
   });
