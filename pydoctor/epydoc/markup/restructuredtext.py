@@ -292,7 +292,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         field_parsed_doc: ParsedDocstring
         if self._processtypes and tagname in ['type', 'rtype']:
             field_parsed_doc = ParsedTypeDocstring(field_doc)
-            for warning_msg in field_parsed_doc.warnings():
+            for warning_msg in field_parsed_doc.warnings:
                     self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))
         else:
             field_parsed_doc = ParsedRstDocstring(field_doc, ())

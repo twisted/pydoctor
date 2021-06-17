@@ -79,7 +79,8 @@ class NapoelonDocstringParser:
         Helper method to parse L{GoogleDocstring} or L{NumpyDocstring} objects.
         """
         # log any warnings
-        for warn, lineno in docstring_obj.warnings():
+        for warn, lineno in docstring_obj.warnings:
+            # TODO: double check the line number
             errors.append(ParseError(warn, lineno - 2, is_fatal=False))
         # Get the converted reST string and parse it with docutils
         return restructuredtext.parse_docstring(str(docstring_obj), errors)

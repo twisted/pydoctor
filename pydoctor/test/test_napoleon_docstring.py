@@ -271,8 +271,8 @@ class TypeDocstringTest(BaseDocstringTest):
             type_spec = TypeDocstring('')
             type_spec._token_type(token)
             match_re = re.compile(error)
-            assert len(type_spec._warnings) == 1, type_spec._warnings
-            assert match_re.match(str(type_spec._warnings.pop()))
+            assert len(type_spec.warnings) == 1, type_spec.warnings
+            assert match_re.match(str(type_spec.warnings.pop()))
 
     def test_unbalanced_parenthesis(self):
         strings = (
@@ -289,8 +289,8 @@ class TypeDocstringTest(BaseDocstringTest):
             type_spec = TypeDocstring(string)
 
             match_re = re.compile(error)
-            assert len(type_spec._warnings) == 1, type_spec._warnings
-            assert match_re.match(str(type_spec._warnings.pop()))
+            assert len(type_spec.warnings) == 1, type_spec.warnings
+            assert match_re.match(str(type_spec.warnings.pop()))
 
 
 class InlineAttributeTest(BaseDocstringTest):
@@ -1326,8 +1326,8 @@ Description...
         doc = GoogleDocstring(docstring)
         actual = str(doc)
         self.assertEqual(expected.rstrip(), actual)
-        self.assertEqual(1, len(doc.warnings()))
-        warning = doc.warnings().pop()
+        self.assertEqual(1, len(doc.warnings))
+        warning = doc.warnings.pop()
         self.assertIn("invalid type: 'docformatCan be one of'", warning[0])
         self.assertEqual(5, warning[1])
 
@@ -2381,7 +2381,7 @@ list of int
         )
         
         numpy_docstring = NumpyDocstring(docstring)
-        numpy_warnings = numpy_docstring.warnings()
+        numpy_warnings = numpy_docstring.warnings
         self.assertEqual(len(numpy_warnings), 4, numpy_warnings)
         for i, error in enumerate(errors):
             warn = numpy_warnings.pop(0)

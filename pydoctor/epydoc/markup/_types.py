@@ -71,7 +71,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
                 # first level
                 if isinstance(parent, nodes.document) and not isinstance(node, nodes.paragraph):
                     self.warnings.append(f"Unexpected element in type specification field: element '{node.__class__.__name__}'. "
-                                            "This field should only contain text or inline markup describing the type (i.e. 'list of dict[str, object], optional')")
+                                          "This value should only contain regular paragraphs with text or inline markup.")
                     raise nodes.SkipNode()
                 
                 # second level
@@ -86,7 +86,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     
         tokenizer = Tokenizer(spec)
         spec.walk(tokenizer)
-        self._warnings.extend(tokenizer.warnings)
+        self.warnings.extend(tokenizer.warnings)
         return tokenizer.tokens
 
     def _convert_obj_tokens_to_stan(self, tokens: List[Tuple[Union[str, nodes.Node], TokenType]], 
@@ -160,20 +160,20 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         tokens = self._convert_obj_tokens_to_stan(self._tokens, docstring_linker)
 
-        _warnings: List[ParseError] = []
+        warnings: List[ParseError] = []
 
         converters: Dict[TokenType, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
             TokenType.LITERAL:      lambda _token: tags.span(_token, class_="literal"),
             TokenType.CONTROL:      lambda _token: tags.em(_token),
-            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
-            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, _warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
+            TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             TokenType.OBJ:          lambda _token: _token, # These convertions are done in _convert_obj_tokens_to_stan()
             TokenType.DELIMITER:    lambda _token: _token, 
             TokenType.ANY:          lambda _token: _token, 
         }
 
-        for w in _warnings:
-            self._warnings.append(w.descr())
+        for w in warnings:
+            self.warnings.append(w.descr())
 
         converted = Tag('')
 

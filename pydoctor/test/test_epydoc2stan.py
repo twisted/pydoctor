@@ -925,13 +925,13 @@ def typespec2htmlvianode(s: str, markup: str) -> str:
     assert not err
     ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
     html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings()
+    assert not ann.warnings
     return html
 
 def typespec2htmlviastr(s: str) -> str:
     ann = ParsedTypeDocstring(s, warns_on_unknown_tokens=True)
     html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings()
+    assert not ann.warnings
     return html
 
 def test_parsed_type() -> None:

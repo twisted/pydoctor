@@ -73,7 +73,7 @@ def is_type(string: str) -> bool:
     """
     return (
         is_obj_identifier(string)
-        or len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings()) == 0
+        or len(TypeDocstring(string, warns_on_unknown_tokens=True).warnings) == 0
     )
     # The sphinx's implementation allow regular sentences inside type string.
     # But automatically detect that type of construct seems technically hard.
@@ -175,7 +175,7 @@ class TypeDocstring:
     )
 
     def __init__(self, annotation: str, warns_on_unknown_tokens: bool = False) -> None:
-        self._warnings: List[str] = []
+        self.warnings: List[str] = []
         self._annotation = annotation
         self._warns_on_unknown_tokens = warns_on_unknown_tokens
 
@@ -208,7 +208,7 @@ class TypeDocstring:
         -------
         Warning messages triggered during the conversion.
         """
-        return self._warnings
+        return self.warnings
     
     def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[str, TokenType]]) -> None:
         """
@@ -225,9 +225,9 @@ class TypeDocstring:
                 elif _token == ")": open_parenthesis -= 1
         
         if open_parenthesis != 0:
-            self._warnings.append("unbalanced parenthesis in type expression")
+            self.warnings.append("unbalanced parenthesis in type expression")
         if open_square_braces != 0:
-            self._warnings.append("unbalanced square braces in type expression")
+            self.warnings.append("unbalanced square braces in type expression")
 
     @staticmethod
     def _recombine_set_tokens(tokens: List[str]) -> List[str]:
@@ -351,18 +351,18 @@ class TypeDocstring:
         ):
             type_ = TokenType.LITERAL
         elif token.startswith("{"):
-            self._warnings.append(f"invalid value set (missing closing brace): {token}")
+            self.warnings.append(f"invalid value set (missing closing brace): {token}")
             type_ = TokenType.LITERAL
         elif token.endswith("}"):
-            self._warnings.append(f"invalid value set (missing opening brace): {token}")
+            self.warnings.append(f"invalid value set (missing opening brace): {token}")
             type_ = TokenType.LITERAL
         elif token.startswith("'") or token.startswith('"'):
-            self._warnings.append(
+            self.warnings.append(
                 f"malformed string literal (missing closing quote): {token}"
             )
             type_ = TokenType.LITERAL
         elif token.endswith("'") or token.endswith('"'):
-            self._warnings.append(
+            self.warnings.append(
                 f"malformed string literal (missing opening quote): {token}"
             )
             type_ = TokenType.LITERAL
@@ -382,7 +382,7 @@ class TypeDocstring:
             type_ = TokenType.UNKNOWN
 
         if type_ is TokenType.UNKNOWN and self._warns_on_unknown_tokens:
-            self._warnings.append(f"unknown expresssion in type: {token}")
+            self.warnings.append(f"unknown expresssion in type: {token}")
 
         return type_
 
@@ -527,11 +527,14 @@ class GoogleDocstring:
         self._line_iter: modify_iter[str] = modify_iter(
             lines, modifier=lambda s: s.rstrip()
         )
+
         self._parsed_lines = []  # type: List[str]
         self._is_in_section = False
         self._section_indent = 0
+        
         if not hasattr(self, "_directive_sections"):
             self._directive_sections = []  # type: List[str]
+
         if not hasattr(self, "_sections"):
             self._sections: Dict[str, Callable[[str], List[str]]] = {
                 "args": self._parse_parameters_section,
@@ -574,7 +577,11 @@ class GoogleDocstring:
                 "usage": self._parse_usage_section,
             }
 
-        self._warnings: List[Tuple[str, int]] = []
+        self.warnings: List[Tuple[str, int]] = []
+        """
+        Warning messages triggered during the conversion.
+        """
+
         self._parse()
 
     # overriden to enforce rstrip() to value because the result sometime had
@@ -601,16 +608,6 @@ class GoogleDocstring:
             The lines of the docstring in a list.
         """
         return self._parsed_lines
-
-    def warnings(self) -> List[Tuple[str, int]]:
-        """
-        Return any triggered warnings during the conversion.
-
-        Returns
-        -------
-        List of tuples(description, line number)
-        """
-        return self._warnings
 
     def _consume_indented_block(self, indent: int = 1) -> List[str]:
         lines = []
@@ -782,8 +779,8 @@ class GoogleDocstring:
         # convert
         _type = str(type_spec)
         # append warnings
-        for warn in type_spec.warnings():
-            self._warnings.append((warn, linenum - 1))
+        for warn in type_spec.warnings:
+            self.warnings.append((warn, linenum - 1))
         return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
@@ -1308,7 +1305,7 @@ class GoogleDocstring:
         # check format only if multiline
         if multiline and not format_validator(before_colon):
             # If fails check, fall back to original behaviour, with a warning.
-            self._warnings.append(
+            self.warnings.append(
                 (
                     f"invalid type: '{before_colon}'. Probably missing colon.",
                     self._line_iter.counter - len(raw_descs),
