@@ -252,6 +252,9 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
+    parser.add_option(
+        '--pyval-repr-maxlines', dest='pyvalreprmaxlines', default=7, type=int,
+        help='Maxinum number of lines for a python value representation.')
 
     return parser
 

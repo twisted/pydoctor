@@ -853,7 +853,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
     # yield the first row.
     yield row
     
-    doc = colorize_pyval(obj.value)
+    doc = colorize_pyval(obj.value, maxlines=obj.system.options.pyvalreprmaxlines)
     
     value_repr = doc.to_stan(_EpydocLinker(obj))
 
