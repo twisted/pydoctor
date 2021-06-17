@@ -943,11 +943,11 @@ def test_repr_text() -> None:
     assert color2(A()) == ('<pydoctor.test.epydoc.test_pyval_repr.test_repr_te↵\n'
                             'xt.<locals>.A object>')
 
-    assert color2([A()]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_s↵\n'
-                             'core.<locals>.A object>]')
+    assert color2([A()]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_t↵\n'
+                             'ext.<locals>.A object>]')
 
-    assert color2([A(),1,2,3,4,5,6,7]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_s↵\n'
-                                            'core.<locals>.A object>,\n'
+    assert color2([A(),1,2,3,4,5,6,7]) == ('[<pydoctor.test.epydoc.test_pyval_repr.test_repr_t↵\n'
+                                            'ext.<locals>.A object>,\n'
                                             ' 1,\n'
                                             ' 2,\n'
                                             ' 3,\n'
