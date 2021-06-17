@@ -25,7 +25,7 @@ class AllDocuments(Page):
 
     @renderer
     def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:
-        documents = [dict(id=str(i), 
+        documents = [dict(id=ob.fullName(), 
                           name=ob.name, 
                           fullName=ob.fullName(), 
                           kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
@@ -34,7 +34,7 @@ class AllDocuments(Page):
                           url=ob.url, 
                           privacy=str(ob.privacyClass.name))   
 
-                          for i, ob in enumerate(self.system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
+                          for ob in self.system.allobjects.values() if ob.isVisible]
         
         for doc in documents:
             yield tag.clone().fillSlots(**doc)
@@ -58,16 +58,15 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     # TODO: sanitize docstring in a proper way to be more easily indexable by lunr.
     # Once https://github.com/twisted/pydoctor/pull/386 is merged, use node2stan.gettext() to index the docstring text only.
 
-    documents = [(dict(ref=str(i), 
-                        name=ob.name, 
+    documents = [(dict(name=ob.name, 
                         fullName=ob.fullName(), 
-                        docstring=ob.docstring, ), 
+                        docstring=ob.docstring,), 
                  dict(boost=get_ob_boost(ob)))   
                         
-                 for i, ob in enumerate(system.allobjects.values()) if ob.privacyClass != model.PrivacyClass.HIDDEN]
+                 for ob in system.allobjects.values() if ob.isVisible]
 
     index = lunr(
-        ref='ref',
+        ref='fullName',
         fields=[dict(field_name='name', boost=2), 
                 dict(field_name='docstring', boost=1),
                 dict(field_name='fullName', boost=1) ],
