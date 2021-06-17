@@ -201,14 +201,6 @@ class TypeDocstring:
         The parsed type in reStructuredText format.
         """
         return self._convert_type_spec_to_rst()
-
-    def warnings(self) -> List[str]:
-        """
-        Returns
-        -------
-        Warning messages triggered during the conversion.
-        """
-        return self.warnings
     
     def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[str, TokenType]]) -> None:
         """
@@ -405,9 +397,8 @@ class TypeDocstring:
                 # the last token has reST markup:
                 # we might have to escape
 
-                if not converted_token.startswith(" ") and not converted_token.endswith(
-                    " "
-                ):
+                if not converted_token.startswith(" ") and \
+                    not converted_token.endswith(" "):
                     if _next_token != iter_types.sentinel:
                         if _next_token[1] in token_type_using_rest_markup:
                             need_escaped_space = True
@@ -422,24 +413,12 @@ class TypeDocstring:
         converters: Dict[
             TokenType, Callable[[Tuple[str, TokenType], Tuple[str, TokenType], Tuple[str, TokenType]], Union[str, Any]]
         ] = {
-            TokenType.LITERAL: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token, "``%s``"
-            ),
-            TokenType.CONTROL: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token, "*%s*"
-            ),
-            TokenType.DELIMITER: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token
-            ),
-            TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token
-            ),
-            TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token
-            ),
-            TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(
-                _token, _last_token, _next_token, "`%s`"
-            ),
+            TokenType.LITERAL: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "``%s``"),
+            TokenType.CONTROL: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "*%s*"),
+            TokenType.DELIMITER: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
+            TokenType.REFERENCE: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
+            TokenType.UNKNOWN: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token),
+            TokenType.OBJ: lambda _token, _last_token, _next_token: _convert(_token, _last_token, _next_token, "`%s`"),
             TokenType.ANY: lambda _token, _, __: _token,
         }
 
