@@ -131,7 +131,7 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, List, Optional, Sequence, Union, cast, overload
+from typing import Any, List, Optional, Sequence, Union, cast
 import re
 
 from twisted.web.template import CharRef, Tag, tags
@@ -245,34 +245,17 @@ _LINK_COLORIZING_TAGS = ['link', 'uri']
 ## Structuring (Top Level)
 ##################################################
 
-@overload
-def parse(text: str) -> Element: ...
-
-@overload
-def parse(text: str, errors: List[ParseError]) -> Optional[Element]: ...
-
-def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Element]:
+def parse(text: str, errors: List[ParseError]) -> Optional[Element]:
     """
-    Return a DOM tree encoding the contents of an epytext string.  Any
-    errors generated during parsing will be stored in C{errors}.
+    Return a DOM tree encoding the contents of an epytext string.
+    Any errors generated during parsing will be stored in C{errors}.
 
     @param text: The epytext string to parse.
-    @param errors: A list where any errors generated during parsing
-        will be stored.  If no list is specified, then fatal errors
-        will generate exceptions, and non-fatal errors will be
-        ignored.
+    @param errors: A list where any errors (fatal and non-fatal)
+        generated during parsing will be stored.
     @return: a DOM tree encoding the contents of an epytext string,
-        or C{None} if non-fatal errors were encountered and no C{errors}
-        accumulator was provided.
-    @raise ParseError: If C{errors} is C{None} and an error is
-        encountered while parsing.
+        or C{None} if fatal errors were encountered.
     """
-    # Initialize errors list.
-    if errors is None:
-        errors = []
-        raise_on_error = True
-    else:
-        raise_on_error = False
 
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
@@ -343,10 +326,7 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
 
     # If there was an error, then signal it!
     if any(e.is_fatal() for e in errors):
-        if raise_on_error:
-            raise errors[0]
-        else:
-            return None
+        return None
 
     # Return the top-level epytext DOM element.
     return doc
