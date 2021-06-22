@@ -41,7 +41,7 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set, Type
+from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set
 import optparse
 import re
 
@@ -50,9 +50,9 @@ from docutils.writers import Writer
 from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.nodes import Node, NodeVisitor, SkipNode, Text, Element, title_reference, paragraph
+from docutils.nodes import Node, NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
+from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform
 import docutils.nodes
 import docutils.transforms.frontmatter
@@ -130,16 +130,14 @@ class ParsedRstDocstring(ParsedDocstring):
         """A ReStructuredText document, encoding the docstring."""
 
         document.reporter = OptimizedReporter(
-            document.reporter.source, 
-            OptimizedReporter.SEVERE_LEVEL, OptimizedReporter.SEVERE_LEVEL, '')
-            # See API docs: https://tristanlatr.github.io/apidocs/docutils/docutils.utils.Reporter.html
+            document.reporter.source, 'SEVERE', 'SEVERE', '')
 
         ParsedDocstring.__init__(self, fields)
 
     @property
     def has_body(self) -> bool:
         return any(
-            isinstance(child, Text) or isinstance(child, Element) and child.children
+            isinstance(child, Text) or child.children
             for child in self._document.children
             )
 
@@ -162,7 +160,7 @@ class _EpydocReader(StandaloneReader):
         self._errors = errors
         StandaloneReader.__init__(self)
 
-    def get_transforms(self) -> List[Type[Transform]]:
+    def get_transforms(self) -> List[Transform]:
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
         return [t for t in StandaloneReader.get_transforms(self)
@@ -275,7 +273,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         # over the node's children.
         node.parent.remove(node)
 
-    def handle_consolidated_field(self, body: Sequence[Element], tagname: str) -> None:
+    def handle_consolidated_field(self, body: Sequence[Node], tagname: str) -> None:
         """
         Attempt to handle a consolidated section.
         """
@@ -292,7 +290,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items: Iterable[Element], tagname: str) -> None:
+    def handle_consolidated_bullet_list(self, items: Iterable[Node], tagname: str) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -305,27 +303,25 @@ class _SplitFieldsTranslator(NodeVisitor):
             n += 1
             if item.tagname != 'list_item' or len(item) == 0:
                 raise ValueError('bad bulleted list (bad child %d).' % n)
-            para = item[0]
-            if not isinstance(para, paragraph):
-                if para.tagname == 'definition_list':
+            if item[0].tagname != 'paragraph':
+                if item[0].tagname == 'definition_list':
                     raise ValueError(('list item %d contains a definition '+
-                                    'list (it\'s probably indented '+
-                                    'wrong).') % n)
+                                      'list (it\'s probably indented '+
+                                      'wrong).') % n)
                 else:
                     raise ValueError(_BAD_ITEM % n)
-            if len(para) == 0:
+            if len(item[0]) == 0:
                 raise ValueError(_BAD_ITEM % n)
-            link = para[0]
-            if not isinstance(link, title_reference):
+            if item[0][0].tagname != 'title_reference':
                 raise ValueError(_BAD_ITEM % n)
 
         # Everything looks good; convert to multiple fields.
         for item in items:
             # Extract the arg
-            arg = link.astext()
+            arg = item[0][0].astext()
 
             # Extract the field body, and remove the arg
-            fbody: List[Element] = item[:]
+            fbody = item[:]
             fbody[0] = fbody[0].copy()
             fbody[0][:] = item[0][1:]
 
@@ -345,7 +341,7 @@ class _SplitFieldsTranslator(NodeVisitor):
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items: Iterable[Element], tagname: str) -> None:
+    def handle_consolidated_definition_list(self, items: Iterable[Node], tagname: str) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
@@ -380,12 +376,10 @@ class _SplitFieldsTranslator(NodeVisitor):
                 self._add_field('type', arg, type_descr, lineno)
 
     def unknown_visit(self, node: Node) -> None:
-        """Ignore all unknown nodes"""
+        'Ignore all unknown nodes'
 
 _TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
 
-# _EpydocHTMLTranslator should not be touched until https://github.com/twisted/pydoctor/pull/386
-# is merged because it moves it to pydoctor.node2stan._PydoctorHTMLTranslator and adds some fixes to it.
 class _EpydocHTMLTranslator(HTMLTranslator):
 
     settings: ClassVar[Optional[optparse.Values]] = None
@@ -398,7 +392,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([HTMLWriter()]).get_default_values() #type: ignore[arg-type]
+            settings = OptionParser([HTMLWriter()]).get_default_values()
             self.__class__.settings = settings
         document.settings = self.settings
 
@@ -469,7 +463,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
             attributes['class'] = ' '.join([attributes.get('class',''),
                                             'heading']).strip()
 
-        return super().starttag(node, tagname, suffix, **attributes) #type: ignore[no-any-return]
+        return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
 
     def visit_doctest_block(self, node: Node) -> None:
         pysrc = node[0].astext()
