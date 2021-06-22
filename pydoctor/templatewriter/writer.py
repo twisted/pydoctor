@@ -86,6 +86,12 @@ class TemplateWriter(IWriter):
             with self.build_directory.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+        
+        # Generate the searchindex.json file
+        system.msg('html', 'starting lunr search index ...', nonl=True)
+        T = time.time()
+        search.write_lunr_index(self.build_directory, system=system)
+        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
