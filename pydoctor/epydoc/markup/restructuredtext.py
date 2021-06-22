@@ -222,10 +222,10 @@ class _SplitFieldsTranslator(NodeVisitor):
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
 
-    def visit_document(self, node: Element) -> None:
+    def visit_document(self, node: Node) -> None:
         self.fields = []
 
-    def visit_field(self, node: Element) -> None:
+    def visit_field(self, node: Node) -> None:
         # Remove the field from the tree.
         node.parent.remove(node)
 
@@ -270,7 +270,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         field_pdoc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_pdoc, lineno - 1))
 
-    def visit_field_list(self, node: Element) -> None:
+    def visit_field_list(self, node: Node) -> None:
         # Remove the field list from the tree.  The visitor will still walk
         # over the node's children.
         node.parent.remove(node)
