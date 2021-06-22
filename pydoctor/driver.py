@@ -104,10 +104,10 @@ def getparser() -> OptionParser:
     parser = OptionParser(
         option_class=CustomOption, version=__version__,
         usage="usage: %prog [options] SOURCEPATH...")
-    parser.add_option(
-        '-c', '--config', dest='configfile',
-        help=("Use config from this file (any command line"
-              "options override settings from the file)."))
+    # parser.add_option(
+    #     '-c', '--config', dest='configfile',
+    #     help=("Use config from this file (any command line"
+    #           "options override settings from the file)."))
     parser.add_option(
         '--system-class', dest='systemclass',
         help=("A dotted name of the class to use to make a system."))
@@ -255,32 +255,6 @@ def getparser() -> OptionParser:
 
     return parser
 
-def readConfigFile(options: Values) -> None:
-    # this is all a bit horrible.  rethink, then rewrite!
-    for i, line in enumerate(open(options.configfile)):
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        if ':' not in line:
-            error("don't understand line %d of %s",
-                  i+1, options.configfile)
-        k, v = line.split(':', 1)
-        k = k.strip()
-        v = os.path.expanduser(v.strip())
-
-        if not hasattr(options, k):
-            error("invalid option %r on line %d of %s",
-                  k, i+1, options.configfile)
-        pre_v = getattr(options, k)
-        if not pre_v:
-            if isinstance(pre_v, list):
-                setattr(options, k, v.split(','))
-            else:
-                setattr(options, k, v)
-        else:
-            if not isinstance(pre_v, list):
-                setattr(options, k, v)
-
 def parse_args(args: Sequence[str]) -> Tuple[Values, List[str]]:
     parser = getparser()
     options, args = parser.parse_args(args)
@@ -320,9 +294,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     options, args = parse_args(args)
 
     exitcode = 0
-
-    if options.configfile:
-        readConfigFile(options)
 
     cache = prepareCache(clearCache=options.clear_intersphinx_cache,
                          enableCache=options.enable_intersphinx_cache,
