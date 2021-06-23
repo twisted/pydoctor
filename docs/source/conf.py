@@ -91,12 +91,6 @@ _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
     f'--project-base-dir={_pydoctor_root}',
-    '--intersphinx=https://docs.python.org/3/objects.inv',
-    '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
-    '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
-    '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
-    '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
-    '--intersphinx=https://tristanlatr.github.io/apidocs/docutils/objects.inv',
 ]
 pydoctor_args = {
     'main': [
