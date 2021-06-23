@@ -7,6 +7,7 @@ from docutils.parsers.rst import Directive
 from contextlib import redirect_stdout
 from io import StringIO
 from typing import Any, Dict, List, TYPE_CHECKING
+from textwrap import wrap
 
 from pydoctor import __version__
 from pydoctor.driver import parse_args
@@ -38,7 +39,18 @@ class HelpOutputDirective(Directive):
             pass
 
         text = ['pydoctor --help'] + stream.getvalue().splitlines()[1:]
-        return [nodes.literal_block(text='\n'.join(text), language='text')]
+        help_text = []
+        for line in text:
+            if line:
+                lines = enumerate(wrap(line, 80))
+                for i, wraped_line in lines:
+                    if i==0:
+                        help_text.append(wraped_line)
+                    else:
+                        help_text.append(f"                        {wraped_line}")
+            else:
+                help_text.append('')
+        return [nodes.literal_block(text='\n'.join(help_text), language='text')]
 
 
 def setup(app: 'Sphinx') -> Dict[str, Any]:
