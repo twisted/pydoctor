@@ -111,10 +111,7 @@ def get_parser() -> ArgParser:
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
               "options override settings from the file)."))
-    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
-    parser.add_argument(
-        '--system-class', dest='systemclass',
-        help=("A dotted name of the class to use to make a system."))
+    
     parser.add_argument(
         '--project-name', dest='projectname',
         help=("The project name, shown at the top of each HTML page."))
@@ -161,8 +158,7 @@ def get_parser() -> ArgParser:
     parser.add_argument(
         '--docformat', dest='docformat', action='store', default='epytext',
         choices=list(_docformat_choices),
-        help=("Format used for parsing docstrings. "
-             f"Supported values: {', '.join(_docformat_choices)}"))
+        help=("Format used for parsing docstrings. "))
     parser.add_argument(
         '--template-dir',
         dest='templatedir',
@@ -192,17 +188,18 @@ def get_parser() -> ArgParser:
         help=("Use the specified build time over the current time. "
               f"Format: {BUILDTIME_FORMAT_HELP}"))
     parser.add_argument(
-        '-W', '--warnings-as-errors', action='store_true',
+        '--warnings-as-errors', '-W', action='store_true',
         dest='warnings_as_errors', default=False,
         help=("Return exit code 3 on warnings."))
     parser.add_argument(
-        '-v', '--verbose', action='count', dest='verbosity',
+        '--verbose', '-v',action='count', dest='verbosity',
         default=0,
         help=("Be noisier.  Can be repeated for more noise."))
     parser.add_argument(
-        '-q', '--quiet', action='count', dest='quietness',
+        '--quiet', '-q', action='count', dest='quietness',
         default=0,
         help=("Be quieter."))
+    
     parser.add_argument(
         '--introspect-c-modules', default=False, action='store_true',
         help=("Import and introspect any C modules found."))
@@ -248,7 +245,12 @@ def get_parser() -> ArgParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
-
+    parser.add_argument(
+        '--system-class', dest='systemclass',
+        help=("A dotted name of the class to use to make a system."))
+    
+    parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
+    
     parser.add_argument(
         'sourcepath', metavar='SOURCEPATH', 
         help=("Path to python modules/packages to document."),
