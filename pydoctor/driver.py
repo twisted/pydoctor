@@ -1,6 +1,7 @@
 """The command-line parsing and entry point."""
 
-from argparse import SUPPRESS, ArgumentParser, Namespace
+from argparse import SUPPRESS, Namespace
+from configargparse import ArgParser, ConfigparserConfigFileParser
 from pathlib import Path
 from typing import Iterator, TYPE_CHECKING, Sequence, Type, TypeVar, cast
 import functools
@@ -99,15 +100,17 @@ def get_supported_docformats() -> Iterator[str]:
             yield moduleName
 
 
-def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(
+def get_parser() -> ArgParser:
+    parser = ArgParser(
         prog='pydoctor',
         description="API doc generator.",
-        usage="usage: pydoctor [options] SOURCEPATH...")
-    # parser.add_argument(
-    #     '-c', '--config', dest='configfile',
-    #     help=("Use config from this file (any command line"
-    #           "options override settings from the file)."))
+        usage="usage: pydoctor [options] SOURCEPATH...", 
+        default_config_files=['./pydoctor.ini'],
+        config_file_parser_class=ConfigparserConfigFileParser)
+    parser.add_argument(
+        '-c', '--config', is_config_file=True,
+        help=("Load config from this file (any command line"
+              "options override settings from the file)."))
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument(
         '--system-class', dest='systemclass',
@@ -257,6 +260,7 @@ def get_parser() -> ArgumentParser:
 def parse_args(args: Sequence[str]) -> Namespace:
     parser = get_parser()
     options = parser.parse_args(args)
+    assert isinstance(options, Namespace)
     options.verbosity -= options.quietness
 
     _warn_deprecated_options(options)
