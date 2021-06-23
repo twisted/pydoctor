@@ -33,7 +33,7 @@ Allowed syntax is that for a ConfigParser with the following options::
 
 See `the configparser docs`__ for details.          
 
-.. Note:: INI file sections names are treated as comments. If an argument is specified in more than one place, 
+.. Note:: If an argument is specified in more than one place, 
     then commandline values override config file values which override defaults.
 
 Example of a ``pydoctor.ini`` file, use lists syntax for repeatable options:
