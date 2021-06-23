@@ -3,35 +3,39 @@ Helper function to convert `docutils` nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, ClassVar, List, Optional, Union
+from typing import Any, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers.html4css1 import HTMLTranslator, Writer
 from docutils.nodes import Node, SkipNode, document, title, Element, Text
 from docutils.frontend import OptionParser
 
 from twisted.web.template import Tag
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 from pydoctor.epydoc.markup import (
     DocstringLinker, flatten, html2stan
 )
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 
-def node2stan(node: Node, docstring_linker: 'DocstringLinker') -> Tag:
+def _node2html(node: Node, docstring_linker: 'DocstringLinker') -> List[str]:
+    visitor = _PydoctorHTMLTranslator(node.document, docstring_linker)
+    node.walkabout(visitor)
+    return visitor.body
+
+def node2stan(node: Union[Node, Iterable[Node]], docstring_linker: 'DocstringLinker') -> Tag:
     """
-    Convert a L{docutils.nodes.document} to a Stan tree.
+    Convert L{docutils.nodes.Node} objects to a Stan tree.
 
     @param node: An docutils document.
     @return: The element as a stan tree.
     """
-    _document = getrootdocument(node)
-    visitor = _PydoctorHTMLTranslator(_document, docstring_linker)
-    node.walkabout(visitor)
-    return html2stan(''.join(visitor.body))
-
-def getrootdocument(node: Node) -> document:
-    if isinstance(node, document):
-        return node
+    html = []
+    if isinstance(node, Node):
+        html += _node2html(node, docstring_linker)
     else:
-        return getrootdocument(node.parent)
+        for child in node:
+            html += _node2html(child, docstring_linker)
+    return html2stan(''.join(html))
 
 def gettext(node: Union[Node, List[Node]]) -> List[str]:
     """Return the text inside the node(s)."""
@@ -54,6 +58,7 @@ def _valid_identifier(s: str) -> str:
 class _PydoctorHTMLTranslator(HTMLTranslator):
     
     settings: ClassVar[Optional[optparse.Values]] = None
+    body: List[str]
 
     def __init__(self,
             document: document,
@@ -70,13 +75,15 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
         super().__init__(document)
 
         # don't allow <h1> tags, start at <h2>
+        # h1 is reserved for the page title. 
         self.section_level += 1
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
+        label: "Flattenable"
         if 'refuri' in node.attributes:
             # Epytext parsed
-            label, target = node.astext(), node.attributes['refuri']
+            label, target = node2stan(node.children, self._linker), node.attributes['refuri']
         else:
             m = _TARGET_RE.match(node.astext())
             if m:
@@ -107,16 +114,6 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
     def depart_document(self, node: Node) -> None:
         pass
 
-    def visit_title(self, node: Node) -> None:
-        # h1 is reserved for the page title. 
-        if isinstance(node.parent, document):
-            self.body.append(self.starttag(node, 'h2', '', CLASS='title'))
-            close_tag = '</h2>\n'
-            self.in_document_title = len(self.body)
-            self.context.append(close_tag)
-        else: 
-            super().visit_title(node)
-
     def starttag(self, node: Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
         """
         This modified version of starttag makes a few changes to HTML
@@ -141,12 +138,17 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
                 # Prefix all CSS classes with "rst-"; and prefix all
                 # names with "rst-" to avoid conflicts.
                 if key.lower() in ('class', 'id', 'name'):
-                    attr_dict[key] = f'rst-{val}'
+                    if not val.startswith('rst-'):
+                        attr_dict[key] = f'rst-{val}'
                 elif key.lower() in ('classes', 'ids', 'names'):
-                    attr_dict[key] = [f'rst-{cls}' for cls in val]
+                    attr_dict[key] = [f'rst-{cls}' if not cls.startswith('rst-') 
+                                      else cls for cls in val]
                 elif key.lower() == 'href':
                     if attr_dict[key][:1]=='#':
-                        attr_dict[key] = f'#rst-{attr_dict[key][1:]}'
+                        href = attr_dict[key][1:]
+                        # We check that the class doesn't alrealy start with "rst-"
+                        if not href.startswith('rst-'):
+                            attr_dict[key] = f'#rst-{href}'
                     else:
                         # If it's an external link, open it in a new
                         # page.

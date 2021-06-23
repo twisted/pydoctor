@@ -1,30 +1,43 @@
-from twisted.web.template import TagLoader, renderer, tags, Element
+from typing import TYPE_CHECKING, Collection
+
+from twisted.web.iweb import ITemplateLoader
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Function
-from pydoctor.templatewriter import util
-from pydoctor.templatewriter.pages import TemplateElement
+from pydoctor.model import Documentable, Function
+from pydoctor.templatewriter import TemplateElement, util
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+    from pydoctor.templatewriter.pages import DocGetter
 
 
 class TableRow(Element):
 
-    def __init__(self, loader, docgetter, ob, child):
+    def __init__(self,
+            loader: ITemplateLoader,
+            docgetter: "DocGetter",
+            ob: Documentable,
+            child: Documentable,
+            ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self.child = child
 
     @renderer
-    def class_(self, request, tag):
+    def class_(self, request: object, tag: Tag) -> "Flattenable":
         class_ = util.css_class(self.child)
         if self.child.parent is not self.ob:
             class_ = 'base' + class_
         return class_
 
     @renderer
-    def kind(self, request, tag):
+    def kind(self, request: object, tag: Tag) -> Tag:
         child = self.child
-        kind_name = epydoc2stan.format_kind(child.kind)
+        kind = child.kind
+        assert kind is not None  # 'kind is None' makes the object invisible
+        kind_name = epydoc2stan.format_kind(kind)
         if isinstance(child, Function) and child.is_async:
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
@@ -32,13 +45,13 @@ class TableRow(Element):
         return tag.clear()(kind_name)
 
     @renderer
-    def name(self, request, tag):
+    def name(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(tags.code(
             epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
             ))
 
     @renderer
-    def summaryDoc(self, request, tag):
+    def summaryDoc(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(self.docgetter.get(self.child, summary=True))
 
 
@@ -47,7 +60,12 @@ class ChildTable(TemplateElement):
 
     filename = 'table.html'
 
-    def __init__(self, docgetter, ob, children, loader):
+    def __init__(self,
+            docgetter: "DocGetter",
+            ob: Documentable,
+            children: Collection[Documentable],
+            loader: ITemplateLoader,
+            ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.children = children
@@ -56,15 +74,17 @@ class ChildTable(TemplateElement):
         self.ob = ob
 
     @renderer
-    def id(self, request, tag):
-        return 'id'+str(self._id)
+    def id(self, request: object, tag: Tag) -> str:
+        return f'id{self._id}'
 
     @renderer
-    def rows(self, request, tag):
+    def rows(self, request: object, tag: Tag) -> "Flattenable":
         return [
             TableRow(
                 TagLoader(tag),
                 self.docgetter,
                 self.ob,
                 child)
-            for child in self.children]
+            for child in self.children
+            if child.isVisible
+            ]

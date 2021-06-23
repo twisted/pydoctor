@@ -388,10 +388,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                         error(f"Source path lies outside base directory: {ex}")
                 if path.is_dir():
                     system.msg('addPackage', f"adding directory {path}")
-                    system.addPackage(str(path), prependedpackage)
+                    if not (path / '__init__.py').is_file():
+                        error(f"Source directory lacks __init__.py: {path}")
+                    system.addPackage(path, prependedpackage)
                 elif path.is_file():
                     system.msg('addModuleFromPath', f"adding module {path}")
-                    system.addModuleFromPath(prependedpackage, str(path))
+                    system.addModuleFromPath(path, prependedpackage)
                 elif path.exists():
                     error(f"Source path is neither file nor directory: {path}")
                 else:
@@ -410,7 +412,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         # step 3: move the system to the desired state
 
         if system.options.projectname is None:
-            name = '/'.join(ro.name for ro in system.rootobjects)
+            name = '/'.join(system.root_names)
             system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
             system.projectname = name
         else:
@@ -457,14 +459,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             writer.prepOutputDirectory()
 
-            subjects: List[model.Documentable] = []
+            subjects: Sequence[model.Documentable] = ()
             if options.htmlsubjects:
-                for fn in options.htmlsubjects:
-                    subjects.append(system.allobjects[fn])
+                subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
             else:
                 writer.writeSummaryPages(system)
                 if not options.htmlsummarypages:
-                    subjects.extend(system.rootobjects)
+                    subjects = system.rootobjects
             writer.writeIndividualFiles(subjects)
             if system.docstring_syntax_errors:
                 def p(msg: str) -> None:

@@ -52,6 +52,10 @@ from docutils import nodes
 from twisted.python.failure import Failure
 from twisted.web.template import Tag, XMLString, flattenString
 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+
+
 ##################################################
 ## Contents
 ##################################################
@@ -155,13 +159,13 @@ def html2stan(html: Union[bytes, str]) -> Tag:
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    stan: Tag = XMLString(b'<div>%s</div>' % html).load()[0]
+    stan = XMLString(b'<div>%s</div>' % html).load()[0]
+    assert isinstance(stan, Tag)
     assert stan.tagName == 'div'
     stan.tagName = ''
     return stan
 
-
-def flatten(stan: Tag) -> str:
+def flatten(stan: "Flattenable") -> str:
     """
     Convert a document fragment from a Stan tree to HTML.
 
@@ -235,7 +239,7 @@ class DocstringLinker:
     target URL for crossreference links.
     """
 
-    def link_to(self, target: str, label: str) -> Tag:
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
         """
         Format a link to a Python identifier.
         This will resolve the identifier like Python itself would.
@@ -247,7 +251,7 @@ class DocstringLinker:
         """
         raise NotImplementedError()
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         """
         Format a cross-reference link to a Python identifier.
         This will resolve the identifier to any reasonable target,

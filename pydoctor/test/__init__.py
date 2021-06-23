@@ -11,6 +11,8 @@ from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import IWriter
 from pydoctor.epydoc.markup import DocstringLinker
 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 posonlyargs = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
 typecomment = pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python 3.8")
@@ -83,11 +85,11 @@ class InMemoryWriter(IWriter):
 class NotFoundLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links."""
 
-    def link_to(self, target: str, label: str) -> Tag:
-        return tags.transparent(label)  # type: ignore[no-any-return]
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        return tags.transparent(label)
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
-        return tags.code(label)  # type: ignore[no-any-return]
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        return tags.code(label)
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None
