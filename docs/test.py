@@ -14,15 +14,6 @@ from pydoctor import __version__
 BASE_DIR = pathlib.Path(os.environ.get('TOX_INI_DIR', os.getcwd())) / 'build' / 'docs'
 
 
-def test_help_output_extension():
-    """
-    The help output extension will include the CLI help on the Sphinx page.
-    """
-    with open(BASE_DIR / 'help.html', 'r') as stream:
-        page = stream.read()
-        assert '--project-url PROJECTURL' in page, page
-
-
 def test_rtd_pydoctor_call():
     """
     With the pydoctor Sphinx extension, the pydoctor API HTML files are

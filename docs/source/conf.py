@@ -35,7 +35,6 @@ from pydoctor import __version__ as version
 extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
-    "pydoctor.sphinx_ext._help_output",
     "pydoctor.sphinx_ext.build_apidocs",
     "sphinxcontrib.spelling",
     "sphinxarg.ext",
