@@ -31,7 +31,7 @@ def geterrtext(*options: str) -> str:
 
 def test_invalid_option() -> None:
     err = geterrtext('--no-such-option')
-    assert 'no such option' in err
+    assert 'unrecognized arguments: --no-such-option' in err
 
 def test_cannot_advance_blank_system() -> None:
     err = geterrtext('--make-html')
@@ -39,7 +39,7 @@ def test_cannot_advance_blank_system() -> None:
 
 def test_no_systemclasses_py3() -> None:
     err = geterrtext('--system-class')
-    assert 'requires 1 argument' in err
+    assert 'expected one argument' in err
 
 def test_invalid_systemclasses() -> None:
     err = geterrtext('--system-class=notdotted')
@@ -61,7 +61,7 @@ def test_projectbasedir_absolute(tmp_path: Path) -> None:
     Using L{Path.samefile()} is reliable, but requires an existing path.
     """
     assert tmp_path.is_absolute()
-    options, args = driver.parse_args(["--project-base-dir", str(tmp_path)])
+    options = driver.parse_args(["--project-base-dir", str(tmp_path)])
     assert options.projectbasedirectory.samefile(tmp_path)
     assert options.projectbasedirectory.is_absolute()
 
@@ -77,7 +77,7 @@ def test_projectbasedir_symlink(tmp_path: Path) -> None:
     link.symlink_to('target', target_is_directory=True)
     assert link.samefile(target)
 
-    options, args = driver.parse_args(["--project-base-dir", str(link)])
+    options = driver.parse_args(["--project-base-dir", str(link)])
     assert options.projectbasedirectory.samefile(target)
     assert options.projectbasedirectory.is_absolute()
 
@@ -89,7 +89,7 @@ def test_projectbasedir_relative() -> None:
     the options object.
     """
     relative = "projbasedirvalue"
-    options, args = driver.parse_args(["--project-base-dir", relative])
+    options = driver.parse_args(["--project-base-dir", relative])
     assert options.projectbasedirectory.is_absolute()
     assert options.projectbasedirectory.name == relative
     assert options.projectbasedirectory.parent == Path.cwd()
@@ -99,8 +99,8 @@ def test_cache_enabled_by_default() -> None:
     """
     Intersphinx object caching is enabled by default.
     """
-    parser = driver.getparser()
-    (options, _) = parser.parse_args([])
+    parser = driver.get_parser()
+    options = parser.parse_args([])
     assert options.enable_intersphinx_cache
 
 
@@ -109,10 +109,10 @@ def test_cli_warnings_on_error() -> None:
     The --warnings-as-errors option is disabled by default.
     This is the test for the long form of the CLI option.
     """
-    options, args = driver.parse_args([])
+    options = driver.parse_args([])
     assert options.warnings_as_errors == False
 
-    options, args = driver.parse_args(['--warnings-as-errors'])
+    options = driver.parse_args(['--warnings-as-errors'])
     assert options.warnings_as_errors == True
 
 
@@ -120,7 +120,7 @@ def test_project_version_default() -> None:
     """
     When no --project-version is provided, it will default empty string.
     """
-    options, args = driver.parse_args([])
+    options = driver.parse_args([])
     assert options.projectversion == ''
 
 
@@ -128,7 +128,7 @@ def test_project_version_string() -> None:
     """
     --project-version can be passed as a simple string.
     """
-    options, args = driver.parse_args(['--project-version', '1.2.3.rc1'])
+    options = driver.parse_args(['--project-version', '1.2.3.rc1'])
     assert options.projectversion == '1.2.3.rc1'
 
 

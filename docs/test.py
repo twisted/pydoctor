@@ -20,7 +20,7 @@ def test_help_output_extension():
     """
     with open(BASE_DIR / 'help.html', 'r') as stream:
         page = stream.read()
-        assert '--project-url=PROJECTURL' in page, page
+        assert '--project-url PROJECTURL' in page, page
 
 
 def test_rtd_pydoctor_call():

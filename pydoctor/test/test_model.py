@@ -2,7 +2,7 @@
 Unit tests for model.
 """
 
-from optparse import Values
+from argparse import Namespace
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import cast
 import zlib
@@ -17,7 +17,7 @@ from pydoctor.test.test_astbuilder import fromText
 
 class FakeOptions:
     """
-    A fake options object as if it came from that stupid optparse thing.
+    A fake options object as if it came from argparse.
     """
     sourcehref = None
     projectbasedirectory: Path
@@ -52,7 +52,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     system = model.System()
     system.sourcebase = "http://example.org/trac/browser/trunk"
-    system.options = cast(Values, options)
+    system.options = cast(Namespace, options)
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
@@ -74,7 +74,7 @@ def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
-    options = cast(Values, object())
+    options = cast(Namespace, object())
 
     sut = model.System(options=options)
 
@@ -85,7 +85,7 @@ def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
-    options, _ = parse_args([])
+    options = parse_args([])
     options.intersphinx = []
     sut = model.System(options=options)
 
@@ -101,7 +101,7 @@ def test_fetchIntersphinxInventories_content() -> None:
     Download and parse intersphinx inventories for each configured
     intersphix.
     """
-    options, _ = parse_args([])
+    options = parse_args([])
     options.intersphinx = [
         'http://sphinx/objects.inv',
         'file:///twisted/index.inv',

@@ -58,7 +58,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     for key, value in runs.items():
         arguments = _get_arguments(value, placeholders)
 
-        options, _ = parse_args(arguments)
+        options = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
         sphinx_files = output_path.with_suffix('.sphinx_files')
 
@@ -100,7 +100,7 @@ def on_builder_inited(app: Sphinx) -> None:
     for key, value in runs.items():
         arguments = _get_arguments(value, placeholders)
 
-        options, _ = parse_args(arguments)
+        options = parse_args(arguments)
         output_path = pathlib.Path(options.htmloutput)
         temp_path = output_path.with_suffix('.pydoctor_temp')
 

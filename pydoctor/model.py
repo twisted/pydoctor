@@ -15,11 +15,11 @@ import sys
 import types
 from enum import Enum
 from inspect import Signature
-from optparse import Values
+from argparse import Namespace
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
 from urllib.parse import quote
 
@@ -549,8 +549,9 @@ class System:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
     sourcebase: Optional[str] = None
+    options: Namespace
 
-    def __init__(self, options: Optional[Values] = None):
+    def __init__(self, options: Optional[Namespace] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -565,7 +566,7 @@ class System:
             self.options = options
         else:
             from pydoctor.driver import parse_args
-            self.options, _ = parse_args([])
+            self.options = parse_args([])
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -587,20 +588,12 @@ class System:
         """The top-level package/module names in this system."""
         return {obj.name for obj in self.rootobjects}
 
-    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
-        if isinstance(section, str):
-            section = (section,)
-        delta: int = max(self.options.verbosity_details.get(sect, 0)
-                         for sect in section)
-        base: int = self.options.verbosity
-        return base + delta
-
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
             d = str(i)
         else:
             d = f'{i}/{n}'
-        if self.verbosity(section) == 0 and sys.stdout.isatty():
+        if self.options.verbosity == 0 and sys.stdout.isatty():
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
@@ -630,7 +623,7 @@ class System:
             # on top of the logging system.
             self.violations += 1
 
-        if thresh <= self.verbosity(section) <= topthresh:
+        if thresh <= self.options.verbosity <= topthresh:
             if self.needsnl and wantsnl:
                 print()
             print(msg, end='')
