@@ -7,7 +7,7 @@ import re
 from abc import ABC
 import zope.interface
 import zope.schema
-from typing import Final, Sequence, Optional
+from typing import Final, Sequence, Optional, Protocol
 
 LANG = 'Fr'
 """
@@ -18,6 +18,9 @@ lang: Final[Sequence[str]] = ['Fr', 'En']
 """
 This is also a constant, but annotated with typing.Final.
 """
+
+Interface = Protocol
+"""Aliases are also documented."""
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """

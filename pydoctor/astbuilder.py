@@ -46,25 +46,7 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
         inherited) attribute, L{False} otherwise
     """
     obj = cls.find(name)
-    return obj is None or isinstance(obj, model.Attribute)
-
-
-def _handleAliasing(
-        ctx: model.CanContainImportsDocumentable,
-        target: str,
-        expr: Optional[ast.expr]
-        ) -> bool:
-    """If the given expression is a name assigned to a target that is not yet
-    in use, create an alias.
-    @return: L{True} iff an alias was created.
-    """
-    if target in ctx.contents:
-        return False
-    full_name = node2fullname(expr, ctx)
-    if full_name is None:
-        return False
-    ctx._localNameToFullName_map[target] = full_name
-    return True
+    return obj is None or isinstance(obj, model.Attribute)    
 
 _attrs_decorator_signature = signature(attrs)
 """Signature of the L{attr.s} class decorator."""
@@ -200,6 +182,9 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
     else:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
+
+def is_alias(value: ast.expr) -> bool:
+    return node2dottedname(value) is not None
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -387,7 +372,9 @@ class ModuleVistor(ast.NodeVisitor):
                 asname = orgname
 
             # Move re-exported objects into current module.
-            if asname in exports and mod is not None:
+            if asname in exports \
+                and mod is not None: # This part of the condition makes if impossible to re-export 
+                # names that are not part of the current system. We could create Aliases instead.
                 try:
                     ob = mod.contents[orgname]
                 except KeyError:
@@ -502,6 +489,20 @@ class ModuleVistor(ast.NodeVisitor):
                 # Just plain "Final" annotation.
                 # Simply ignore it because it's duplication of information.
                 obj.annotation = _infer_type(value) if value else None
+    
+    def _handleAlias(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> bool:
+        """
+        Must be called after obj.setLineNumber() to have the right line number in the warning.
+        """
+        
+        if is_attribute_overridden(obj, value):
+            obj.report(f'Assignment to alias "{obj.name}" overrides previous assignment '
+                    f'at line {obj.linenumber}, the original redirection will be ignored.', 
+                            section='ast', lineno_offset=lineno-obj.linenumber)
+
+        obj.kind = model.DocumentableKind.ALIAS
+        # This will be used to follow the alias redirection.
+        obj.value = value
 
     def _handleModuleVar(self,
             target: str,
@@ -526,8 +527,9 @@ class ModuleVistor(ast.NodeVisitor):
             
             obj.annotation = annotation
             obj.setLineNumber(lineno)
-            
-            if is_constant(obj):
+            if is_alias(expr):
+                self._handleAlias(obj=obj, value=expr, lineno=lineno)
+            elif is_constant(obj):
                 self._handleConstant(obj=obj, value=expr, lineno=lineno)
             else:
                 obj.kind = model.DocumentableKind.VARIABLE
@@ -545,8 +547,7 @@ class ModuleVistor(ast.NodeVisitor):
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
-        if not _handleAliasing(module, target, expr):
-            self._handleModuleVar(target, annotation, expr, lineno)
+        self._handleModuleVar(target, annotation, expr, lineno)
 
     def _handleClassVar(self,
             name: str,
@@ -581,7 +582,9 @@ class ModuleVistor(ast.NodeVisitor):
         obj.annotation = annotation
         obj.setLineNumber(lineno)
 
-        if is_constant(obj):
+        if is_alias(expr):
+            self._handleAlias(obj=obj, value=expr, lineno=lineno)
+        elif is_constant(obj):
             self._handleConstant(obj=obj, value=expr, lineno=lineno)
         else:
             obj.value = expr
@@ -630,8 +633,7 @@ class ModuleVistor(ast.NodeVisitor):
             ) -> None:
         cls = self.builder.current
         assert isinstance(cls, model.Class)
-        if not _handleAliasing(cls, target, expr):
-            self._handleClassVar(target, annotation, expr, lineno)
+        self._handleClassVar(target, annotation, expr, lineno)
 
     def _handleDocstringUpdate(self,
             targetNode: ast.expr,

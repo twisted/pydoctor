@@ -78,8 +78,15 @@ class AttributeChild(TemplateElement):
             return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")
 
     @renderer
-    def constantValue(self, request: object, tag: Tag) -> "Flattenable":
-        if self.ob.kind is not DocumentableKind.CONSTANT or self.ob.value is None:
-            return tag.clear()
-        # Attribute is a constant (with a value), then display it's value
-        return epydoc2stan.format_constant_value(self.ob)
+    def value(self, request: object, tag: Tag) -> "Flattenable":
+        if self.ob.value is not None:
+            if self.ob.kind is DocumentableKind.CONSTANT:
+                # Attribute is a constant (with a value), then display it's value
+                return epydoc2stan.format_constant_value(self.ob)
+            if self.ob.kind is DocumentableKind.ALIAS:
+                # Attribute is an alias
+                return epydoc2stan.format_alias_value(self.ob)
+            else:
+                return ''
+        else:
+            return ''

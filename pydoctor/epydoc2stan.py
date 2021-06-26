@@ -652,7 +652,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
 
     ret: Tag = tags.div
     if pdoc is None:
-        ret(tags.p(class_='undocumented')("Undocumented"))
+        # Aliases are generally not documented, so we never mark them as "undocumented".
+        if obj.kind is not model.DocumentableKind.ALIAS:
+            ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         try:
             stan = pdoc.to_stan(_EpydocLinker(source))
@@ -698,7 +700,11 @@ def format_summary(obj: model.Documentable) -> Tag:
         source = obj.parent
         assert source is not None
     elif doc is None:
-        return format_undocumented(obj)
+        if obj.kind is model.DocumentableKind.ALIAS: 
+            # Aliases are generally not documented, so we never mark them as "undocumented", we simply link the object.
+            return Tag('', children=format_alias_value(obj).children)
+        else:
+            return format_undocumented(obj)
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert source is not None
@@ -836,10 +842,12 @@ def format_kind(kind: model.DocumentableKind, plural: bool = False) -> str:
         model.DocumentableKind.VARIABLE        : 'Variable',
         model.DocumentableKind.SCHEMA_FIELD    : 'Attribute',
         model.DocumentableKind.CONSTANT        : 'Constant',
+        model.DocumentableKind.ALIAS           : 'Alias',
     }
     plurals = {
         model.DocumentableKind.CLASS           : 'Classes', 
         model.DocumentableKind.PROPERTY        : 'Properties',
+        model.DocumentableKind.ALIAS           : 'Aliases',
     }
     if plural:
         return plurals.get(kind, names[kind] + 's')
@@ -872,3 +880,7 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     """
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
+
+def format_alias_value(obj: model.Attribute) -> "Flattenable":
+    return tags.p(tags.em("Alias to ", 
+                        colorize_inline_pyval(obj.value).to_stan(_EpydocLinker(obj))))

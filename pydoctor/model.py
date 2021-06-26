@@ -25,6 +25,7 @@ from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.astutils import node2dottedname
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -95,6 +96,7 @@ class DocumentableKind(Enum):
     STATIC_METHOD       = 600
     METHOD              = 500
     FUNCTION            = 400
+    ALIAS               = 320
     CONSTANT            = 310
     CLASS_VARIABLE      = 300
     SCHEMA_FIELD        = 220
@@ -266,8 +268,9 @@ class Documentable:
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
-    def expandName(self, name: str) -> str:
-        """Return a fully qualified name for the possibly-dotted `name`.
+    def expandName(self, name: str, redirected_from:Optional['Documentable']=None) -> str:
+        """
+        Return a fully qualified name for the possibly-dotted `name`.
 
         To explain what this means, consider the following modules:
 
@@ -286,27 +289,72 @@ class Documentable:
 
         In the context of mod2.E, expandName("RenamedExternal") should be
         "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". """
+        should be "mod1.Local". 
+        
+        This method is in charge to follow the aliases when possible!
+        It will reccursively follow any L{DocumentalbeKind.ALIAS} entry found. 
+        
+        @param name: The name to expand.
+        @param redirected_from: In the case of a followed redirection ony. This is
+            the alias object. This variable is used to prevent infinite loops when doing the lookup.
+        """
         parts = name.split('.')
         obj: Documentable = self
-        for i, p in enumerate(parts):
-            full_name = obj._localNameToFullName(p)
-            if full_name == p and i != 0:
+        for i, part in enumerate(parts):
+            full_name = obj._localNameToFullName(part)
+            if full_name == part and i != 0:
                 # The local name was not found.
-                # TODO: Instead of returning the input, _localNameToFullName()
-                #       should probably either return None or raise LookupError.
-                full_name = f'{obj.fullName()}.{p}'
-                break
+                # If we're looking at a class, we try our luck with the inherited members
+                if isinstance(obj, Class) and obj.find(part) is not None:
+                    full_name = obj.find(part).fullName()
+                else:
+                    # TODO: Instead of returning the input, _localNameToFullName()
+                    #       should probably either return None or raise LookupError.
+                    full_name = f'{obj.fullName()}.{part}'
+                    break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
             obj = nxt
-        return '.'.join([full_name] + parts[i + 1:])
+
+        expanded_name = '.'.join([full_name] + parts[i + 1:])
+        
+        # We check if the name we resolved is an alias.
+        # Attribute for all aliases are created now, we can follow the redirection here.
+        obj = self.system.objForFullName(expanded_name)
+        if obj is not None and obj.kind is DocumentableKind.ALIAS: 
+            resolved = self._resolveAlias(obj, redirected_from=redirected_from)
+            expanded_name = resolved or expanded_name
+
+        return expanded_name
+
+    def _resolveAlias(self, alias: 'Attribute', redirected_from:Optional['Attribute']=None) -> Optional[str]:
+        dottedname = node2dottedname(alias.value)
+        if dottedname:
+            name = '.'.join(dottedname)
+            
+            ctx = self # should ctx be alias.parent?
+            
+            # This checks avoids infinite recursion error
+            if redirected_from != alias:
+                # We redirect to the original object instead!
+                return ctx.expandName(name, redirected_from=alias)
+            else:
+                # Issue tracing the alias back to it's original location, found the same alias again.
+                if ctx.parent:
+                    # We try with the parent scope and redirect to the original object!
+                    # This is used in situations like right here in the System class and it's aliases, 
+                    # because they have the same name as the name they are aliasing, it's causing trouble.
+                    return ctx.parent.expandName(name, redirected_from=alias)
+        return None
 
     def resolveName(self, name: str) -> Optional['Documentable']:
-        """Return the object named by "name" (using Python's lookup rules) in
-        this context, if any is known to pydoctor."""
-        return self.system.objForFullName(self.expandName(name))
+        """
+        Return the object named by "name" (using Python's lookup rules) in
+        this context, if any is known to pydoctor. 
+        """
+        obj = self.system.objForFullName(self.expandName(name))
+        return obj
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -397,6 +445,10 @@ class Module(CanContainImportsDocumentable):
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
+            if o.kind is DocumentableKind.ALIAS:
+                resolved = self._resolveAlias(o)
+                if resolved:
+                    return resolved
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
@@ -472,6 +524,10 @@ class Class(CanContainImportsDocumentable):
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
+            if o.kind is DocumentableKind.ALIAS:
+                resolved = self._resolveAlias(o, o) # We pass redirected_from value in order to avoid inifite recursion.
+                if resolved:
+                    return resolved
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]

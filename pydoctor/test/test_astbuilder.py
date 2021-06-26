@@ -484,12 +484,12 @@ def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
     assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
 
 @systemcls_param
-def test_documented_no_alias(systemcls: Type[model.System]) -> None:
-    """A variable that is documented should not be considered an alias."""
-    # TODO: We should also verify this for inline docstrings, but the code
-    #       currently doesn't support that. We should perhaps store aliases
-    #       as Documentables as well, so we can change their 'kind' when
-    #       an inline docstring follows the assignment.
+def test_documented_alias(systemcls: Type[model.System]) -> None:
+    """
+    All variables that simply points to an attribute or name are now 
+    legit L{Attribute} documentable objects with a special kind: L{DocumentableKind.ALIAS}.
+    """
+    
     mod = fromText('''
     class SimpleClient:
         pass
@@ -498,13 +498,127 @@ def test_documented_no_alias(systemcls: Type[model.System]) -> None:
         @ivar clientFactory: Callable that returns a client.
         """
         clientFactory = SimpleClient
-    ''', systemcls=systemcls)
+    ''', systemcls=systemcls, modname='mod')
     P = mod.contents['Processor']
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
     assert f.privacyClass is model.PrivacyClass.VISIBLE
-    assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
+    # we now mark aliases with the ALIAS kind!
+    assert f.kind is model.DocumentableKind.ALIAS
     assert f.linenumber
+
+    # TODO: We should also verify this for inline docstrings, but the code
+    #       currently doesn't support that. We should perhaps store aliases
+    #       as Documentables as well, so we can change their 'kind' when
+    #       an inline docstring follows the assignment.
+    # mod = fromText('''
+    # class SimpleClient:
+    #     pass
+    # class Processor:
+    #     clientFactory = SimpleClient
+    #     """
+    #     Callable that returns a client.
+    #     """
+    # ''', systemcls=systemcls, modname='mod')
+    # P = mod.contents['Processor']
+    # f = P.contents['clientFactory']
+    # assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
+    # assert f.privacyClass is model.PrivacyClass.VISIBLE
+    # # we now mark aliases with the ALIAS kind!
+    # assert f.kind is model.DocumentableKind.ALIAS
+    # assert f.linenumber
+
+
+@systemcls_param
+def test_resolveName_alias(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    fromText('''
+    class BaseClient:
+        BAR = 1
+        FOO = 2
+    ''', system=system, modname='base_mod')
+    mod = fromText('''
+    import base_mod as _base
+    class SimpleClient(_base.BaseClient):
+        BARS = SimpleClient.FOO
+        FOOS = _base.BaseClient.BAR
+    class Processor:
+        var = 1
+        clientFactory = SimpleClient
+        BARS = _base.BaseClient.FOO
+    P = Processor
+    ''', system=system, modname='mod')
+    Processor = mod.contents['Processor']
+    assert mod.expandName('Processor.clientFactory')=="mod.SimpleClient"
+    assert mod.expandName('Processor.BARS')=="base_mod.BaseClient.FOO"
+    assert mod.system.allobjects.get("mod.SimpleClient").find("FOO") is not None
+    assert mod.system.allobjects.get("mod.SimpleClient.FOO") is  None
+    assert mod.contents['P'].kind is model.DocumentableKind.ALIAS
+    assert mod._resolveAlias(mod.contents['P'])=="mod.Processor"
+    assert mod._localNameToFullName('P')=="mod.Processor"
+    assert mod.expandName('P')=="mod.Processor"
+    assert mod.expandName('P.var')=="mod.Processor.var"
+    assert mod.expandName('P.clientFactory')=="mod.SimpleClient"
+    assert mod.expandName('Processor.clientFactory.BARS')=="base_mod.BaseClient.FOO"
+    assert mod.expandName('Processor.clientFactory.FOOS')=="base_mod.BaseClient.BAR"
+    assert mod.expandName('P.clientFactory.BARS')=="base_mod.BaseClient.FOO"
+    assert mod.expandName('P.clientFactory.FOOS')=="base_mod.BaseClient.BAR"
+    assert Processor.expandName('clientFactory')=="mod.SimpleClient"
+    assert Processor.expandName('BARS')=="base_mod.BaseClient.FOO"
+    assert Processor.expandName('clientFactory.BARS')=="base_mod.BaseClient.FOO"
+
+@systemcls_param
+def test_resolveName_alias2(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    base_mod = fromText('''
+    class Foo:
+        _1=1
+        _2=2
+        _3=3
+    foo = Foo._1
+    class Attribute:
+        foo = foo
+    class Class:
+        pass
+    ''', system=system, modname='base_mod')
+    mod = fromText('''
+    from base_mod import Attribute, Class, Foo
+    class System:
+        Attribute = Attribute
+        Class = Class
+    class SuperSystem:
+        foo = Foo._3
+        class Attribute:
+            foo = foo
+        Attribute = Attribute
+    ''', system=system, modname='mod')
+    System = mod.contents['System']
+    SuperSystem = mod.contents['SuperSystem']
+    assert mod.expandName('System.Attribute')=="base_mod.Attribute"
+    assert mod.expandName('System.Class')=="base_mod.Class"
+    
+    assert System.expandName('Attribute')=="base_mod.Attribute"
+    assert System.expandName('Class')=="base_mod.Class"
+    
+    assert mod.expandName('SuperSystem.Attribute')=="mod.SuperSystem.Attribute"
+    assert SuperSystem.expandName('Attribute')=="mod.SuperSystem.Attribute"
+
+    assert mod.expandName('SuperSystem.Attribute.foo')=="base_mod.Foo._3"
+    assert SuperSystem.expandName('Attribute.foo')=="base_mod.Foo._3"
+
+    assert base_mod.contents['Attribute'].contents['foo'].kind is model.DocumentableKind.ALIAS
+    assert mod.contents['System'].contents['Attribute'].kind is model.DocumentableKind.ALIAS
+
+    assert base_mod.contents['Attribute'].contents['foo'].fullName() == 'base_mod.Attribute.foo'
+    assert 'base_mod.Attribute.foo' in mod.system.allobjects, str(list(mod.system.allobjects))
+    
+    mod.system.objForFullName('base_mod.Attribute.foo').kind is model.DocumentableKind.ALIAS
+
+    assert mod.expandName('System.Attribute.foo')=="base_mod.Foo._1"
+    assert System.expandName('Attribute.foo')=="base_mod.Foo._1"
+
+    assert mod.resolveName('System').contents['Attribute'].kind is model.DocumentableKind.ALIAS
+
 
 @systemcls_param
 def test_subclasses(systemcls: Type[model.System]) -> None:
