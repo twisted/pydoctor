@@ -265,7 +265,7 @@ class Documentable:
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def _localNameToFullName(self, name: str) -> str:
+    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
     def expandName(self, name: str, redirected_from:Optional['Documentable']=None) -> str:
@@ -292,7 +292,7 @@ class Documentable:
         should be "mod1.Local". 
         
         This method is in charge to follow the aliases when possible!
-        It will reccursively follow any L{DocumentalbeKind.ALIAS} entry found. 
+        It will reccursively follow any L{DocumentableKind.ALIAS} entry found. 
         
         @param name: The name to expand.
         @param redirected_from: In the case of a followed redirection ony. This is
@@ -301,7 +301,7 @@ class Documentable:
         parts = name.split('.')
         obj: Documentable = self
         for i, part in enumerate(parts):
-            full_name = obj._localNameToFullName(part)
+            full_name = obj._localNameToFullName(part, redirected_from=redirected_from)
             if full_name == part and i != 0:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members
@@ -442,11 +442,11 @@ class Module(CanContainImportsDocumentable):
 
         self._docformat: Optional[str] = None
 
-    def _localNameToFullName(self, name: str) -> str:
+    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
             if o.kind is DocumentableKind.ALIAS:
-                resolved = self._resolveAlias(o)
+                resolved = self._resolveAlias(o, redirected_from=redirected_from)
                 if resolved:
                     return resolved
             return o.fullName()
@@ -521,11 +521,12 @@ class Class(CanContainImportsDocumentable):
                 return obj
         return None
 
-    def _localNameToFullName(self, name: str) -> str:
+    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
             if o.kind is DocumentableKind.ALIAS:
-                resolved = self._resolveAlias(o, o) # We pass redirected_from value in order to avoid inifite recursion.
+                # We pass redirected_from value in order to avoid inifite recursion.
+                resolved = self._resolveAlias(o, redirected_from=redirected_from)
                 if resolved:
                     return resolved
             return o.fullName()
@@ -563,8 +564,8 @@ class Inheritable(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-    def _localNameToFullName(self, name: str) -> str:
-        return self.parent._localNameToFullName(name)
+    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
+        return self.parent._localNameToFullName(name, redirected_from=redirected_from)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION

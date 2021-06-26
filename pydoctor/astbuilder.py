@@ -194,6 +194,7 @@ class ModuleVistor(ast.NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._moduleLevelAssigns: List[str] = []
 
     def default(self, node: ast.AST) -> None:
         body: Optional[Sequence[ast.stmt]] = getattr(node, 'body', None)
@@ -207,6 +208,21 @@ class ModuleVistor(ast.NodeVisitor):
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
+
+        # Build the list of module level variable. This is is used to check if a module assignment
+        # should be analyzed or not. See _handleAssignmentInModule.
+        _assigns = list(_findAnyModuleLevelAssign(node))
+        for target, value in _assigns:
+            for a in target:
+                if isinstance(a, ast.Tuple):
+                    for ele in a.elts:
+                        name = node2dottedname(ele)
+                        if name:
+                            self._moduleLevelAssigns.append('.'.join(name))
+                else:
+                    name = node2dottedname(a)
+                    if name:
+                        self._moduleLevelAssigns.append('.'.join(name))
 
         self.builder.push(self.module, 0)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
@@ -547,7 +563,11 @@ class ModuleVistor(ast.NodeVisitor):
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
-        self._handleModuleVar(target, annotation, expr, lineno)
+        # Check if the assignment is on the first level.
+        # We ignore assignments that are not defined at least once at the module level.
+        # Meaning that we ignore variables defines in "if" or "try/catch" blocks.
+        if target in self._moduleLevelAssigns:
+            self._handleModuleVar(target, annotation, expr, lineno)
 
     def _handleClassVar(self,
             name: str,
@@ -703,6 +723,7 @@ class ModuleVistor(ast.NodeVisitor):
                 self._handleDocstringUpdate(value, expr, lineno)
             elif isinstance(value, ast.Name) and value.id == 'self':
                 self._handleInstanceVar(targetNode.attr, annotation, expr, lineno)
+            # TODO: Fix https://github.com/twisted/pydoctor/issues/13
 
     def visit_Assign(self, node: ast.Assign) -> None:
         lineno = node.lineno
@@ -1183,6 +1204,13 @@ class ASTBuilder:
             return mod
 
 model.System.defaultBuilder = ASTBuilder
+
+def _findAnyModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[List[ast.expr], ast.Assign]]:
+     for node in mod_ast.body:
+        if isinstance(node, (ast.Assign)):
+            yield (node.targets, node)
+        elif isinstance(node, ast.AnnAssign):
+            yield ([node.target], node)
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """
