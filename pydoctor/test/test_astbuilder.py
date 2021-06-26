@@ -619,6 +619,48 @@ def test_resolveName_alias2(systemcls: Type[model.System]) -> None:
 
     assert mod.resolveName('System').contents['Attribute'].kind is model.DocumentableKind.ALIAS
 
+@systemcls_param
+def test_resolveName_alias3(systemcls: Type[model.System]) -> None:
+    """
+    We ignore assignments that are not defined at least once at the module level.
+    Meaning that we ignore variables defines in "if" or "try/catch" blocks.
+    """
+    system = systemcls()
+    
+    base_mod = fromText('''
+    ssl = 1
+    ''', system=system, modname='twisted.internet')
+
+    mod = fromText('''
+    try:
+        from twisted.internet import ssl as _ssl
+    except ImportError:
+        ssl = None
+    else:
+        ssl = _ssl
+    ''', system=system, modname='mod')
+
+    assert mod.expandName('ssl')=="twisted.internet.ssl"
+    assert mod.expandName('_ssl')=="twisted.internet.ssl"
+    assert ast.literal_eval(mod.resolveName('ssl').value)==1
+    assert 'ssl' not in mod.contents
+
+    mod = fromText('''
+    ssl = None
+    try:
+        from twisted.internet import ssl as _ssl
+    except ImportError:
+        ssl = None
+    else:
+        ssl = _ssl
+    ''', system=systemcls(), modname='mod')
+
+    assert mod.expandName('ssl')=="twisted.internet.ssl"
+    assert mod.expandName('_ssl')=="twisted.internet.ssl"
+    assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
+    assert mod.resolveName('ssl') is None
+    assert 'ssl' in mod.contents
+
 
 @systemcls_param
 def test_subclasses(systemcls: Type[model.System]) -> None:

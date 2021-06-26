@@ -509,6 +509,8 @@ class ModuleVistor(ast.NodeVisitor):
     def _handleAlias(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> bool:
         """
         Must be called after obj.setLineNumber() to have the right line number in the warning.
+
+        Create an alias or update an alias.
         """
         
         if is_attribute_overridden(obj, value):
@@ -519,6 +521,24 @@ class ModuleVistor(ast.NodeVisitor):
         obj.kind = model.DocumentableKind.ALIAS
         # This will be used to follow the alias redirection.
         obj.value = value
+
+    def _handleIndirection(self,
+        ctx: model.CanContainImportsDocumentable,
+        target: str,
+        expr: Optional[ast.expr]
+        ) -> bool:
+        """
+        Aliases declared in "try/except" block or "if" blocks are not documented, but we still track the indirection. 
+
+        If the given expression is a name assigned to a target that is not yet in use, register an indirection in the L{_localNameToFullName_map} attriute.
+        """
+        if target in ctx.contents:
+            return
+        full_name = node2fullname(expr, ctx)
+        if full_name is None:
+            return
+        ctx._localNameToFullName_map[target] = full_name
+
 
     def _handleModuleVar(self,
             target: str,
@@ -568,6 +588,9 @@ class ModuleVistor(ast.NodeVisitor):
         # Meaning that we ignore variables defines in "if" or "try/catch" blocks.
         if target in self._moduleLevelAssigns:
             self._handleModuleVar(target, annotation, expr, lineno)
+        elif is_alias(expr):
+            # But we still track the name indirection
+            self._handleIndirection(module, target, expr)
 
     def _handleClassVar(self,
             name: str,
