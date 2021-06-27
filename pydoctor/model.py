@@ -287,9 +287,9 @@ class Documentable:
             class E:
                 pass
 
-        In the context of mod2.E, expandName("RenamedExternal") should be
-        "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". 
+        In the context of mod2.E, C{expandName("RenamedExternal")} should be
+        C{"external_location.External"} and C{expandName("renamed_mod.Local")}
+        should be C{"mod1.Local"}. 
         
         This method is in charge to follow the aliases when possible!
         It will reccursively follow any L{DocumentableKind.ALIAS} entry found. 
@@ -309,8 +309,8 @@ class Documentable:
             class Runner:
                 processor = P
 
-        In the context of mod2, expandName("Runner.processor.spec") should be
-        "external.Processor.more_spec".
+        In the context of mod2, C{expandName("Runner.processor.spec")} should be
+        C{"external.Processor.more_spec"}.
         
         @param name: The name to expand.
         @param redirected_from: In the case of a followed redirection only. This is
@@ -318,7 +318,8 @@ class Documentable:
         @note: The implementation replies on iterating through the each part of the dotted name, 
             calling L{_localNameToFullName} for each name in their associated context and incrementally building 
             the fullName from that. 
-        @since 2021: Lookup members in superclasses when possible and follows L{DocumentableKind.ALIAS}. This mean that L{expandName} will never return the name of an alias,
+
+            Lookup members in superclasses when possible and follows L{DocumentableKind.ALIAS}. This mean that L{expandName} will never return the name of an alias,
             it will always follow it's indirection to the origin.
         """
 

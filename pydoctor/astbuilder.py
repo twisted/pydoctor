@@ -530,7 +530,7 @@ class ModuleVistor(ast.NodeVisitor):
         """
         Aliases declared in "try/except" block or "if" blocks are not documented, but we still track the indirection. 
 
-        If the given expression is a name assigned to a target that is not yet in use, register an indirection in the L{_localNameToFullName_map} attriute.
+        If the given expression is a name assigned to a target that is not yet in use, register an indirection in the L{CanContainImportsDocumentable._localNameToFullName_map} attriute.
         """
         if target in ctx.contents:
             return

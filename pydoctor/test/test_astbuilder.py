@@ -575,9 +575,9 @@ def test_expandName_alias_same_name_recursion(systemcls: Type[model.System]) -> 
     """
     When the name of the alias is the same as the name contained in it's value, 
     it can create a recursion error. The C{redirected_from} parameter of methods 
-    L{_localNameToFullName}, L{_resolveAlias} and L{expandName} prevent an infinite loop where
+    L{CanContainImportsDocumentable._localNameToFullName}, L{Documentable._resolveAlias} and L{Documentable.expandName} prevent an infinite loop where
     the name it beening revolved to the object itself. When this happends, we use the parent object context
-    to call L{expandName()}, avoiding the infinite recursion.
+    to call L{Documentable.expandName()}, avoiding the infinite recursion.
     """
     system = systemcls()
     base_mod = fromText('''
