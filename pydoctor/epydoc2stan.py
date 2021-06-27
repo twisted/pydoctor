@@ -701,6 +701,7 @@ def format_summary(obj: model.Documentable) -> Tag:
         assert source is not None
     elif doc is None:
         if obj.kind is model.DocumentableKind.ALIAS: 
+            assert isinstance(obj, model.Attribute)
             # Aliases are generally not documented, so we never mark them as "undocumented", we simply link the object.
             return Tag('', children=format_alias_value(obj).children)
         else:
@@ -881,6 +882,6 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
-def format_alias_value(obj: model.Attribute) -> "Flattenable":
+def format_alias_value(obj: model.Attribute) -> Tag:
     return tags.p(tags.em("Alias to ", 
                         colorize_inline_pyval(obj.value).to_stan(_EpydocLinker(obj))))

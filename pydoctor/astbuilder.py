@@ -183,7 +183,7 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-def is_alias(value: ast.expr) -> bool:
+def is_alias(value: Optional[ast.expr]) -> bool:
     return node2dottedname(value) is not None
 
 class ModuleVistor(ast.NodeVisitor):
@@ -506,7 +506,7 @@ class ModuleVistor(ast.NodeVisitor):
                 # Simply ignore it because it's duplication of information.
                 obj.annotation = _infer_type(value) if value else None
     
-    def _handleAlias(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> bool:
+    def _handleAlias(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
         """
         Must be called after obj.setLineNumber() to have the right line number in the warning.
 
@@ -522,11 +522,11 @@ class ModuleVistor(ast.NodeVisitor):
         # This will be used to follow the alias redirection.
         obj.value = value
 
-    def _handleIndirection(self,
-        ctx: model.CanContainImportsDocumentable,
+    @staticmethod
+    def _handleIndirection(ctx: model.CanContainImportsDocumentable,
         target: str,
         expr: Optional[ast.expr]
-        ) -> bool:
+        ) -> None:
         """
         Aliases declared in "try/except" block or "if" blocks are not documented, but we still track the indirection. 
 
@@ -1228,7 +1228,7 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def _findAnyModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[List[ast.expr], ast.Assign]]:
+def _findAnyModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[List[ast.expr], Union[ast.Assign, ast.AnnAssign]]]:
      for node in mod_ast.body:
         if isinstance(node, (ast.Assign)):
             yield (node.targets, node)

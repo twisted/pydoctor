@@ -530,7 +530,10 @@ def test_documented_alias(systemcls: Type[model.System]) -> None:
 
 
 @systemcls_param
-def test_resolveName_alias(systemcls: Type[model.System]) -> None:
+def test_expandName_alias(systemcls: Type[model.System]) -> None:
+    """
+    expandName now follows all kinds of aliases!
+    """
     system = systemcls()
     fromText('''
     class BaseClient:
@@ -551,7 +554,7 @@ def test_resolveName_alias(systemcls: Type[model.System]) -> None:
     Processor = mod.contents['Processor']
     assert mod.expandName('Processor.clientFactory')=="mod.SimpleClient"
     assert mod.expandName('Processor.BARS')=="base_mod.BaseClient.FOO"
-    assert mod.system.allobjects.get("mod.SimpleClient").find("FOO") is not None
+    assert mod.system.allobjects.get("mod.SimpleClient") is not None
     assert mod.system.allobjects.get("mod.SimpleClient.FOO") is  None
     assert mod.contents['P'].kind is model.DocumentableKind.ALIAS
     assert mod._resolveAlias(mod.contents['P'])=="mod.Processor"
@@ -568,7 +571,14 @@ def test_resolveName_alias(systemcls: Type[model.System]) -> None:
     assert Processor.expandName('clientFactory.BARS')=="base_mod.BaseClient.FOO"
 
 @systemcls_param
-def test_resolveName_alias2(systemcls: Type[model.System]) -> None:
+def test_expandName_alias_same_name_recursion(systemcls: Type[model.System]) -> None:
+    """
+    When the name of the alias is the same as the name contained in it's value, 
+    it can create a recursion error. The C{redirected_from} parameter of methods 
+    L{_localNameToFullName}, L{_resolveAlias} and L{expandName} prevent an infinite loop where
+    the name it beening revolved to the object itself. When this happends, we use the parent object context
+    to call L{expandName()}, avoiding the infinite recursion.
+    """
     system = systemcls()
     base_mod = fromText('''
     class Foo:
@@ -612,25 +622,25 @@ def test_resolveName_alias2(systemcls: Type[model.System]) -> None:
     assert base_mod.contents['Attribute'].contents['foo'].fullName() == 'base_mod.Attribute.foo'
     assert 'base_mod.Attribute.foo' in mod.system.allobjects, str(list(mod.system.allobjects))
     
-    mod.system.objForFullName('base_mod.Attribute.foo').kind is model.DocumentableKind.ALIAS
+    f = mod.system.objForFullName('base_mod.Attribute.foo')
+    assert isinstance(f, model.Attribute)
+    assert f.kind is model.DocumentableKind.ALIAS
 
     assert mod.expandName('System.Attribute.foo')=="base_mod.Foo._1"
     assert System.expandName('Attribute.foo')=="base_mod.Foo._1"
 
-    assert mod.resolveName('System').contents['Attribute'].kind is model.DocumentableKind.ALIAS
+    assert mod.contents['System'].contents['Attribute'].kind is model.DocumentableKind.ALIAS
 
 @systemcls_param
-def test_resolveName_alias3(systemcls: Type[model.System]) -> None:
+def test_expandName_alias_not_module_level(systemcls: Type[model.System]) -> None:
     """
     We ignore assignments that are not defined at least once at the module level.
     Meaning that we ignore variables defines in "if" or "try/catch" blocks.
     """
     system = systemcls()
-    
     base_mod = fromText('''
     ssl = 1
     ''', system=system, modname='twisted.internet')
-
     mod = fromText('''
     try:
         from twisted.internet import ssl as _ssl
@@ -642,24 +652,35 @@ def test_resolveName_alias3(systemcls: Type[model.System]) -> None:
 
     assert mod.expandName('ssl')=="twisted.internet.ssl"
     assert mod.expandName('_ssl')=="twisted.internet.ssl"
-    assert ast.literal_eval(mod.resolveName('ssl').value)==1
+    s = mod.resolveName('ssl')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
     assert 'ssl' not in mod.contents
 
+    system = systemcls()
+    base_mod = fromText('''
+    ssl = 1
+    ''', system=system, modname='twisted.internet')
     mod = fromText('''
+    # We definied the alias at the module level such that it will be included in the docs
     ssl = None
     try:
         from twisted.internet import ssl as _ssl
     except ImportError:
         ssl = None
     else:
+        # The last analyzed assignments "wins"
         ssl = _ssl
-    ''', system=systemcls(), modname='mod')
+    ''', system=system, modname='mod')
 
     assert mod.expandName('ssl')=="twisted.internet.ssl"
     assert mod.expandName('_ssl')=="twisted.internet.ssl"
+    s = mod.resolveName('ssl')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
     assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
-    assert mod.resolveName('ssl') is None
-    assert 'ssl' in mod.contents
 
 
 @systemcls_param

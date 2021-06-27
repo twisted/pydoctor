@@ -268,7 +268,7 @@ class Documentable:
     def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
-    def expandName(self, name: str, redirected_from:Optional['Documentable']=None) -> str:
+    def expandName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
         """
         Return a fully qualified name for the possibly-dotted `name`.
 
@@ -293,36 +293,69 @@ class Documentable:
         
         This method is in charge to follow the aliases when possible!
         It will reccursively follow any L{DocumentableKind.ALIAS} entry found. 
+
+        Example:
+
+        mod1.py::
+
+            import external
+            class Processor:
+                spec = external.Processor.more_spec
+            P = Processor
+
+        mod2.py::
+
+            from mod1 import P
+            class Runner:
+                processor = P
+
+        In the context of mod2, expandName("Runner.processor.spec") should be
+        "external.Processor.more_spec".
         
         @param name: The name to expand.
-        @param redirected_from: In the case of a followed redirection ony. This is
+        @param redirected_from: In the case of a followed redirection only. This is
             the alias object. This variable is used to prevent infinite loops when doing the lookup.
+        @note: The implementation replies on iterating through the each part of the dotted name, 
+            calling L{_localNameToFullName} for each name in their associated context and incrementally building 
+            the fullName from that. 
+        @since 2021: Lookup members in superclasses when possible and follows L{DocumentableKind.ALIAS}. This mean that L{expandName} will never return the name of an alias,
+            it will always follow it's indirection to the origin.
         """
+
         parts = name.split('.')
-        obj: Documentable = self
+        ctx: Documentable = self # The context for the currently processed part of the name. 
         for i, part in enumerate(parts):
-            full_name = obj._localNameToFullName(part, redirected_from=redirected_from)
+            full_name = ctx._localNameToFullName(part, redirected_from=redirected_from)
             if full_name == part and i != 0:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members
-                if isinstance(obj, Class) and obj.find(part) is not None:
-                    full_name = obj.find(part).fullName()
-                else:
+                if isinstance(ctx, Class):
+                    ctx.find(part)
+                    f = ctx.find(part)
+                    full_name = f.fullName() if f else full_name
+                # We don't have a full name
+                if full_name == part:
                     # TODO: Instead of returning the input, _localNameToFullName()
                     #       should probably either return None or raise LookupError.
-                    full_name = f'{obj.fullName()}.{part}'
+                    # Or maybe we should find a way to indicate if the expanded name is "guessed", like in this case. 
+                    #   or we surely have the the correct fullName. With the cirrent implementation, this would mean checking
+                    #   if parts[i + 1:] contains anything. 
+                    full_name = f'{ctx.fullName()}.{part}'
                     break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
-            obj = nxt
+            ctx = nxt
 
         expanded_name = '.'.join([full_name] + parts[i + 1:])
+        
         
         # We check if the name we resolved is an alias.
         # Attribute for all aliases are created now, we can follow the redirection here.
         obj = self.system.objForFullName(expanded_name)
         if obj is not None and obj.kind is DocumentableKind.ALIAS: 
+            assert isinstance(obj, Attribute)
+            # Try to resolve alias, fallback to original value if None.
             resolved = self._resolveAlias(obj, redirected_from=redirected_from)
             expanded_name = resolved or expanded_name
 
@@ -446,6 +479,7 @@ class Module(CanContainImportsDocumentable):
         if name in self.contents:
             o: Documentable = self.contents[name]
             if o.kind is DocumentableKind.ALIAS:
+                assert isinstance(o, Attribute)
                 resolved = self._resolveAlias(o, redirected_from=redirected_from)
                 if resolved:
                     return resolved
@@ -526,6 +560,7 @@ class Class(CanContainImportsDocumentable):
             o: Documentable = self.contents[name]
             if o.kind is DocumentableKind.ALIAS:
                 # We pass redirected_from value in order to avoid inifite recursion.
+                assert isinstance(o, Attribute)
                 resolved = self._resolveAlias(o, redirected_from=redirected_from)
                 if resolved:
                     return resolved
