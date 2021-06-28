@@ -100,6 +100,7 @@ class DemoClass(ABC, _PrivateClass):
     """
     This is the docstring of this class.
     """
+    #FIXME: For some reason, the alias Demo do ont appear in the class page :/
 
     def __init__(self, one: str, two: bytes) -> None:
         """
@@ -147,6 +148,12 @@ class DemoClass(ABC, _PrivateClass):
         """
         This is a docstring for deleter.
         """
+        pass
+    
+    ro = read_only
+    rw = read_and_write
+    rwd = read_and_write_delete
+
 
 class IContact(zope.interface.Interface):
     """
@@ -163,3 +170,6 @@ class IContact(zope.interface.Interface):
 
     def send_email(text: str) -> None:
         pass
+
+_Demo = _PrivateClass
+Demo = DemoClass
