@@ -1,11 +1,15 @@
 """Classes that generate the summary pages."""
 
-from collections import defaultdict
 from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
 )
-from typing_extensions import Final
+if TYPE_CHECKING:
+    from typing_extensions import Final
+else:
+    from collections import defaultdict
+    from functools import partial
+    Final = defaultdict(partial(defaultdict, defaultdict))
 
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 

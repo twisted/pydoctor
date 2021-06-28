@@ -4,7 +4,13 @@ from typing import (
     TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
-from typing_extensions import Final
+if TYPE_CHECKING:
+    from typing_extensions import Final
+else:
+    # Dirty hack to work without the typing_extensions dep at runtime.
+    from collections import defaultdict
+    from functools import partial
+    Final = defaultdict(partial(defaultdict, defaultdict))
 import ast
 import abc
 
@@ -292,6 +298,13 @@ class ModulePage(CommonPage):
     def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
+        # Add Known aliases, for modules.
+        aliases = sorted(self.ob.aliases, key=objects_order)
+        p = assembleList(self.ob.system, "Known aliases: ",
+                         [o.fullName() for o in aliases], self.page_url)
+        if p is not None:
+            r.append(tags.p(p))       
+
         sourceHref = util.srclink(self.ob)
         if sourceHref:
             r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
@@ -360,7 +373,6 @@ def assembleList(
         system: model.System,
         label: str,
         lst: Sequence[str],
-        idbase: str,
         page_url: str
         ) -> Optional["Flattenable"]:
     lst2 = []
@@ -371,20 +383,16 @@ def assembleList(
     lst = lst2
     if not lst:
         return None
-    def one(item: str) -> "Flattenable":
-        if item in system.allobjects:
-            return tags.code(epydoc2stan.taglink(system.allobjects[item], page_url))
-        else:
-            return item
-    def commasep(items: Sequence[str]) -> List["Flattenable"]:
-        r = []
-        for item in items:
-            r.append(one(item))
+    r = []
+    for i, item in enumerate(lst):
+        if i>0:
             r.append(', ')
-        del r[-1]
-        return r
+        if item in system.allobjects:
+            r.append(tags.code(epydoc2stan.taglink(system.allobjects[item], page_url)))
+        else:
+            r.append(tags.code(item))
     p: List["Flattenable"] = [label]
-    p.extend(commasep(lst))
+    p.extend(r)
     return p
 
 
@@ -403,7 +411,6 @@ class ClassPage(CommonPage):
             attrs = unmasked_attrs(baselist)
             if attrs:
                 self.baselists.append((baselist, attrs))
-        self.overridenInCount = 0
 
     def extras(self) -> List["Flattenable"]:
         r = super().extras()
@@ -424,9 +431,17 @@ class ClassPage(CommonPage):
         if not scs:
             return r
         p = assembleList(self.ob.system, "Known subclasses: ",
-                         [o.fullName() for o in scs], "moreSubclasses", self.page_url)
+                         [o.fullName() for o in scs], self.page_url)
         if p is not None:
             r.append(tags.p(p))
+        
+        # Add Known aliases, for classes. 
+        aliases = sorted(self.ob.aliases, key=objects_order)
+        p = assembleList(self.ob.system, "Known aliases: ",
+                         [o.fullName() for o in aliases], self.page_url)
+        if p is not None:
+            r.append(tags.p(p))                 
+
         return r
 
     def classSignature(self) -> "Flattenable":
@@ -500,12 +515,11 @@ class ClassPage(CommonPage):
             break
         ocs = sorted(overriding_subclasses(self.ob, name), key=objects_order)
         if ocs:
-            self.overridenInCount += 1
-            idbase = 'overridenIn' + str(self.overridenInCount)
             l = assembleList(self.ob.system, 'overridden in ',
-                             [o.fullName() for o in ocs], idbase, self.page_url)
+                             [o.fullName() for o in ocs], self.page_url)
             if l is not None:
                 r.append(tags.div(class_="interfaceinfo")(l))
+        # Not adding Known aliases here because it would really be too much information.  
         return r
 
 
@@ -522,8 +536,7 @@ class ZopeInterfaceClassPage(ClassPage):
             namelist = sorted(self.ob.implements_directly, key=lambda x:x.lower())
             label = 'Implements interfaces: '
         if namelist:
-            l = assembleList(self.ob.system, label, namelist, "moreInterface",
-                             self.page_url)
+            l = assembleList(self.ob.system, label, namelist, self.page_url)
             if l is not None:
                 r.append(tags.p(l))
         return r
