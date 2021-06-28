@@ -25,7 +25,7 @@ from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
-from pydoctor.astutils import node2dottedname
+from pydoctor.astutils import node2dottedname, node2fullname
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -124,6 +124,8 @@ class Documentable:
 
     documentation_location = DocLocation.OWN_PAGE
     """Page location where we are documented."""
+
+    _RESOLVE_ALIAS_MAX_RECURSE = 4
 
     def __init__(
             self, system: 'System', name: str,
@@ -251,6 +253,8 @@ class Documentable:
         self.name = new_name
         self._handle_reparenting_post()
         del old_parent.contents[old_name]
+        # We could add a special alias insead of using _localNameToFullName_map, 
+        # this would allow to track the original location of the documentable.
         old_parent._localNameToFullName_map[old_name] = self.fullName()
         new_parent.contents[new_name] = self
         self._handle_reparenting_post()
@@ -265,10 +269,11 @@ class Documentable:
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
+    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
         raise NotImplementedError(self._localNameToFullName)
 
-    def expandName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
+    def expandName(self, name: str, 
+                   indirections:Optional[List['Attribute']]=None) -> str:
         """
         Return a fully qualified name for the possibly-dotted `name`.
 
@@ -292,7 +297,8 @@ class Documentable:
         should be C{"mod1.Local"}. 
         
         This method is in charge to follow the aliases when possible!
-        It will reccursively follow any L{DocumentableKind.ALIAS} entry found. 
+        It will reccursively follow any L{DocumentableKind.ALIAS} entry found 
+        up to certain level of complexity. 
 
         Example:
 
@@ -313,8 +319,7 @@ class Documentable:
         C{"external.Processor.more_spec"}.
         
         @param name: The name to expand.
-        @param redirected_from: In the case of a followed redirection only. This is
-            the alias object. This variable is used to prevent infinite loops when doing the lookup.
+        @param indirections: See L{_resolveAlias}
         @note: The implementation replies on iterating through the each part of the dotted name, 
             calling L{_localNameToFullName} for each name in their associated context and incrementally building 
             the fullName from that. 
@@ -326,7 +331,7 @@ class Documentable:
         parts = name.split('.')
         ctx: Documentable = self # The context for the currently processed part of the name. 
         for i, part in enumerate(parts):
-            full_name = ctx._localNameToFullName(part, redirected_from=redirected_from)
+            full_name = ctx._localNameToFullName(part, indirections)
             if full_name == part and i != 0:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members
@@ -338,9 +343,8 @@ class Documentable:
                 if full_name == part:
                     # TODO: Instead of returning the input, _localNameToFullName()
                     #       should probably either return None or raise LookupError.
-                    # Or maybe we should find a way to indicate if the expanded name is "guessed", like in this case. 
-                    #   or we surely have the the correct fullName. With the cirrent implementation, this would mean checking
-                    #   if parts[i + 1:] contains anything. 
+                    # Or maybe we should find a way to indicate if the expanded name is "guessed" or if we have the the correct fullName. 
+                    # With the current implementation, this would mean checking if "parts[i + 1:]" contains anything. 
                     full_name = f'{ctx.fullName()}.{part}'
                     break
             nxt = self.system.objForFullName(full_name)
@@ -348,39 +352,53 @@ class Documentable:
                 break
             ctx = nxt
 
-        expanded_name = '.'.join([full_name] + parts[i + 1:])
-        
-        
-        # We check if the name we resolved is an alias.
-        # Attribute for all aliases are created now, we can follow the redirection here.
-        obj = self.system.objForFullName(expanded_name)
-        if obj is not None and obj.kind is DocumentableKind.ALIAS: 
-            assert isinstance(obj, Attribute)
-            # Try to resolve alias, fallback to original value if None.
-            resolved = self._resolveAlias(obj, redirected_from=redirected_from)
-            expanded_name = resolved or expanded_name
+        return '.'.join([full_name] + parts[i + 1:])
 
-        return expanded_name
+    def _resolveAlias(self, alias: 'Attribute', 
+                      indirections:Optional[List['Attribute']]=None) -> str:
+        """
+        Resolve the alias value to it's target full name.
+        Or fall back to original alias full name if we know we've exhausted the max recursions.
+        @param alias: an ALIAS object.
+        @param indirections: Chain of alias objects followed. 
+            This variable is used to prevent infinite loops when doing the lookup.
+        """
+        if len(indirections or ()) > self._RESOLVE_ALIAS_MAX_RECURSE:
+            return indirections[0].fullName() 
+        
+        # the _alias_to attribute should never be none for ALIAS objects
+        assert alias.kind is DocumentableKind.ALIAS
+        name = alias._alias_to
+        assert name is not None
+        
+        # the context is important
+        ctx = alias.parent
 
-    def _resolveAlias(self, alias: 'Attribute', redirected_from:Optional['Attribute']=None) -> Optional[str]:
-        dottedname = node2dottedname(alias.value)
-        if dottedname:
-            name = '.'.join(dottedname)
-            
-            ctx = self # should ctx be alias.parent?
-            
-            # This checks avoids infinite recursion error
-            if redirected_from != alias:
-                # We redirect to the original object instead!
-                return ctx.expandName(name, redirected_from=alias)
-            else:
-                # Issue tracing the alias back to it's original location, found the same alias again.
-                if ctx.parent:
-                    # We try with the parent scope and redirect to the original object!
-                    # This is used in situations like right here in the System class and it's aliases, 
-                    # because they have the same name as the name they are aliasing, it's causing trouble.
-                    return ctx.parent.expandName(name, redirected_from=alias)
+        # This checks avoids infinite recursion error when a alias has the same name as it's value
+        if indirections and indirections[-1] != alias or not indirections:
+            # We redirect to the original object instead!
+            return ctx.expandName(name, indirections=(indirections or [])+[alias])
+        else:
+            # Issue tracing the alias back to it's original location, found the same alias again.
+            if ctx.parent:
+                # We try with the parent scope and redirect to the original object!
+                # This is used in situations like right here in the System class and it's aliases, 
+                # because they have the same name as the name they are aliasing, it's causing trouble.
+                return ctx.parent.expandName(name, indirections=(indirections or [])+[alias])
         return None
+
+    def _resolveDocumentable(self, o: 'Documentable', 
+                             indirections:Optional[List['Attribute']]=None) -> str:
+        """
+        Wrapper for L{_resolveAlias}. 
+
+        If the documentable is an alias, then follow it and return the supposed full name fo the documentable object,
+        or return the passed object's - C{o} - full name.
+        """
+        if o.kind is DocumentableKind.ALIAS:
+            assert isinstance(o, Attribute)
+            return self._resolveAlias(o, indirections)
+        return o.fullName()
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """
@@ -441,7 +459,20 @@ class Documentable:
             section,
             f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
+    
+    @property
+    def aliases(self) -> List['Attribute']:
+        """
+        Return the known aliases of an object. 
 
+        It seems that the list if not always complete, though.
+        """
+        aliases: List['Attribute'] = []
+        for alias in filter(lambda ob: ob.kind is DocumentableKind.ALIAS and isinstance(ob, Attribute), 
+                         self.system.allobjects.values()):
+            if alias.parent._resolveDocumentable(alias) == self.fullName():
+                aliases.append(alias)
+        return aliases
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
@@ -476,17 +507,19 @@ class Module(CanContainImportsDocumentable):
 
         self._docformat: Optional[str] = None
 
-    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
+    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
+        # Follows aliases
         if name in self.contents:
-            o: Documentable = self.contents[name]
-            if o.kind is DocumentableKind.ALIAS:
-                assert isinstance(o, Attribute)
-                resolved = self._resolveAlias(o, redirected_from=redirected_from)
-                if resolved:
-                    return resolved
-            return o.fullName()
+            return self._resolveDocumentable(
+                    self.contents[name], 
+                    indirections)
         elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
+            resolved = self._localNameToFullName_map[name]
+            if resolved in self.system.allobjects:
+                resolved = self._resolveDocumentable(
+                    self.system.allobjects[resolved], 
+                    indirections)
+            return resolved
         else:
             return name
 
@@ -556,18 +589,19 @@ class Class(CanContainImportsDocumentable):
                 return obj
         return None
 
-    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
+    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
+        # Follows aliases
         if name in self.contents:
-            o: Documentable = self.contents[name]
-            if o.kind is DocumentableKind.ALIAS:
-                # We pass redirected_from value in order to avoid inifite recursion.
-                assert isinstance(o, Attribute)
-                resolved = self._resolveAlias(o, redirected_from=redirected_from)
-                if resolved:
-                    return resolved
-            return o.fullName()
+            return self._resolveDocumentable(
+                    self.contents[name], 
+                    indirections)
         elif name in self._localNameToFullName_map:
-            return self._localNameToFullName_map[name]
+            resolved = self._localNameToFullName_map[name]
+            if resolved in self.system.allobjects:
+                resolved = self._resolveDocumentable(
+                    self.system.allobjects[resolved], 
+                    indirections)
+            return resolved
         else:
             return self.parent._localNameToFullName(name)
 
@@ -600,8 +634,8 @@ class Inheritable(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-    def _localNameToFullName(self, name: str, redirected_from:Optional['Attribute']=None) -> str:
-        return self.parent._localNameToFullName(name, redirected_from=redirected_from)
+    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
+        return self.parent._localNameToFullName(name, indirections)
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -624,6 +658,16 @@ class Attribute(Inheritable):
     The value of the assignment expression. 
 
     None value means the value is not initialized at the current point of the the process. 
+    """
+
+    _alias_to: Optional[str] = None
+    """"
+    We store the alias value here so we don't have to process it all the time. 
+    For aliases, this is the same as::
+
+        '.'.join(node2dottedname(self.value))
+    
+    For other attributes, this is None.
     """
 
 # Work around the attributes of the same name within the System class.

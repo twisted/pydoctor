@@ -6,7 +6,7 @@ import astor
 
 from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, model, astutils
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
@@ -574,7 +574,7 @@ def test_expandName_alias(systemcls: Type[model.System]) -> None:
 def test_expandName_alias_same_name_recursion(systemcls: Type[model.System]) -> None:
     """
     When the name of the alias is the same as the name contained in it's value, 
-    it can create a recursion error. The C{redirected_from} parameter of methods 
+    it can create a recursion error. The C{indirections} parameter of methods 
     L{CanContainImportsDocumentable._localNameToFullName}, L{Documentable._resolveAlias} and L{Documentable.expandName} prevent an infinite loop where
     the name it beening revolved to the object itself. When this happends, we use the parent object context
     to call L{Documentable.expandName()}, avoiding the infinite recursion.
@@ -631,8 +631,13 @@ def test_expandName_alias_same_name_recursion(systemcls: Type[model.System]) -> 
 
     assert mod.contents['System'].contents['Attribute'].kind is model.DocumentableKind.ALIAS
 
+    # Tests the .aliases property. 
+
+    assert [o.fullName() for o in base_mod.contents['Foo'].contents['_1'].aliases] == ['base_mod.foo','base_mod.Attribute.foo']
+    assert [o.fullName() for o in base_mod.contents['Foo'].contents['_3'].aliases] == ['mod.SuperSystem.foo', 'mod.SuperSystem.Attribute.foo']
+
 @systemcls_param
-def test_expandName_alias_not_module_level(systemcls: Type[model.System]) -> None:
+def test_expandName_alias_not_documentable_module_level(systemcls: Type[model.System]) -> None:
     """
     We ignore assignments that are not defined at least once at the module level.
     Meaning that we ignore variables defines in "if" or "try/catch" blocks.
@@ -656,7 +661,10 @@ def test_expandName_alias_not_module_level(systemcls: Type[model.System]) -> Non
     assert isinstance(s, model.Attribute)
     assert s.value is not None
     assert ast.literal_eval(s.value)==1
-    assert 'ssl' not in mod.contents
+    assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
+
+@systemcls_param
+def test_expandName_alias_documentable_module_level(systemcls: Type[model.System]) -> None:
 
     system = systemcls()
     base_mod = fromText('''
@@ -670,7 +678,7 @@ def test_expandName_alias_not_module_level(systemcls: Type[model.System]) -> Non
     except ImportError:
         ssl = None
     else:
-        # The last analyzed assignments "wins"
+        # The last analyzed assignment "wins"
         ssl = _ssl
     ''', system=system, modname='mod')
 
@@ -682,6 +690,201 @@ def test_expandName_alias_not_module_level(systemcls: Type[model.System]) -> Non
     assert ast.literal_eval(s.value)==1
     assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
 
+@systemcls_param
+def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.System]) -> None:
+    """
+    We ignore assignments that are not defined at least once at the module level.
+    Meaning that we ignore variables defines in "if" or "try/catch" blocks.
+    """
+    system = systemcls()
+    mod = fromText('''
+    import sys
+    class A:
+        if sys.version_info[0] < 3:
+            alias = B.a
+        else:
+            # The last analyzed assignment "wins"
+            alias = B.b
+    class B:
+        a = 3
+        b = 4
+    ''', system=system, modname='mod')
+
+    s = mod.resolveName('A.alias')
+    assert isinstance(s, model.Attribute)
+    assert s.fullName()=="mod.B.b"
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==4
+    assert mod.contents['A'].contents['alias'].kind is model.DocumentableKind.ALIAS
+
+@systemcls_param
+def test_expandName_alias_documentale_class_level(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    mod = fromText('''
+    # We definied the alias at the module level such that it will be included in the docs
+    import sys
+    class A:
+        alias = None
+        if sys.version_info[0] < 3:
+            alias = B.a
+        else:
+            alias = B.b
+    class B:
+        a = 3
+        b = 4
+    ''', system=system, modname='mod')
+
+    s = mod.resolveName('A.alias')
+    assert isinstance(s, model.Attribute)
+    assert s.fullName() == "mod.B.b"
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==4
+    assert mod.contents['A'].contents['alias'].kind is model.DocumentableKind.ALIAS
+
+@systemcls_param
+def test_aliases_property(systemcls: Type[model.System]) -> None:
+    base_mod = '''
+    class Z:
+        pass
+    '''
+    src = '''
+    import base_mod
+    from abc import ABC
+    class A(ABC):
+        _1=1
+        _2=2
+        _3=3
+        class_ = B # this is funcky
+    
+    class B(A):
+        _1=a_1
+        _2=A._2
+        _3=A._3
+        class_ = a
+
+    a = A
+    a_1 = A._1
+    b = B
+    bob = b.class_.class_.class_
+    lol = b.class_.class_
+    blu = b.class_
+    mod = base_mod
+    '''
+    system = systemcls()
+    fromText(base_mod, system=system, modname='base_mod')
+    fromText(src, system=system)
+
+    A = system.allobjects['<test>.A']
+    B = system.allobjects['<test>.B']
+    _base_mod = system.allobjects['base_mod']
+
+    assert isinstance(A, model.Class)
+    assert A.subclasses == [system.allobjects['<test>.B']]
+
+    assert [o.fullName() for o in A.aliases] == ['<test>.B.class_', '<test>.a', '<test>.bob', '<test>.blu']
+    assert [o.fullName() for o in B.aliases] == ['<test>.A.class_', '<test>.b', '<test>.lol']
+    assert [o.fullName() for o in A.contents['_1'].aliases] == ['<test>.B._1', '<test>.a_1']
+    assert [o.fullName() for o in A.contents['_2'].aliases] == ['<test>.B._2']
+    assert [o.fullName() for o in A.contents['_3'].aliases] == ['<test>.B._3']
+    assert [o.fullName() for o in _base_mod.aliases] == ['<test>.mod']
+
+    # Aliases cannot currently have aliases because resolveName() always follows the aliases. 
+    assert [o.fullName() for o in A.contents['class_'].aliases] == []
+    assert [o.fullName() for o in B.contents['class_'].aliases] == []
+
+@systemcls_param
+def test_aliases_re_export(systemcls: Type[model.System]) -> None:
+
+    src = '''
+    # Import and re-export some external lib
+
+    from constantly import NamedConstant, ValueConstant, FlagConstant, Names, Values, Flags
+    from mylib import core
+    from mylib.core import Observalbe
+    from mylib.core._impl import Processor
+    Patator = core.Patator
+
+    __all__ = ["NamedConstant", "ValueConstant", "FlagConstant", "Names", "Values", "Flags",
+               "Processor","Patator","Observalbe"]
+    '''
+    system = systemcls()
+    fromText(src, system=system)
+    assert system.allobjects['<test>.ValueConstant'].kind is model.DocumentableKind.ALIAS
+    n = system.allobjects['<test>.NamedConstant']
+    assert isinstance(n, model.Attribute)
+    assert astor.to_source(n.value).strip() == 'constantly.NamedConstant' == astutils.node2fullname(n.value, n.parent)
+
+    n = system.allobjects['<test>.Processor']
+    assert isinstance(n, model.Attribute)
+    assert n.kind is model.DocumentableKind.ALIAS
+    assert astor.to_source(n.value).strip() == 'mylib.core._impl.Processor' == astutils.node2fullname(n.value, n.parent)
+
+    assert system.allobjects['<test>.ValueConstant'].kind is model.DocumentableKind.ALIAS
+    n = system.allobjects['<test>.Observalbe']
+    assert isinstance(n, model.Attribute)
+    assert n.kind is model.DocumentableKind.ALIAS
+    assert astor.to_source(n.value).strip() == 'mylib.core.Observalbe' == astutils.node2fullname(n.value, n.parent)
+
+    n = system.allobjects['<test>.Patator']
+    assert isinstance(n, model.Attribute)
+    assert n.kind is model.DocumentableKind.ALIAS
+    assert astor.to_source(n.value).strip() == 'core.Patator'
+    assert astutils.node2fullname(n.value, n.parent) == 'mylib.core.Patator'
+
+@systemcls_param
+def test_exportName_re_exported_aliases(systemcls: Type[model.System]) -> None:
+    # TODO: fix this test. This is probably related to https://github.com/twisted/pydoctor/issues/295.
+    base_mod = '''
+    class Zoo:
+        _1=1
+    class Hey:
+        _2=2
+    Z = Zoo
+    H = Hey
+    '''
+    src = '''
+    from base_mod import Z, H
+    __all__ = ["Z", "H"]
+    '''
+    system = systemcls()
+    fromText(base_mod, system=system, modname='base_mod')
+    fromText(src, system=system, modname='mod')
+
+    mod = system.allobjects['mod']
+    base_mod = system.allobjects['base_mod']
+    assert mod.expandName('Z._1')=="Zoo._1" # Should be "base_mod.Zoo._1"
+    assert base_mod.expandName('Z._1')=="Zoo._1" # Should be "base_mod.Zoo._1"
+    assert base_mod.expandName('Zoo._1')=="base_mod.Zoo._1"
+    assert system.allobjects['mod.Z'].kind is model.DocumentableKind.ALIAS
+
+@systemcls_param
+def test_expandName_aliasloops(systemcls: Type[model.System]) -> None:
+
+    src = '''
+    from abc import ABC
+    class A(ABC):
+        _1=C._2
+        _2=2
+    
+    class B(A):
+        _1=A._2
+        _2=A._1
+
+    class C(A,B):
+        _1=A._1
+        _2=B._2 
+        # this could crash with an infitine recursion error!
+    '''
+    system = systemcls()
+    fromText(src, system=system)
+    A = system.allobjects['<test>.A']
+    B = system.allobjects['<test>.B']
+    C = system.allobjects['<test>.C']
+
+    assert A.expandName('_1') == '<test>.A._1'
+    assert B.expandName('_2') == '<test>.B._2'
+    assert C.expandName('_2') == '<test>.C._2'
+    assert C.expandName('_1') == '<test>.C._1'
 
 @systemcls_param
 def test_subclasses(systemcls: Type[model.System]) -> None:

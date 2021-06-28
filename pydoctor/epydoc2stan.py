@@ -883,5 +883,12 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     return tags.table(class_='valueTable')(*rows)
 
 def format_alias_value(obj: model.Attribute) -> Tag:
-    return tags.p(tags.em("Alias to ", 
-                        colorize_inline_pyval(obj.value).to_stan(_EpydocLinker(obj))))
+    alias_value = obj._alias_to
+    assert alias_value is not None
+    target = obj.resolveName(alias_value)
+    if target:
+        # TODO: contextualize the name in the context of the module/class, currently this always shows the fullName of the object.
+        alias = tags.code(taglink(target, obj.page_object.url))
+    else:
+        alias =  colorize_inline_pyval(obj.value).to_stan(_EpydocLinker(obj.parent))
+    return tags.p(tags.em("Alias to ", alias))

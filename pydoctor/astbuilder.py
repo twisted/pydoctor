@@ -16,7 +16,7 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname
+from pydoctor.astutils import bind_args, node2dottedname, node2fullname
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -28,14 +28,6 @@ if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
 else:
     _parse = ast.parse
-
-
-def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
-    dottedname = node2dottedname(expr)
-    if dottedname is None:
-        return None
-    return ctx.expandName('.'.join(dottedname))
-
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
@@ -209,21 +201,6 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
 
-        # Build the list of module level variable. This is is used to check if a module assignment
-        # should be analyzed or not. See _handleAssignmentInModule.
-        _assigns = list(_findAnyModuleLevelAssign(node))
-        for target, value in _assigns:
-            for a in target:
-                if isinstance(a, ast.Tuple):
-                    for ele in a.elts:
-                        name = node2dottedname(ele)
-                        if name:
-                            self._moduleLevelAssigns.append('.'.join(name))
-                else:
-                    name = node2dottedname(a)
-                    if name:
-                        self._moduleLevelAssigns.append('.'.join(name))
-
         self.builder.push(self.module, 0)
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.setDocstring(node.body[0].value)
@@ -388,22 +365,30 @@ class ModuleVistor(ast.NodeVisitor):
                 asname = orgname
 
             # Move re-exported objects into current module.
-            if asname in exports \
-                and mod is not None: # This part of the condition makes if impossible to re-export 
-                # names that are not part of the current system. We could create Aliases instead.
-                try:
-                    ob = mod.contents[orgname]
-                except KeyError:
-                    self.builder.warning("cannot find re-exported name",
-                                         f'{modname}.{orgname}')
+            if asname in exports:
+                if mod is None: 
+                    # re-export names that are not part of the current system with an alias
+                    attr = current.contents.get(asname)
+                    if not attr:
+                        attr = self.builder.addAttribute(name=asname, kind=model.DocumentableKind.ALIAS, parent=current)
+                    attr._alias_to = f'{modname}.{orgname}'
+                    # This is only for the HTML repr
+                    attr.value=ast.Name(attr._alias_to)
+                    continue
                 else:
-                    if mod.all is None or orgname not in mod.all:
-                        self.system.msg(
-                            "astbuilder",
-                            "moving %r into %r" % (ob.fullName(), current.fullName())
-                            )
-                        ob.reparent(current, asname)
-                        continue
+                    try:
+                        ob = mod.contents[orgname]
+                    except KeyError:
+                        self.builder.warning("cannot find re-exported name",
+                                            f'{modname}.{orgname}')
+                    else:
+                        if mod.all is None or orgname not in mod.all:
+                            self.system.msg(
+                                "astbuilder",
+                                "moving %r into %r" % (ob.fullName(), current.fullName())
+                                )
+                            ob.reparent(current, asname)
+                            continue
 
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
@@ -513,31 +498,20 @@ class ModuleVistor(ast.NodeVisitor):
         Create an alias or update an alias.
         """
         
-        if is_attribute_overridden(obj, value):
-            obj.report(f'Assignment to alias "{obj.name}" overrides previous assignment '
-                    f'at line {obj.linenumber}, the original redirection will be ignored.', 
+        if is_attribute_overridden(obj, value) and is_alias(obj.value):
+            obj.report(f'Assignment to alias "{obj.name}" overrides previous alias '
+                    f'at line {obj.linenumber}.', 
                             section='ast', lineno_offset=lineno-obj.linenumber)
 
         obj.kind = model.DocumentableKind.ALIAS
-        # This will be used to follow the alias redirection.
+        # This will be used for HTML repr of the alias.
         obj.value = value
-
-    @staticmethod
-    def _handleIndirection(ctx: model.CanContainImportsDocumentable,
-        target: str,
-        expr: Optional[ast.expr]
-        ) -> None:
-        """
-        Aliases declared in "try/except" block or "if" blocks are not documented, but we still track the indirection. 
-
-        If the given expression is a name assigned to a target that is not yet in use, register an indirection in the L{CanContainImportsDocumentable._localNameToFullName_map} attriute.
-        """
-        if target in ctx.contents:
-            return
-        full_name = node2fullname(expr, ctx)
-        if full_name is None:
-            return
-        ctx._localNameToFullName_map[target] = full_name
+        dottedname = node2dottedname(value)
+        # It cannot be None, because we call _handleAlias() only if is_alias() is True.
+        assert dottedname is not None
+        name = '.'.join(dottedname)
+        # Store the alias value as string now, this avoids doing it in _resolveAlias().
+        obj._alias_to = name
 
 
     def _handleModuleVar(self,
@@ -583,14 +557,7 @@ class ModuleVistor(ast.NodeVisitor):
             ) -> None:
         module = self.builder.current
         assert isinstance(module, model.Module)
-        # Check if the assignment is on the first level.
-        # We ignore assignments that are not defined at least once at the module level.
-        # Meaning that we ignore variables defines in "if" or "try/catch" blocks.
-        if target in self._moduleLevelAssigns:
-            self._handleModuleVar(target, annotation, expr, lineno)
-        elif is_alias(expr):
-            # But we still track the name indirection
-            self._handleIndirection(module, target, expr)
+        self._handleModuleVar(target, annotation, expr, lineno)
 
     def _handleClassVar(self,
             name: str,
@@ -944,7 +911,8 @@ class ModuleVistor(ast.NodeVisitor):
             if typ is not None:
                 return self._unstring_annotation(typ)
             default = args.arguments.get('default')
-            return _infer_type(default)
+            if default is not None:
+                return _infer_type(default)
         return None
 
     def _annotations_from_function(
@@ -1228,12 +1196,6 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def _findAnyModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[List[ast.expr], Union[ast.Assign, ast.AnnAssign]]]:
-     for node in mod_ast.body:
-        if isinstance(node, (ast.Assign)):
-            yield (node.targets, node)
-        elif isinstance(node, ast.AnnAssign):
-            yield ([node.target], node)
 
 def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
     """
