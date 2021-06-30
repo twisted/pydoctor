@@ -1702,9 +1702,10 @@ def test_overload(systemcls: Type[model.System]) -> None:
         """, systemcls=systemcls)
     func = mod.contents['parse']
     assert isinstance(func, model.Function)
-    assert str(func.signature) == "(s: Union[str, bytes]) -> Union[str, bytes]"
+    # Work arround different space arrangemnts in Signature.__str__ between python verions, anyway without space is still valid signature.
+    assert str(func.signature).replace(' ', '') == "(s:Union[str,bytes])->Union[str,bytes]"
     assert [astbuilder.node2dottedname(d) for d in func.decorators] == []
     overloads = func.overloads
     assert len(overloads)==2
-    assert str(overloads[0].signature) == "(s: str) -> str"
-    assert str(overloads[1].signature) == "(s: bytes) -> bytes"
+    assert str(overloads[0].signature).replace(' ', '') == "(s:str)->str"
+    assert str(overloads[1].signature).replace(' ', '') == "(s:bytes)->bytes"
