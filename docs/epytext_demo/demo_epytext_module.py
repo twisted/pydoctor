@@ -8,6 +8,7 @@ from abc import ABC
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
+from typing import overload, Union
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
@@ -48,6 +49,16 @@ def demo_cross_reference() -> None:
         - L{Custom name <demo_typing_arguments>}
     """
 
+@overload
+def demo_overload(s:str)->str:
+    ...
+@overload
+def demo_overload(s:bytes)->bytes:
+    ...
+def demo_overload(s:Union[str, bytes])->Union[str, bytes]:
+    """
+    Overload signatures appears on top of the main signature, without any decorators.
+    """
 
 class _PrivateClass:
     """

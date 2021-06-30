@@ -3,6 +3,7 @@ This is a module demonstrating reST code documentation features.
 
 Most part of this documentation is using Python type hinting.
 """
+from typing import overload, Union
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
@@ -53,7 +54,16 @@ def demo_cross_reference() -> None:
     - `demo_typing_arguments`
     """
 
-
+@overload
+def demo_overload(s:str)->str:
+    ...
+@overload
+def demo_overload(s:bytes)->bytes:
+    ...
+def demo_overload(s:Union[str, bytes])->Union[str, bytes]:
+    """
+    Overload signatures appears on top of the main signature, without any decorators.
+    """
 
 class _PrivateClass:
     """
