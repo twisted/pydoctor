@@ -23,6 +23,8 @@ from typing import (
 )
 from urllib.parse import quote
 
+import attr
+
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -515,11 +517,21 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Signature
+    overloads: Sequence['FunctionOverload']
+    return_type: Optional[ast.expr]
 
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.overloads = []
+
+@attr.s(auto_attribs=True)
+class FunctionOverload:
+    """
+    @note: This is not an actual documentable type. 
+    """
+    signature: Signature
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -545,6 +557,7 @@ class System:
     Package = Package
     Function = Function
     Attribute = Attribute
+    FunctionOverload = FunctionOverload
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]

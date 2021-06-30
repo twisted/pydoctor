@@ -642,19 +642,26 @@ class ModuleVistor(ast.NodeVisitor):
             return
 
         lineno = node.lineno
+
+        # setting linenumber from the start of the decorations
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        # extracting docstring
         docstring: Optional[ast.Str] = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
                               and isinstance(node.body[0].value, ast.Str):
             docstring = node.body[0].value
-
+        
         func_name = node.name
+
+        # determine the function's kind
         is_property = False
         is_classmethod = False
         is_staticmethod = False
-        if isinstance(parent, model.Class) and node.decorator_list:
+        is_overload_func = False
+        if node.decorator_list:
+            # analyze decorators
             for d in node.decorator_list:
                 if isinstance(d, ast.Call):
                     deco_name = node2dottedname(d.func)
@@ -662,26 +669,42 @@ class ModuleVistor(ast.NodeVisitor):
                     deco_name = node2dottedname(d)
                 if deco_name is None:
                     continue
-                if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
-                    is_property = True
-                elif deco_name == ['classmethod']:
-                    is_classmethod = True
-                elif deco_name == ['staticmethod']:
-                    is_staticmethod = True
-                elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
-                    # Rename the setter/deleter, so it doesn't replace
-                    # the property object.
-                    func_name = '.'.join(deco_name[-2:])
+                if isinstance(parent, model.Class):
+                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                        is_property = True
+                    elif deco_name == ['classmethod']:
+                        is_classmethod = True
+                    elif deco_name == ['staticmethod']:
+                        is_staticmethod = True
+                    elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        func_name = '.'.join(deco_name[-2:])
+                if deco_name[-1] == 'overload':
+                    # determine if the function is decorated with overload
+                    is_overload_func = True
 
         if is_property:
+            # handle property and return
             attr = self._handlePropertyDef(node, docstring, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
             return
-
-        func = self.builder.pushFunction(func_name, lineno)
+        
+        # Check if it's a new func
+        func = parent.contents.get(func_name)
+        if func is not None and any(
+            'overload' in node2dottedname(deco) or () for 
+            deco in func.decorators or ()):
+            # If the function is annottated with overload right before:
+            # do not re create a Function object, simply enter it again.
+            self.builder.push(func, lineno)
+        else:
+            # new function
+            func = self.builder.pushFunction(func_name, lineno)        
+        
         func.is_async = is_async
         if docstring is not None:
             func.setDocstring(docstring)
@@ -700,6 +723,8 @@ class ModuleVistor(ast.NodeVisitor):
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
         default_offset = num_pos_args - len(defaults)
+        annotations, return_type = self._annotations_from_function(node)
+
         def get_default(index: int) -> Optional[ast.expr]:
             assert 0 <= index < num_pos_args, index
             index -= default_offset
@@ -708,7 +733,11 @@ class ModuleVistor(ast.NodeVisitor):
         parameters = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default)
-            parameters.append(Parameter(name, kind, default=default_val))
+            # pick up annotations in the functions sigantures, this will link to names when the pyval_repr PR is merged (https://github.com/twisted/pydoctor/pull/402)
+            annotation = Parameter.empty if name not in annotations or annotations[name] is None else _ValueFormatter(annotations[name])
+            parameters.append(Parameter(name, kind, 
+                                        default=default_val, 
+                                        annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
             add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
@@ -728,14 +757,25 @@ class ModuleVistor(ast.NodeVisitor):
         if kwarg is not None:
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
+        # pick up return-type annotations, ignore "-> None" annotations.
+        return_annotation = Parameter.empty if return_type is None or epydoc2stan.is_none_literal(return_type) else _ValueFormatter(return_type)
+
         try:
-            signature = Signature(parameters)
+            signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
         func.signature = signature
-        func.annotations = self._annotations_from_function(node)
+        func.annotations = annotations
+        func.return_type = return_type
+
+        # Handle overloaded functions
+        if is_overload_func:
+            func.overloads.append(
+                self.system.FunctionOverload(
+                    signature=func.signature))
+        
         self.default(node)
         self.builder.popFunction()
 
@@ -796,12 +836,13 @@ class ModuleVistor(ast.NodeVisitor):
 
     def _annotations_from_function(
             self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]
-            ) -> Mapping[str, Optional[ast.expr]]:
+            ) -> Tuple[Mapping[str, Optional[ast.expr]], Optional[ast.expr]]:
         """Get annotations from a function definition.
         @param func: The function definition's AST.
-        @return: Mapping from argument name to annotation.
-            The name C{return} is used for the return type.
-            Unannotated arguments are omitted.
+        @return: 2-tuple:
+            - Mapping from argument name to annotation.
+              Unannotated arguments are omitted.
+            - The return type annotation.
         """
         def _get_all_args() -> Iterator[ast.arg]:
             base_args = func.args
@@ -821,16 +862,15 @@ class ModuleVistor(ast.NodeVisitor):
         def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():
                 yield arg.arg, arg.annotation
-            returns = func.returns
-            if returns:
-                yield 'return', returns
-        return {
+        annotations_map = {
             # Include parameter names even if they're not annotated, so that
             # we can use the key set to know which parameters exist and warn
             # when non-existing parameters are documented.
             name: None if value is None else self._unstring_annotation(value)
             for name, value in _get_all_ast_annotations()
             }
+        
+        return annotations_map, func.returns
 
     def _unstring_annotation(self, node: ast.expr) -> ast.expr:
         """Replace all strings in the given expression by parsed versions.
@@ -982,6 +1022,9 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
 class ASTBuilder:
+    """
+    Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+    """
     ModuleVistor = ModuleVistor
 
     def __init__(self, system: model.System):
@@ -992,6 +1035,9 @@ class ASTBuilder:
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
+        """
+        Create and enter a new object of the given type and add it to the system.
+        """
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
@@ -1002,6 +1048,9 @@ class ASTBuilder:
         self.pop(self.current)
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
+        """
+        Enter a documentable.
+        """
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -1018,24 +1067,44 @@ class ASTBuilder:
             obj.setLineNumber(lineno)
 
     def pop(self, obj: model.Documentable) -> None:
+        """
+        Leave a documentable.
+        """
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
     def pushClass(self, name: str, lineno: int) -> model.Class:
+        """
+        Create and a new class in the system.
+        """
         return self._push(self.system.Class, name, lineno)
+
     def popClass(self) -> None:
+        """
+        Leave a class.
+        """
         self._pop(self.system.Class)
 
     def pushFunction(self, name: str, lineno: int) -> model.Function:
+        """
+        Create and enter a new function in the system.
+        """
         return self._push(self.system.Function, name, lineno)
+
     def popFunction(self) -> None:
+        """
+        Leave a function.
+        """
         self._pop(self.system.Function)
 
     def addAttribute(self,
             name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
             ) -> model.Attribute:
+        """
+        Add a new attribute to the system.
+        """
         system = self.system
         parentMod = self.currentMod
         attr = system.Attribute(system, name, parent)

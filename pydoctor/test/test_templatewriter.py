@@ -1,21 +1,24 @@
 from io import BytesIO
-from typing import Callable
+from typing import Callable, Type, TYPE_CHECKING
 import pytest
 import warnings
 from pathlib import Path
 from pydoctor import model, templatewriter
+from pydoctor.epydoc import markup
 from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 def filetext(path: Path) -> str:
     with path.open('r', encoding='utf-8') as fobj:
         t = fobj.read()
     return t
 
-def flatten(t: ChildTable) -> str:
+def flatten(t: "Flattenable") -> str:
     io = BytesIO()
     writer.flattenToFile(io, t)
     return io.getvalue().decode()
@@ -27,8 +30,8 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
-
-def test_simple() -> None:
+@systemcls_param
+def test_simple(systemcls: Type[model.System]) -> None:
     src = '''
     def f():
         """This is a docstring."""
@@ -265,3 +268,27 @@ def test_isClassNodePrivate() -> None:
     assert isClassNodePrivate(mod.contents['_Private'])
     assert not isClassNodePrivate(mod.contents['_BaseForPublic'])
     assert isClassNodePrivate(mod.contents['_BaseForPrivate'])
+
+
+# Tests for pages.format_overloads() and pages.format_function_def()
+
+@systemcls_param
+def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    overloads_html = markup.flatten(list(pages.format_overloads(func)))
+    function_def_html = markup.flatten(list(pages.format_function_def(func.name, func.is_async, func)))
+    assert '''(s: str) -&gt; str:''' in overloads_html
+    assert '''(s: bytes) -&gt; bytes:''' in overloads_html
+    assert function_def_html == '<span class="py-keyword">def</span> <span class="py-defname">parse</span>(s: Union[str, bytes]) -&gt; Union[str, bytes]:'

@@ -34,7 +34,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
+def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
             fn = node2fullname(dec.func, obj)
@@ -47,9 +47,32 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
         text = '@' + astor.to_source(dec).strip()
         yield text, tags.br()
 
-def signature(function: model.Function) -> str:
+def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """Return a nicely-formatted source-like function signature."""
-    return str(function.signature)
+    return str(func.signature)
+
+def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
+    """
+    Format a function overloads definitions as nice HTML signatures.
+    """
+    for overload in func.overloads:
+        yield tags.div(format_function_def(func.name, func.is_async, overload))
+
+def format_function_def(func_name: str, is_async:bool, 
+                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+    """
+    Format a function definition.
+    """
+    r = []
+    def_stmt = 'async def' if is_async else 'def'
+    if func_name.endswith('.setter') or func_name.endswith('.deleter'):
+        func_name = func_name[:func_name.rindex('.')]
+    r.extend([
+        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(func_name, class_='py-defname'), 
+        format_signature(func), ':'
+        ])
+    return r
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
@@ -60,7 +83,6 @@ class DocGetter:
             return epydoc2stan.format_docstring(ob)
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
-
 
 
 class Nav(TemplateElement):

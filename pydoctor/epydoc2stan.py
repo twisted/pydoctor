@@ -376,7 +376,7 @@ class FieldHandler:
 
         self.parameter_descs: List[FieldDesc] = []
         self.return_desc: Optional[FieldDesc] = None
-        self.raise_descs: List[RaisesDesc] = []
+        self.raise_descs: List[FieldDesc] = []
         self.seealsos: List[Field] = []
         self.notes: List[Field] = []
         self.authors: List[Field] = []
@@ -384,23 +384,28 @@ class FieldHandler:
         self.unknowns: DefaultDict[str, List[FieldDesc]] = defaultdict(list)
 
     def set_param_types_from_annotations(
-            self, annotations: Mapping[str, Optional[ast.expr]]
+            self, annotations: Mapping[str, Optional[ast.expr]], 
+            return_annotation: Optional[ast.expr],
             ) -> None:
+        """
+        Format and set parameters and return annotation types from AST annotations.
+        """
         formatted_annotations = {
             name: None if value is None
                        else AnnotationDocstring(value).to_stan(self._linker)
             for name, value in annotations.items()
             }
-        ret_type = formatted_annotations.pop('return', None)
+        # set parameters types
         self.types.update(formatted_annotations)
-        if ret_type is not None:
+
+        if return_annotation is not None:
             # In most cases 'None' is not an actual return type, but the absence
             # of a returned value. Not storing it is the easiest way to prevent
             # it from being presented.
-            ann_ret = annotations['return']
-            assert ann_ret is not None  # ret_type would be None otherwise
-            if not _is_none_literal(ann_ret):
-                self.return_desc = FieldDesc(type=ret_type)
+            formatted_return_type = AnnotationDocstring(return_annotation).to_stan(self._linker)
+            assert formatted_return_type is not None  # return_annotation would be None otherwise
+            if not is_none_literal(return_annotation):
+                self.return_desc = FieldDesc(type=formatted_return_type)
 
     def handle_return(self, field: Field) -> None:
         if field.arg is not None:
@@ -585,8 +590,8 @@ class FieldHandler:
         else:
             return tags.transparent
 
-
-def _is_none_literal(node: ast.expr) -> bool:
+#TODO: Move me to the astutils module once https://github.com/twisted/pydoctor/pull/402 is merged
+def is_none_literal(node: ast.expr) -> bool:
     """Does this AST node represent the literal constant None?"""
     return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
@@ -670,7 +675,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
 
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
-        fh.set_param_types_from_annotations(obj.annotations)
+        fh.set_param_types_from_annotations(obj.annotations, obj.return_type)
     if pdoc is not None:
         for field in pdoc.fields:
             fh.handle(Field.from_epydoc(field, source))

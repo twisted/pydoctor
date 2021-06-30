@@ -1681,3 +1681,30 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     outer = mod.contents['outer']
     assert not outer.contents
+
+def extract_expr(_ast: ast.Module) -> ast.AST:
+    elem = _ast.body[0]
+    assert isinstance(elem, ast.Expr)
+    return elem.value
+
+@systemcls_param
+def test_overload(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    assert str(func.signature) == "(s: Union[str, bytes]) -> Union[str, bytes]"
+    assert [astbuilder.node2dottedname(d) for d in func.decorators] == []
+    overloads = func.overloads
+    assert len(overloads)==2
+    assert str(overloads[0].signature) == "(s: str) -> str"
+    assert str(overloads[1].signature) == "(s: bytes) -> bytes"
