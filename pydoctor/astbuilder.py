@@ -734,7 +734,7 @@ class ModuleVistor(ast.NodeVisitor):
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default)
             # pick up annotations in the functions signatures, this will link to names when the pyval_repr PR is merged (https://github.com/twisted/pydoctor/pull/402)
-            annotation = Parameter.empty if name not in annotations or annotations[name] is None else _ValueFormatter(annotations[name])
+            annotation = Parameter.empty if annotations.get(name) is None else _ValueFormatter(annotations[name])
             parameters.append(Parameter(name, kind, 
                                         default=default_val, 
                                         annotation=annotation))
