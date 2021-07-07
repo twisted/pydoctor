@@ -69,7 +69,7 @@ class _PydoctorHTMLTranslator(HTMLTranslator):
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([Writer()]).get_default_values()
+            settings = OptionParser([Writer()]).get_default_values() # type: ignore[arg-type]
             self.__class__.settings = settings
         document.settings = self.settings
 
