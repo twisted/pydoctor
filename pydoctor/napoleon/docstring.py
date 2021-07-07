@@ -201,14 +201,6 @@ class TypeDocstring:
         The parsed type in reStructuredText format.
         """
         return self._convert_type_spec_to_rst()
-
-    def warnings(self) -> List[str]:
-        """
-        Returns
-        -------
-        Warning messages triggered during the conversion.
-        """
-        return self.warnings
     
     def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[str, TokenType]]) -> None:
         """
