@@ -5,6 +5,14 @@
     
       <t:transparent t:render="separator"></t:transparent>
 
+      <!-- 
+        
+        This block should be generated only once.
+        The issue is that it's currently generating the whole 
+        section again and again for each pages.
+
+      -->
+
       <div class="thingTitle">
         <span><t:transparent t:render="kind">Thing (module or class)</t:transparent></span>
         <t:transparent t:render="name">Some thing name</t:transparent> 
