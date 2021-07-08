@@ -614,6 +614,38 @@ Single line summary
             self.assertEqual(expected.rstrip(), actual)
             self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
+    def test_returns_section_type_only(self):
+
+        docstring="""
+Single line summary
+
+Returns:
+    str:
+"""
+        expected="""
+Single line summary
+
+:returns: str 
+"""
+        actual = str(GoogleDocstring(docstring))
+
+        self.assertEqual(expected.strip(), actual.strip())
+
+        docstring="""
+Single line summary
+
+Returns:
+    str
+"""
+        expected="""
+Single line summary
+
+:returns: str 
+"""
+        actual = str(GoogleDocstring(docstring))
+
+        self.assertEqual(expected.strip(), actual.strip())
+
     def test_sphinx_admonitions(self):
         admonition_map = {
             'Attention': 'attention',
@@ -1301,8 +1333,9 @@ Scopes the credentials if necessary.
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
-
-        # test robustness with invalid arg syntax
+    
+    def test_multiline_types_invalid_log_warning(self):
+        # test robustness with invalid arg syntax + log warning
         docstring = """
 Description...
 
