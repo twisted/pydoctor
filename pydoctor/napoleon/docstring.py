@@ -702,7 +702,8 @@ class GoogleDocstring:
             _type = self._convert_type(_type)
         return _type, _descs
 
-    # overriden: enforce type pre-processing: add backtics over the type if not present.
+    # overriden: alway do type pre-processing.
+    # store the section value as type if it matches the is_type() check.
     # note: _name is always empty string.
     def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
         lines = self._dedent(self._consume_to_next_section())
@@ -715,10 +716,13 @@ class GoogleDocstring:
             _type = ""
             if _descs:
                 if colon:
+                     # If a colon is detected, this means that the type is explicitely defined
                     _type = before_colon
                 else:
+                    # multiline free form returns clause
                     _descs.insert(0, before_colon)
             else:
+                # single line free form returns clause
                 _descs = [before_colon]
 
             if _type:
@@ -857,12 +861,11 @@ class GoogleDocstring:
         return lines + [""]
 
     # overriden: Use a style closer to pydoctor's, but it's still not perfect.
-    # Ideally, this method should not be used.
-    # Because it won't generate sections in a consistent style.
-    # It's still used by :
-    # - Numpy's tuple returns values description syntax
-    # - Inline attributes
-    # - Yields section
+    # Manually generate a single field unsing inline restructuredtext markup
+    # It's currently used by :
+    # - _parse_returns_section()
+    # - _parse_yields_section()
+    # - _parse_attribute_docstring()
     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
@@ -1127,7 +1130,7 @@ class GoogleDocstring:
         fields = self._consume_fields(multiple=True)
         return self._format_docutils_params(fields)
 
-    # overriden: This function has now the ability to pass prefer_type=False
+    # overriden: This function has now the ability to take the prefer_type=False parameter.
     # This is used by Warns section, so the warns section can be like::
     #   :warns RuntimeWarning: If whatever
     # This allows sections to have compatible syntax as raises syntax BUT not mandatory).
@@ -1252,6 +1255,7 @@ class GoogleDocstring:
             line of the description or the name with the optional type or the type.
         colon: str
         description: list(str)
+            Can contains lines with only white spaces.
         """
 
         before_colon, colon, after_colon_start = self._partition_field_on_colon(
@@ -1265,8 +1269,8 @@ class GoogleDocstring:
         _descs = []
         multiline = False
 
-        # the first line of the field is not complete or malformed.
         if not colon:
+            # the first line of the field is not complete or malformed.
             if raw_descs:
                 # try to complete type info from next lines.
                 partinioned_lines = [
@@ -1282,17 +1286,22 @@ class GoogleDocstring:
                         # If the type spans several lines, it's natural (but bot required) to add indentation
                         # again after to delimit the description
                         _descs.extend(self._dedent(raw_descs[i + 1 :]))
+                        # break if colon is detected
                         break
 
         else:
+            # we got a colon on the first line
             if after_colon_start:
+                # there is something after the colon, add to to the desc
                 _descs = [after_colon_start] + raw_descs
             else:
                 _descs = raw_descs
 
         if not colon:
+            # If not colon id detected on any lines, roll back to original behaviour
             before_colon = before_colon_start
             _descs = raw_descs
+            multiline = False
 
         # check format only if multiline
         if multiline and not format_validator(before_colon):
