@@ -1,18 +1,82 @@
-.navbar {
-    margin-bottom: 0px;
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-y: scroll;
+}
+
+nav.navbar {
+    width:100%;
+    margin-bottom: 0;
+}
+
+nav.navbar > .navbar-header {
+    margin-right: 0;
+    margin-left: 0;
+    height: 100%;
+    display: inline-block;
 }
 
 .page-header {
     margin-top: 22px;
     position: sticky;
     top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
-    box-shadow: 0px 0px 8px 8px #fff;
+    box-shadow: 0 0 8px 8px #fff;
 }
+
+.navbar-brand {
+    padding: 0;
+}
+
+.navbar-brand a, .navbar-brand span {
+    color:#777777;
+    padding: 15px;
+    display: inline-block;
+}
+
+.navbar-brand *:first-child {
+    padding-right: 0;
+}
+
+.navbar-brand *:last-child {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.navbar-brand a:hover {
+    color: #444444;
+    text-decoration: none;
+}
+
+a.projecthome:hover {
+    color: #23527c;
+}
+
+.navlinks  {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.navlinks > a {
+    padding: 10px 0 10px 15px;
+}
+
+.navlinks > a:hover {
+    background-color: transparent;
+    text-decoration: none;
+}
+
 .page-header h1 {
-    margin-bottom: 0;
+    margin: 0;
 }
 
 .categoryHeader {
@@ -21,13 +85,27 @@
     margin-bottom: 1.8em;
 }
 
+/* Footer */
+
+footer.navbar {
+    margin: auto 0 0 0;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    background-color: #fff;
+    border-width: 1px 0 0 0;
+    border-radius: 0;
+    text-align: center;
+}
+
 a[name] {
     position: relative;
-    bottom: 62px;
+    bottom: 80px;
+    font-size: 0;
 }
 
 ul {
     margin-top: 10px;
+    margin-left: 10px;
     padding-left: 10px;
 }
 
@@ -38,10 +116,6 @@ li {
 
 li a {
     text-decoration: none;
-}
-
-ul {
-    margin-left: 10px;
 }
 
 ul ul {
@@ -76,7 +150,6 @@ ul ul ul ul ul ul ul {
 
 .pre {
     white-space: pre;
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
 }
 
 .undocumented {
@@ -93,40 +166,118 @@ ul ul ul ul ul ul ul {
     margin-bottom: 5px;
 }
 
-#splitTables > table, .fieldTable {
+#splitTables > table {
     margin-bottom: 20px;
     width: 100%;
     border: 0;
-}
-
-#splitTables > table {
-    border: 1px solid #eee;
 }
 
 #splitTables > table tr {
     border-bottom-color: #eee;
     border-bottom-width: 1px;
     border-bottom-style: solid;
-}
-
-#splitTables > table tr td, .fieldTable tr td {
-    padding: 5px;
+    width: 100%;
 }
 
 #splitTables > table tr td {
+    padding: 5px;
     border-left-color: #eee;
     border-left-width: 1px;
     border-left-style: solid;
 }
 
-#splitTables > table tr td:nth-child(1), .fieldTable tr td:nth-child(1) {
-    border-left: none;
+.fieldTable {
+    width: 100%;
+    display: block;
+    border: 0;
+}
+
+/* Arg name */
+.fieldArg {
+    margin-right: 7px;
+}
+
+.fieldArg:before {
+    margin-right: 6px;
+    content: "\2022";
+    font-size: 14px;
+}
+
+.fieldTable tr:not(.fieldStart) td:first-child{
+    padding-left: 10px;
+}
+
+.fieldTable tr td {
+    padding: 2px;
+}
+
+/* Section header */
+.fieldTable tr td:first-child.fieldName {
+    width: max-content;
+}
+
+/* Argument name + type column table  */
+.fieldTable tr td.fieldArgContainer {
+    width: 250px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Argument description column or return value desc, etc */
+.fieldTable tr td::nth-child(2) {
+    padding-left: 10px;
+}
+
+/* Kind column table  */
+#splitTables > table tr td:first-child {
+    /* border-left: none; */
     width: 150px;
 }
 
-#splitTables > table tr td:nth-child(2), .fieldTable tr td.fieldArg {
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+/* Attr name column table  */
+#splitTables > table tr td:nth-child(2) {
     width: 200px;
+}
+
+/* For smaller displays, i.e. half screen or mobile phone */
+@media only screen and (max-width: 1000px) {
+
+    /* Fix size of summary table columns */
+    #splitTables > table {
+        table-layout: fixed;
+    }
+
+    /* Kind column table  */
+    #splitTables > table tr td:first-child {
+        border-left: none;
+        width: 20%;
+    }
+
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2) {
+        width: 35%;
+    }
+
+    /* Summary column table */
+    #splitTables > table tr td:nth-child(3) {
+        width: 45%;
+    }
+
+}
+
+@media only screen and (max-width: 650px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 175px;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    /* Argument name + type column table  */
+    .fieldTable tr td.fieldArgContainer {
+        width: 125px;
+    }
 }
 
 tr.package {
@@ -157,10 +308,6 @@ tr.private {
     background-color: #f1f1f1;
 }
 
-.fieldTable {
-    margin-top: 10px;
-}
-
 .fieldName {
     font-weight: bold;
 }
@@ -187,6 +334,7 @@ tr.private {
 .functionBody .interfaceinfo {
     font-style: italic;
     margin-bottom: 3px;
+    margin-top: 3px;
 }
 
 .functionBody > .undocumented {
@@ -196,44 +344,48 @@ tr.private {
 }
 
 /*
-- <h1><code></code></h1> : This is for the main top navagation bar
-
-- <a><code></code><a> for links in docstrings texts
-This is inline docstring content marked up as code, for example L{foo} in epytext
-or `bar` in restructuredtext
-
-- <a class="code"> links that are present in summary tables
+- Links to class/function/etc names are nested like this:
+    <code><a>label</a></code>
+  This applies to inline docstring content marked up as code,
+  for example L{foo} in epytext or `bar` in restructuredtext,
+  but also to links that are present in summary tables.
+- 'functionHeader' is used for lines like `def func():` and `var =`
 */
-a > code, a.code {
+code, .pre, #childList > div .functionHeader,
+#splitTables > table tr td:nth-child(2), .fieldArg {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+code, #childList > div .functionHeader, .fieldArg {
+    font-size: 90%;
+    color: #222222;
+}
+code > a {
     color:#c7254e;
     background-color:#f9f2f4;
+}
+/* top navagation bar */
+.page-header > h1 {
+    margin-top: 0;
 }
 .page-header > h1 > code {
     color: #971c3a;
 }
 
 /*
-This defines  the "code" class, it's black on light gray,
-
+This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min
 */
-code, .code {
-    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+code {
     padding:2px 4px;
-    font-size:90%;
-    color: #222222;
     background-color: #f4f4f4;
     border-radius:4px
 }
 
-code > .code {
-    padding: 0px;
-}
 
-
-
-a.functionSourceLink {
+a.sourceLink {
+    color: #337ab7;
     font-weight: normal;
+    background-color: transparent;
 }
 
 
@@ -242,15 +394,6 @@ a.functionSourceLink {
     border-left-width: 1px;
     border-left-style: solid;
     background: #fafafa;
-}
-
-/* Function definitions `def func():` and `var =` */
-
-#childList > div .functionHeader {
-    font-family: monospace;
-    font-weight: bold;
-    color: #222222;
-
 }
 
 .moduleDocstring {
@@ -267,7 +410,7 @@ a.functionSourceLink {
 }
 
 pre {
-    padding-left: 0px;
+    padding-left: 0;
 }
 
 /* Private stuff */
@@ -278,16 +421,18 @@ body.private-hidden #summaryTree .private {
     display: none;
 }
 
-#showPrivate {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    padding: 10px;
-    opacity: 0.7;
-}
+/* Show private */
 
 #showPrivate:hover {
-    opacity: 1;
+    text-decoration: none;
+}
+
+#showPrivate button {
+    padding: 10px;
+}
+
+#showPrivate button:hover {
+    text-decoration: none;
 }
 
 #current-docs-container {
@@ -332,4 +477,46 @@ pre.py-doctest {
 }
 .py-output {
     color: #c7254e;
+}
+
+/* Admonitions */
+
+div.rst-admonition p.rst-admonition-title:after {
+    content: ":";
+}
+
+div.rst-admonition p.rst-admonition-title {
+    margin: 0;
+    padding: 0.1em 0 0.35em 0em;
+    font-weight: bold;
+}
+
+div.rst-admonition p.rst-admonition-title {
+    color: #333333;
+}
+
+div.rst-admonition {
+    padding: 8px;
+    margin-bottom: 20px;
+    background-color: #EEE;
+    border: 1px solid #CCC;
+    border-radius: 4px;
+}
+
+div.warning, div.attention, div.danger, div.error, div.caution {
+    background-color: #ffcf9cb0;
+    border: 1px solid #ffbbaa;
+}
+
+div.danger p.rst-admonition-title, div.error p.rst-admonition-title, div.caution p.rst-admonition-title {
+    color: #b94a48;
+}
+
+div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p.rst-admonition-title{
+    color: #3a87ad;
+}
+
+div.tip, div.hint, div.important {
+    background-color: #d9edf7;
+    border-color: #bce8f1;
 }

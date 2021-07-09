@@ -1,8 +1,14 @@
 """
+General epytext formating markups are documented here.
+
+Epydoc code related formating are demonstrated in the L{demo_epytext_module}.
+
+Read the U{the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>} for more documentation.
+
 Scope and Purpose
 =================
 
-Sample package for demonstrating pydoctor HTML API rendering for RST based documentation.
+Sample package for describing and demonstrating C{pydoctor} HTML API rendering for B{Epytext} based documentation.
 
 Many examples are copied from U{the epytext manual <http://epydoc.sourceforge.net/manual-epytext.html>}.
 
@@ -15,12 +21,6 @@ Try to keep the example as condensed as possible.
 
     - Have it build as part of our continuous integration tests.
       To ensure we don't introduce regressions.
-
-
-General epytext formating markups are documented in the docstring of this package.
-
-Epydoc code related formating are demonstrated in the modules of this package.
-
 
 Lists
 =====

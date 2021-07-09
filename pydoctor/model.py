@@ -10,7 +10,6 @@ import ast
 import datetime
 import importlib
 import inspect
-import os
 import platform
 import sys
 import types
@@ -19,7 +18,8 @@ from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Type, TypeVar, Union
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
 
@@ -27,8 +27,11 @@ from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
+    from typing_extensions import Literal
+    from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
 else:
+    Literal = {True: bool, False: bool}
     ASTBuilder = object
 
 
@@ -77,7 +80,27 @@ class PrivacyClass(Enum):
     HIDDEN = 0
     PRIVATE = 1
     VISIBLE = 2
+    
+class DocumentableKind(Enum):
+    """
+    L{Enum} containing values indicating the possible object types.
 
+    @note: Presentation order is derived from the enum values
+    """
+    PACKAGE             = 1000
+    MODULE              = 900
+    CLASS               = 800
+    INTERFACE           = 850
+    CLASS_METHOD        = 700
+    STATIC_METHOD       = 600
+    METHOD              = 500
+    FUNCTION            = 400
+    CLASS_VARIABLE      = 300
+    SCHEMA_FIELD        = 220
+    ATTRIBUTE           = 210
+    INSTANCE_VARIABLE   = 200
+    PROPERTY            = 150
+    VARIABLE            = 100
 
 class Documentable:
     """An object that can be documented.
@@ -86,11 +109,7 @@ class Documentable:
 
     @ivar docstring: The object's docstring.  But also see docsources.
     @ivar system: The system the object is part of.
-    @ivar parent: ...
-    @ivar parentMod: ...
-    @ivar name: ...
-    @ivar sourceHref: ...
-    @ivar kind: ...
+
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
@@ -98,43 +117,29 @@ class Documentable:
     docstring_lineno = 0
     linenumber = 0
     sourceHref: Optional[str] = None
-    kind: Optional[str]
+    kind: Optional[DocumentableKind] = None
 
-    @property
-    def documentation_location(self) -> DocLocation:
-        """Page location where we are documented.
-        The default implementation returns L{DocLocation.OWN_PAGE}.
-        """
-        return DocLocation.OWN_PAGE
-
-    @property
-    def css_class(self) -> str:
-        """A short, lower case description for use as a CSS class in HTML."""
-        kind = self.kind
-        assert kind is not None # if kind is None, object is invisible
-        class_ = kind.lower().replace(' ', '')
-        if self.privacyClass is PrivacyClass.PRIVATE:
-            class_ += ' private'
-        return class_
-
-    @property
-    def doctarget(self) -> 'Documentable':
-        return self
+    documentation_location = DocLocation.OWN_PAGE
+    """Page location where we are documented."""
 
     def __init__(
             self, system: 'System', name: str,
             parent: Optional['Documentable'] = None,
             source_path: Optional[Path] = None
             ):
-        if not isinstance(self, Package):
-            if source_path is None and parent is not None:
-                source_path = parent.source_path # type: ignore[has-type]
+        if source_path is None and parent is not None:
+            source_path = parent.source_path
         self.system = system
         self.name = name
         self.parent = parent
         self.parentMod: Optional[Module] = None
-        self.source_path = source_path
+        self.source_path: Optional[Path] = source_path
+        self._deprecated_info: Optional["Flattenable"] = None
         self.setup()
+
+    @property
+    def doctarget(self) -> 'Documentable':
+        return self
 
     def setup(self) -> None:
         # TODO: The actual value type is Documentable, but using that
@@ -183,34 +188,39 @@ class Documentable:
         return self.module.fullName() if source_path is None else str(source_path)
 
     @property
+    def page_object(self) -> 'Documentable':
+        """The documentable to which the page we're documented on belongs.
+        For example methods are documented on the page of their class,
+        functions are documented in their module's page etc.
+        """
+        location = self.documentation_location
+        if location is DocLocation.OWN_PAGE:
+            return self
+        elif location is DocLocation.PARENT_PAGE:
+            parent = self.parent
+            assert parent is not None
+            return parent
+        else:
+            assert False, location
+
+    @property
     def url(self) -> str:
         """Relative URL at which the documentation for this Documentable
         can be found.
         """
-        location = self.documentation_location
-        if location is DocLocation.OWN_PAGE:
-            return f'{quote(self.fullName())}.html'
-        elif location is DocLocation.PARENT_PAGE:
-            parent = self.parent
-            if isinstance(parent, Module) and parent.name == '__init__':
-                parent = parent.parent
-            assert parent is not None
-            return f'{quote(parent.fullName())}.html#{quote(self.name)}'
+        page_obj = self.page_object
+        page_url = f'{quote(page_obj.fullName())}.html'
+        if page_obj is self:
+            return page_url
         else:
-            assert False, location
+            return f'{page_url}#{quote(self.name)}'
 
     def fullName(self) -> str:
         parent = self.parent
-        if parent is not None:
-            if (parent.parent and isinstance(parent.parent, Package)
-                and isinstance(parent, Module)
-                and parent.name == '__init__'):
-                prefix = parent.parent.fullName() + '.'
-            else:
-                prefix = parent.fullName() + '.'
+        if parent is None:
+            return self.name
         else:
-            prefix = ''
-        return prefix + self.name
+            return f'{parent.fullName()}.{self.name}'
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
@@ -280,12 +290,17 @@ class Documentable:
         obj: Documentable = self
         for i, p in enumerate(parts):
             full_name = obj._localNameToFullName(p)
+            if full_name == p and i != 0:
+                # The local name was not found.
+                # TODO: Instead of returning the input, _localNameToFullName()
+                #       should probably either return None or raise LookupError.
+                full_name = f'{obj.fullName()}.{p}'
+                break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
             obj = nxt
-        remaning = parts[i+1:]
-        return '.'.join([full_name] + remaning)
+        return '.'.join([full_name] + parts[i + 1:])
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """Return the object named by "name" (using Python's lookup rules) in
@@ -345,31 +360,6 @@ class Documentable:
             thresh=-1)
 
 
-class Package(Documentable):
-    kind = "Package"
-    def docsources(self) -> Iterator[Documentable]:
-        yield self.contents['__init__']
-    @property
-    def doctarget(self) -> Documentable:
-        return self.contents['__init__'] # type: ignore[no-any-return]
-    @property
-    def sourceHref(self) -> Optional[str]: # type: ignore[override]
-        return self.module.sourceHref
-    @property
-    def module(self) -> 'Module':
-        return self.contents['__init__'] # type: ignore[no-any-return]
-    @property
-    def state(self) -> ProcessingState:
-        return self.contents['__init__'].state # type: ignore[no-any-return]
-
-    def _localNameToFullName(self, name: str) -> str:
-        if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
-        else:
-            return self.module._localNameToFullName(name)
-
-
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
         super().setup()
@@ -377,15 +367,8 @@ class CanContainImportsDocumentable(Documentable):
 
 
 class Module(CanContainImportsDocumentable):
-    kind = "Module"
+    kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        if self.name == '__init__':
-            return DocLocation.PARENT_PAGE
-        else:
-            return DocLocation.OWN_PAGE
 
     @property
     def privacyClass(self) -> PrivacyClass:
@@ -408,6 +391,8 @@ class Module(CanContainImportsDocumentable):
         contents could not be parsed, this is L{None}.
         """
 
+        self._docformat: Optional[str] = None
+
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
@@ -421,17 +406,48 @@ class Module(CanContainImportsDocumentable):
     def module(self) -> 'Module':
         return self
 
+    @property
+    def docformat(self) -> Optional[str]:
+        """The name of the format to be used for parsing docstrings in this module.
+        
+        The docformat value are inherited from packages if a C{__docformat__} variable 
+        is defined in the C{__init__.py} file.
+
+        If no C{__docformat__} variable was found or its
+        contents could not be parsed, this is L{None}.
+        """
+        if self._docformat:
+            return self._docformat
+        elif isinstance(self.parent, Package):
+            return self.parent.docformat
+        return None
+    
+    @docformat.setter
+    def docformat(self, value: str) -> None:
+        self._docformat = value
+
+class Package(Module):
+    kind = DocumentableKind.PACKAGE
+
 
 class Class(CanContainImportsDocumentable):
-    kind = "Class"
+    kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
-    decorators: Sequence[Tuple[str, Optional[Sequence[str]]]]
+    decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
+    # Note: While unused in pydoctor itself, raw_decorators is still in use
+    #       by Twisted's custom System class, to find deprecations.
+    raw_decorators: Sequence[ast.expr]
+
+    auto_attribs: bool = False
+    """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
+    library to automatically convert annotated fields into attributes.
+    """
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[Class] = []
+        self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
 
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
@@ -478,12 +494,9 @@ class Class(CanContainImportsDocumentable):
 
 
 class Inheritable(Documentable):
+    documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
-
-    @property
-    def documentation_location(self) -> DocLocation:
-        return DocLocation.PARENT_PAGE
 
     def docsources(self) -> Iterator[Documentable]:
         yield self
@@ -497,7 +510,7 @@ class Inheritable(Documentable):
         return self.parent._localNameToFullName(name)
 
 class Function(Inheritable):
-    kind = "Function"
+    kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
@@ -506,10 +519,10 @@ class Function(Inheritable):
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
-            self.kind = "Method"
+            self.kind = DocumentableKind.METHOD
 
 class Attribute(Inheritable):
-    kind: Optional[str] = "Attribute"
+    kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
 
@@ -539,7 +552,7 @@ class System:
 
     def __init__(self, options: Optional[Values] = None):
         self.allobjects: Dict[str, Documentable] = {}
-        self.rootobjects: List[Documentable] = []
+        self.rootobjects: List[_ModuleT] = []
 
         self.violations = 0
         """The number of docstring problems found.
@@ -572,11 +585,7 @@ class System:
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
-        return {
-            obj.name
-            for obj in self.rootobjects
-            if isinstance(obj, (Module, Package))
-            }
+        return {obj.name for obj in self.rootobjects}
 
     def verbosity(self, section: Union[str, Iterable[str]]) -> int:
         if isinstance(section, str):
@@ -635,6 +644,36 @@ class System:
     def objForFullName(self, fullName: str) -> Optional[Documentable]:
         return self.allobjects.get(fullName)
 
+    def find_object(self, full_name: str) -> Optional[Documentable]:
+        """Look up an object using a potentially outdated full name.
+
+        A name can become outdated if the object is reparented:
+        L{objForFullName()} will only be able to find it under its new name,
+        but we might still have references to the old name.
+
+        @param full_name: The fully qualified name of the object.
+        @return: The object, or L{None} if the name is external (it does not
+            match any of the roots of this system).
+        @raise LookupError: If the object is not found, while its name does
+            match one of the roots of this system.
+        """
+        obj = self.objForFullName(full_name)
+        if obj is not None:
+            return obj
+
+        # The object might have been reparented, in which case there will
+        # be an alias at the original location; look for it using expandName().
+        name_parts = full_name.split('.', 1)
+        for root_obj in self.rootobjects:
+            if root_obj.name == name_parts[0]:
+                obj = self.objForFullName(root_obj.expandName(name_parts[1]))
+                if obj is not None:
+                    return obj
+                raise LookupError(full_name)
+
+        return None
+
+
     def _warning(self,
             current: Optional[Documentable],
             message: str,
@@ -666,8 +705,10 @@ class System:
 
         if obj.parent:
             obj.parent.contents[obj.name] = obj
-        else:
+        elif isinstance(obj, _ModuleT):
             self.rootobjects.append(obj)
+        else:
+            raise ValueError(f'Top-level object is not a module: {obj!r}')
 
         first = self.allobjects.setdefault(obj.fullName(), obj)
         if obj is not first:
@@ -700,55 +741,38 @@ class System:
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
-    def addModule(self,
+    @overload
+    def analyzeModule(self,
             modpath: Path,
             modname: str,
-            parentPackage: Optional[_PackageT] = None
-            ) -> None:
-        mod = self.Module(self, modname, parentPackage, modpath)
+            parentPackage: Optional[_PackageT],
+            is_package: Literal[False] = False
+            ) -> _ModuleT: ...
+
+    @overload
+    def analyzeModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT],
+            is_package: Literal[True]
+            ) -> _PackageT: ...
+
+    def analyzeModule(self,
+            modpath: Path,
+            modname: str,
+            parentPackage: Optional[_PackageT] = None,
+            is_package: bool = False
+            ) -> _ModuleT:
+        factory = self.Package if is_package else self.Module
+        mod = factory(self, modname, parentPackage, modpath)
         self.addObject(mod)
         self.progress(
-            "addModule", len(self.allobjects),
+            "analyzeModule", len(self.allobjects),
             None, "modules and packages discovered")
         self.unprocessed_modules.add(mod)
         self.module_count += 1
         self.setSourceHref(mod, modpath)
-
-    def ensureModule(self, module_full_name: str, modpath: Path) -> _ModuleT:
-        try:
-            module = self.allobjects[module_full_name]
-            assert isinstance(module, Module)
-        except KeyError:
-            pass
-        else:
-            return module
-
-        parent_package: Optional[_PackageT]
-        if '.' in module_full_name:
-            parent_name, module_name = module_full_name.rsplit('.', 1)
-            parent_package = self.ensurePackage(parent_name)
-        else:
-            parent_package = None
-            module_name = module_full_name
-        module = self.Module(self, module_name, parent_package, modpath)
-        self.addObject(module)
-        return module
-
-    def ensurePackage(self, package_full_name: str) -> _PackageT:
-        if package_full_name in self.allobjects:
-            package = self.allobjects[package_full_name]
-            assert isinstance(package, Package)
-            return package
-        parent_package: Optional[_PackageT]
-        if '.' in package_full_name:
-            parent_name, package_name = package_full_name.rsplit('.', 1)
-            parent_package = self.ensurePackage(parent_name)
-        else:
-            parent_package = None
-            package_name = package_full_name
-        package = self.Package(self, package_name, parent_package)
-        self.addObject(package)
-        return package
+        return mod
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -772,53 +796,57 @@ class System:
                 self.addObject(c)
                 self._introspectThing(v, c, parentMod)
 
-    def introspectModule(self, path: Path, module_full_name: str) -> None:
+    def introspectModule(self,
+            path: Path,
+            module_name: str,
+            package: Optional[_PackageT]
+            ) -> _ModuleT:
+
+        if package is None:
+            module_full_name = module_name
+        else:
+            module_full_name = f'{package.fullName()}.{module_name}'
+
         spec = importlib.util.spec_from_file_location(module_full_name, path)
+        if spec is None: 
+            raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
         py_mod = importlib.util.module_from_spec(spec)
         loader = spec.loader
         assert isinstance(loader, importlib.abc.Loader), loader
         loader.exec_module(py_mod)
-        module = self.ensureModule(module_full_name, path)
+        is_package = py_mod.__package__ == py_mod.__name__
+
+        factory = self.Package if is_package else self.Module
+        module = factory(self, module_name, package, path)
+        self.addObject(module)
+
         module.docstring = py_mod.__doc__
         self._introspectThing(py_mod, module, module)
 
-    def addPackage(self, dirpath: str, parentPackage: Optional[_PackageT] = None) -> None:
-        if not os.path.exists(dirpath):
-            raise Exception(f"package path {dirpath!r} does not exist!")
-        if not os.path.exists(os.path.join(dirpath, '__init__.py')):
-            raise Exception("you must pass a package directory to "
-                            "addPackage")
-        if parentPackage:
-            prefix = parentPackage.fullName() + '.'
-        else:
-            prefix = ''
-        package_name = os.path.basename(dirpath)
-        package_full_name = prefix + package_name
-        package = self.ensurePackage(package_full_name)
-        for fname in sorted(os.listdir(dirpath)):
-            fullname = os.path.join(dirpath, fname)
-            if os.path.isdir(fullname):
-                initname = os.path.join(fullname, '__init__.py')
-                if os.path.exists(initname):
-                    self.addPackage(fullname, package)
-            elif not fname.startswith('.'):
-                self.addModuleFromPath(package, fullname)
+        return module
 
-    def addModuleFromPath(self, package: Optional[_PackageT], path: str) -> None:
+    def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
+        package = self.analyzeModule(
+            package_path / '__init__.py', package_path.name, parentPackage, is_package=True)
+
+        for path in sorted(package_path.iterdir()):
+            if path.is_dir():
+                if (path / '__init__.py').exists():
+                    self.addPackage(path, package)
+            elif path.name != '__init__.py' and not path.name.startswith('.'):
+                self.addModuleFromPath(path, package)
+
+    def addModuleFromPath(self, path: Path, package: Optional[_PackageT]) -> None:
+        name = path.name
         for suffix in importlib.machinery.all_suffixes():
-            if not path.endswith(suffix):
+            if not name.endswith(suffix):
                 continue
-            module_name = os.path.basename(path[:-len(suffix)])
+            module_name = name[:-len(suffix)]
             if suffix in importlib.machinery.EXTENSION_SUFFIXES:
-                if not self.options.introspect_c_modules:
-                    continue
-                if package is not None:
-                    module_full_name = f'{package.fullName()}.{module_name}'
-                else:
-                    module_full_name = module_name
-                self.introspectModule(Path(path), module_full_name)
+                if self.options.introspect_c_modules:
+                    self.introspectModule(path, module_name, package)
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
-                self.addModule(Path(path), module_name, package)
+                self.analyzeModule(path, module_name, package)
             break
 
     def handleDuplicate(self, obj: Documentable) -> None:
@@ -860,8 +888,6 @@ class System:
         mod = self.allobjects.get(modname)
         if mod is None:
             return None
-        if isinstance(mod, Package):
-            return self.getProcessedModule(modname + '.__init__')
         if not isinstance(mod, Module):
             return None
 
@@ -898,6 +924,17 @@ class System:
         while self.unprocessed_modules:
             mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
+        self.postProcess()
+
+
+    def postProcess(self) -> None:
+        """Called when there are no more unprocessed modules.
+
+        Analysis of relations between documentables can be done here,
+        without the risk of drawing incorrect conclusions because modules
+        were not fully processed yet.
+        """
+        pass
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:

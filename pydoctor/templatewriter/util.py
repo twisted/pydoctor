@@ -1,31 +1,28 @@
-"""Miscellaneous utilities."""
+"""Miscellaneous utilities for the HTML writer."""
 
+import warnings
 from typing import Optional
-import os
-
 from pydoctor import model
-from twisted.python.filepath import FilePath
-from twisted.web.template import Tag, tags
+from pydoctor.epydoc2stan import format_kind
 
+def css_class(o: model.Documentable) -> str:
+    """
+    A short, lower case description for use as a CSS class in HTML. 
+    Includes the kind and privacy. 
+    """
+    kind = o.kind
+    assert kind is not None # if kind is None, object is invisible
+    class_ = format_kind(kind).lower().replace(' ', '')
+    if o.privacyClass is model.PrivacyClass.PRIVATE:
+        class_ += ' private'
+    return class_
 
 def srclink(o: model.Documentable) -> Optional[str]:
     return o.sourceHref
 
-def templatefile(filename):
-    abspath = os.path.abspath(__file__)
-    pydoctordir = os.path.dirname(os.path.dirname(abspath))
-    return os.path.join(pydoctordir, 'templates', filename)
-
-def templatefilepath(filename):
-    return FilePath(templatefile(filename))
-
-def taglink(o: model.Documentable, label: Optional[str] = None) -> Tag:
-    if not o.isVisible:
-        o.system.msg("html", "don't link to %s"%o.fullName())
-    if label is None:
-        label = o.fullName()
-    # Create a link to the object, with a "data-type" attribute which says what
-    # kind of object it is (class, etc). This helps doc2dash figure out what it
-    # is.
-    ret: Tag = tags.a(href=o.url, class_="code", **{"data-type": o.kind})(label)
-    return ret
+def templatefile(filename: str) -> None:
+    """Deprecated: can be removed once Twisted stops patching this."""
+    warnings.warn("pydoctor.templatewriter.util.templatefile() "
+        "is deprecated and returns None. It will be remove in future versions. "
+        "Please use the templating system.")
+    return None

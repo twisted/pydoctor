@@ -1,8 +1,8 @@
 from typing import List, Optional, cast
 import re
-import textwrap
 
 from pytest import mark, raises
+from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker, flatten
@@ -45,20 +45,81 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['D'])
     epydoc2stan.format_docstring(mod.contents['E'])
 
-def docstring2html(docstring: model.Documentable) -> str:
-    stan = epydoc2stan.format_docstring(docstring)
-    return flatten(stan).replace('><', '>\n<')
+
+def docstring2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_docstring(obj)
+    assert stan.tagName == 'div', stan
+    # We strip off break lines for the sake of simplicity.
+    return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
+
+def summary2html(obj: model.Documentable) -> str:
+    stan = epydoc2stan.format_summary(obj)
+    assert stan.tagName == 'span', stan
+    return flatten(stan.children)
+
 
 def test_html_empty_module() -> None:
     mod = fromText('''
     """Empty module."""
     ''')
-    expected_html = textwrap.dedent("""
-    <div>
-    <p>Empty module.</p>
-    </div>
-    """).strip()
-    assert docstring2html(mod) == expected_html
+    assert docstring2html(mod) == "<div>\n<p>Empty module.</p>\n</div>"
+
+
+def test_xref_link_not_found() -> None:
+    """A linked name that is not found is output as text."""
+    mod = fromText('''
+    """This link leads L{nowhere}."""
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert '<code>nowhere</code>' in html
+
+
+def test_xref_link_same_page() -> None:
+    """A linked name that is documented on the same page is linked using only
+    a fragment as the URL.
+    """
+    mod = fromText('''
+    """The home of L{local_func}."""
+
+    def local_func():
+        pass
+    ''', modname='test')
+    html = docstring2html(mod)
+    assert 'href="#local_func"' in html
+
+
+def test_xref_link_other_page() -> None:
+    """A linked name that is documented on a different page but within the
+    same project is linked using a relative URL.
+    """
+    mod1 = fromText('''
+    def func():
+        """This is not L{test2.func}."""
+    ''', modname='test1')
+    fromText('''
+    def func():
+        pass
+    ''', modname='test2', system=mod1.system)
+    html = docstring2html(mod1.contents['func'])
+    assert 'href="test2.html#func"' in html
+
+
+def test_xref_link_intersphinx() -> None:
+    """A linked name that is documented in another project is linked using
+    an absolute URL (retrieved via Intersphinx).
+    """
+    mod = fromText('''
+    def func():
+        """This is a thin wrapper around L{external.func}."""
+    ''', modname='test')
+
+    system = mod.system
+    inventory = SphinxInventory(system.msg)
+    inventory._links['external.func'] = ('https://example.net', 'lib.html#func')
+    system.intersphinx = inventory
+
+    html = docstring2html(mod.contents['func'])
+    assert 'href="https://example.net/lib.html#func"' in html
 
 
 def test_func_undocumented_return_nothing() -> None:
@@ -83,14 +144,20 @@ def test_func_undocumented_return_something() -> None:
         return 42
     ''')
     func = mod.contents['get_answer']
-    lines = docstring2html(func).split('\n')
-    ret_idx = lines.index('<td class="fieldName">Returns</td>')
+    lines = docstring2html(func).splitlines()
     expected_html = [
-        '<td class="fieldName">Returns</td>',
-        '<td colspan="2">',
-        '<span class="undocumented">Undocumented</span> (type: <code>int</code>)</td>',
+        '<div>', '<p class="undocumented">Undocumented</p>',
+        '<table class="fieldTable">',
+        '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Returns</td>',
+        '</tr>',
+        '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
+        '</td>',
+        '<td class="fieldArgDesc">',
+        '<span class="undocumented">Undocumented</span>',
+        '</td>', '</tr>', '</table>', '</div>'
         ]
-    assert lines[ret_idx:ret_idx + 3] == expected_html
+    assert lines == expected_html, str(lines)
 
 
 def test_func_arg_and_ret_annotation() -> None:
@@ -272,7 +339,7 @@ def test_missing_param_computed_base(capsys: CapSys) -> None:
         """
     ''')
     html = docstring2html(mod.contents['Proxy'])
-    assert '<td>The wrapped instance.</td>' in html.split('\n')
+    assert '<td class="fieldArgDesc">The wrapped instance.</td>' in html.split('\n')
     captured = capsys.readouterr().out
     assert captured == ''
 
@@ -288,18 +355,34 @@ def test_constructor_param_on_class(capsys: CapSys) -> None:
             pass
     ''')
     html = docstring2html(mod.contents['C']).split('\n')
-    assert '<td>Constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Constructor parameter.</td>' in html
     # Non-existing parameters should still end up in the output, because:
     # - pydoctor might be wrong about them not existing
     # - the documentation may still be useful, for example if belongs to
     #   an existing parameter but the name in the @param field has a typo
-    assert '<td>Not a constructor parameter.</td>' in html
+    assert '<td class="fieldArgDesc">Not a constructor parameter.</td>' in html
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Documented parameter "q" does not exist\n'
 
 
-def test_func_missing_exception_type(capsys: CapSys) -> None:
-    """Raise fields must include the exception type."""
+def test_func_raise_linked() -> None:
+    """Raise fields are formatted by linking the exception type."""
+    mod = fromText('''
+    class SpanishInquisition(Exception):
+        pass
+    def f():
+        """
+        @raise SpanishInquisition: If something unexpected happens.
+        """
+    ''', modname='test')
+    html = docstring2html(mod.contents['f']).split('\n')
+    assert '<a href="test.SpanishInquisition.html">SpanishInquisition</a>' in html
+
+
+def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
+    """When a C{raise} field is missing the exception type, a warning is logged
+    and the HTML will list the exception type as unknown.
+    """
     mod = fromText('''
     def f(x):
         """
@@ -307,9 +390,12 @@ def test_func_missing_exception_type(capsys: CapSys) -> None:
         @raise: On a blue moon.
         """
     ''')
-    epydoc2stan.format_docstring(mod.contents['f'])
+    func = mod.contents['f']
+    epydoc2stan.format_docstring(func)
     captured = capsys.readouterr().out
     assert captured == '<test>:5: Exception type missing\n'
+    html = docstring2html(func).split('\n')
+    assert '<span class="undocumented">Unknown exception</span>' in html
 
 
 def test_unexpected_field_args(capsys: CapSys) -> None:
@@ -386,13 +472,65 @@ def test_summary() -> None:
         Lorem Ipsum
         """
     ''')
-    def get_summary(func: str) -> str:
-        stan = epydoc2stan.format_summary(mod.contents[func])
-        assert stan.tagName == 'span', stan
-        return flatten(stan.children)
-    assert 'Lorem Ipsum' == get_summary('single_line_summary')
-    assert 'Foo Bar Baz' == get_summary('three_lines_summary')
-    assert 'No summary' == get_summary('no_summary')
+    assert 'Lorem Ipsum' == summary2html(mod.contents['single_line_summary'])
+    assert 'Foo Bar Baz' == summary2html(mod.contents['three_lines_summary'])
+    assert 'No summary' == summary2html(mod.contents['no_summary'])
+
+
+def test_ivar_overriding_attribute() -> None:
+    """An 'ivar' field in a subclass overrides a docstring for the same
+    attribute set in the base class.
+
+    The 'a' attribute in the test code reproduces a regression introduced
+    in pydoctor 20.7.0, where the summary would be constructed from the base
+    class documentation instead. The problem was in the fact that a split
+    field's docstring is stored in 'parsed_docstring', while format_summary()
+    looked there only if no unparsed docstring could be found.
+
+    The 'b' attribute in the test code is there to make sure that in the
+    absence of an 'ivar' field, the docstring is inherited.
+    """
+
+    mod = fromText('''
+    class Base:
+        a: str
+        """base doc
+
+        details
+        """
+
+        b: object
+        """not overridden
+
+        details
+        """
+
+    class Sub(Base):
+        """
+        @ivar a: sub doc
+        @type b: sub type
+        """
+    ''')
+
+    base = mod.contents['Base']
+    base_a = base.contents['a']
+    assert isinstance(base_a, model.Attribute)
+    assert summary2html(base_a) == "base doc"
+    assert docstring2html(base_a) == "<div>\n<p>base doc</p>\n<p>details</p>\n</div>"
+    base_b = base.contents['b']
+    assert isinstance(base_b, model.Attribute)
+    assert summary2html(base_b) == "not overridden"
+    assert docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
+
+    sub = mod.contents['Sub']
+    sub_a = sub.contents['a']
+    assert isinstance(sub_a, model.Attribute)
+    assert summary2html(sub_a) == 'sub doc'
+    assert docstring2html(sub_a) == "<div>sub doc</div>"
+    sub_b = sub.contents['b']
+    assert isinstance(sub_b, model.Attribute)
+    assert summary2html(sub_b) == 'not overridden'
+    assert docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
 
 def test_missing_field_name(capsys: CapSys) -> None:
@@ -504,7 +642,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('base.module.other')
-    url_xref = sut.resolve_identifier_xref('base.module.other', 0)
+    url_xref = sut._resolve_identifier_xref('base.module.other', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -530,7 +668,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.resolve_identifier('ext_module')
-    url_xref = sut.resolve_identifier_xref('ext_module', 0)
+    url_xref = sut._resolve_identifier_xref('ext_module', 0)
 
     assert "http://tm.tld/some.html" == url
     assert "http://tm.tld/some.html" == url_xref
@@ -556,7 +694,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     assert sut.resolve_identifier('ext_module') is None
     assert not capsys.readouterr().out
     with raises(LookupError):
-        sut.resolve_identifier_xref('ext_module', 0)
+        sut._resolve_identifier_xref('ext_module', 0)
 
     captured = capsys.readouterr().out
     expected = (
@@ -592,7 +730,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
     linker = epydoc2stan._EpydocLinker(mod)
 
     url = linker.resolve_identifier('socket.socket')
-    url_xref = linker.resolve_identifier_xref('socket.socket', 0)
+    url_xref = linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
@@ -614,10 +752,10 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     sut = epydoc2stan._EpydocLinker(target)
 
     url = sut.resolve_identifier('internal_module.C')
-    url_xref = sut.resolve_identifier_xref('internal_module.C', 0)
+    xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
     assert "internal_module.C.html" == url
-    assert "internal_module.C.html" == url_xref
+    assert int_mod.contents['C'] is xref
 
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
@@ -675,12 +813,16 @@ class RecordingAnnotationLinker(DocstringLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
+    def link_to(self, target: str, label: str) -> Tag:
+        self.resolve_identifier(target)
+        return tags.transparent(label)
+
+    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+        assert False
+
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         self.requests.append(identifier)
         return None
-
-    def resolve_identifier_xref(self, identifier: str, lineno: int) -> str:
-        assert False
 
 @mark.parametrize('annotation', (
     '<bool>',
@@ -712,5 +854,114 @@ def test_annotation_formatter(annotation: str) -> None:
     html = flatten(stan)
     assert html.startswith('<code>')
     assert html.endswith('</code>')
-    text= html[6:-7]
-    assert text == expected_text
+    text = html[6:-7]
+    assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+def test_module_docformat(capsys: CapSys) -> None:
+    """
+    Test if Module.docformat effectively override System.options.docformat
+    """
+
+    system = model.System()
+    system.options.docformat = 'plaintext'
+
+    mod = fromText('''
+    """
+    Link to pydoctor: U{pydoctor <https://github.com/twisted/pydoctor>}.
+    """
+    __docformat__ = "epytext"
+    ''', modname='test_epy', system=system)
+
+    epytext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    mod = fromText('''
+    """
+    Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
+    """
+    __docformat__ = "restructuredtext en"
+    ''', modname='test_rst', system=system)
+
+    restructuredtext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(epytext_output)
+    
+    assert 'href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output)
+
+
+def test_module_docformat_inheritence(capsys: CapSys) -> None:
+    top_src = '''
+    def f(a: str, b: int): 
+        """
+        :param a: string
+        :param b: integer
+        """
+        pass
+    '''
+    mod_src = '''
+    def f(a: str, b: int): 
+        """
+        @param a: string
+        @param b: integer
+        """
+        pass
+    '''
+    pkg_src = '''
+    __docformat__ = 'epytext'
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
+    
+
+def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
+
+    mod_src = '''
+    __docformat__ = "restructuredtext"
+
+    class A:
+        def f(self, a: str, b: int): 
+            """
+            .. note:: Note.
+            """
+    '''
+
+    mod2_src = '''
+    from mod import A
+    __docformat__ = "epytext"
+
+    class B(A):
+        def f(self, a: str, b: int): 
+            pass
+    '''
+
+    system = model.System()
+    system.options.docformat = 'epytext'
+
+    mod = fromText(mod_src, modname='mod', system=system)
+    mod2 = fromText(mod2_src, modname='mod2', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    B_f = mod2.resolveName('B.f')
+    A_f = mod.resolveName('A.f')
+
+    assert B_f
+    assert A_f
+
+    assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())

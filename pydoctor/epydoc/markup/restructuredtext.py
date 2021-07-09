@@ -1,5 +1,5 @@
 #
-# rst.py: ReStructuredText docstring parsing
+# restructuredtext.py: ReStructuredText docstring parsing
 # Edward Loper
 #
 # Created [06/28/03 02:52 AM]
@@ -15,8 +15,7 @@ defined by L{ParsedDocstring}.
 L{ParsedRstDocstring} is basically just a L{ParsedDocstring} wrapper
 for the C{docutils.nodes.document} class.
 
-Creating C{ParsedRstDocstring}s
-===============================
+B{Creating C{ParsedRstDocstring}s}:
 
 C{ParsedRstDocstring}s are created by the C{parse_document} function,
 using the C{docutils.core.publish_string()} method, with the following
@@ -53,13 +52,13 @@ from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
 from docutils.nodes import Node, NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import Directive, directives
+from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
 from docutils.transforms import Transform
 import docutils.nodes
 import docutils.transforms.frontmatter
 import docutils.utils
 
-from twisted.web.template import Tag, tags
+from twisted.web.template import Tag
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.epydoc.markup import (
     DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
@@ -393,7 +392,9 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([HTMLWriter()]).get_default_values()
+            settings = OptionParser([HTMLWriter()]).get_default_values() #type: ignore[arg-type]
+            # See: https://github.com/python/typeshed/issues/5667
+            
             self.__class__.settings = settings
         document.settings = self.settings
 
@@ -402,19 +403,14 @@ class _EpydocHTMLTranslator(HTMLTranslator):
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: Node) -> None:
         m = _TARGET_RE.match(node.astext())
-        if m: text, target = m.groups()
-        else: target = text = node.astext()
-        label = tags.code(text)
+        if m:
+            label, target = m.groups()
+        else:
+            label = target = node.astext()
         # TODO: 'node.line' is None for some reason.
         #       https://github.com/twisted/pydoctor/issues/237
         lineno = 0
-        try:
-            url = self._linker.resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            xref = tags.a(label, href=url)
-        self.body.append(flatten(xref))
+        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
         raise SkipNode()
 
     def should_be_compact_paragraph(self, node: Node) -> bool:
@@ -478,6 +474,76 @@ class _EpydocHTMLTranslator(HTMLTranslator):
         else:
             self.body.append(flatten(colorize_doctest(pysrc)))
         raise SkipNode()
+
+
+    # Other ressources on how to extend docutils:
+    # https://docutils.sourceforge.io/docs/user/tools.html
+    # https://docutils.sourceforge.io/docs/dev/hacking.html
+    # https://docutils.sourceforge.io/docs/howto/rst-directives.html
+    # docutils apidocs:
+    # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
+
+    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
+    # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
+    def _visit_admonition(self, node: Node, name: str) -> None:
+        self.body.append(self.starttag(
+            node, 'div', CLASS=('admonition ' + name)))
+        node.insert(0, docutils.nodes.title(name, name.title()))
+        self.set_first_last(node)
+
+    def visit_note(self, node: Node) -> None:
+        self._visit_admonition(node, 'note')
+
+    def depart_note(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_warning(self, node: Node) -> None:
+        self._visit_admonition(node, 'warning')
+
+    def depart_warning(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_attention(self, node: Node) -> None:
+        self._visit_admonition(node, 'attention')
+
+    def depart_attention(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_caution(self, node: Node) -> None:
+        self._visit_admonition(node, 'caution')
+
+    def depart_caution(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_danger(self, node: Node) -> None:
+        self._visit_admonition(node, 'danger')
+
+    def depart_danger(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_error(self, node: Node) -> None:
+        self._visit_admonition(node, 'error')
+
+    def depart_error(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_hint(self, node: Node) -> None:
+        self._visit_admonition(node, 'hint')
+
+    def depart_hint(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_important(self, node: Node) -> None:
+        self._visit_admonition(node, 'important')
+
+    def depart_important(self, node: Node) -> None:
+        self.depart_admonition(node)
+
+    def visit_tip(self, node: Node) -> None:
+        self._visit_admonition(node, 'tip')
+
+    def depart_tip(self, node: Node) -> None:
+        self.depart_admonition(node)
 
 class PythonCodeDirective(Directive):
     """

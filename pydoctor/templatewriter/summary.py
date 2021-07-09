@@ -1,61 +1,70 @@
 """Classes that generate the summary pages."""
 
-from typing import Dict, List, Sequence, Tuple, Union, cast
+from collections import defaultdict
+from typing import (
+    TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
+    Sequence, Tuple, Type, Union, cast
+)
 
-from pydoctor import epydoc2stan, model, __version__
-from pydoctor.templatewriter import util
-from twisted.web.template import Element, TagLoader, XMLFile, renderer, tags
+from twisted.web.template import Element, Tag, TagLoader, renderer, tags
+
+from pydoctor import epydoc2stan, model
+from pydoctor.templatewriter import TemplateLookup
+from pydoctor.templatewriter.pages import Page
+
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
-def moduleSummary(modorpack):
-    r = tags.li(
-        util.taglink(modorpack), ' - ',
-        epydoc2stan.format_summary(modorpack)
+def moduleSummary(module: model.Module, page_url: str) -> Tag:
+    r: Tag = tags.li(
+        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        epydoc2stan.format_summary(module)
         )
-    if modorpack.isPrivate:
+    if module.isPrivate:
         r(class_='private')
-    if not isinstance(modorpack, model.Package):
+    if not isinstance(module, model.Package):
         return r
-    contents = [m for m in modorpack.contents.values()
-                if m.isVisible and m.name != '__init__']
+    contents = [m for m in module.contents.values()
+                if isinstance(m, model.Module) and m.isVisible]
     if not contents:
         return r
     ul = tags.ul()
-    for m in sorted(contents, key=lambda m:m.fullName()):
-        ul(moduleSummary(m))
-    return r(ul)
+    def fullName(obj: model.Documentable) -> str:
+        return obj.fullName()
+    for m in sorted(contents, key=fullName):
+        ul(moduleSummary(m, page_url))
+    r(ul)
+    return r
 
-def _lckey(x):
+def _lckey(x: model.Documentable) -> Tuple[str, str]:
     return (x.fullName().lower(), x.fullName())
 
+class ModuleIndexPage(Page):
 
-class ModuleIndexPage(Element):
     filename = 'moduleIndex.html'
 
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-    def __init__(self, system):
-        self.system = system
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
+            loader=template_lookup.get_template('summary.html').loader )
 
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Module Index")
+    def title(self) -> str:
+        return "Module Index"
 
     @renderer
-    def stuff(self, request, tag):
-        r = []
-        for o in self.system.rootobjects:
-            r.append(moduleSummary(o))
-        return tag.clear()(r)
+    def stuff(self, request: object, tag: Tag) -> Tag:
+        tag.clear()
+        tag([moduleSummary(o, self.filename) for o in self.system.rootobjects])
+        return tag
+
     @renderer
-    def heading(self, request, tag):
-        return tag().clear()("Module Index")
+    def heading(self, request: object, tag: Tag) -> Tag:
+        tag().clear()
+        tag("Module Index")
+        return tag
 
 def findRootClasses(
         system: model.System
@@ -97,49 +106,51 @@ def isClassNodePrivate(cls: model.Class) -> bool:
 
     return True
 
-def subclassesFrom(hostsystem, cls, anchors):
-    r = tags.li()
+def subclassesFrom(
+        hostsystem: model.System,
+        cls: model.Class,
+        anchors: MutableSet[str],
+        page_url: str
+        ) -> Tag:
+    r: Tag = tags.li()
     if isClassNodePrivate(cls):
         r(class_='private')
     name = cls.fullName()
     if name not in anchors:
         r(tags.a(name=name))
         anchors.add(name)
-    r(util.taglink(cls), ' - ', epydoc2stan.format_summary(cls))
+    r(tags.code(epydoc2stan.taglink(cls, page_url)), ' - ',
+      epydoc2stan.format_summary(cls))
     scs = [sc for sc in cls.subclasses if sc.system is hostsystem and ' ' not in sc.fullName()
            and sc.isVisible]
     if len(scs) > 0:
         ul = tags.ul()
         for sc in sorted(scs, key=_lckey):
-            ul(subclassesFrom(hostsystem, sc, anchors))
+            ul(subclassesFrom(hostsystem, sc, anchors, page_url))
         r(ul)
     return r
 
-class ClassIndexPage(Element):
+class ClassIndexPage(Page):
+
     filename = 'classIndex.html'
 
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
 
-    def __init__(self, system):
-        self.system = system
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
+            loader=template_lookup.get_template('summary.html').loader )
 
-    @renderer
-    def title(self, request, tag):
-        return tag.clear()("Class Hierarchy")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
+    def title(self) -> str:
+        return "Class Hierarchy"
 
     @renderer
-    def stuff(self, request, tag):
+    def stuff(self, request: object, tag: Tag) -> Tag:
         t = tag
-        anchors = set()
+        anchors: MutableSet[str] = set()
         for b, o in findRootClasses(self.system):
             if isinstance(o, model.Class):
-                t(subclassesFrom(self.system, o, anchors))
+                t(subclassesFrom(self.system, o, anchors, self.filename))
             else:
                 item = tags.li(tags.code(b))
                 if all(isClassNodePrivate(sc) for sc in o):
@@ -149,29 +160,37 @@ class ClassIndexPage(Element):
                 if o:
                     ul = tags.ul()
                     for sc in sorted(o, key=_lckey):
-                        ul(subclassesFrom(self.system, sc, anchors))
+                        ul(subclassesFrom(self.system, sc, anchors, self.filename))
                     item(ul)
                 t(item)
         return t
 
     @renderer
-    def heading(self, request, tag):
-        return tag.clear()("Class Hierarchy")
+    def heading(self, request: object, tag: Tag) -> Tag:
+        tag.clear()
+        tag("Class Hierarchy")
+        return tag
 
 
 class LetterElement(Element):
-    def __init__(self, loader, initials, letter):
-        Element.__init__(self, loader)
+
+    def __init__(self,
+            loader: TagLoader,
+            initials: Mapping[str, Sequence[model.Documentable]],
+            letter: str
+            ):
+        super().__init__(loader=loader)
         self.initials = initials
         self.my_letter = letter
 
     @renderer
-    def letter(self, request, tag):
-        return tag(self.my_letter)
+    def letter(self, request: object, tag: Tag) -> Tag:
+        tag(self.my_letter)
+        return tag
 
     @renderer
-    def letterlinks(self, request, tag):
-        letterlinks = []
+    def letterlinks(self, request: object, tag: Tag) -> Tag:
+        letterlinks: List["Flattenable"] = []
         for initial in sorted(self.initials):
             if initial == self.my_letter:
                 letterlinks.append(initial)
@@ -180,25 +199,35 @@ class LetterElement(Element):
             letterlinks.append(' - ')
         if letterlinks:
             del letterlinks[-1]
-        return tag(letterlinks)
+        tag(letterlinks)
+        return tag
 
     @renderer
-    def names(self, request, tag):
-        name2obs = {}
+    def names(self, request: object, tag: Tag) -> "Flattenable":
+        def link(obj: model.Documentable) -> Tag:
+            # The "data-type" attribute helps doc2dash figure out what
+            # category (class, method, etc.) an object belongs to.
+            attributes = {}
+            if obj.kind:
+                attributes["data-type"] = epydoc2stan.format_kind(obj.kind)
+            return tags.code(
+                epydoc2stan.taglink(obj, NameIndexPage.filename), **attributes
+                )
+        name2obs: DefaultDict[str, List[model.Documentable]] = defaultdict(list)
         for obj in self.initials[self.my_letter]:
-            name2obs.setdefault(obj.name, []).append(obj)
+            name2obs[obj.name].append(obj)
         r = []
         for name in sorted(name2obs, key=lambda x:(x.lower(), x)):
-            item = tag.clone()(name)
+            item: Tag = tag.clone()(name)
             obs = name2obs[name]
             if all(isPrivate(ob) for ob in obs):
                 item(class_='private')
             if len(obs) == 1:
-                item(' - ', util.taglink(obs[0]))
+                item(' - ', link(obs[0]))
             else:
                 ul = tags.ul()
                 for ob in sorted(obs, key=_lckey):
-                    subitem = tags.li(util.taglink(ob))
+                    subitem = tags.li(link(ob))
                     if isPrivate(ob):
                         subitem(class_='private')
                     ul(subitem)
@@ -207,148 +236,112 @@ class LetterElement(Element):
         return r
 
 
-class NameIndexPage(Element):
+class NameIndexPage(Page):
+
     filename = 'nameIndex.html'
 
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('nameIndex.html'))
-
-    def __init__(self, system):
-        self.system = system
-        self.initials = {}
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
+        super().__init__(system=system, template_lookup=template_lookup)
+        self.initials: Dict[str, List[model.Documentable]] = {}
         for ob in self.system.allobjects.values():
             if ob.isVisible:
                 self.initials.setdefault(ob.name[0].upper(), []).append(ob)
 
+
+    def title(self) -> str:
+        return "Index of Names"
+
     @renderer
-    def title(self, request, tag):
+    def heading(self, request: object, tag: Tag) -> Tag:
         return tag.clear()("Index of Names")
 
     @renderer
-    def heading(self, request, tag):
-        return tag.clear()("Index of Names")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
-    def index(self, request, tag):
+    def index(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for i in sorted(self.initials):
             r.append(LetterElement(TagLoader(tag), self.initials, i))
         return r
 
 
-class IndexPage(Element):
+class IndexPage(Page):
+
     filename = 'index.html'
 
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('index.html'))
-
-    def __init__(self, system):
-        self.system = system
+    def title(self) -> str:
+        return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def project_link(self, request, tag):
-        if self.system.options.projecturl:
-            return tags.a(href=self.system.options.projecturl)(
-                self.system.projectname)
-        else:
-            return self.system.projectname
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
-    def recentChanges(self, request, tag):
-        return ()
-
-    @renderer
-    def problemObjects(self, request, tag):
-        return ()
-
-    @renderer
-    def onlyIfOneRoot(self, request, tag):
+    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
         if len(self.system.rootobjects) != 1:
             return []
         else:
             root, = self.system.rootobjects
             return tag.clear()(
-                "Start at ", util.taglink(root),
-                ", the root ", root.kind.lower(), ".")
+                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
+                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
 
     @renderer
-    def onlyIfMultipleRoots(self, request, tag):
+    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
         if len(self.system.rootobjects) == 1:
             return []
         else:
             return tag
 
     @renderer
-    def roots(self, request, tag):
+    def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
-            r.append(tag.clone().fillSlots(root=util.taglink(o)))
+            r.append(tag.clone().fillSlots(root=tags.code(
+                epydoc2stan.taglink(o, self.filename)
+                )))
         return r
 
     @renderer
-    def rootkind(self, request, tag):
-        rootkinds = {}
-        for o in self.system.rootobjects:
-            rootkinds[o.kind.lower() + 's']  = 1
-        return tag.clear()('/'.join(sorted(rootkinds)))
-
-    @renderer
-    def version(self, request, tag):
-        return __version__
-
-    @renderer
-    def buildtime(self, request, tag):
-        return self.system.buildtime.strftime("%Y-%m-%d %H:%M:%S")
+    def rootkind(self, request: object, tag: Tag) -> Tag:
+        return tag.clear()('/'.join(sorted(
+             epydoc2stan.format_kind(o.kind, plural=True).lower()
+             for o in self.system.rootobjects
+             )))
 
 
-def hasdocstring(ob):
+def hasdocstring(ob: model.Documentable) -> bool:
     for source in ob.docsources():
         if source.docstring is not None:
             return True
     return False
 
-class UndocumentedSummaryPage(Element):
+class UndocumentedSummaryPage(Page):
+
     filename = 'undoccedSummary.html'
 
-    @property
-    def loader(self):
-        return XMLFile(util.templatefilepath('summary.html'))
+    def __init__(self, system: model.System, template_lookup: TemplateLookup):
+        # Override L{Page.loader} because here the page L{filename}
+        # does not equal the template filename.
+        super().__init__(system=system, template_lookup=template_lookup,
+            loader=template_lookup.get_template('summary.html').loader )
 
-    def __init__(self, system):
-        self.system = system
+    def title(self) -> str:
+        return "Summary of Undocumented Objects"
 
     @renderer
-    def title(self, request, tag):
+    def heading(self, request: object, tag: Tag) -> Tag:
         return tag.clear()("Summary of Undocumented Objects")
 
     @renderer
-    def heading(self, request, tag):
-        return tag.clear()("Summary of Undocumented Objects")
-
-    @renderer
-    def project(self, request, tag):
-        return self.system.projectname
-
-    @renderer
-    def stuff(self, request, tag):
+    def stuff(self, request: object, tag: Tag) -> Tag:
         undoccedpublic = [o for o in self.system.allobjects.values()
                           if o.isVisible and not hasdocstring(o)]
         undoccedpublic.sort(key=lambda o:o.fullName())
         for o in undoccedpublic:
-            tag(tags.li(o.kind, " - ", util.taglink(o)))
+            kind = o.kind
+            assert kind is not None  # 'kind is None' makes the object invisible
+            tag(tags.li(
+                epydoc2stan.format_kind(kind), " - ",
+                tags.code(epydoc2stan.taglink(o, self.filename))
+                ))
         return tag
 
-summarypages = [
+summarypages: Iterable[Type[Page]] = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

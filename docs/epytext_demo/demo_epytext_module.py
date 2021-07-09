@@ -4,11 +4,16 @@ This is a module demonstrating epydoc code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
+from abc import ABC
+from somelib import SomeInterface
+import zope.interface
+import zope.schema
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with L{demo_typing_arguments} to
+    This function can be used in conjunction with L{demo_typing_arguments} to
     find an arbitrary function's zeros.
 
     @type  m: number
@@ -67,12 +72,12 @@ class _PrivateClass:
         return True
 
 
-class DemoClass:
+class DemoClass(ABC, SomeInterface, _PrivateClass):
     """
     This is the docstring of this class.
     """
 
-    def __init_(self, one: str, two: bytes) -> None:
+    def __init__(self, one: str, two: bytes) -> None:
         """
         Documentation for class initialization.
 
@@ -118,3 +123,20 @@ class DemoClass:
         """
         This is a docstring for deleter.
         """
+
+
+class IContact(zope.interface.Interface):
+    """
+    Example of an interface with schemas.
+
+    Provides access to basic contact information.
+    """
+
+    first = zope.schema.TextLine(description="First name")
+
+    email = zope.schema.TextLine(description="Electronic mail address")
+
+    address = zope.schema.Text(description="Postal address")
+
+    def send_email(text: str) -> None:
+        pass

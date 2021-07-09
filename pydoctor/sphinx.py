@@ -251,12 +251,12 @@ class SphinxInventoryWriter:
         url = obj.url
 
         display = '-'
-        if isinstance(obj, (model.Package, model.Module)):
+        if isinstance(obj, model.Module):
             domainname = 'module'
         elif isinstance(obj, model.Class):
             domainname = 'class'
         elif isinstance(obj, model.Function):
-            if obj.kind == 'Function':
+            if obj.kind is model.DocumentableKind.FUNCTION:
                 domainname = 'function'
             else:
                 domainname = 'method'

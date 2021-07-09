@@ -1,8 +1,7 @@
 :orphan:
 
-
-Epytext API Demo
-================
+API Reference with a Twisted theme
+==================================
 
 This file will be overwritten by the pydoctor build triggered at the end
 of the Sphinx build.

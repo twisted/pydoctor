@@ -35,7 +35,6 @@ from pprint import pprint
 from typing import Any, Sequence, Mapping
 
 from sphinx.application import Sphinx
-from sphinx.config import Config
 from sphinx.errors import ConfigError
 from sphinx.util import logging
 
@@ -53,6 +52,9 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
 
     # Share placeholders between init and finish.
     placeholders: Mapping[str, str] = app.config._pydoctor_placeholders
+    
+    if app.builder.name != 'html':
+        return
 
     runs = app.config.pydoctor_args
 
@@ -73,15 +75,19 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
         temp_path.rename(output_path)
 
 
-def on_config_inited(app: Sphinx, config: Config) -> None:
+def on_builder_inited(app: Sphinx) -> None:
     """
     Called to build the API documentation HTML  files
     and inject our own intersphinx inventory object.
     """
+    if app.builder.name != 'html':
+        return
+
     rtd_version = 'latest'
     if os.environ.get('READTHEDOCS', '') == 'True':
         rtd_version = os.environ.get('READTHEDOCS_VERSION', 'latest')
 
+    config = app.config
     if not config.pydoctor_args:
         raise ConfigError("Missing 'pydoctor_args'.")
 
@@ -90,7 +96,6 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         }
 
     runs = config.pydoctor_args
-
     if not isinstance(runs, Mapping):
         # We have a single pydoctor call.
         runs = {'main': runs}
@@ -98,7 +103,7 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
 
     pydoctor_url_path = config.pydoctor_url_path
     if not isinstance(runs, Mapping):
-    # We have a single pydoctor inventory mapping.
+        # We have a single pydoctor inventory mapping.
         pydoctor_url_path = {'main': pydoctor_url_path}
 
     # Defer resolving the git reference for only when asked by
@@ -123,7 +128,8 @@ def on_config_inited(app: Sphinx, config: Config) -> None:
         if url_path:
             intersphinx_mapping = config.intersphinx_mapping
             url = url_path.format(**{'rtd_version': rtd_version})
-            intersphinx_mapping[key + '-api-docs'] = (url, str(temp_path / 'objects.inv'))
+            inv = (str(temp_path / 'objects.inv'),)
+            intersphinx_mapping[f'{key}-api-docs'] = (None, (url, inv))
 
         # Build the API docs in temporary path.
         shutil.rmtree(temp_path, ignore_errors=True)
@@ -176,7 +182,7 @@ def _get_arguments(arguments: Sequence[str], placeholders: Mapping[str, str]) ->
     return args
 
 
-def setup(app: Sphinx) ->  Mapping[str, Any]:
+def setup(app: Sphinx) -> Mapping[str, Any]:
     """
     Called by Sphinx when the extension is initialized.
 
@@ -187,7 +193,7 @@ def setup(app: Sphinx) ->  Mapping[str, Any]:
     app.add_config_value("pydoctor_debug", False, "env")
 
     # Make sure we have a lower priority than intersphinx extension.
-    app.connect('config-inited', on_config_inited, priority=790)
+    app.connect('builder-inited', on_builder_inited, priority=490)
     app.connect('build-finished', on_build_finished)
 
     return {
