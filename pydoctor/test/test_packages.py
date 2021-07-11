@@ -1,14 +1,13 @@
+from pathlib import Path
 from typing import Type
-import os
 
 from pydoctor import model
 
-testpackages = os.path.join(os.path.dirname(__file__), 'testpackages')
+testpackages = Path(__file__).parent / 'testpackages'
 
 def processPackage(packname: str, systemcls: Type[model.System] = model.System) -> model.System:
-    testpackage = os.path.join(testpackages, packname)
     system = systemcls()
-    system.addPackage(testpackage)
+    system.addPackage(testpackages / packname)
     system.process()
     return system
 
@@ -20,8 +19,7 @@ def test_relative_import() -> None:
 
 def test_package_docstring() -> None:
     system = processPackage("relativeimporttest")
-    assert (system.allobjects['relativeimporttest.__init__'].docstring ==
-            "DOCSTRING")
+    assert system.allobjects['relativeimporttest'].docstring == "DOCSTRING"
 
 def test_modnamedafterbuiltin() -> None:
     # well, basically the test is that this doesn't explode:

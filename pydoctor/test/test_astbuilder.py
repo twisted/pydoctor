@@ -23,46 +23,55 @@ systemcls_param = pytest.mark.parametrize(
 def fromAST(
         ast: ast.Module,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
+
     if system is None:
         _system = systemcls()
     else:
         _system = system
+
     if buildercls is None:
         buildercls = _system.defaultBuilder
     builder = buildercls(_system)
+
     if parent_name is None:
         full_name = modname
     else:
         full_name = f'{parent_name}.{modname}'
         # Set containing package as parent.
         builder.current = _system.allobjects[parent_name]
-    mod: model.Module = builder._push(_system.Module, modname, 0)
-    builder._pop(_system.Module)
+
+    factory = _system.Package if is_package else _system.Module
+    mod: model.Module = builder._push(factory, modname, 0)
+    builder._pop(factory)
     builder.processModuleAST(ast, mod)
     assert mod is _system.allobjects[full_name]
     mod.state = model.ProcessingState.PROCESSED
+
     if system is None:
         # Assume that an implicit system will only contain one module,
         # so post-process it as a convenience.
         _system.postProcess()
+
     return mod
 
 def fromText(
         text: str,
         *,
         modname: str = '<test>',
+        is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
         buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
     ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, parent_name, system, buildercls, systemcls)
+    return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
 
 def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
     epytext = parsed_docstring._tree
@@ -296,6 +305,38 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
+def test_relative_import_in_package(systemcls: Type[model.System]) -> None:
+    """Relative imports in a package must be resolved by going up one level
+    less, since we don't count "__init__.py" as a level.
+
+    Hierarchy::
+
+      top: def f
+       - pkg: imports f and g
+          - mod: def g
+    """
+
+    top_src = '''
+    def f(): pass
+    '''
+    mod_src = '''
+    def g(): pass
+    '''
+    pkg_src = '''
+    from .. import f
+    from .mod import g
+    '''
+
+    system = systemcls()
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', system=system)
+    pkg = fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+
+    assert pkg.resolveName('f') is top.contents['f']
+    assert pkg.resolveName('g') is mod.contents['g']
+
+@systemcls_param
 @pytest.mark.parametrize('level', (1, 2, 3, 4))
 def test_relative_import_past_top(
         systemcls: Type[model.System],
@@ -306,7 +347,7 @@ def test_relative_import_past_top(
     package.
     """
     system = systemcls()
-    system.ensurePackage('pkg')
+    fromText('', modname='pkg', is_package=True, system=system)
     fromText(f'''
     from {'.' * level + 'X'} import A
     ''', modname='mod', parent_name='pkg', system=system)
@@ -816,10 +857,9 @@ def test_import_func_from_package(systemcls: Type[model.System]) -> None:
     package C{a}, they import the function C{f} from the module C{a.__init__}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     mod_a = fromText('''
     def f(): pass
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', is_package=True, system=system)
     mod_b = fromText('''
     from a import f
     ''', modname='b', system=system)
@@ -848,10 +888,9 @@ def test_import_module_from_package(systemcls: Type[model.System]) -> None:
     it imports the module C{a.b} which contains C{f}.
     """
     system = systemcls()
-    system.ensurePackage('a')
     fromText('''
     # This module intentionally left blank.
-    ''', modname='__init__', parent_name='a', system=system)
+    ''', modname='a', system=system)
     mod_b = fromText('''
     def f(): pass
     ''', modname='b', parent_name='a', system=system)

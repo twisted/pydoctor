@@ -1,4 +1,4 @@
-from typing import List, Optional, cast
+from typing import List, Optional, cast, TYPE_CHECKING
 import re
 from textwrap import dedent
 
@@ -14,8 +14,9 @@ from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test.epydoc.test_to_node import parse_docstring
 from pydoctor.napoleon.docstring import TokenType
-
-from . import CapSys, NotFoundLinker
+from pydoctor.test import CapSys, NotFoundLinker
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
 
 def test_multiple_types() -> None:
@@ -820,11 +821,11 @@ class RecordingAnnotationLinker(DocstringLinker):
     def __init__(self) -> None:
         self.requests: List[str] = []
 
-    def link_to(self, target: str, label: str) -> Tag:
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
         self.resolve_identifier(target)
-        return tags.transparent(label)  # type: ignore[no-any-return]
+        return tags.transparent(label)
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         assert False
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:

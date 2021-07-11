@@ -49,7 +49,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         return bool(self._text)
 
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        return tags.p(self._text, class_='pre')  # type: ignore[no-any-return]
+        return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
         if self._document is not None:
