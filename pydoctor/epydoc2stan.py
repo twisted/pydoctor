@@ -9,6 +9,7 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
+import sys
 import itertools
 
 import astor
@@ -849,7 +850,8 @@ class _AnnotationFormatter(ast.NodeVisitor):
         sub: ast.AST = node.slice
         if isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
-            sub = sub.value
+            if sys.version_info < (3, 9):
+                sub = sub.value
         if isinstance(sub, ast.Tuple):
             self._handle_sequence(tag, sub.elts)
         else:
