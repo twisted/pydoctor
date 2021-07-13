@@ -58,7 +58,11 @@ def docstring2html(obj: model.Documentable) -> str:
 
 def summary2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
-    assert stan.tagName == '', stan
+    if stan.attributes.get('class') == 'undocumented':
+        assert stan.tagName == 'span', stan
+    else:
+        # Summaries are now generated without englobing <span> when we don't need one. 
+        assert stan.tagName == '', stan
     return flatten(stan.children)
 
 
