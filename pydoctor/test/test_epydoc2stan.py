@@ -58,7 +58,7 @@ def docstring2html(obj: model.Documentable) -> str:
 
 def summary2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
-    assert stan.tagName == 'span' or stan.tagName == '', stan
+    assert stan.tagName == '', stan
     return flatten(stan.children)
 
 
