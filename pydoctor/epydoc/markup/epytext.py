@@ -137,7 +137,7 @@ import re
 from docutils import utils, nodes
 from twisted.web.template import Tag
 
-from pydoctor.epydoc.docutils import set_nodes_parent, set_node_attributes
+from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 
 ##################################################
@@ -1360,7 +1360,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             node, = self._to_node(self._tree)
             # The contents is encapsulated inside a section node. 
             # Reparent the contents of the second level to the root level. 
-            self._document.children.extend(set_nodes_parent(node.children, self._document))
+            self._document = set_node_attributes(self._document, children=node.children)
         
         return self._document
     
