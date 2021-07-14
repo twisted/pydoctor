@@ -1389,7 +1389,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'code':
             yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
         elif tree.tag == 'uri':
-            label, target = variables[0], variables[1]
+            label, target = variables
             yield set_node_attributes(nodes.reference(
                     '', internal=False, refuri=target), document=self._document, children=label.children)
         
