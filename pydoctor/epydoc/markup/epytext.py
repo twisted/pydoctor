@@ -1371,22 +1371,16 @@ class ParsedEpytextDocstring(ParsedDocstring):
         
         return self._document
     
-    def _to_node(self,
-            tree: Union[Element, str],
-            seclevel: int = 0, 
-            ) -> Iterable[nodes.Node]:
+    def _to_node(self, tree: Union[Element, str]) -> Iterable[nodes.Node]:
         
         if isinstance(tree, str):
             yield set_node_attributes(nodes.Text(tree), document=self._document)
             return
 
-        if tree.tag == 'section':
-            seclevel += 1
-
         # Process the children first.
         variables: List[nodes.Node] = []
         for c in tree.children:
-            variables.extend(self._to_node(c, seclevel))
+            variables.extend(self._to_node(c))
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
@@ -1430,7 +1424,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.emphasis('', ''), document=self._document, children=variables)
         elif tree.tag == 'math':
             node = set_node_attributes(nodes.math('', ''), document=self._document, children=variables)
-            node.set_class('math')
+            node['classes'].append('math')
             yield node
         elif tree.tag == 'bold':
             yield set_node_attributes(nodes.strong('', ''), document=self._document, children=variables)
