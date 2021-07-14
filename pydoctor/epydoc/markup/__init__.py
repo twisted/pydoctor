@@ -33,18 +33,16 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
-import re
+from typing import TYPE_CHECKING, Optional, Sequence
 import abc
 
 from docutils import nodes
-
-from twisted.python.failure import Failure
-from twisted.web.template import Tag, XMLString, flattenString
+from twisted.web.template import Tag
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
+from pydoctor import node2stan
 
 ##################################################
 ## Contents
@@ -66,7 +64,7 @@ class ParsedDocstring(abc.ABC):
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()} and L{to_stan()}.
+    Subclasses must implement L{has_body()} and L{to_node()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -75,6 +73,8 @@ class ParsedDocstring(abc.ABC):
         A list of L{Field}s, each of which encodes a single field.
         The field's bodies are encoded as C{ParsedDocstring}s.
         """
+
+        self._stan: Optional[Tag] = None
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -85,20 +85,21 @@ class ParsedDocstring(abc.ABC):
         """
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """
         Translate this docstring to a Stan tree.
 
-        Implementations are encouraged to generate Stan output directly
-        if possible, but if that is not feasible, L{html2stan()} can be
-        used instead.
+        @note: The default implementation relies on functionalities 
+            provided by L{node2stan.node2stan} and L{ParsedDocstring.to_node()}.
 
         @param docstring_linker: An HTML translator for crossreference
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
         """
-        raise NotImplementedError()
+        if self._stan is not None:
+            return self._stan
+        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
+        return self._stan
     
     @abc.abstractmethod
     def to_node(self) -> nodes.document:
@@ -108,44 +109,6 @@ class ParsedDocstring(abc.ABC):
         @return: The docstring presented as a L{docutils.nodes.document}.
         """
         raise NotImplementedError()
-
-_RE_CONTROL = re.compile((
-    '[' + ''.join(
-    ch for ch in map(chr, range(0, 32)) if ch not in '\r\n\t\f'
-    ) + ']'
-    ).encode())
-
-def html2stan(html: Union[bytes, str]) -> Tag:
-    """
-    Convert an HTML string to a Stan tree.
-
-    @param html: An HTML fragment; multiple roots are allowed.
-    @return: The fragment as a tree with a transparent root node.
-    """
-    if isinstance(html, str):
-        html = html.encode('utf8')
-
-    html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    stan = XMLString(b'<div>%s</div>' % html).load()[0]
-    assert isinstance(stan, Tag)
-    assert stan.tagName == 'div'
-    stan.tagName = ''
-    return stan
-
-def flatten(stan: "Flattenable") -> str:
-    """
-    Convert a document fragment from a Stan tree to HTML.
-
-    @param stan: Document fragment to flatten.
-    @return: An HTML string representation of the C{stan} tree.
-    """
-    ret: List[bytes] = []
-    err: List[Failure] = []
-    flattenString(None, stan).addCallback(ret.append).addErrback(err.append)
-    if err:
-        raise err[0].value
-    else:
-        return ret[0].decode()
 
 ##################################################
 ## Fields

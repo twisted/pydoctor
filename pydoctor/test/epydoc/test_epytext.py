@@ -1,8 +1,8 @@
 from typing import List
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, epytext, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, epytext
 from pydoctor.test import NotFoundLinker
-
+from pydoctor.stanutils import flatten
 
 def epytext2html(s: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     errs: List[ParseError] = []

@@ -1,10 +1,11 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
+from pydoctor.stanutils import flatten
 
 from docutils import nodes
 from bs4 import BeautifulSoup

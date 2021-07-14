@@ -11,11 +11,10 @@ from docutils.frontend import OptionParser
 from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
-from pydoctor.epydoc.markup import (
-    DocstringLinker, flatten, html2stan
-)
+    from pydoctor.epydoc.markup import DocstringLinker
+    
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
+from pydoctor.stanutils import flatten, html2stan
 
 def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str]:
     """
@@ -69,7 +68,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def __init__(self,
             document: nodes.document,
-            docstring_linker: DocstringLinker
+            docstring_linker: 'DocstringLinker'
             ):
         self._linker = docstring_linker
 

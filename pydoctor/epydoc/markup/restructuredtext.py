@@ -51,12 +51,8 @@ from docutils.parsers.rst import Directive, directives #type: ignore[attr-define
 from docutils.transforms import Transform, frontmatter
 from docutils import nodes
 
-from twisted.web.template import Tag
-from pydoctor.epydoc.markup import (
-    DocstringLinker, Field, ParseError, ParsedDocstring
-)
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.node2stan import node2stan
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -133,10 +129,6 @@ class ParsedRstDocstring(ParsedDocstring):
             isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        # Inherit docs
-        return node2stan(self._document, docstring_linker)
     
     def to_node(self) -> nodes.document:
         return self._document

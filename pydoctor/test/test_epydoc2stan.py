@@ -6,7 +6,8 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import DocstringLinker, flatten
+from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap

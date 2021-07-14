@@ -7,7 +7,8 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten, ParsedDocstring
+from pydoctor.epydoc.markup import ParseError, ParsedDocstring
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
 from pydoctor.node2stan import node2stan
 from pydoctor.test import NotFoundLinker

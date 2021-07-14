@@ -137,9 +137,8 @@ import re
 from docutils import utils, nodes
 from twisted.web.template import Tag
 
-from pydoctor import node2stan
 from pydoctor.epydoc.docutils import set_nodes_parent, set_node_attributes
-from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 
 ##################################################
 ## DOM-Like Encoding
@@ -1345,15 +1344,6 @@ class ParsedEpytextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return self._tree is not None
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        if self._stan is not None:
-            return self._stan
-        if self._tree is None:
-            self._stan = Tag('')
-        else:
-            self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
-        return self._stan
     
     def to_node(self) -> nodes.document:
 
