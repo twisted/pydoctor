@@ -1355,7 +1355,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
     
-    def to_node(self,) -> nodes.document:
+    def to_node(self) -> nodes.document:
 
         if self._document is not None:
             return self._document
