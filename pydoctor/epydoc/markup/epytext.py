@@ -1389,18 +1389,18 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag == 'code':
             yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
         elif tree.tag == 'uri':
-            _label, _target = variables[0], variables[1]
+            label, target = variables[0], variables[1]
             yield set_node_attributes(nodes.reference(
-                    '', internal=False, refuri=_target), document=self._document, children=_label.children)
+                    '', internal=False, refuri=target), document=self._document, children=label.children)
         
         elif tree.tag == 'link':
-            _label, _target = variables
-            assert isinstance(_target, nodes.Text)
-            assert isinstance(_label, nodes.inline)
+            label, target = variables
+            assert isinstance(target, nodes.Text)
+            assert isinstance(label, nodes.inline)
 
             args = {}
-            if _target.astext() != _label.astext():
-                args['refuri']=_target.astext()
+            if target.astext() != label.astext():
+                args['refuri']=target.astext()
             
             # Figure the line number to warn on precise lines. 
             # This is needed only for links currently.
@@ -1410,11 +1410,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
                 lineno = int(elem.attribs['lineno'])
 
             yield set_node_attributes(nodes.title_reference(
-                   '', '', **args), document=self._document, lineno=lineno, children=_label.children)
+                   '', '', **args), document=self._document, lineno=lineno, children=label.children)
 
-        elif tree.tag in ('name',):
+        elif tree.tag  == 'name':
+            # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
             yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
-            # yield set_node_attributes(nodes.Text(' '.join(node2stan.gettext(variables))))
         elif tree.tag == 'target':
             value, = variables
             yield set_node_attributes(nodes.Text(value), document=self._document)
