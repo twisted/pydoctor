@@ -1363,11 +1363,10 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._document = utils.new_document('epytext')
         
         if self._tree is not None:
-            children = list(self._to_node(self._tree))
-            assert len(children)==1
+            node, = self._to_node(self._tree)
             # The contents is encapsulated inside a section node. 
             # Reparent the contents of the second level to the root level. 
-            self._document.children.extend(set_nodes_parent(children[0].children, self._document))
+            self._document.children.extend(set_nodes_parent(node.children, self._document))
         
         return self._document
     
@@ -1385,7 +1384,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
             # we yield a paragraph node even if tree.attribs.get('inline') is True because
-            # the choice to render the <p> tags is handled in _PydoctorHTMLTranslator.should_be_compact_paragraph(), not here anymore
+            # the choice to render the <p> tags is handled in HTMLTranslator.should_be_compact_paragraph(), not here anymore
             yield set_node_attributes(nodes.paragraph('', ''), document=self._document, children=variables)
         elif tree.tag == 'code':
             yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
