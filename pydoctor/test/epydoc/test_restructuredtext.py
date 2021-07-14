@@ -36,6 +36,13 @@ def rst2node(s: str) -> nodes.document:
     return parse_rst(s).to_node()
 
 def test_rst_partial() -> None:
+    """
+    The L{node2html()} function can convert fragment of a L{docutils} document, 
+    it's not restricted to actual L{docutils.nodes.document} object. 
+    
+    Really, any nodes can be passed to that function, the only requirement is 
+    that the node's C{document} attribute is set to a valid L{docutils.nodes.document} object.
+    """
     doc = dedent('''
         This is a paragraph.  Paragraphs can
         span multiple lines, and can contain

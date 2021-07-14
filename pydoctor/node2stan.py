@@ -1,5 +1,5 @@
 """
-Helper function to convert `docutils` nodes to Stan tree.
+Helper function to convert L{docutils} nodes to Stan tree.
 """
 import re
 import optparse

@@ -266,7 +266,8 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
     @return: a DOM tree encoding the contents of an epytext string,
         or C{None} if non-fatal errors were encountered and no C{errors}
         accumulator was provided.
-    @raise ParseError: If a fatal error is encountered while parsing.
+    @raise ParseError: If C{errors} is C{None} and an error is
+        encountered while parsing.
     """
     # Initialize errors list.
     if errors is None:

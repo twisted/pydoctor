@@ -269,6 +269,9 @@ def test_epytext_symbol() -> None:
     assert epytext2html(doc) == squash(expected)
 
 def test_nested_markup() -> None:
+    """
+    The Epytext nested inline markup are correctly transformed to HTML. 
+    """
     doc = '''
         I{B{Inline markup} may be nested; and
         it may span} multiple lines.
