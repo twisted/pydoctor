@@ -271,7 +271,10 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
     # Initialize errors list.
     if errors is None:
         errors = []
-
+        raise_on_error = True
+    else:
+        raise_on_error = False
+    
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
     text = text.expandtabs()
@@ -339,12 +342,12 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
                         "epytext string.")
                 errors.append(StructuringError(estr, token.startline))
 
-    # If there was a fatal error, then raise exception!
-    # The exception was not raised by default leading into displaying literally nothing
-    # when an invalid epytext docstring was used. Now it will fall back to plaintext thanks to this exception.
-    for e in errors:
-        if e.is_fatal():
-            raise e
+    # If there was an error, then signal it!
+    if any(e.is_fatal() for e in errors):
+        if raise_on_error:
+            raise errors[0]
+        else:
+            return None
 
     # Return the top-level epytext DOM element.
     return doc
