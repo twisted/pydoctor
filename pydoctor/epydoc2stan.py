@@ -9,6 +9,7 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
+import sys
 import itertools
 
 import astor
@@ -847,11 +848,9 @@ class _AnnotationFormatter(ast.NodeVisitor):
         tag(self.visit(node.value))
         tag('[', tags.wbr)
         sub: ast.AST = node.slice
-        if isinstance(sub, ast.Index):
+        if sys.version_info < (3, 9) and isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
-            # If tox runs with python 3.9, mypy will get a warning. 
-            # But we can't reach this code with python 3.9 anyway.
-            sub = sub.value # type: ignore[attr-defined]
+            sub = sub.value
         if isinstance(sub, ast.Tuple):
             self._handle_sequence(tag, sub.elts)
         else:
