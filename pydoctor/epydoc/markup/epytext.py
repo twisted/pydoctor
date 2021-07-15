@@ -1364,16 +1364,15 @@ class ParsedEpytextDocstring(ParsedDocstring):
         
         return self._document
     
-    def _to_node(self, tree: Union[Element, str]) -> Iterable[nodes.Node]:
+    def _to_node(self, tree: Element) -> Iterable[nodes.Node]:
         
-        if isinstance(tree, str):
-            yield set_node_attributes(nodes.Text(tree), document=self._document)
-            return
-
         # Process the children first.
         variables: List[nodes.Node] = []
-        for c in tree.children:
-            variables.extend(self._to_node(c))
+        for child in tree.children:
+            if isinstance(child, str):
+                variables.append(set_node_attributes(nodes.Text(child), document=self._document))
+            else:
+                variables.extend(self._to_node(child))
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
@@ -1386,26 +1385,21 @@ class ParsedEpytextDocstring(ParsedDocstring):
             label, target = variables
             yield set_node_attributes(nodes.reference(
                     '', internal=False, refuri=target), document=self._document, children=label.children)
-        
         elif tree.tag == 'link':
             label, target = variables
             assert isinstance(target, nodes.Text)
             assert isinstance(label, nodes.inline)
-            
             # Figure the line number to warn on precise lines. 
             # This is needed only for links currently.
             lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
-
             yield set_node_attributes(nodes.title_reference(
                    '', '', refuri=target.astext()), document=self._document, lineno=lineno, children=label.children)
-
         elif tree.tag  == 'name':
             # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
             yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
         elif tree.tag == 'target':
             value, = variables
             yield set_node_attributes(nodes.Text(value), document=self._document)
-
         elif tree.tag == 'italic':
             yield set_node_attributes(nodes.emphasis('', ''), document=self._document, children=variables)
         elif tree.tag == 'math':
