@@ -1391,20 +1391,13 @@ class ParsedEpytextDocstring(ParsedDocstring):
             label, target = variables
             assert isinstance(target, nodes.Text)
             assert isinstance(label, nodes.inline)
-
-            args = {}
-            if target.astext() != label.astext():
-                args['refuri']=target.astext()
             
             # Figure the line number to warn on precise lines. 
             # This is needed only for links currently.
-            lineno: Optional[int] = None
-            elem = tree.children[1]
-            if isinstance(elem, Element):
-                lineno = int(elem.attribs['lineno'])
+            lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
 
             yield set_node_attributes(nodes.title_reference(
-                   '', '', **args), document=self._document, lineno=lineno, children=label.children)
+                   '', '', refuri=target.astext()), document=self._document, lineno=lineno, children=label.children)
 
         elif tree.tag  == 'name':
             # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
