@@ -28,8 +28,10 @@ def node2stan(node: Union[nodes.Node, Iterable[nodes.Node]], docstring_linker: '
     """
     Convert L{docutils.nodes.Node} objects to a Stan tree.
 
-    @param node: An docutils document.
+    @param node: An docutils document or a fragment of document.
     @return: The element as a stan tree.
+    @note:  Any L{nodes.Node} can be passed to that function, the only requirement is 
+        that the node's L{nodes.Node.document} attribute is set to a valid L{nodes.document} object.
     """
     html = []
     if isinstance(node, nodes.Node):
