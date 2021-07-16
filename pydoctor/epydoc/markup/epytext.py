@@ -405,8 +405,6 @@ def _add_para(
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
         para = _colorize(para_token, errors)
-        if para_token.inline:
-            para.attribs['inline'] = True
         stack[-1].children.append(para)
     else:
         estr = "Improper paragraph indentation."
@@ -605,11 +603,6 @@ class Token:
         heading; C{None}, otherwise.  Valid heading levels are 0, 1,
         and 2.
 
-    @type inline: C{bool}
-    @ivar inline: If True, the element is an inline level element, comparable
-        to an HTML C{<span>} tag. Else, it is a block level element, comparable
-        to an HTML C{<div>}.
-
     @type PARA: C{string}
     @cvar PARA: The C{tag} value for paragraph C{Token}s.
     @type LBLOCK: C{string}
@@ -635,8 +628,7 @@ class Token:
             startline: int,
             contents: str,
             indent: Optional[int],
-            level: Optional[int] = None,
-            inline: bool = False
+            level: Optional[int] = None
             ):
         """
         Create a new C{Token}.
@@ -649,14 +641,12 @@ class Token:
             unknown indentation.
         @param level: The heading-level of this C{Token} if it is a
             heading; C{None}, otherwise.
-        @param inline: Is this C{Token} inline as a C{<span>}?.
         """
         self.tag = tag
         self.startline = startline
         self.contents = contents
         self.indent = indent
         self.level = level
-        self.inline = inline
 
     def __repr__(self) -> str:
         """
@@ -850,8 +840,7 @@ def _tokenize_listart(
         linenum += 1
 
     # Add the bullet token.
-    tokens.append(Token(Token.BULLET, start, bcontents, bullet_indent,
-                        inline=True))
+    tokens.append(Token(Token.BULLET, start, bcontents, bullet_indent))
 
     # Add the paragraph token.
     pcontents = ' '.join(
@@ -859,8 +848,7 @@ def _tokenize_listart(
         [ln.strip() for ln in lines[start+1:linenum]]
         ).strip()
     if pcontents:
-        tokens.append(Token(Token.PARA, start, pcontents, para_indent,
-                            inline=True))
+        tokens.append(Token(Token.PARA, start, pcontents, para_indent))
 
     # Return the linenum after the paragraph token ends.
     return linenum
@@ -1376,7 +1364,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
-            # we yield a paragraph node even if tree.attribs.get('inline') is True because
+            # tree.attribs.get('inline') does not exist anymore.
             # the choice to render the <p> tags is handled in HTMLTranslator.should_be_compact_paragraph(), not here anymore
             yield set_node_attributes(nodes.paragraph('', ''), document=self._document, children=variables)
         elif tree.tag == 'code':
