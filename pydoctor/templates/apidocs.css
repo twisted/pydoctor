@@ -3,7 +3,6 @@ body {
     flex-direction: column;
     min-height: 100vh;
     overflow-y: scroll;
-    word-break: break-word;
 }
 
 nav.navbar {
@@ -223,6 +222,7 @@ ul ul ul ul ul ul ul {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    word-break: break-word;
 }
 
 /* Argument description column or return value desc, etc */
@@ -239,6 +239,7 @@ ul ul ul ul ul ul ul {
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
     width: 200px;
+    word-break: break-word;
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
