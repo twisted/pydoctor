@@ -42,6 +42,13 @@ def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     return True
 
+def demo_long_function_and_parameter_names__this_indeed_very_long(
+        this_is_a_very_long_parameter_name_don_t_do_that_at_home_kids: str, 
+        what__another_super_super_long_name__ho_no: bytes) -> bool:
+    """
+    Long names should display on several lines when they don't fit in a single line. 
+    """
+    return True
 
 def demo_cross_reference() -> None:
     r"""
