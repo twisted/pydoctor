@@ -204,7 +204,7 @@ ul ul ul ul ul ul ul {
 }
 
 .fieldTable tr:not(.fieldStart) td:first-child{
-    padding-left: 10px;
+    padding: 3px 4px 3px 10px;
 }
 
 .fieldTable tr td {
@@ -219,10 +219,20 @@ ul ul ul ul ul ul ul {
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
     width: 250px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
     word-break: break-word;
+}
+
+/* parameters names in parameters table */
+.fieldTable tr td.fieldArgContainer > .fieldArg {
+    display: inline;
+}
+
+/* parameters types (in parameters table) */
+.fieldTable tr td.fieldArgContainer > code {
+    /* we don't want word break for the types because we already add <wbr> tags inside the type HTML, and that should suffice. */
+    word-break: normal;
+    display: inline-flex;
+    flex-wrap: wrap;
 }
 
 /* Argument description column or return value desc, etc */
