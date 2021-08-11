@@ -8,8 +8,8 @@ from inspect import BoundArguments, _ParameterKind, Parameter, Signature, signat
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Type, TypeVar, Union,
 )
 
 import attr
