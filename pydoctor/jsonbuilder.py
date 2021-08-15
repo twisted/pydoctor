@@ -190,6 +190,9 @@ class BuilderVisitor(visitor.Visitor[docspec.ApiObject]):
         if module.docstring is not None:
             obj.setDocstring(module.docstring)
             obj.parsed_docstring = epydoc2stan.parse_docstring(obj, module.docstring, obj)
+        
+        if modpath:
+            self.builder.system.setSourceHref(obj, modpath)
 
     def unknown_departure(self, obj: docspec.ApiObject) -> None:
         if obj.kind is not docspec.ApiObject.Kind.INDIRECTION:
@@ -368,9 +371,16 @@ def load_system(source: Union[str, IO[str], Dict[str, Any]],
     # TODO: load options from JSON.
 
     system_spec = docspec.load_system(source)
-    system.projectname = system_spec.projectname
+
+    system.projectname = system.options.projectname = system_spec.projectname
     system.buildtime = datetime.fromisoformat(system_spec.buildtime)
-    system.sourcebase = system_spec.sourcebase
+    # TODO: should System.sourcebase be called htmlsourcebase instead?
+    system.sourcebase = system.options.htmlsourcebase = system_spec.htmlsourcebase
+    system.options.intersphinx = system_spec.intersphinx
+    system.options.projecturl = system_spec.projecturl
+    system.options.docformat = system_spec.docformat
+    system.options.projectversion = system_spec.projectversion
+    system.options.projectbasedirectory = Path(system_spec.projectbasedirectory)
 
     builder = system.defaultJSONBuilder(system=system)
 
@@ -393,8 +403,13 @@ def dump_system(system: model.System,
 
     system_spec = docspec.System(projectname=system.projectname, 
         buildtime=system.buildtime.isoformat(), 
-        options={},
         rootobjects=serializer.modules_spec,
-        sourcebase=system.sourcebase)
+        htmlsourcebase=system.options.htmlsourcebase,
+        projectversion=system.options.projectversion,
+        projecturl=system.options.projecturl,
+        docformat=system.options.docformat,
+        projectbasedirectory=str(system.options.projectbasedirectory),
+        intersphinx=system.options.intersphinx
+        )
 
     return docspec.dump_system(system_spec, target)

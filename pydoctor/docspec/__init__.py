@@ -47,6 +47,7 @@ import sys
 import dataclasses
 import enum
 import weakref
+import functools
 import typing as t
 import typing_extensions as te
 
@@ -224,11 +225,15 @@ class Module(HasMembers):
 
 @dataclasses.dataclass
 class System:
+  rootobjects: t.List[Module]
   projectname: str
   buildtime: str
-  options: t.Dict[str, t.Any]
-  rootobjects: t.List[Module]
-  sourcebase: t.Optional[str]
+  htmlsourcebase: t.Optional[str]
+  projectversion: t.Optional[str]
+  projecturl: t.Optional[str]
+  docformat: str
+  projectbasedirectory: t.Optional[str]
+  intersphinx: t.Optional[t.List[str]]
 
 _MemberType = te.Annotated[
   t.Union[Data, Function, Class],
@@ -275,7 +280,7 @@ def load_system(
 def dump_system(
   system: System,
   target: t.Optional[t.Union[str, t.IO[str]]] = None,
-  dumper: t.Callable[[t.Any, t.IO[str]], None] = json.dump
+  dumper: t.Callable[[t.Any, t.IO[str]], None] = functools.partial(json.dump, indent=4)
 ) -> t.Optional[t.Dict[str, t.Any]]:
   """
   Dumps a system to the specified target or returns it as plain structured data.

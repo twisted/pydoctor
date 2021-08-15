@@ -418,7 +418,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 added_paths.add(path)
         else:
             if options.loadjson:
+                # Load objects from json file
                 jsonbuilder.load_system(options.loadjson, system=system)
+                # rebuild the intersphinx
+                system.fetchIntersphinxInventories(cache)
             else:
                 error("No source paths given.")
 
