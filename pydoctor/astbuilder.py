@@ -1003,15 +1003,23 @@ class BaseBuilder:
     system: model.System
 
     current : model.Documentable = attr.ib(default=None, init=False)
-    currentMod : Optional[model.Module] = attr.ib(default=None, init=False)
+    _modstack: List[model.Module] = attr.ib(factory=list, init=False)
     _stack: List[model.Documentable] = attr.ib(factory=list, init=False)
+
+    @property
+    def currentMod(self) -> Optional[model.Module]:
+        if not self._modstack:
+            return None
+        else:
+            return self._modstack[-1]
 
     def push(self, obj: model.Documentable, lineno: Optional[int]=None) -> None:
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
-            assert self.currentMod is None
-            obj.parentMod = self.currentMod = obj
+            assert self.currentMod is not obj
+            self._modstack.append(obj)
+            obj.parentMod = obj
         elif self.currentMod is not None:
             if obj.parentMod is not None:
                 assert obj.parentMod is self.currentMod
@@ -1021,12 +1029,14 @@ class BaseBuilder:
             assert obj.parentMod is None
         if lineno:
             obj.setLineNumber(lineno)
-
+    
     def pop(self, obj: model.Documentable) -> None:
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
-            self.currentMod = None
+            assert self.currentMod is obj, f"{self.currentMod!r} is not {obj!r}"
+            self._modstack.pop()
+            assert self.currentMod is obj.parent
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: Optional[int]=None) -> DocumentableT:
         obj = cls(self.system, name, self.current)
