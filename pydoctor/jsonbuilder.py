@@ -368,7 +368,6 @@ def load_system(source: Union[str, IO[str], Dict[str, Any]],
                 system: Optional[model.System] = None) -> model.System:
     
     system = system or model.System()
-    # TODO: load options from JSON.
 
     system_spec = docspec.load_system(source)
 
@@ -398,8 +397,6 @@ def dump_system(system: model.System,
 
     for mod in system.rootobjects:
         serializer.processModule(mod)
-
-    # TODO: Dump options, avoid TypeError: Object of type PosixPath is not JSON serializable
 
     system_spec = docspec.System(projectname=system.projectname, 
         buildtime=system.buildtime.isoformat(), 
