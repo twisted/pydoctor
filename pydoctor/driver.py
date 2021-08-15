@@ -9,7 +9,7 @@ import sys
 import warnings
 from inspect import getmodulename
 
-from pydoctor import model, zopeinterface, __version__
+from pydoctor import jsonbuilder, model, zopeinterface, __version__
 from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
@@ -252,6 +252,14 @@ def getparser() -> OptionParser:
         default='1d',
         help=MAX_AGE_HELP,
     )
+    parser.add_option(
+        '--loadjson',
+        help='Load modules data from JSON file and generate HTML. Option ignored if positional arguments are given to the program.'
+    )
+    parser.add_option(
+        '--dumpjson',
+        help='Dump modules data to JSON file.'
+    )
 
     return parser
 
@@ -350,7 +358,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         args = list(args) + options.modules + options.packages
 
         if options.makehtml == MAKE_HTML_DEFAULT:
-            if not options.testing and not options.makeintersphinx:
+            if not options.testing and not options.makeintersphinx and not options.dumpjson:
                 options.makehtml = True
             else:
                 options.makehtml = False
@@ -409,7 +417,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     error(f"Source path does not exist: {path}")
                 added_paths.add(path)
         else:
-            error("No source paths given.")
+            if options.loadjson:
+                jsonbuilder.load_system(options.loadjson, system=system)
+            else:
+                error("No source paths given.")
 
         # step 3: move the system to the desired state
 
@@ -498,6 +509,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 subjects=subjects,
                 basepath=options.htmloutput,
                 )
+        
+        if options.dumpjson:
+            jsonbuilder.dump_system(system, options.dumpjson)
+
     except:
         if options.pdb:
             import pdb

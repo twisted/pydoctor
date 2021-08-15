@@ -30,9 +30,10 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
+    from pydoctor.jsonbuilder import JSONBuilder, JSONSerializer
 else:
     Literal = {True: bool, False: bool}
-    ASTBuilder = object
+    ASTBuilder = JSONBuilder = JSONSerializer = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -146,23 +147,27 @@ class Documentable:
         #       requires a boatload of changes.
         self.contents: Dict[str, Any] = {}
 
-    def setDocstring(self, node: ast.Str) -> None:
-        doc = node.s
-        lineno = node.lineno
-        if _string_lineno_is_end:
-            # In older CPython versions, the AST only tells us the end line
-            # number and we must approximate the start line number.
-            # This approximation is correct if the docstring does not contain
-            # explicit newlines ('\n') or joined lines ('\' at end of line).
-            lineno -= doc.count('\n')
+    def setDocstring(self, node: Union[ast.Str, str]) -> None:
+        if isinstance(node, ast.Str):
+            doc = node.s
+            lineno = node.lineno
+            if _string_lineno_is_end:
+                # In older CPython versions, the AST only tells us the end line
+                # number and we must approximate the start line number.
+                # This approximation is correct if the docstring does not contain
+                # explicit newlines ('\n') or joined lines ('\' at end of line).
+                lineno -= doc.count('\n')
 
-        # Leading blank lines are stripped by cleandoc(), so we must
-        # return the line number of the first non-blank line.
-        for ch in doc:
-            if ch == '\n':
-                lineno += 1
-            elif not ch.isspace():
-                break
+            # Leading blank lines are stripped by cleandoc(), so we must
+            # return the line number of the first non-blank line.
+            for ch in doc:
+                if ch == '\n':
+                    lineno += 1
+                elif not ch.isspace():
+                    break
+        else:
+            doc = node
+            lineno = self.linenumber
 
         self.docstring = inspect.cleandoc(doc)
         self.docstring_lineno = lineno
@@ -435,7 +440,7 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     bases: List[str]
     baseobjects: List[Optional['Class']]
-    decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
+    decorators: List[Tuple[str, Optional[Sequence[ast.expr]]]]
     # Note: While unused in pydoctor itself, raw_decorators is still in use
     #       by Twisted's custom System class, to find deprecations.
     raw_decorators: Sequence[ast.expr]
@@ -548,6 +553,8 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
+    defaultJSONBuilder: Type[JSONBuilder]
+    defaultJSONSerializer: Type[JSONSerializer]
     sourcebase: Optional[str] = None
 
     def __init__(self, options: Optional[Values] = None):

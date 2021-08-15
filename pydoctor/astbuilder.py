@@ -4,13 +4,15 @@ import ast
 import sys
 from attr import attrs, attrib
 from functools import partial
-from inspect import BoundArguments, Parameter, Signature, signature
+from inspect import BoundArguments, _ParameterKind, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Type, TypeVar, Union,
 )
+
+import attr
 
 import astor
 from pydoctor import epydoc2stan, model
@@ -247,7 +249,7 @@ class ModuleVistor(ast.NodeVisitor):
                     base = node2fullname(decnode, parent)
                     args = None
                 if base is None:  # pragma: no cover
-                    # There are expressions for which node2data() returns None,
+                    # There are expressions for which node2fullname() returns None,
                     # but I cannot find any that don't lead to a SyntaxError
                     # when used in a decorator.
                     cls.report("cannot make sense of class decorator")
@@ -705,31 +707,28 @@ class ModuleVistor(ast.NodeVisitor):
             index -= default_offset
             return None if index < 0 else defaults[index]
 
-        parameters = []
-        def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default)
-            parameters.append(Parameter(name, kind, default=default_val))
+        signature_builder = SignatureBuilder()
 
         for index, arg in enumerate(posonlyargs):
-            add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
+            signature_builder.add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
 
         for index, arg in enumerate(node.args.args, start=len(posonlyargs)):
-            add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
+            signature_builder.add_arg(arg.arg, Parameter.POSITIONAL_OR_KEYWORD, get_default(index))
 
         vararg = node.args.vararg
         if vararg is not None:
-            add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
+            signature_builder.add_arg(vararg.arg, Parameter.VAR_POSITIONAL, None)
 
         assert len(node.args.kwonlyargs) == len(node.args.kw_defaults)
         for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
-            add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
+            signature_builder.add_arg(arg.arg, Parameter.KEYWORD_ONLY, default)
 
         kwarg = node.args.kwarg
         if kwarg is not None:
-            add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
+            signature_builder.add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
         try:
-            signature = Signature(parameters)
+            signature = signature_builder.get_signature()
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
@@ -848,6 +847,23 @@ class ModuleVistor(ast.NodeVisitor):
             assert isinstance(expr, ast.expr), expr
             return expr
 
+@attr.s(auto_attribs=True)
+class SignatureBuilder:
+    """
+    Builds a signature, parameter by parameter, with our custom L{_ValueFormatter}.
+    """
+
+    parameters: List[Parameter] = attr.ib(factory=list, init=False)
+
+    def add_arg(self, name: str, 
+                kind: _ParameterKind, 
+                default: Optional[ast.expr]) -> None:
+                    
+        default_val = Parameter.empty if default is None else _ValueFormatter(default)
+        self.parameters.append(Parameter(name, kind, default=default_val))
+
+    def get_signature(self) -> Signature:
+        return Signature(self.parameters)
 
 class _ValueFormatter:
     """Formats values stored in AST expressions.
@@ -981,32 +997,29 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
 
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
-class ASTBuilder:
-    ModuleVistor = ModuleVistor
+@attr.s(auto_attribs=True)
+class BaseBuilder:
 
-    def __init__(self, system: model.System):
-        self.system = system
-        self.current = cast(model.Documentable, None)
-        self.currentMod: Optional[model.Module] = None
-        self._stack: List[model.Documentable] = []
-        self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+    system: model.System
 
-    def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
-        obj = cls(self.system, name, self.current)
-        self.system.addObject(obj)
-        self.push(obj, lineno)
-        return obj
+    current : model.Documentable = attr.ib(default=None, init=False)
+    _modstack: List[model.Module] = attr.ib(factory=list, init=False)
+    _stack: List[model.Documentable] = attr.ib(factory=list, init=False)
 
-    def _pop(self, cls: Type[model.Documentable]) -> None:
-        assert isinstance(self.current, cls)
-        self.pop(self.current)
+    @property
+    def currentMod(self) -> Optional[model.Module]:
+        if not self._modstack:
+            return None
+        else:
+            return self._modstack[-1]
 
-    def push(self, obj: model.Documentable, lineno: int) -> None:
+    def push(self, obj: model.Documentable, lineno: Optional[int]=None) -> None:
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
-            assert self.currentMod is None
-            obj.parentMod = self.currentMod = obj
+            assert self.currentMod is not obj
+            self._modstack.append(obj)
+            obj.parentMod = obj
         elif self.currentMod is not None:
             if obj.parentMod is not None:
                 assert obj.parentMod is self.currentMod
@@ -1016,19 +1029,30 @@ class ASTBuilder:
             assert obj.parentMod is None
         if lineno:
             obj.setLineNumber(lineno)
-
+    
     def pop(self, obj: model.Documentable) -> None:
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
-            self.currentMod = None
+            assert self.currentMod is obj, f"{self.currentMod!r} is not {obj!r}"
+            self._modstack.pop()
 
-    def pushClass(self, name: str, lineno: int) -> model.Class:
+    def _push(self, cls: Type[DocumentableT], name: str, lineno: Optional[int]=None) -> DocumentableT:
+        obj = cls(self.system, name, self.current)
+        self.system.addObject(obj)
+        self.push(obj, lineno)
+        return obj
+
+    def _pop(self, cls: Type[model.Documentable]) -> None:
+        assert isinstance(self.current, cls)
+        self.pop(self.current)
+
+    def pushClass(self, name: str, lineno: Optional[int]=None) -> model.Class:
         return self._push(self.system.Class, name, lineno)
     def popClass(self) -> None:
         self._pop(self.system.Class)
 
-    def pushFunction(self, name: str, lineno: int) -> model.Function:
+    def pushFunction(self, name: str, lineno: Optional[int]=None) -> model.Function:
         return self._push(self.system.Function, name, lineno)
     def popFunction(self) -> None:
         self._pop(self.system.Function)
@@ -1046,6 +1070,11 @@ class ASTBuilder:
 
     def warning(self, message: str, detail: str) -> None:
         self.system._warning(self.current, message, detail)
+
+@attr.s(auto_attribs=True)
+class ASTBuilder(BaseBuilder):
+    ModuleVistor = ModuleVistor
+    ast_cache: Dict[Path, Optional[ast.Module]] = attr.ib(factory=dict)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
@@ -1086,7 +1115,7 @@ def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign
 
 def parseAll(node: ast.Assign, mod: model.Module) -> None:
     """Find and attempt to parse into a list of names the 
-    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
+    C{__all__} variable of a module's AST and set L{model.Module.all} accordingly."""
 
     if not isinstance(node.value, (ast.List, ast.Tuple)):
         mod.report(
@@ -1120,7 +1149,7 @@ def parseAll(node: ast.Assign, mod: model.Module) -> None:
 def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
     """
     Find C{__docformat__} variable of this 
-    module's AST and set L{Module.docformat} accordingly.
+    module's AST and set L{model.Module.docformat} accordingly.
         
     This is all valid::
 
