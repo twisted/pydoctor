@@ -1036,7 +1036,6 @@ class BaseBuilder:
         if isinstance(obj, model.Module):
             assert self.currentMod is obj, f"{self.currentMod!r} is not {obj!r}"
             self._modstack.pop()
-            assert self.currentMod is obj.parent
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: Optional[int]=None) -> DocumentableT:
         obj = cls(self.system, name, self.current)
