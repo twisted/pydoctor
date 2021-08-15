@@ -13,6 +13,7 @@ Welcome to ``pydoctor``'s documentation!
    sphinx-integration
    customize
    help
+   json-spec
    faq
    transition
    contrib

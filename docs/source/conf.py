@@ -38,6 +38,7 @@ extensions = [
     "pydoctor.sphinx_ext._help_output",
     "pydoctor.sphinx_ext.build_apidocs",
     "sphinxcontrib.spelling",
+    "recommonmark", 
 ]
 
 # Add any paths that contain templates here, relative to this directory.
