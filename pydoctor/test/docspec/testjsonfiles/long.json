@@ -1,0 +1,47 @@
+{
+    "name": "mod",
+    "kind": "MODULE",
+    "location": {
+        "filename":"test.py",
+        "lineno":1
+    },
+    "docstring": "summary",
+    "members" : [
+        {
+            "type": "data",
+            "name": "test",
+            "kind": "VARIABLE",
+            "location": {
+                "filename":"test.py",
+                "lineno":1
+            },
+            "docstring": "summary",
+            "datatype": "Union[str, bytes]",
+            "value": "\"1\""
+        },
+        {
+            "type": "data",
+            "name": "test2",
+            "kind": "VARIABLE",
+            "location": {
+                "filename":"test.py",
+                "lineno":2
+            },
+            "docstring": "summary2",
+            "datatype": "str",
+            "value": "\"1\""
+        },
+        {
+            "type": "data",
+            "name": "test3",
+            "kind": "VARIABLE",
+            "location": {
+                "filename":"test.py",
+                "lineno":3
+            },
+            "docstring": "summary3",
+            "datatype": "bytes",
+            "value": "b\"1\""
+        }
+    ]
+}

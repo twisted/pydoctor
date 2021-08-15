@@ -25,7 +25,6 @@ __version__ = '1.0.1'
 __docformat__ = 'restructuredtext'
 __all__ = [
   'Location',
-  'Decoration',
   'Argument',
   'ApiObject',
   'Data',
@@ -41,58 +40,143 @@ __all__ = [
   'get_member',
 ]
 
-import dataclasses
-import enum
+
 import io
 import json
 import sys
+import dataclasses
+import enum
+import weakref
 import typing as t
 import typing_extensions as te
 
 import databind.core.annotations as A
 import databind.json
 
+from pydoctor import visitor
 
 @dataclasses.dataclass
 class Location:
   filename: t.Optional[str]
   lineno: int
 
-
-@dataclasses.dataclass
-class Decoration:
-  name: str
-  args: t.Optional[str] = None
-
+  def __str__(self) -> str:
+    return f"{self.filename or ''}:{self.lineno}"
 
 @dataclasses.dataclass
 class Argument:
 
   class Type(enum.Enum):
-    PositionalOnly = 0
-    Positional = 1
-    PositionalRemainder = 2
-    KeywordOnly = 3
-    KeywordRemainder = 4
+    POSITIONAL_ONLY = 0
+    POSITIONAL_OR_KEYWORD = 1
+    VAR_POSITIONAL = 2
+    KEYWORD_ONLY = 3
+    VAR_KEYWORD = 4
 
   name: str
   type: Type
-  decorations: t.Optional[t.List[Decoration]] = None
   datatype: t.Optional[str] = None
   default_value: t.Optional[str] = None
 
 
 @dataclasses.dataclass
 class ApiObject:
+  """
+  The base class for representing "API Objects". Any API object is any addressable entity in code,
+  be that a variable/constant, function, class or module.
+  """
+      
+  class Kind(enum.Enum):
+    """
+    Replicate the model.DocumentableKind enum, plus the spcial kind INDIRECTION, 
+    which is not a documentable, only there to resolve links correclty.
+    """
+    PACKAGE             = 1000
+    MODULE              = 900
+    CLASS               = 800
+    INTERFACE           = 850
+    CLASS_METHOD        = 700
+    STATIC_METHOD       = 600
+    METHOD              = 500
+    FUNCTION            = 400
+    CLASS_VARIABLE      = 300
+    SCHEMA_FIELD        = 220
+    ATTRIBUTE           = 210
+    INSTANCE_VARIABLE   = 200
+    PROPERTY            = 150
+    VARIABLE            = 100
+    INDIRECTION         = -1
+
   name: str
   location: t.Optional[Location] = dataclasses.field(repr=False)
   docstring: t.Optional[str] = dataclasses.field(repr=False)
+  kind: Kind
 
+  def __post_init__(self) -> None:
+        self._parent: t.Optional['weakref.ReferenceType[HasMembers]'] = None
+
+  @property
+  def parent(self) -> t.Optional['HasMembers']:
+    """
+    Returns the parent of the #HasMembers. Note that if you make any modifications to the API object tree,
+    you will need to call #sync_hierarchy() afterwards because adding to #Class.members or #Module.members
+    does not automatically keep the #parent property in sync.
+    """
+
+    if self._parent is not None:
+      parent = self._parent()
+      if parent is None:
+        raise RuntimeError(f'lost reference to parent object')
+    else:
+      parent = None
+    return parent
+
+  @parent.setter
+  def parent(self, parent: t.Optional['HasMembers']) -> None:
+    if parent is not None:
+      self._parent = weakref.ref(parent)
+    else:
+      self._parent = None
+
+  @property
+  def path(self) -> t.List['ApiObject']:
+    """
+    Returns a list of all of this API object's parents, from top to bottom. The list includes *self* as the
+    last item.
+    """
+
+    result = []
+    current: t.Optional[ApiObject] = self
+    while current:
+      result.append(current)
+      current = current.parent
+    result.reverse()
+    return result
+  
+  @property
+  def full_name(self) -> str:
+    return '.'.join(ob.name for ob in self.path)
+
+  def sync_hierarchy(self, parent: t.Optional['HasMembers'] = None) -> None:
+    """
+    Synchronize the hierarchy of this API object and all of it's children. This should be called when the
+    #HasMembers.members are updated to ensure that all child objects reference the right #parent. Loaders
+    are expected to return #ApiObject#s in a fully synchronized state such that the user does not have to
+    call this method unless they are doing modifications to the tree.
+    """
+
+    self.parent = parent
+  
+  def walk(self, v: visitor.Visitor['ApiObject']) -> None:
+    visitor.walk(self, v, get_children=lambda ob: getattr(ob, 'members', ()))
+  def walkabout(self, v: visitor.Visitor['ApiObject']) -> None:
+    visitor.walkabout(self, v, get_children=lambda ob: getattr(ob, 'members', ()))
 
 @dataclasses.dataclass
 class Data(ApiObject):
   datatype: t.Optional[str] = None
   value: t.Optional[str] = None
+  kind = ApiObject.Kind.VARIABLE
 
 
 @dataclasses.dataclass
@@ -100,34 +184,64 @@ class Function(ApiObject):
   modifiers: t.Optional[t.List[str]]
   args: t.List[Argument]
   return_type: t.Optional[str]
-  decorations: t.Optional[t.List[Decoration]]
+  decorators: t.Optional[t.List[str]]
+  kind = ApiObject.Kind.FUNCTION
+
+class HasMembers(ApiObject):
+  """
+  Base class for API objects that can have members, e.g. #Class and #Module.
+  """
+
+  #: The members of the API object.
+  members: t.List[ApiObject]
+
+  def sync_hierarchy(self, parent: t.Optional['HasMembers'] = None) -> None:
+    self.parent = parent
+    for member in self.members:
+      member.sync_hierarchy(self)
+
+@dataclasses.dataclass
+class Class(HasMembers):
+  bases: t.Optional[t.List[str]]
+  decorators: t.Optional[t.List[str]]
+  members: t.List['_MemberType'] # type: ignore[assignment]
+  kind = ApiObject.Kind.CLASS
+  metaclass: t.Optional[str] = None
 
 
 @dataclasses.dataclass
-class Class(ApiObject):
-  metaclass: t.Optional[str]
-  bases: t.Optional[t.List[str]]
-  decorations: t.Optional[t.List[Decoration]]
-  members: t.List['_MemberType']
+class Module(HasMembers):
+  members: t.List['_ModuleMemberType'] # type: ignore[assignment]
+  kind = ApiObject.Kind.MODULE
+  all: t.Optional[t.List[str]] = None
+  docformat: t.Optional[str] = None
 
+
+@dataclasses.dataclass
+class System:
+  projectname: str
+  buildtime: str
+  options: t.Dict[str, t.Any]
+  rootobjects: t.List[Module]
+  sourcebase: t.Optional[str]
 
 _MemberType = te.Annotated[
   t.Union[Data, Function, Class],
   A.unionclass({ 'data': Data, 'function': Function, 'class': Class }, style=A.unionclass.Style.flat)]
 
 
-@dataclasses.dataclass
-class Module(ApiObject):
-  members: t.List['_MemberType']
+_ModuleMemberType = te.Annotated[
+  t.Union[Data, Function, Class, Module],
+  A.unionclass({ 'data': Data, 'function': Function, 'class': Class, 'module': Module }, style=A.unionclass.Style.flat)]
 
 
-def load_module(
+def load_system(
   source: t.Union[str, t.TextIO, t.Dict[str, t.Any]],
   filename: t.Optional[str] = None,
   loader: t.Callable[[t.IO[str]], t.Any] = json.load,
-) -> Module:
+) -> System:
   """
-  Loads a #Module from the specified *source*, which may be either a filename,
+  Loads a #System from the specified *source*, which may be either a filename,
   a file-like object to read from or plain structured data.
 
   :param source: The JSON source to load the module from.
@@ -141,55 +255,33 @@ def load_module(
 
   if isinstance(source, str):
     if source == '-':
-      return load_module(sys.stdin, source, loader)
+      return load_system(sys.stdin, source, loader)
     with io.open(source, encoding='utf-8') as fp:
-      return load_module(fp, source, loader)
+      return load_system(fp, source, loader)
   elif hasattr(source, 'read'):
     # we ar sure the type is "IO" since the source has a read attribute.
     source = loader(source) # type: ignore[arg-type]
 
-  return databind.json.load(source, Module, filename=filename)
+  system: System = databind.json.load(source, System, filename=filename)
+  for module in system.rootobjects:
+    module.sync_hierarchy()
+  return system
 
-
-def load_modules(
-  source: t.Union[str, t.TextIO, t.Iterable[t.Any]],
-  filename: t.Optional[str] = None,
-  loader: t.Callable[[t.IO[str]], t.Any] = json.load,
-) -> t.Iterable[Module]:
-  """
-  Loads a stream of modules from the specified *source*. Similar to
-  #load_module(), the *source* can be a filename, file-like object or a
-  list of plain structured data to deserialize from.
-  """
-
-  filename = filename or getattr(source, 'name', None)
-
-  if isinstance(source, str):
-    with io.open(source, encoding='utf-8') as fp:
-      yield from load_modules(fp, source, loader)
-    return
-  elif hasattr(source, 'read'):
-    source = (loader(io.StringIO(line)) for line in t.cast(t.IO[str], source))
-
-  for data in source:
-    yield databind.json.load(data, Module, filename=filename)
-
-
-def dump_module(
-  module: Module,
+def dump_system(
+  system: System,
   target: t.Optional[t.Union[str, t.IO[str]]] = None,
   dumper: t.Callable[[t.Any, t.IO[str]], None] = json.dump
 ) -> t.Optional[t.Dict[str, t.Any]]:
   """
-  Dumps a module to the specified target or returns it as plain structured data.
+  Dumps a system to the specified target or returns it as plain structured data.
   """
 
   if isinstance(target, str):
     with io.open(target, 'w', encoding='utf-8') as fp:
-      dump_module(module, fp, dumper)
+      dump_system(system, fp, dumper)
     return None
 
-  data = databind.json.dump(module, Module)
+  data = databind.json.dump(system, System)
   if target:
     dumper(data, target)
     target.write('\n')
@@ -197,86 +289,51 @@ def dump_module(
   else:
     return t.cast(t.Dict[str, t.Any], data)
 
-
-def filter_visit(
-  objects: t.List[ApiObject],
-  predicate: t.Callable[[ApiObject], bool],
-  order: str = 'pre',
-) -> None:
+class FilterVisitor(visitor.Visitor[ApiObject]):
   """
-  Visits all *objects* recursively, applying the *predicate* in the specified *order*. If
-  the predicate returrns #False, the object will be removed from it's containing list.
-
-  If an object is removed in pre-order, it's members will not be visited.
-
-  :param objects: A list of objects to visit recursively. This list will be modified if
-    the *predicate* returns #False for an object.
-  :param predicate: The function to apply over all visited objects.
-  :param order: The order in which the objects are visited. The default order is `'pre'`
-    in which case the *predicate* is called before visiting the object's members. The
-    order may also be `'post'`.
+  Visits *objects* applying the *predicate*. 
+  
+  If the predicate returrns #False, the object will be removed from it's containing list.
   """
+  
+  def __init__(self, predicate: t.Callable[[ApiObject], bool]):
+    self.predicate = predicate
 
-  if order not in ('pre', 'post'):
-    raise ValueError('invalid order: {!r}'.format(order))
+  def unknown_visit(self, ob: ApiObject) -> None:
+    self.apply_predicate(ob)
+  
+  def unknown_departure(self, ob: ApiObject) -> None:
+    pass
+  
+  def apply_predicate(self, ob: ApiObject) -> None:
+    if not self.predicate(ob):
+      parent = ob.parent
+      if parent is None:
+        raise RuntimeError(f'cannot remove root module, "{ob.full_name}", from the system.')
+      name = ob.name
+      assert isinstance(parent, HasMembers)
+      assert isinstance(ob, (Data, Function, Class, Module))
+      del parent.members[parent.members.index(ob)]
+      assert get_member(parent, name) is None
 
-  offset = 0
-  for index in range(len(objects)):
-    if order == 'pre':
-      if not predicate(objects[index - offset]):
-        del objects[index - offset]
-        offset += 1
-        continue
-    filter_visit(getattr(objects[index - offset], 'members', []), predicate, order)
-    if order == 'post':
-      if not predicate(objects[index - offset]):
-        del objects[index - offset]
-        offset += 1
+class PrintVisitor(visitor.Visitor[ApiObject]):
+      
+  def __init__(self, formatstr: str = "{obj_location} - {obj_type} ({obj_kind}): {obj_full_name} {obj_docstring}"):
+        self.formatstr = formatstr
 
-
-def visit(
-  objects: t.List[ApiObject],
-  func: t.Callable[[ApiObject], t.Any],
-  order: str = 'pre',
-) -> None:
-  """
-  Visits all *objects*, applying *func* in the specified *order*.
-  """
-
-  filter_visit(objects, (lambda obj: func(obj) or True), order)
-
-
-class ReverseMap:
-  """
-  Reverse map for finding the parent of an #ApiObject.
-  """
-
-  def __init__(self, modules: t.List[Module]) -> None:
-    self._modules = modules
-    self._reverse_map: t.Dict[int, t.Optional[ApiObject]] = {}
-    for module in modules:
-      self._init(module, None)
-
-  def _init(self, obj: ApiObject, parent: t.Optional[ApiObject]) -> None:
-    self._reverse_map[id(obj)] = parent
-    for member in getattr(obj, 'members', []):
-      self._init(member, obj)
-
-  def get_parent(self, obj: ApiObject) -> t.Optional[ApiObject]:
-    try:
-      return self._reverse_map[id(obj)]
-    except KeyError:
-      raise KeyError(obj)
-
-  def path(self, obj: ApiObject) -> t.List[ApiObject]:
-    result = []
-    current: t.Optional[ApiObject] = obj
-    while current:
-      result.append(current)
-      current = self.get_parent(current)
-    result.reverse()
-    return result
-
+  def unknown_visit(self, ob: ApiObject) -> None:
+    depth = ob.full_name.count('.')
+    tokens = dict(
+      obj_type = type(ob).__name__,
+      obj_name = ob.name,
+      obj_full_name = ob.full_name, 
+      obj_docstring = f"(doc: '{ob.docstring}')" if ob.docstring else "",
+      obj_kind = ob.kind.name, 
+      obj_location = str(ob.location))
+    print('| ' * depth + self.formatstr.format(**tokens))
+  
+  def unknown_departure(self, ob: ApiObject) -> None:
+    pass
 
 def get_member(obj: ApiObject, name: str) -> t.Optional[ApiObject]:
   """
@@ -284,8 +341,10 @@ def get_member(obj: ApiObject, name: str) -> t.Optional[ApiObject]:
   objects that don't support members (eg. #Function and #Data).
   """
 
-  for member in getattr(obj, 'members', []):
-    if member.name == name:
-      assert isinstance(member, ApiObject)
-      return member
+  if isinstance(obj, HasMembers):
+    for member in obj.members:
+      if member.name == name:
+        assert isinstance(member, ApiObject), (name, obj, member)
+        return member
+
   return None

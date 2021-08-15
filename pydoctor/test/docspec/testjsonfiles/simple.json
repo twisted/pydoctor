@@ -1,0 +1,23 @@
+{
+    "name": "mod",
+    "kind": "MODULE",
+    "location": {
+        "filename":"test.py",
+        "lineno":1
+    },
+    "docstring": "summary",
+    "members" : [
+        {
+            "type": "data",
+            "name": "test",
+            "kind": "VARIABLE",
+            "location": {
+                "filename":"test.py",
+                "lineno":1
+            },
+            "docstring": "summary",
+            "datatype": "Union[str, bytes]",
+            "value": "\"1\""
+        }
+    ]
+}
