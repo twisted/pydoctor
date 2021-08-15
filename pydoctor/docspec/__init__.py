@@ -167,10 +167,15 @@ class ApiObject:
 
     self.parent = parent
   
+  def _get_children(self) -> t.Iterable['ApiObject']:
+    if isinstance(self, HasMembers):
+      return self.members
+    else:
+      return ()
   def walk(self, v: visitor.Visitor['ApiObject']) -> None:
-    visitor.walk(self, v, get_children=lambda ob: getattr(ob, 'members', ()))
+    visitor.walk(self, v, get_children=self._get_children)
   def walkabout(self, v: visitor.Visitor['ApiObject']) -> None:
-    visitor.walkabout(self, v, get_children=lambda ob: getattr(ob, 'members', ()))
+    visitor.walkabout(self, v, get_children=self._get_children)
 
 @dataclasses.dataclass
 class Data(ApiObject):
