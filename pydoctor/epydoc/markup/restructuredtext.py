@@ -392,8 +392,7 @@ class _EpydocHTMLTranslator(HTMLTranslator):
 
         # Set the document's settings.
         if self.settings is None:
-            settings = OptionParser([HTMLWriter()]).get_default_values() #type: ignore[arg-type]
-            # See: https://github.com/python/typeshed/issues/5667
+            settings = OptionParser([HTMLWriter()]).get_default_values()
             
             self.__class__.settings = settings
         document.settings = self.settings

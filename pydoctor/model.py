@@ -7,6 +7,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 """
 
 import ast
+import contextlib
 import datetime
 import importlib
 import inspect
@@ -18,13 +19,14 @@ from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    ContextManager, TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload, IO, TextIO
 )
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor import docspec
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -950,3 +952,48 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+    def load(self, source: Union[str, TextIO, Dict[str, Any]]) -> None:
+    
+        system = self
+        system.msg('loadjson', f'Loading JSON structure with system specification class: "{system.defaultJSONSerializer.System.__name__}"')
+        
+        system_spec = docspec.load_system(source, system_spec_cls=system.defaultJSONSerializer.System)
+
+        system.projectname = system.options.projectname = system_spec.projectname
+        system.buildtime = datetime.datetime.fromisoformat(system_spec.buildtime)
+        # TODO: should System.sourcebase be called htmlsourcebase instead?
+        system.sourcebase = system.options.htmlsourcebase = system_spec.htmlsourcebase
+        system.options.intersphinx = system_spec.intersphinx
+        system.options.projecturl = system_spec.projecturl
+        system.options.docformat = system_spec.docformat
+        system.options.projectversion = system_spec.projectversion
+        system.options.projectbasedirectory = Path(system_spec.projectbasedirectory) if system_spec.projectbasedirectory else None
+
+        builder = system.defaultJSONBuilder(system=system)
+
+        for mod in system_spec.rootobjects:
+            builder.processModule(mod)
+
+        system.postProcess()
+
+    def dump(self, target: Optional[Union[str, IO[str]]] = None) -> Optional[Dict[str, Any]]:
+        system = self
+        system.msg('dumpjson', f'Dumping JSON structure with system specification class: "{system.defaultJSONSerializer.System.__name__}"')
+        
+        serializer = system.defaultJSONSerializer()
+
+        for mod in system.rootobjects:
+            serializer.processModule(mod)
+
+        system_spec = system.defaultJSONSerializer.System(projectname=system.projectname, 
+            buildtime=system.buildtime.isoformat(), 
+            rootobjects=serializer.modules_spec,
+            htmlsourcebase=system.options.htmlsourcebase,
+            projectversion=system.options.projectversion,
+            projecturl=system.options.projecturl,
+            docformat=system.options.docformat,
+            projectbasedirectory=str(system.options.projectbasedirectory),
+            intersphinx=system.options.intersphinx
+            )
+        return docspec.dump_system(system_spec, target)

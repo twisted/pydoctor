@@ -1,10 +1,11 @@
 """Support for Zope interfaces."""
 
-from typing import Iterable, Iterator, List, Optional, Union
+from typing import Iterable, Iterator, List, Optional, Union, Generator
 import ast
 import re
+import dataclasses
+from pydoctor import astbuilder, model, epydoc2stan, docspec, jsonbuilder
 
-from pydoctor import astbuilder, model, epydoc2stan
 
 class ZopeInterfaceModule(model.Module):
 
@@ -26,7 +27,6 @@ class ZopeInterfaceClass(model.Class):
     implementsOnly = False
 
     implementedby_directly: List[Union['ZopeInterfaceClass', ZopeInterfaceModule]]
-    """Only defined when isinterface == True."""
 
     baseobjects: List[Optional['ZopeInterfaceClass']]  # type: ignore[assignment]
     subclasses: List['ZopeInterfaceClass']  # type: ignore[assignment]
@@ -34,6 +34,7 @@ class ZopeInterfaceClass(model.Class):
     def setup(self) -> None:
         super().setup()
         self.implements_directly: List[str] = []
+        self.implementedby_directly = []
 
     @property
     def allImplementedInterfaces(self) -> Iterable[str]:
@@ -250,6 +251,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
     def visit_Call_zope_interface_moduleProvides(self, funcName: str, node: ast.Call) -> None:
         if not isinstance(self.builder.current, ZopeInterfaceModule):
+            # Could be Package, too
             self.default(node)
             return
 
@@ -325,6 +327,97 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
     ModuleVistor = ZopeInterfaceModuleVisitor
 
+@dataclasses.dataclass
+class ZopeInterfaceModuleSpec(docspec.Module):
+    implements_directly: List[str] = dataclasses.field(default_factory=list)
+    members: List['_ModuleMemberType'] # type: ignore[assignment]
+
+@dataclasses.dataclass
+class ZopeInterfaceClassSpec(docspec.Class):
+    isinterface: bool = False
+    isschemafield: bool = False
+    isinterfaceclass: bool = False
+    implementsOnly: bool = False
+    implements_directly: List[str] = dataclasses.field(default_factory=list)
+    members: List['_MemberType'] # type: ignore[assignment]
+
+@dataclasses.dataclass
+class ZopeInterfaceSystemSpec(docspec.System):
+    rootobjects: List[ZopeInterfaceModuleSpec] # type: ignore[assignment]
+
+_MemberType = docspec.te.Annotated[
+    Union[docspec.Data, docspec.Function, ZopeInterfaceClassSpec],
+    docspec.A.unionclass({ 'data': docspec.Data, 'function': docspec.Function, 'class': ZopeInterfaceClassSpec }, 
+    style=docspec.A.unionclass.Style.flat)]
+    
+_ModuleMemberType = docspec.te.Annotated[
+    Union[docspec.Data, docspec.Function, ZopeInterfaceClassSpec, ZopeInterfaceModuleSpec],
+    docspec.A.unionclass({ 'data': docspec.Data, 'function': docspec.Function, 
+        'class': ZopeInterfaceClassSpec, 'module': ZopeInterfaceModuleSpec }, 
+    style=docspec.A.unionclass.Style.flat)]
+
+class ZopeInterfaceBuilderVisitor(jsonbuilder.BuilderVisitor):
+    def visit_ZopeInterfaceClassSpec(self, class_spec: ZopeInterfaceClassSpec) -> None:
+        super().visit_Class(class_spec)
+        klass = self.builder.current
+
+        assert isinstance(class_spec, ZopeInterfaceClassSpec)
+        assert isinstance(klass, ZopeInterfaceClass)
+        klass.isinterface = class_spec.isinterface
+        klass.isschemafield = class_spec.isschemafield
+        klass.isinterfaceclass = class_spec.isinterfaceclass
+        klass.implementsOnly = class_spec.implementsOnly
+
+
+    def visit_ZopeInterfaceModuleSpec(self, module: ZopeInterfaceModuleSpec) -> None:
+        super().visit_Module(module)
+        mod = self.builder.current
+
+        assert isinstance(module, ZopeInterfaceModuleSpec)
+        if isinstance(mod, ZopeInterfaceModule): # Could be Package, too
+            mod.implements_directly = module.implements_directly
+
+class ZopeInterfaceJSONBuilder(jsonbuilder.JSONBuilder):
+    BuilderVisitor = ZopeInterfaceBuilderVisitor
+
+    def processModule(self, mod_spec: docspec.Module) -> None:
+        super().processModule(mod_spec)
+
+class ZopeInterfaceSerializerVisitor(jsonbuilder.SerializerVisitor):
+    def visit_Class(self, ob: model.Class) -> None:
+        super().visit_Class(ob)
+        class_spec = self.current
+        
+        assert isinstance(ob, ZopeInterfaceClass)
+        assert isinstance(class_spec, ZopeInterfaceClassSpec)
+        class_spec.isinterface = ob.isinterface
+        class_spec.isschemafield = ob.isschemafield
+        class_spec.isinterfaceclass = ob.isinterfaceclass
+        class_spec.implementsOnly = ob.implementsOnly
+        class_spec.implements_directly = ob.implements_directly
+
+    def visit_Module(self, ob:model.Module) -> None:
+        
+        super().visit_Module(ob)
+        mod_spec = self.current
+
+        assert isinstance(ob, ZopeInterfaceModule)
+        assert isinstance(mod_spec, ZopeInterfaceModuleSpec)
+        mod_spec.implements_directly = ob.implements_directly
+    
+    visit_ZopeInterfaceClass = visit_Class
+    visit_ZopeInterfaceModule = visit_Module
+    visit_ZopeInterfaceFunction = jsonbuilder.SerializerVisitor.visit_Function
+    visit_ZopeInterfaceAttribute = jsonbuilder.SerializerVisitor.visit_Attribute
+
+class ZopeInterfaceJSONSerializer(jsonbuilder.JSONSerializer):
+    SerializerVisitor = ZopeInterfaceSerializerVisitor
+    Class: docspec.Class = ZopeInterfaceClassSpec
+    Module: docspec.Module = ZopeInterfaceModuleSpec
+    System: docspec.System = ZopeInterfaceSystemSpec
+
+    def processModule(self, mod: model.Module) -> None:
+        return super().processModule(mod)
 
 class ZopeInterfaceSystem(model.System):
     Module = ZopeInterfaceModule
@@ -332,6 +425,8 @@ class ZopeInterfaceSystem(model.System):
     Function = ZopeInterfaceFunction
     Attribute = ZopeInterfaceAttribute
     defaultBuilder = ZopeInterfaceASTBuilder
+    defaultJSONSerializer = ZopeInterfaceJSONSerializer
+    defaultJSONBuilder = ZopeInterfaceJSONBuilder
 
     def postProcess(self) -> None:
         super().postProcess()

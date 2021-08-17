@@ -419,7 +419,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         else:
             if options.loadjson:
                 # Load objects from json file
-                jsonbuilder.load_system(options.loadjson, system=system)
+                system.load(options.loadjson)
                 # rebuild the intersphinx
                 system.fetchIntersphinxInventories(cache)
             else:
@@ -514,7 +514,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 )
         
         if options.dumpjson:
-            jsonbuilder.dump_system(system, options.dumpjson)
+            system.dump(options.dumpjson)
 
     except:
         if options.pdb:

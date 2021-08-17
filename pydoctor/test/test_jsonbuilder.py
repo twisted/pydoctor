@@ -30,8 +30,7 @@ def test_dump_module(capsys: CapSys) -> None:
     assert len(serializer.modules_spec) == 1
     docspec_mod = serializer.modules_spec.pop()
     
-    visitor.walk(docspec_mod, docspec.PrintVisitor(), 
-        get_children=lambda ob: getattr(ob, 'members', []))
+    docspec_mod.walk(docspec.PrintVisitor())
 
     captured = capsys.readouterr().out
 
@@ -126,7 +125,8 @@ def test_dump_system(capsys: CapSys) -> None:
     f = b.f
     ''', modname='c', system=system)
 
-    data = jsonbuilder.dump_system(system)
+    data = system.dump()
+    assert data is not None
     data['buildtime'] = '2017-02-15T20:26:08.937881'
     assert data == {
     'buildtime': '2017-02-15T20:26:08.937881',
@@ -339,5 +339,8 @@ def test_dump_system(capsys: CapSys) -> None:
                     'name': 'c'}]
     }
     
-    data2 = jsonbuilder.dump_system(jsonbuilder.load_system(data))
+    system2 = systemcls()
+    system2.load(data)
+    data2 = system2.dump()
+    assert data2 is not None
     assert sorted(data2) == sorted(data)

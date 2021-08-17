@@ -3,9 +3,10 @@ Load and dump Documentables instances from and to JSON with the L{docspec} speci
 """
 
 import ast
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Type, Any, Union, IO
+from typing import Dict, List, Optional, Sequence, Union, cast
 from inspect import Parameter, Signature, _empty
 
 import astor
@@ -217,11 +218,6 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
     current : docspec.ApiObject = attr.ib(default=None, init=False)
     _stack: List[docspec.ApiObject] = attr.ib(factory=list, init=False)
 
-    Class = docspec.Class
-    Data = docspec.Data
-    Function = docspec.Function
-    Module = docspec.Module
-
     def push(self, ob: docspec.ApiObject) -> None:
         self._stack.append(self.current)
         self.current = ob
@@ -244,7 +240,7 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
         self.pop(self.current)
 
     def visit_Attribute(self, ob: model.Attribute) -> None:
-        spec = self.Data(name=ob.name, 
+        spec = self.serializer.Data(name=ob.name, 
             location=docspec.Location(str(ob.module.source_path) if ob.module.source_path else '', ob.linenumber), 
             docstring=ob.docstring, 
             kind=getattr(docspec.ApiObject.Kind, ob.kind.name),
@@ -282,7 +278,7 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
         if ob.decorators:
             decorators: Optional[List[str]] = []
             for deco in ob.decorators:
-                decorators.append(astor.to_source(deco)) # type ignore: [union-attr]
+                cast(List[str], decorators).append(astor.to_source(deco))
         else:
             decorators = None
         
@@ -292,7 +288,7 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
             rtype = ob.annotations.get('return')
             return_type = astor.to_source(rtype) if rtype else None
 
-        spec = self.Function(name=ob.name, 
+        spec = self.serializer.Function(name=ob.name, 
             location=docspec.Location(str(ob.module.source_path) if ob.module.source_path else '', ob.linenumber), 
             docstring=ob.docstring, 
             kind=getattr(docspec.ApiObject.Kind, ob.kind.name),
@@ -307,13 +303,13 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
         
         # decorators
         if ob.raw_decorators:
-            decorators = []
+            decorators: Optional[List[str]] = []
             for deco in ob.raw_decorators:
-                decorators.append(astor.to_source(deco))
+                cast(List[str], decorators).append(astor.to_source(deco))
         else:
             decorators = None
 
-        spec = self.Class(ob.name, 
+        spec = self.serializer.Class(ob.name, 
             location=docspec.Location(str(ob.module.source_path) if ob.module.source_path else '', ob.linenumber), 
             docstring=ob.docstring, 
             kind=getattr(docspec.ApiObject.Kind, ob.kind.name),
@@ -326,12 +322,12 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
         self.spec.sync_hierarchy()
     
     def visit_Module(self, ob: model.Module) -> None:
-        spec = self.Module(name=ob.name, 
+        spec = self.serializer.Module(name=ob.name, 
             location=docspec.Location(str(ob.module.source_path) if ob.module.source_path else '', ob.linenumber),
             docstring=ob.docstring, 
             kind=getattr(docspec.ApiObject.Kind, ob.kind.name),
             members=[],
-            all=ob.all,
+            all=list(ob.all),
             docformat=ob.docformat
         )
         self.enter_object(spec)
@@ -342,7 +338,7 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
 
     def add_indirections(self, spec:Union[docspec.Module, docspec.Class], ob: model.CanContainImportsDocumentable) -> None:
         for name, value in ob._localNameToFullName_map.items():
-            indirection = self.Data(name=name, 
+            indirection = self.serializer.Data(name=name, 
                 location=spec.location, 
                 docstring=None, 
                 kind=docspec.ApiObject.Kind.INDIRECTION,
@@ -352,9 +348,15 @@ class SerializerVisitor(visitor.Visitor[model.Documentable]):
 
 @attr.s(auto_attribs=True)
 class JSONSerializer:
+
+    modules_spec: List[docspec.Module] = attr.ib(factory=list, init=False)
     
     SerializerVisitor = SerializerVisitor
-    modules_spec: List[docspec.Module] = attr.ib(factory=list, init=False)
+    Class = docspec.Class
+    Data = docspec.Data
+    Function = docspec.Function
+    Module = docspec.Module
+    System = docspec.System
     
     def processModule(self, mod: model.Module) -> None:
         v = self.SerializerVisitor(self)
@@ -364,49 +366,3 @@ class JSONSerializer:
 model.System.defaultJSONBuilder = JSONBuilder
 model.System.defaultJSONSerializer = JSONSerializer
 
-def load_system(source: Union[str, IO[str], Dict[str, Any]], 
-                system: Optional[model.System] = None) -> model.System:
-    
-    system = system or model.System()
-
-    system_spec = docspec.load_system(source)
-
-    system.projectname = system.options.projectname = system_spec.projectname
-    system.buildtime = datetime.fromisoformat(system_spec.buildtime)
-    # TODO: should System.sourcebase be called htmlsourcebase instead?
-    system.sourcebase = system.options.htmlsourcebase = system_spec.htmlsourcebase
-    system.options.intersphinx = system_spec.intersphinx
-    system.options.projecturl = system_spec.projecturl
-    system.options.docformat = system_spec.docformat
-    system.options.projectversion = system_spec.projectversion
-    system.options.projectbasedirectory = Path(system_spec.projectbasedirectory)
-
-    builder = system.defaultJSONBuilder(system=system)
-
-    for mod in system_spec.rootobjects:
-        builder.processModule(mod)
-
-    system.postProcess()
-
-    return system
-
-def dump_system(system: model.System, 
-                target: Optional[Union[str, IO[str]]] = None, ) -> Optional[Dict[str, Any]]:
-
-    serializer = system.defaultJSONSerializer()
-
-    for mod in system.rootobjects:
-        serializer.processModule(mod)
-
-    system_spec = docspec.System(projectname=system.projectname, 
-        buildtime=system.buildtime.isoformat(), 
-        rootobjects=serializer.modules_spec,
-        htmlsourcebase=system.options.htmlsourcebase,
-        projectversion=system.options.projectversion,
-        projecturl=system.options.projecturl,
-        docformat=system.options.docformat,
-        projectbasedirectory=str(system.options.projectbasedirectory),
-        intersphinx=system.options.intersphinx
-        )
-
-    return docspec.dump_system(system_spec, target)

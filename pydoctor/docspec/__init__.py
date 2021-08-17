@@ -174,9 +174,9 @@ class ApiObject:
     else:
       return ()
   def walk(self, v: visitor.Visitor['ApiObject']) -> None:
-    visitor.walk(self, v, get_children=self._get_children)
+    visitor.walk(self, v, get_children=ApiObject._get_children)
   def walkabout(self, v: visitor.Visitor['ApiObject']) -> None:
-    visitor.walkabout(self, v, get_children=self._get_children)
+    visitor.walkabout(self, v, get_children=ApiObject._get_children)
 
 @dataclasses.dataclass
 class Data(ApiObject):
@@ -247,6 +247,7 @@ _ModuleMemberType = te.Annotated[
 
 def load_system(
   source: t.Union[str, t.TextIO, t.Dict[str, t.Any]],
+  system_spec_cls: t.Type[System],
   filename: t.Optional[str] = None,
   loader: t.Callable[[t.IO[str]], t.Any] = json.load,
 ) -> System:
@@ -265,14 +266,16 @@ def load_system(
 
   if isinstance(source, str):
     if source == '-':
-      return load_system(sys.stdin, source, loader)
+      return load_system(sys.stdin, system_spec_cls, source, loader)
     with io.open(source, encoding='utf-8') as fp:
-      return load_system(fp, source, loader)
+      return load_system(fp, system_spec_cls, source, loader)
   elif hasattr(source, 'read'):
     # we ar sure the type is "IO" since the source has a read attribute.
     source = loader(source) # type: ignore[arg-type]
 
-  system: System = databind.json.load(source, System, filename=filename)
+  system = databind.json.load(source, system_spec_cls, filename=filename)
+  assert isinstance(system, system_spec_cls)
+  
   for module in system.rootobjects:
     module.sync_hierarchy()
   return system
@@ -280,7 +283,7 @@ def load_system(
 def dump_system(
   system: System,
   target: t.Optional[t.Union[str, t.IO[str]]] = None,
-  dumper: t.Callable[[t.Any, t.IO[str]], None] = functools.partial(json.dump, indent=4)
+  dumper: t.Callable[[t.Any, t.IO[str]], None] = functools.partial(json.dump, indent=4),
 ) -> t.Optional[t.Dict[str, t.Any]]:
   """
   Dumps a system to the specified target or returns it as plain structured data.
@@ -290,8 +293,9 @@ def dump_system(
     with io.open(target, 'w', encoding='utf-8') as fp:
       dump_system(system, fp, dumper)
     return None
+  
+  data = databind.json.dump(system, type(system))
 
-  data = databind.json.dump(system, System)
   if target:
     dumper(data, target)
     target.write('\n')
