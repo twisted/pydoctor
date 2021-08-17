@@ -258,7 +258,8 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--dumpjson',
-        help='Dump modules data to JSON file.'
+        help='Dump modules data to JSON file.',
+        action='store_true'
     )
 
     return parser
@@ -514,7 +515,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 )
         
         if options.dumpjson:
-            system.dump(options.dumpjson)
+            outdir = Path(options.htmloutput)
+            outdir.mkdir(parents=True, exist_ok=True)
+            system.dump(outdir / 'system.json')
 
     except:
         if options.pdb:
