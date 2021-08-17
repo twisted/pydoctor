@@ -975,8 +975,6 @@ class System:
         for mod in system_spec.rootobjects:
             builder.processModule(mod)
 
-        system.postProcess()
-
     def dump(self, target: Optional[Union[str, IO[str]]] = None) -> Optional[Dict[str, Any]]:
         system = self
         system.msg('dumpjson', f'Dumping JSON structure with system specification class: "{system.defaultJSONSerializer.System.__name__}"')
