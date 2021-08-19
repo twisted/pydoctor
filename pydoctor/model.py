@@ -22,14 +22,19 @@ from typing import (
     Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
 from urllib.parse import quote
+import functools
+
+import attr
 
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory, USER_INTERSPHINX_CACHE
+from pydoctor.utils import parse_path, findClassFromDottedName, error
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
+    from pydoctor.templatewriter import IWriter
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -548,10 +553,9 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase: Optional[str] = None
-    options: Namespace
+    options: 'Options'
 
-    def __init__(self, options: Optional[Namespace] = None):
+    def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -566,7 +570,7 @@ class System:
             self.options = options
         else:
             from pydoctor.driver import parse_args
-            self.options = parse_args([])
+            self.options = Options.from_namespace(parse_args([]))
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -582,6 +586,10 @@ class System:
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+
+    @property
+    def sourcebase(self) -> Optional[str]:
+        return self.options.htmlsourcebase
 
     @property
     def root_names(self) -> Collection[str]:
@@ -936,3 +944,89 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+# converter classes for model.Options
+def _convert_sourcepath(l: List[str]) -> List[Path]:
+        return list(map(functools.partial(parse_path, opt='SOURCEPATH'), l))
+def _convert_templatedir(l: List[str]) -> List[Path]:
+    return list(map(functools.partial(parse_path, opt='--template-dir'), l))
+def _convert_projectbasedirectory(s: Optional[str]) -> Optional[Path]:
+    if s:
+        return parse_path(s, opt='--project-base-directory')
+    else:
+        return None
+def _convert_systemclass(s: str) -> Type[System]:
+    return findClassFromDottedName(s, '--system-class', base_class=System)
+def _convert_htmlwriter(s: str) -> Type['IWriter']:
+    from pydoctor.templatewriter import IWriter
+    return findClassFromDottedName(s, '--html-writer', base_class=IWriter)
+
+@attr.s(auto_attribs=True)
+class Options:
+    """
+    Container for all possible pydoctor options. 
+
+    See ``pydoctor --help`` for more informations. 
+    """
+    MAKE_HTML_DEFAULT = object()
+    
+    sourcepath: List[Path]                  = attr.ib(factory=list, converter=_convert_sourcepath)
+    systemclass: Type[System]               = attr.ib(default='pydoctor.zopeinterface.ZopeInterfaceSystem', 
+                                                      converter=_convert_systemclass)
+    projectname: Optional[str]              = None
+    projectversion: str                     = ''
+    projecturl: Optional[str]               = None
+    projectbasedirectory: Optional[Path]    = attr.ib(default=None, converter=_convert_projectbasedirectory)
+    testing: bool                           = False
+    pdb: bool                               = False
+    makehtml: bool                          = False
+    makeintersphinx: bool                   = False
+    prependedpackage: Optional[str]         = None
+    docformat: str                          = 'epytext'
+    templatedir: List[Path]                 = attr.ib(factory=list, converter=_convert_templatedir)
+    htmlsubjects: Optional[List[str]]       = None
+    htmlsummarypages: bool                  = False
+    htmloutput: str                         = 'apidocs'
+    htmlwriter: Type['IWriter']             = attr.ib(default='pydoctor.templatewriter.TemplateWriter', 
+                                                      converter=_convert_htmlwriter)
+    htmlsourcebase: Optional[str]           = None
+    buildtime: Optional[str]                = None
+    warnings_as_errors: bool                = False
+    verbosity: int                          = 0
+    quietness: int                          = 0
+    introspect_c_modules: bool              = False
+    intersphinx: List[str]                  = attr.ib(factory=list)
+    enable_intersphinx_cache: bool          = False
+    intersphinx_cache_path: str             = USER_INTERSPHINX_CACHE
+    clear_intersphinx_cache: bool           = False
+    intersphinx_cache_max_age: str          = '1d'
+
+    def __attrs_post_init__(self) -> None:
+        # do some validations
+        if self.htmlsourcebase:
+            if self.projectbasedirectory is None:
+                error("you must specify --project-base-dir "
+                        "when using --html-viewsource-base")
+
+    @classmethod
+    def from_namespace(cls, args: Namespace) -> 'Options':
+        argsdict = vars(args)
+
+        # set correct default for --make-html
+        if args.makehtml == cls.MAKE_HTML_DEFAULT:
+            if not args.testing and not args.makeintersphinx:
+                argsdict['makehtml'] = True
+            else:
+                argsdict['makehtml'] = False
+
+        # handle deprecated arguments
+        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--packages'), argsdict.pop('packages'))))
+        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--modules'), argsdict.pop('modules'))))
+
+        # remove deprecated arguments
+        argsdict.pop('enable_intersphinx_cache_deprecated')
+
+        # remove the config argument
+        argsdict.pop('config')
+        
+        return cls(**argsdict)

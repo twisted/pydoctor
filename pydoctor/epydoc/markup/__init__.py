@@ -33,8 +33,9 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union, Iterator
 import re
+from inspect import getmodulename
 
 from twisted.python.failure import Failure
 from twisted.web.template import Tag, XMLString, flattenString
@@ -42,6 +43,24 @@ from twisted.web.template import Tag, XMLString, flattenString
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
+# On Python 3.7+, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+try:
+    import importlib.resources as importlib_resources
+except ImportError:
+    if not TYPE_CHECKING:
+        import importlib_resources
+
+def get_supported_docformats() -> Iterator[str]:
+    """
+    Get the list of currently supported docformat.
+    """
+    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName == '__init__':
+            continue
+        else:
+            yield moduleName
 
 ##################################################
 ## Contents

@@ -4,7 +4,7 @@ Unit tests for model.
 
 from argparse import Namespace
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import cast
+from typing import cast, Optional
 import zlib
 
 import pytest
@@ -20,6 +20,7 @@ class FakeOptions:
     A fake options object as if it came from argparse.
     """
     sourcehref = None
+    htmlsourcebase: Optional[str] = None
     projectbasedirectory: Path
     docformat = 'epytext'
 
@@ -49,10 +50,8 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
-
-    system = model.System()
-    system.sourcebase = "http://example.org/trac/browser/trunk"
-    system.options = cast(Namespace, options)
+    options.htmlsourcebase = "http://example.org/trac/browser/trunk"
+    system = model.System(options)
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
@@ -74,7 +73,7 @@ def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
-    options = cast(Namespace, object())
+    options = model.Options()
 
     sut = model.System(options=options)
 
@@ -85,7 +84,7 @@ def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
-    options = parse_args([])
+    options = model.Options()
     options.intersphinx = []
     sut = model.System(options=options)
 
@@ -101,7 +100,7 @@ def test_fetchIntersphinxInventories_content() -> None:
     Download and parse intersphinx inventories for each configured
     intersphix.
     """
-    options = parse_args([])
+    options = model.Options()
     options.intersphinx = [
         'http://sphinx/objects.inv',
         'file:///twisted/index.inv',

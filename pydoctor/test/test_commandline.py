@@ -5,7 +5,7 @@ import sys
 
 from pytest import raises
 
-from pydoctor import driver
+from pydoctor import driver, model
 
 from . import CapSys
 
@@ -61,7 +61,8 @@ def test_projectbasedir_absolute(tmp_path: Path) -> None:
     Using L{Path.samefile()} is reliable, but requires an existing path.
     """
     assert tmp_path.is_absolute()
-    options = driver.parse_args(["--project-base-dir", str(tmp_path)])
+    options = model.Options.from_namespace(driver.parse_args(["--project-base-dir", str(tmp_path)]))
+    assert options.projectbasedirectory is not None
     assert options.projectbasedirectory.samefile(tmp_path)
     assert options.projectbasedirectory.is_absolute()
 
@@ -77,7 +78,8 @@ def test_projectbasedir_symlink(tmp_path: Path) -> None:
     link.symlink_to('target', target_is_directory=True)
     assert link.samefile(target)
 
-    options = driver.parse_args(["--project-base-dir", str(link)])
+    options = model.Options.from_namespace(driver.parse_args(["--project-base-dir", str(link)]))
+    assert options.projectbasedirectory is not None
     assert options.projectbasedirectory.samefile(target)
     assert options.projectbasedirectory.is_absolute()
 
@@ -89,7 +91,8 @@ def test_projectbasedir_relative() -> None:
     the options object.
     """
     relative = "projbasedirvalue"
-    options = driver.parse_args(["--project-base-dir", relative])
+    options = model.Options.from_namespace(driver.parse_args(["--project-base-dir", relative]))
+    assert options.projectbasedirectory is not None
     assert options.projectbasedirectory.is_absolute()
     assert options.projectbasedirectory.name == relative
     assert options.projectbasedirectory.parent == Path.cwd()

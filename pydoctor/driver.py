@@ -1,18 +1,17 @@
 """The command-line parsing and entry point."""
 
 from argparse import SUPPRESS, Namespace
-from configargparse import ArgParser, ConfigparserConfigFileParser
-from pathlib import Path
-from typing import Iterator, TYPE_CHECKING, Sequence, Type, TypeVar, cast
-import functools
+from configargparse import ArgumentParser, ConfigparserConfigFileParser
+from typing import TYPE_CHECKING, Sequence, Type, TypeVar, List, cast
 import datetime
 import os
 import sys
 import warnings
-from inspect import getmodulename
 
-from pydoctor import model, zopeinterface, __version__
+from pydoctor.utils import error, resolve_path
+from pydoctor import model, __version__
 from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
+from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -21,90 +20,17 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
-# On Python 3.7+, use importlib.resources from the standard library.
-# On older versions, a compatibility package must be installed from PyPI.
-try:
-    import importlib.resources as importlib_resources
-except ImportError:
-    if not TYPE_CHECKING:
-        import importlib_resources
-
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 
-def error(msg: str, *args: object) -> NoReturn:
-    if args:
-        msg = msg%args
-    print(msg, file=sys.stderr)
-    sys.exit(1)
-
 T = TypeVar('T')
 
-def findClassFromDottedName(
-        dottedname: str,
-        optionname: str,
-        base_class: Type[T]
-        ) -> Type[T]:
-    """
-    Looks up a class by full name.
-    Watch out, prints a message and SystemExits on error!
-    """
-    if '.' not in dottedname:
-        error("%stakes a dotted name", optionname)
-    parts = dottedname.rsplit('.', 1)
-    try:
-        mod = __import__(parts[0], globals(), locals(), parts[1])
-    except ImportError:
-        error("could not import module %s", parts[0])
-    try:
-        cls = getattr(mod, parts[1])
-    except AttributeError:
-        error("did not find %s in module %s", parts[1], parts[0])
-    if not issubclass(cls, base_class):
-        error("%s is not a subclass of %s", cls, base_class)
-    return cast(Type[T], cls)
 
-MAKE_HTML_DEFAULT = object()
-
-def resolve_path(path: str) -> Path:
-    """Parse a given path string to a L{Path} object.
-
-    The path is converted to an absolute path, as required by
-    L{System.setSourceHref()}.
-    The path does not need to exist.
-    """
-
-    # We explicitly make the path relative to the current working dir
-    # because on Windows resolve() does not produce an absolute path
-    # when operating on a non-existing path.
-    return Path(Path.cwd(), path).resolve()
-
-def parse_path(value: str, opt: str) -> Path:
-    """Parse a str path to a L{Path} object
-    using L{resolve_path()}.
-    """
-    try:
-        return resolve_path(value)
-    except Exception as ex:
-        raise error(f"invalid path: {ex} in option {opt}.")
-
-def get_supported_docformats() -> Iterator[str]:
-    """
-    Get the list of currently supported docformat.
-    """
-    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
-        moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName == '__init__':
-            continue
-        else:
-            yield moduleName
-
-
-def get_parser() -> ArgParser:
-    parser = ArgParser(
+def get_parser() -> ArgumentParser:
+    parser = ArgumentParser(
         prog='pydoctor',
         description="API doc generator.",
-        usage="usage: pydoctor [options] SOURCEPATH...", 
+        usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=['./pydoctor.ini'],
         config_file_parser_class=ConfigparserConfigFileParser)
     parser.add_argument(
@@ -129,7 +55,6 @@ def get_parser() -> ArgParser:
         help=("The project url, appears in the html if given."))
     parser.add_argument(
         '--project-base-dir', dest='projectbasedirectory',  
-        type=functools.partial(parse_path, opt="--project-base-dir"),
         help=("Path to the base directory of the project.  Source links "
               "will be computed based on this value."))
     parser.add_argument(
@@ -140,7 +65,7 @@ def get_parser() -> ArgParser:
         help=("Like py.test's --pdb."))
     parser.add_argument(
         '--make-html', action='store_true', dest='makehtml',
-        default=MAKE_HTML_DEFAULT, help=("Produce html output."))
+        default=model.Options.MAKE_HTML_DEFAULT, help=("Produce html output."))
     parser.add_argument(
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
@@ -160,9 +85,9 @@ def get_parser() -> ArgParser:
         choices=list(_docformat_choices),
         help=("Format used for parsing docstrings. "))
     parser.add_argument(
-        '--template-dir',
-        dest='templatedir',
-        help=("Directory containing custom HTML templates."),
+        '--template-dir', action='append',
+        dest='templatedir', default=[],
+        help=("Directory containing custom HTML templates, repeatable."),
     )
     parser.add_argument(
         '--html-subject', dest='htmlsubjects', action='append',
@@ -176,9 +101,9 @@ def get_parser() -> ArgParser:
         '--html-output', dest='htmloutput', default='apidocs',
         help=("Directory to save HTML files to (default 'apidocs')"))
     parser.add_argument(
-        '--html-writer', dest='htmlwriter',
-        help=("Dotted name of HTML writer class to use (default "
-              "'pydoctor.templatewriter.TemplateWriter')."))
+        '--html-writer', dest='htmlwriter', type=str,
+        default='pydoctor.templatewriter.TemplateWriter',
+        help=("Dotted name of HTML writer class to use (default 'pydoctor.templatewriter.TemplateWriter')."))
     parser.add_argument(
         '--html-viewsource-base', dest='htmlsourcebase',
         help=("This should be the path to the trac browser for the top "
@@ -246,7 +171,7 @@ def get_parser() -> ArgParser:
         help=MAX_AGE_HELP,
     )
     parser.add_argument(
-        '--system-class', dest='systemclass',
+        '--system-class', dest='systemclass', default='pydoctor.zopeinterface.ZopeInterfaceSystem',
         help=("A dotted name of the class to use to make a system."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
@@ -288,15 +213,13 @@ def _warn_deprecated_options(options: Namespace) -> None:
               file=sys.stderr, flush=True)
 
 
-
-
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     """
     This is the console_scripts entry point for pydoctor CLI.
 
     @param args: Command line arguments to run the CLI.
     """
-    options = parse_args(args)
+    options = model.Options.from_namespace(parse_args(args))
 
     exitcode = 0
 
@@ -307,29 +230,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     try:
         # step 1: make/find the system
-        if options.systemclass:
-            systemclass = findClassFromDottedName(
-                options.systemclass, '--system-class', model.System)
-        else:
-            systemclass = zopeinterface.ZopeInterfaceSystem
-
-        system = systemclass(options)
+        system = options.systemclass(options)
         system.fetchIntersphinxInventories(cache)
 
-        if options.htmlsourcebase:
-            if options.projectbasedirectory is None:
-                error("you must specify --project-base-dir "
-                      "when using --html-viewsource-base")
-            system.sourcebase = options.htmlsourcebase
-
         # step 1.5: check that we're actually going to accomplish something here
-        modules = options.sourcepath + options.modules + options.packages
-
-        if options.makehtml == MAKE_HTML_DEFAULT:
-            if not options.testing and not options.makeintersphinx:
-                options.makehtml = True
-            else:
-                options.makehtml = False
+        modules = options.sourcepath
+        if not modules:
+            error("No source paths given.")
 
         # Support source date epoch:
         # https://reproducible-builds.org/specs/source-date-epoch/
@@ -340,7 +247,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             error(str(e))
         except KeyError:
             pass
-
+    
+        # Load custom buildtime
         if options.buildtime:
             try:
                 system.buildtime = datetime.datetime.strptime(
@@ -350,42 +258,39 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         # step 2: add any packages and modules
 
-        if modules:
-            prependedpackage = None
-            if options.prependedpackage:
-                for m in options.prependedpackage.split('.'):
-                    prependedpackage = system.Package(
-                        system, m, prependedpackage)
-                    system.addObject(prependedpackage)
-                    initmodule = system.Module(system, '__init__', prependedpackage)
-                    system.addObject(initmodule)
-            added_paths = set()
-            for mod_path in modules:
-                path = resolve_path(mod_path)
-                if path in added_paths:
-                    continue
-                if options.projectbasedirectory is not None:
-                    # Note: Path.is_relative_to() was only added in Python 3.9,
-                    #       so we have to use this workaround for now.
-                    try:
-                        path.relative_to(options.projectbasedirectory)
-                    except ValueError as ex:
-                        error(f"Source path lies outside base directory: {ex}")
-                if path.is_dir():
-                    system.msg('addPackage', f"adding directory {path}")
-                    if not (path / '__init__.py').is_file():
-                        error(f"Source directory lacks __init__.py: {path}")
-                    system.addPackage(path, prependedpackage)
-                elif path.is_file():
-                    system.msg('addModuleFromPath', f"adding module {path}")
-                    system.addModuleFromPath(path, prependedpackage)
-                elif path.exists():
-                    error(f"Source path is neither file nor directory: {path}")
-                else:
-                    error(f"Source path does not exist: {path}")
-                added_paths.add(path)
-        else:
-            error("No source paths given.")
+        prependedpackage = None
+        if options.prependedpackage:
+            for m in options.prependedpackage.split('.'):
+                prependedpackage = system.Package(
+                    system, m, prependedpackage)
+                system.addObject(prependedpackage)
+                initmodule = system.Module(system, '__init__', prependedpackage)
+                system.addObject(initmodule)
+        
+        added_paths = set()
+        for path in modules:
+            if path in added_paths:
+                continue
+            if options.projectbasedirectory is not None:
+                # Note: Path.is_relative_to() was only added in Python 3.9,
+                #       so we have to use this workaround for now.
+                try:
+                    path.relative_to(options.projectbasedirectory)
+                except ValueError as ex:
+                    error(f"Source path lies outside base directory: {ex}")
+            if path.is_dir():
+                system.msg('addPackage', f"adding directory {path}")
+                if not (path / '__init__.py').is_file():
+                    error(f"Source directory lacks __init__.py: {path}")
+                system.addPackage(path, prependedpackage)
+            elif path.is_file():
+                system.msg('addModuleFromPath', f"adding module {path}")
+                system.addModuleFromPath(path, prependedpackage)
+            elif path.exists():
+                error(f"Source path is neither file nor directory: {path}")
+            else:
+                error(f"Source path does not exist: {path}")
+            added_paths.add(path)
 
         # step 3: move the system to the desired state
 
@@ -403,38 +308,30 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         if options.makehtml:
             options.makeintersphinx = True
-            from pydoctor import templatewriter
-            if options.htmlwriter:
-                writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer', IWriter)
-            else:
-                writerclass = templatewriter.TemplateWriter
+            writerclass = options.htmlwriter
 
             system.msg('html', 'writing html to %s using %s.%s'%(
                 options.htmloutput, writerclass.__module__,
                 writerclass.__name__))
 
             writer: IWriter
+            
             # Handle custom HTML templates
-            if system.options.templatedir:
-                custom_lookup = TemplateLookup()
+            template_lookup = TemplateLookup()
+            for templatedir in options.templatedir:
                 try:
-                    custom_lookup.add_templatedir(
-                        Path(system.options.templatedir))
+                    template_lookup.add_templatedir(templatedir)
                 except UnsupportedTemplateVersion as e:
                     error(str(e))
 
-                try:
-                    # mypy error: Cannot instantiate abstract class 'IWriter'
-                    writer = writerclass(options.htmloutput, # type: ignore[abstract]
-                        template_lookup=custom_lookup)
-                except TypeError:
-                    # Custom class does not accept 'template_lookup' argument.
-                    writer = writerclass(options.htmloutput) # type: ignore[abstract]
-                    warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                        "HTML template customization with --template-dir.")
-            else:
+            try:
+                writer = writerclass(options.htmloutput, # type: ignore[abstract]
+                    template_lookup=template_lookup)
+            except TypeError:
+                # Custom class does not accept 'template_lookup' argument.
                 writer = writerclass(options.htmloutput) # type: ignore[abstract]
+                warnings.warn(f"Writer '{writerclass.__name__}' does not support "
+                    "HTML template customization with --template-dir.")
 
             writer.prepOutputDirectory()
 
