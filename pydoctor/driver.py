@@ -212,6 +212,146 @@ def _warn_deprecated_options(options: Namespace) -> None:
               "pass packages as positional arguments instead.",
               file=sys.stderr, flush=True)
 
+def get_system(options: model.Options) -> model.System:
+    """
+    Get a system with the defined options. Load packages and modules.
+    """
+    cache = prepareCache(clearCache=options.clear_intersphinx_cache,
+                         enableCache=options.enable_intersphinx_cache,
+                         cachePath=options.intersphinx_cache_path,
+                         maxAge=options.intersphinx_cache_max_age)
+
+    # step 1: make/find the system
+    system = options.systemclass(options)
+    system.fetchIntersphinxInventories(cache)
+
+    # TODO: load buildtime with default factory and converter in model.Options
+    # Support source date epoch:
+    # https://reproducible-builds.org/specs/source-date-epoch/
+    try:
+        system.buildtime = datetime.datetime.utcfromtimestamp(
+            int(os.environ['SOURCE_DATE_EPOCH']))
+    except ValueError as e:
+        error(str(e))
+    except KeyError:
+        pass
+    # Load custom buildtime
+    if options.buildtime:
+        try:
+            system.buildtime = datetime.datetime.strptime(
+                options.buildtime, BUILDTIME_FORMAT)
+        except ValueError as e:
+            error(str(e))
+    
+    # step 2: add any packages and modules
+
+    prependedpackage = None
+    if options.prependedpackage:
+        for m in options.prependedpackage.split('.'):
+            prependedpackage = system.Package(
+                system, m, prependedpackage)
+            system.addObject(prependedpackage)
+            initmodule = system.Module(system, '__init__', prependedpackage)
+            system.addObject(initmodule)
+    
+    added_paths = set()
+    for path in options.sourcepath:
+        if path in added_paths:
+            continue
+        if options.projectbasedirectory is not None:
+            # Note: Path.is_relative_to() was only added in Python 3.9,
+            #       so we have to use this workaround for now.
+            try:
+                path.relative_to(options.projectbasedirectory)
+            except ValueError as ex:
+                error(f"Source path lies outside base directory: {ex}")
+        if path.is_dir():
+            system.msg('addPackage', f"adding directory {path}")
+            if not (path / '__init__.py').is_file():
+                error(f"Source directory lacks __init__.py: {path}")
+            system.addPackage(path, prependedpackage)
+        elif path.is_file():
+            system.msg('addModuleFromPath', f"adding module {path}")
+            system.addModuleFromPath(path, prependedpackage)
+        elif path.exists():
+            error(f"Source path is neither file nor directory: {path}")
+        else:
+            error(f"Source path does not exist: {path}")
+        added_paths.add(path)
+
+    # step 3: move the system to the desired state
+
+    if system.options.projectname is None:
+        name = '/'.join(system.root_names)
+        system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
+        system.projectname = name
+    else:
+        system.projectname = system.options.projectname
+
+    system.process()
+
+    return system
+
+def make(system: model.System) -> None:
+    """
+    Produce the html/intersphinx output, as configured in the system's options. 
+    """
+    options = system.options
+    # step 4: make html, if desired
+
+    if options.makehtml:
+        options.makeintersphinx = True
+        writerclass = options.htmlwriter
+
+        system.msg('html', 'writing html to %s using %s.%s'%(
+            options.htmloutput, writerclass.__module__,
+            writerclass.__name__))
+
+        writer: IWriter
+        
+        # Handle custom HTML templates
+        template_lookup = TemplateLookup()
+        for templatedir in options.templatedir:
+            try:
+                template_lookup.add_templatedir(templatedir)
+            except UnsupportedTemplateVersion as e:
+                error(str(e))
+
+        try:
+            writer = writerclass(options.htmloutput, # type: ignore[abstract]
+                template_lookup=template_lookup)
+        except TypeError:
+            # Custom class does not accept 'template_lookup' argument.
+            writer = writerclass(options.htmloutput) # type: ignore[abstract]
+            warnings.warn(f"Writer '{writerclass.__name__}' does not support "
+                "HTML template customization with --template-dir.")
+
+        writer.prepOutputDirectory()
+
+        subjects: Sequence[model.Documentable] = ()
+        if options.htmlsubjects:
+            subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
+        else:
+            writer.writeSummaryPages(system)
+            if not options.htmlsummarypages:
+                subjects = system.rootobjects
+        writer.writeIndividualFiles(subjects)
+        
+    if options.makeintersphinx:
+        if not options.makehtml:
+            subjects = system.rootobjects
+        # Generate Sphinx inventory.
+        sphinx_inventory = SphinxInventoryWriter(
+            logger=system.msg,
+            project_name=system.projectname,
+            project_version=system.options.projectversion,
+            )
+        if not os.path.exists(options.htmloutput):
+            os.makedirs(options.htmloutput)
+        sphinx_inventory.generate(
+            subjects=subjects,
+            basepath=options.htmloutput,
+            )
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     """
@@ -223,157 +363,33 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     exitcode = 0
 
-    cache = prepareCache(clearCache=options.clear_intersphinx_cache,
-                         enableCache=options.enable_intersphinx_cache,
-                         cachePath=options.intersphinx_cache_path,
-                         maxAge=options.intersphinx_cache_max_age)
-
     try:
-        # step 1: make/find the system
-        system = options.systemclass(options)
-        system.fetchIntersphinxInventories(cache)
 
-        # step 1.5: check that we're actually going to accomplish something here
-        modules = options.sourcepath
-        if not modules:
-            error("No source paths given.")
-
-        # Support source date epoch:
-        # https://reproducible-builds.org/specs/source-date-epoch/
-        try:
-            system.buildtime = datetime.datetime.utcfromtimestamp(
-                int(os.environ['SOURCE_DATE_EPOCH']))
-        except ValueError as e:
-            error(str(e))
-        except KeyError:
-            pass
+        system = get_system(options)
     
-        # Load custom buildtime
-        if options.buildtime:
-            try:
-                system.buildtime = datetime.datetime.strptime(
-                    options.buildtime, BUILDTIME_FORMAT)
-            except ValueError as e:
-                error(str(e))
-
-        # step 2: add any packages and modules
-
-        prependedpackage = None
-        if options.prependedpackage:
-            for m in options.prependedpackage.split('.'):
-                prependedpackage = system.Package(
-                    system, m, prependedpackage)
-                system.addObject(prependedpackage)
-                initmodule = system.Module(system, '__init__', prependedpackage)
-                system.addObject(initmodule)
+        # step 1.5: check that we're actually going to accomplish something here
+        if not options.sourcepath:
+            error("No source paths given.")
         
-        added_paths = set()
-        for path in modules:
-            if path in added_paths:
-                continue
-            if options.projectbasedirectory is not None:
-                # Note: Path.is_relative_to() was only added in Python 3.9,
-                #       so we have to use this workaround for now.
-                try:
-                    path.relative_to(options.projectbasedirectory)
-                except ValueError as ex:
-                    error(f"Source path lies outside base directory: {ex}")
-            if path.is_dir():
-                system.msg('addPackage', f"adding directory {path}")
-                if not (path / '__init__.py').is_file():
-                    error(f"Source directory lacks __init__.py: {path}")
-                system.addPackage(path, prependedpackage)
-            elif path.is_file():
-                system.msg('addModuleFromPath', f"adding module {path}")
-                system.addModuleFromPath(path, prependedpackage)
-            elif path.exists():
-                error(f"Source path is neither file nor directory: {path}")
-            else:
-                error(f"Source path does not exist: {path}")
-            added_paths.add(path)
+        make(system)
 
-        # step 3: move the system to the desired state
-
-        if system.options.projectname is None:
-            name = '/'.join(system.root_names)
-            system.msg('warning', f"Guessing '{name}' for project name.", thresh=0)
-            system.projectname = name
-        else:
-            system.projectname = system.options.projectname
-
-        system.process()
-
-
-        # step 4: make html, if desired
-
-        if options.makehtml:
-            options.makeintersphinx = True
-            writerclass = options.htmlwriter
-
-            system.msg('html', 'writing html to %s using %s.%s'%(
-                options.htmloutput, writerclass.__module__,
-                writerclass.__name__))
-
-            writer: IWriter
-            
-            # Handle custom HTML templates
-            template_lookup = TemplateLookup()
-            for templatedir in options.templatedir:
-                try:
-                    template_lookup.add_templatedir(templatedir)
-                except UnsupportedTemplateVersion as e:
-                    error(str(e))
-
-            try:
-                writer = writerclass(options.htmloutput, # type: ignore[abstract]
-                    template_lookup=template_lookup)
-            except TypeError:
-                # Custom class does not accept 'template_lookup' argument.
-                writer = writerclass(options.htmloutput) # type: ignore[abstract]
-                warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                    "HTML template customization with --template-dir.")
-
-            writer.prepOutputDirectory()
-
-            subjects: Sequence[model.Documentable] = ()
-            if options.htmlsubjects:
-                subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
-            else:
-                writer.writeSummaryPages(system)
-                if not options.htmlsummarypages:
-                    subjects = system.rootobjects
-            writer.writeIndividualFiles(subjects)
-            if system.docstring_syntax_errors:
-                def p(msg: str) -> None:
-                    system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
-                p("these %s objects' docstrings contain syntax errors:"
-                  %(len(system.docstring_syntax_errors),))
-                exitcode = 2
-                for fn in sorted(system.docstring_syntax_errors):
-                    p('    '+fn)
+        if system.docstring_syntax_errors:
+            def p(msg: str) -> None:
+                system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
+            p("these %s objects' docstrings contain syntax errors:"
+                %(len(system.docstring_syntax_errors),))
+            exitcode = 2
+            for fn in sorted(system.docstring_syntax_errors):
+                p('    '+fn)
 
         if system.violations and options.warnings_as_errors:
             # Update exit code if the run has produced warnings.
             exitcode = 3
-
-        if options.makeintersphinx:
-            if not options.makehtml:
-                subjects = system.rootobjects
-            # Generate Sphinx inventory.
-            sphinx_inventory = SphinxInventoryWriter(
-                logger=system.msg,
-                project_name=system.projectname,
-                project_version=system.options.projectversion,
-                )
-            if not os.path.exists(options.htmloutput):
-                os.makedirs(options.htmloutput)
-            sphinx_inventory.generate(
-                subjects=subjects,
-                basepath=options.htmloutput,
-                )
+        
     except:
         if options.pdb:
             import pdb
             pdb.post_mortem(sys.exc_info()[2])
         raise
+    
     return exitcode
