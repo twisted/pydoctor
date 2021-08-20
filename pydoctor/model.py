@@ -739,6 +739,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
+            assert projBaseDir is not None
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
@@ -945,14 +946,14 @@ class System:
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
 
-# converter classes for model.Options
+# converters for model.Options values
 def _convert_sourcepath(l: List[str]) -> List[Path]:
         return list(map(functools.partial(parse_path, opt='SOURCEPATH'), l))
 def _convert_templatedir(l: List[str]) -> List[Path]:
     return list(map(functools.partial(parse_path, opt='--template-dir'), l))
 def _convert_projectbasedirectory(s: Optional[str]) -> Optional[Path]:
     if s:
-        return parse_path(s, opt='--project-base-directory')
+        return parse_path(s, opt='--project-base-dir')
     else:
         return None
 def _convert_systemclass(s: str) -> Type[System]:
@@ -971,14 +972,14 @@ class Options:
     MAKE_HTML_DEFAULT = object()
     
     sourcepath: List[Path]                  = attr.ib(factory=list, converter=_convert_sourcepath)
-    systemclass: Type[System]               = attr.ib(default='pydoctor.zopeinterface.ZopeInterfaceSystem', 
+    systemclass: Type[System]               = attr.ib(default='pydoctor.zopeinterface.ZopeInterfaceSystem', #type: ignore[assignment] see https://github.com/python/mypy/issues/10998
                                                       converter=_convert_systemclass)
     projectname: Optional[str]              = None
     projectversion: str                     = ''
     projecturl: Optional[str]               = None
     projectbasedirectory: Optional[Path]    = attr.ib(default=None, converter=_convert_projectbasedirectory)
     testing: bool                           = False
-    pdb: bool                               = False
+    pdb: bool                               = False # only working via driver.main()
     makehtml: bool                          = False
     makeintersphinx: bool                   = False
     prependedpackage: Optional[str]         = None
@@ -987,7 +988,7 @@ class Options:
     htmlsubjects: Optional[List[str]]       = None
     htmlsummarypages: bool                  = False
     htmloutput: str                         = 'apidocs' # TODO: make this a Path object once https://github.com/twisted/pydoctor/pull/389/files is merged
-    htmlwriter: Type['IWriter']             = attr.ib(default='pydoctor.templatewriter.TemplateWriter', 
+    htmlwriter: Type['IWriter']             = attr.ib(default='pydoctor.templatewriter.TemplateWriter', #type: ignore[assignment]
                                                       converter=_convert_htmlwriter)
     htmlsourcebase: Optional[str]           = None
     buildtime: Optional[str]                = None
