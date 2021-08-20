@@ -986,7 +986,7 @@ class Options:
     templatedir: List[Path]                 = attr.ib(factory=list, converter=_convert_templatedir)
     htmlsubjects: Optional[List[str]]       = None
     htmlsummarypages: bool                  = False
-    htmloutput: str                         = 'apidocs'
+    htmloutput: str                         = 'apidocs' # TODO: make this a Path object once https://github.com/twisted/pydoctor/pull/389/files is merged
     htmlwriter: Type['IWriter']             = attr.ib(default='pydoctor.templatewriter.TemplateWriter', 
                                                       converter=_convert_htmlwriter)
     htmlsourcebase: Optional[str]           = None
