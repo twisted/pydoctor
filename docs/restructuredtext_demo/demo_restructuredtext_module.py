@@ -4,7 +4,7 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
-from typing import AnyStr, Generator, Union
+from typing import AnyStr, Generator, Union, List, Dict
 
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
