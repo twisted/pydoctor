@@ -804,13 +804,16 @@ class _AnnotationFormatter(ast.NodeVisitor):
         else:
             return self.generic_visit(node)
 
-    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
+    def _handle_sequence(self, tag: Tag, sequence: List[ast.expr]) -> None:
         first = True
-        for elem in sequence:
+        for i, elem in enumerate(sequence):
             if first:
                 first = False
             else:
-                tag(', ', tags.wbr) # Add an potential line break for long types
+                # Add an potential line break for long types, not when it's the last bracket, though.
+                tag(', ')
+                if i < len(sequence)-1:
+                    tag(tags.wbr)
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
