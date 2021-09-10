@@ -391,6 +391,8 @@ class Module(CanContainImportsDocumentable):
         contents could not be parsed, this is L{None}.
         """
 
+        self._docformat: Optional[str] = None
+
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
             o: Documentable = self.contents[name]
@@ -404,6 +406,25 @@ class Module(CanContainImportsDocumentable):
     def module(self) -> 'Module':
         return self
 
+    @property
+    def docformat(self) -> Optional[str]:
+        """The name of the format to be used for parsing docstrings in this module.
+        
+        The docformat value are inherited from packages if a C{__docformat__} variable 
+        is defined in the C{__init__.py} file.
+
+        If no C{__docformat__} variable was found or its
+        contents could not be parsed, this is L{None}.
+        """
+        if self._docformat:
+            return self._docformat
+        elif isinstance(self.parent, Package):
+            return self.parent.docformat
+        return None
+    
+    @docformat.setter
+    def docformat(self, value: str) -> None:
+        self._docformat = value
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
@@ -787,6 +808,8 @@ class System:
             module_full_name = f'{package.fullName()}.{module_name}'
 
         spec = importlib.util.spec_from_file_location(module_full_name, path)
+        if spec is None: 
+            raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
         py_mod = importlib.util.module_from_spec(spec)
         loader = spec.loader
         assert isinstance(loader, importlib.abc.Loader), loader

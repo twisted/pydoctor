@@ -52,7 +52,7 @@ from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
 from docutils.nodes import Node, NodeVisitor, SkipNode, Text
 from docutils.frontend import OptionParser
-from docutils.parsers.rst import Directive, directives
+from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
 from docutils.transforms import Transform
 import docutils.nodes
 import docutils.transforms.frontmatter
