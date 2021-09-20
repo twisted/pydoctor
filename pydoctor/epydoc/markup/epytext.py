@@ -131,12 +131,14 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, List, Optional, Sequence, Union, cast, overload
+from typing import Any, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
 
-from twisted.web.template import CharRef, Tag, tags
-from pydoctor.epydoc.doctest import colorize_doctest
-from pydoctor.epydoc.markup import DocstringLinker, Field, ParseError, ParsedDocstring
+from docutils import utils, nodes
+from twisted.web.template import Tag
+
+from pydoctor.epydoc.docutils import set_node_attributes
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 
 ##################################################
 ## DOM-Like Encoding
@@ -147,7 +149,7 @@ class Element:
     A very simple DOM-like representation for parsed epytext
     documents.  Each epytext document is encoded as a tree whose nodes
     are L{Element} objects, and whose leaves are C{string}s.  Each
-    node is marked by a I{tag} and zero or more I{attributes}.  Each
+    node is marked by a L{tag} and zero or more attributes, L{attribs}.  Each
     attribute is a mapping from a string key to a string value.
     """
     def __init__(self, tag: str, *children: Union[str, 'Element'], **attribs: Any):
@@ -273,7 +275,7 @@ def parse(text: str, errors: Optional[List[ParseError]] = None) -> Optional[Elem
         raise_on_error = True
     else:
         raise_on_error = False
-
+    
     # Preprocess the string.
     text = re.sub('\015\012', '\012', text)
     text = text.expandtabs()
@@ -403,8 +405,6 @@ def _add_para(
     if para_token.indent == indent_stack[-1]:
         # Colorize the paragraph and add it.
         para = _colorize(para_token, errors)
-        if para_token.inline:
-            para.attribs['inline'] = True
         stack[-1].children.append(para)
     else:
         estr = "Improper paragraph indentation."
@@ -603,11 +603,6 @@ class Token:
         heading; C{None}, otherwise.  Valid heading levels are 0, 1,
         and 2.
 
-    @type inline: C{bool}
-    @ivar inline: If True, the element is an inline level element, comparable
-        to an HTML C{<span>} tag. Else, it is a block level element, comparable
-        to an HTML C{<div>}.
-
     @type PARA: C{string}
     @cvar PARA: The C{tag} value for paragraph C{Token}s.
     @type LBLOCK: C{string}
@@ -633,8 +628,7 @@ class Token:
             startline: int,
             contents: str,
             indent: Optional[int],
-            level: Optional[int] = None,
-            inline: bool = False
+            level: Optional[int] = None
             ):
         """
         Create a new C{Token}.
@@ -647,14 +641,12 @@ class Token:
             unknown indentation.
         @param level: The heading-level of this C{Token} if it is a
             heading; C{None}, otherwise.
-        @param inline: Is this C{Token} inline as a C{<span>}?.
         """
         self.tag = tag
         self.startline = startline
         self.contents = contents
         self.indent = indent
         self.level = level
-        self.inline = inline
 
     def __repr__(self) -> str:
         """
@@ -848,8 +840,7 @@ def _tokenize_listart(
         linenum += 1
 
     # Add the bullet token.
-    tokens.append(Token(Token.BULLET, start, bcontents, bullet_indent,
-                        inline=True))
+    tokens.append(Token(Token.BULLET, start, bcontents, bullet_indent))
 
     # Add the paragraph token.
     pcontents = ' '.join(
@@ -857,8 +848,7 @@ def _tokenize_listart(
         [ln.strip() for ln in lines[start+1:linenum]]
         ).strip()
     if pcontents:
-        tokens.append(Token(Token.PARA, start, pcontents, para_indent,
-                            inline=True))
+        tokens.append(Token(Token.PARA, start, pcontents, para_indent))
 
     # Return the linenum after the paragraph token ends.
     return linenum
@@ -1338,6 +1328,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         self._tree = body
         # Caching:
         self._stan: Optional[Tag] = None
+        self._document: Optional[nodes.document] = None
 
     def __str__(self) -> str:
         return str(self._tree)
@@ -1345,76 +1336,85 @@ class ParsedEpytextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return self._tree is not None
+    
+    def to_node(self) -> nodes.document:
 
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        if self._stan is not None:
-            return self._stan
-        if self._tree is None:
-            self._stan = Tag('')
-        else:
-            self._stan = self._to_stan(self._tree, docstring_linker)
-        return self._stan
-
-    def _to_stan(self,
-            tree: Union[Element, str],
-            linker: DocstringLinker,
-            seclevel: int = 0
-            ) -> Any:
-        if isinstance(tree, str):
-            return tree
-
-        if tree.tag == 'section':
-            seclevel += 1
-
-        # Process the variables first.
-        variables = [self._to_stan(c, linker, seclevel) for c in tree.children]
+        if self._document is not None:
+            return self._document
+        
+        self._document = utils.new_document('epytext')
+        
+        if self._tree is not None:
+            node, = self._to_node(self._tree)
+            # The contents is encapsulated inside a section node. 
+            # Reparent the contents of the second level to the root level. 
+            self._document = set_node_attributes(self._document, children=node.children)
+        
+        return self._document
+    
+    def _to_node(self, tree: Element) -> Iterable[nodes.Node]:
+        
+        # Process the children first.
+        variables: List[nodes.Node] = []
+        for child in tree.children:
+            if isinstance(child, str):
+                variables.append(set_node_attributes(nodes.Text(child), document=self._document))
+            else:
+                variables.extend(self._to_node(child))
 
         # Perform the approriate action for the DOM tree type.
         if tree.tag == 'para':
-            if tree.attribs.get('inline'):
-                return variables
-            else:
-                return tags.p(*variables)
+            # tree.attribs.get('inline') does not exist anymore.
+            # the choice to render the <p> tags is handled in HTMLTranslator.should_be_compact_paragraph(), not here anymore
+            yield set_node_attributes(nodes.paragraph('', ''), document=self._document, children=variables)
         elif tree.tag == 'code':
-            return tags.code(*variables)
+            yield set_node_attributes(nodes.literal('', ''), document=self._document, children=variables)
         elif tree.tag == 'uri':
-            return tags.a(variables[0], href=variables[1], target='_top')
+            label, target = variables
+            yield set_node_attributes(nodes.reference(
+                    '', internal=False, refuri=target), document=self._document, children=label.children)
         elif tree.tag == 'link':
             label, target = variables
+            assert isinstance(target, nodes.Text)
+            assert isinstance(label, nodes.inline)
+            # Figure the line number to warn on precise lines. 
+            # This is needed only for links currently.
             lineno = int(cast(Element, tree.children[1]).attribs['lineno'])
-            return linker.link_xref(target, label, lineno)
+            yield set_node_attributes(nodes.title_reference(
+                   '', '', refuri=target.astext()), document=self._document, lineno=lineno, children=label.children)
+        elif tree.tag  == 'name':
+            # name can contain nested inline markup, so we use nodes.inline instead of nodes.Text
+            yield set_node_attributes(nodes.inline('', ''), document=self._document, children=variables)
         elif tree.tag == 'target':
             value, = variables
-            return value
+            yield set_node_attributes(nodes.Text(value), document=self._document)
         elif tree.tag == 'italic':
-            return tags.i(*variables)
+            yield set_node_attributes(nodes.emphasis('', ''), document=self._document, children=variables)
         elif tree.tag == 'math':
-            return tags.i(*variables, class_='math')
+            node = set_node_attributes(nodes.math('', ''), document=self._document, children=variables)
+            node['classes'].append('math')
+            yield node
         elif tree.tag == 'bold':
-            return tags.b(*variables)
+            yield set_node_attributes(nodes.strong('', ''), document=self._document, children=variables)
         elif tree.tag == 'ulist':
-            return tags.ul(*variables)
+            yield set_node_attributes(nodes.bullet_list(''), document=self._document, children=variables)
         elif tree.tag == 'olist':
-            stan = tags.ol(*variables)
-            start = tree.attribs.get('start', '1')
-            if start != '1':
-                stan(start=start)
-            return stan
+            yield set_node_attributes(nodes.enumerated_list(''), document=self._document, children=variables)
         elif tree.tag == 'li':
-            return tags.li(*variables)
+            yield set_node_attributes(nodes.list_item(''), document=self._document, children=variables)
         elif tree.tag == 'heading':
-            return getattr(tags, f'h{seclevel:d}')(*variables)
+            yield set_node_attributes(nodes.title('', ''), document=self._document, children=variables)
         elif tree.tag == 'literalblock':
-            variables.append('\n')
-            return tags.pre('\n', *variables, class_='literalblock')
+            yield set_node_attributes(nodes.literal_block('', ''), document=self._document, children=variables)
         elif tree.tag == 'doctestblock':
-            return colorize_doctest(cast(str, tree.children[0]).strip())
+            yield set_node_attributes(nodes.doctest_block(tree.children[0], tree.children[0]), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('epytext', 'section', 'name'):
-            return Tag('')(*variables)
+        elif tree.tag in ('section', 'epytext'):
+            yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
-            return CharRef(self.SYMBOL_TO_CODEPOINT[symbol])
+            char = chr(self.SYMBOL_TO_CODEPOINT[symbol])
+            yield set_node_attributes(nodes.inline(symbol, char), document=self._document)
         else:
             raise AssertionError(f"Unknown epytext DOM element {tree.tag!r}")

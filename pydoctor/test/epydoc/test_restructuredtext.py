@@ -1,21 +1,68 @@
 from typing import List
+from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
+from pydoctor.node2stan import node2stan
+from pydoctor.stanutils import flatten
 
+from docutils import nodes
 from bs4 import BeautifulSoup
 import pytest
 
+def prettify(html: str) -> str:
+    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
+
+def parse_rst(s: str) -> ParsedDocstring:
+    errors: List[ParseError] = []
+    parsed = parse_docstring(s, errors)
+    assert not errors
+    return parsed
 
 def rst2html(docstring: str, linker: DocstringLinker = NotFoundLinker()) -> str:
     """
     Render a docstring to HTML.
     """
-    errors: List[ParseError] = []
-    parsed = parse_docstring(docstring, errors)
-    assert not errors
-    return flatten(parsed.to_stan(linker))
+    return flatten(parse_rst(docstring).to_stan(linker))
+    
+def node2html(node: nodes.Node, oneline: bool = True) -> str:
+    if oneline:
+        return ''.join(prettify(flatten(node2stan(node, NotFoundLinker()))).splitlines())
+    else:
+        return flatten(node2stan(node, NotFoundLinker()))
+
+def rst2node(s: str) -> nodes.document:
+    return parse_rst(s).to_node()
+
+def test_rst_partial() -> None:
+    """
+    The L{node2html()} function can convert fragment of a L{docutils} document, 
+    it's not restricted to actual L{docutils.nodes.document} object. 
+    
+    Really, any nodes can be passed to that function, the only requirement is 
+    that the node's C{document} attribute is set to a valid L{docutils.nodes.document} object.
+    """
+    doc = dedent('''
+        This is a paragraph.  Paragraphs can
+        span multiple lines, and can contain
+        `inline markup`.
+
+        This is another paragraph.  Paragraphs
+        are separated by blank lines.
+        ''')
+    expected = dedent('''
+        <p>This is another paragraph.  Paragraphs
+        are separated by blank lines.</p>
+        ''').lstrip()
+    
+    node = rst2node(doc)
+
+    for child in node[:]:
+          assert isinstance(child, nodes.paragraph)
+    
+    assert node2html(node[-1], oneline=False) == expected
+    assert node[-1].parent == node
 
 def test_rst_body_empty() -> None:
     src = """
@@ -55,8 +102,15 @@ def test_rst_anon_link_email() -> None:
     assert ' href="mailto:postmaster@example.net"' in html
     assert html.endswith('>mailto:postmaster@example.net</a>')
 
-def prettify(html: str) -> str:
-    return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
+def test_rst_xref_with_target() -> None:
+    src = "`mapping <typing.MutableMapping>`"
+    html = rst2html(src)
+    assert html.startswith('<code>mapping</code>')
+
+def test_rst_xref_implicit_target() -> None:
+    src = "`func()`"
+    html = rst2html(src)
+    assert html.startswith('<code>func()</code>')
 
 def test_rst_directive_adnomitions() -> None:
     expected_html_multiline="""

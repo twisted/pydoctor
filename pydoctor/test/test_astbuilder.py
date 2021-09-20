@@ -7,7 +7,8 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -1569,7 +1570,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert oldschool.kind is model.DocumentableKind.PROPERTY
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
-    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
+    assert flatten(format_summary(oldschool)) == 'For rent.'
     assert isinstance(oldschool.parsed_type, ParsedEpytextDocstring)
     assert str(unwrap(oldschool.parsed_type)) == 'string'
     fields = oldschool.parsed_docstring.fields
