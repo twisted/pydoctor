@@ -79,7 +79,7 @@ def findRootClasses(
                     # The base object is in an external library or filtered out (not visible)
                     # Take special care to avoid AttributeError: 'ZopeInterfaceClass' object has no attribute 'append'.
                     if isinstance(roots.get(name), model.Class):
-                        roots[name] = [roots[name]]
+                        roots[name] = [cast(model.Class, roots[name])]
                     cast(List[model.Class], roots.setdefault(name, [])).append(cls)
                 elif base.system is not system:
                     # Edge case with multiple systems, is it even possible to run into this code?
