@@ -1,6 +1,6 @@
 include setup.cfg
-graft pydoctor/templates
-graft doc
+graft pydoctor/themes
+graft docs
 include *.txt *.tac
 include MANIFEST.in
 include *.cfg
