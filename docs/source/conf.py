@@ -114,6 +114,7 @@ pydoctor_args = {
         f'--project-version={version}',
         '--docformat=epytext',
         '--project-url=../customize.html',
+        '--theme=base',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,

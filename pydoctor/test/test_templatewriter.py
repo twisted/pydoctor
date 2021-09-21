@@ -2,13 +2,26 @@ from io import BytesIO
 from typing import Callable
 import pytest
 import warnings
-from pathlib import Path
+import sys
+import tempfile
+import os
+from pathlib import Path, PurePath
 from pydoctor import model, templatewriter
-from pydoctor.templatewriter import pages, writer, TemplateLookup, Template, _StaticTemplate, _HtmlTemplate, UnsupportedTemplateVersion
+from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
+                                     TemplateLookup, Template, 
+                                     HtmlTemplate, UnsupportedTemplateVersion, 
+                                     OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
+
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
+template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
 def filetext(path: Path) -> str:
     with path.open('r', encoding='utf-8') as fobj:
@@ -22,7 +35,7 @@ def flatten(t: ChildTable) -> str:
 
 
 def getHTMLOf(ob: model.Documentable) -> str:
-    wr = templatewriter.TemplateWriter('')
+    wr = templatewriter.TemplateWriter(Path(), TemplateLookup(template_dir))
     f = BytesIO()
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
@@ -39,13 +52,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup()))
+    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -68,7 +81,7 @@ def test_document_code_in_init_module() -> None:
 
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
-    w = writer.TemplateWriter(str(tmp_path))
+    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
     system.options.htmlusesplitlinks = True
     system.options.htmlusesorttable = True
     w.prepOutputDirectory()
@@ -80,7 +93,7 @@ def test_basic_package(tmp_path: Path) -> None:
         if '#' in url:
             url = url[:url.find('#')]
         assert (tmp_path / url).is_file()
-    with open(tmp_path / 'basic.html') as f:
+    with open(tmp_path / 'basic.html', encoding='utf-8') as f:
         assert 'Package docstring' in f.read()
 
 def test_hasdocstring() -> None:
@@ -125,66 +138,73 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     assert "methodB" in html
 
 def test_html_template_version() -> None:
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
     for template in lookup._templates.values():
-        if isinstance(template, _HtmlTemplate) and not template.is_empty():
+        if isinstance(template, HtmlTemplate) and not len(template.text.strip()) == 0:
             assert template.version >= 1
 
 def test_template_lookup_get_template() -> None:
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     here = Path(__file__).parent
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    index = lookup.get_template('index.html')
+    assert isinstance(index, HtmlTemplate)
+    assert index.text == filetext(template_dir / 'index.html')
 
-    lookup.add_template(_HtmlTemplate(name='footer.html', text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
+    lookup.add_template(HtmlTemplate(name='footer.html', 
+                            text=filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')))
 
-    assert lookup.get_template('footer.html').text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
+    footer = lookup.get_template('footer.html')
+    assert isinstance(footer, HtmlTemplate)
+    assert footer.text == filetext(here / 'testcustomtemplates' / 'faketemplate' / 'footer.html')
 
-    assert lookup.get_template('index.html').text == filetext(here.parent / 'templates' / 'index.html')
+    index2 = lookup.get_template('index.html')
+    assert isinstance(index2, HtmlTemplate)
+    assert index2.text == filetext(template_dir / 'index.html')
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
-    assert lookup.get_template('footer.html').text == filetext(here.parent / 'templates' / 'footer.html')
+    footer = lookup.get_template('footer.html')
+    assert isinstance(footer, HtmlTemplate)
+    assert footer.text == filetext(template_dir / 'footer.html')
 
-    assert lookup.get_template('subheader.html').version == -1
+    subheader = lookup.get_template('subheader.html')
+    assert isinstance(subheader, HtmlTemplate)
+    assert subheader.version == -1
 
-    assert lookup.get_template('table.html').version == 1
+    table = lookup.get_template('table.html')
+    assert isinstance(table, HtmlTemplate)
+    assert table.version == 1
 
 def test_template_lookup_add_template_warns() -> None:
 
-    lookup = TemplateLookup()
+    lookup = TemplateLookup(template_dir)
 
     here = Path(__file__).parent
 
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'nav.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='nav.html'))
+            lookup.add_template(HtmlTemplate(text=fobj.read(), name='nav.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
     assert "Your custom template 'nav.html' is out of date" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'table.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='table.html'))
+            lookup.add_template(HtmlTemplate(text=fobj.read(), name='table.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
     assert "Could not read 'table.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
         with (here / 'testcustomtemplates' / 'faketemplate' / 'summary.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='summary.html'))
+            lookup.add_template(HtmlTemplate(text=fobj.read(), name='summary.html'))
     assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
     assert "Could not read 'summary.html' template version" in str(catch_warnings.pop().message)
 
     with pytest.warns(UserWarning) as catch_warnings:
-        with (here / 'testcustomtemplates' / 'faketemplate' / 'random.html').open('r', encoding='utf-8') as fobj:
-            lookup.add_template(_HtmlTemplate(text=fobj.read(), name='random.html'))
-    assert len(catch_warnings) == 1, [str(w.message) for w in catch_warnings]
-    assert "Invalid template filename 'random.html'" in str(catch_warnings.pop().message)
-
-    with pytest.warns(UserWarning) as catch_warnings:
         lookup.add_templatedir(here / 'testcustomtemplates' / 'faketemplate')
-    assert len(catch_warnings) == 4, [str(w.message) for w in catch_warnings]
+    assert len(catch_warnings) == 2, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_allok() -> None:
 
@@ -192,40 +212,186 @@ def test_template_lookup_add_template_allok() -> None:
 
     with warnings.catch_warnings(record=True) as catch_warnings:
         warnings.simplefilter("always")
-        lookup = TemplateLookup()
+        lookup = TemplateLookup(template_dir)
         lookup.add_templatedir(here / 'testcustomtemplates' / 'allok')
     assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
 
 def test_template_lookup_add_template_raises() -> None:
 
-    lookup = TemplateLookup()
+    here = Path(__file__).parent
+
+    lookup = TemplateLookup(template_dir)
 
     with pytest.raises(UnsupportedTemplateVersion):
-        lookup.add_template(_HtmlTemplate(name="nav.html", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+        lookup.add_template(HtmlTemplate(name="nav.html", text="""
+        <nav>
             <meta name="pydoctor-template-version" content="2050" />
-            <div class="container"> </div>
         </nav>
         """))
 
     with pytest.raises(ValueError):
-        lookup.add_template(_HtmlTemplate(name="nav.html", text="""
-        <nav class="navbar navbar-default" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-            <meta name="pydoctor-template-version" content="1" />
-            <div class="container"> </div>
-        </nav>
-        <span> Words </span>
-        """))
+        lookup.add_template(HtmlTemplate(name="nav.html", text="<nav></nav><span> Words </span>"))
+    
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(HtmlTemplate(name="apidocs.css", text="<nav></nav>"))
+
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(StaticTemplate(name="index.html", data=bytes()))
+
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'subfolders')
+
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(StaticTemplate('static', data=bytes()))
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(HtmlTemplate('static/fonts', text="<nav></nav>"))
+    with pytest.raises(OverrideTemplateNotAllowed):
+        lookup.add_template(HtmlTemplate('Static/Fonts', text="<nav></nav>"))
+    # Should not fail
+    lookup.add_template(StaticTemplate('tatic/fonts', data=bytes()))
+
+
+def test_template_fromdir_fromfile_failure() -> None:
+
+    here = Path(__file__).parent
+    
+    with pytest.raises(FailedToCreateTemplate):
+        [t for t in Template.fromdir(here / 'testcustomtemplates' / 'thisfolderdonotexist')]
+    
+    template = Template.fromfile(here / 'testcustomtemplates' / 'subfolders', PurePath())
+    assert not template
+
+    template = Template.fromfile(here / 'testcustomtemplates' / 'thisfolderdonotexist', PurePath('whatever'))
+    assert not template
 
 def test_template() -> None:
 
     here = Path(__file__).parent
 
-    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'pydoctor.js')
-    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate' / 'nav.html')
+    js_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('pydoctor.js'))
+    html_template = Template.fromfile(here / 'testcustomtemplates' / 'faketemplate', PurePath('nav.html'))
 
-    assert isinstance(js_template, _StaticTemplate)
-    assert isinstance(html_template, _HtmlTemplate)
+    assert isinstance(js_template, StaticTemplate)
+    assert isinstance(html_template, HtmlTemplate)
+
+def test_template_subfolders_write(tmp_path: Path) -> None:
+    here = Path(__file__).parent
+    test_build_dir = tmp_path
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+     # writes only the static template
+
+    for t in lookup.templates:
+        if isinstance(t, StaticTemplate):
+            t.write(test_build_dir)
+
+    assert test_build_dir.joinpath('static').is_dir()
+    assert not test_build_dir.joinpath('atemplate.html').exists()
+    assert test_build_dir.joinpath('static/info.svg').is_file()
+    assert test_build_dir.joinpath('static/lol.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts').is_dir()
+    assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
+    assert test_build_dir.joinpath('static/fonts/foo.svg').is_file()
+
+def test_template_subfolders_overrides() -> None:
+    here = Path(__file__).parent
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+    atemplate = lookup.get_template('atemplate.html')
+    static_info = lookup.get_template('static/info.svg')
+    static_lol = lookup.get_template('static/lol.svg')
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
+
+    assert isinstance(atemplate, HtmlTemplate)
+    assert isinstance(static_info, StaticTemplate)
+    assert isinstance(static_lol, StaticTemplate)
+    assert isinstance(static_fonts_bar, StaticTemplate)
+    assert isinstance(static_fonts_foo, StaticTemplate)
+
+    assert len(static_fonts_foo.data) == 0
+
+    # Load subfolder contents that will override only one template: static/fonts/foo.svg
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'overridesubfolders')
+
+    # test nothing changed
+    atemplate = lookup.get_template('atemplate.html')
+    static_info = lookup.get_template('static/info.svg')
+    static_lol = lookup.get_template('static/lol.svg')
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    static_fonts_foo = lookup.get_template('static/fonts/foo.svg')
+
+    assert isinstance(atemplate, HtmlTemplate)
+    assert isinstance(static_info, StaticTemplate)
+    assert isinstance(static_lol, StaticTemplate)
+    assert isinstance(static_fonts_bar, StaticTemplate)
+    assert isinstance(static_fonts_foo, StaticTemplate)
+
+    # Except for the overriden file
+    assert len(static_fonts_foo.data) > 0
+
+def test_template_casing() -> None:
+    
+    here = Path(__file__).parent
+
+    html_template1 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test1/nav.HTML'))
+    html_template2 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test2/nav.Html'))
+    html_template3 = Template.fromfile(here / 'testcustomtemplates' / 'casing', PurePath('test3/nav.htmL'))
+
+    assert isinstance(html_template1, HtmlTemplate)
+    assert isinstance(html_template2, HtmlTemplate)
+    assert isinstance(html_template3, HtmlTemplate)
+
+def test_templatelookup_casing() -> None:
+    here = Path(__file__).parent
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'casing' / 'test1')
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'casing' / 'test2')
+    lookup.add_templatedir(here / 'testcustomtemplates' / 'casing' / 'test3')
+
+    assert len(list(lookup.templates)) == 1
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+    assert lookup.get_template('atemplate.html') == lookup.get_template('ATemplaTe.HTML')
+    assert lookup.get_template('static/fonts/bar.svg') == lookup.get_template('StAtic/Fonts/BAr.svg')
+
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    assert static_fonts_bar.name == 'static/fonts/bar.svg'
+
+    lookup.add_template(StaticTemplate('Static/Fonts/Bar.svg', bytes()))
+
+    static_fonts_bar = lookup.get_template('static/fonts/bar.svg')
+    assert static_fonts_bar.name == 'static/fonts/bar.svg' # the Template.name attribute has been changed by add_template()
+
+def is_fs_case_sensitive() -> bool:
+    # From https://stackoverflow.com/a/36580834
+    with tempfile.NamedTemporaryFile(prefix='TmP') as tmp_file:
+        return(not os.path.exists(tmp_file.name.lower()))
+
+@pytest.mark.skipif(not is_fs_case_sensitive(), reason="This test requires a case sensitive file system.")
+def test_template_subfolders_write_casing(tmp_path: Path) -> None:
+
+    here = Path(__file__).parent
+    test_build_dir = tmp_path
+
+    lookup = TemplateLookup(here / 'testcustomtemplates' / 'subfolders')
+
+    lookup.add_template(StaticTemplate('static/Info.svg', data=bytes()))
+    lookup.add_template(StaticTemplate('Static/Fonts/Bar.svg', data=bytes()))
+
+    # writes only the static template
+
+    for t in lookup.templates:
+        if isinstance(t, StaticTemplate):
+            t.write(test_build_dir)
+
+    assert test_build_dir.joinpath('static/info.svg').is_file()
+    assert not test_build_dir.joinpath('static/Info.svg').is_file()
+
+    assert not test_build_dir.joinpath('Static/Fonts').is_dir()
+    assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
 
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])

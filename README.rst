@@ -74,6 +74,7 @@ in development
 ^^^^^^^^^^^^^^
 * Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
 * Introduced fields ``warns`` and ``yields``. 
+* Add support for multiple themes, selectable with ``--theme`` option.
 * Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
