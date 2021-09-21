@@ -7,7 +7,8 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, flatten, get_parser_by_name
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, get_parser_by_name
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.sphinx import SphinxInventory
@@ -60,7 +61,11 @@ def docstring2html(obj: model.Documentable) -> str:
 
 def summary2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
-    assert stan.tagName == 'span' or stan.tagName == '', stan
+    if stan.attributes.get('class') == 'undocumented':
+        assert stan.tagName == 'span', stan
+    else:
+        # Summaries are now generated without englobing <span> when we don't need one. 
+        assert stan.tagName == '', stan
     return flatten(stan.children)
 
 
@@ -871,7 +876,7 @@ def test_module_docformat(capsys: CapSys) -> None:
     """
 
     system = model.System()
-    system.options.docformat = 'restructuredtext'
+    system.options.docformat = 'plaintext'
 
     mod = fromText('''
     """
@@ -1110,3 +1115,75 @@ def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()
 
     assert flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', ' ') == expected
+
+def test_module_docformat_inheritence(capsys: CapSys) -> None:
+    top_src = '''
+    def f(a: str, b: int): 
+        """
+        :param a: string
+        :param b: integer
+        """
+        pass
+    '''
+    mod_src = '''
+    def f(a: str, b: int): 
+        """
+        @param a: string
+        @param b: integer
+        """
+        pass
+    '''
+    pkg_src = '''
+    __docformat__ = 'epytext'
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    top = fromText(top_src, modname='top', is_package=True, system=system)
+    fromText(pkg_src, modname='pkg', parent_name='top', is_package=True,
+                   system=system)
+    mod = fromText(mod_src, modname='top.pkg.mod', parent_name='top.pkg', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert ''.join(docstring2html(top.contents['f']).splitlines()) == ''.join(docstring2html(mod.contents['f']).splitlines())
+    
+
+def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
+
+    mod_src = '''
+    __docformat__ = "restructuredtext"
+
+    class A:
+        def f(self, a: str, b: int): 
+            """
+            .. note:: Note.
+            """
+    '''
+
+    mod2_src = '''
+    from mod import A
+    __docformat__ = "epytext"
+
+    class B(A):
+        def f(self, a: str, b: int): 
+            pass
+    '''
+
+    system = model.System()
+    system.options.docformat = 'epytext'
+
+    mod = fromText(mod_src, modname='mod', system=system)
+    mod2 = fromText(mod2_src, modname='mod2', system=system)
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    B_f = mod2.resolveName('B.f')
+    A_f = mod.resolveName('A.f')
+
+    assert B_f
+    assert A_f
+
+    assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())

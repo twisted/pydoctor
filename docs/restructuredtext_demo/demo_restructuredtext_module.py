@@ -4,14 +4,15 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 
-from typing import List
+
+from typing import AnyStr, Generator, Union, List, Dict
 
 
 def demo_fields_docstring_arguments(m, b = 0):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function's ":type:" tags are taking advantage of the --process-types. 
+    This function's ":type:" tags are taking advantage of the --process-types.
 
     :type  m: numbers.Number
     :param m: The slope of the line.
@@ -44,6 +45,13 @@ def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     return True
 
+def demo_long_function_and_parameter_names__this_indeed_very_long(
+        this_is_a_very_long_parameter_name_aahh: str, 
+        what__another_super_super_long_name__ho_no: Generator[Union[List[AnyStr], Dict[str, AnyStr]], None, None]) -> bool:
+    """
+    Long names and annotations should display on several lines when they don't fit in a single line. 
+    """
+    return True
 
 def demo_cross_reference() -> None:
     r"""

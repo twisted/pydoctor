@@ -65,7 +65,7 @@ __ https://docutils.sourceforge.io/rst.html
 __ https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings
 __ https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
-You can select a different format using the ``--docformat`` option.
+You can select a different format using the ``--docformat`` option or the ``__docformat__`` module variable. 
 
 What's New?
 ~~~~~~~~~~~
@@ -74,6 +74,7 @@ in development
 ^^^^^^^^^^^^^^
 * Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
 * Introduced fields ``warns`` and ``yields``. 
+* Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
 

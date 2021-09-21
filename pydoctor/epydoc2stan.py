@@ -8,6 +8,7 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
+import sys
 import itertools
 
 import astor
@@ -652,7 +653,8 @@ def parse_docstring(
         This can differ from C{obj} if the docstring is inherited.
     """
 
-    parser = get_parser(obj)
+    # the docstring should be parsed using the format of the module it was inherited from
+    parser = get_parser(source)
     errs: List[ParseError] = []
     try:
         parsed_doc = parser(doc, errs, getattr(obj.system.options, 'processtypes', False))
@@ -848,13 +850,16 @@ class _AnnotationFormatter(ast.NodeVisitor):
         else:
             return self.generic_visit(node)
 
-    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
+    def _handle_sequence(self, tag: Tag, sequence: List[ast.expr]) -> None:
         first = True
-        for elem in sequence:
+        for i, elem in enumerate(sequence):
             if first:
                 first = False
             else:
-                tag(', ', tags.wbr) # Add an potential line break for long types
+                # Add an potential line break for long types, not when it's the last bracket, though.
+                tag(', ')
+                if i < len(sequence)-1:
+                    tag(tags.wbr)
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
@@ -884,7 +889,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
         tag(self.visit(node.value))
         tag('[', tags.wbr)
         sub: ast.AST = node.slice
-        if isinstance(sub, ast.Index):
+        if sys.version_info < (3, 9) and isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
             sub = sub.value
         if isinstance(sub, ast.Tuple):

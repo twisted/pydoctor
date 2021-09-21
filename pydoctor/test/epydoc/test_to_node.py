@@ -1,7 +1,8 @@
 from typing import List
-from pydoctor.epydoc.markup import ParseError, ParsedDocstring, get_parser_by_name, flatten
+from pydoctor.epydoc.markup import ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 from pydoctor.test import NotFoundLinker
+from pydoctor.stanutils import flatten
 
 def doc2html(doc: str, markup: str) -> str:
     return ''.join(prettify(flatten(parse_docstring(doc, markup).to_stan(NotFoundLinker()))).splitlines())

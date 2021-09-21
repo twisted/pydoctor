@@ -3,7 +3,7 @@ from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
 from pydoctor.test import NotFoundLinker
 from pydoctor.model import Attribute, System, Function
-from pydoctor.epydoc.markup import flatten
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
 from pydoctor.epydoc.markup.numpy import get_parser as get_numpy_parser
 

@@ -7,7 +7,8 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -569,8 +570,8 @@ def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
-    assert mod.docformat == None
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    assert mod.docformat is None
     assert '__docformat__' not in mod.contents
 
 @systemcls_param
@@ -583,7 +584,7 @@ def test_docformat_warn_not_str2(systemcls: Type[model.System], capsys: CapSys) 
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", not a string\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 
@@ -597,7 +598,7 @@ def test_docformat_warn_empty(systemcls: Type[model.System], capsys: CapSys) -> 
         pass
     ''', systemcls=systemcls, modname='mod')
     captured = capsys.readouterr().out
-    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__", no value\n'
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": empty value\n'
     assert mod.docformat == None
     assert '__docformat__' not in mod.contents
 

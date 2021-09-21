@@ -432,7 +432,7 @@ class TypeDocstring:
         ]
 
         converted = ""
-        last_token = ("", "")
+        last_token: Tuple[Union[str, Any], TokenType] = ("", TokenType.ANY)
 
         iter_types: peek_iter[Tuple[str, TokenType]] = peek_iter(self._tokens)
         for token, type_ in iter_types:

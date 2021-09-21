@@ -9,9 +9,6 @@ If you are looking for a successor to ``epydoc`` after moving to Python 3, ``pyd
 
 - ``pydoctor`` dropped support for the ``X{}`` tag. All other epytext markup syntax should be fully supported.
 
-- Specific per file ``__docformat__`` are not supported yet, though it won't create errors if you keep them.
-
-
 From ``pdoc3``
 --------------
 
