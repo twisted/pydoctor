@@ -33,6 +33,42 @@ jobs:
         python -c "print('\nENVIRONMENT VARIABLES\n=====================\n')"
         python -c "import os; [print(f'{k}={v}') for k, v in os.environ.items()]"
 
-    - name: Generate API docs
+    - name: Generate API docs (1/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (2/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (3/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (4/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (5/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (6/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (7/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (8/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (9/10)
+      run: |
+        tox -e ${{ matrix.tox_target }}
+    
+    - name: Generate API docs (10/10)
       run: |
         tox -e ${{ matrix.tox_target }}
