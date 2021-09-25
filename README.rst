@@ -63,6 +63,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+pydoctor 21.9.0
+^^^^^^^^^^^^^^^
+
 * Add support for multiple themes, selectable with ``--theme`` option.
 * Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
