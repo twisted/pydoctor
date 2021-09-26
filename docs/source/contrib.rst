@@ -45,6 +45,7 @@ The following process ensures correct version management:
         git push --tags
 
  - Update the version on the branch and append ``.dev0`` to the current version number. In this way, stable versions only exist for a brief period of time (if someone tries to do a ``pip install`` from the git source, they will get a ``.dev0`` version instead of a misleading stable version number.
+ - Update the README file and add an empty placeholder for unreleased changes.
  - Merge the branch
 
 Author Design Notes
