@@ -32,17 +32,20 @@ environment dedicated to that extra test.
 Releasing and publishing a new package
 --------------------------------------
 
-Publishing to PyPI is done via a GitHub Actions workflow that is triggered when a tag is pushed.
+Publishing to PyPI is done via a GitHub Actions workflow that is triggered when a tag is pushed. Version is configured in the ``setup.cfg``. 
 
-First commit the version update to master and wait for tests to pass.
+The following process ensures correct version management: 
 
-You can push a tag by creating a `GitHub release <https://github.com/twisted/pydoctor/releases/new>`_.
+ - Create a branch: name it by the name of the new major ``pydoctor`` version, i.e. ``21.9.x``, re-use that same branch for bug-fixes.
+ - On the branch, update the version and release notes.
+ - Create a PR for that branch, wait for tests to pass and get an approval.
+ - Create a tag based on the ``HEAD`` of the release branch, name it by the full version number of the ``pydoctor`` version, i.e. ``21.9.1``, this will trigger the release. For instance::
 
-You can also create a tag on local branch then push it::
-
-        git tag 1.2.3
+        git tag 21.9.1
         git push --tags
 
+ - Update the version on the branch and append ``.dev0`` to the current version number. In this way, stable versions only exist for a brief period of time (if someone tries to do a ``pip install`` from the git source, they will get a ``.dev0`` version instead of a misleading stable version number.
+ - Merge the branch
 
 Author Design Notes
 -------------------
