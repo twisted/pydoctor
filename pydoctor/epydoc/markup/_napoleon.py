@@ -52,6 +52,7 @@ class NapoelonDocstringParser:
         @param docstring: The docstring to parse
         @param errors: A list where any errors generated during parsing
             will be stored.
+        @param processtypes: processtypes is always ``True`` for google and numpy docstrings.
         """
         return self._parse_docstring(
             docstring, errors, NumpyDocstring, )
@@ -83,4 +84,4 @@ class NapoelonDocstringParser:
             # TODO: double check the line number
             errors.append(ParseError(warn, lineno - 2, is_fatal=False))
         # Get the converted reST string and parse it with docutils
-        return restructuredtext.parse_docstring(str(docstring_obj), errors)
+        return restructuredtext.parse_docstring(str(docstring_obj), errors, processtypes=True)

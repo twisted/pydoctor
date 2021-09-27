@@ -484,8 +484,9 @@ class GoogleDocstring:
     )
 
     # overriden
-    def __init__(
-        self, docstring: Union[str, List[str]], is_attribute: bool = False
+    def __init__(self, docstring: Union[str, List[str]], 
+        is_attribute: bool = False, 
+        process_type_fields: bool = False,
     ) -> None:
         """
         Parameters
@@ -493,12 +494,17 @@ class GoogleDocstring:
         docstring : str or list of str
             The docstring to parse, given either as a string or split into
             individual lines.
-        is_attribute: `bool`
+        is_attribute: bool
             If the documented object is an attribute,
             it will use the `_parse_attribute_docstring` method.
+        process_type_fields: bool
+            Whether to process the type fields or to leave them untouched (default) in order to be processed later.
+            Value ``process_type_fields=False`` is currently only used in the tests.
         """
 
         self._is_attribute = is_attribute
+        self._process_type_fields = process_type_fields
+        
         if isinstance(docstring, str):
             lines = docstring.splitlines()
         else:
@@ -752,18 +758,30 @@ class GoogleDocstring:
         return lines + self._consume_empty()
 
     # new method: handle type pre-processing the same way for google and numpy style.
-    def _convert_type(self, _type: str) -> str:
+    def _convert_type(self, _type: str, is_type_field: bool = True) -> str:
         """
-        Tokenize the string type and convert it with additional markup and auto linking with L{TypeDocstring}.
+        Tokenize the string type and convert it with additional markup and auto linking, 
+        with L{TypeDocstring}.
+        
+        Arguments
+        ---------
+        _type: bool
+            the string type to convert.
+        is_type_field: bool
+            Whether the string is the content of a ``:type:`` or ``rtype`` field. 
+            If this is ``True`` and `GoogleDocstring`'s ``process_type_fields`` is ``False`` (defaults), 
+            the type will NOT be converted (instead, it's returned as is) because it will be converted by the code provided by 
+            `pydoctor.epydoc.markup._types.ParsedTypeDocstring` in a later stage of docstring parsing. 
         """
-        # handle warnings line number
-        linenum = self._line_iter.counter
-        type_spec = TypeDocstring(_type)
-        # convert
-        _type = str(type_spec)
-        # append warnings
-        for warn in type_spec.warnings:
-            self.warnings.append((warn, linenum - 1))
+        if not is_type_field or self._process_type_fields:
+            # handle warnings line number
+            linenum = self._line_iter.counter
+            type_spec = TypeDocstring(_type)
+            # convert
+            _type = str(type_spec)
+            # append warnings
+            for warn in type_spec.warnings:
+                self.warnings.append((warn, linenum))
         return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
@@ -1101,7 +1119,8 @@ class GoogleDocstring:
         lines = []  # type: List[str]
         for _name, _, _desc in self._consume_fields(parse_type=False):
             _init_methods_section()
-            lines.append(f"   {self._convert_type(_name)}")
+            # This is the only occurence of the is_type_field=False feature.
+            lines.append(f"   {self._convert_type(_name, is_type_field=False)}")
             if _desc:
                 lines.extend(self._indent(_desc, 7))
             lines.append("")
@@ -1365,18 +1384,6 @@ class NumpyDocstring(GoogleDocstring):
         :rtype: `str`
 
     """
-
-    def __init__(
-        self, docstring: Union[str, List[str]], is_attribute: bool = False
-    ) -> None:
-        """
-        Parameters
-        ----------
-        docstring : str or list of str
-            The docstring to parse, given either as a string or split into
-            individual lines.
-        """
-        super().__init__(docstring, is_attribute)
 
     def _escape_args_and_kwargs(self, name: str) -> str:
         func = super()._escape_args_and_kwargs

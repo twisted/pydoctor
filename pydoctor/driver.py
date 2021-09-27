@@ -413,13 +413,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         else:
             error("No source paths given.")
 
-        # Disable the tokenizing of the type information for google and numpy docformat, 
-        # because the type processing already happens at the string level. 
-        if system.options.processtypes and system.options.docformat in ['google', 'numpy']:
-            system.msg("warning", "Google and numpy docformat parsers already pre-process the types, no need to specify the '--process-types' option.")
-            # it's ignored by google and numpy parsers anyway, but we still set it to False
-            system.options.processtypes = False
-
         # step 3: move the system to the desired state
 
         if system.options.projectname is None:
