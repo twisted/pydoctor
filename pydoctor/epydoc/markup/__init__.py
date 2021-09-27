@@ -51,6 +51,7 @@ from twisted.web.template import Tag
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from pydoctor.model import Documentable
 
 from pydoctor import node2stan
 
@@ -75,8 +76,7 @@ def get_supported_docformats() -> Iterator[str]:
         else:
             yield moduleName
 
-# 'Any' avoids a circular import with model.Documentable
-def get_parser_by_name(docformat: str, obj: Optional[Any] = None) -> Callable[[str, List['ParseError'], bool], 'ParsedDocstring']:
+def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> Callable[[str, List['ParseError'], bool], 'ParsedDocstring']:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
 
@@ -84,7 +84,8 @@ def get_parser_by_name(docformat: str, obj: Optional[Any] = None) -> Callable[[s
         or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
     """
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
-    return mod.get_parser(obj) # type: ignore[attr-defined, no-any-return]
+    # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
+    return mod.get_parser(obj) # type:ignore[no-any-return, attr-defined]
 
 ##################################################
 ## ParsedDocstring
