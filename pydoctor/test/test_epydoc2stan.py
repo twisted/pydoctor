@@ -1,21 +1,18 @@
 from typing import List, Optional, cast, TYPE_CHECKING
 import re
-from textwrap import dedent
 
 from pytest import mark, raises
 import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, get_parser_by_name
+from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
-from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test.epydoc.test_to_node import parse_docstring
-from pydoctor.napoleon.docstring import TokenType
-from pydoctor.test import CapSys, NotFoundLinker
+from pydoctor.test import CapSys
+
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
@@ -907,214 +904,6 @@ def test_module_docformat(capsys: CapSys) -> None:
     
     assert ('Link to pydoctor: <a class="rst-reference external"'
         ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))
-
-def test_parsed_type_convert_obj_tokens_to_stan() -> None:
-    
-    convert_obj_tokens_cases = [
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ)]),    
-
-                ([("list", TokenType.OBJ), ("(", TokenType.DELIMITER), ("int", TokenType.OBJ), (")", TokenType.DELIMITER), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)], 
-                [(Tag('code', children=['list', '(', 'int', ')']), TokenType.OBJ), (", ", TokenType.DELIMITER), ("optional", TokenType.CONTROL)]),
-            ] 
-
-    ann = ParsedTypeDocstring("")
-
-    for tokens_types, expected_token_types in convert_obj_tokens_cases:
-
-        assert str(ann._convert_obj_tokens_to_stan(tokens_types, NotFoundLinker()))==str(expected_token_types)
-
-
-def typespec2htmlvianode(s: str, markup: str) -> str:
-    err: List[ParseError] = []
-    parsed_doc = get_parser_by_name(markup)(s, err, False)
-    assert not err
-    ann = ParsedTypeDocstring(parsed_doc.to_node(), warns_on_unknown_tokens=True)
-    html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings
-    return html
-
-def typespec2htmlviastr(s: str) -> str:
-    ann = ParsedTypeDocstring(s, warns_on_unknown_tokens=True)
-    html = flatten(ann.to_stan(NotFoundLinker()))
-    assert not ann.warnings
-    return html
-
-def test_parsed_type() -> None:
-    
-    parsed_type_cases = [
-        ('list of int or float or None', 
-        '<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>'),
-
-        ("{'F', 'C', 'N'}, default 'N'",
-        """<span class="literal">{'F', 'C', 'N'}</span>, <em>default</em> <span class="literal">'N'</span>"""),
-
-        ("DataFrame, optional",
-        "<code>DataFrame</code>, <em>optional</em>"),
-
-        ("List[str] or list(bytes), optional", 
-        "<code>List[str]</code> or <code>list(bytes)</code>, <em>optional</em>"),
-
-        (('`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`', 'L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}'),
-        '<code>complicated string</code> or <code>strIO</code>'),
-    ]
-
-    for string, excepted_html in parsed_type_cases:
-        rst_string = ''
-        epy_string = ''
-
-        if isinstance(string, tuple):
-            rst_string, epy_string = string
-        elif isinstance(string, str):
-            rst_string = epy_string = string
-        
-        assert typespec2htmlviastr(rst_string) == excepted_html
-        assert typespec2htmlvianode(rst_string, 'restructuredtext') == excepted_html            
-        assert typespec2htmlvianode(epy_string, 'epytext') == excepted_html
-
-def test_processtypes(capsys: CapSys) -> None:
-    """
-    Currently, numpy and google type parsong happens at the string level with pydoctor.napoleon.TypeDocstring
-    So the the --process-types argument should not be used with google and numpy docformat.
-    
-    TODO: transform this behaviour into enforcing options.processtypes = True for google and numpy docformat and use L{ParsedTypeDocstring} everywhere. 
-    YES BUT it's not as simple as it sounds because the numpy and google docformat are using type parsing in ways that are not supported by 
-    pydoctor yet, like in yields section or in tuple-like returns values using numpy docformat. 
-    """
-
-    cases = [
-        (
-            (   
-                """
-                @param arg: A param.
-                @type arg: list of int or float or None
-                """,
-
-                """
-                :param arg: A param.
-                :type arg: list of int or float or None
-                """,
-
-                """
-                Args:
-                    arg (list of int or float or None): A param.
-                """,
-
-                """
-                Args
-                ----
-                arg: list of int or float or None
-                    A param.
-                """,
-            ), 
-
-                ("list of int or float or None", 
-                "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>")
-
-        ),
-
-        (
-            (   
-                """
-                @param arg: A param.
-                @type arg: L{complicated string} or L{strIO <twisted.python.compat.NativeStringIO>}, optional
-                """,
-
-                """
-                :param arg: A param.
-                :type arg: `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional
-                """,
-
-                """
-                Args:
-                    arg (`complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional): A param.
-                """,
-
-                """
-                Args
-                ----
-                arg: `complicated string` or `strIO <twisted.python.compat.NativeStringIO>`, optional
-                    A param.
-                """,
-            ), 
-
-                ("<code>complicated string</code> or <code>strIO</code>, optional", 
-                "<code>complicated string</code> or <code>strIO</code>, <em>optional</em>")
-
-        ),
-
-    ]
-
-    for strings, excepted_html in cases:
-        epy_string, rst_string, goo_string, numpy_string = strings
-
-        excepted_html_no_process_types, excepted_html_type_processed = excepted_html
-
-        assert flatten(parse_docstring(epy_string, 'epytext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
-        assert flatten(parse_docstring(rst_string, 'restructuredtext').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_no_process_types
-
-        assert flatten(parse_docstring(dedent(goo_string), 'google').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
-        assert flatten(parse_docstring(dedent(numpy_string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
-
-        assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
-        assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
-
-def test_processtypes_with_system() -> None:
-    system = model.System()
-    system.options.processtypes = True
-    mod = fromText('''
-    a = None
-    """
-    Variable documented by inline docstring.
-    @type a: list of int or float or None
-    """
-    ''', modname='test')
-    a = mod.contents['a']
-    ("<span><code>list</code><span>"
-    " of </span><code>int</code><span>"
-    " or </span><code>float</code><span>"
-    " or </span><code>None</code></span>") in ''.join(docstring2html(a).splitlines())
-
-# TODO test processtypes warnings
-
-def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
-    
-
-    epy_string = """
-    @param arg: A param.
-    @type arg: L{complicated string} or 
-        L{strIO <twisted.python.compat.NativeStringIO>}, optional
-        
-        >>> print('example')
-    """
-
-    rst_string = """
-    :param arg: A param.
-    :type arg: `complicated string` or 
-        `strIO <twisted.python.compat.NativeStringIO>`, optional
-        
-        >>> print('example')
-    """
-
-    expected = """<code>complicated string</code> or <code>strIO</code>, <em>optional</em>"""
-    
-    # Test epytext
-    epy_errors: List[ParseError] = []
-    epy_parsed = get_parser_by_name('epytext')(epy_string, epy_errors, True)
-
-    assert len(epy_errors)==1
-    assert "Unexpected element in type specification field: element 'doctest_block'" in epy_errors.pop().descr()
-
-    assert flatten(epy_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', '') == expected
-    
-    # Test restructuredtext
-    rst_errors: List[ParseError] = []
-    rst_parsed = get_parser_by_name('restructuredtext')(rst_string, rst_errors, True)
-
-    assert len(rst_errors)==1
-    assert "Unexpected element in type specification field: element 'doctest_block'" in rst_errors.pop().descr()
-
-    assert flatten(rst_parsed.fields[-1].body().to_stan(NotFoundLinker())).replace('\n', ' ') == expected
 
 def test_module_docformat_inheritence(capsys: CapSys) -> None:
     top_src = '''
