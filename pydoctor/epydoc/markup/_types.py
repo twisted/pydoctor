@@ -32,7 +32,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
         
         
-        # TODO: do we really need the line number here ?
+        # We need to store the line number because we need to pass it to DocstringLinker.link_xref
         self._lineno = lineno
 
     @property
