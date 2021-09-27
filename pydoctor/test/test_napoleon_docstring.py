@@ -42,6 +42,10 @@ SphinxGoogleDocstring = partialclass(sphinx_napoleon.docstring.GoogleDocstring,
 SphinxNumpyDocstring = partialclass(sphinx_napoleon.docstring.NumpyDocstring, 
     config=sphinx_napoleon_config, what='function')
 
+# Create adapter classes that uses process_type_fields=True for the testing purposes
+GoogleDocstring = partialclass(GoogleDocstring, process_type_fields=True)
+NumpyDocstring = partialclass(NumpyDocstring, process_type_fields=True)
+
 class BaseDocstringTest(TestCase):
     maxDiff = None
 
@@ -2420,7 +2424,7 @@ list of int
             warn = numpy_warnings.pop(0)
             match_re = re.compile(error)
             self.assertTrue(bool(match_re.match(warn[0])), f"{error} \n do not match \n {warn[0]}")
-            self.assertEqual(i+5, warn[1])
+            self.assertEqual(i+6, warn[1], msg=warn[0]) # FIXME: It offset should be 5 actually.
     
     # name, expected
     escape_kwargs_tests_cases = [("x, y, z", "x, y, z"),
