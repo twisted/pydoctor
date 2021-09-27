@@ -34,7 +34,7 @@ each error.
 __docformat__ = 'epytext en'
 
 from importlib import import_module
-from typing import Any, Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 from inspect import getmodulename
 
