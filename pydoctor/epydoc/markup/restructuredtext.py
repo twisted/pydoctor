@@ -93,6 +93,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
 
+    # Credits: mhils - Maximilian Hils from the pdoc repository https://github.com/mitmproxy/pdoc
     # Strip Sphinx interpreted text roles for code references: :obj:`foo` -> `foo`
     docstring = re.sub(
         r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring
