@@ -38,14 +38,33 @@ _enumerated_list_regex = re.compile(
     r"(?(paren)\)|\.)(\s+\S|\s*$)"
 )
 
-Field = Tuple[str, str, List[str]]
-"""
-Type alias the represent a field. 
+@attr.s(auto_attribs=True)
+class Field:
+    """
+    Represent a field with a name and/or a type. Commonly a parameter description. 
+    It's also used for ``Returns`` section and other sections structured with fields.
+    """
 
-* First element of the tuple is the enventual name of the field
-* Second is it's eventual type
-* And lastly, it's content
-"""
+    name: str
+    """
+    The name of the field, can be empty. Let's note that `Field.name` is not the ``field_name`` 
+    in the docutils sense (i.e. "param" or "type" for instance). But the actual parameter name. 
+    """
+
+    type: str
+    """The enventual type of the parameter/return value. """
+    
+    content: List[str]
+    """The content of the field. """
+
+    lineno: int
+    """Line number of the field relative to the begening of the docstring. """
+
+    def __bool__(self) -> bool:
+        """
+        Returns True if the field has any kind of content. 
+        """
+        return bool(self.name or self.type or self.content)
 
 def is_obj_identifier(string: str) -> bool:
     """
@@ -663,10 +682,10 @@ class GoogleDocstring:
         if prefer_type and not _type:
             _type, _name = _name, _type
 
-        if _type:
-            _type = self._convert_type(_type)
-
-        return _name, _type, _descs
+        return Field(name=_name, 
+                     type=_type, 
+                     content=_descs, 
+                     lineno=self._line_iter.counter)
 
     # overriden: Allow any parameters to be passed to _consume_field with **kwargs
     def _consume_fields(
@@ -679,18 +698,15 @@ class GoogleDocstring:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
-            _name, _type, _desc = self._consume_field(parse_type, prefer_type, **kwargs) 
-            if multiple and _name:
-                for name in _name.split(","):
-                    fields.append((name.strip(), _type, _desc))
-            elif _name or _type or _desc:
-                fields.append(
-                    (
-                        _name,
-                        _type,
-                        _desc,
-                    )
-                )
+            f = self._consume_field(parse_type, prefer_type, **kwargs) 
+            if multiple and f.name:
+                for name in f.name.split(","):
+                    fields.append(Field(name=name.strip(), 
+                                        type=f.type, 
+                                        content=f.content, 
+                                        lineno=self._line_iter.counter))
+            elif f:
+                fields.append(f)
         return fields
 
     # overriden: add type pre-processing
@@ -702,8 +718,6 @@ class GoogleDocstring:
             _desc += colon
         _descs = [_desc] + self._dedent(self._consume_to_end())
         _descs = self.__class__(_descs).lines()
-        if _type:
-            _type = self._convert_type(_type)
         return _type, _descs
 
     # overriden: alway do type pre-processing.
@@ -729,18 +743,12 @@ class GoogleDocstring:
                 # single line free form returns clause
                 _descs = [before_colon]
 
-            if _type:
-                _type = self._convert_type(_type)
-
             _descs = self.__class__(_descs).lines()
             _name = ""
-            return [
-                (
-                    _name,
-                    _type,
-                    _descs,
-                )
-            ]
+            return [Field(name=_name,
+                      type=_type,
+                      content=_descs,
+                      lineno=self._line_iter.counter)]
         else:
             return []
 
@@ -769,7 +777,7 @@ class GoogleDocstring:
         return lines + self._consume_empty()
 
     # new method: handle type pre-processing the same way for google and numpy style.
-    def _convert_type(self, _type: str, is_type_field: bool = True) -> str:
+    def _convert_type(self, _type: str, is_type_field: bool = True, lineno: int = 0) -> str:
         """
         Tokenize the string type and convert it with additional markup and auto linking, 
         with L{TypeDocstring}.
@@ -782,17 +790,15 @@ class GoogleDocstring:
             Whether the string is the content of a ``:type:`` or ``rtype`` field. 
             If this is ``True`` and `GoogleDocstring`'s ``process_type_fields`` is ``False`` (defaults), 
             the type will NOT be converted (instead, it's returned as is) because it will be converted by the code provided by 
-            `pydoctor.epydoc.markup._types.ParsedTypeDocstring` in a later stage of docstring parsing. 
+            ``ParsedTypeDocstring`` class in a later stage of docstring parsing. 
         """
         if not is_type_field or self._process_type_fields:
-            # handle warnings line number
-            linenum = self._line_iter.counter
             type_spec = TypeDocstring(_type)
             # convert
             _type = str(type_spec)
             # append warnings
             for warn in type_spec.warnings:
-                self.warnings.append((warn, linenum))
+                self.warnings.append((warn, lineno))
         return _type
 
     def _dedent(self, lines: List[str], full: bool = False) -> List[str]:
@@ -863,17 +869,16 @@ class GoogleDocstring:
         type_role: str = "type",
     ) -> List[str]:
         lines = []
-        for _name, _type, _desc in fields:
-            _desc = self._strip_empty(_desc)
-            if any(_desc):
-                _desc = self._fix_field_desc(_desc)
-                field = f":{field_role} {_name}: "
-                lines.extend(self._format_block(field, _desc))
+        for field in fields:
+            desc = self._strip_empty(field.content)
+            if any(desc):
+                desc = self._fix_field_desc(desc)
+                lines.extend(self._format_block(f":{field_role} {field.name}: ", desc))
             else:
-                lines.append(f":{field_role} {_name}:")
+                lines.append(f":{field_role} {field.name}:")
 
-            if _type:
-                lines.append(f":{type_role} {_name}: {_type}")
+            if field.type:
+                lines.append(f":{type_role} {field.name}: {self._convert_type(field.type, lineno=field.lineno)}")
         return lines + [""]
 
     # overriden: Use a style closer to pydoctor's, but it's still not perfect.
@@ -882,17 +887,17 @@ class GoogleDocstring:
     # - _parse_returns_section()
     # - _parse_yields_section()
     # - _parse_attribute_docstring()
-    def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:
+    def _format_field(self, _name: str, _type: str, _desc: List[str], lineno: int = 0) -> List[str]:
         _desc = self._strip_empty(_desc)
         has_desc = any(_desc)
         separator = " - " if has_desc else ""
         if _name:
             if _type:
-                field = f"**{_name}**: {_type}{separator}"
+                field = f"**{_name}**: {self._convert_type(_type, is_type_field=False, lineno=lineno)}{separator}"
             else:
                 field = f"**{_name}**{separator}"
         elif _type:
-            field = f"{_type}{separator}"
+            field = f"{self._convert_type(_type, is_type_field=False, lineno=lineno)}{separator}"
         else:
             field = ""
 
@@ -908,6 +913,7 @@ class GoogleDocstring:
         else:
             return [field]
 
+    # Only used for :yields: section, currently. 
     def _format_fields(
         self, 
         field_type: str, 
@@ -917,8 +923,8 @@ class GoogleDocstring:
         padding = " " * len(field_type)
         multi = len(fields) > 1
         lines = []  # type: List[str]
-        for _name, _type, _desc in fields:
-            field = self._format_field(_name, _type, _desc)
+        for f in fields:
+            field = self._format_field(f.name, f.type, f.content, lineno=f.lineno)
             if multi:
                 if lines:
                     lines.extend(self._format_block(padding + " * ", field))
@@ -1069,7 +1075,7 @@ class GoogleDocstring:
         _type, _desc = self._consume_inline_attribute()
         lines = self._format_field("", "", _desc)
         if _type:
-            lines.extend(["", f":type: {_type}"])
+            lines.extend(["", f":type: {self._convert_type(_type)}"])
         return lines
 
     # overriden: enforce napoleon_use_ivar=True and ignore noindex option
@@ -1079,11 +1085,11 @@ class GoogleDocstring:
     #       the most correct reStructuredText.
     def _parse_attributes_section(self, section: str) -> List[str]:
         lines = []
-        for _name, _type, _desc in self._consume_fields():
-            field = f":ivar {_name}: "
-            lines.extend(self._format_block(field, _desc))
-            if _type:
-                lines.append(f":type {_name}: {_type}")
+        for f in self._consume_fields():
+            field = f":ivar {f.name}: "
+            lines.extend(self._format_block(field, f.content))
+            if f.type:
+                lines.append(f":type {f.name}: {self._convert_type(f.type, lineno=f.lineno)}")
 
         lines.append("")
         return lines
@@ -1130,11 +1136,11 @@ class GoogleDocstring:
                 lines.extend([".. admonition:: Methods", ""])
 
         lines = []  # type: List[str]
-        for _name, _, _desc in self._consume_fields(parse_type=False):
+        for field in self._consume_fields(parse_type=False):
             _init_methods_section()
-            lines.append(f"   {self._convert_type(_name, is_type_field=False)}")
-            if _desc:
-                lines.extend(self._indent(_desc, 7))
+            lines.append(f"   {self._convert_type(field.name, is_type_field=False, lineno=field.lineno)}")
+            if field.content:
+                lines.extend(self._indent(field.content, 7))
             lines.append("")
         return lines
 
@@ -1159,7 +1165,8 @@ class GoogleDocstring:
     ) -> List[str]:
         fields = self._consume_fields(parse_type=False, prefer_type=True)
         lines = []  # type: List[str]
-        for _name, _type, _desc in fields:
+        for field in fields:
+            _type, _desc = field.type, field.content
             m = self._name_rgx.match(_type)
             if m and m.group("name"):
                 _type = m.group("name")
@@ -1190,11 +1197,11 @@ class GoogleDocstring:
             use_rtype = True
 
         lines = []  # type: List[str]
-        for _name, _type, _desc in fields:
+        for f in fields:
             if use_rtype:
-                field = self._format_field(_name, "", _desc)
+                field = self._format_field(f.name, "", f.content, lineno=f.lineno)
             else:
-                field = self._format_field(_name, _type, _desc)
+                field = self._format_field(f.name, f.type, f.content, lineno=f.lineno)
 
             if multi:
                 if lines:
@@ -1204,8 +1211,8 @@ class GoogleDocstring:
             else:
                 if any(field):
                     lines.extend(self._format_block(":returns: ", field))
-                if _type and use_rtype:
-                    lines.extend([f":rtype: {_type}", ""])
+                if f.type and use_rtype:
+                    lines.extend([f":rtype: {self._convert_type(f.type, lineno=f.lineno)}", ""])
         if lines and lines[-1]:
             lines.append("")
         return lines
@@ -1436,7 +1443,7 @@ class NumpyDocstring(GoogleDocstring):
 
         # Solving this https://github.com/sphinx-doc/sphinx/issues/7077 if allow_free_form = True
 
-        # We determine if the currnt line contains the type if the following-up line is indented
+        # We determine if the current line contains the type if the following-up line is indented
         # (that would be the description)
         # formatted with types or not, for that we check if the second line of the field
 
@@ -1448,8 +1455,11 @@ class NumpyDocstring(GoogleDocstring):
                 # Normal case.
                 _desc = self._dedent(self._consume_indented_block(indent))
                 _desc = self.__class__(_desc).lines()
-                _type = self._convert_type(_type)
-                return _name, _type, _desc
+
+                return Field(name=_name, 
+                             type=_type, 
+                             content=_desc, 
+                             lineno=self._line_iter.counter)
 
         # The field either do not provide description and data contains the name and type informations,
         # or the _name and _type variable contains directly the description. i.e.
@@ -1467,7 +1477,10 @@ class NumpyDocstring(GoogleDocstring):
         _type = self._convert_type_and_maybe_consume_free_form_field(
             _name, _type, allow_free_form=allow_free_form
         )  # Can raise FreeFormException
-        return _name, _type, []
+        return Field(name=_name, 
+                     type=_type, 
+                     content=[],
+                     lineno=self._line_iter.counter)
 
     # allow to pass any args to super()._consume_fields(). Used for allow_free_form=True
     def _consume_fields(
@@ -1485,7 +1498,10 @@ class NumpyDocstring(GoogleDocstring):
                 **kwargs,
             )
         except FreeFormException as e:
-            return [("", "", e.lines)]
+            return [Field(name="", 
+                          type="", 
+                          content=e.lines, 
+                          lineno=self._line_iter.counter)]
 
     # Pass allow_free_form = True
     def _consume_returns_section(self) -> List[Field]:
@@ -1537,7 +1553,6 @@ class NumpyDocstring(GoogleDocstring):
             If allow_free_form=True and _type do not match `is_type` check.
         """
         if is_type(_type) or not allow_free_form:
-            _type = self._convert_type(_type)
             return _type
         else:
             # Else we consider it as free form

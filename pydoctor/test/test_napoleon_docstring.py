@@ -2425,7 +2425,9 @@ list of int
             warn = numpy_warnings.pop(0)
             match_re = re.compile(error)
             self.assertTrue(bool(match_re.match(warn[0])), f"{error} \n do not match \n {warn[0]}")
-            self.assertEqual(i+6, warn[1], msg=warn[0]) # FIXME: It offset should be 5 actually.
+            self.assertEqual(i+6, warn[1], msg=f"msg={warn[0]}, docstring='{str(numpy_docstring)}'") 
+            # FIXME: The offset should be 5 actually, no big deal and it looks like an really painful issue to 
+            # fix due to the fact that the changes in the docstring line numbers are happening at the level of napoleon.
     
     # name, expected
     escape_kwargs_tests_cases = [("x, y, z", "x, y, z"),

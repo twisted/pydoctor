@@ -106,12 +106,8 @@ def test_parsed_type() -> None:
 
 def test_processtypes(capsys: CapSys) -> None:
     """
-    Currently, numpy and google type parsong happens at the string level with pydoctor.napoleon.TypeDocstring
-    So the the --process-types argument should not be used with google and numpy docformat.
-    
-    TODO: transform this behaviour into enforcing options.processtypes = True for google and numpy docformat and use L{ParsedTypeDocstring} everywhere. 
-    YES BUT it's not as simple as it sounds because the numpy and google docformat are using type parsing in ways that are not supported by 
-    pydoctor yet, like in yields section or in tuple-like returns values using numpy docformat. 
+    Currently, numpy and google type parsing happens both at the string level with TypeDocstring
+    and at the docutils nodes ParsedTypeDocstring for type fields (``type`` and ``rtype``).
     """
 
     cases = [
@@ -190,6 +186,33 @@ def test_processtypes(capsys: CapSys) -> None:
 
         assert flatten(parse_docstring(epy_string, 'epytext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
         assert flatten(parse_docstring(rst_string, 'restructuredtext', processtypes=True).fields[-1].body().to_stan(NotFoundLinker())) == excepted_html_type_processed
+
+def test_processtypes_more() -> None:
+    # Using numpy style-only because it suffice.
+    cases = [("""
+              Yields
+              ------
+              bool:
+                  Whether it's working.
+              """, 
+              "<code>bool</code> - Whether it's working."), 
+
+              ("""
+               Returns
+               -------
+               name: str
+                  the name description.
+               content: str
+                  the content description.
+               """, 
+               """<ul class="rst-simple">
+<li><strong>name</strong>: <code>str</code> - the name description.</li>
+<li><strong>content</strong>: <code>str</code> - the content description.</li>
+</ul>"""),
+              ]
+    
+    for string, excepted_html in cases:
+        assert flatten(parse_docstring(dedent(string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())).strip() == excepted_html
 
 def test_processtypes_with_system() -> None:
     system = model.System()
