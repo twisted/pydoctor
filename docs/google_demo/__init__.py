@@ -195,7 +195,7 @@ class ExampleClass:
         __special_without_docstring__: *Undocumented* text will appear. 
     
     Note:
-        The "Methods" section is not 
+        The "Methods" section is supported only as a "best effort" basis.
 
     See:
         Google style "See Also" section is just like any admonition. 

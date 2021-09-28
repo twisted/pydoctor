@@ -252,6 +252,10 @@ class ExampleClass:
     __special_without_docstring__
         *Undocumented* text will appear. 
 
+    Note
+    ----
+    The "Methods" section is supported only as a "best effort" basis.
+
     See Also
     --------
     ``example_google``
