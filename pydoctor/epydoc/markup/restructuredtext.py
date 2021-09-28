@@ -398,6 +398,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         'Ignore all unknown nodes'
 
 
+# Do like Sphinx does for the seealso directive. 
 class SeeAlso(BaseAdmonition):
     """
     An admonition mentioning things to look at as reference.
