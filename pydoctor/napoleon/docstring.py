@@ -495,6 +495,18 @@ class GoogleDocstring:
         Extended description.
 
         :param arg1: Description of `arg1`
+        :type arg1: int
+        :param arg2: Description of `arg2`
+        :type arg2: str
+
+        :returns: Description of return value.
+        :rtype: str
+        >>> print(GoogleDocstring(docstring, process_type_fields=True))
+        One line summary.
+
+        Extended description.
+
+        :param arg1: Description of `arg1`
         :type arg1: `int`
         :param arg2: Description of `arg2`
         :type arg2: `str`
@@ -1390,6 +1402,18 @@ class NumpyDocstring(GoogleDocstring):
         ...     Description of return value.
         ... '''
         >>> print(NumpyDocstring(docstring))
+        One line summary.
+
+        Extended description.
+
+        :param arg1: Description of `arg1`
+        :type arg1: int
+        :param arg2: Description of `arg2`
+        :type arg2: str
+
+        :returns: Description of return value.
+        :rtype: str
+        >>> print(NumpyDocstring(docstring, process_type_fields=True))
         One line summary.
 
         Extended description.
