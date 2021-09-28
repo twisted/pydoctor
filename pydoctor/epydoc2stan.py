@@ -326,7 +326,7 @@ class Field:
     tag: str
     """Field tag, i.e. C{:<tag>:} """
     arg: Optional[str]
-    """Field name, i.e. C{:param <name>:}"""
+    """Field argument, i.e. C{:param <argument>:}"""
     source: model.Documentable
     lineno: int
     body: ParsedDocstring
