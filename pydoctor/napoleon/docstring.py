@@ -38,6 +38,14 @@ _enumerated_list_regex = re.compile(
     r"(?(paren)\)|\.)(\s+\S|\s*$)"
 )
 
+Field = Tuple[str, str, List[str]]
+"""
+Type alias the represent a field. 
+
+* First element of the tuple is the enventual name of the field
+* Second is it's eventual type
+* And lastly, it's content
+"""
 
 def is_obj_identifier(string: str) -> bool:
     """
@@ -624,8 +632,11 @@ class GoogleDocstring:
 
     # overriden: enforce type pre-processing + made more smart to understand multiline types.
     def _consume_field(
-        self, parse_type: bool = True, prefer_type: bool = False, **kwargs: Any
-    ) -> Tuple[str, str, List[str]]:
+        self, 
+        parse_type: bool = True, 
+        prefer_type: bool = False,
+        **kwargs: Any
+    ) -> Field:
 
         line = next(self._line_iter)
         indent = self._get_indent(line) + 1
@@ -664,7 +675,7 @@ class GoogleDocstring:
         prefer_type: bool = False,
         multiple: bool = False,
         **kwargs: Any,
-    ) -> List[Tuple[str, str, List[str]]]:
+    ) -> List[Field]:
         self._consume_empty()
         fields = []
         while not self._is_section_break():
@@ -698,7 +709,7 @@ class GoogleDocstring:
     # overriden: alway do type pre-processing.
     # store the section value as type if it matches the is_type() check.
     # note: _name is always empty string.
-    def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
+    def _consume_returns_section(self) -> List[Field]:
         lines = self._dedent(self._consume_to_next_section())
         if lines:
 
@@ -847,7 +858,7 @@ class GoogleDocstring:
 
     def _format_docutils_params(
         self,
-        fields: List[Tuple[str, str, List[str]]],
+        fields: List[Field],
         field_role: str = "param",
         type_role: str = "type",
     ) -> List[str]:
@@ -898,7 +909,9 @@ class GoogleDocstring:
             return [field]
 
     def _format_fields(
-        self, field_type: str, fields: List[Tuple[str, str, List[str]]]
+        self, 
+        field_type: str, 
+        fields: List[Field]
     ) -> List[str]:
         field_type = f":{field_type.strip()}:"
         padding = " " * len(field_type)
@@ -1119,7 +1132,6 @@ class GoogleDocstring:
         lines = []  # type: List[str]
         for _name, _, _desc in self._consume_fields(parse_type=False):
             _init_methods_section()
-            # This is the only occurence of the is_type_field=False feature.
             lines.append(f"   {self._convert_type(_name, is_type_field=False)}")
             if _desc:
                 lines.extend(self._indent(_desc, 7))
@@ -1400,7 +1412,7 @@ class NumpyDocstring(GoogleDocstring):
         prefer_type: bool = False,
         allow_free_form: bool = False,
         **kwargs: Any,
-    ) -> Tuple[str, str, List[str]]:
+    ) -> Field:
         """
         Raise
         -----
@@ -1464,7 +1476,7 @@ class NumpyDocstring(GoogleDocstring):
         prefer_type: bool = False,
         multiple: bool = False,
         **kwargs: Any,
-    ) -> List[Tuple[str, str, List[str]]]:
+    ) -> List[Field]:
         try:
             return super()._consume_fields(
                 parse_type=parse_type,
@@ -1476,10 +1488,10 @@ class NumpyDocstring(GoogleDocstring):
             return [("", "", e.lines)]
 
     # Pass allow_free_form = True
-    def _consume_returns_section(self) -> List[Tuple[str, str, List[str]]]:
+    def _consume_returns_section(self) -> List[Field]:
         return self._consume_fields(prefer_type=True, allow_free_form=True)
 
-    def _consume_raises_section(self) -> List[Tuple[str, str, List[str]]]:
+    def _consume_raises_section(self) -> List[Field]:
         return self._consume_fields(prefer_type=True)
 
     def _consume_section_header(self) -> str:
