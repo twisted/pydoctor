@@ -10,8 +10,9 @@ from unittest import TestCase
 from textwrap import dedent
 import functools
 
-from pydoctor.napoleon.docstring import (GoogleDocstring, NumpyDocstring, TokenType,
-        TypeDocstring, is_type, is_google_typed_arg)
+from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
+        NumpyDocstring as _NumpyDocstring, 
+        TokenType, TypeDocstring, is_type, is_google_typed_arg)
 
 import sphinx.ext.napoleon as sphinx_napoleon
 
@@ -43,8 +44,8 @@ SphinxNumpyDocstring = partialclass(sphinx_napoleon.docstring.NumpyDocstring,
     config=sphinx_napoleon_config, what='function')
 
 # Create adapter classes that uses process_type_fields=True for the testing purposes
-GoogleDocstring = partialclass(GoogleDocstring, process_type_fields=True)
-NumpyDocstring = partialclass(NumpyDocstring, process_type_fields=True)
+GoogleDocstring = partialclass(_GoogleDocstring, process_type_fields=True)
+NumpyDocstring = partialclass(_NumpyDocstring, process_type_fields=True)
 
 class BaseDocstringTest(TestCase):
     maxDiff = None
