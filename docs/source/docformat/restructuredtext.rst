@@ -11,18 +11,7 @@ For the language syntax documentation, read the `ReST docutils syntax reference 
 Fields
 ------
 
-Here are the supported *restructuredtext* fields:
-
-    - ``:cvar foo:``
-    - ``:ivar foo:``
-    - ``:var foo:``
-    - ``:param bar:`` (synonym: ``:arg bar:``)
-    - ``:type bar: str``
-    - ``:return:``
-    - ``:rtype: list``
-    - ``:raises ValueError:`` (synonym ``:except ValueError:``)
-    - ``:note:``
-    - ``:since:``
+See `fields section <codedoc.rst#fields>`__.
 
 In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation
