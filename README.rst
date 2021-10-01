@@ -63,7 +63,7 @@ What's New?
 pydoctor 21.9.1
 ^^^^^^^^^^^^^^^
 
-* Support Python 3.10.
+* Fix deprecation warning and officially support Python 3.10.
 
 pydoctor 21.9.0
 ^^^^^^^^^^^^^^^
