@@ -31,6 +31,7 @@ def templatefile(filename: str) -> None:
 
 _VT = TypeVar('_VT')
 
+# Credits: psf/requests see https://github.com/psf/requests/blob/main/AUTHORS.rst
 class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
     """A case-insensitive ``dict``-like object.
     Implements all methods and operations of
