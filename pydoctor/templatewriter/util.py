@@ -2,6 +2,7 @@
 
 import warnings
 import collections
+import collections.abc
 from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, MutableMapping, Tuple, TypeVar, Union
 from pydoctor import model
 from pydoctor.epydoc2stan import format_kind
@@ -84,7 +85,7 @@ class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
         )
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, collections.Mapping):
+        if isinstance(other, collections.abc.Mapping):
             other = CaseInsensitiveDict(other)
             # Compare insensitively
             return dict(self.lower_items()) == dict(other.lower_items())
