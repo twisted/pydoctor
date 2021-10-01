@@ -112,8 +112,51 @@ Here are the supported fields (written with Epytext format, but same fields are 
     - ``@author:``, document the author of a component, generaly a module.
 
 .. note:: Currently, any other fields will be considered "unknown" and will be flagged as such. 
-    See issues `#288 <https://github.com/twisted/pydoctor/issues/288>`_ and `#365 <https://github.com/twisted/pydoctor/issues/365>`_
-    for discussions.
+    See `"fields" issues <https://github.com/twisted/pydoctor/issues?q=is%3Aissue+is%3Aopen+fields>`_
+    for discussions and improvments.
+
+.. note:: Unlike Sphinx, ``vartype`` and ``kwtype`` are not recognized as valid fields, we simply use ``type`` everywhere.
+
+Type fields
+~~~~~~~~~~~
+
+Type fields, namely ``type`` and ``rtype``, can be interpreted, such that, instead of beeing just a regular text field, 
+types can be linked automatically.
+For reStructuredText and Epytext documentation format, enable this behaviour with the option:: 
+    
+    --process-fields
+
+The type auto-linking is always enabled for Numpy and Google style documentation formats.
+
+Like in Sphinx, regular types and container types such as lists and dictionaries can be linked automatically:: 
+
+    :type priority: int
+    :type priorities: list[int]
+    :type mapping: dict(str, int)
+    :type point: tuple[float, float]
+
+Natural language types can be linked automatically if separated by the words “or”, "and", "to", "of" or the comma::
+
+    :rtype: float or str
+    :rtype: list of str or list[int]
+    :rtype: tuple of str, int and float
+    :rtype: mapping of str to int
+
+Additionally, it's still possible to include regular text description inside a type specification::
+
+    :rtype: a result that needs a longer text description or str
+    :rtype: tuple of a result that 
+        needs a longer text description and str
+
+Some special keywords will be recognized: "optional" and "default"::
+
+    :type value: list[float], optional
+    :type value: int, default: -1
+    :type value: dict(str, int), default: same as default_dict
+
+.. note:: Literals caracters - numbers and strings within quotes - will be automatically rendered like docutils literals.
+
+.. note:: It's not currently possible to combine parameter type and description inside the same ``param`` field, see issue `#267 <https://github.com/twisted/pydoctor/issues/267>`_.
 
 Type annotations
 ----------------
