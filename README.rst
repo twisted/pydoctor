@@ -60,6 +60,11 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+pydoctor 21.9.1
+^^^^^^^^^^^^^^^
+
+* Support Python 3.10.
+
 pydoctor 21.9.0
 ^^^^^^^^^^^^^^^
 
