@@ -16,7 +16,7 @@ The main difference between the two styles is that Google uses indentation to se
 whereas NumPy uses underlines. This means that 2 blank lines are needed to end a NumPy section 
 that is followed by a regular paragraph (i.e. not another section header)
 
-.. note:: Pydoctor* has forked and enhanced the `napoleon Sphinx extension 
+.. note:: We have forked and enhanced the `napoleon Sphinx extension 
     <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>`_.
 
     For more information, refer to :py:mod:`pydoctor.napoleon` documentation. 
