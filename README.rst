@@ -64,6 +64,7 @@ pydoctor 21.9.1
 ^^^^^^^^^^^^^^^
 
 * Fix deprecation warning and officially support Python 3.10.
+* Fix the literals style (use same style as before).
 
 pydoctor 21.9.0
 ^^^^^^^^^^^^^^^
