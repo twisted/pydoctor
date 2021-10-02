@@ -976,3 +976,50 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
     assert A_f
 
     assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
+
+def test_warns_field(capsys: CapSys) -> None:
+    """Test if the :warns: field is correctly recognized."""
+    mod = fromText('''
+    def func():
+        """
+        @warns: If there is an issue.
+        """
+        pass
+    ''')
+    html = ''.join(docstring2html(mod.contents['func']).splitlines())
+    assert ('<div><table class="fieldTable"><tr class="fieldStart">'
+            '<td class="fieldName" colspan="2">Warns</td></tr><tr>'
+            '<td colspan="2">If there is an issue.</td></tr></table></div>') == html
+    captured = capsys.readouterr().out
+    assert captured == ''
+
+    mod = fromText('''
+    def func():
+        """
+        @warns RuntimeWarning: If there is an issue.
+        """
+        pass
+    ''')
+    html = ''.join(docstring2html(mod.contents['func']).splitlines())
+    assert ('<div><table class="fieldTable"><tr class="fieldStart">'
+            '<td class="fieldName" colspan="2">Warns</td></tr><tr>'
+            '<td class="fieldArgContainer">RuntimeWarning</td>'
+            '<td class="fieldArgDesc">If there is an issue.</td></tr></table></div>') == html
+    captured = capsys.readouterr().out
+    assert captured == ''
+
+def test_yields_field(capsys: CapSys) -> None:
+    """Test if the :warns: field is correctly recognized."""
+    mod = fromText('''
+    def func():
+        """
+        @yields: Each member of the sequence.
+        """
+        pass
+    ''')
+    html = ''.join(docstring2html(mod.contents['func']).splitlines())
+    assert ('<div><table class="fieldTable"><tr class="fieldStart">'
+            '<td class="fieldName" colspan="2">Yields</td></tr><tr>'
+            '<td colspan="2">Each member of the sequence.</td></tr></table></div>') == html
+    captured = capsys.readouterr().out
+    assert captured == ''
