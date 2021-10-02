@@ -26,8 +26,8 @@ def test_types_to_node_no_markup() -> None:
     for s in cases:
         assert doc2html(':'+s, 'restructuredtext') == doc2html('@'+s, 'epytext')
 
-def test_types_to_node_markup() -> None:
-
+def test_to_node_markup() -> None:
+    
     cases = [  ('L{me}', '`me`'),
             ('B{No!}', '**No!**'),
             ('I{here}', '*here*'),
