@@ -1,7 +1,7 @@
 """Miscellaneous utilities for the HTML writer."""
 
 import warnings
-import collections
+import collections.abc
 from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, MutableMapping, Tuple, TypeVar, Union
 from pydoctor import model
 from pydoctor.epydoc2stan import format_kind
@@ -30,6 +30,7 @@ def templatefile(filename: str) -> None:
 
 _VT = TypeVar('_VT')
 
+# Credits: psf/requests see https://github.com/psf/requests/blob/main/AUTHORS.rst
 class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
     """A case-insensitive ``dict``-like object.
     Implements all methods and operations of
@@ -84,7 +85,7 @@ class CaseInsensitiveDict(MutableMapping[str, _VT], Generic[_VT]):
         )
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, collections.Mapping):
+        if isinstance(other, collections.abc.Mapping):
             other = CaseInsensitiveDict(other)
             # Compare insensitively
             return dict(self.lower_items()) == dict(other.lower_items())
