@@ -463,15 +463,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             build_directory = Path(options.htmloutput)
 
-            try:
-                # mypy error: Cannot instantiate abstract class 'IWriter'
-                writer = writerclass(build_directory, # type: ignore[abstract]
-                    template_lookup=template_lookup)
-            except TypeError:
-                # Custom class does not accept 'template_lookup' argument.
-                writer = writerclass(build_directory) # type: ignore[abstract]
-                warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                    "HTML template customization with --template-dir.")
+            # mypy error: Cannot instantiate abstract class 'IWriter'
+            writer = writerclass(build_directory, # type: ignore[abstract]
+                template_lookup=template_lookup)
 
             writer.prepOutputDirectory()
 
