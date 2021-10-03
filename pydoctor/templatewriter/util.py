@@ -1,7 +1,6 @@
 """Miscellaneous utilities for the HTML writer."""
 
 import warnings
-import collections
 import collections.abc
 from typing import Any, Dict, Generic, Iterable, Iterator, Mapping, Optional, MutableMapping, Tuple, TypeVar, Union
 from pydoctor import model
