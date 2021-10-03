@@ -359,7 +359,7 @@ tr.private {
   but also to links that are present in summary tables.
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
-code, .pre, #childList > div .functionHeader,
+code, .literal, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
@@ -383,7 +383,7 @@ code > a {
 This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min
 */
-code {
+code, .literal {
     padding:2px 4px;
     background-color: #f4f4f4;
     border-radius:4px

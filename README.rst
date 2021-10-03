@@ -77,6 +77,12 @@ in development
 * Introduced fields ``warns`` and ``yields``. 
 * Following google style guide, ``*args`` and ``**kwargs`` are now rendered with asterisks in the parameters table.
 
+pydoctor 21.9.1
+^^^^^^^^^^^^^^^
+
+* Fix deprecation warning and officially support Python 3.10.
+* Fix the literals style (use same style as before).
+
 pydoctor 21.9.0
 ^^^^^^^^^^^^^^^
 
