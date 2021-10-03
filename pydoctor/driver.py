@@ -6,7 +6,6 @@ from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar
 import datetime
 import os
 import sys
-import warnings
 from inspect import getmodulename
 
 from pydoctor.themes import get_themes
