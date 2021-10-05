@@ -50,7 +50,9 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['E'])
 
 
-def docstring2html(obj: model.Documentable) -> str:
+def docstring2html(obj: model.Documentable, docformat: Optional[str] = None) -> str:
+    if docformat:
+        obj.module.docformat = docformat
     stan = epydoc2stan.format_docstring(obj)
     assert stan.tagName == 'div', stan
     # We strip off break lines for the sake of simplicity.
@@ -430,7 +432,10 @@ def test_func_starargs(capsys: CapSys) -> None:
     Var-args should be named in fields with asterixes.
     But for compatibility, we automatically add the asterixes from docstring if 
     the arguments name are following the 'args', 'kwargs' convention. 
+
+    @note: Asterixes need to be escaped with reStructuredText.
     """
+
     great_mod = fromText('''
     def f(*args: int, **kwargs) -> None:
         """
@@ -438,9 +443,32 @@ def test_func_starargs(capsys: CapSys) -> None:
 
         @param *args: var-positional arguments
         @param **kwargs: var-keyword arguments
-        @type **kwargs: C{str}
+        @type **kwargs: str
         """
-    ''', modname='<bad>')
+    ''', modname='<great>')
+
+    great_mod_bis = fromText(r'''
+    def f(*args: int, **kwargs) -> None:
+        r"""
+        Do something with var-positional and var-keyword arguments.
+
+        :param \*args: var-positional arguments
+        :param \*\*kwargs: var-keyword arguments
+        :type \*\*kwargs: str
+        """
+    ''', modname='<great>')
+
+    great_mod_trice = fromText('''
+    def f(*args: int, **kwargs) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        :param args: var-positional arguments
+        :param kwargs: var-keyword arguments
+        :type kwargs: str
+        """
+    ''', modname='<great>')
+
     good_mod = fromText('''
     def f(*args: int, **kwargs) -> None:
         """
@@ -448,15 +476,89 @@ def test_func_starargs(capsys: CapSys) -> None:
 
         @param args: var-positional arguments
         @param kwargs: var-keyword arguments
-        @type kwargs: C{str}
+        @type kwargs: str
         """
     ''', modname='<good>')
-    bad_fmt = docstring2html(great_mod.contents['f'])
+
+    great_fmt = docstring2html(great_mod.contents['f'])
     good_fmt = docstring2html(good_mod.contents['f'])
-    assert bad_fmt == good_fmt
+    good_bis_fmt = docstring2html(great_mod_bis.contents['f'], docformat='restructuredtext')
+    good_trice_fmt = docstring2html(great_mod_trice.contents['f'], docformat='restructuredtext')
+    
+    assert great_fmt == good_fmt == good_bis_fmt == good_trice_fmt
     captured = capsys.readouterr().out
     assert not captured
 
+def test_func_starargs_more(capsys: CapSys) -> None:
+    """
+    Star arguments, even if there are not named 'args' or 'kwargs', are recognized.
+    """
+
+    mod_epy_with_asterixes = fromText('''
+    def f(args, kwargs, *a, **kwa) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param args: some regular argument
+        @param kwargs: some regular argument
+        @param *a: var-positional arguments
+        @param **kwa: var-keyword arguments
+        """
+    ''', modname='<great>')
+
+    mod_rst_with_asterixes = fromText(r'''
+    def f(args, kwargs, *a, **kwa) -> None:
+        r"""
+        Do something with var-positional and var-keyword arguments.
+
+        :param args: some regular argument
+        :param kwargs: some regular argument
+        :param \*a: var-positional arguments
+        :param \*\*kwa: var-keyword arguments
+        """
+    ''', modname='<great>')
+
+    mod_rst_without_asterixes = fromText('''
+    def f(args, kwargs, *a, **kwa) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        :param args: some regular argument
+        :param kwargs: some regular argument
+        :param a: var-positional arguments
+        :param kwa: var-keyword arguments
+        """
+    ''', modname='<great>')
+
+    mod_epy_without_asterixes = fromText('''
+    def f(args, kwargs, *a, **kwa) -> None:
+        """
+        Do something with var-positional and var-keyword arguments.
+
+        @param args: some regular argument
+        @param kwargs: some regular argument
+        @param a: var-positional arguments
+        @param kwa: var-keyword arguments
+        """
+    ''', modname='<good>')
+
+    epy_with_asterixes_fmt = docstring2html(mod_epy_with_asterixes.contents['f'])
+    rst_with_asterixes_fmt = docstring2html(mod_rst_with_asterixes.contents['f'], docformat='restructuredtext')
+    rst_without_asterixes_fmt = docstring2html(mod_rst_without_asterixes.contents['f'], docformat='restructuredtext')
+    epy_without_asterixes_fmt = docstring2html(mod_epy_without_asterixes.contents['f'])
+
+    assert epy_with_asterixes_fmt == rst_with_asterixes_fmt == rst_without_asterixes_fmt == epy_without_asterixes_fmt
+    
+    expected_parts = ['<span class="fieldArg">args</span>', 
+                      '<span class="fieldArg">kwargs</span>',
+                      '<span class="fieldArg">*a</span>',
+                      '<span class="fieldArg">**kwa</span>',]
+    
+    for part in expected_parts:
+        assert part in epy_with_asterixes_fmt
+    
+    captured = capsys.readouterr().out
+    assert not captured
 
 def test_summary() -> None:
     mod = fromText('''
