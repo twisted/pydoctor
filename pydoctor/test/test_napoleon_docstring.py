@@ -237,6 +237,19 @@ class TypeDocstringTest(BaseDocstringTest):
             "{'F', 'C', 'N'}, default: 'N'",
             "{'F', 'C', 'N'}, default 'N'",
             "DataFrame, optional",
+            "default[str]", # corner cases...
+            "optional[str]",
+            ",[str]", 
+            ", [str]",
+            " of [str]",
+            " or [str]",
+            ": [str]",
+            " and [str]",
+            "'hello'[str]",
+            '"hello"[str]',
+            "`hello`[str]",
+            "`hello <https://github.com>`_[str]",
+            "**hello**[str]",
         )
 
         converted = (
@@ -249,6 +262,19 @@ class TypeDocstringTest(BaseDocstringTest):
             "``{'F', 'C', 'N'}``, *default*: ``'N'``",
             "``{'F', 'C', 'N'}``, *default* ``'N'``",
             "`DataFrame`, *optional*",
+            r"*default*\ [`str`]",
+            r"*optional*\ [`str`]",
+            ", [`str`]",
+            ", [`str`]",
+            " of [`str`]",
+            " or [`str`]",
+            ": [`str`]",
+            " and [`str`]",
+            r"``'hello'``\ [`str`]",
+            r'``"hello"``\ [`str`]',
+            r"`hello`\ [`str`]",
+            r"`hello <https://github.com>`_\ [`str`]",
+            r"**hello**\ [`str`]",
         )
 
         for spec, expected in zip(specs, converted):
