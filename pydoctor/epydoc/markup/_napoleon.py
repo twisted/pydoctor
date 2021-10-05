@@ -81,7 +81,7 @@ class NapoelonDocstringParser:
         """
         # log any warnings
         for warn, lineno in docstring_obj.warnings:
-            # TODO: double check the line number
-            errors.append(ParseError(warn, lineno - 2, is_fatal=False))
+            # TODO: double check the line number and add tests that goes here!
+            errors.append(ParseError(warn, lineno, is_fatal=False))
         # Get the converted reST string and parse it with docutils
         return restructuredtext.parse_docstring(str(docstring_obj), errors, processtypes=True)
