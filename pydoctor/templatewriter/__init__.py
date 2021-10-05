@@ -62,9 +62,6 @@ class IWriter(Protocol):
     Interface class for pydoctor output writer.
     """
 
-    @overload
-    def __init__(self, build_directory: Path) -> None: ...
-    @overload
     def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None: ...
 
     def prepOutputDirectory(self) -> None:
