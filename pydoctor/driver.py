@@ -432,7 +432,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer', IWriter)
+                    # ignore mypy error: Only concrete class can be given where "Type[IWriter]" is expected
+                    options.htmlwriter, '--html-writer', IWriter) # type: ignore[misc]
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -462,9 +463,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             build_directory = Path(options.htmloutput)
 
-            # mypy error: Cannot instantiate abstract class 'IWriter'
-            writer = writerclass(build_directory, # type: ignore[abstract]
-                template_lookup=template_lookup)
+            writer = writerclass(build_directory, template_lookup=template_lookup)
 
             writer.prepOutputDirectory()
 
