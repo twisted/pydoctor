@@ -448,10 +448,10 @@ class FieldHandler:
         if name is None:
             field.report('Parameter name missing')
             return None
-        if name == 'args':
-            name = '*args'
-        elif name == 'kwargs':
-            name = '**kwargs'
+        if isinstance(self.obj, model.Function):
+            for param_name, _ in self.obj.annotations.items():
+                if param_name.lstrip('*') == name:
+                    name = param_name
         return name
 
     def _handle_param_not_found(self, name: str, field: Field) -> None:
