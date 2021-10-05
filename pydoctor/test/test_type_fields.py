@@ -214,23 +214,51 @@ def test_processtypes_more() -> None:
     for string, excepted_html in cases:
         assert flatten(parse_docstring(dedent(string), 'numpy').fields[-1].body().to_stan(NotFoundLinker())).strip() == excepted_html
 
-def test_processtypes_with_system() -> None:
+def test_processtypes_with_system(capsys: CapSys) -> None:
+    system = model.System()
+    system.options.processtypes = True
+    
+    mod = fromText('''
+    a = None
+    """
+    Variable documented by inline docstring.
+    @type: list of int or float or None
+    """
+    ''', modname='test', system=system)
+    a = mod.contents['a']
+    
+    docstring2html(a)
+    assert isinstance(a.parsed_type, ParsedTypeDocstring)
+    fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>" == fmt
+    
+
+# TODO test processtypes warnings
+
+# TODO: This test should trigger some warnings. 
+def test_processtypes_corner_cases(capsys: CapSys) -> None:
     system = model.System()
     system.options.processtypes = True
     mod = fromText('''
     a = None
     """
-    Variable documented by inline docstring.
-    @type a: list of int or float or None
+    @type: default[str]
     """
-    ''', modname='test')
+    ''', modname='test', system=system)
     a = mod.contents['a']
-    ("<span><code>list</code><span>"
-    " of </span><code>int</code><span>"
-    " or </span><code>float</code><span>"
-    " or </span><code>None</code></span>") in ''.join(docstring2html(a).splitlines())
+    docstring2html(a)
 
-# TODO test processtypes warnings
+    assert isinstance(a.parsed_type, ParsedTypeDocstring)
+    fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+
+    captured = capsys.readouterr().out
+    assert captured == ""
+
+    assert "<em>default</em>[<code>str]</code>" == fmt
 
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
