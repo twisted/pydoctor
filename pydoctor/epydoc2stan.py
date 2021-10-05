@@ -657,7 +657,7 @@ def parse_docstring(
     parser = get_parser(source)
     errs: List[ParseError] = []
     try:
-        parsed_doc = parser(doc, errs, getattr(obj.system.options, 'processtypes', False))
+        parsed_doc = parser(doc, errs, obj.system.options.processtypes)
     except Exception as e:
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
