@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Iterator, Optional, Union, cast, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Union, cast, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -62,9 +62,6 @@ class IWriter(Protocol):
     Interface class for pydoctor output writer.
     """
 
-    @overload
-    def __init__(self, build_directory: Path) -> None: ...
-    @overload
     def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None: ...
 
     def prepOutputDirectory(self) -> None:
