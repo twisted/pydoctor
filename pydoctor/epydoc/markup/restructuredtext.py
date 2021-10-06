@@ -364,7 +364,6 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
     def unknown_visit(self, node: nodes.Node) -> None:
         'Ignore all unknown nodes'
 
-
 class PythonCodeDirective(Directive):
     """
     A custom restructuredtext directive which can be used to display
