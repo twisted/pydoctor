@@ -36,7 +36,7 @@ Review process and requirements
 - If your pull request is a work in progress, please mark it as draft such that reviewers do not loose time on a PR that is not ready yet.
 - All code changes must be reviewed by at least one person who is not an author of the code being added. 
   This helps prevent bugs from slipping through the net and gives another source for improvements.
-  If the author of the PR is one of the core developers of pydoctor* and no one has reviewed their PR after 9 calendar days, they can review the code changes themselve and proceed with next steps. 
+  If the author of the PR is one of the core developers of pydoctor* and no one has reviewed their PR after 9 calendar days, they can review the code changes themselves and proceed with next steps. 
 - When one is done with the review, always say what the next step should be: for example, if the author is a core developer, can they merge the PR after making a few minor fixes? 
   If your review feedback is more substantial, should they ask for another review?
 
