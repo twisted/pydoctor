@@ -156,7 +156,9 @@ def test_constructor_params_empty() -> None:
         pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params == {}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params == {}
 
 
 def test_constructor_params_simple() -> None:
@@ -166,7 +168,9 @@ def test_constructor_params_simple() -> None:
             pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
 
 def test_constructor_params_inherited() -> None:
@@ -181,7 +185,9 @@ def test_constructor_params_inherited() -> None:
         pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
 
 def test_docstring_lineno() -> None:
