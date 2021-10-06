@@ -18,7 +18,7 @@ from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
@@ -142,9 +142,7 @@ class Documentable:
         return self
 
     def setup(self) -> None:
-        # TODO: The actual value type is Documentable, but using that
-        #       requires a boatload of changes.
-        self.contents: Dict[str, Any] = {}
+        self.contents: Dict[str, Documentable] = {}
 
     def setDocstring(self, node: ast.Str) -> None:
         doc = node.s

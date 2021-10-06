@@ -62,6 +62,17 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+pydoctor 21.9.1
+^^^^^^^^^^^^^^^
+
+* Fix deprecation warning and officially support Python 3.10.
+* Fix the literals style (use same style as before).
+
+pydoctor 21.9.0
+^^^^^^^^^^^^^^^
+
+* Add support for multiple themes, selectable with ``--theme`` option.
 * Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.

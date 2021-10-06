@@ -9,10 +9,12 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Tuple, Union
 )
 import ast
+import sys
 import itertools
 
 import astor
 import attr
+import docutils.nodes
 
 from pydoctor import model
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError
@@ -22,7 +24,6 @@ import pydoctor.epydoc.markup.plaintext
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError]], ParsedDocstring]:
     
@@ -52,7 +53,7 @@ def get_docstring(
     return None, None
 
 
-def taglink(o: model.Documentable, page_url: str, label: Optional[str] = None) -> Tag:
+def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"] = None) -> Tag:
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
 
@@ -106,7 +107,7 @@ class _EpydocLinker(DocstringLinker):
         """
         return self.obj.system.intersphinx.getLink(name)
 
-    def link_to(self, identifier: str, label: str) -> Tag:
+    def link_to(self, identifier: str, label: "Flattenable") -> Tag:
         fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)
@@ -119,8 +120,8 @@ class _EpydocLinker(DocstringLinker):
 
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: str, lineno: int) -> Tag:
-        xref: Union[Tag, str]
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        xref: "Flattenable"
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError:
@@ -679,7 +680,8 @@ def format_docstring(obj: model.Documentable) -> Tag:
     ret(fh.format())
     return ret
 
-
+# TODO: FIX https://github.com/twisted/pydoctor/issues/86 
+# Use to_node() and compute shortened HTML from node tree with a visitor intead of using the raw source. 
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
@@ -722,7 +724,7 @@ def format_summary(obj: model.Documentable) -> Tag:
     content: Sequence["Flattenable"] = [stan] if stan.tagName else stan.children
     if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
         content = content[0].children
-    return tags.span(*content)
+    return Tag('')(*content)
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
@@ -731,10 +733,11 @@ def format_undocumented(obj: model.Documentable) -> Tag:
     sub_objects_with_docstring_count: DefaultDict[model.DocumentableKind, int] = defaultdict(int)
     sub_objects_total_count: DefaultDict[model.DocumentableKind, int]  = defaultdict(int)
     for sub_ob in obj.contents.values():
-        k = sub_ob.kind
-        sub_objects_total_count[k] += 1
-        if sub_ob.docstring is not None:
-            sub_objects_with_docstring_count[k] += 1
+        kind = sub_ob.kind
+        if kind is not None:
+            sub_objects_total_count[kind] += 1
+            if sub_ob.docstring is not None:
+                sub_objects_with_docstring_count[kind] += 1
 
     tag: Tag = tags.span(class_='undocumented')
     if sub_objects_with_docstring_count:
@@ -744,10 +747,10 @@ def format_undocumented(obj: model.Documentable) -> Tag:
         tag(
             "No ", format_kind(kind).lower(), " docstring; ",
             ', '.join(
-                f"{sub_objects_with_docstring_count[k]}/{sub_objects_total_count[k]} "
-                f"{format_kind(k, plural=sub_objects_with_docstring_count[k]>=2).lower()}"
+                f"{sub_objects_with_docstring_count[kind]}/{sub_objects_total_count[kind]} "
+                f"{format_kind(kind, plural=sub_objects_with_docstring_count[kind]>=2).lower()}"
                 
-                for k in sorted(sub_objects_total_count, key=(lambda x:x.value))
+                for kind in sorted(sub_objects_total_count, key=(lambda x:x.value))
                 ),
             " documented"
             )
@@ -781,8 +784,14 @@ class AnnotationDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self.annotation = annotation
 
+    def has_body(self) -> bool:
+        return True
+
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.code(_AnnotationFormatter(docstring_linker).visit(self.annotation))
+    
+    def to_node(self) -> docutils.nodes.document:
+        raise NotImplementedError()
 
 
 class _AnnotationFormatter(ast.NodeVisitor):
@@ -804,13 +813,16 @@ class _AnnotationFormatter(ast.NodeVisitor):
         else:
             return self.generic_visit(node)
 
-    def _handle_sequence(self, tag: Tag, sequence: Iterable[ast.expr]) -> None:
+    def _handle_sequence(self, tag: Tag, sequence: List[ast.expr]) -> None:
         first = True
-        for elem in sequence:
+        for i, elem in enumerate(sequence):
             if first:
                 first = False
             else:
-                tag(', ', tags.wbr) # Add an potential line break for long types
+                # Add an potential line break for long types, not when it's the last bracket, though.
+                tag(', ')
+                if i < len(sequence)-1:
+                    tag(tags.wbr)
             tag(self.visit(elem))
 
     def visit_Name(self, node: ast.Name) -> Tag:
@@ -840,7 +852,7 @@ class _AnnotationFormatter(ast.NodeVisitor):
         tag(self.visit(node.value))
         tag('[', tags.wbr)
         sub: ast.AST = node.slice
-        if isinstance(sub, ast.Index):
+        if sys.version_info < (3, 9) and isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
             sub = sub.value
         if isinstance(sub, ast.Tuple):
