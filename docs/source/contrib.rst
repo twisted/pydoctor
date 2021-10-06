@@ -29,6 +29,26 @@ A pull request will trigger more tests and most probably there is a tox
 environment dedicated to that extra test.
 
 
+Review process and requirements
+-------------------------------
+
+- Code changes and code added should have tests: untested code is buggy code. Except special cases, overall test coverage should be increased.
+- If your pull request is a work in progress, please mark it as draft such that reviewers do not loose time on a PR that is not ready yet.
+- All code changes must be reviewed by at least one person who is not an author of the code being added. 
+  This helps prevent bugs from slipping through the net and gives another source for improvements.
+  If the author of the PR is one of the core developers of pydoctor* and no one has reviewed their PR after 9 calendar days, they can review the code changes themselves and proceed with next steps. 
+- When one is done with the review, always say what the next step should be: for example, if the author is a core developer, can they merge the PR after making a few minor fixes? 
+  If your review feedback is more substantial, should they ask for another review?
+
+
+\* A core developer is anyone with a write access to the repository that have an intimate knowledge of pydoctor internals, or, 
+alternatively the specific aspect in which they are contributing to (i.e. Sphinx docs, setup, pytest, etc.). 
+
+Read more about reviewing:
+
+- `How to be a good reviewer <https://twistedmatrix.com/trac/wiki/ReviewProcess#Howtobeagoodreviewer>`_.
+- `Leave well enough alone <https://mail.python.org/archives/list/twisted@python.org/thread/53LZTRNRYLZJ4QLEF3YPAE53CWSL6LXD/>`_.
+
 Releasing and publishing a new package
 --------------------------------------
 
