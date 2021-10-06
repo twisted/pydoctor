@@ -6,12 +6,10 @@
 
 import pathlib
 import os
-import pytest
 
 BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / 'twisted-apidocs-build'
 
-# Failling test for https://github.com/twisted/pydoctor/issues/428
-@pytest.mark.xfail
+# Test for https://github.com/twisted/pydoctor/issues/428
 def test_IPAddress_implementations() -> None:
     """
     There is a flaw in the logic, currently.
