@@ -15,11 +15,14 @@ lang: Final[Sequence[str]] = ['Fr', 'En']
 This is also a constant.
 """
 
+from typing import AnyStr, Generator, Union, List, Dict
+
+
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with L{demo_typing_arguments} to
+    This function can be used in conjuction with `demo_typing_arguments` to
     find an arbitrary function's zeros.
 
     :type  m: number
@@ -53,6 +56,13 @@ def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     return True
 
+def demo_long_function_and_parameter_names__this_indeed_very_long(
+        this_is_a_very_long_parameter_name_aahh: str, 
+        what__another_super_super_long_name__ho_no: Generator[Union[List[AnyStr], Dict[str, AnyStr]], None, None]) -> bool:
+    """
+    Long names and annotations should display on several lines when they don't fit in a single line. 
+    """
+    return True
 
 def demo_cross_reference() -> None:
     r"""

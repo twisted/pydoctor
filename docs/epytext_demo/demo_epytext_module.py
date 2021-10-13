@@ -5,6 +5,7 @@ Most part of this documentation is using Python type hinting.
 """
 
 from abc import ABC
+from typing import AnyStr, Dict, Generator, List, Union
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
@@ -47,6 +48,13 @@ def demo_typing_arguments(name: str, size: bytes) -> bool:
     """
     return True
 
+def demo_long_function_and_parameter_names__this_indeed_very_long(
+        this_is_a_very_long_parameter_name_aahh: str, 
+        what__another_super_super_long_name__ho_no: Generator[Union[List[AnyStr], Dict[str, AnyStr]], None, None]) -> bool:
+    """
+    Long names and annotations should display on several lines when they don't fit in a single line. 
+    """
+    return True
 
 def demo_cross_reference() -> None:
     """

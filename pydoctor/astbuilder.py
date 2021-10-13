@@ -424,6 +424,8 @@ class ModuleVistor(ast.NodeVisitor):
                             "astbuilder",
                             "moving %r into %r" % (ob.fullName(), current.fullName())
                             )
+                        # Must be a Module since the exports is set to an empty list if it's not.
+                        assert isinstance(current, model.Module)
                         ob.reparent(current, asname)
                         continue
 
@@ -583,8 +585,10 @@ class ModuleVistor(ast.NodeVisitor):
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
             return
-        obj: Optional[model.Attribute] = cls.contents.get(name)
-        
+
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
+
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
@@ -628,8 +632,10 @@ class ModuleVistor(ast.NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
 
-        obj = cls.contents.get(name)
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
+
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
         if annotation is None and expr is not None:
