@@ -63,7 +63,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-* Mark variables as contants when their names is all caps or if using `typing.Final` annotation.
+* Mark variables as contants when their names is all caps or if using `Final` annotation.
 
 pydoctor 21.9.1
 ^^^^^^^^^^^^^^^
