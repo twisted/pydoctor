@@ -37,7 +37,7 @@ It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en
 How is it different from ``sphinx-autodoc``
 -------------------------------------------
 
-``sphinx-autodoc`` can be hazardous and the output is sometimes overwhelming, ``pydoctor`` will generate
+``sphinx-autodoc`` can be complex and the output is sometimes overwhelming, ``pydoctor`` will generate
 one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables.
 
 Sphinx narrative documentation can seamlessly link to API documentation formatted by pydoctor.
