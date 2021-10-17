@@ -100,27 +100,28 @@ Fields
 
 Pydoctor supports most of the common fields usable in Sphinx, and some others.
 
-Epytext fields are written like ``@field:`` or ``@field arg:``, whereas reStructuredText where fields are like ``:field:`` or ``:field arg:``. 
+Epytext fields are written with arobase, like ``@field:`` or ``@field arg:``.
+ReStructuredText fields are written with colons, like ``:field:`` or ``:field arg:``. 
 
-Here are the supported fields (written with Epytext format, but same fields are supported with reStructuredText): 
+Here are the supported fields (written with ReStructuredText format, but same fields are supported with Epytext): 
 
-    - ``@cvar foo:``, document a class variable. Applicable in the context of the docstring of a class.
-    - ``@ivar foo:``, document a instance variable. Applicable in the context of the docstring of a class.
-    - ``@var foo:``, document a variable. Applicable in the context of the docstring of a module or class. 
+    - ``:cvar foo:``, document a class variable. Applicable in the context of the docstring of a class.
+    - ``:ivar foo:``, document a instance variable. Applicable in the context of the docstring of a class.
+    - ``:var foo:``, document a variable. Applicable in the context of the docstring of a module or class. 
       If used in the context of a class, behaves just like ``@ivar:``.
-    - ``@note:``, add a note section.
-    - ``@param bar:`` (synonym: ``@arg bar:``), document a function's (or method's) parameter. 
+    - ``:note:``, add a note section.
+    - ``:param bar:`` (synonym: ``@arg bar:``), document a function's (or method's) parameter. 
       Applicable in the context of the docstring of a function of method. 
-    - ``@keyword:``, document a function's (or method's) keyword parameter (``**kwargs``).
-    - ``@type bar: C{list}``, document the type of an argument/keyword or variable, depending on the context.
-    - ``@return:`` (synonym: ``@returns:``), document the return type of a function (or method).
-    - ``@rtype:`` (synonym: ``@returntype:``), document the type of the return value of a function (or method).
-    - ``@yield:`` (synonym: ``@yields:``), document the values yielded by a generator function (or method).
-    - ``@raise ValueError:`` (synonym: ``@raises ValueError:``), document the potential exception a function (or method) can raise.
-    - ``@warn RuntimeWarning:`` (synonym: ``@warns ValueError:``), document the potential warning a function (or method) can trigger.
-    - ``@see:`` (synonym: ``@seealso:``), add a see also section.
-    - ``@since:``, document the date and/or version since a component is present in the API.
-    - ``@author:``, document the author of a component, generaly a module.
+    - ``:keyword:``, document a function's (or method's) keyword parameter (``**kwargs``).
+    - ``:type bar: C{list}``, document the type of an argument/keyword or variable, depending on the context.
+    - ``:return:`` (synonym: ``@returns:``), document the return type of a function (or method).
+    - ``:rtype:`` (synonym: ``@returntype:``), document the type of the return value of a function (or method).
+    - ``:yield:`` (synonym: ``@yields:``), document the values yielded by a generator function (or method).
+    - ``:raise ValueError:`` (synonym: ``@raises ValueError:``), document the potential exception a function (or method) can raise.
+    - ``:warn RuntimeWarning:`` (synonym: ``@warns ValueError:``), document the potential warning a function (or method) can trigger.
+    - ``:see:`` (synonym: ``@seealso:``), add a see also section.
+    - ``:since:``, document the date and/or version since a component is present in the API.
+    - ``:author:``, document the author of a component, generaly a module.
 
 .. note:: Currently, any other fields will be considered "unknown" and will be flagged as such. 
     See `"fields" issues <https://github.com/twisted/pydoctor/issues?q=is%3Aissue+is%3Aopen+fields>`_
