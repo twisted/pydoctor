@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
-import warnings
 
 from pydoctor.themes import get_themes
 from pydoctor import model, zopeinterface, __version__
@@ -431,7 +430,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer', IWriter)
+                    # ignore mypy error: Only concrete class can be given where "Type[IWriter]" is expected
+                    options.htmlwriter, '--html-writer', IWriter) # type: ignore[misc]
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -461,15 +461,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             build_directory = Path(options.htmloutput)
 
-            try:
-                # mypy error: Cannot instantiate abstract class 'IWriter'
-                writer = writerclass(build_directory, # type: ignore[abstract]
-                    template_lookup=template_lookup)
-            except TypeError:
-                # Custom class does not accept 'template_lookup' argument.
-                writer = writerclass(build_directory) # type: ignore[abstract]
-                warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                    "HTML template customization with --template-dir.")
+            writer = writerclass(build_directory, template_lookup=template_lookup)
 
             writer.prepOutputDirectory()
 

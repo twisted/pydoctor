@@ -9,6 +9,17 @@ from typing import AnyStr, Dict, Generator, List, Union
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
+from typing import Final, Sequence
+
+LANG = 'Fr'
+"""
+This is a constant.
+"""
+
+lang: Final[Sequence[str]] = ['Fr', 'En']
+"""
+This is also a constant.
+"""
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """

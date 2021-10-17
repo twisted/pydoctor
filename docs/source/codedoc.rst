@@ -83,6 +83,17 @@ Assignments to ``__doc__`` inside functions are ignored by pydoctor. This can be
 
 Augmented assignments like ``+=`` are currently ignored as well, but that is an implementation limitation rather than a design decision, so this might change in the future.
 
+Constants
+---------
+
+Following `PEP8 <https://www.python.org/dev/peps/pep-0008/#constants>`_, any variable defined with all upper case name will be considered as a constant.
+Additionaly, starting with Python 3.8, one can use the `typing.Final <https://www.python.org/dev/peps/pep-0008/#constants>`_ qualifier to declare a constant. 
+
+For instane, these variables will be recognized as constants::
+    
+    from typing import Final
+    X = 3.14
+    y: Final = ['a', 'b']
 
 Fields
 ------

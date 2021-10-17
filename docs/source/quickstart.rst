@@ -27,7 +27,7 @@ The result looks like `this <api/pydoctor.html>`_.
         --html-viewsource-base=https://github.com/twisted/pydoctor/tree/20.7.2 \
         --make-html \
         --html-output=docs/api \
-        --project-base-dir="$(pwd)" \
+        --project-base-dir="." \
         --docformat=epytext \
         --intersphinx=https://docs.python.org/3/objects.inv \
         ./pydoctor
