@@ -13,8 +13,8 @@ from pydoctor import model
 from twisted.web.template import Tag
 
 
-def doc2html(doc: str, markup: str) -> str:
-    return ''.join(prettify(flatten(parse_docstring(doc, markup).to_stan(NotFoundLinker()))).splitlines())
+def doc2html(doc: str, markup: str, processtypes: bool = False) -> str:
+    return ''.join(prettify(flatten(parse_docstring(doc, markup, processtypes).to_stan(NotFoundLinker()))).splitlines())
 
 def test_types_to_node_no_markup() -> None:
     cases = [   
@@ -24,7 +24,8 @@ def test_types_to_node_no_markup() -> None:
             "rtype: List[str] or list(bytes), optional",]
 
     for s in cases:
-        assert doc2html(':'+s, 'restructuredtext') == doc2html('@'+s, 'epytext')
+        assert doc2html(':'+s, 'restructuredtext', False) == doc2html('@'+s, 'epytext')
+        assert doc2html(':'+s, 'restructuredtext', True) == doc2html('@'+s, 'epytext')
 
 def test_to_node_markup() -> None:
     
