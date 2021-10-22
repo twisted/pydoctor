@@ -1181,7 +1181,8 @@ class GoogleDocstring:
             _desc = self._strip_empty(_desc)
             _descs = " " + "\n    ".join(_desc) if any(_desc) else ""
             if _type and not _descs and not prefer_type:
-                _descs, _type = _type, _descs
+                _descs = _type
+                _type = ""
             lines.append(f":{field_type}{_type}:{_descs}")
         if lines:
             lines.append("")
