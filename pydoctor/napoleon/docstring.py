@@ -209,7 +209,7 @@ class TypeDocstring:
         _tokens: List[str] = self._tokenize_type_spec(annotation)
         self._tokens: List[Tuple[str, TokenType]] = self._build_tokens(_tokens)
 
-        self._warn_unbalanced_parenthesis(self._tokens)
+        self._trigger_warnings()
 
     def _build_tokens(self, _tokens: List[Union[str, Any]]) -> List[Tuple[str, TokenType]]:
         _combined_tokens = self._recombine_set_tokens(_tokens)
@@ -229,15 +229,15 @@ class TypeDocstring:
         """
         return self._convert_type_spec_to_rst()
     
-    def _warn_unbalanced_parenthesis(self, tokens: List[Tuple[str, TokenType]]) -> None:
+    def _trigger_warnings(self) -> None:
         """
-        Append unbalanced parenthesis warnings.
+        Append some warnings.
         """
         open_parenthesis = 0
         open_square_braces = 0
 
-        for _token, _type in tokens:
-            if _type is TokenType.DELIMITER: 
+        for _token, _type in self._tokens:
+            if _type is TokenType.DELIMITER and _token in '[]()': 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
                 elif _token == "]": open_square_braces -= 1

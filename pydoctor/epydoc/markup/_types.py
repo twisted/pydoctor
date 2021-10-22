@@ -110,45 +110,38 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         for _token, _type in tokens:
 
-            if _type is TokenType.OBJ:
-                new_token = docstring_linker.link_xref(_token, _token, self._lineno)
-                if open_square_braces + open_parenthesis > 0:
-                    try: last_processed_token = combined_tokens[-1]
-                    except IndexError: 
-                        # weird
-                        combined_tokens.append((_token, _type))
-                    else:
-                        if last_processed_token[1] is TokenType.OBJ and isinstance(last_processed_token[0], Tag):
-                            # Merge with last Tag
-                            last_processed_token[0](*new_token.children)
-                        else:
-                            # weird
-                            combined_tokens.append((new_token, _type))
-                else:
-                    combined_tokens.append((new_token, _type))
-
-            elif _type is TokenType.DELIMITER: 
+            if _type is TokenType.DELIMITER or _type is TokenType.OBJ: 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
 
+                if _type is TokenType.OBJ:
+                    _token = docstring_linker.link_xref(
+                                _token, _token, self._lineno)
+
                 if open_square_braces + open_parenthesis > 0:
                     try: last_processed_token = combined_tokens[-1]
                     except IndexError: 
-                        # weird
+                        # Impossible IMO
                         combined_tokens.append((_token, _type))
                     else:
-                        if last_processed_token[1] is TokenType.OBJ and isinstance(last_processed_token[0], Tag): 
+                        if last_processed_token[1] is TokenType.OBJ \
+                           and isinstance(last_processed_token[0], Tag):
                             # Merge with last Tag
-                            last_processed_token[0](_token)
+                            if _type is TokenType.OBJ:
+                                assert isinstance(_token, Tag)
+                                last_processed_token[0](*_token.children)
+                            else:
+                                last_processed_token[0](_token)
                         else:
-                            # weird
                             combined_tokens.append((_token, _type))
                 else:
                     combined_tokens.append((_token, _type))
-
+                
                 if _token == "]": open_square_braces -= 1
                 elif _token == ")": open_parenthesis -= 1
+
             else:
+                # the token will be processed in _convert_type_spec_to_stan() method.
                 combined_tokens.append((_token, _type))
 
         return combined_tokens

@@ -38,9 +38,6 @@ def test_to_node_markup() -> None:
     for epystr, rststr in cases:
         assert doc2html(rststr, 'restructuredtext') == doc2html(epystr, 'epytext')
 
-def test_types_corner_cases() -> None:
-    ...
-
 def test_parsed_type_convert_obj_tokens_to_stan() -> None:
     
     convert_obj_tokens_cases = [
@@ -107,8 +104,8 @@ def test_parsed_type() -> None:
 
 def test_processtypes(capsys: CapSys) -> None:
     """
-    Currently, numpy and google type parsing happens both at the string level with TypeDocstring
-    and at the docutils nodes ParsedTypeDocstring for type fields (``type`` and ``rtype``).
+    Currently, numpy and google type parsing happens both at the string level with L{pydoctor.napoleon.docstring.TypeDocstring}
+    and at the docutils nodes L{ParsedTypeDocstring} for type fields (``type`` and ``rtype``).
     """
 
     cases = [
@@ -238,28 +235,38 @@ def test_processtypes_with_system(capsys: CapSys) -> None:
     assert "<code>list</code> of <code>int</code> or <code>float</code> or <code>None</code>" == fmt
     
 
-# TODO test processtypes warnings
-
-# TODO: This test should trigger some warnings. 
 def test_processtypes_corner_cases(capsys: CapSys) -> None:
-    system = model.System()
-    system.options.processtypes = True
-    mod = fromText('''
-    a = None
     """
-    @type: default[str]
+    The corner cases does not trigger any warnings because they are still valid types.
+    
+    Warnings should be triggered in L{pydoctor.napoleon.docstring.TypeDocstring._trigger_warnings}, 
+    we should be careful with triggering warnings because whether the type spec triggers warnings is used
+    to check is a string is a valid type or not.  
     """
-    ''', modname='test', system=system)
-    a = mod.contents['a']
-    docstring2html(a)
+    def process(typestr: str) -> str:
+        system = model.System()
+        system.options.processtypes = True
+        mod = fromText(f'''
+        a = None
+        """
+        @type: {typestr}
+        """
+        ''', modname='test', system=system)
+        a = mod.contents['a']
+        docstring2html(a)
 
-    assert isinstance(a.parsed_type, ParsedTypeDocstring)
-    fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+        assert isinstance(a.parsed_type, ParsedTypeDocstring)
+        fmt = flatten(a.parsed_type.to_stan(NotFoundLinker()))
+        
+        captured = capsys.readouterr().out
+        assert not captured
 
-    captured = capsys.readouterr().out
-    assert captured == ""
+        return fmt
 
-    assert "<em>default</em>[<code>str]</code>" == fmt
+    assert "<em>default</em>[<code>str]</code>" == process('default[str]')
+    assert "[<code>str]</code>" == process('[str]')
+    assert "[, ]" == process('[,]')
+    assert "[[]]" == process('[[]]')
 
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
