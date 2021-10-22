@@ -1531,9 +1531,6 @@ class NumpyDocstring(GoogleDocstring):
     def _consume_returns_section(self) -> List[Field]:
         return self._consume_fields(prefer_type=True, allow_free_form=True)
 
-    def _consume_raises_section(self) -> List[Field]:
-        return self._consume_fields(prefer_type=True)
-
     def _consume_section_header(self) -> str:
         section = next(self._line_iter)
         if not _directive_regex.match(section):
