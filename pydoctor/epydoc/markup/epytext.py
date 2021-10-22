@@ -1294,11 +1294,6 @@ def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], 
     """
     return parse_docstring
 
-def set_nodes_parent(nodes: Iterable[nodes.Node], parent: nodes.Node) -> Iterable[None]:
-    for node in nodes:
-        node.parent = parent
-        yield node
-
 class ParsedEpytextDocstring(ParsedDocstring):
     SYMBOL_TO_CODEPOINT = {
         # Symbols
