@@ -1816,6 +1816,24 @@ param1 : MyClass instance
         self.assertEqual(expected.rstrip(), actual)
         self.assertAlmostEqualSphinxDocstring(expected, docstring,
             type_=SphinxNumpyDocstring)
+    
+    def test_see_also_refs_invalid(self):
+        docstring = """\
+See Also
+--------
+$funcs
+123
+"""
+        expected = """\
+.. seealso::
+
+   $funcs
+   123
+"""
+
+        self.assertEqual(expected.rstrip(), str(NumpyDocstring(docstring)))
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
 
     def test_see_also_refs(self):
         docstring = """\
@@ -1827,7 +1845,16 @@ some, other, funcs
 otherfunc : relationship
 """
 
-        actual = str(NumpyDocstring(docstring))
+        docstring2 = """\
+numpy.multivariate_normal(mean, cov, shape=None, spam=None)
+
+See Also
+--------
+
+some, other, :func:`funcs`
+
+otherfunc : relationship
+"""
 
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
@@ -1839,8 +1866,12 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
    `otherfunc`
        relationship
 """
-        self.assertEqual(expected.rstrip(), actual)
+        self.assertEqual(expected.rstrip(), str(NumpyDocstring(docstring)))
         self.assertAlmostEqualSphinxDocstring(expected, docstring, 
+            type_=SphinxNumpyDocstring)
+
+        self.assertEqual(expected.rstrip(), str(NumpyDocstring(docstring2)))
+        self.assertAlmostEqualSphinxDocstring(expected, docstring2, 
             type_=SphinxNumpyDocstring)
 
         docstring = """\
@@ -1853,8 +1884,6 @@ otherfunc : relationship
 """
 
 
-        actual = str(NumpyDocstring(docstring))
-
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
 
@@ -1865,7 +1894,7 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
    `otherfunc`
        relationship
 """
-        self.assertEqual(expected.rstrip(), actual)
+        self.assertEqual(expected.rstrip(), str(NumpyDocstring(docstring)))
         self.assertAlmostEqualSphinxDocstring(expected, docstring, 
             type_=SphinxNumpyDocstring)
 
@@ -1878,9 +1907,6 @@ some, other, :func:`funcs`
 otherfunc : relationship
 """
 
-
-        actual = str(NumpyDocstring(docstring))
-
         expected = """\
 numpy.multivariate_normal(mean, cov, shape=None, spam=None)
 
@@ -1891,7 +1917,7 @@ numpy.multivariate_normal(mean, cov, shape=None, spam=None)
    `otherfunc`
        relationship
 """
-        self.assertEqual(expected.rstrip(), actual)
+        self.assertEqual(expected.rstrip(), str(NumpyDocstring(docstring)))
         self.assertAlmostEqualSphinxDocstring(expected, docstring, 
             type_=SphinxNumpyDocstring)
 
