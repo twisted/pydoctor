@@ -1016,11 +1016,6 @@ class GoogleDocstring:
             header_indent = self._get_indent(section)
             section_indent = self._get_current_indent(peek_ahead=1)
             return section_indent > header_indent
-        elif self._directive_sections:
-            if _directive_regex.match(section):
-                for directive_section in self._directive_sections:
-                    if section.startswith(directive_section):
-                        return True
         return False
 
     def _is_section_break(self) -> bool:
@@ -1056,10 +1051,7 @@ class GoogleDocstring:
                     section = self._consume_section_header()
                     self._is_in_section = True
                     self._section_indent = self._get_current_indent()
-                    if _directive_regex.match(section):
-                        lines = [section] + self._consume_to_next_section()
-                    else:
-                        lines = self._sections[section.lower()](section)
+                    lines = self._sections[section.lower()](section)
                 finally:
                     self._is_in_section = False
                     self._section_indent = 0
@@ -1556,11 +1548,6 @@ class NumpyDocstring(GoogleDocstring):
         section = section.lower()
         if section in self._sections and isinstance(underline, str):
             return bool(_numpy_section_regex.match(underline))
-        elif self._directive_sections:
-            if _directive_regex.match(section):
-                for directive_section in self._directive_sections:
-                    if section.startswith(directive_section):
-                        return True
         return False
 
     def _convert_type_and_maybe_consume_free_form_field(
