@@ -1266,9 +1266,6 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
                     cast(str, cast(Element, field.children.pop(0)).children[0])
             else:
                 arg = None
-            
-            # TODO: Use ParsedTypeDocstring for numpy and google by default and
-            # allow the other markup to use it as well with a CLI option like --process-types
 
             # Process the field.
             field.tag = 'epytext'
