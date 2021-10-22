@@ -1275,7 +1275,7 @@ def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool
             lineno = int(field.attribs['lineno'])
             
             # This allows epytext markup to use TypeDocstring as well with a CLI option: --process-types
-            if processtypes and tag in ['type', 'rtype']:
+            if processtypes and tag in ParsedTypeDocstring.FIELDS:
                 field_parsed_doc = ParsedTypeDocstring(field_parsed_doc.to_node(), lineno=lineno)
                 for warning_msg in field_parsed_doc.warnings:
                     errors.append(ParseError(warning_msg, lineno, is_fatal=False))

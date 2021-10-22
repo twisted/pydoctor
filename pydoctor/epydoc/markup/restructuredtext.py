@@ -279,7 +279,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
 
         # This allows restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types
         field_parsed_doc: ParsedDocstring
-        if self._processtypes and tagname in ['type', 'rtype']:
+        if self._processtypes and tagname in ParsedTypeDocstring.FIELDS:
             field_parsed_doc = ParsedTypeDocstring(field_doc)
             for warning_msg in field_parsed_doc.warnings:
                     self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))

@@ -18,6 +18,9 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     Add L{ParsedDocstring} interface on top of L{TypeDocstring} and 
     allow to parse types from L{nodes.Node} objects, providing the C{--process-types} option.
     """
+
+    FIELDS = ('type', 'rtype')
+
     _tokens: List[Tuple[Union[str, nodes.Node], TokenType]]
 
     def __init__(self, annotation: Union[nodes.document, str],
