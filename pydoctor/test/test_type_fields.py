@@ -187,13 +187,19 @@ def test_processtypes(capsys: CapSys) -> None:
 
 def test_processtypes_more() -> None:
     # Using numpy style-only because it suffice.
-    cases = [("""
+    cases = [
+        ("""
               Yields
               ------
-              bool:
+              working: bool
                   Whether it's working.
+              not_working: bool
+                  Whether it's not working.
               """, 
-              "<code>bool</code> - Whether it's working."), 
+              """<ul class="rst-simple">
+<li><strong>working</strong>: <code>bool</code> - Whether it's working.</li>
+<li><strong>not_working</strong>: <code>bool</code> - Whether it's not working.</li>
+</ul>"""), 
 
               ("""
                Returns

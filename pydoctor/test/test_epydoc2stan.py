@@ -1116,12 +1116,15 @@ def test_yields_field(capsys: CapSys) -> None:
     def func():
         """
         @yields: Each member of the sequence.
+        @ytype: str
         """
         pass
     ''')
     html = ''.join(docstring2html(mod.contents['func']).splitlines())
-    assert ('<div><table class="fieldTable"><tr class="fieldStart">'
-            '<td class="fieldName" colspan="2">Yields</td></tr><tr>'
-            '<td colspan="2">Each member of the sequence.</td></tr></table></div>') == html
+    assert html == ('<div><table class="fieldTable"><tr class="fieldStart">'
+                    '<td class="fieldName" colspan="2">Yields</td></tr><tr>'
+                    '<td class="fieldArgContainer">str</td>'
+                    '<td class="fieldArgDesc">Each member of the sequence.'
+                    '</td></tr></table></div>')
     captured = capsys.readouterr().out
     assert captured == ''

@@ -443,6 +443,13 @@ class FieldHandler:
         self.return_desc.type = field.format()
     handle_rtype = handle_returntype
 
+    def handle_yieldtype(self, field: Field) -> None:
+        self._report_unexpected_argument(field)
+        if not self.yields_desc:
+            self.yields_desc = FieldDesc()
+        self.yields_desc.type = field.format()
+    handle_ytype = handle_yieldtype
+
     def _handle_param_name(self, field: Field) -> Optional[str]:
         name = field.arg
         if name is None:

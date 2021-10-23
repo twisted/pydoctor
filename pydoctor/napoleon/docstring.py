@@ -500,7 +500,7 @@ class GoogleDocstring:
         :type arg2: str
 
         :returns: Description of return value.
-        :rtype: str
+        :returntype: str
         >>> print(GoogleDocstring(docstring, process_type_fields=True))
         One line summary.
 
@@ -512,7 +512,7 @@ class GoogleDocstring:
         :type arg2: `str`
 
         :returns: Description of return value.
-        :rtype: `str`
+        :returntype: `str`
 
     """
 
@@ -583,6 +583,8 @@ class GoogleDocstring:
                 "receives": self._parse_parameters_section,  # same as parameters
                 "return": self._parse_returns_section,
                 "returns": self._parse_returns_section,
+                "yield": self._parse_returns_section, # same process as returns section
+                "yields": self._parse_returns_section,
                 "raise": self._parse_raises_section,
                 "raises": self._parse_raises_section,
                 "except": self._parse_raises_section,  # add same restructuredtext headers
@@ -596,8 +598,6 @@ class GoogleDocstring:
                 "warnings": partial(self._parse_admonition, "warning"),
                 "warn": self._parse_warns_section,
                 "warns": self._parse_warns_section,
-                "yield": self._parse_yields_section,
-                "yields": self._parse_yields_section,
                 "usage": self._parse_usage_section,
             }
 
@@ -925,28 +925,9 @@ class GoogleDocstring:
         else:
             return [field]
 
-    # Only used for :yields: section, currently. 
-    def _format_fields(
-        self, 
-        field_type: str, 
-        fields: List[Field]
-    ) -> List[str]:
-        field_type = f":{field_type.strip()}:"
-        padding = " " * len(field_type)
-        multi = len(fields) > 1
-        lines = []  # type: List[str]
-        for f in fields:
-            field = self._format_field(f.name, f.type, f.content, lineno=f.lineno)
-            if multi:
-                if lines:
-                    lines.extend(self._format_block(padding + " * ", field))
-                else:
-                    lines.extend(self._format_block(field_type + " * ", field))
-            else:
-                lines.extend(self._format_block(field_type + " ", field))
-        if lines and lines[-1]:
-            lines.append("")
-        return lines
+    # kept for historical reasons only. Check upstream shpinx's napoleon extension for source code.
+    def _format_fields(self, field_type: str, fields: List[Field]) -> List[str]:
+        raise NotImplementedError()
 
     def _get_current_indent(self, peek_ahead: int = 0) -> int:
         line = self._line_iter.peek(peek_ahead + 1)[peek_ahead]
@@ -1193,7 +1174,9 @@ class GoogleDocstring:
         return self._parse_generic_section("References")
 
     # overridden: add if any(field): condition not to display empty returns sections
+    # this method is used for yields section, too.
     def _parse_returns_section(self, section: str) -> List[str]:
+        section = section.lower() + ('s' if not section.endswith('s') else "")
         fields = self._consume_returns_section()
         multi = len(fields) > 1
         if multi:
@@ -1210,14 +1193,14 @@ class GoogleDocstring:
 
             if multi:
                 if lines:
-                    lines.extend(self._format_block("          * ", field))
+                    lines.extend(self._format_block(" "*(len(section)+2)+" * ", field))
                 else:
-                    lines.extend(self._format_block(":returns: * ", field))
+                    lines.extend(self._format_block(f":{section}: * ", field))
             else:
                 if any(field):
-                    lines.extend(self._format_block(":returns: ", field))
+                    lines.extend(self._format_block(f":{section}: ", field))
                 if f.type and use_rtype:
-                    lines.extend([f":rtype: {self._convert_type(f.type, lineno=f.lineno)}", ""])
+                    lines.extend([f":{section.rstrip('s')}type: {self._convert_type(f.type, lineno=f.lineno)}", ""])
         if lines and lines[-1]:
             lines.append("")
         return lines
@@ -1232,10 +1215,6 @@ class GoogleDocstring:
             section, field_type="warns", prefer_type=False
         )
 
-    # overriden: no translation
-    def _parse_yields_section(self, section: str) -> List[str]:
-        fields = self._consume_returns_section()
-        return self._format_fields("Yields", fields)
 
     def _partition_field_on_colon(self, line: str) -> Tuple[str, str, str]:
         before_colon = []
@@ -1405,7 +1384,7 @@ class NumpyDocstring(GoogleDocstring):
         :type arg2: str
 
         :returns: Description of return value.
-        :rtype: str
+        :returntype: str
         >>> print(NumpyDocstring(docstring, process_type_fields=True))
         One line summary.
 
@@ -1417,7 +1396,7 @@ class NumpyDocstring(GoogleDocstring):
         :type arg2: `str`
 
         :returns: Description of return value.
-        :rtype: `str`
+        :returntype: `str`
 
     """
 

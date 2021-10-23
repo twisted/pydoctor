@@ -75,7 +75,7 @@ class BaseDocstringTest(TestCase):
         sphinx_docstring_output = re.sub(
             r"(`|\\|:mod:|:func:|:class:|:obj:|\s<Ellipsis>)", "",
             str(type_(docstring)).replace( #type: ignore[misc]
-            ":kwtype", ":type").replace(":vartype", ":type").replace(" -- ", " - ").rstrip())
+            ":kwtype", ":type").replace(":vartype", ":type").replace(" -- ", " - ").replace(':rtype:', ':returntype:').rstrip())
 
         self.assertEqual(expected_sphinx_output.rstrip(), sphinx_docstring_output)
     
@@ -469,7 +469,7 @@ Single line summary
 
 :returns: Extended
           description of return value
-:rtype: `str`
+:returntype: `str`
 """
     ), (
         """
@@ -484,7 +484,7 @@ Single line summary
 
 :returns: Extended
           description of return value
-:rtype: `str`
+:returntype: `str`
 """
     ), (
         """
@@ -584,8 +584,9 @@ Yield:
 """
 Single line summary
 
-:Yields: `str` - Extended
+:yields: Extended
          description of yielded value
+:yieldtype: `str`
 """
     ), (
         """
@@ -598,7 +599,7 @@ Yields:
 """
 Single line summary
 
-:Yields: Extended
+:yields: Extended
          description of yielded value
 """
     ), (
@@ -643,7 +644,8 @@ Single line summary
         for docstring, expected in self.docstrings:
             actual = str(GoogleDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
-            self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
+            if not 'Yield' in docstring: # The yield section is very different from sphinx's.
+                self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
     def test_returns_section_type_only(self):
 
@@ -785,7 +787,7 @@ Returns:
           foo::
               codecode
               codecode
-:rtype: `foobar`
+:returntype: `foobar`
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -801,7 +803,7 @@ Returns:
 
 :returns: an example instance
           if available, None if not available.
-:rtype: :py:class:`~.module.submodule.SomeClass`
+:returntype: :py:class:`~.module.submodule.SomeClass`
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -819,7 +821,7 @@ Returns:
 
 :returns: A :math:`n \\times 2` array containing
           a bunch of math items
-:rtype: :class:`numpy.ndarray`
+:returntype: :class:`numpy.ndarray`
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -1284,7 +1286,7 @@ Returns:
                   'param1': param1,
                   'param2': param2
               }
-:rtype: `bool`
+:returntype: `bool`
 """ 
 
         actual = str(GoogleDocstring(docstring))
@@ -1360,7 +1362,7 @@ Scopes the credentials if necessary.
 :type errors: `Sequence`\ [`Union`\ [`ParseError`, `ParseWarning`, `ParseInfo`, `...`]]
 
 :returns: The scoped credentials.
-:rtype: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
+:returntype: `Union`\ [`google.auth.credentials.Credentials`, `oauth2client.client.Credentials`]
 """
         actual = str(GoogleDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
@@ -1503,7 +1505,7 @@ class NumpyDocstringTest(BaseDocstringTest):
 
         :returns: Extended
                   description of return value
-        :rtype: `str`
+        :returntype: `str`
         """
     ),(
         """
@@ -1517,7 +1519,7 @@ class NumpyDocstringTest(BaseDocstringTest):
         Single line summary
 
         :returns: **the string of your life**
-        :rtype: `str`
+        :returntype: `str`
         """
     ), (
         """
@@ -1534,7 +1536,7 @@ class NumpyDocstringTest(BaseDocstringTest):
 
         :returns: Extended
                   description of return value
-        :rtype: `str`
+        :returntype: `str`
         """
     ), (
         """
@@ -1635,8 +1637,9 @@ class NumpyDocstringTest(BaseDocstringTest):
         """
         Single line summary
 
-        :Yields: `str` - Extended
+        :yields: Extended
                  description of yielded value
+        :yieldtype: `str`
         """
     ), (
         """
@@ -1651,8 +1654,9 @@ class NumpyDocstringTest(BaseDocstringTest):
         """
         Single line summary
 
-        :Yields: `str` - Extended
+        :yields: Extended
                  description of yielded value
+        :yieldtype: `str`
         """
     ), ("""
         Derived from the NumpyDoc implementation of _parse_see_also::
@@ -1699,7 +1703,8 @@ class NumpyDocstringTest(BaseDocstringTest):
             actual = str(NumpyDocstring(dedent(docstring)))
             expected = dedent(expected)
             self.assertEqual(expected.rstrip(), actual)
-            self.assertAlmostEqualSphinxDocstring(expected, dedent(docstring), type_=SphinxNumpyDocstring)
+            if not 'Yield' in docstring: # The yield section is very different from sphinx's.
+                self.assertAlmostEqualSphinxDocstring(expected, dedent(docstring), type_=SphinxNumpyDocstring)
 
     def test_sphinx_admonitions(self):
         admonition_map = {
@@ -1959,7 +1964,7 @@ Returns
 Summary
 
 :returns: an instance of :py:class:`~my_mod.my_class`
-:rtype: :py:class:`~my_mod.my_class`
+:returntype: :py:class:`~my_mod.my_class`
 """
 
 
@@ -1996,7 +2001,7 @@ arg_ : type
         """)
         expected = dedent("""
            :returns: a dataframe
-           :rtype: `pandas.DataFrame`
+           :returntype: `pandas.DataFrame`
         """)
         
         actual = str(NumpyDocstring(docstring))
@@ -2016,13 +2021,12 @@ arg_ : type
         expected = dedent("""
             Example Function
 
-            :Yields: `scalar` or `array-like` - The result of the computation
+            :yields: The result of the computation
+            :yieldtype: `scalar` or `array-like`
         """)
 
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
-        self.assertAlmostEqualSphinxDocstring(expected, docstring, 
-            type_=SphinxNumpyDocstring)
 
     def test_raises_types(self):
         docstrings = [("""
@@ -2233,7 +2237,7 @@ Example Function
 
 :returns: A :math:`n \\times 2` array containing
           a bunch of math items
-:rtype: :class:`numpy.ndarray`
+:returntype: :class:`numpy.ndarray`
 """
 
         actual = str(NumpyDocstring(docstring))
@@ -2560,7 +2564,7 @@ Summary line.
 
 :returns: Sequence of arguments, in the order in
           which they should be called.
-:rtype: `list` of `strings`
+:returntype: `list` of `strings`
         """),
         
         ("""
@@ -2587,7 +2591,7 @@ str
 """
 Summary line.
 
-:rtype: `str`
+:returntype: `str`
         """),(
 """
 Summary line.
@@ -2601,7 +2605,7 @@ str
 Summary line.
 
 :returns: A URL string
-:rtype: `str`
+:returntype: `str`
         """
         ), (
         """
@@ -2667,7 +2671,7 @@ RuntimeWarning
         """
 Summary line.
 
-:rtype: `str`
+:returntype: `str`
 
 :raises UserError:
 
@@ -2696,7 +2700,7 @@ RuntimeWarning
 Summary line.
 
 :returns: Description of return value
-:rtype: `str`
+:returntype: `str`
 
 :raises UserError: Description of raised exception
 
@@ -2720,7 +2724,7 @@ Summary line.
 :returns: The lines of the docstring in a list.
 
           .. note:: Nested markup works.
-:rtype: `list`\ (`str`)
+:returntype: `list`\ (`str`)
         """
         ), (
         """
@@ -2740,7 +2744,7 @@ Summary line.
 :returns: The lines of the docstring in a list.
 
           .. note:: Nested markup works.
-:rtype: `List`\ [`str`]
+:returntype: `List`\ [`str`]
         """
         ), (
         """
@@ -2813,7 +2817,7 @@ Single line summary
         expected = dedent(r"""
         Summary line.
 
-        :rtype: `List`\ [`Union`\ [`str`, `bytes`, `typing.Pattern`]]
+        :returntype: `List`\ [`Union`\ [`str`, `bytes`, `typing.Pattern`]]
         """)
         actual = str(NumpyDocstring(docstring, ))
         self.assertEqual(expected.rstrip(), actual)
@@ -2836,7 +2840,7 @@ bool
         expected = """`PEP 484`_ type annotations are supported.
 
 :returns: True if successful, False otherwise.
-:rtype: `bool`
+:returntype: `bool`
 
 .. _PEP 484:
     https://www.python.org/dev/peps/pep-0484/
@@ -2894,6 +2898,25 @@ bool
         actual = str(NumpyDocstring(docstring))
         self.assertEqual(expected.rstrip(), actual)
 
+        docstring = dedent("""
+        Yields
+        ------
+        the list of your life: list of str
+        the str of your life: {"foo", "bob", "bar"}
+        the int of your life: int
+        the tuple of your life: tuple
+        """)
+
+        expected = dedent("""
+        :yields: * **the list of your life**: `list` of `str`
+                 * **the str of your life**: ``{"foo", "bob", "bar"}``
+                 * **the int of your life**: `int`
+                 * **the tuple of your life**: `tuple`
+        """)
+
+        actual = str(NumpyDocstring(docstring))
+        self.assertEqual(expected.rstrip(), actual)
+
     def test_fields_blank_lines(self):
         """
         Test for issue https://github.com/twisted/pydoctor/issues/366
@@ -2929,13 +2952,14 @@ bool
         :type bob: `list` of `str`
 
         :returns: The lines of the docstring in a list.
-        :rtype: `bool`
+        :returntype: `bool`
 
         .. note:: Markup works.
 
         It is strong
 
-        :Yields: `tuple`\ (`ice`, `cream`) - Yes
+        :yields: Yes
+        :yieldtype: `tuple`\ (`ice`, `cream`) 
         """)
 
         actual = str(NumpyDocstring(docstring))
@@ -2975,7 +2999,7 @@ bool
         :type bob: `list` of `str`
 
         :returns: The lines of the docstring in a list.
-        :rtype: `bool`
+        :returntype: `bool`
 
         .. note:: Markup works.
 

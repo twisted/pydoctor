@@ -19,7 +19,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
     allow to parse types from L{nodes.Node} objects, providing the C{--process-types} option.
     """
 
-    FIELDS = ('type', 'rtype')
+    FIELDS = ('type', 'rtype', 'ytype', 'returntype', 'yieldtype')
 
     _tokens: List[Tuple[Union[str, nodes.Node], TokenType]]
 
