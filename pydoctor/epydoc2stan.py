@@ -425,10 +425,6 @@ class FieldHandler:
         self.return_desc.body = field.format()
     handle_returns = handle_return
 
-    # TODO support types for yields section
-    # Currently, type will be shown as it's included in napoleon processed strings
-    # but not it's not "the right place". https://github.com/sphinx-doc/sphinx/issues/8004
-    # We could add support for ':ytype:' and use it inside pydoctor.napoleon. 
     def handle_yield(self, field: Field) -> None:
         self._report_unexpected_argument(field)
         if not self.yields_desc:
