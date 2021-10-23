@@ -1395,6 +1395,30 @@ Description...
         self.assertIn("invalid type: 'docformatCan be one of'", warning[0])
         self.assertEqual(5, warning[1])
 
+        docstring = """
+Description...
+
+Args:
+    docformat (Can be "numpy" 
+        or "google"): Desc
+    scopes (Sequence[str]): The list of scopes.
+"""
+
+        expected = r"""
+Description...
+
+:param docformat (Can be "numpy": or "google"): Desc
+:param scopes: The list of scopes.
+:type scopes: `Sequence`\ [`str`]
+"""     
+        doc = GoogleDocstring(docstring)
+        actual = str(doc)
+        self.assertEqual(expected.rstrip(), actual)
+        self.assertEqual(1, len(doc.warnings))
+        warning = doc.warnings.pop()
+        self.assertIn("invalid type: 'docformat (Can be \"numpy\"or \"google\")'", warning[0])
+        self.assertEqual(5, warning[1])
+
 class NumpyDocstringTest(BaseDocstringTest):
     docstrings = [(
         """Single line summary""",
