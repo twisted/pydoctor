@@ -113,7 +113,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
         for _token, _type in tokens:
 
-            if _type is TokenType.DELIMITER or _type is TokenType.OBJ: 
+            if (_type is TokenType.DELIMITER and _token in ('[', '(', ')', ']')) \
+               or _type is TokenType.OBJ: 
                 if _token == "[": open_square_braces += 1
                 elif _token == "(": open_parenthesis += 1
 
@@ -123,8 +124,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
                 if open_square_braces + open_parenthesis > 0:
                     try: last_processed_token = combined_tokens[-1]
-                    except IndexError: 
-                        # Impossible IMO
+                    except IndexError:
                         combined_tokens.append((_token, _type))
                     else:
                         if last_processed_token[1] is TokenType.OBJ \

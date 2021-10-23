@@ -263,11 +263,22 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
 
         return fmt
 
-    assert "<em>default</em>[<code>str]</code>" == process('default[str]')
-    assert "[<code>str]</code>" == process('[str]')
-    assert "[, ]" == process('[,]')
-    assert "[[]]" == process('[[]]')
-
+    assert process('default[str]')                          == "<em>default</em>[<code>str]</code>"
+    assert process('[str]')                                 == "[<code>str]</code>"
+    assert process('[,]')                                   == "[, ]"
+    assert process('[[]]')                                  == "[[]]"
+    assert process(', [str]')                               == ", [<code>str]</code>"
+    assert process(' of [str]')                             == "<code>of [str]</code>" # this is a bit weird
+    assert process(' or [str]')                             == "or[<code>str]</code>"
+    assert process(': [str]')                               == ": [<code>str]</code>"
+    assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
+    assert process('"hello"[str]')                          == "<span class=\"literal\">\"hello\"</span>[<code>str]</code>"
+    assert process('`hello`[str]')                          == "<code>hello</code>[<code>str]</code>"
+    assert process('`hello <https://github.com>`_[str]')    == """<a class="rst-reference external" href="https://github.com" target="_top">hello</a>[<code>str]</code>"""
+    assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
+    assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
+    assert process('Union[`hello <>`_[str]]')               == """<code>Union[</code><a href="#id1"><span class="rst-problematic" id="rst-id2">`hello &lt;&gt;`_</span></a>[<code>str]]</code>"""
+ 
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
 
