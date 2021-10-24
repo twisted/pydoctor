@@ -6,11 +6,11 @@ from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar
 import datetime
 import os
 import sys
-import warnings
 from inspect import getmodulename
 
+from pydoctor.themes import get_themes
 from pydoctor import model, zopeinterface, __version__
-from pydoctor.templatewriter import IWriter, TemplateLookup, UnsupportedTemplateVersion
+from pydoctor.templatewriter import IWriter, TemplateError, TemplateLookup
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
 
@@ -19,13 +19,11 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
-# On Python 3.7+, use importlib.resources from the standard library.
-# On older versions, a compatibility package must be installed from PyPI.
-try:
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
     import importlib.resources as importlib_resources
-except ImportError:
-    if not TYPE_CHECKING:
-        import importlib_resources
 
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -159,9 +157,13 @@ def getparser() -> OptionParser:
         help=("Format used for parsing docstrings. "
              f"Supported values: {', '.join(_docformat_choices)}"))
     parser.add_option(
-        '--template-dir',
-        dest='templatedir',
-        help=("Directory containing custom HTML templates."),
+        '--template-dir', action='append',
+        dest='templatedir', default=[],
+        help=("Directory containing custom HTML templates. Can repeat."),
+    )
+    parser.add_option('--theme', dest='theme', default='classic', 
+        choices=list(get_themes()) ,
+        help=("The theme to use when building your API documentation. "),
     )
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
@@ -433,7 +435,8 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             from pydoctor import templatewriter
             if options.htmlwriter:
                 writerclass = findClassFromDottedName(
-                    options.htmlwriter, '--html-writer', IWriter)
+                    # ignore mypy error: Only concrete class can be given where "Type[IWriter]" is expected
+                    options.htmlwriter, '--html-writer', IWriter) # type: ignore[misc]
             else:
                 writerclass = templatewriter.TemplateWriter
 
@@ -442,26 +445,28 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                 writerclass.__name__))
 
             writer: IWriter
+            
+            # Always init the writer with the 'base' set of templates at least.
+            template_lookup = TemplateLookup(
+                                importlib_resources.files('pydoctor.themes') / 'base')
+            
+            # Handle theme selection, 'classic' by default.
+            if system.options.theme != 'base':
+                template_lookup.add_templatedir(
+                    importlib_resources.files('pydoctor.themes') / system.options.theme)
+
+
             # Handle custom HTML templates
             if system.options.templatedir:
-                custom_lookup = TemplateLookup()
                 try:
-                    custom_lookup.add_templatedir(
-                        Path(system.options.templatedir))
-                except UnsupportedTemplateVersion as e:
+                    for t in system.options.templatedir:
+                        template_lookup.add_templatedir(Path(t))
+                except TemplateError  as e:
                     error(str(e))
 
-                try:
-                    # mypy error: Cannot instantiate abstract class 'IWriter'
-                    writer = writerclass(options.htmloutput, # type: ignore[abstract]
-                        template_lookup=custom_lookup)
-                except TypeError:
-                    # Custom class does not accept 'template_lookup' argument.
-                    writer = writerclass(options.htmloutput) # type: ignore[abstract]
-                    warnings.warn(f"Writer '{writerclass.__name__}' does not support "
-                        "HTML template customization with --template-dir.")
-            else:
-                writer = writerclass(options.htmloutput) # type: ignore[abstract]
+            build_directory = Path(options.htmloutput)
+
+            writer = writerclass(build_directory, template_lookup=template_lookup)
 
             writer.prepOutputDirectory()
 

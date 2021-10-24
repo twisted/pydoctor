@@ -81,7 +81,7 @@ way::
 
     pydoctor_args = [
         '--project-name=YOUR-PROJECT-NAME',
-        '--project-version=YOUR-PUBLIC-VERSION,
+        '--project-version=YOUR-PUBLIC-VERSION',
         '--project-url=YOUR-PROJECT-HOME-URL',
         '--docformat=epytext',
         '--intersphinx=https://docs.python.org/3/objects.inv',

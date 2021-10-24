@@ -4,11 +4,12 @@ from logging import LogRecord
 from typing import Iterable, TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
+from pathlib import Path
 
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.templatewriter import IWriter
+from pydoctor.templatewriter import IWriter, TemplateLookup
 from pydoctor.epydoc.markup import DocstringLinker
 
 if TYPE_CHECKING:
@@ -48,8 +49,8 @@ class InMemoryWriter(IWriter):
     trigger the rendering of epydoc for the targeted code.
     """
 
-    def __init__(self, filebase: str) -> None:
-        self._base = filebase
+    def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None:
+        pass
 
     def prepOutputDirectory(self) -> None:
         """

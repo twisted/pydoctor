@@ -11,7 +11,7 @@ import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
-from pydoctor.epydoc.markup import html2stan
+from pydoctor.stanutils import html2stan
 from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement

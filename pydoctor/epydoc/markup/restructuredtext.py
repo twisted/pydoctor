@@ -47,19 +47,12 @@ from docutils.core import publish_string
 from docutils.writers import Writer
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.nodes import Node, NodeVisitor, Text, document
-from docutils.parsers.rst import Directive, directives
-from docutils.transforms import Transform
-import docutils.nodes
-import docutils.transforms.frontmatter
-import docutils.utils
+from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
+from docutils.transforms import Transform, frontmatter
+from docutils import nodes
 
-from twisted.web.template import Tag
-from pydoctor.epydoc.markup import (
-    DocstringLinker, Field, ParseError, ParsedDocstring
-)
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
-from pydoctor.node2stan import node2stan
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -105,7 +98,7 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
 
     return ParsedRstDocstring(document, visitor.fields)
 
-class OptimizedReporter(docutils.utils.Reporter):
+class OptimizedReporter(Reporter):
     """A reporter that ignores all debug messages.  This is used to
     shave a couple seconds off of epydoc's run time, since docutils
     isn't very fast about processing its own debug messages.
@@ -121,7 +114,7 @@ class ParsedRstDocstring(ParsedDocstring):
     variable.
     """
 
-    def __init__(self, document: docutils.nodes.document, fields: Sequence[Field]):
+    def __init__(self, document: nodes.document, fields: Sequence[Field]):
         self._document = document
         """A ReStructuredText document, encoding the docstring."""
 
@@ -133,15 +126,11 @@ class ParsedRstDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return any(
-            isinstance(child, Text) or child.children
+            isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        # Inherit docs
-        return node2stan(self._document, docstring_linker)
     
-    def to_node(self) -> document:
+    def to_node(self) -> nodes.document:
         return self._document
 
     def __repr__(self) -> str:
@@ -161,16 +150,16 @@ class _EpydocReader(StandaloneReader):
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
         return [t for t in StandaloneReader.get_transforms(self)
-                if t != docutils.transforms.frontmatter.DocInfo]
+                if t != frontmatter.DocInfo]
 
-    def new_document(self) -> docutils.nodes.document:
+    def new_document(self) -> nodes.document:
         document = new_document(self.source.source_path, self.settings)
         # Capture all warning messages.
         document.reporter.attach_observer(self.report)
         # Return the new document.
         return document
 
-    def report(self, error: docutils.nodes.system_message) -> None:
+    def report(self, error: nodes.system_message) -> None:
         level: int = error['level']
         is_fatal = level >= Reporter.ERROR_LEVEL
 
@@ -189,13 +178,13 @@ class _DocumentPseudoWriter(Writer):
     C{document}.
     """
 
-    document: docutils.nodes.document
+    document: nodes.document
     """The most recently processed document."""
 
     def translate(self) -> None:
         self.output = ''
 
-class _SplitFieldsTranslator(NodeVisitor):
+class _SplitFieldsTranslator(nodes.NodeVisitor):
     """
     A docutils translator that removes all fields from a document, and
     collects them into the instance variable C{fields}
@@ -211,16 +200,16 @@ class _SplitFieldsTranslator(NodeVisitor):
     consolidated fields expressed as unordered lists still require
     backticks for now."""
 
-    def __init__(self, document: docutils.nodes.document, errors: List[ParseError]):
-        NodeVisitor.__init__(self, document)
+    def __init__(self, document: nodes.document, errors: List[ParseError]):
+        nodes.NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
 
-    def visit_document(self, node: Node) -> None:
+    def visit_document(self, node: nodes.Node) -> None:
         self.fields = []
 
-    def visit_field(self, node: Node) -> None:
+    def visit_field(self, node: nodes.Node) -> None:
         # Remove the field from the tree.
         node.parent.remove(node)
 
@@ -257,7 +246,7 @@ class _SplitFieldsTranslator(NodeVisitor):
     def _add_field(self,
             tagname: str,
             arg: Optional[str],
-            fbody: Iterable[Node],
+            fbody: Iterable[nodes.Node],
             lineno: int
             ) -> None:
         field_doc = self.document.copy()
@@ -265,12 +254,12 @@ class _SplitFieldsTranslator(NodeVisitor):
         field_pdoc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_pdoc, lineno - 1))
 
-    def visit_field_list(self, node: Node) -> None:
+    def visit_field_list(self, node: nodes.Node) -> None:
         # Remove the field list from the tree.  The visitor will still walk
         # over the node's children.
         node.parent.remove(node)
 
-    def handle_consolidated_field(self, body: Sequence[Node], tagname: str) -> None:
+    def handle_consolidated_field(self, body: Sequence[nodes.Node], tagname: str) -> None:
         """
         Attempt to handle a consolidated section.
         """
@@ -287,7 +276,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items: Iterable[Node], tagname: str) -> None:
+    def handle_consolidated_bullet_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -324,21 +313,21 @@ class _SplitFieldsTranslator(NodeVisitor):
 
             # Remove the separating ":", if present
             if (len(fbody[0]) > 0 and
-                isinstance(fbody[0][0], docutils.nodes.Text)):
+                isinstance(fbody[0][0], nodes.Text)):
                 text = fbody[0][0].astext()
                 if text[:1] in ':-':
-                    fbody[0][0] = docutils.nodes.Text(
+                    fbody[0][0] = nodes.Text(
                         text[1:].lstrip(), fbody[0][0].rawsource
                         )
                 elif text[:2] in (' -', ' :'):
-                    fbody[0][0] = docutils.nodes.Text(
+                    fbody[0][0] = nodes.Text(
                         text[2:].lstrip(), fbody[0][0].rawsource
                         )
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items: Iterable[Node], tagname: str) -> None:
+    def handle_consolidated_definition_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
@@ -354,7 +343,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                 raise ValueError(_BAD_ITEM % n)
             if not ((item[0][0].tagname == 'title_reference') or
                     (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and
-                     isinstance(item[0][0], docutils.nodes.Text))):
+                     isinstance(item[0][0], nodes.Text))):
                 raise ValueError(_BAD_ITEM % n)
             for child in item[0][1:]:
                 if child.astext() != '':
@@ -372,11 +361,8 @@ class _SplitFieldsTranslator(NodeVisitor):
                 type_descr = item[1]
                 self._add_field('type', arg, type_descr, lineno)
 
-    def unknown_visit(self, node: Node) -> None:
+    def unknown_visit(self, node: nodes.Node) -> None:
         'Ignore all unknown nodes'
-
-
-
 
 class PythonCodeDirective(Directive):
     """
@@ -391,9 +377,9 @@ class PythonCodeDirective(Directive):
 
     has_content = True
 
-    def run(self) -> List[Node]:
+    def run(self) -> List[nodes.Node]:
         text = '\n'.join(self.content)
-        node = docutils.nodes.doctest_block(text, text, codeblock=True)
+        node = nodes.doctest_block(text, text, codeblock=True)
         return [ node ]
 
 directives.register_directive('python', PythonCodeDirective)

@@ -5,7 +5,7 @@ from typing import Any, Union
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
-from pydoctor.epydoc.markup import flatten
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import Element
 from pydoctor.node2stan import gettext
 

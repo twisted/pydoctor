@@ -11,13 +11,14 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from typing import List, Optional
+from typing import List
 
-from docutils import nodes, utils
+from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
 
+# from pydoctor.epydoc.docutils import set_node_attributes, set_nodes_parent
 
 def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
     """
@@ -35,20 +36,28 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     def __init__(self, text: str):
         ParsedDocstring.__init__(self, ())
         self._text = text
-         # Caching:
-        self._document: Optional[nodes.document] = None
+        # Caching:
+        # self._document: Optional[nodes.document] = None
 
     @property
     def has_body(self) -> bool:
         return bool(self._text)
-
+    
+    # plaintext parser overrides the default to_stan() method for performance and design reasons. 
+    # We don't want to use docutils to process the plaintext format because we won't 
+    # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring. 
+    # Also, the consolidated fields handling in restructuredtext.py relies on this "pre" class.
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
-        if self._document is not None:
-            return self._document
-        else:
-            self._document = utils.new_document('plaintext')
-            self._document.children.append(nodes.literal_block(rawsource=self._text, text=self._text))
-            return self._document
+        raise NotImplementedError()
+
+        # TODO: Delete this code when we're sure this is the right thing to do.
+        # if self._document is not None:
+        #     return self._document
+        # else:
+        #     self._document = utils.new_document('plaintext')
+        #     self._document = set_node_attributes(self._document, 
+        #         children=set_nodes_parent((nodes.literal_block(rawsource=self._text, text=self._text)), self._document))
+        #     return self._document

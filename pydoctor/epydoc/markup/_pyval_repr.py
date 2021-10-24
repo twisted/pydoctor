@@ -136,7 +136,7 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
             # Like unescaped "\xff" give error: "reference to invalid character number".
             # This error should be fixed anyway, but better safe than sorry...
             self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
-            return Tag('code', children=gettext(self.to_node()))
+            return Tag('code')(gettext(self.to_node()))
 
 def colorize_pyval(pyval: Any, linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
     """
@@ -777,7 +777,8 @@ class PyvalColorizer:
                 c: Union[str, bytes] = chr(cast(int, args))
                 # Add any appropriate escaping.
                 if cast(str, c) in '.^$\\*+?{}[]|()\'': 
-                    c = '\\' + c
+                    # Yes, it's safe.
+                    c = '\\' + c # type: ignore[operator]
                 # For the record, the special literal caracters are parsed the same way escaped or not. 
                 # So we can't tell the difference between "\n" and "\\n".
                 # We always escape them to produce a valid regular expression (and avoid crashing htmltostan() function).

@@ -6,7 +6,8 @@ import pytest
 from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
-from pydoctor.epydoc.markup import DocstringLinker, flatten
+from pydoctor.epydoc.markup import DocstringLinker
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
@@ -58,7 +59,11 @@ def docstring2html(obj: model.Documentable) -> str:
 
 def summary2html(obj: model.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
-    assert stan.tagName == 'span' or stan.tagName == '', stan
+    if stan.attributes.get('class') == 'undocumented':
+        assert stan.tagName == 'span', stan
+    else:
+        # Summaries are now generated without englobing <span> when we don't need one. 
+        assert stan.tagName == '', stan
     return flatten(stan.children)
 
 

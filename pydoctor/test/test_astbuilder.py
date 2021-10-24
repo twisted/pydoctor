@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Type, overload
+from typing import Optional, Tuple, Type, overload, cast
 import ast
 import textwrap
 
@@ -7,7 +7,8 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -73,7 +74,12 @@ def fromText(
     ast = astbuilder._parse(textwrap.dedent(text))
     return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
 
-def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
+def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
+    
+    if parsed_docstring is None:
+        raise TypeError("parsed_docstring cannot be None")
+    if not isinstance(parsed_docstring, ParsedEpytextDocstring):
+        raise TypeError(f"parsed_docstring must be a ParsedEpytextDocstring instance, not {parsed_docstring.__class__.__name__}")
     epytext = parsed_docstring._tree
     assert epytext is not None
     assert epytext.tag == 'epytext'
@@ -176,6 +182,7 @@ def test_function_simple(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.f'
     assert func.docstring == """This is a docstring."""
+    assert isinstance(func, model.Function)
     assert func.is_async is False
 
 
@@ -191,6 +198,7 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.a'
     assert func.docstring == """This is a docstring."""
+    assert isinstance(func, model.Function)
     assert func.is_async is True
 
 
@@ -293,6 +301,7 @@ def test_class_with_base(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 1
     base, = clsD.bases
     assert base == '<test>.C'
@@ -307,6 +316,8 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     E = mod.contents['E']
+    assert isinstance(C, model.Class)
+    assert isinstance(E, model.Class)
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
@@ -379,6 +390,7 @@ def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 2
     base1, base2 = clsD.bases
     assert base1 == 'X.Y.A'
@@ -399,6 +411,7 @@ def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 3
     base1, base2, base3 = clsD.bases
     assert base1 == 'X.A', base1
@@ -481,7 +494,9 @@ def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, modname='mod', system=system)
-    assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
+    D = mod.contents['D']
+    assert isinstance(D, model.Class)
+    assert D.bases == ['mod.C'], D.bases
 
 @systemcls_param
 def test_documented_no_alias(systemcls: Type[model.System]) -> None:
@@ -528,7 +543,9 @@ def test_inherit_names(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert [b.name for b in mod.contents['A'].allbases()] == ['A 0']
+    A = mod.contents['A']
+    assert isinstance(A, model.Class)
+    assert [b.name for b in A.allbases()] == ['A 0']
 
 @systemcls_param
 def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System]) -> None:
@@ -722,6 +739,7 @@ def test_classdecorator(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
+    assert isinstance(C, model.Class)
     assert C.decorators == [('mod.cd', None)]
 
 
@@ -735,9 +753,11 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
+    assert isinstance(C, model.Class)
     assert len(C.decorators) == 1
     (name, args), = C.decorators
     assert name == 'test.cd'
+    assert args is not None
     assert len(args) == 1
     arg, = args
     assert astbuilder.node2fullname(arg, mod) == 'test.A'
@@ -1344,10 +1364,10 @@ def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     d = {} # type: dict[str, int]
     i = [] # type: ignore[misc]
     ''', systemcls=systemcls)
-    assert type2str(mod.contents['d'].annotation) == 'dict[str, int]'
+    assert type2str(cast(model.Attribute, mod.contents['d']).annotation) == 'dict[str, int]'
     # We don't use ignore comments for anything at the moment,
     # but do verify that their presence doesn't break things.
-    assert type2str(mod.contents['i'].annotation) == 'list'
+    assert type2str(cast(model.Attribute, mod.contents['i']).annotation) == 'list'
     assert not capsys.readouterr().out
 
 @systemcls_param
@@ -1373,7 +1393,7 @@ def test_bad_string_annotation(
     mod = fromText(f'''
     x: "{annotation}"
     ''', modname='test', systemcls=systemcls)
-    assert isinstance(mod.contents['x'].annotation, ast.expr)
+    assert isinstance(cast(model.Attribute, mod.contents['x']).annotation, ast.expr)
     assert "syntax error in annotation" in capsys.readouterr().out
 
 @pytest.mark.parametrize('annotation,expected', (
@@ -1426,11 +1446,11 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert ann_str_and_line(C.contents['j']) == ('tuple', 12)
     # It is unlikely that a variable actually will contain only None,
     # so we should treat this as not be able to infer the type.
-    assert C.contents['n'].annotation is None
+    assert cast(model.Attribute, C.contents['n']).annotation is None
     # These expressions are considered too complex for pydoctor.
     # Maybe we can use an external type inferrer at some point.
-    assert C.contents['x'].annotation is None
-    assert C.contents['y'].annotation is None
+    assert cast(model.Attribute, C.contents['x']).annotation is None
+    assert cast(model.Attribute, C.contents['y']).annotation is None
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
     assert ann_str_and_line(C.contents['s']) == ('list[str]', 17)
@@ -1455,11 +1475,24 @@ def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
         e = attr.ib(123)
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert type2str(C.contents['a'].annotation) == 'int'
-    assert type2str(C.contents['b'].annotation) == 'int'
-    assert type2str(C.contents['c'].annotation) == 'C'
-    assert type2str(C.contents['d'].annotation) == 'bool'
-    assert type2str(C.contents['e'].annotation) == 'int'
+
+    A = C.contents['a']
+    B = C.contents['b']
+    _C = C.contents['c']
+    D = C.contents['d']
+    E = C.contents['e']
+
+    assert isinstance(A, model.Attribute)
+    assert isinstance(B, model.Attribute)
+    assert isinstance(_C, model.Attribute)
+    assert isinstance(D, model.Attribute)
+    assert isinstance(E, model.Attribute)
+
+    assert type2str(A.annotation) == 'int'
+    assert type2str(B.annotation) == 'int'
+    assert type2str(_C.annotation) == 'C'
+    assert type2str(D.annotation) == 'bool'
+    assert type2str(E.annotation) == 'int'
 
 @systemcls_param
 def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
@@ -1744,7 +1777,6 @@ def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) ->
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     assert astbuilder.node2fullname(attr.annotation, attr) == "tuple"
@@ -1761,7 +1793,6 @@ def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[mode
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     
@@ -1782,7 +1813,6 @@ def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[mod
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == ('fr', 'en')
     
@@ -1804,7 +1834,6 @@ def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[mode
     attr = mod.resolveName('lang')
     assert isinstance(attr, model.Attribute)
     assert attr.kind == model.DocumentableKind.CONSTANT
-    assert isinstance(attr, model.Attribute)
     assert attr.value is not None
     assert ast.literal_eval(attr.value) == 'fr'
     assert astbuilder.node2fullname(attr.annotation, attr) == "str"

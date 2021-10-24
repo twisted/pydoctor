@@ -1,6 +1,9 @@
 from pydoctor.test.epydoc.test_epytext2html import epytext2node
 
 def test_nested_markup() -> None:
+    """
+    The Epytext nested inline markup are correctly transformed to L{docutils} nodes. 
+    """
     doc = '''
         I{B{Inline markup} may be nested; and
         it may span} multiple lines.
