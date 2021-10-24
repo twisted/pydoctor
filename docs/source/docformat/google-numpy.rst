@@ -35,12 +35,12 @@ List of supported sections:
       (if you use type annotations a ``Returns`` section will always be present)
     - ``Raise(s)``, ``Warn(s)``
     - ``See Also``, ``See``
-    - ``Example(s)``, ``Usage``
+    - ``Example(s)``
     - ``Note(s)``,  ``Warning(s)`` and other admonitions
+    - ``Attributes`` (Items will be translated into ``ivar`` fields.)
 
 Sections supported on a "best effort" basis:
     - ``Methods``: Items will be included into a generic "Methods" section. 
-    - ``Attributes``: Items will be translated into ``ivar`` fields.
     - ``References``: Rendered as a generic section. 
     - ``Other Parameters``, ``Receive(s)``: Parameters described in those sections will be merged with regular parameters. 
 
