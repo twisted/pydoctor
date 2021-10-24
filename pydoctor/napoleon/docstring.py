@@ -41,14 +41,16 @@ _enumerated_list_regex = re.compile(
 @attr.s(auto_attribs=True)
 class Field:
     """
-    Represent a field with a name and/or a type. Commonly a parameter description. 
+    Represent a field with a name and/or a type and/or a description. Commonly a parameter description. 
     It's also used for ``Returns`` section and other sections structured with fields.
+
+    This representation do not hold the information about which section the field correspond, it depends of context of usage.
     """
 
     name: str
     """
-    The name of the field, can be empty. Let's note that `Field.name` is not the ``field_name`` 
-    in the docutils sense (i.e. "param" or "type" for instance). But the actual parameter name. 
+    The name of the parameter or return value, can be empty. Let's note that `Field.name` is not the ``field_name`` 
+    in the docutils sense (i.e. "param" or "type"). But the actual parameter name. 
     """
 
     type: str
