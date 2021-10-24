@@ -3,7 +3,7 @@ Module demonstrating the constant representations.
 """
 
 import re
-from .demo_epytext_module import demo_fields_docstring_arguments, _PrivateClass
+from .demo_restructuredtext_module import demo_fields_docstring_arguments, _PrivateClass
 
 A_DICT = {'1':33, '2':[1,2,3,{7:'oo'*20}], 
          '3': demo_fields_docstring_arguments, 
