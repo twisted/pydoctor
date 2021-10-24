@@ -475,6 +475,15 @@ def test_multiline_set() -> None:
     <inline classes="variable-ellipsis">
         ...\n"""
 
+def test_tuples_one_value() -> None:
+    """Tuples that contains only one value need an ending comma."""
+    assert color((1,)) == """<document source="pyval_repr">
+    (
+    <wbr>
+    1
+    ,)
+"""
+
 def test_dictionaries() -> None:
     """Dicts are treated just like lists, except that the ":" is also tagged as
     "op"."""

@@ -261,7 +261,9 @@ class PyvalColorizer:
         elif pyvaltype is bytes:
             self._colorize_str(pyval, state, b'b', escape_fcn=_bytes_escape)
         elif pyvaltype is tuple:
-            self._multiline(self._colorize_iter, pyval, state, prefix='(', suffix=')')
+            # tuples need an ending comma when they contains only one value.
+            self._multiline(self._colorize_iter, pyval, state, prefix='(', 
+                            suffix=(',' if len(pyval) <= 1 else '')+')')
         elif pyvaltype is set:
             self._multiline(self._colorize_iter, pyval,
                             state, prefix='set([', suffix='])')

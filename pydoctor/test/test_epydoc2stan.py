@@ -985,3 +985,39 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
     assert A_f
 
     assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
+
+def test_constant_values_rst(capsys: CapSys) -> None:
+    """
+    Test epydoc2stan.format_constant_value().
+    """
+    mod1 = '''
+    def f(a, b): 
+        pass
+    '''
+    mod2 = '''
+    from .mod1 import f
+
+    CONST = (f,)
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+
+    fromText("", modname='pack', system=system, is_package=True)
+    fromText(mod1, modname='mod1', system=system, parent_name='pack')
+    mod = fromText(mod2, modname='mod2', system=system, parent_name='pack')
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    expected = ('<table class="valueTable"><tr class="fieldStart">'
+                '<td class="fieldName">Value</td></tr><tr><td>'
+                '<pre class="constant-value"><code>(<wbr></wbr>'
+                '<a href="pack.mod1.html#f">f</a>)</code></pre></td></tr></table>')
+    
+    attr = mod.contents['CONST']
+    assert isinstance(attr, model.Attribute)
+
+    docstring2html(attr)
+
+    assert ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines()) == expected
