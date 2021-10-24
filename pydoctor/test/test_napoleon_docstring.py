@@ -651,47 +651,59 @@ Single line summary
 Usage:
     import stuff
     stuff.do()"""),(
-        """
-        Single line summary
+"""
+Single line summary
 
-        Todo:
-            stuff
-        """,
-        """
-        Single line summary
+Todo:
+    stuff
+""",
+"""
+Single line summary
 
-        Todo:
-            stuff
-        """
+.. admonition:: Todo
+
+   stuff
+"""
     ),(
-        """
-        Single line summary
+"""
+Single line summary
 
-        Todo:
-        
-        """,
-        """
-        Single line summary
+Todo:
 
-        Todo:
-        """),("""
-        Single line summary
+""",
+"""
+Single line summary
 
-        References:
-            stuff
-        """,
-        """
-        Single line summary
+Todo:
+"""),("""
+Single line summary
 
-        References:
-            stuff
-        """)]
+References:
+    stuff
+""",
+"""
+Single line summary
+
+.. admonition:: References
+
+   stuff
+"""),("""
+Single line summary
+
+See also:
+    my thing
+""",
+"""
+Single line summary
+
+.. seealso:: my thing
+""")]
 
     def test_docstrings(self):
         for docstring, expected in self.docstrings:
             actual = str(GoogleDocstring(docstring))
             self.assertEqual(expected.rstrip(), actual)
-            if not 'Yield' in docstring: # The yield section is very different from sphinx's.
+            if not 'Yield' in docstring and not 'Todo' in docstring: # The yield and todo sections are very different from sphinx's.
                 self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
     def test_returns_section_type_only(self):
