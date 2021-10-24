@@ -555,51 +555,47 @@ class GoogleDocstring:
         self._parsed_lines = []  # type: List[str]
         self._is_in_section = False
         self._section_indent = 0
-        
-        if not hasattr(self, "_directive_sections"):
-            self._directive_sections = []  # type: List[str]
 
-        if not hasattr(self, "_sections"):
-            self._sections: Dict[str, Callable[[str], List[str]]] = {
-                "args": self._parse_parameters_section,
-                "arguments": self._parse_parameters_section,
-                "attention": partial(self._parse_admonition, "attention"),
-                "attributes": self._parse_attributes_section,
-                "caution": partial(self._parse_admonition, "caution"),
-                "danger": partial(self._parse_admonition, "danger"),
-                "error": partial(self._parse_admonition, "error"),
-                "example": self._parse_examples_section,
-                "examples": self._parse_examples_section,
-                "hint": partial(self._parse_admonition, "hint"),
-                "important": partial(self._parse_admonition, "important"),
-                "keyword args": self._parse_keyword_arguments_section,
-                "keyword arguments": self._parse_keyword_arguments_section,
-                "methods": self._parse_methods_section,
-                "note": partial(self._parse_admonition, "note"),
-                "notes": self._parse_notes_section,
-                "other parameters": self._parse_parameters_section,  # merge other parameters with main parameters (for now at least).
-                "parameters": self._parse_parameters_section,
-                "receive": self._parse_parameters_section,  # same as parameters
-                "receives": self._parse_parameters_section,  # same as parameters
-                "return": self._parse_returns_section,
-                "returns": self._parse_returns_section,
-                "yield": self._parse_returns_section, # same process as returns section
-                "yields": self._parse_returns_section,
-                "raise": self._parse_raises_section,
-                "raises": self._parse_raises_section,
-                "except": self._parse_raises_section,  # add same restructuredtext headers
-                "exceptions": self._parse_raises_section,  # add same restructuredtext headers
-                "references": self._parse_references_section,
-                "see also": self._parse_see_also_section,
-                "see": self._parse_see_also_section,  # add "@see:" equivalent
-                "tip": partial(self._parse_admonition, "tip"),
-                "todo": self._parse_generic_section,  # todos are just rendered as admonition
-                "warning": partial(self._parse_admonition, "warning"),
-                "warnings": partial(self._parse_admonition, "warning"),
-                "warn": self._parse_warns_section,
-                "warns": self._parse_warns_section,
-                "usage": self._parse_usage_section,
-            }
+
+        self._sections: Dict[str, Callable[[str], List[str]]] = {
+            "args": self._parse_parameters_section,
+            "arguments": self._parse_parameters_section,
+            "attention": partial(self._parse_admonition, "attention"),
+            "attributes": self._parse_attributes_section,
+            "caution": partial(self._parse_admonition, "caution"),
+            "danger": partial(self._parse_admonition, "danger"),
+            "error": partial(self._parse_admonition, "error"),
+            "example": self._parse_examples_section,
+            "examples": self._parse_examples_section,
+            "hint": partial(self._parse_admonition, "hint"),
+            "important": partial(self._parse_admonition, "important"),
+            "keyword args": self._parse_keyword_arguments_section,
+            "keyword arguments": self._parse_keyword_arguments_section,
+            "methods": self._parse_methods_section,
+            "note": partial(self._parse_admonition, "note"),
+            "notes": self._parse_notes_section,
+            "other parameters": self._parse_parameters_section,  # merge other parameters with main parameters (for now at least).
+            "parameters": self._parse_parameters_section,
+            "receive": self._parse_parameters_section,  # same as parameters
+            "receives": self._parse_parameters_section,  # same as parameters
+            "return": self._parse_returns_section,
+            "returns": self._parse_returns_section,
+            "yield": self._parse_returns_section, # same process as returns section
+            "yields": self._parse_returns_section,
+            "raise": self._parse_raises_section,
+            "raises": self._parse_raises_section,
+            "except": self._parse_raises_section,  # add same restructuredtext headers
+            "exceptions": self._parse_raises_section,  # add same restructuredtext headers
+            "references": self._parse_references_section,
+            "see also": self._parse_see_also_section,
+            "see": self._parse_see_also_section,  # add "@see:" equivalent
+            "tip": partial(self._parse_admonition, "tip"),
+            "todo": self._parse_generic_section,  # todos are just rendered as admonition
+            "warning": partial(self._parse_admonition, "warning"),
+            "warnings": partial(self._parse_admonition, "warning"),
+            "warn": self._parse_warns_section,
+            "warns": self._parse_warns_section,
+        }
 
         self.warnings: List[Tuple[str, int]] = []
         """
@@ -763,10 +759,6 @@ class GoogleDocstring:
                       lineno=self._line_iter.counter)]
         else:
             return []
-
-    def _consume_usage_section(self) -> List[str]:
-        lines = self._dedent(self._consume_to_next_section())
-        return lines
 
     def _consume_section_header(self) -> str:
         section = next(self._line_iter)
@@ -1086,14 +1078,6 @@ class GoogleDocstring:
         }
         label = labels.get(section.lower(), section)
         return self._parse_generic_section(label)
-
-    # overriden: admonition are the default
-    def _parse_usage_section(self, section: str) -> List[str]:
-        header = [".. admonition:: Usage", ""]
-        block = ["   .. python::", ""]
-        lines = self._consume_usage_section()
-        lines = self._indent(lines, 6)
-        return header + block + lines + [""]
 
     # overriden: admonition are the default
     def _parse_generic_section(self, section: str) -> List[str]:

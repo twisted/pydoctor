@@ -638,7 +638,54 @@ Single line summary
 :param my second argument: desc arg2.
 :type my second argument: `list`\ [`int`]
 """
-    ), ]
+    ), ("""
+Single line summary
+
+Usage:
+    import stuff
+    stuff.do()
+""", # nothing special about the headings that are not recognized as a section
+"""
+Single line summary
+
+Usage:
+    import stuff
+    stuff.do()"""),(
+        """
+        Single line summary
+
+        Todo:
+            stuff
+        """,
+        """
+        Single line summary
+
+        Todo:
+            stuff
+        """
+    ),(
+        """
+        Single line summary
+
+        Todo:
+        
+        """,
+        """
+        Single line summary
+
+        Todo:
+        """),("""
+        Single line summary
+
+        References:
+            stuff
+        """,
+        """
+        Single line summary
+
+        References:
+            stuff
+        """)]
 
     def test_docstrings(self):
         for docstring, expected in self.docstrings:
@@ -1521,6 +1568,17 @@ class NumpyDocstringTest(BaseDocstringTest):
         :returns: **the string of your life**
         :returntype: `str`
         """
+    ),(
+        """
+        Single line summary
+
+        Return
+        ------
+        
+        """,
+        """
+        Single line summary
+        """
     ), (
         """
         Single line summary
@@ -1695,15 +1753,83 @@ class NumpyDocstringTest(BaseDocstringTest):
         :type my first argument: `list`\ (`int`)
         :param my second argument: desc arg2.
         :type my second argument: `list`\ [`int`]
-        """),]
+        """),("""
+Single line summary
+
+Usage
+-----
+import stuff
+stuff.do()
+""", """
+Single line summary
+
+Usage
+-----
+import stuff
+stuff.do()
+"""),
+("""
+Single line summary
+
+Generic admonition
+------------------
+""", # nothing special about the headings that are not recognized as a section
+"""
+Single line summary
+
+Generic admonition
+------------------
+"""),(
+        """
+        Single line summary
+
+        Todo
+        ----
+        stuff
+        
+        """,
+        """
+        Single line summary
+
+        .. admonition:: Todo
+
+           stuff
+        """),(
+        """
+        Single line summary
+
+        Todo
+        ----
+        """,
+        """
+        Single line summary
+
+        .. admonition:: Todo
+        """)
+        ,(
+        """
+        Single line summary
+
+        References
+        ----------
+        stuff
+        """,
+        """
+        Single line summary
+
+        .. admonition:: References
+
+           stuff
+        """)
+]
 
     def test_docstrings(self):
     
         for docstring, expected in self.docstrings:
             actual = str(NumpyDocstring(dedent(docstring)))
             expected = dedent(expected)
-            self.assertEqual(expected.rstrip(), actual)
-            if not 'Yield' in docstring: # The yield section is very different from sphinx's.
+            self.assertEqual(actual, expected.rstrip())
+            if not 'Yield' in docstring and not 'Todo' in docstring: # The yield and todo sections are very different from sphinx's.
                 self.assertAlmostEqualSphinxDocstring(expected, dedent(docstring), type_=SphinxNumpyDocstring)
 
     def test_sphinx_admonitions(self):
