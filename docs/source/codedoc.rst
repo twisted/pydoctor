@@ -117,6 +117,7 @@ Here are the supported fields (written with ReStructuredText format, but same fi
     - ``:return:`` (synonym: ``@returns:``), document the return type of a function (or method).
     - ``:rtype:`` (synonym: ``@returntype:``), document the type of the return value of a function (or method).
     - ``:yield:`` (synonym: ``@yields:``), document the values yielded by a generator function (or method).
+    - ``:ytype:`` (synonym: ``@yieldtype:``), document the type of the values yielded by a generator function (or method).
     - ``:raise ValueError:`` (synonym: ``@raises ValueError:``), document the potential exception a function (or method) can raise.
     - ``:warn RuntimeWarning:`` (synonym: ``@warns ValueError:``), document the potential warning a function (or method) can trigger.
     - ``:see:`` (synonym: ``@seealso:``), add a see also section.
@@ -125,14 +126,14 @@ Here are the supported fields (written with ReStructuredText format, but same fi
 
 .. note:: Currently, any other fields will be considered "unknown" and will be flagged as such. 
     See `"fields" issues <https://github.com/twisted/pydoctor/issues?q=is%3Aissue+is%3Aopen+fields>`_
-    for discussions and improvments.
+    for discussions and improvements.
 
 .. note:: Unlike Sphinx, ``vartype`` and ``kwtype`` are not recognized as valid fields, we simply use ``type`` everywhere.
 
 Type fields
 ~~~~~~~~~~~
 
-Type fields, namely ``type`` and ``rtype``, can be interpreted, such that, instead of beeing just a regular text field, 
+Type fields, namely ``type``, ``rtype`` and ``ytype``, can be interpreted, such that, instead of being just a regular text field, 
 types can be linked automatically.
 For reStructuredText and Epytext documentation format, enable this behaviour with the option:: 
     
@@ -150,9 +151,9 @@ Like in Sphinx, regular types and container types such as lists and dictionaries
 Natural language types can be linked automatically if separated by the words “or”, "and", "to", "of" or the comma::
 
     :rtype: float or str
-    :rtype: list of str or list[int]
-    :rtype: tuple of str, int and float
-    :rtype: mapping of str to int
+    :returntype: list of str or list[int]
+    :ytype: tuple of str, int and float
+    :yieldtype: mapping of str to int
 
 Additionally, it's still possible to include regular text description inside a type specification::
 
