@@ -2,8 +2,9 @@
 
 from typing import (
     TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
-    Tuple, Type, Union, Final
+    Tuple, Type, Union
 )
+from typing_extensions import Final
 import ast
 import abc
 

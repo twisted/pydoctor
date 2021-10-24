@@ -6,7 +6,8 @@ Most part of this documentation is using Python type hinting.
 from abc import ABC
 import zope.interface
 import zope.schema
-from typing import Final, Sequence, Optional
+from typing import Sequence, Optional
+from typing_extensions import Final
 
 LANG = 'Fr'
 """

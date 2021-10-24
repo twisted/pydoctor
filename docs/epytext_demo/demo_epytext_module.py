@@ -9,7 +9,8 @@ from typing import AnyStr, Dict, Generator, List, Union
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
-from typing import Final, Sequence, Optional
+from typing import Sequence, Optional
+from typing_extensions import Final
 
 LANG = 'Fr'
 """
