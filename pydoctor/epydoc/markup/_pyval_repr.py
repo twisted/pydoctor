@@ -38,6 +38,7 @@ __docformat__ = 'epytext en'
 import re
 import ast
 import functools
+import sys
 import sre_parse, sre_constants
 from inspect import signature
 from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, List, Tuple, cast, overload
@@ -276,7 +277,7 @@ class PyvalColorizer:
                             state, prefix='{', suffix='}')
         elif pyvaltype is list:
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
-        elif pyvaltype is re.Pattern:
+        elif pyvaltype is (re.Pattern if sys.version_info >= (3,7) else re._pattern_type): # re.Pattern has been introduced in python 3.7
             # Extract the pattern from the regexp.
             # Flags passed as re.compile() parameters are currently ignored for live re.Pattern objects.
             # Though, this block is only used in the tests.
@@ -738,9 +739,10 @@ class PyvalColorizer:
         # Mypy gets error: error: Argument 1 to "parse" has incompatible type "Union[str, bytes]"; expected "str".
         # But actually, sre_parse.parse() can parse regex as bytes.
         tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
+        pattern = tree.state if sys.sys.version_info >= (3,8) else tree.pattern # from python 3.8 SubPattern.pattern is named SubPattern.state
         groups = dict([(num,name) for (name,num) in
-                       tree.state.groupdict.items()])
-        flags: int = tree.state.flags
+                       pattern.groupdict.items()])
+        flags: int = pattern.flags
         
         # Open quote. Never triple quote regex patterns string
         quote = "'"
