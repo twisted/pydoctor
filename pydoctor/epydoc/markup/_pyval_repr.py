@@ -131,11 +131,9 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         try:
-            return Tag('code', children=[super().to_stan(docstring_linker)])
+            return Tag('code')(super().to_stan(docstring_linker))
         except ValueError as e:
-            # Turns out we can make the html2stan() function crash with special caracters.
-            # Like unescaped "\xff" give error: "reference to invalid character number".
-            # This error should be fixed anyway, but better safe than sorry...
+            # Just in case...
             self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
             return Tag('code')(gettext(self.to_node()))
 

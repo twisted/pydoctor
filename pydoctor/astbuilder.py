@@ -982,10 +982,6 @@ class _ValueFormatter:
         """
         Present the python value as HTML. 
         Without the englobing <code> tags.
-
-        Maybe it would be best to keep the englobing <code> tags.
-        Links would be in red directly instead of having to add some 
-        special style for those. But it would also break some tests.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice.
