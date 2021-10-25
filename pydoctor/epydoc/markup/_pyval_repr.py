@@ -278,7 +278,7 @@ class PyvalColorizer:
         elif pyvaltype is list:
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
         # re.Pattern has been introduced in python 3.7
-        elif pyvaltype is (re.Pattern if sys.version_info >= (3,7) else re._pattern_type):
+        elif pyvaltype is (re.Pattern if sys.version_info >= (3,7) else re._pattern_type): # type:ignore[attr-defined]
             # Extract the pattern from the regexp.
             # Flags passed to re.compile() parameters are currently ignored for live re.Pattern objects.
             # Though, this block is only used in the tests.
@@ -734,13 +734,13 @@ class PyvalColorizer:
 
         # Parse the regexp pattern.
         # The AST regex pattern strings are always parsed with the default flags.
-        # I've no idea if this has any incidence on the way the colorizing works, honestly.
-        # Recovering the flags value from AST seems possible, though, might not be worth it.
+        # Flag values are displayed only when parsing regex from AST, they are displayed as regular ast.Call arguments. 
 
         # Mypy gets error: error: Argument 1 to "parse" has incompatible type "Union[str, bytes]"; expected "str".
         # But actually, sre_parse.parse() can parse regex as bytes.
         tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
-        pattern = tree.state if sys.version_info >= (3,8) else tree.pattern # from python 3.8 SubPattern.pattern is named SubPattern.state
+        # from python 3.8 SubPattern.pattern is named SubPattern.state
+        pattern = tree.state if sys.version_info >= (3,8) else tree.pattern # type:ignore[attr-defined]
         groups = dict([(num,name) for (name,num) in
                        pattern.groupdict.items()])
         flags: int = pattern.flags
