@@ -51,13 +51,6 @@ class wbr(nodes.inline):
     def __init__(self) -> None:
         super().__init__('', '')
 
-class newline(nodes.inline):
-    """
-    Newline in HTML output.
-    """
-    def __init__(self) -> None:
-        super().__init__('', '')
-
 class obj_reference(nodes.title_reference):
     """
     A reference to a documentable object.

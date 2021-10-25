@@ -41,11 +41,11 @@ def test_long_numbers() -> None:
     1000000000000000000000000000000000000000
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     0000000000000000000000000000000000000000
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     00000000000\n"""
 
 def test_strings() -> None:
@@ -61,95 +61,95 @@ def test_strings() -> None:
         \x00\x01\x02\x03\x04\x05\x06\x07\x08
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         \t
-    <newline>
+    
     <inline classes="variable-string">
         \x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         1f !"#$%&\'()*+,-./0123456789:;<=>?@ABCD
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         EFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijk
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         lmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xfc\xfd\xfe
     <inline classes="variable-quote">
@@ -157,27 +157,6 @@ def test_strings() -> None:
 """
     
     
-    r"""<code class="variable-quote">b'''</code><code class="variable-string">\x00\x01\x02\x03\x04\x05\x06\x07\x08</code>&#8629;
-<code class="variable-string">\t</code>
-<code class="variable-string">\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x</code>&#8629;
-<code class="variable-string">15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x</code>&#8629;
-<code class="variable-string">1f !"#$%&amp;\'()*+,-./0123456789:;&lt;=&gt;?@ABCD</code>&#8629;
-<code class="variable-string">EFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijk</code>&#8629;
-<code class="variable-string">lmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\</code>&#8629;
-<code class="variable-string">x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\</code>&#8629;
-<code class="variable-string">x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\</code>&#8629;
-<code class="variable-string">x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\</code>&#8629;
-<code class="variable-string">xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\</code>&#8629;
-<code class="variable-string">xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\</code>&#8629;
-<code class="variable-string">xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\</code>&#8629;
-<code class="variable-string">xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\</code>&#8629;
-<code class="variable-string">xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\</code>&#8629;
-<code class="variable-string">xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\</code>&#8629;
-<code class="variable-string">xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\</code>&#8629;
-<code class="variable-string">xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\</code>&#8629;
-<code class="variable-string">xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\</code>&#8629;
-<code class="variable-string">xfc\xfd\xfe</code><code class="variable-quote">'''</code>"""
-
 def test_strings_quote() -> None:
     """
     Currently, the "'" quote is always used, because that's what the
@@ -216,7 +195,7 @@ def test_strings_special_chars() -> None:
         '''
     <inline classes="variable-string">
         \'abc \t\r
-    <newline>
+    
     <inline classes="variable-string">
         \x0c\x0b \xff 😀\'
     <inline classes="variable-quote">
@@ -233,10 +212,10 @@ def test_strings_multiline() -> None:
         '''
     <inline classes="variable-string">
         This
-    <newline>
+    
     <inline classes="variable-string">
           is a multiline
-    <newline>
+    
     <inline classes="variable-string">
          string!
     <inline classes="variable-quote">
@@ -263,10 +242,10 @@ def test_bytes_multiline() -> None:
         '''
     <inline classes="variable-string">
         This
-    <newline>
+    
     <inline classes="variable-string">
           is a multiline
-    <newline>
+    
     <inline classes="variable-string">
          string!
     <inline classes="variable-quote">
@@ -362,27 +341,27 @@ def test_multiline_list() -> None:
     <wbr>
     0
     ,
-    <newline>
+    
      
     <wbr>
     1
     ,
-    <newline>
+    
      
     <wbr>
     2
     ,
-    <newline>
+    
      
     <wbr>
     3
     ,
-    <newline>
+    
      
     <wbr>
     4
     ,
-    <newline>
+    
     <inline classes="variable-ellipsis">
         ...\n"""
 
@@ -393,12 +372,12 @@ def test_multiline_list2() -> None:
     <wbr>
     1
     ,
-    <newline>
+    
      
     <wbr>
     2
     ,
-    <newline>
+    
      
     <wbr>
     [
@@ -430,17 +409,17 @@ def test_multiline_list2() -> None:
     10
     ]
     ,
-    <newline>
+    
      
     <wbr>
     11
     ,
-    <newline>
+    
      
     <wbr>
     99
     ,
-    <newline>
+    
     <inline classes="variable-ellipsis">
         ...\n"""
     
@@ -451,27 +430,27 @@ def test_multiline_set() -> None:
     <wbr>
     0
     ,
-    <newline>
+    
          
     <wbr>
     1
     ,
-    <newline>
+    
          
     <wbr>
     2
     ,
-    <newline>
+    
          
     <wbr>
     3
     ,
-    <newline>
+    
          
     <wbr>
     4
     ,
-    <newline>
+    
     <inline classes="variable-ellipsis">
         ...\n"""
 
@@ -500,7 +479,7 @@ def test_dictionaries() -> None:
     : 
     33
     ,
-    <newline>
+    
      
     <wbr>
     <inline classes="variable-quote">
@@ -514,17 +493,17 @@ def test_dictionaries() -> None:
     <wbr>
     1
     ,
-    <newline>
+    
            
     <wbr>
     2
     ,
-    <newline>
+    
            
     <wbr>
     3
     ,
-    <newline>
+    
            
     <wbr>
     {
@@ -537,7 +516,7 @@ def test_dictionaries() -> None:
         oooooooooooooooooooooooooooo
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-ellipsis">
         ...\n"""
 
@@ -590,12 +569,12 @@ def test_ast_list_tuple() -> None:
     <wbr>
     1
     ,
-    <newline>
+    
      
     <wbr>
     2
     ,
-    <newline>
+    
      
     <wbr>
     [
@@ -627,7 +606,7 @@ def test_ast_list_tuple() -> None:
     10
     ]
     ,
-    <newline>
+    
      
     <wbr>
     11
@@ -900,27 +879,27 @@ def test_line_wrapping() -> None:
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-string">
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     <inline classes="variable-linewrap">
         ↵
-    <newline>
+    
     <inline classes="variable-ellipsis">
         ...\n"""
 
