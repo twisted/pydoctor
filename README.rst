@@ -76,7 +76,8 @@ in development
 * Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
 * Introduced fields ``warns`` and ``yields``. 
 * Following google style guide, ``*args`` and ``**kwargs`` are now rendered with asterisks in the parameters table.
-* Mark variables as contants when their names is all caps or if using `typing.Final` annotation.
+* Mark variables as contants when their names is all caps or if using `Final` annotation.
+
 
 pydoctor 21.9.1
 ^^^^^^^^^^^^^^^

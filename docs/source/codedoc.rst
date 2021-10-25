@@ -19,7 +19,7 @@ For example::
 Pydoctor also supports *attribute docstrings*::
 
     CONST = 123
-    """This docstring describes a module level variable/constant."""
+    """This docstring describes a module level constant."""
 
     class C:
         cvar = None
@@ -95,6 +95,11 @@ For instane, these variables will be recognized as constants::
     X = 3.14
     y: Final = ['a', 'b']
 
+In Python 3.6 and 3.7, you can use the qualifier present in the `typing_extensions` instead of `typing.Final`::
+
+   from typing_extensions import Final
+   z: Final = 'relative/path'
+   
 Fields
 ------
 
