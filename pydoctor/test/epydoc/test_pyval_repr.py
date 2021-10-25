@@ -804,55 +804,130 @@ def test_re_branching() -> None:
     # Branching
     assert color_re(r"foo|bar") == """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>bar<span class="rst-variable-quote">'</span>"""
 
-# THIS TESTS NEEDS TO BE PORTED TO NEW VERSION OF THE COLORIZER
-'''
-
 def test_re_char_classes() -> None:
     # Character classes
-    assert color_re(r"[abcd]") == ""
-    # <code class="re-flags">(?u)</code><code class="re-group">[</code>abcd<code class="re-group">]</code>
+    assert color_re(r"[abcd]") == """r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span>abcd<span class="rst-re-group">]</span><span class="rst-variable-quote">'</span>"""
 
 def test_re_repeats() -> None:
     # Repeats
-    assert color_re(r"a*b+c{4,}d{,5}e{3,9}f?") == ""
-    # <code class="re-flags">(?u)</code>a<code class="re-op">*</code>b<code class="re-op">+</code>c<code class="re-op">{4,}</code>d<code class="re-op">{,5}</code>e<code class="re-op">{3,9}</code>f<code class="re-op">?</code>
-    assert color_re(r"a*?b+?c{4,}?d{,5}?e{3,9}?f??") == ""
-    # <code class="re-flags">(?u)</code>a<code class="re-op">*?</code>b<code class="re-op">+?</code>c<code class="re-op">{4,}?</code>d<code class="re-op">{,5}?</code>e<code class="re-op">{3,9}?</code>f<code class="re-op">??</code>
+    assert color_re(r"a*b+c{4,}d{,5}e{3,9}f?") == ("""r<span class="rst-variable-quote">'</span>a<span class="rst-re-op">*</span>"""
+                                                   """b<span class="rst-re-op">+</span>c<span class="rst-re-op">{4,}</span>"""
+                                                   """d<span class="rst-re-op">{,5}</span>e<span class="rst-re-op">{3,9}</span>"""
+                                                   """f<span class="rst-re-op">?</span><span class="rst-variable-quote">'</span>""")
+
+    assert color_re(r"a*?b+?c{4,}?d{,5}?e{3,9}?f??") == ("""r<span class="rst-variable-quote">'</span>a<span class="rst-re-op">*?</span>"""
+                                                         """b<span class="rst-re-op">+?</span>c<span class="rst-re-op">{4,}?</span>"""
+                                                         """d<span class="rst-re-op">{,5}?</span>e<span class="rst-re-op">{3,9}?</span>"""
+                                                         """f<span class="rst-re-op">??</span><span class="rst-variable-quote">'</span>""")
 
 def test_re_subpatterns() -> None:
     # Subpatterns
-    assert color_re(r"(foo (bar) | (baz))") == """<code class="re-flags">(?u)</code><code class="re-group">(</code>foo <code class="re-group">(</code>bar<code class="re-group">)</code> <code class="re-op">|</code> <code class="re-group">(</code>baz<code class="re-group">)</code><code class="re-group">)</code>"""
-    # 
-    assert color_re(r"(?:foo (?:bar) | (?:baz))") == """<code class="re-flags">(?u)</code><code class="re-group">(?:</code>foo <code class="re-group">(?:</code>bar<code class="re-group">)</code> <code class="re-op">|</code> <code class="re-group">(?:</code>baz<code class="re-group">)</code><code class="re-group">)</code>"""
-    # 
-    assert color_re("(foo (?P<a>bar) | (?P<boop>baz))") == """<code class="re-flags">(?u)</code><code class="re-group">(</code>foo <code class="re-group">(?P&lt;</code><code class="re-ref">a</code><code class="re-group">&gt;</code>bar<code class="re-group">)</code> <code class="re-op">|</code> <code class="re-group">(?P&lt;</code><code class="re-ref">boop</code><code class="re-group">&gt;</code>baz<code class="re-group">)</code><code class="re-group">)</code>"""
-    # 
+    assert color_re(r"(foo (bar) | (baz))") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(</span>"""
+                                                """foo <span class="rst-re-group">(</span>bar<span class="rst-re-group">)</span> """
+                                                """<span class="rst-re-op">|</span> <span class="rst-re-group">(</span>"""
+                                                """baz<span class="rst-re-group">)</span><span class="rst-re-group">)</span>"""
+                                                """<span class="rst-variable-quote">'</span>""")
+    
+    # Something changed in the regex module...
+    # >>> sre_parse.parse("foo bar | baz").dump()
+    # BRANCH
+    # LITERAL 102
+    # LITERAL 111
+    # LITERAL 111
+    # LITERAL 32
+    # LITERAL 98
+    # LITERAL 97
+    # LITERAL 114
+    # LITERAL 32
+    # OR
+    # LITERAL 32
+    # LITERAL 98
+    # LITERAL 97
+    # LITERAL 122
+    # >>> sre_parse.parse("(?:foo (?:bar) | (?:baz))").dump()
+    # BRANCH
+    # LITERAL 102
+    # LITERAL 111
+    # LITERAL 111
+    # LITERAL 32
+    # LITERAL 98
+    # LITERAL 97
+    # LITERAL 114
+    # LITERAL 32
+    # OR
+    # LITERAL 32
+    # LITERAL 98
+    # LITERAL 97
+    # LITERAL 122
+
+    # VS in python2:
+
+    # >>> sre_parse.parse("(?:foo (?:bar) | (?:baz))").dump()
+    # subpattern None
+    # branch
+    #     literal 102
+    #     literal 111
+    #     literal 111
+    #     literal 32
+    #     subpattern None
+    #     literal 98
+    #     literal 97
+    #     literal 114
+    #     literal 32
+    # or
+    #     literal 32
+    #     subpattern None
+    #     literal 98
+    #     literal 97
+    #     literal 122
+    
+    assert color_re(r"(?:foo (?:bar) | (?:baz))", check_roundtrip=False) == ("""r<span class="rst-variable-quote">'</span>foo bar """
+                                                                             """<span class="rst-re-op">|</span> baz<span class="rst-variable-quote">'</span>""")
+    
+    assert color_re("(foo (?P<a>bar) | (?P<boop>baz))") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(</span>"""
+                                                            """foo <span class="rst-re-group">(?P&lt;</span><span class="rst-re-ref">"""
+                                                            """a</span><span class="rst-re-group">&gt;</span>bar<span class="rst-re-group">)</span> """
+                                                            """<span class="rst-re-op">|</span> <span class="rst-re-group">(?P&lt;</span>"""
+                                                            """<span class="rst-re-ref">boop</span><span class="rst-re-group">&gt;</span>"""
+                                                            """baz<span class="rst-re-group">)</span><span class="rst-re-group">)</span>"""
+                                                            """<span class="rst-variable-quote">'</span>""")
 
 def test_re_references() -> None:
     # Group References
-    assert color_re(r"(...) and (\1)") == """<code class="re-flags">(?u)</code><code class="re-group">(</code>...<code class="re-group">)</code> and <code class="re-group">(</code><code class="re-ref">\1</code><code class="re-group">)</code>"""
-    # 
+    assert color_re(r"(...) and (\1)") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(</span>..."""
+                                           """<span class="rst-re-group">)</span> and <span class="rst-re-group">(</span>"""
+                                           r"""<span class="rst-re-ref">\1</span><span class="rst-re-group">)</span>"""
+                                           """<span class="rst-variable-quote">'</span>""")
 
 def test_re_ranges() -> None:
     # Ranges
-    assert color_re(r"[a-bp-z]") == """<code class="re-flags">(?u)</code><code class="re-group">[</code>a<code class="re-op">-</code>bp<code class="re-op">-</code>z<code class="re-group">]</code>"""
-    # 
-    assert color_re(r"[^a-bp-z]") == """<code class="re-flags">(?u)</code><code class="re-group">[</code><code class="re-op">^</code>a<code class="re-op">-</code>bp<code class="re-op">-</code>z<code class="re-group">]</code>"""
-    # 
-    assert color_re(r"[^abc]") == """<code class="re-flags">(?u)</code><code class="re-group">[</code><code class="re-op">^</code>abc<code class="re-group">]</code>"""
-    # 
+    assert color_re(r"[a-bp-z]") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span>a"""
+                                     """<span class="rst-re-op">-</span>bp<span class="rst-re-op">-</span>z"""
+                                     """<span class="rst-re-group">]</span><span class="rst-variable-quote">'</span>""")
+
+    assert color_re(r"[^a-bp-z]") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span>"""
+                                      """<span class="rst-re-op">^</span>a<span class="rst-re-op">-</span>bp"""
+                                      """<span class="rst-re-op">-</span>z<span class="rst-re-group">]</span>"""
+                                      """<span class="rst-variable-quote">'</span>""")
+
+    assert color_re(r"[^abc]") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span>"""
+                                   """<span class="rst-re-op">^</span>abc<span class="rst-re-group">]</span>"""
+                                   """<span class="rst-variable-quote">'</span>""")
 
 def test_re_lookahead_behinds() -> None:
     # Lookahead/behinds
-    assert color_re(r"foo(?=bar)") == """<code class="re-flags">(?u)</code>foo<code class="re-group">(?=</code>bar<code class="re-group">)</code>"""
+    assert color_re(r"foo(?=bar)") == ("""r<span class="rst-variable-quote">'</span>foo<span class="rst-re-group">(?=</span>"""
+                                       """bar<span class="rst-re-group">)</span><span class="rst-variable-quote">'</span>""")
  
-    assert color_re(r"foo(?!bar)") == """<code class="re-flags">(?u)</code>foo<code class="re-group">(?!</code>bar<code class="re-group">)</code>"""
+    assert color_re(r"foo(?!bar)") == ("""r<span class="rst-variable-quote">'</span>foo<span class="rst-re-group">(?!</span>"""
+                                       """bar<span class="rst-re-group">)</span><span class="rst-variable-quote">'</span>""")
  
-    assert color_re(r"(?<=bar)foo") == """<code class="re-flags">(?u)</code><code class="re-group">(?&lt;=</code>bar<code class="re-group">)</code>foo"""
+    assert color_re(r"(?<=bar)foo") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(?&lt;=</span>"""
+                                        """bar<span class="rst-re-group">)</span>foo<span class="rst-variable-quote">'</span>""")
  
-    assert color_re(r"(?<!bar)foo") == """<code class="re-flags">(?u)</code><code class="re-group">(?&lt;!</code>bar<code class="re-group">)</code>foo"""
+    assert color_re(r"(?<!bar)foo") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(?&lt;!</span>"""
+                                        """bar<span class="rst-re-group">)</span>foo<span class="rst-variable-quote">'</span>""")
 
-'''
 
 def test_re_flags() -> None:
     # Flags
