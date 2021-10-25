@@ -41,7 +41,7 @@ import functools
 import sys
 import sre_parse, sre_constants
 from inspect import signature
-from typing import Any, Callable, Dict, Iterable, Sequence, Union, Optional, List, Tuple, cast, overload
+from typing import Any, AnyStr, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
 import attr
 import astor
@@ -152,12 +152,8 @@ def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
     """
     return colorize_pyval(pyval, linelen=None, linebreakok=False)
 
-@overload
-def _get_str_func(pyval:  str) -> Callable[[str], str]: ...
-@overload
-def _get_str_func(pyval:  bytes) -> Callable[[str], bytes]: ...
-def _get_str_func(pyval:  Union[str, bytes]) -> Callable[[str], Union[str, bytes]]:
-    func = cast(Callable[[str], Union[str, bytes]], str if isinstance(pyval, str) else \
+def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
+    func = cast(Callable[[str], AnyStr], str if isinstance(pyval, str) else \
         functools.partial(bytes, encoding='utf-8', errors='replace'))
     return func
 def _str_escape(s: str) -> str:
@@ -364,8 +360,8 @@ class PyvalColorizer:
             func(pyval, state, **kwargs)
 
     def _colorize_iter(self, pyval: Iterable[Any], state: _ColorizerState, 
-                       prefix: Optional[Union[str, bytes]] = None, 
-                       suffix: Optional[Union[str, bytes]] = None) -> None:
+                       prefix: Optional[AnyStr] = None, 
+                       suffix: Optional[AnyStr] = None) -> None:
         if prefix is not None:
             self._output(prefix, self.GROUP_TAG, state)
         indent = state.charpos
@@ -390,15 +386,8 @@ class PyvalColorizer:
             self._colorize(val, state)
         self._output(suffix, self.GROUP_TAG, state)
     
-    @overload
-    def _colorize_str(self, pyval: str, state: _ColorizerState, prefix: str, 
-        escape_fcn: Optional[Callable[[str], str]]) -> None: 
-        ...
-    @overload
-    def _colorize_str(self, pyval: bytes, state: _ColorizerState, prefix: bytes, 
-        escape_fcn: Optional[Callable[[bytes], str]]) -> None: 
-        ...
-    def _colorize_str(self, pyval, state, prefix, escape_fcn) -> None: #type: ignore[no-untyped-def]
+    def _colorize_str(self, pyval: AnyStr, state: _ColorizerState, prefix: AnyStr, 
+                      escape_fcn: Optional[Callable[[AnyStr], str]]) -> None:
         
         # TODO: Double check implementation bytes/str
         str_func = _get_str_func(pyval)
@@ -415,7 +404,7 @@ class PyvalColorizer:
 
         # Divide the string into lines.
         if state.linebreakok:
-            lines: List[Union[str, bytes]] = pyval.split(str_func('\n'))
+            lines = pyval.split(str_func('\n'))
         else:
             lines = [pyval]
         # Body
@@ -423,7 +412,8 @@ class PyvalColorizer:
             if i>0:
                 self._output(str_func('\n'), None, state)
             if escape_fcn:
-                line = escape_fcn(line)
+                # It's not redundant when line is bytes
+                line = cast(AnyStr, escape_fcn(line)) # type:ignore[redundant-cast]
             
             self._output(line, self.STRING_TAG, state)
         # Close quote.
@@ -656,7 +646,8 @@ class PyvalColorizer:
         
         try:
             # Can raise ValueError or re.error
-            self._colorize_re_pattern_str(pat, state)
+            # Value of type variable "AnyStr" cannot be "Union[bytes, str]": Yes it can.
+            self._colorize_re_pattern_str(pat, state) #type:ignore[type-var]
         except (ValueError, re.error) as e:
             # Colorize the ast.Call as any other node if the pattern parsing fails.
             state.restore(mark)
@@ -684,7 +675,7 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pat: Union[str, bytes], state: _ColorizerState) -> None:
+    def _colorize_re(self, pat: AnyStr, state: _ColorizerState) -> None:
         # Used for live re.Pattern objects, for testing only.
 
         self._output("re.compile", None, state, link=True)
@@ -704,13 +695,7 @@ class PyvalColorizer:
         
         self._output(")", self.GROUP_TAG, state)
 
-    @overload
-    def _colorize_re_pattern_str(self, pat: str, state: _ColorizerState) -> None: 
-        ...
-    @overload
-    def _colorize_re_pattern_str(self, pat: bytes, state: _ColorizerState) -> None: 
-        ...
-    def _colorize_re_pattern_str(self, pat, state) -> None: # type: ignore
+    def _colorize_re_pattern_str(self, pat: AnyStr, state: _ColorizerState) -> None:
         # Currently, the colorizer do not render multiline regex patterns correctly. 
         # Newlines are mixed up with literals \n and probably more fun stuff like that.
         # Turns out the sre_parse.parse() function treats caracters "\n" and "\\n" the same way.
@@ -730,13 +715,13 @@ class PyvalColorizer:
             else:
                 self._colorize_re_pattern(pat, state, 'r')
     
-    def _colorize_re_pattern(self, pat: Union[str, bytes], state: _ColorizerState, prefix: Union[str, bytes]) -> None:
+    def _colorize_re_pattern(self, pat: AnyStr, state: _ColorizerState, prefix: AnyStr) -> None:
 
         # Parse the regexp pattern.
         # The AST regex pattern strings are always parsed with the default flags.
         # Flag values are displayed only when parsing regex from AST, they are displayed as regular ast.Call arguments. 
 
-        # Mypy gets error: error: Argument 1 to "parse" has incompatible type "Union[str, bytes]"; expected "str".
+        # Mypy gets error: error: Argument 1 to "parse" has incompatible type "AnyStr"; expected "str".
         # But actually, sre_parse.parse() can parse regex as bytes.
         tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
         # from python 3.8 SubPattern.pattern is named SubPattern.state
@@ -779,11 +764,10 @@ class PyvalColorizer:
             args = elt[1]
 
             if op == sre_constants.LITERAL:
-                c: Union[str, bytes] = chr(cast(int, args))
+                c = chr(cast(int, args))
                 # Add any appropriate escaping.
-                if cast(str, c) in '.^$\\*+?{}[]|()\'': 
-                    # Yes, it's safe.
-                    c = '\\' + c # type: ignore[operator]
+                if c in '.^$\\*+?{}[]|()\'': 
+                    c = '\\' + c
                 # For the record, the special literal caracters are parsed the same way escaped or not. 
                 # So we can't tell the difference between "\n" and "\\n".
                 # We always escape them to produce a valid regular expression (and avoid crashing htmltostan() function).
@@ -807,9 +791,9 @@ class PyvalColorizer:
                 # elif ord(c) > 65535: 
                 #     c = rb'\U%08x' % ord(c)
                 elif ord(c) > 255 and ord(c) <= 65535: 
-                   c = rb'\u%04x' % ord(c)
+                   c = rb'\u%04x' % ord(c) # type:ignore[assignment]
                 elif (ord(c)<32 or ord(c)>=127) and ord(c) <= 65535: 
-                    c = rb'\x%02x' % ord(c)
+                    c = rb'\x%02x' % ord(c) # type:ignore[assignment]
                 self._output(c, self.RE_CHAR_TAG, state)
 
             elif op == sre_constants.ANY:
@@ -932,7 +916,7 @@ class PyvalColorizer:
     # Output function
     #////////////////////////////////////////////////////////////
 
-    def _output(self, s: Union[str, bytes], css_class: Optional[str], 
+    def _output(self, s: AnyStr, css_class: Optional[str], 
                 state: _ColorizerState, link: bool = False) -> None:
         """
         Add the string C{s} to the result list, tagging its contents
@@ -942,8 +926,8 @@ class PyvalColorizer:
         """
         # Make sure the string is unicode.
         if isinstance(s, bytes):
-            s = decode_with_backslashreplace(s)
-
+            s = cast(AnyStr, decode_with_backslashreplace(s))
+        assert isinstance(s, str)
         # Split the string into segments.  The first segment is the
         # content to add to the current line, and the remaining
         # segments are new lines.
