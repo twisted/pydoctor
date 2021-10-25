@@ -171,15 +171,16 @@ def is_using_typing_final(obj: model.Attribute) -> bool:
     """
     Detect if C{obj}'s L{Attribute.annotation} is using L{typing.Final}.
     """
+    final_qualifiers = ("typing.Final", "typing_extensions.Final")
     fullName = node2fullname(obj.annotation, obj)
-    if fullName == "typing.Final":
+    if fullName in final_qualifiers:
         return True
     if isinstance(obj.annotation, ast.Subscript):
         # Final[...] or typing.Final[...] expressions
         if isinstance(obj.annotation.value, (ast.Name, ast.Attribute)):
             value = obj.annotation.value
             fullName = node2fullname(value, obj)
-            if fullName == "typing.Final":
+            if fullName in final_qualifiers:
                 return True
 
     return False
