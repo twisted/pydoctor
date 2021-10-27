@@ -623,6 +623,41 @@ def test_ast_bin_op() -> None:
     %
     4\n"""
 
+    assert color(extract_expr(ast.parse(dedent("""
+    1 & 0
+    """)))) == """<document source="pyval_repr">
+    1
+    &
+    0\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    1 | 0
+    """)))) == """<document source="pyval_repr">
+    1
+    |
+    0\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    1 ^ 0
+    """)))) == """<document source="pyval_repr">
+    1
+    ^
+    0\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    1 << 0
+    """)))) == """<document source="pyval_repr">
+    1
+    <<
+    0\n"""
+    
+    assert color(extract_expr(ast.parse(dedent("""
+    1 >> 0
+    """)))) == """<document source="pyval_repr">
+    1
+    >>
+    0\n"""
+
 def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -717,6 +752,19 @@ def test_ast_bool_op() -> None:
         True
      and 
     9\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    1 or 0 and 2 or 3 or 1
+    """)))) == """<document source="pyval_repr">
+    1
+     or 
+    0
+     and 
+    2
+     or 
+    3
+     or 
+    1\n"""
 
 def test_ast_list_tuple() -> None:
     assert color(extract_expr(ast.parse(dedent("""
