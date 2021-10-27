@@ -354,12 +354,7 @@ class PyvalColorizer:
             else:
                 match = self.GENERIC_OBJECT_RE.search(pyval_repr)
                 if match:
-                    generic_object_match_groups = match.groupdict()
-                    if 'descr' in generic_object_match_groups:
-                        pyval_repr = f"<{generic_object_match_groups['descr']}>"
-                        self._output(pyval_repr, None, state)
-                    else:
-                        state.result.append(self.UNKNOWN_REPR)
+                    self._output(f"<{match.groupdict().get('descr')}>", None, state)
                 else:
                     self._output(pyval_repr, None, state)
 
