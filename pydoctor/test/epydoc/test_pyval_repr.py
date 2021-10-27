@@ -454,6 +454,37 @@ def test_multiline_set() -> None:
     <inline classes="variable-ellipsis">
         ...\n"""
 
+def test_frozenset() -> None:
+
+    assert color(frozenset([1, 2, 3])) == """<document source="pyval_repr">
+    frozenset([
+    <wbr>
+    1
+    , 
+    <wbr>
+    2
+    , 
+    <wbr>
+    3
+    ])\n"""
+
+def test_custom_live_object() -> None:
+    class Custom:
+        def __repr__(self) -> str:
+            return '123'
+    
+    assert color(Custom()) == """<document source="pyval_repr">
+    123\n"""
+
+def test_buggy_live_object() -> None:
+    class Buggy:
+        def __repr__(self) -> str:
+            raise NotImplementedError()
+    
+    assert color(Buggy()) == """<document source="pyval_repr">
+    <inline classes="variable-unknown">
+        ??\n"""
+
 def test_tuples_one_value() -> None:
     """Tuples that contains only one value need an ending comma."""
     assert color((1,)) == """<document source="pyval_repr">
@@ -544,6 +575,24 @@ def test_ast_unary_op() -> None:
     <obj_reference refuid="True">
         True\n"""
 
+    assert color(extract_expr(ast.parse(dedent("""
+    +3.0
+    """)))) == """<document source="pyval_repr">
+    +
+    3.0\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    -3.0
+    """)))) == """<document source="pyval_repr">
+    -
+    3.0\n"""
+    
+    assert color(extract_expr(ast.parse(dedent("""
+    ~3.0
+    """)))) == """<document source="pyval_repr">
+    ~
+    3.0\n"""
+
 def test_ast_bin_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
     2.3*6
@@ -551,6 +600,114 @@ def test_ast_bin_op() -> None:
     2.3
     *
     6\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (3-6)*2
+    """)))) == """<document source="pyval_repr">
+    (
+    3
+    -
+    6
+    )
+    *
+    2\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    101//4+101%4
+    """)))) == """<document source="pyval_repr">
+    101
+    //
+    4
+    +
+    101
+    %
+    4\n"""
+
+def test_operator_precedences() -> None:
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (2 ** 3) ** 2
+    """)))) == """<document source="pyval_repr">
+    (
+    2
+    **
+    3
+    )
+    **
+    2\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    2 ** 3 ** 2
+    """)))) == """<document source="pyval_repr">
+    2
+    **
+    (
+    3
+    **
+    2
+    )\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (1 + 2) * 3 / 4
+    """)))) == """<document source="pyval_repr">
+    (
+    (
+    1
+    +
+    2
+    )
+    *
+    3
+    )
+    /
+    4\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    ((1 + 2) * 3) / 4
+    """)))) == """<document source="pyval_repr">
+    (
+    (
+    1
+    +
+    2
+    )
+    *
+    3
+    )
+    /
+    4\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (1 + 2) * (3 / 4)
+    """)))) == """<document source="pyval_repr">
+    (
+    1
+    +
+    2
+    )
+    *
+    (
+    3
+    /
+    4
+    )\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    (1 + (2 * 3) / 4) - 1
+    """)))) == """<document source="pyval_repr">
+    (
+    1
+    +
+    (
+    2
+    *
+    3
+    )
+    /
+    4
+    )
+    -
+    1\n"""
 
 def test_ast_bool_op() -> None:
     assert color(extract_expr(ast.parse(dedent("""
@@ -760,6 +917,93 @@ def test_ast_call() -> None:
     100
     )
     )\n"""
+
+def test_ast_call_args() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    list(func(1, *two, three=2, **args))
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="list">
+        list
+    (
+    <wbr>
+    <obj_reference refuid="func">
+        func
+    (
+    <wbr>
+    1
+    , 
+    <wbr>
+    *
+    <obj_reference refuid="two">
+        two
+    , 
+    <wbr>
+    three
+    =
+    2
+    , 
+    <wbr>
+    **
+    <obj_reference refuid="args">
+        args
+    )
+    )\n"""
+
+def test_ast_ellipsis() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    ...
+    """)))) == """<document source="pyval_repr">
+    <inline classes="variable-ellipsis">
+        ...\n"""
+
+def test_ast_set() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    {1, 2}
+    """)))) == """<document source="pyval_repr">
+    set([
+    <wbr>
+    1
+    , 
+    <wbr>
+    2
+    ])\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    set([1, 2])
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="set">
+        set
+    (
+    <wbr>
+    [
+    <wbr>
+    1
+    , 
+    <wbr>
+    2
+    ]
+    )\n"""
+
+def test_ast_slice() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    o[x:y]
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="o">
+        o
+    [
+    <wbr>
+    x:y
+    ]\n"""
+
+    assert color(extract_expr(ast.parse(dedent("""
+    o[x:y,z]
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="o">
+        o
+    [
+    <wbr>
+    x:y, (z)
+    ]\n"""
 
 def textcontent(elt: Union[Element, str, bytes]) -> str:
     if isinstance(elt, str): 
@@ -990,8 +1234,8 @@ def test_line_wrapping() -> None:
 
 def color2(v: Any) -> str:
     colorizer = PyvalColorizer(linelen=50)
-    pds = colorizer.colorize(v)
-    text = ''.join(gettext(pds.to_node()))
+    colorized = colorizer.colorize(v)
+    text = ''.join(gettext(colorized.to_node()))
     return text
 
 def test_repr_text() -> None:

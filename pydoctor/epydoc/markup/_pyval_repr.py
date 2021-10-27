@@ -41,10 +41,10 @@ import functools
 import sys
 import sre_parse, sre_constants
 from inspect import signature
-from typing import Any, AnyStr, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
+from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
 import attr
-import astor
+import astor.op_util
 from docutils import nodes, utils
 from twisted.web.template import Tag
 
@@ -101,11 +101,74 @@ class _ColorizerState:
                     lineno=self.lineno, 
                     linebreakok=self.linebreakok)
 
-    def restore(self, mark: _MarkedColorizerState) -> None:
+    def restore(self, mark: _MarkedColorizerState) -> List[nodes.Node]:
+        """
+        Return what's been trimmed from the result.
+        """
         (self.charpos, self.lineno, 
         self.linebreakok) = (mark.charpos, mark.lineno, 
                                         mark.linebreakok)
+        trimmed = self.result[mark.length:]
         del self.result[mark.length:]
+        return trimmed
+
+class _Parentage(ast.NodeTransformer):
+    """
+    Add C{parent} attribute to ast nodes instances.
+    """
+    # stolen from https://stackoverflow.com/a/68845448
+    parent: Optional[ast.AST] = None
+
+    def visit(self, node: ast.AST) -> ast.AST:
+        setattr(node, 'parent', self.parent)
+        self.parent = node
+        node = super().visit(node)
+        if isinstance(node, ast.AST):
+            self.parent = getattr(node, 'parent')
+        return node
+
+class _OperatorDelimiter:
+    """
+    A context manager that can add enclosing delimiters to operators when needed. 
+    
+    Adapted from C{astor} library, thanks.
+    """
+
+    def __init__(self, colorizer: 'PyvalColorizer', state: _ColorizerState, 
+                 node: Union[ast.UnaryOp, ast.BinOp, ast.BoolOp]) -> None:
+
+        self.discard = True
+        """No parenthesis by default."""
+
+        self.colorizer = colorizer
+        self.state = state
+        self.marked = state.mark()
+
+        # We use a hack to populate a "parent" attribute on AST nodes.
+        # See _Parentage and PyvalColorizer._colorize_ast()
+        parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
+
+        try:
+            precedence = astor.op_util.get_op_precedence(node.op)
+            if parent_node:
+                parent_precedence = astor.op_util.get_op_precedence(getattr(parent_node, 'op', node))
+                # Add parenthesis when precedences are equal to avoid confusions and correctly handle the Pow special case.
+                if precedence <= parent_precedence:
+                    self.discard = False
+        
+        except KeyError:
+            # get_op_precedence raises KeyError for unhandled nodes
+            pass
+
+    def __enter__(self) -> '_OperatorDelimiter':
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        if not self.discard:
+            trimmed = self.state.restore(self.marked)
+            self.colorizer._output('(', None, self.state)
+            self.state.result.extend(trimmed)
+            self.colorizer._output(')', None, self.state)
 
 class _Maxlines(Exception):
     """A control-flow exception that is raised when PyvalColorizer
@@ -286,7 +349,7 @@ class PyvalColorizer:
                 if not isinstance(pyval_repr, str):
                     pyval_repr = str(pyval_repr) #type: ignore[unreachable]
             except Exception:
-                state.warnings.append(f"Cannot colorize object '{pyval}', repr() raised an exception.")
+                state.warnings.append(f"Cannot colorize object of type '{pyval.__class__.__name__}', repr() raised an exception.")
                 state.result.append(self.UNKNOWN_REPR)
             else:
                 match = self.GENERIC_OBJECT_RE.search(pyval_repr)
@@ -421,7 +484,11 @@ class PyvalColorizer:
     # Support for AST
     #////////////////////////////////////////////////////////////
 
-    # TODO: Add support for f-strings, comparators and generator expressions.
+    # Nodes not explicitely handled that would be nice to handle.
+    #   f-strings, 
+    #   comparators, 
+    #   generator expressions, 
+    #   Slice and ExtSlice
 
     @staticmethod
     def _is_ast_constant(node: ast.AST) -> bool:
@@ -448,6 +515,9 @@ class PyvalColorizer:
             self._output('...', self.ELLIPSIS_TAG, state)
 
     def _colorize_ast(self, pyval: ast.AST, state: _ColorizerState) -> None:
+        # Set nodes parent in order to check theirs precedences and add delimiters when needed.
+        if not getattr(pyval, 'parent', None):
+            _Parentage().visit(pyval)
 
         if self._is_ast_constant(pyval): 
             self._colorize_ast_constant(pyval, state)
@@ -488,69 +558,72 @@ class PyvalColorizer:
             self._colorize_ast_generic(pyval, state)
     
     def _colorize_ast_unary_op(self, pyval: ast.UnaryOp, state: _ColorizerState) -> None:
-        if isinstance(pyval.op, ast.USub):
-            self._output('-', None, state)
-        elif isinstance(pyval.op, ast.UAdd):
-            self._output('+', None, state)
-        elif isinstance(pyval.op, ast.Not):
-            self._output('not ', None, state)
-        elif isinstance(pyval.op, ast.Invert):
-            self._output('~', None, state)
-        else:
-            state.warnings.append(f"Unknow unrary operator: {pyval}")
-            self._colorize_ast_generic(pyval, state)
+        with _OperatorDelimiter(self, state, pyval):
+            if isinstance(pyval.op, ast.USub):
+                self._output('-', None, state)
+            elif isinstance(pyval.op, ast.UAdd):
+                self._output('+', None, state)
+            elif isinstance(pyval.op, ast.Not):
+                self._output('not ', None, state)
+            elif isinstance(pyval.op, ast.Invert):
+                self._output('~', None, state)
+            else:
+                state.warnings.append(f"Unknow unrary operator: {pyval}")
+                self._colorize_ast_generic(pyval, state)
 
-        self._colorize(pyval.operand, state)
+            self._colorize(pyval.operand, state)
     
     def _colorize_ast_binary_op(self, pyval: ast.BinOp, state: _ColorizerState) -> None:
-        # Colorize first operand
-        self._colorize(pyval.left, state)
+        with _OperatorDelimiter(self, state, pyval):
+            # Colorize first operand
+            self._colorize(pyval.left, state)
 
-        # Colorize operator
-        if isinstance(pyval.op, ast.Sub):
-            self._output('-', None, state)
-        elif isinstance(pyval.op, ast.Add):
-            self._output('+', None, state)
-        elif isinstance(pyval.op, ast.Mult):
-            self._output('*', None, state)
-        elif isinstance(pyval.op, ast.Div):
-            self._output('/', None, state)
-        elif isinstance(pyval.op, ast.FloorDiv):
-            self._output('//', None, state)
-        elif isinstance(pyval.op, ast.Mod):
-            self._output('%', None, state)
-        elif isinstance(pyval.op, ast.Pow):
-            self._output('**', None, state)
-        elif isinstance(pyval.op, ast.LShift):
-            self._output('<<', None, state)
-        elif isinstance(pyval.op, ast.RShift):
-            self._output('>>', None, state)
-        elif isinstance(pyval.op, ast.BitOr):
-            self._output('|', None, state)
-        elif isinstance(pyval.op, ast.BitXor):
-            self._output('^', None, state)
-        elif isinstance(pyval.op, ast.BitAnd):
-            self._output('&', None, state)
-        elif isinstance(pyval.op, ast.MatMult):
-            self._output('@', None, state)
-        else:
-            state.warnings.append(f"Unknow binary operator: {pyval}")
-            self._colorize_ast_generic(pyval, state)
+            # Colorize operator
+            if isinstance(pyval.op, ast.Sub):
+                self._output('-', None, state)
+            elif isinstance(pyval.op, ast.Add):
+                self._output('+', None, state)
+            elif isinstance(pyval.op, ast.Mult):
+                self._output('*', None, state)
+            elif isinstance(pyval.op, ast.Div):
+                self._output('/', None, state)
+            elif isinstance(pyval.op, ast.FloorDiv):
+                self._output('//', None, state)
+            elif isinstance(pyval.op, ast.Mod):
+                self._output('%', None, state)
+            elif isinstance(pyval.op, ast.Pow):
+                self._output('**', None, state)
+            elif isinstance(pyval.op, ast.LShift):
+                self._output('<<', None, state)
+            elif isinstance(pyval.op, ast.RShift):
+                self._output('>>', None, state)
+            elif isinstance(pyval.op, ast.BitOr):
+                self._output('|', None, state)
+            elif isinstance(pyval.op, ast.BitXor):
+                self._output('^', None, state)
+            elif isinstance(pyval.op, ast.BitAnd):
+                self._output('&', None, state)
+            elif isinstance(pyval.op, ast.MatMult):
+                self._output('@', None, state)
+            else:
+                state.warnings.append(f"Unknow binary operator: {pyval}")
+                self._colorize_ast_generic(pyval, state)
 
-        # Colorize second operand
-        self._colorize(pyval.right, state)
+            # Colorize second operand
+            self._colorize(pyval.right, state)
     
     def _colorize_ast_bool_op(self, pyval: ast.BoolOp, state: _ColorizerState) -> None:
-        _maxindex = len(pyval.values)-1
+        with _OperatorDelimiter(self, state, pyval):
+            _maxindex = len(pyval.values)-1
 
-        for index, value in enumerate(pyval.values):
-            self._colorize(value, state)
+            for index, value in enumerate(pyval.values):
+                self._colorize(value, state)
 
-            if index != _maxindex:
-                if isinstance(pyval.op, ast.And):
-                    self._output(' and ', None, state)
-                elif isinstance(pyval.op, ast.Or):
-                    self._output(' or ', None, state)
+                if index != _maxindex:
+                    if isinstance(pyval.op, ast.And):
+                        self._output(' and ', None, state)
+                    elif isinstance(pyval.op, ast.Or):
+                        self._output(' or ', None, state)
 
     def _colorize_ast_name(self, pyval: ast.Name, state: _ColorizerState) -> None:
         self._output(pyval.id, self.LINK_TAG, state, link=True)
@@ -579,12 +652,9 @@ class PyvalColorizer:
         self._output('[', self.GROUP_TAG, state)
         if isinstance(sub, ast.Tuple):
             self._multiline(self._colorize_iter, sub.elts, state)
-        elif isinstance(sub, (ast.Slice, ast.ExtSlice)):
-            state.result.append(self.WORD_BREAK_OPPORTUNITY)
-            self._colorize_ast_generic(sub, state)
         else:
             state.result.append(self.WORD_BREAK_OPPORTUNITY)
-            self._colorize_ast(sub, state)
+            self._colorize(sub, state)
        
         self._output(']', self.GROUP_TAG, state)
     
@@ -598,7 +668,7 @@ class PyvalColorizer:
             self._colorize_ast_call_generic(node, state)
 
     def _colorize_ast_call_generic(self, node: ast.Call, state: _ColorizerState) -> None:
-        self._colorize_ast(node.func, state)
+        self._colorize(node.func, state)
         self._output('(', self.GROUP_TAG, state)
         indent = state.charpos
         self._multiline(self._colorize_iter, node.args, state)
@@ -964,7 +1034,7 @@ class PyvalColorizer:
             # If the segment doesn't fit on the current line, then
             # line-wrap it, and insert the remainder of the line into
             # the segments list that we're iterating over.  (We'll go
-            # the the beginning of the next line at the start of the
+            # the beginning of the next line at the start of the
             # next iteration through the loop.)
             else:
                 assert isinstance(self.linelen, int)
