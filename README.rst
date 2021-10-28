@@ -61,7 +61,13 @@ What's New?
 ~~~~~~~~~~~
 
 in development
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
+
+pydoctor 21.9.2
+^^^^^^^^^^^^^^^
+
+* Fix ``AttributeError`` raised when parsing reStructuredText consolidated fields, caused by a change in ``docutils`` 0.18.
+* Fix ``DeprecationWarning``, use newer APIs of ``importlib_resources`` module.
 
 * Mark variables as contants when their names is all caps or if using `Final` annotation.
 
