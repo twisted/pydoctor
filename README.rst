@@ -60,8 +60,11 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 21.9.2
+^^^^^^^^^^^^^^^
+
+* Fix ``AttributeError`` raised when parsing reStructuredText consolidated fields, caused by a change in ``docutils`` 0.18.
+* Fix ``DeprecationWarning``, use newer APIs of ``importlib_resources`` module.
 
 pydoctor 21.9.1
 ^^^^^^^^^^^^^^^
