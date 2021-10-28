@@ -87,9 +87,10 @@ def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
     """
-    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+    # Avoid usage of deprecated APIs. 
+    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
         moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName == '__init__':
+        if moduleName is None or moduleName.startswith("_"):
             continue
         else:
             yield moduleName
