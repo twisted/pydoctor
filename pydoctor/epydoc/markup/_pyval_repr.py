@@ -163,9 +163,9 @@ class _OperatorDelimiter:
     def __exit__(self, *exc_info: Any) -> None:
         if not self.discard:
             trimmed = self.state.restore(self.marked)
-            self.colorizer._output('(', None, self.state)
+            self.colorizer._output('(', self.colorizer.GROUP_TAG, self.state)
             self.state.result.extend(trimmed)
-            self.colorizer._output(')', None, self.state)
+            self.colorizer._output(')', self.colorizer.GROUP_TAG, self.state)
 
 class _Maxlines(Exception):
     """A control-flow exception that is raised when PyvalColorizer
