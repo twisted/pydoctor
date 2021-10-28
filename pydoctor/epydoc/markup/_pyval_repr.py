@@ -127,9 +127,10 @@ class _Parentage(ast.NodeTransformer):
             self.parent = getattr(node, 'parent')
         return node
 
+# TODO: add support for comparators when needed. 
 class _OperatorDelimiter:
     """
-    A context manager that can add enclosing delimiters to operators when needed. 
+    A context manager that can add enclosing delimiters to nested operators when needed. 
     
     Adapted from C{astor} library, thanks.
     """
@@ -145,20 +146,16 @@ class _OperatorDelimiter:
         self.marked = state.mark()
 
         # We use a hack to populate a "parent" attribute on AST nodes.
-        # See _Parentage and PyvalColorizer._colorize_ast()
+        # See _Parentage class, applied in PyvalColorizer._colorize_ast()
         parent_node: Optional[ast.AST] = getattr(node, 'parent', None)
 
-        try:
+        if isinstance(parent_node, (ast.UnaryOp, ast.BinOp, ast.BoolOp)):
             precedence = astor.op_util.get_op_precedence(node.op)
-            if parent_node:
-                parent_precedence = astor.op_util.get_op_precedence(getattr(parent_node, 'op', node))
-                # Add parenthesis when precedences are equal to avoid confusions and correctly handle the Pow special case.
-                if precedence <= parent_precedence:
-                    self.discard = False
-        
-        except KeyError:
-            # get_op_precedence raises KeyError for unhandled nodes
-            pass
+            parent_precedence = astor.op_util.get_op_precedence(parent_node.op)
+            # Add parenthesis when precedences are equal to avoid confusions 
+            # and correctly handle the Pow special case without too much annoyance.
+            if precedence <= parent_precedence:
+                self.discard = False
 
     def __enter__(self) -> '_OperatorDelimiter':
         return self
