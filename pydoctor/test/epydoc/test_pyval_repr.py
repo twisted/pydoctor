@@ -1,5 +1,6 @@
 import re
 import ast
+import sys
 from textwrap import dedent
 from typing import Any, Union
 
@@ -1051,6 +1052,16 @@ def test_ast_slice() -> None:
     [
     <wbr>
     x:y, (z)
+    ]\n""" if sys.version_info < (3,9) else """<document source="pyval_repr">
+    <obj_reference refuid="o">
+        o
+    [
+    <wbr>
+    x:y
+    ,
+    <wbr>
+    <obj_reference refuid="z">
+        z
     ]\n"""
 
 def textcontent(elt: Union[Element, str, bytes]) -> str:
