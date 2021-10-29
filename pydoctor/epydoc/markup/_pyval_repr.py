@@ -39,10 +39,11 @@ import re
 import ast
 import functools
 import sys
-import sre_parse, sre_constants
+import sre_constants
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
+import sre_parse36 #https://github.com/tristanlatr/sre_parse36
 import attr
 import astor.op_util
 from docutils import nodes, utils
@@ -781,11 +782,9 @@ class PyvalColorizer:
         # The AST regex pattern strings are always parsed with the default flags.
         # Flag values are displayed only when parsing regex from AST, they are displayed as regular ast.Call arguments. 
 
-        # Mypy gets error: error: Argument 1 to "parse" has incompatible type "AnyStr"; expected "str".
-        # But actually, sre_parse.parse() can parse regex as bytes.
-        tree: sre_parse.SubPattern = sre_parse.parse(pat, 0) # type: ignore[arg-type]
-        # from python 3.8 SubPattern.pattern is named SubPattern.state
-        pattern = tree.state if sys.version_info >= (3,8) else tree.pattern # type:ignore[attr-defined]
+        tree: sre_parse36.SubPattern = sre_parse36.parse(pat, 0)
+        # from python 3.8 SubPattern.pattern is named SubPattern.state, but we don't care right now because we use sre_parse36
+        pattern = tree.pattern
         groups = dict([(num,name) for (name,num) in
                        pattern.groupdict.items()])
         flags: int = pattern.flags
@@ -808,7 +807,7 @@ class PyvalColorizer:
 
     def _colorize_re_flags(self, flags: int, state: _ColorizerState) -> None:
         if flags:
-            flags_list = [c for (c,n) in sorted(sre_parse.FLAGS.items())
+            flags_list = [c for (c,n) in sorted(sre_parse36.FLAGS.items())
                         if (n&flags)]
             flags_str = '(?%s)' % ''.join(flags_list)
             self._output(flags_str, self.RE_FLAGS_TAG, state)

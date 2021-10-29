@@ -1120,62 +1120,18 @@ def test_re_subpatterns() -> None:
                                                 """baz<span class="rst-re-group">)</span><span class="rst-re-group">)</span>"""
                                                 """<span class="rst-variable-quote">'</span>""")
     
-    # Something changed in the regex module...
-    # >>> sre_parse.parse("foo bar | baz").dump()
-    # BRANCH
-    # LITERAL 102
-    # LITERAL 111
-    # LITERAL 111
-    # LITERAL 32
-    # LITERAL 98
-    # LITERAL 97
-    # LITERAL 114
-    # LITERAL 32
-    # OR
-    # LITERAL 32
-    # LITERAL 98
-    # LITERAL 97
-    # LITERAL 122
-    # >>> sre_parse.parse("(?:foo (?:bar) | (?:baz))").dump()
-    # BRANCH
-    # LITERAL 102
-    # LITERAL 111
-    # LITERAL 111
-    # LITERAL 32
-    # LITERAL 98
-    # LITERAL 97
-    # LITERAL 114
-    # LITERAL 32
-    # OR
-    # LITERAL 32
-    # LITERAL 98
-    # LITERAL 97
-    # LITERAL 122
-
-    # VS in python2:
-
-    # >>> sre_parse.parse("(?:foo (?:bar) | (?:baz))").dump()
-    # subpattern None
-    # branch
-    #     literal 102
-    #     literal 111
-    #     literal 111
-    #     literal 32
-    #     subpattern None
-    #     literal 98
-    #     literal 97
-    #     literal 114
-    #     literal 32
-    # or
-    #     literal 32
-    #     subpattern None
-    #     literal 98
-    #     literal 97
-    #     literal 122
     
-    assert color_re(r"(?:foo (?:bar) | (?:baz))", check_roundtrip=False) == ("""r<span class="rst-variable-quote">'</span>foo bar """
-                                                                             """<span class="rst-re-op">|</span> baz<span class="rst-variable-quote">'</span>""")
-    
+    assert color_re(r"(?:foo (?:bar) | (?:baz))") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(?:</span>"""
+                                                        """foo <span class="rst-re-group">(?:</span>bar<span class="rst-re-group">)</span> <span class="rst-re-op">|</span> """
+                                                        """<span class="rst-re-group">(?:</span>baz<span class="rst-re-group">)</span><span class="rst-re-group">)</span><span class="rst-variable-quote">'</span>""")
+
+    assert color_re(r"(<)?(\w+@\w+(?:\.\w+)+)") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(</span>&lt;"""
+                                                    """<span class="rst-re-group">)</span><span class="rst-re-op">?</span>"""
+                                                    r"""<span class="rst-re-group">(</span>\w<span class="rst-re-op">+</span>@\w"""
+                                                    r"""<span class="rst-re-op">+</span><span class="rst-re-group">(?:</span>\.\w"""
+                                                    """<span class="rst-re-op">+</span><span class="rst-re-group">)</span><span class="rst-re-op">+</span>"""
+                                                    """<span class="rst-re-group">)</span><span class="rst-variable-quote">'</span>""")
+
     assert color_re("(foo (?P<a>bar) | (?P<boop>baz))") == ("""r<span class="rst-variable-quote">'</span><span class="rst-re-group">(</span>"""
                                                             """foo <span class="rst-re-group">(?P&lt;</span><span class="rst-re-ref">"""
                                                             """a</span><span class="rst-re-group">&gt;</span>bar<span class="rst-re-group">)</span> """
