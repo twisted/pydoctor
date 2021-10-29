@@ -1749,6 +1749,21 @@ def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
     assert ast.literal_eval(attr.value) == 'fr'
 
 @systemcls_param
+def test_constant_module_with_typing_extensions_final(systemcls: Type[model.System]) -> None:
+    """
+    Module variables annotated with typing_extensions.Final are recognized as constants.
+    """
+    mod = fromText('''
+    from typing_extensions import Final
+    lang: Final = 'fr'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
+
+@systemcls_param
 def test_constant_module_with_final_subscript1(systemcls: Type[model.System]) -> None:
     """
     It can recognize constants defined with typing.Final[something]
