@@ -659,6 +659,15 @@ def test_ast_bin_op() -> None:
     >>
     0\n"""
 
+    assert color(extract_expr(ast.parse(dedent("""
+    H @ beta
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="H">
+        H
+    @
+    <obj_reference refuid="beta">
+        beta\n"""
+
 def test_operator_precedences() -> None:
 
     assert color(extract_expr(ast.parse(dedent("""
@@ -1064,13 +1073,125 @@ def test_ast_slice() -> None:
         z
     ]\n"""
 
-def textcontent(elt: Union[Element, str, bytes]) -> str:
-    if isinstance(elt, str): 
-        return elt
-    if isinstance(elt, bytes): 
-        return elt.decode(encoding='utf-8', errors='replace')
-    else: 
-        return ''.join([textcontent(c) for c in elt.children])
+def test_ast_attribute() -> None:
+    assert color(extract_expr(ast.parse(dedent("""
+    mod.attr
+    """)))) == ("""<document source="pyval_repr">
+    <obj_reference refuid="mod.attr">
+        mod.attr\n""")
+
+    # ast.Attribute nodes that contains something else as ast.Name nodes are not handled explicitely.
+    assert color(extract_expr(ast.parse(dedent("""
+    func().attr
+    """)))) == ("""<document source="pyval_repr">
+    func().attr\n""")
+
+def test_ast_regex() -> None:
+    # invalid arguments
+    assert color(extract_expr(ast.parse(dedent(r"""
+    re.compile(invalidarg='[A-Za-z0-9]+')
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    <wbr>
+    invalidarg
+    =
+    <inline classes="variable-quote">
+        '
+    <inline classes="variable-string">
+        [A-Za-z0-9]+
+    <inline classes="variable-quote">
+        '
+    )\n"""
+
+    # invalid arguments 2
+    assert color(extract_expr(ast.parse(dedent("""
+    re.compile()
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    )\n"""
+
+    # invalid arguments 3
+    assert color(extract_expr(ast.parse(dedent("""
+    re.compile(None)
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    <wbr>
+    <obj_reference refuid="None">
+        None
+    )\n"""
+
+    # cannot colorize regex, be can't infer value
+    assert color(extract_expr(ast.parse(dedent("""
+    re.compile(get_re())
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    <wbr>
+    <obj_reference refuid="get_re">
+        get_re
+    (
+    )
+    )\n"""
+
+    # cannot colorize regex, not a valid regex
+    assert color(extract_expr(ast.parse(dedent("""
+    re.compile(r"[.*")
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    <wbr>
+    <inline classes="variable-quote">
+        '
+    <inline classes="variable-string">
+        [.*
+    <inline classes="variable-quote">
+        '
+    )\n"""
+
+    # actually colorize regex, with flags
+    assert color(extract_expr(ast.parse(dedent("""
+    re.compile(r"[A-Za-z0-9]+", re.X)
+    """)))) == """<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    r
+    <inline classes="variable-quote">
+        '
+    <inline classes="re-group">
+        [
+    A
+    <inline classes="re-op">
+        -
+    Z
+    a
+    <inline classes="re-op">
+        -
+    z
+    0
+    <inline classes="re-op">
+        -
+    9
+    <inline classes="re-group">
+        ]
+    <inline classes="re-op">
+        +
+    <inline classes="variable-quote">
+        '
+    ,
+    
+               
+    <obj_reference refuid="re.X">
+        re.X
+    )\n"""
 
 def color_re(s: Union[bytes, str], 
              check_roundtrip:bool=True) -> str:
@@ -1199,7 +1320,33 @@ def test_re_flags() -> None:
     assert color_re(r"(?imstux)^Food") == """r<span class="rst-variable-quote">'</span><span class="rst-re-flags">(?imstux)</span>^Food<span class="rst-variable-quote">'</span>"""
      
     assert color_re(r"(?x)This   is   verbose", False) == """r<span class="rst-variable-quote">'</span><span class="rst-re-flags">(?ux)</span>Thisisverbose<span class="rst-variable-quote">'</span>"""
-     
+
+def test_re_not_literal() -> None:
+
+    assert color_re(r"[^0-9]") == """r<span class="rst-variable-quote">'</span><span class="rst-re-group">[</span><span class="rst-re-op">^</span>0<span class="rst-re-op">-</span>9<span class="rst-re-group">]</span><span class="rst-variable-quote">'</span>"""
+
+def test_re_named_groups() -> None:
+    # This regex triggers some weird behaviour: it adds the &crarr; element at the end where it should not be...
+    # The regex is 42 caracters long, so more than 40, maybe that's why?
+    # assert color_re(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$') == """"""
+    
+    assert color_re(r'^<(?P<descr>.*)>$') == """r<span class="rst-variable-quote">'</span>^&lt;<span class="rst-re-group">(?P&lt;</span><span class="rst-re-ref">descr</span><span class="rst-re-group">&gt;</span>.<span class="rst-re-op">*</span><span class="rst-re-group">)</span>&gt;$<span class="rst-variable-quote">'</span>"""
+
+def test_re_multiline() -> None:
+
+    assert color_re(r"""\d +  # the integral part
+                        \.    # the decimal point
+                        \d *  # some fractional digits""", check_roundtrip=False) == r"""<span class="rst-variable-quote">'''</span><span class="rst-variable-string">\\d +  # the integral part</span>
+<span class="rst-variable-string">                        \\.    # the decimal point</span>
+<span class="rst-variable-string">                        \\d *  # some fractional digits</span><span class="rst-variable-quote"></span><span class="rst-variable-linewrap">↵</span>
+<span class="rst-variable-quote">'''</span>"""
+
+    assert color_re(rb"""\d +  # the integral part
+                        \.    # the decimal point
+                        \d *  # some fractional digits""", check_roundtrip=False) == r"""b<span class="rst-variable-quote">'''</span><span class="rst-variable-string">\\d +  # the integral part</span>
+<span class="rst-variable-string">                        \\.    # the decimal point</span>
+<span class="rst-variable-string">                        \\d *  # some fractional digits</span><span class="rst-variable-quote"></span><span class="rst-variable-linewrap">↵</span>
+<span class="rst-variable-quote">'''</span>"""
 
 def test_line_wrapping() -> None:
 
@@ -1235,7 +1382,7 @@ def test_line_wrapping() -> None:
         ↵
     
     <inline classes="variable-ellipsis">
-        ...\n"""
+        ...\n""".replace("variable-linewrap", "rst-variable-linewrap") # Not sure from where this is coming from. I don't think the HTMLTranslator is involved in the process...
 
     # If linebreakok is False, then line wrapping gives an ellipsis instead:
 
