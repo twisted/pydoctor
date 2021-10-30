@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 else:
     NoReturn = None
 
-# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+# In newer Python versions, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
 if sys.version_info < (3, 9):
     import importlib_resources
 else:
@@ -82,6 +83,19 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
         return resolve_path(value)
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
+
+
+def get_supported_docformats() -> Iterator[str]:
+    """
+    Get the list of currently supported docformat.
+    """
+    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName.startswith("_"):
+            continue
+        else:
+            yield moduleName
+
 
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
