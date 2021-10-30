@@ -36,15 +36,15 @@ __docformat__ = 'epytext en'
 from importlib import import_module
 from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
+import sys
 from inspect import getmodulename
 
-# On Python 3.7+, use importlib.resources from the standard library.
+# In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
-try:
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
     import importlib.resources as importlib_resources
-except ImportError:
-    if not TYPE_CHECKING:
-        import importlib_resources
 
 from docutils import nodes
 from twisted.web.template import Tag
@@ -69,7 +69,7 @@ def get_supported_docformats() -> Iterator[str]:
     """
     Get the list of currently supported docformat.
     """
-    for fileName in importlib_resources.contents('pydoctor.epydoc.markup'):
+    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
         moduleName = getmodulename(fileName)
         if moduleName is None or moduleName.startswith("_"):
             continue
