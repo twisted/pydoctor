@@ -953,14 +953,12 @@ class ModuleVistor(ast.NodeVisitor):
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:
-                # Adding the asterixes
-                varargs.arg = f"*{varargs.arg}"
+                varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
                 yield varargs
             yield from base_args.kwonlyargs
             kwargs = base_args.kwarg
             if kwargs:
-                # Adding the asterixes
-                kwargs.arg = f"**{kwargs.arg}"
+                kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
                 yield kwargs
         def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():

@@ -375,6 +375,16 @@ def format_field_list(singular: str, plural: str, fields: Sequence[Field]) -> It
         row(tags.td(colspan="2")(field.format()))
         yield row
 
+class VariableArgument(str):
+    """
+    Encapsulate the name of C{vararg} parameters.
+    """
+
+class KeywordArgument(str):
+    """
+    Encapsulate the name of C{kwarg} parameters.
+    """
+
 class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
@@ -453,8 +463,11 @@ class FieldHandler:
             return None
         if isinstance(self.obj, model.Function):
             for param_name, _ in self.obj.annotations.items():
-                if param_name.lstrip('*') == name:
-                    name = param_name
+                if param_name == name:
+                    if isinstance(param_name, VariableArgument):
+                        name = f"*{name}"
+                    elif isinstance(param_name, KeywordArgument):
+                        name = f"**{name}"
         return name
 
     def _handle_param_not_found(self, name: str, field: Field) -> None:
