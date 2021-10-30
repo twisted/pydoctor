@@ -84,19 +84,6 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
-
-def get_supported_docformats() -> Iterator[str]:
-    """
-    Get the list of currently supported docformat.
-    """
-    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
-        moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName.startswith("_"):
-            continue
-        else:
-            yield moduleName
-
-
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
