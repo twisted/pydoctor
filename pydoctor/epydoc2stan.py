@@ -250,10 +250,19 @@ class FieldDesc:
         formatted = self.body or self._UNDOCUMENTED
         fieldNameTd: List[Tag] = []
         if self.name:
-            _name = tags.span(class_="fieldArg")(self.name)
+            name = self.name
+
+            # Add the stars to the params names just before generating the field stan, not before.
+            if isinstance(name, VariableArgument):
+                name = f"*{name}"
+            elif isinstance(name, KeywordArgument):
+                name = f"**{name}"
+            
+            stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
-                _name(":")
-            fieldNameTd.append(_name)
+                stan_name(":")
+            fieldNameTd.append(stan_name)
+
         if self.type:
             fieldNameTd.append(self.type)
         if fieldNameTd:
@@ -461,13 +470,20 @@ class FieldHandler:
         if name is None:
             field.report('Parameter name missing')
             return None
-        if isinstance(self.obj, model.Function):
-            for param_name, _ in self.obj.annotations.items():
+        
+        name = name.lstrip('*')
+        annotations = None
+        if isinstance(field.source, model.Function):
+            annotations = field.source.annotations
+        elif isinstance(field.source, model.Class):
+            # Constructor parameters can be documented on the class.
+            annotations = field.source.constructor_params
+        # This might look useless, but it's needed in order to keep the 
+        # right str type: str, VariableArgument or KeyowrdArgument. And then add the stars accordingly.
+        if annotations is not None:
+            for param_name, _ in annotations.items():
                 if param_name == name:
-                    if isinstance(param_name, VariableArgument):
-                        name = f"*{name}"
-                    elif isinstance(param_name, KeywordArgument):
-                        name = f"**{name}"
+                    name = param_name
         return name
 
     def _handle_param_not_found(self, name: str, field: Field) -> None:
@@ -488,8 +504,7 @@ class FieldHandler:
             if name in source.constructor_params:
                 # Constructor parameters can be documented on the class.
                 return
-        if not name.startswith('*'):
-            field.report('Documented parameter "%s" does not exist' % (name,))
+        field.report('Documented parameter "%s" does not exist' % (name,))
 
     def handle_type(self, field: Field) -> None:
         if isinstance(self.obj, model.Attribute):
