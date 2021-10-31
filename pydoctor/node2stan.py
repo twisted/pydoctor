@@ -259,9 +259,3 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
-
-    def visit_newline(self, node: nodes.Node) -> None:
-        self.body.append('\n')
-    
-    def depart_newline(self, node: nodes.Node) -> None:
-        pass
