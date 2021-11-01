@@ -371,7 +371,7 @@ code, .literal, .pre, #childList > div .functionHeader,
 code, #childList > div .functionHeader, .fieldArg {
     color: #222222;
 }
-code > a {
+code > a, #childList > div .functionHeader a {
     color:#c7254e;
     background-color:#f9f2f4;
 }
@@ -395,9 +395,9 @@ code, .literal {
 
 
 a.sourceLink {
-    color: #337ab7;
+    color: #337ab7!important;
     font-weight: normal;
-    background-color: transparent;
+    background-color: transparent!important;
 }
 
 
