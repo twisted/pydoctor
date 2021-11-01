@@ -431,3 +431,31 @@ def test_isClassNodePrivate() -> None:
     assert isClassNodePrivate(cast(model.Class, mod.contents['_Private']))
     assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
     assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))
+
+def test_format_signature() -> None:
+    """Test C{pages.format_signature}. 
+    
+    @note: This test will need to be adapted one we include annotations inside signatures.
+    """
+    mod = fromText(r'''
+    def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
+        ...
+    ''')
+    assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
+            """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
+            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(mod.contents['func'])), flatten(pages.format_signature(mod.contents['func']))
+
+def test_format_decorators() -> None:
+    """Test C{pages.format_decorators}"""
+    mod = fromText(r'''
+    @given(clearCache=st.booleans(), enableCache=st.booleans(), cacheDirectoryName=st.text(alphabet=sorted(set(string.printable)-set('\\/:*?"<>|\x0c\x0b\t\r\n')), min_size=1, max_size=32))
+    @settings(max_examples=700, deadline=None)
+    def func():
+        ...
+    ''')
+    assert ("""@given(<wbr></wbr>clearCache=st.booleans(), <wbr></wbr>enableCache=st.booleans(), """
+            """<wbr></wbr>cacheDirectoryName=st.text(<wbr></wbr>alphabet=sorted(<wbr></wbr>"""
+            """set(<wbr></wbr>string.printable)-set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
+            r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\x0c\x0b\t\r\n</span>"""
+            """<span class="rst-variable-quote">'</span>)), <wbr></wbr>min_size=1, """
+            """<wbr></wbr>max_size=32))<br />@settings(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None)<br />""") in flatten(pages.format_decorators(mod.contents['func'])), flatten(pages.format_decorators(mod.contents['func']))

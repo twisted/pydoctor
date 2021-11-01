@@ -1,14 +1,13 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
 from typing import (
-    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
+    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
 from typing_extensions import Final
 import ast
 import abc
 
-import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
@@ -17,6 +16,7 @@ from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -36,7 +36,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
+def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
             fn = node2fullname(dec.func, obj)
@@ -45,9 +45,15 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
-
-        text = '@' + astor.to_source(dec).strip()
-        yield text, tags.br()
+        
+        # Colorize decorators!
+        doc = colorize_inline_pyval(dec)
+        stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        for message in doc.warnings:
+            obj.report(message)
+       
+        yield '@', *stan.children, tags.br()
 
 def format_signature(function: model.Function) -> "Flattenable":
     """
