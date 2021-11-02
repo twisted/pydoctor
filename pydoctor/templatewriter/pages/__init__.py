@@ -52,8 +52,8 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         for message in doc.warnings:
             obj.report(message)
-       
-        yield '@', *stan.children, tags.br()
+
+        yield '@', stan.children, tags.br()
 
 def format_signature(function: model.Function) -> "Flattenable":
     """
