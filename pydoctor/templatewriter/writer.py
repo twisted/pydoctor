@@ -2,7 +2,7 @@
 
 
 from pathlib import Path
-from typing import IO, Iterable, Type
+from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
 from pydoctor.templatewriter import (
@@ -12,8 +12,11 @@ from pydoctor.templatewriter import (
 from twisted.python.failure import Failure
 from twisted.web.template import flattenString, Element
 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
 
-def flattenToFile(fobj: IO[bytes], elem: Element) -> None:
+
+def flattenToFile(fobj: IO[bytes], elem: "Flattenable") -> None:
     """
     This method writes a page to a HTML file.
     @raises Exception: If the L{twisted.web.template.flatten} call fails.

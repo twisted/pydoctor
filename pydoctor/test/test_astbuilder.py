@@ -8,7 +8,7 @@ from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -209,7 +209,7 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
-    # '(s=\'theory\', t="con\'text")', does not work anymore for strings.
+    r"(s='theory', t='con\'text')",
     ))
 @systemcls_param
 def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
@@ -217,14 +217,14 @@ def test_function_signature(signature: str, systemcls: Type[model.System]) -> No
     A round trip from source to inspect.Signature and back produces
     the original text.
 
-    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags.
-        So we cannot always back produce the original text. It doesn't work for strings for example.
-        And the rest might change in the future if we need to add more colorizing to the L{PyvalColorizer}.
+    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags, handled by the L{PyvalColorizer}.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
-    assert str(docfunc.signature) == signature
+    # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
+    text = flatten_text(html2stan(str(docfunc.signature)))
+    assert text == signature
 
 @posonlyargs
 @pytest.mark.parametrize('signature', (

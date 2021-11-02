@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, cast
+from typing import Callable, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -16,6 +16,9 @@ from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+
 if sys.version_info < (3, 9):
     import importlib_resources
 else:
@@ -28,7 +31,7 @@ def filetext(path: Path) -> str:
         t = fobj.read()
     return t
 
-def flatten(t: ChildTable) -> str:
+def flatten(t: "Flattenable") -> str:
     io = BytesIO()
     writer.flattenToFile(io, t)
     return io.getvalue().decode()
@@ -443,7 +446,7 @@ def test_format_signature() -> None:
     ''')
     assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
             """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
-            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(mod.contents['func'])), flatten(pages.format_signature(mod.contents['func']))
+            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(cast(model.Function, mod.contents['func'])))
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
@@ -458,4 +461,4 @@ def test_format_decorators() -> None:
             """set(<wbr></wbr>string.printable)-set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
             r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\x0c\x0b\t\r\n</span>"""
             """<span class="rst-variable-quote">'</span>)), <wbr></wbr>min_size=1, """
-            """<wbr></wbr>max_size=32))<br />@settings(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None)<br />""") in flatten(pages.format_decorators(mod.contents['func'])), flatten(pages.format_decorators(mod.contents['func']))
+            """<wbr></wbr>max_size=32))<br />@settings(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None)<br />""") in flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))

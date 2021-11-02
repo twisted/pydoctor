@@ -7,7 +7,7 @@ from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
@@ -844,7 +844,7 @@ class RecordingAnnotationLinker(DocstringLinker):
     '<Literal>[<True>]',
     '<Mapping>[<str>, <C>]',
     '<Tuple>[<a.b.C>, <int>]',
-    # '<Tuple>[<a.b.C>, ...]', does not work anymore for elipsis.
+    '<Tuple>[<a.b.C>, ...]',
     '<Callable>[[<str>, <bool>], <None>]',
     ))
 def test_annotation_formatting(annotation: str) -> None:
@@ -854,9 +854,8 @@ def test_annotation_formatting(annotation: str) -> None:
         - all type names in the annotation are passed to the linker
         - the plain text version of the output matches the input
 
-    @note: The annotation formatting is now handled by L{PyvalColorizer}.
-        So we cannot always back produce the original text. It doesn't work for elipsis for example.
-        And the rest might change in the future if we need to add more colorizing to the L{PyvalColorizer}.
+    @note: The annotation formatting is now handled by L{PyvalColorizer}. We use the function C{flatten_text} in order
+        to back reproduce the original text annotations. 
     """
 
     expected_lookups = [found[1:-1] for found in re.findall('<[^>]*>', annotation)]
@@ -871,11 +870,13 @@ def test_annotation_formatting(annotation: str) -> None:
     linker = RecordingAnnotationLinker()
     stan = parsed.to_stan(linker)
     assert linker.requests == expected_lookups
+
     html = flatten(stan)
     assert html.startswith('<code>')
     assert html.endswith('</code>')
-    text = html[6:-7]
-    assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+    text = flatten_text(stan)
+    assert text == expected_text
 
 def test_module_docformat(capsys: CapSys) -> None:
     """
