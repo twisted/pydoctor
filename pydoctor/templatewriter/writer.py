@@ -10,7 +10,7 @@ from pydoctor.templatewriter import (
 )
 
 from twisted.python.failure import Failure
-from twisted.web.template import flattenString, Element
+from twisted.web.template import flattenString
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
