@@ -211,10 +211,6 @@ ul ul ul ul ul ul ul {
     padding: 2px;
 }
 
-/* Section header */
-.fieldTable tr td:first-child.fieldName {
-    width: max-content;
-}
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {

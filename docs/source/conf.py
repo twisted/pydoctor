@@ -96,6 +96,7 @@ _common_args = [
     '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
     '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
+    '--intersphinx=https://www.sphinx-doc.org/en/stable/objects.inv',
     '--intersphinx=https://tristanlatr.github.io/apidocs/docutils/objects.inv',
 ]
 pydoctor_args = {
@@ -133,7 +134,25 @@ pydoctor_args = {
         '--project-version=1.0.0',
         '--docformat=restructuredtext',
         '--project-url=../restructuredtext.html',
+        '--process-types',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
+        ] + _common_args,
+    'numpy_demo': [
+        '--html-output={outdir}/docformat/numpy',
+        '--project-name=pydoctor-numpy-style-demo',
+        '--project-version=1.0.0',
+        '--docformat=numpy',
+        '--project-url=../google-numpy.html',
+        f'{_pydoctor_root}/docs/numpy_demo',
+        f'{_pydoctor_root}/pydoctor/napoleon'
+        ] + _common_args,
+    'google_demo': [
+        '--html-output={outdir}/docformat/google',
+        '--project-name=pydoctor-google-style-demo',
+        '--project-version=1.0.0',
+        '--docformat=google',
+        '--project-url=../google-numpy.html',
+        f'{_pydoctor_root}/docs/google_demo',
         ] + _common_args,
     }
 
@@ -141,4 +160,6 @@ pydoctor_url_path = {
     'main': '/en/{rtd_version}/api',
     'epydoc_demo': '/en/{rtd_version}/docformat/epytext/',
     'restructuredtext_demo': '/en/{rtd_version}/docformat/restructuredtext/',
+    'numpy_demo': '/en/{rtd_version}/docformat/numpy/',
+    'google_demo': '/en/{rtd_version}/docformat/google/',
     }
