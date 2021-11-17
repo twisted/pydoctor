@@ -49,11 +49,21 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language used by Sphinx.
     More expressive than epytext, but also slightly more complex and verbose.
 
+`google`__
+    Docstrings formatted as specified by the Google Python Style Guide. 
+    (compatible with reStructuredText markup)
+
+`numpy`__
+    Docstrings formatted as specified by the Numpy Docstring Standard. 
+    (compatible with reStructuredText markup)
+
 ``plaintext``
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
 __ https://docutils.sourceforge.io/rst.html
+__ https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings
+__ https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
 You can select a different format using the ``--docformat`` option or the ``__docformat__`` module variable. 
 
@@ -63,6 +73,10 @@ What's New?
 in development
 ~~~~~~~~~~~~~~
 
+* Provide option ``--process-types`` to automatically link types in docstring fields (`more info <https://pydoctor.readthedocs.io/en/latest/codedoc.html#type-fields>`_).
+* Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
+* Introduced fields ``warns``,  ``yields`` and ``yieldtype``. 
+* Following google style guide, ``*args`` and ``**kwargs`` are now rendered with asterisks in the parameters table.
 * Mark variables as contants when their names is all caps or if using `Final` annotation.
 
 pydoctor 21.9.2

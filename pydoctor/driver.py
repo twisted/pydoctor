@@ -2,17 +2,17 @@
 
 from optparse import SUPPRESS_HELP, Option, OptionParser, OptionValueError, Values
 from pathlib import Path
-from typing import Iterator, TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
+from typing import TYPE_CHECKING, List, Sequence, Tuple, Type, TypeVar, cast
 import datetime
 import os
 import sys
-from inspect import getmodulename
 
 from pydoctor.themes import get_themes
 from pydoctor import model, zopeinterface, __version__
 from pydoctor.templatewriter import IWriter, TemplateError, TemplateLookup
 from pydoctor.sphinx import (MAX_AGE_HELP, USER_INTERSPHINX_CACHE,
                              SphinxInventoryWriter, prepareCache)
+from pydoctor.epydoc.markup import get_supported_docformats
 
 if TYPE_CHECKING:
     from typing_extensions import NoReturn
@@ -84,17 +84,6 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
-def get_supported_docformats() -> Iterator[str]:
-    """
-    Get the list of currently supported docformat.
-    """
-    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
-        moduleName = getmodulename(fileName)
-        if moduleName is None or moduleName.startswith("_"):
-            continue
-        else:
-            yield moduleName
-
 class CustomOption(Option):
     TYPES = Option.TYPES + ("path",)
     TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
@@ -128,7 +117,7 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--project-base-dir', dest='projectbasedirectory', type='path',
         help=("Path to the base directory of the project.  Source links "
-              "will be computed based on this value."))
+              "will be computed based on this value."), metavar="PATH",)
     parser.add_option(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
@@ -137,7 +126,8 @@ def getparser() -> OptionParser:
         help=("Like py.test's --pdb."))
     parser.add_option(
         '--make-html', action='store_true', dest='makehtml',
-        default=MAKE_HTML_DEFAULT, help=("Produce html output."))
+        default=MAKE_HTML_DEFAULT, help=("Produce html output."
+            " Enabled by default if options '--testing' or '--make-intersphinx' are not specified. "))
     parser.add_option(
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
@@ -156,11 +146,13 @@ def getparser() -> OptionParser:
         '--docformat', dest='docformat', action='store', default='epytext',
         type="choice", choices=list(_docformat_choices),
         help=("Format used for parsing docstrings. "
-             f"Supported values: {', '.join(_docformat_choices)}"))
+             f"Supported values: {', '.join(_docformat_choices)}"),
+             metavar='FORMAT')
     parser.add_option(
         '--template-dir', action='append',
         dest='templatedir', default=[],
         help=("Directory containing custom HTML templates. Can repeat."),
+        metavar='PATH',
     )
     parser.add_option('--theme', dest='theme', default='classic', 
         choices=list(get_themes()) ,
@@ -169,26 +161,31 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"
-              " (generates everything by default)."))
+              " (generates everything by default)."),
+              metavar='PACKAGE/MOD/CLASS')
     parser.add_option(
         '--html-summary-pages', dest='htmlsummarypages',
         action='store_true', default=False,
         help=("Only generate the summary pages."))
     parser.add_option(
         '--html-output', dest='htmloutput', default='apidocs',
-        help=("Directory to save HTML files to (default 'apidocs')"))
+        help=("Directory to save HTML files to (default 'apidocs')"), metavar='PATH',)
     parser.add_option(
         '--html-writer', dest='htmlwriter',
-        help=("Dotted name of HTML writer class to use (default "
-              "'pydoctor.templatewriter.TemplateWriter')."))
+        help=("Dotted name of writer class to use (default "
+              "'pydoctor.templatewriter.TemplateWriter')."), metavar='CLASS',)
     parser.add_option(
         '--html-viewsource-base', dest='htmlsourcebase',
         help=("This should be the path to the trac browser for the top "
-              "of the svn checkout we are documenting part of."))
+              "of the svn checkout we are documenting part of."), metavar='URL',)
+    parser.add_option(
+        '--process-types', dest='processtypes', action='store_true', 
+        help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "
+            "This settings should not be enabled when using google or numpy docformat because the types are always processed by default.",)
     parser.add_option(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
-              "Format: %s" % BUILDTIME_FORMAT))
+              "Format: %s" % BUILDTIME_FORMAT), metavar='TIME')
     parser.add_option(
         '-W', '--warnings-as-errors', action='store_true',
         dest='warnings_as_errors', default=False,
@@ -239,7 +236,8 @@ def getparser() -> OptionParser:
         '--intersphinx-cache-path',
         dest='intersphinx_cache_path',
         default=USER_INTERSPHINX_CACHE,
-        help="Where to cache intersphinx objects.inv files."
+        help="Where to cache intersphinx objects.inv files.",
+        metavar='PATH',
     )
     parser.add_option(
         '--clear-intersphinx-cache',
@@ -254,6 +252,7 @@ def getparser() -> OptionParser:
         dest='intersphinx_cache_max_age',
         default='1d',
         help=MAX_AGE_HELP,
+        metavar='DURATION',
     )
     parser.add_option(
         '--pyval-repr-maxlines', dest='pyvalreprmaxlines', default=7, type=int,
@@ -427,7 +426,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             system.projectname = system.options.projectname
 
         system.process()
-
 
         # step 4: make html, if desired
 

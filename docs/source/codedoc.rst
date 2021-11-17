@@ -99,6 +99,82 @@ In Python 3.6 and 3.7, you can use the qualifier present in the `typing_extensio
 
    from typing_extensions import Final
    z: Final = 'relative/path'
+   
+Fields
+------
+
+Pydoctor supports most of the common fields usable in Sphinx, and some others.
+
+Epytext fields are written with arobase, like ``@field:`` or ``@field arg:``.
+ReStructuredText fields are written with colons, like ``:field:`` or ``:field arg:``. 
+
+Here are the supported fields (written with ReStructuredText format, but same fields are supported with Epytext): 
+
+    - ``:cvar foo:``, document a class variable. Applicable in the context of the docstring of a class.
+    - ``:ivar foo:``, document a instance variable. Applicable in the context of the docstring of a class.
+    - ``:var foo:``, document a variable. Applicable in the context of the docstring of a module or class. 
+      If used in the context of a class, behaves just like ``@ivar:``.
+    - ``:note:``, add a note section.
+    - ``:param bar:`` (synonym: ``@arg bar:``), document a function's (or method's) parameter. 
+      Applicable in the context of the docstring of a function of method. 
+    - ``:keyword:``, document a function's (or method's) keyword parameter (``**kwargs``).
+    - ``:type bar: C{list}``, document the type of an argument/keyword or variable, depending on the context.
+    - ``:return:`` (synonym: ``@returns:``), document the return type of a function (or method).
+    - ``:rtype:`` (synonym: ``@returntype:``), document the type of the return value of a function (or method).
+    - ``:yield:`` (synonym: ``@yields:``), document the values yielded by a generator function (or method).
+    - ``:ytype:`` (synonym: ``@yieldtype:``), document the type of the values yielded by a generator function (or method).
+    - ``:raise ValueError:`` (synonym: ``@raises ValueError:``), document the potential exception a function (or method) can raise.
+    - ``:warn RuntimeWarning:`` (synonym: ``@warns ValueError:``), document the potential warning a function (or method) can trigger.
+    - ``:see:`` (synonym: ``@seealso:``), add a see also section.
+    - ``:since:``, document the date and/or version since a component is present in the API.
+    - ``:author:``, document the author of a component, generaly a module.
+
+.. note:: Currently, any other fields will be considered "unknown" and will be flagged as such. 
+    See `"fields" issues <https://github.com/twisted/pydoctor/issues?q=is%3Aissue+is%3Aopen+fields>`_
+    for discussions and improvements.
+
+.. note:: Unlike Sphinx, ``vartype`` and ``kwtype`` are not recognized as valid fields, we simply use ``type`` everywhere.
+
+Type fields
+~~~~~~~~~~~
+
+Type fields, namely ``type``, ``rtype`` and ``ytype``, can be interpreted, such that, instead of being just a regular text field, 
+types can be linked automatically.
+For reStructuredText and Epytext documentation format, enable this behaviour with the option:: 
+    
+    --process-fields
+
+The type auto-linking is always enabled for Numpy and Google style documentation formats.
+
+Like in Sphinx, regular types and container types such as lists and dictionaries can be linked automatically:: 
+
+    :type priority: int
+    :type priorities: list[int]
+    :type mapping: dict(str, int)
+    :type point: tuple[float, float]
+
+Natural language types can be linked automatically if separated by the words “or”, "and", "to", "of" or the comma::
+
+    :rtype: float or str
+    :returntype: list of str or list[int]
+    :ytype: tuple of str, int and float
+    :yieldtype: mapping of str to int
+
+Additionally, it's still possible to include regular text description inside a type specification::
+
+    :rtype: a result that needs a longer text description or str
+    :rtype: tuple of a result that 
+        needs a longer text description and str
+
+Some special keywords will be recognized: "optional" and "default"::
+
+    :type value: list[float], optional
+    :type value: int, default: -1
+    :type value: dict(str, int), default: same as default_dict
+
+.. note:: Literals caracters - numbers and strings within quotes - will be automatically rendered like docutils literals.
+
+.. note:: It's not currently possible to combine parameter type and description inside the same ``param`` field, see issue `#267 <https://github.com/twisted/pydoctor/issues/267>`_.
 
 Type annotations
 ----------------

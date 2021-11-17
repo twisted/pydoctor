@@ -33,14 +33,25 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import TYPE_CHECKING, Optional, Sequence
+from importlib import import_module
+from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
+import sys
+from inspect import getmodulename
+
+# In newer Python versions, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
 
 from docutils import nodes
 from twisted.web.template import Tag
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from pydoctor.model import Documentable
 
 from pydoctor import node2stan
 
@@ -53,6 +64,28 @@ from pydoctor import node2stan
 # 3. Docstring Linker
 # 4. ParseError exceptions
 #
+
+def get_supported_docformats() -> Iterator[str]:
+    """
+    Get the list of currently supported docformat.
+    """
+    for fileName in (path.name for path in importlib_resources.files('pydoctor.epydoc.markup').iterdir()):
+        moduleName = getmodulename(fileName)
+        if moduleName is None or moduleName.startswith("_"):
+            continue
+        else:
+            yield moduleName
+
+def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> Callable[[str, List['ParseError'], bool], 'ParsedDocstring']:
+    """
+    Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function based on a parser name. 
+
+    @raises ImportError: If the parser could not be imported, probably meaning that your are missing a dependency
+        or it could be that the docformat name do not match any know L{pydoctor.epydoc.markup} submodules.
+    """
+    mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
+    # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
+    return mod.get_parser(obj) # type:ignore[no-any-return, attr-defined]
 
 ##################################################
 ## ParsedDocstring

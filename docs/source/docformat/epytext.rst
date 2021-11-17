@@ -17,22 +17,10 @@ All markup should work except the indexed terms ``X{}`` tag, which has been remo
 Fields
 ------
 
-Here are the supported *epytext* fields:
-
-    - ``@cvar foo:``
-    - ``@ivar foo:``
-    - ``@var foo:``
-    - ``@note:``
-    - ``@param bar:`` (synonym: ``@arg bar:``)
-    - ``@type bar: C{list}``
-    - ``@return:`` (synonym: ``@returns:``)
-    - ``@rtype:`` (synonym: ``@returntype:``)
-    - ``@raise ValueError:`` (synonym: ``@raises ValueError:``)
-    - ``@see:`` (synonym: ``@seealso:``)
-    - ``@since:``
-    - And more
+See `fields section <codedoc.rst#fields>`__.
 
 .. note:: Not everything from the `epydoc fields manual
     <http://epydoc.sourceforge.net/manual-fields.html>`_ is applicable.
     Some fields might still display as unknown.
 
+.. note:: In any case, *plaintext* docstring format will be used if docstrings can't be parsed with *epytext* parser.

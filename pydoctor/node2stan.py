@@ -259,3 +259,10 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     
     def depart_wbr(self, node: nodes.Node) -> None:
         pass
+
+    def visit_seealso(self, node: nodes.Node) -> None:
+        self._visit_admonition(node, 'see also')
+
+    def depart_seealso(self, node: nodes.Node) -> None:
+        self.depart_admonition(node)
+

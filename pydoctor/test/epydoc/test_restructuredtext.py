@@ -9,7 +9,6 @@ from pydoctor.stanutils import flatten
 
 from docutils import nodes
 from bs4 import BeautifulSoup
-import pytest
 
 def prettify(html: str) -> str:
     return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
@@ -169,31 +168,12 @@ def test_rst_directive_adnomitions() -> None:
 
         assert prettify(expect)==prettify(actual)
 
-@pytest.mark.xfail
-def test_rst_directive_versionadded() -> None:
-    html = rst2html(".. versionadded:: 0.6")
-    expected_html="""
-        <div class="versionadded">
-        <p><span class="versionmodified added">New in version 0.6.</span></p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+def test_rst_directive_seealso() -> None:
 
-@pytest.mark.xfail
-def test_rst_directive_versionchanged() -> None:
-    html = rst2html(""".. versionchanged:: 0.7
-    Add extras""")
-    expected_html="""
-        <div class="versionchanged">
-        <p><span class="versionmodified changed">Changed in version 0.7: Add extras</span></p>
+    html = rst2html(".. seealso:: Hey")
+    expected_html = """
+        <div class="rst-admonition seealso">
+        <p class="rst-first rst-admonition-title">See Also</p>
+        <p class="rst-last">Hey</p>
         </div>"""
-    assert prettify(html) == prettify(expected_html)
-
-@pytest.mark.xfail
-def test_rst_directive_deprecated() -> None:
-    html = rst2html(""".. deprecated:: 0.2
-    For security reasons""")
-    expected_html="""
-        <div class="deprecated">
-        <p><span class="versionmodified deprecated">Deprecated since version 0.2: For security reasons</span></p>
-        </div>"""
-    assert prettify(html) == prettify(expected_html)
+    assert prettify(html).strip() == prettify(expected_html).strip(), html

@@ -19,21 +19,21 @@ lang: Final[Sequence[str]] = ['Fr', 'En']
 This is also a constant, but annotated with typing.Final.
 """
 
+
 from typing import AnyStr, Generator, Union, List, Dict
 
 
-def demo_fields_docstring_arguments(m, b):  # type: ignore
+def demo_fields_docstring_arguments(m, b = 0):  # type: ignore
     """
     Fields are used to describe specific properties of a documented object.
 
-    This function can be used in conjuction with `demo_typing_arguments` to
-    find an arbitrary function's zeros.
+    This function's ":type:" tags are taking advantage of the --process-types.
 
-    :type  m: number
+    :type  m: numbers.Number
     :param m: The slope of the line.
-    :type  b: number
+    :type  b: numbers.Number, optional
     :param b: The y intercept of the line.
-    :rtype:   number
+    :rtype:   numbers.Number
     :return:  the x intercept of the line M{y=m*x+b}.
     """
     return -b/m
@@ -94,16 +94,17 @@ class _PrivateClass:
         return True
 
 
-    def _private_inside_private(self) -> bool:
+    def _private_inside_private(self) -> List[str]:
         """
-        A private method inside a private class.
+        Returns something. 
+        :rtype: `list`
+        """
+        return []
 
-        :return: Something.
-        """
-        return True
 
 
 class DemoClass(ABC, _PrivateClass):
+
     """
     This is the docstring of this class.
     """

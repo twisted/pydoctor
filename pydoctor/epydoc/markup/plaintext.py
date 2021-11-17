@@ -11,16 +11,15 @@ verbatim output, preserving all whitespace.
 """
 __docformat__ = 'epytext en'
 
-from typing import List
+from typing import List, Callable, Optional
 
 from docutils import nodes
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
+from pydoctor.model import Documentable
 
-# from pydoctor.epydoc.docutils import set_node_attributes, set_nodes_parent
-
-def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted as plain text; and
     return a L{ParsedDocstring} representation of its contents.
@@ -30,6 +29,12 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
         will be stored.
     """
     return ParsedPlaintextDocstring(docstring)
+
+def get_parser(obj: Optional[Documentable]) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+    """
+    Just return the L{parse_docstring} function. 
+    """
+    return parse_docstring
 
 class ParsedPlaintextDocstring(ParsedDocstring):
 
