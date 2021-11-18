@@ -5,7 +5,6 @@ from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
 )
-from typing_extensions import Final
 
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
@@ -15,6 +14,7 @@ from pydoctor.templatewriter.pages import Page
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from typing_extensions import Final
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
@@ -348,7 +348,7 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: Final[Iterable[Type[Page]]] = [
+summarypages: 'Final[Iterable[Type[Page]]]' = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

@@ -183,7 +183,7 @@ def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
     """
     ann_slice = annotation.slice
-    if isinstance(ann_slice, ast.Index):
+    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
         return ann_slice.value
     else:
         return ann_slice

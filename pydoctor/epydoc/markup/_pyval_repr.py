@@ -639,7 +639,7 @@ class PyvalColorizer:
         self._colorize(node.value, state)
 
         sub: ast.AST = node.slice
-        if isinstance(sub, ast.Index):
+        if sys.version_info < (3,9) and isinstance(sub, ast.Index):
             # In Python < 3.9, non-slices are always wrapped in an Index node.
             sub = sub.value
         self._output('[', self.GROUP_TAG, state)

@@ -6,15 +6,17 @@ Most part of this documentation is using Python type hinting.
 from abc import ABC
 import zope.interface
 import zope.schema
-from typing import Sequence, Optional
-from typing_extensions import Final
+from typing import Sequence, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing_extensions import Final
 
 LANG = 'Fr'
 """
 This is a constant. See `constants` for more examples.
 """
 
-lang: Final[Sequence[str]] = ['Fr', 'En']
+lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 """
 This is also a constant, but annotated with typing.Final.
 """

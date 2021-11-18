@@ -4,7 +4,6 @@ from typing import (
     TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
-from typing_extensions import Final
 import ast
 import abc
 
@@ -19,6 +18,7 @@ from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
+    from typing_extensions import Final
     from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
@@ -558,7 +558,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(ob))
         return r
 
-commonpages: Final[Mapping[str, Type[CommonPage]]] = {
+commonpages: 'Final[Mapping[str, Type[CommonPage]]]' = {
     'Module': ModulePage,
     'Package': PackagePage,
     'Class': ClassPage,

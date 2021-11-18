@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, cast, TYPE_CHECKING
+from typing import Callable, cast, Union, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -19,6 +19,15 @@ from pydoctor.test.test_packages import processPackage
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 9):
+        from importlib.abc import Traversable
+    else:
+        Traversable = Path
+else:
+    Traversable = object
+
 if sys.version_info < (3, 9):
     import importlib_resources
 else:
@@ -26,7 +35,7 @@ else:
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
-def filetext(path: Path) -> str:
+def filetext(path: Union[Path, Traversable]) -> str:
     with path.open('r', encoding='utf-8') as fobj:
         t = fobj.read()
     return t
