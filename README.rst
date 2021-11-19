@@ -73,7 +73,9 @@ What's New?
 in development
 ~~~~~~~~~~~~~~
 
-* Colorize constant values (new), decorators, parameters default values and annotations with new colorizer adapted from epydoc. This enables to link to name locations automatically.
+* Syntax highlight with for constant values, decorators and parameter defaults.
+* Embedded documentation links inside the value of constants, decorators and parameter defaults.
+* Provide option ``--pyval-repr-maxlines`` to control the maximum lines a constant value can span. 
 * Provide option ``--process-types`` to automatically link types in docstring fields (`more info <https://pydoctor.readthedocs.io/en/latest/codedoc.html#type-fields>`_).
 * Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
 * Introduced fields ``warns``,  ``yields`` and ``yieldtype``. 
