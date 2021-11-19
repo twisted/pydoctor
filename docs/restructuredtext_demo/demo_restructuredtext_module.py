@@ -58,7 +58,7 @@ def demo_typing_arguments(name: str, size: Optional[bytes] = None) -> bool:
 
     :param name: The human readable name for something.
     :param size: How big the name should be. Leave none if you don't care.
-    :return: Always C{True}.
+    :return: Always `True`.
     """
     return True
 
