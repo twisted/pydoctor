@@ -31,7 +31,7 @@ A_LIST = [1,2,[5,6,[(11,22,33),9],10],11]+[99,98,97,96,95]
 Nested objects are colorized.
 """
 
-FUNCTION_CALL = list(range(100)+[99,98,97,96,95])
+FUNCTION_CALL = list(range(100))+[99,98,97,96,95]
 """
 Function calls are colorized.
 """
@@ -39,7 +39,7 @@ Function calls are colorized.
 OPERATORS = (1 << (10 | 1) << 1)
 """Operators are colorized and parenthesis are added when required."""
 
-UNSUPPORTED = lambda x: demo_fields_docstring_arguments(x) // 2
+UNSUPPORTED = lambda x: demo_fields_docstring_arguments(x, 0) // 2
 """
 A lot of objects can be colorized: function calls, strings, lists, dicts, sets, frozensets, operators, annotations, names, compiled regular expressions, etc. 
 But when dealing with usupported constructs, like lamba functions, it will display the value without colorization.
