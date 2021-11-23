@@ -216,13 +216,26 @@ def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
         functools.partial(bytes, encoding='utf-8', errors='replace'))
     return func
 def _str_escape(s: str) -> str:
+    """
+    Encode a string such that it's correctly represented inside simple quotes.
+    """
+    # displays unicode caracters as is.
     def enc(c: str) -> str:
         if c == "'":
-            return r"\'"
-        elif ord(c) <= 0xff:
-            return c.encode('unicode-escape').decode('utf-8')
-        else:
-            return c
+            c = r"\'"
+        elif c == '\t': 
+            c = r'\t'
+        elif c == '\r': 
+            c = r'\r'
+        elif c == '\n': 
+            c = r'\n'
+        elif c == '\f': 
+            c = r'\f'
+        elif c == '\v': 
+            c = r'\v'
+        elif c == "\\": 
+            c = r'\\'
+        return c
     return ''.join(map(enc, s))
 def _bytes_escape(b: bytes) -> str:
     return repr(b)[2:-1]
@@ -232,7 +245,7 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen:Optional[int]=75, maxlines:int=5, linebreakok:bool=True):
+    def __init__(self, linelen:Optional[int]=80, maxlines:int=5, linebreakok:bool=True):
         self.linelen = linelen
         self.maxlines = maxlines
         self.linebreakok = linebreakok
@@ -332,12 +345,6 @@ class PyvalColorizer:
                             state, prefix='{', suffix='}')
         elif pyvaltype is list:
             self._multiline(self._colorize_iter, pyval, state, prefix='[', suffix=']')
-        # re.Pattern has been introduced in python 3.7
-        elif pyvaltype is (re.Pattern if sys.version_info >= (3,7) else re._pattern_type): # type:ignore[attr-defined]
-            # Extract the pattern from the regexp.
-            # Flags passed to re.compile() parameters are currently ignored for live re.Pattern objects.
-            # Though, this block is only used in the tests.
-            self._colorize_re(pyval.pattern, state)
         elif issubclass(pyvaltype, ast.AST):
             self._colorize_ast(pyval, state)
         else:
@@ -441,7 +448,7 @@ class PyvalColorizer:
         self._output(suffix, self.GROUP_TAG, state)
     
     def _colorize_str(self, pyval: AnyStr, state: _ColorizerState, prefix: AnyStr, 
-                      escape_fcn: Optional[Callable[[AnyStr], str]]) -> None:
+                      escape_fcn: Callable[[AnyStr], str]) -> None:
         
         str_func = _get_str_func(pyval)
 
@@ -464,9 +471,9 @@ class PyvalColorizer:
         for i, line in enumerate(lines):
             if i>0:
                 self._output(str_func('\n'), None, state)
-            if escape_fcn:
-                # It's not redundant when line is bytes
-                line = cast(AnyStr, escape_fcn(line)) # type:ignore[redundant-cast]
+
+            # It's not redundant when line is bytes
+            line = cast(AnyStr, escape_fcn(line)) # type:ignore[redundant-cast]
             
             self._output(line, self.STRING_TAG, state)
         # Close quote.
@@ -731,33 +738,16 @@ class PyvalColorizer:
     # Support for Regexes
     #////////////////////////////////////////////////////////////
 
-    def _colorize_re(self, pat: AnyStr, state: _ColorizerState) -> None:
-        # Used for live re.Pattern objects, for testing only.
-
-        self._output("re.compile", None, state, link=True)
-        self._output('(', self.GROUP_TAG, state)
-        mark = state.mark()
-        try:
-            # Can raise ValueError or re.error
-            self._colorize_re_pattern_str(pat, state)
-        except (ValueError, re.error) as e:
-            state.restore(mark)
-            state.warnings.append(f"Cannot colorize regular expression, error: {str(e)}")
-            # Colorize it as string if the pattern parsing fails.
-            if isinstance(pat, bytes):
-                self._colorize_str(pat, state, b'b', escape_fcn=_bytes_escape)
-            else:
-                self._colorize_str(pat, state, '', escape_fcn=_str_escape)
-        
-        self._output(")", self.GROUP_TAG, state)
-
     def _colorize_re_pattern_str(self, pat: AnyStr, state: _ColorizerState) -> None:
-        # Currently, the colorizer do not render multiline regex patterns correctly. 
-        # Newlines are mixed up with literals \n and probably more fun stuff like that.
+        # Currently, the colorizer do not render multiline regex patterns correctly because we don't
+        # recover the flag values from re.compile() arguments (so we don't know when re.VERBOSE is used for instance). 
+        # With default flags, newlines are mixed up with literals \n and probably more fun stuff like that.
         # Turns out the sre_parse.parse() function treats caracters "\n" and "\\n" the same way.
         
         # If the pattern string is composed by mutiple lines, simply use the string colorizer instead.
-        # It's more informative to have the proper newlines than the fancy regex colors.  
+        # It's more informative to have the proper newlines than the fancy regex colors. 
+
+        # Note: Maybe this decision is driven by a misunderstanding of regular expression.
 
         str_func = _get_str_func(pat)
         if str_func('\n') in pat:
@@ -774,8 +764,8 @@ class PyvalColorizer:
     def _colorize_re_pattern(self, pat: AnyStr, state: _ColorizerState, prefix: AnyStr) -> None:
 
         # Parse the regexp pattern.
-        # The AST regex pattern strings are always parsed with the default flags.
-        # Flag values are displayed only when parsing regex from AST, they are displayed as regular ast.Call arguments. 
+        # The regex pattern strings are always parsed with the default flags.
+        # Flag values are displayed as regular ast.Call arguments. 
 
         tree: sre_parse36.SubPattern = sre_parse36.parse(pat, 0)
         # from python 3.8 SubPattern.pattern is named SubPattern.state, but we don't care right now because we use sre_parse36
@@ -784,7 +774,7 @@ class PyvalColorizer:
                        pattern.groupdict.items()])
         flags: int = pattern.flags
         
-        # Open quote. Never triple quote regex patterns string
+        # Open quote. Never triple quote regex patterns string, anyway parterns that includes an '\n' caracter are displayed as regular strings.
         quote = "'"
         self._output(prefix, None, state)
         self._output(quote, self.QUOTE_TAG, state)
@@ -822,15 +812,6 @@ class PyvalColorizer:
                 # Add any appropriate escaping.
                 if c in '.^$\\*+?{}[]|()\'': 
                     c = '\\' + c
-                # For the record, the special literal caracters are parsed the same way escaped or not. 
-                # So we can't tell the difference between "\n" and "\\n".
-                # We always escape them to produce a valid regular expression (and avoid crashing htmltostan() function).
-                # >>> sre_parse.parse(r'\n').dump()
-                # LITERAL 10
-                # >>> sre_parse.parse('\n').dump()
-                # LITERAL 10
-                # >>> sre_parse.parse('\\n').dump()
-                # LITERAL 10
                 elif c == '\t': 
                     c = r'\t'
                 elif c == '\r': 
@@ -841,9 +822,7 @@ class PyvalColorizer:
                     c = r'\f'
                 elif c == '\v': 
                     c = r'\v'
-                # Keep unicode chars as is
-                # elif ord(c) > 65535: 
-                #     c = rb'\U%08x' % ord(c)
+                # Keep unicode chars as is, so do nothing if ord(c) > 65535
                 elif ord(c) > 255 and ord(c) <= 65535: 
                    c = rb'\u%04x' % ord(c) # type:ignore[assignment]
                 elif (ord(c)<32 or ord(c)>=127) and ord(c) <= 65535: 
@@ -1003,9 +982,12 @@ class PyvalColorizer:
 
             # If the segment fits on the current line, then just call
             # markup to tag it, and store the result.
-            # Don't break links into separate segments. 
+            # Don't break links into separate segments, neither quotes.
             if (self.linelen is None or 
-                state.charpos + segment_len <= self.linelen or link is True):
+                state.charpos + segment_len <= self.linelen 
+                or link is True 
+                or css_class in ('variable-quote',)):
+
                 state.charpos += segment_len
 
                 if link is True:

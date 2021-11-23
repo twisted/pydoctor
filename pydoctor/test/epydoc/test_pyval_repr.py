@@ -190,14 +190,14 @@ def test_strings_quote() -> None:
 """
 
 def test_strings_special_chars() -> None:
-    assert color("'abc \t\r\n\f\v \xff 😀'") == r"""<document source="pyval_repr">
+    assert color("'abc \t\r\n\f\v \xff 😀'\x0c\x0b\t\r \\") == r"""<document source="pyval_repr">
     <inline classes="variable-quote">
         '''
     <inline classes="variable-string">
         \'abc \t\r
     
     <inline classes="variable-string">
-        \x0c\x0b \xff 😀\'
+        \f\v ÿ 😀\'\f\v\t\r \\
     <inline classes="variable-quote">
         '''
 """
@@ -269,6 +269,14 @@ def test_unicode_str() -> None:
         '
     <inline classes="variable-string">
         ꪪ And 뮻
+    <inline classes="variable-quote">
+        '\n"""
+
+    assert color("ÉéèÈÜÏïü") == """<document source="pyval_repr">
+    <inline classes="variable-quote">
+        '
+    <inline classes="variable-string">
+        ÉéèÈÜÏïü
     <inline classes="variable-quote">
         '\n"""
 
@@ -1196,7 +1204,7 @@ def color_re(s: Union[bytes, str],
              check_roundtrip:bool=True) -> str:
 
     colorizer = PyvalColorizer(linelen=55)
-    val = colorizer.colorize(re.compile(s))
+    val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
 
@@ -1333,19 +1341,51 @@ def test_re_named_groups() -> None:
 
 def test_re_multiline() -> None:
 
-    assert color_re(r"""\d +  # the integral part
-                        \.    # the decimal point
-                        \d *  # some fractional digits""", check_roundtrip=False) == r"""<span class="rst-variable-quote">'''</span><span class="rst-variable-string">\\d +  # the integral part</span>
-<span class="rst-variable-string">                        \\.    # the decimal point</span>
-<span class="rst-variable-string">                        \\d *  # some fractional digits</span><span class="rst-variable-quote"></span><span class="rst-variable-linewrap">↵</span>
-<span class="rst-variable-quote">'''</span>"""
+    assert color(extract_expr(ast.parse(dedent(r'''re.compile(r"""\d +  # the integral part
+        \.    # the decimal point
+        \d *  # some fractional digits""")''')))) == r"""<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    <inline classes="variable-quote">
+        '''
+    <inline classes="variable-string">
+        \\d +  # the integral part
+    
+    <inline classes="variable-string">
+                \\.    # the decimal point
+    
+    <inline classes="variable-string">
+                \\d *  # some fractional digits
+    <inline classes="variable-quote">
+        '''
+    <inline classes="variable-linewrap">
+        ↵
+    
+    )
+"""
 
-    assert color_re(rb"""\d +  # the integral part
-                        \.    # the decimal point
-                        \d *  # some fractional digits""", check_roundtrip=False) == r"""b<span class="rst-variable-quote">'''</span><span class="rst-variable-string">\\d +  # the integral part</span>
-<span class="rst-variable-string">                        \\.    # the decimal point</span>
-<span class="rst-variable-string">                        \\d *  # some fractional digits</span><span class="rst-variable-quote"></span><span class="rst-variable-linewrap">↵</span>
-<span class="rst-variable-quote">'''</span>"""
+    assert color(extract_expr(ast.parse(dedent(r'''re.compile(rb"""\d +  # the integral part
+        \.    # the decimal point
+        \d *  # some fractional digits""")'''))), linelen=70) == r"""<document source="pyval_repr">
+    <obj_reference refuid="re.compile">
+        re.compile
+    (
+    b
+    <inline classes="variable-quote">
+        '''
+    <inline classes="variable-string">
+        \\d +  # the integral part
+    
+    <inline classes="variable-string">
+                \\.    # the decimal point
+    
+    <inline classes="variable-string">
+                \\d *  # some fractional digits
+    <inline classes="variable-quote">
+        '''
+    )
+"""
 
 def test_line_wrapping() -> None:
 
@@ -1381,7 +1421,7 @@ def test_line_wrapping() -> None:
         ↵
     
     <inline classes="variable-ellipsis">
-        ...\n""".replace("variable-linewrap", "rst-variable-linewrap") # Not sure from where this is coming from. I don't think the HTMLTranslator is involved in the process...
+        ...\n"""
 
     # If linebreakok is False, then line wrapping gives an ellipsis instead:
 

@@ -6,7 +6,7 @@ import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
-from pydoctor import model, templatewriter
+from pydoctor import model, templatewriter, stanutils
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
@@ -460,14 +460,13 @@ def test_format_signature() -> None:
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
     mod = fromText(r'''
-    @given(clearCache=st.booleans(), enableCache=st.booleans(), cacheDirectoryName=st.text(alphabet=sorted(set(string.printable)-set('\\/:*?"<>|\x0c\x0b\t\r\n')), min_size=1, max_size=32))
-    @settings(max_examples=700, deadline=None)
+    @string_decorator(set('\\/:*?"<>|\f\v\t\r\n'))
+    @simple_decorator(max_examples=700, deadline=None, option=range(10))
     def func():
         ...
     ''')
-    assert ("""@given(<wbr></wbr>clearCache=st.booleans(), <wbr></wbr>enableCache=st.booleans(), """
-            """<wbr></wbr>cacheDirectoryName=st.text(<wbr></wbr>alphabet=sorted(<wbr></wbr>"""
-            """set(<wbr></wbr>string.printable)-set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
-            r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\x0c\x0b\t\r\n</span>"""
-            """<span class="rst-variable-quote">'</span>)), <wbr></wbr>min_size=1, """
-            """<wbr></wbr>max_size=32))<br />@settings(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None)<br />""") in flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
+    stan = stanutils.flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
+    assert stan == ("""@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
+                    r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
+                    """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
+                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
