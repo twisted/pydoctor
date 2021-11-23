@@ -1,4 +1,3 @@
-import re
 import ast
 import sys
 from textwrap import dedent
