@@ -256,7 +256,10 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--pyval-repr-maxlines', dest='pyvalreprmaxlines', default=7, type=int,
-        help='Maxinum number of lines for a python value representation.')
+        help='Maxinum number of lines for a consant value representation. Use 0 for unlimited.')
+    parser.add_option(
+        '--pyval-repr-linelen', dest='pyvalreprlinelen', default=80, type=int,
+        help='Maxinum number of caracters for a consant value representation line. Use 0 for unlimited.')
 
     return parser
 

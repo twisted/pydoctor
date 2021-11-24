@@ -1202,7 +1202,7 @@ def test_ast_regex() -> None:
 def color_re(s: Union[bytes, str], 
              check_roundtrip:bool=True) -> str:
 
-    colorizer = PyvalColorizer(linelen=55)
+    colorizer = PyvalColorizer(linelen=55, maxlines=5)
     val = colorizer.colorize(extract_expr(ast.parse(f"re.compile({repr(s)})")))
 
     if check_roundtrip:
@@ -1433,7 +1433,7 @@ def test_line_wrapping() -> None:
         ...\n"""
 
 def color2(v: Any) -> str:
-    colorizer = PyvalColorizer(linelen=50)
+    colorizer = PyvalColorizer(linelen=50, maxlines=5)
     colorized = colorizer.colorize(v)
     text = ''.join(gettext(colorized.to_node()))
     return text

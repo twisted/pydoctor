@@ -18,7 +18,7 @@ A_STIRNG = "L'humour, c'est l'arme blanche des hommes désarmés; c'est une déc
 """
 Strings are always rendered in single quotes, and appropriate escaping is added when required. 
 
-Continuing lines are wrapped with symbol: "↵" after reaching the maximum number of caracters per line. 
+Continuing lines are wrapped with symbol: "↵" after reaching the maximum number of caracters per line (defaults to 80), change this value with option --pyval-repr-linelen.
 
 Unicode is supported.
 """

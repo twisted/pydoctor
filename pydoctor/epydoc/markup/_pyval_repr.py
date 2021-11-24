@@ -193,23 +193,23 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
     def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
         try:
             return Tag('code')(super().to_stan(docstring_linker))
-        except ValueError as e:
+        except Exception as e:
             # Just in case...
             self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
             return Tag('code')(gettext(self.to_node()))
 
-def colorize_pyval(pyval: Any, linelen:Optional[int]=80, maxlines:int=7, linebreakok:bool=True) -> ColorizedPyvalRepr:
+def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
     """
     @return: A L{ColorizedPyvalRepr} describing the given pyval.
     """
-    return PyvalColorizer(linelen, maxlines, linebreakok).colorize(pyval)
+    return PyvalColorizer(linelen=linelen, maxlines=maxlines, linebreakok=linebreakok).colorize(pyval)
 
 def colorize_inline_pyval(pyval: Any) -> ColorizedPyvalRepr:
     """
     Used to colorize type annotations and parameters default values.
     @returns: C{L{colorize_pyval}(pyval, linelen=None, linebreakok=False)}
     """
-    return colorize_pyval(pyval, linelen=None, linebreakok=False)
+    return colorize_pyval(pyval, linelen=None, maxlines=1, linebreakok=False)
 
 def _get_str_func(pyval:  AnyStr) -> Callable[[str], AnyStr]:
     func = cast(Callable[[str], AnyStr], str if isinstance(pyval, str) else \
@@ -245,9 +245,9 @@ class PyvalColorizer:
     Syntax highlighter for Python values.
     """
 
-    def __init__(self, linelen:Optional[int]=80, maxlines:int=5, linebreakok:bool=True):
-        self.linelen = linelen
-        self.maxlines = maxlines
+    def __init__(self, linelen:Optional[int], maxlines:int, linebreakok:bool=True):
+        self.linelen: Optional[int] = linelen if linelen!=0 else None
+        self.maxlines: Union[int, float] = maxlines if maxlines!=0 else float('inf')
         self.linebreakok = linebreakok
 
     #////////////////////////////////////////////////////////////
