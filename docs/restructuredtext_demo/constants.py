@@ -18,7 +18,9 @@ A_STIRNG = "L'humour, c'est l'arme blanche des hommes désarmés; c'est une déc
 """
 Strings are always rendered in single quotes, and appropriate escaping is added when required. 
 
-Continuing lines are wrapped with symbol: "↵". Unicode is supported.
+Continuing lines are wrapped with symbol: "↵" after reaching the maximum number of caracters per line. 
+
+Unicode is supported.
 """
 
 A_MULTILINE_STRING = "Dieu se rit des hommes qui déplorent les effets dont ils cherrissent les causes.\n\nJacques-Bénigne BOSSUET."
@@ -36,8 +38,8 @@ FUNCTION_CALL = list(range(100))+[99,98,97,96,95]
 Function calls are colorized.
 """
 
-OPERATORS = (1 << (10 | 1) << 1)
-"""Operators are colorized and parenthesis are added when required."""
+OPERATORS = 1 << (10 | 1) << 1
+"""Operators are colorized and parenthesis are added when syntactically required."""
 
 UNSUPPORTED = lambda x: demo_fields_docstring_arguments(x, 0) // 2
 """
@@ -55,11 +57,6 @@ RE_WITH_UNICODE = re.compile("abc 😀")
 Unicode is supported in regular expressions.
 """
 
-RE_INVALID = re.compile("^[")
-"""
-Ivalid regexes are still displayed on a best effort basis.
-"""
-
 RE_MULTILINE = re.compile(r'''
     # Source consists of a PS1 line followed by zero or more PS2 lines.
     (?P<source>
@@ -73,5 +70,7 @@ RE_MULTILINE = re.compile(r'''
               )*)
     ''', re.MULTILINE | re.VERBOSE)
 """
-Multiline regex patterns are rendered as string.
+Multiline regex patterns are rendered as string. 
+
+"..." is added when reaching the maximum number of lines for constant representation (defaults to 7), change this value with option --pyval-repr-maxlines.
 """
