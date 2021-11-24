@@ -204,24 +204,31 @@ ul ul ul ul ul ul ul {
 }
 
 .fieldTable tr:not(.fieldStart) td:first-child{
-    padding-left: 10px;
+    padding: 3px 4px 3px 10px;
 }
 
 .fieldTable tr td {
     padding: 2px;
 }
 
-/* Section header */
-.fieldTable tr td:first-child.fieldName {
-    width: max-content;
-}
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
     width: 250px;
-    display: flex;
+    word-break: break-word;
+}
+
+/* parameters names in parameters table */
+.fieldTable tr td.fieldArgContainer > .fieldArg {
+    display: inline;
+}
+
+/* parameters types (in parameters table) */
+.fieldTable tr td.fieldArgContainer > code {
+    /* we don't want word break for the types because we already add <wbr> tags inside the type HTML, and that should suffice. */
+    word-break: normal;
+    display: inline-flex;
     flex-wrap: wrap;
-    align-items: center;
 }
 
 /* Argument description column or return value desc, etc */
@@ -238,6 +245,7 @@ ul ul ul ul ul ul ul {
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
     width: 200px;
+    word-break: break-word;
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
@@ -351,7 +359,7 @@ tr.private {
   but also to links that are present in summary tables.
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
-code, .pre, #childList > div .functionHeader,
+code, .literal, .pre, #childList > div .functionHeader,
 #splitTables > table tr td:nth-child(2), .fieldArg {
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
@@ -375,7 +383,7 @@ code > a {
 This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min
 */
-code {
+code, .literal {
     padding:2px 4px;
     background-color: #f4f4f4;
     border-radius:4px

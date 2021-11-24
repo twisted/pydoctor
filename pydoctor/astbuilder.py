@@ -8,13 +8,12 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
 import astor
 from pydoctor import epydoc2stan, model
-
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -168,6 +167,65 @@ def attrib_args(expr: ast.expr, ctx: model.Documentable) -> Optional[BoundArgume
                 )
     return None
 
+def is_using_typing_final(obj: model.Attribute) -> bool:
+    """
+    Detect if C{obj}'s L{Attribute.annotation} is using L{typing.Final}.
+    """
+    final_qualifiers = ("typing.Final", "typing_extensions.Final")
+    fullName = node2fullname(obj.annotation, obj)
+    if fullName in final_qualifiers:
+        return True
+    if isinstance(obj.annotation, ast.Subscript):
+        # Final[...] or typing.Final[...] expressions
+        if isinstance(obj.annotation.value, (ast.Name, ast.Attribute)):
+            value = obj.annotation.value
+            fullName = node2fullname(value, obj)
+            if fullName in final_qualifiers:
+                return True
+
+    return False
+
+def is_constant(obj: model.Attribute) -> bool:
+    """
+    Detect if the given assignment is a constant. 
+
+    To detect whether a assignment is a constant, this checks two things:
+        - all-caps variable name
+        - typing.Final annotation
+    
+    @note: Must be called after setting obj.annotation to detect variables using Final.
+    """
+
+    return obj.name.isupper() or is_using_typing_final(obj)
+
+def is_attribute_overridden(obj: model.Attribute, new_value: Optional[ast.expr]) -> bool:
+    """
+    Detect if the optional C{new_value} expression override the one already stored in the L{Attribute.value} attribute.
+    """
+    return obj.value is not None and new_value is not None
+
+def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
+    """
+    Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
+    """
+    ann_slice = annotation.slice
+    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
+        return ann_slice.value
+    else:
+        return ann_slice
+
+def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
+    """
+    Extract the "str" part from annotations like  "Final[str]".
+
+    @raises ValueError: If the "Final" annotation is not valid.
+    """ 
+    ann_slice = _extract_annotation_subscript(annotation)
+    if isinstance(ann_slice, (ast.ExtSlice, ast.Slice, ast.Tuple)):
+        raise ValueError("Annotation is invalid, it should not contain slices.")
+    else:
+        assert isinstance(ann_slice, ast.expr)
+        return ann_slice
 
 class ModuleVistor(ast.NodeVisitor):
     currAttr: Optional[model.Documentable]
@@ -367,6 +425,8 @@ class ModuleVistor(ast.NodeVisitor):
                             "astbuilder",
                             "moving %r into %r" % (ob.fullName(), current.fullName())
                             )
+                        # Must be a Module since the exports is set to an empty list if it's not.
+                        assert isinstance(current, model.Module)
                         ob.reparent(current, asname)
                         continue
 
@@ -427,6 +487,49 @@ class ModuleVistor(ast.NodeVisitor):
                     target_obj.kind = model.DocumentableKind.CLASS_METHOD
                 return True
         return False
+    
+    def _warnsConstantAssigmentOverride(self, obj: model.Attribute, lineno_offset: int) -> None:
+        obj.report(f'Assignment to constant "{obj.name}" overrides previous assignment '
+                    f'at line {obj.linenumber}, the original value will not be part of the docs.', 
+                            section='ast', lineno_offset=lineno_offset)
+                            
+    def _warnsConstantReAssigmentInInstance(self, obj: model.Attribute, lineno_offset: int = 0) -> None:
+        obj.report(f'Assignment to constant "{obj.name}" inside an instance is ignored, this value will not be part of the docs.', 
+                        section='ast', lineno_offset=lineno_offset)
+
+    def _handleConstant(self, obj: model.Attribute, value: Optional[ast.expr], lineno: int) -> None:
+        """Must be called after obj.setLineNumber() to have the right line number in the warning."""
+        
+        if is_attribute_overridden(obj, value):
+            
+            if obj.kind in (model.DocumentableKind.CONSTANT, 
+                                model.DocumentableKind.VARIABLE, 
+                                model.DocumentableKind.CLASS_VARIABLE):
+                # Module/Class level warning, regular override.
+                self._warnsConstantAssigmentOverride(obj=obj, lineno_offset=lineno-obj.linenumber)
+            else:
+                # Instance level warning caught at the time of the constant detection.
+                self._warnsConstantReAssigmentInInstance(obj)
+
+        obj.value = value
+        
+        obj.kind = model.DocumentableKind.CONSTANT
+
+        # A hack to to display variables annotated with Final with the real type instead.
+        if is_using_typing_final(obj):
+            if isinstance(obj.annotation, ast.Subscript):
+                try:
+                    annotation = extract_final_subscript(obj.annotation)
+                except ValueError as e:
+                    obj.report(str(e), section='ast', lineno_offset=lineno-obj.linenumber)
+                    obj.annotation = _infer_type(value) if value else None
+                else:
+                    # Will not display as "Final[str]" but rather only "str"
+                    obj.annotation = annotation
+            else:
+                # Just plain "Final" annotation.
+                # Simply ignore it because it's duplication of information.
+                obj.annotation = _infer_type(value) if value else None
 
     def _handleModuleVar(self,
             target: str,
@@ -434,21 +537,32 @@ class ModuleVistor(ast.NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
-        if target == '__all__':
-            # This is metadata, not a variable that needs to be documented.
-            # It is handled by findAll(), which operates on the AST and
-            # therefore doesn't need an Attribute instance.
+        if target in MODULE_VARIABLES_META_PARSERS:
+            # This is metadata, not a variable that needs to be documented,
+            # and therefore doesn't need an Attribute instance.
             return
         parent = self.builder.current
         obj = parent.resolveName(target)
+        
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
+        
         if isinstance(obj, model.Attribute):
-            obj.kind = model.DocumentableKind.VARIABLE
+            
             if annotation is None and expr is not None:
                 annotation = _infer_type(expr)
+            
             obj.annotation = annotation
             obj.setLineNumber(lineno)
+            
+            if is_constant(obj):
+                self._handleConstant(obj=obj, value=expr, lineno=lineno)
+            else:
+                obj.kind = model.DocumentableKind.VARIABLE
+                # We store the expr value for all Attribute in order to be able to 
+                # check if they have been initialized or not.
+                obj.value = expr
+
             self.newAttr = obj
 
     def _handleAssignmentInModule(self,
@@ -472,9 +586,13 @@ class ModuleVistor(ast.NodeVisitor):
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
             return
-        obj: Optional[model.Attribute] = cls.contents.get(name)
+
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
+
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
+
         if obj.kind is None:
             instance = is_attrib(expr, cls) or (
                 cls.auto_attribs and annotation is not None and not (
@@ -483,13 +601,21 @@ class ModuleVistor(ast.NodeVisitor):
                     )
                 )
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE if instance else model.DocumentableKind.CLASS_VARIABLE
+
         if expr is not None:
             if annotation is None:
                 annotation = self._annotation_from_attrib(expr, cls)
             if annotation is None:
                 annotation = _infer_type(expr)
+        
         obj.annotation = annotation
         obj.setLineNumber(lineno)
+
+        if is_constant(obj):
+            self._handleConstant(obj=obj, value=expr, lineno=lineno)
+        else:
+            obj.value = expr
+
         self.newAttr = obj
 
     def _handleInstanceVar(self,
@@ -506,14 +632,26 @@ class ModuleVistor(ast.NodeVisitor):
             return
         if not _maybeAttribute(cls, name):
             return
-        obj = cls.contents.get(name)
+
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
+
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
-        obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
+
         if annotation is None and expr is not None:
             annotation = _infer_type(expr)
+        
         obj.annotation = annotation
         obj.setLineNumber(lineno)
+
+        # Maybe an instance variable overrides a constant, 
+        # so we check before setting the kind to INSTANCE_VARIABLE.
+        if obj.kind is model.DocumentableKind.CONSTANT:
+            self._warnsConstantReAssigmentInInstance(obj, lineno_offset=lineno-obj.linenumber)
+        else:
+            obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
+            obj.value = expr
         self.newAttr = obj
 
     def _handleAssignmentInClass(self,
@@ -815,10 +953,12 @@ class ModuleVistor(ast.NodeVisitor):
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:
+                varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
                 yield varargs
             yield from base_args.kwonlyargs
             kwargs = base_args.kwarg
             if kwargs:
+                kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
                 yield kwargs
         def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():
@@ -933,7 +1073,6 @@ def _infer_type(expr: ast.expr) -> Optional[ast.expr]:
     @param expr: The expression's AST.
     @return: A type annotation, or None if the expression has no obvious type.
     """
-
     try:
         value: object = ast.literal_eval(expr)
     except ValueError:
@@ -1050,7 +1189,14 @@ class ASTBuilder:
         self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
-        findAll(mod_ast, mod)
+
+        for name, node in findModuleLevelAssign(mod_ast):
+            try:
+                module_var_parser = MODULE_VARIABLES_META_PARSERS[name]
+            except KeyError:
+                continue
+            else:
+                module_var_parser(node, mod)
 
         self.ModuleVistor(self, mod).visit(mod_ast)
 
@@ -1068,38 +1214,93 @@ class ASTBuilder:
 
 model.System.defaultBuilder = ASTBuilder
 
-def findAll(mod_ast: ast.Module, mod: model.Module) -> None:
-    """Find and attempt to parse into a list of names the __all__ of a module's AST."""
+def findModuleLevelAssign(mod_ast: ast.Module) -> Iterator[Tuple[str, ast.Assign]]:
+    """
+    Find module level Assign. 
+    Yields tuples containing the assigment name and the Assign node.
+    """
     for node in mod_ast.body:
         if isinstance(node, ast.Assign) and \
-               len(node.targets) == 1 and \
-               isinstance(node.targets[0], ast.Name) and \
-               node.targets[0].id == '__all__':
-            if not isinstance(node.value, (ast.List, ast.Tuple)):
-                mod.report(
-                    'Cannot parse value assigned to "__all__"',
-                    section='all', lineno_offset=node.lineno)
-                continue
+            len(node.targets) == 1 and \
+            isinstance(node.targets[0], ast.Name):
+                yield (node.targets[0].id, node)
 
-            names = []
-            for idx, item in enumerate(node.value.elts):
-                try:
-                    name: object = ast.literal_eval(item)
-                except ValueError:
-                    mod.report(
-                        f'Cannot parse element {idx} of "__all__"',
-                        section='all', lineno_offset=node.lineno)
-                else:
-                    if isinstance(name, str):
-                        names.append(name)
-                    else:
-                        mod.report(
-                            f'Element {idx} of "__all__" has '
-                            f'type "{type(name).__name__}", expected "str"',
-                            section='all', lineno_offset=node.lineno)
+def parseAll(node: ast.Assign, mod: model.Module) -> None:
+    """Find and attempt to parse into a list of names the 
+    C{__all__} variable of a module's AST and set L{Module.all} accordingly."""
 
-            if mod.all is not None:
+    if not isinstance(node.value, (ast.List, ast.Tuple)):
+        mod.report(
+            'Cannot parse value assigned to "__all__"',
+            section='all', lineno_offset=node.lineno)
+        return
+
+    names = []
+    for idx, item in enumerate(node.value.elts):
+        try:
+            name: object = ast.literal_eval(item)
+        except ValueError:
+            mod.report(
+                f'Cannot parse element {idx} of "__all__"',
+                section='all', lineno_offset=node.lineno)
+        else:
+            if isinstance(name, str):
+                names.append(name)
+            else:
                 mod.report(
-                    'Assignment to "__all__" overrides previous assignment',
+                    f'Element {idx} of "__all__" has '
+                    f'type "{type(name).__name__}", expected "str"',
                     section='all', lineno_offset=node.lineno)
-            mod.all = names
+
+    if mod.all is not None:
+        mod.report(
+            'Assignment to "__all__" overrides previous assignment',
+            section='all', lineno_offset=node.lineno)
+    mod.all = names
+
+def parseDocformat(node: ast.Assign, mod: model.Module) -> None:
+    """
+    Find C{__docformat__} variable of this 
+    module's AST and set L{Module.docformat} accordingly.
+        
+    This is all valid::
+
+        __docformat__ = "reStructuredText en"
+        __docformat__ = "epytext"
+        __docformat__ = "restructuredtext"
+    """
+
+    try:
+        value = ast.literal_eval(node.value)
+    except ValueError:
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": not a string',
+            section='docformat', lineno_offset=node.lineno)
+        return
+    
+    if not isinstance(value, str):
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": not a string',
+            section='docformat', lineno_offset=node.lineno)
+        return
+        
+    if not value.strip():
+        mod.report(
+            'Cannot parse value assigned to "__docformat__": empty value',
+            section='docformat', lineno_offset=node.lineno)
+        return
+    
+    # Language is ignored and parser name is lowercased.
+    value = value.split(" ", 1)[0].lower()
+
+    if mod._docformat is not None:
+        mod.report(
+            'Assignment to "__docformat__" overrides previous assignment',
+            section='docformat', lineno_offset=node.lineno)
+
+    mod.docformat = value
+
+MODULE_VARIABLES_META_PARSERS: Mapping[str, Callable[[ast.Assign, model.Module], None]] = {
+    '__all__': parseAll,
+    '__docformat__': parseDocformat
+}
