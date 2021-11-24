@@ -11,7 +11,7 @@ For the language syntax documentation, read the `ReST docutils syntax reference 
 Fields
 ------
 
-See `fields section <../codedoc.rst#fields>`__.
+See `fields section <../codedoc.html#fields>`__.
 
 In addition to the standard set of fields, the reStructuredText
 parser also supports **consolidated fields**, which combine the documentation

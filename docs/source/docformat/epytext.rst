@@ -17,7 +17,7 @@ All markup should work except the indexed terms ``X{}`` tag, which has been remo
 Fields
 ------
 
-See `fields section <../codedoc.rst#fields>`__.
+See `fields section <../codedoc.html#fields>`__.
 
 .. note:: Not everything from the `epydoc fields manual
     <http://epydoc.sourceforge.net/manual-fields.html>`_ is applicable.
