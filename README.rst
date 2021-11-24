@@ -73,7 +73,7 @@ What's New?
 in development
 ~~~~~~~~~~~~~~
 
-* Syntax highlight with for constant values, decorators and parameter defaults.
+* Add syntax highlight for constant values, decorators and parameter defaults.
 * Embedded documentation links inside the value of constants, decorators and parameter defaults.
 * Provide option ``--pyval-repr-maxlines`` and ``--pyval-repr-linelen`` to control the size of a constant value representation. 
 * Provide option ``--process-types`` to automatically link types in docstring fields (`more info <https://pydoctor.readthedocs.io/en/latest/codedoc.html#type-fields>`_).
