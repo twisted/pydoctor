@@ -102,7 +102,7 @@ class DemoClass(_PrivateClass):
     """
     This is the docstring of this class.
 
-    .. versionchanged:: 2021-05
+    .. versionchanged:: 1.1
         This class now inherits from `_PrivateClass` and 
         demonstrate the ``.. versionchanged::`` directive support.
     """
