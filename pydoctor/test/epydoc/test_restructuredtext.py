@@ -196,7 +196,7 @@ def test_rst_directive_deprecated() -> None:
     """
     It renders the C{deprecated} RST directive with custom markup and supports
     an extra text besides the version information.
-    """"
+    """
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""<div class="rst-deprecated">
