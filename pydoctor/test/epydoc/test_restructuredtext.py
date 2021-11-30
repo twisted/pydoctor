@@ -170,6 +170,10 @@ def test_rst_directive_adnomitions() -> None:
 
 
 def test_rst_directive_versionadded() -> None:
+    """
+    It renders the C{versionadded} RST directive using a custom markup with
+    dedicated CSS classes.
+    """
     html = rst2html(".. versionadded:: 0.6")
     expected_html="""<div class="rst-versionadded">
 <span class="rst-versionmodified rst-added">New in version 0.6.</span></div>
@@ -177,6 +181,10 @@ def test_rst_directive_versionadded() -> None:
     assert html==expected_html, html
 
 def test_rst_directive_versionchanged() -> None:
+    """
+    It renders the C{versionchanged} RST directive with custom markup and supports
+    an extra text besides the version information.
+    """
     html = rst2html(""".. versionchanged:: 0.7
     Add extras""")
     expected_html="""<div class="rst-versionchanged">
@@ -185,6 +193,10 @@ def test_rst_directive_versionchanged() -> None:
     assert html==expected_html, html
 
 def test_rst_directive_deprecated() -> None:
+    """
+    It renders the C{deprecated} RST directive with custom markup and supports
+    an extra text besides the version information.
+    """"
     html = rst2html(""".. deprecated:: 0.2
     For security reasons""")
     expected_html="""<div class="rst-deprecated">
