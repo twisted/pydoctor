@@ -1,12 +1,12 @@
 from io import BytesIO
-from typing import Callable, cast
+from typing import Callable, cast, Union, TYPE_CHECKING
 import pytest
 import warnings
 import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
-from pydoctor import model, templatewriter
+from pydoctor import model, templatewriter, stanutils
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
@@ -16,6 +16,18 @@ from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+
+# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 9):
+        from importlib.abc import Traversable
+    else:
+        Traversable = Path
+else:
+    Traversable = object
+
 if sys.version_info < (3, 9):
     import importlib_resources
 else:
@@ -23,12 +35,12 @@ else:
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
-def filetext(path: Path) -> str:
+def filetext(path: Union[Path, Traversable]) -> str:
     with path.open('r', encoding='utf-8') as fobj:
         t = fobj.read()
     return t
 
-def flatten(t: ChildTable) -> str:
+def flatten(t: "Flattenable") -> str:
     io = BytesIO()
     writer.flattenToFile(io, t)
     return io.getvalue().decode()
@@ -431,3 +443,30 @@ def test_isClassNodePrivate() -> None:
     assert isClassNodePrivate(cast(model.Class, mod.contents['_Private']))
     assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
     assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))
+
+def test_format_signature() -> None:
+    """Test C{pages.format_signature}. 
+    
+    @note: This test will need to be adapted one we include annotations inside signatures.
+    """
+    mod = fromText(r'''
+    def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
+        ...
+    ''')
+    assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
+            """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
+            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(cast(model.Function, mod.contents['func'])))
+
+def test_format_decorators() -> None:
+    """Test C{pages.format_decorators}"""
+    mod = fromText(r'''
+    @string_decorator(set('\\/:*?"<>|\f\v\t\r\n'))
+    @simple_decorator(max_examples=700, deadline=None, option=range(10))
+    def func():
+        ...
+    ''')
+    stan = stanutils.flatten(list(pages.format_decorators(cast(model.Function, mod.contents['func']))))
+    assert stan == ("""@string_decorator(<wbr></wbr>set(<wbr></wbr><span class="rst-variable-quote">'</span>"""
+                    r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
+                    """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
+                    """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")

@@ -13,7 +13,9 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, node2stan
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
+from pydoctor.astutils import bind_args, node2dottedname
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -25,19 +27,6 @@ if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
 else:
     _parse = ast.parse
-
-
-def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
-    parts = []
-    while isinstance(node, ast.Attribute):
-        parts.append(node.attr)
-        node = node.value
-    if isinstance(node, ast.Name):
-        parts.append(node.id)
-    else:
-        return None
-    parts.reverse()
-    return parts
 
 
 def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
@@ -75,21 +64,6 @@ def _handleAliasing(
         return False
     ctx._localNameToFullName_map[target] = full_name
     return True
-
-
-def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
-    """Binds the arguments of a function call to that function's signature.
-    @raise TypeError: If the arguments do not match the signature.
-    """
-    kwargs = {
-        kw.arg: kw.value
-        for kw in call.keywords
-        # When keywords are passed using '**kwargs', the 'arg' field will
-        # be None. We don't currently support keywords passed that way.
-        if kw.arg is not None
-        }
-    return sig.bind(*call.args, **kwargs)
-
 
 _attrs_decorator_signature = signature(attrs)
 """Signature of the L{attr.s} class decorator."""
@@ -209,7 +183,7 @@ def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
     """
     ann_slice = annotation.slice
-    if isinstance(ann_slice, ast.Index):
+    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
         return ann_slice.value
     else:
         return ann_slice
@@ -845,9 +819,9 @@ class ModuleVistor(ast.NodeVisitor):
             index -= default_offset
             return None if index < 0 else defaults[index]
 
-        parameters = []
+        parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
-            default_val = Parameter.empty if default is None else _ValueFormatter(default)
+            default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
             parameters.append(Parameter(name, kind, default=default_val))
 
         for index, arg in enumerate(posonlyargs):
@@ -990,32 +964,31 @@ class ModuleVistor(ast.NodeVisitor):
             assert isinstance(expr, ast.expr), expr
             return expr
 
-
 class _ValueFormatter:
-    """Formats values stored in AST expressions.
+    """
+    Class to encapsulate a python value and translate it to HTML when calling L{repr()} on the L{_ValueFormatter}.
     Used for presenting default values of parameters.
     """
 
-    def __init__(self, value: ast.expr):
-        self.value = value
+    def __init__(self, value: Any, ctx: model.Documentable):
+        self._colorized = colorize_inline_pyval(value)
+        """
+        The colorized value as L{ParsedDocstring}.
+        """
+
+        self._linker = epydoc2stan._EpydocLinker(ctx)
+        """
+        Linker.
+        """
 
     def __repr__(self) -> str:
-        value = self.value
-        if isinstance(value, ast.Num):
-            return str(value.n)
-        if isinstance(value, ast.Str):
-            return repr(value.s)
-        if isinstance(value, ast.Constant):
-            return repr(value.value)
-        if isinstance(value, ast.UnaryOp) and isinstance(value.op, ast.USub):
-            operand = value.operand
-            if isinstance(operand, ast.Num):
-                return f'-{operand.n}'
-            if isinstance(operand, ast.Constant):
-                return f'-{operand.value}'
-        source: str = astor.to_source(value)
-        return source.strip()
-
+        """
+        Present the python value as HTML. 
+        Without the englobing <code> tags.
+        """
+        # Using node2stan.node2html instead of flatten(to_stan()). 
+        # This avoids calling flatten() twice.
+        return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
 class _AnnotationStringParser(ast.NodeTransformer):
     """Implementation of L{ModuleVistor._unstring_annotation()}.
