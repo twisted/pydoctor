@@ -19,8 +19,7 @@ from pydoctor.test.test_packages import processPackage
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-if TYPE_CHECKING:
+    # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
@@ -32,14 +31,6 @@ if sys.version_info < (3, 9):
     import importlib_resources
 else:
     import importlib.resources as importlib_resources
-
-if TYPE_CHECKING:
-    if sys.version_info >= (3, 9):
-        from importlib.abc import Traversable
-    else:
-        Traversable = Path
-else:
-    Traversable = object
 
 template_dir = importlib_resources.files("pydoctor.themes") / "base"
 
