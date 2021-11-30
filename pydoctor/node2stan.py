@@ -3,7 +3,7 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes
 from docutils.frontend import OptionParser
@@ -88,26 +88,33 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
+        # TODO: 'node.line' is None for reStructuredText based docstring for some reason.
+        #       https://github.com/twisted/pydoctor/issues/237
+        lineno = node.line or 0
+        self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
+    
+    # Handle internal references
+    def visit_obj_reference(self, node: nodes.Node) -> None:
+        self._handle_reference(node, link_func=self._linker.link_to)
+    
+    def _handle_reference(self, node: nodes.Node, link_func: Callable[[str, "Flattenable"], "Flattenable"]) -> None:
         label: "Flattenable"
         if 'refuri' in node.attributes:
-            # Epytext parsed
+            # Epytext parsed or manually constructed nodes.
             label, target = node2stan(node.children, self._linker), node.attributes['refuri']
         else:
+            # RST parsed.
             m = _TARGET_RE.match(node.astext())
             if m:
                 label, target = m.groups()
             else:
                 label = target = node.astext()
         
-        # TODO: 'node.line' is None for reStructuredText based docstring for some reason.
-        #       https://github.com/twisted/pydoctor/issues/237
-        lineno = node.line or 0
-
         # Support linking to functions and methods with () at the end
         if target.endswith('()'):
             target = target[:len(target)-2]
 
-        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
+        self.body.append(flatten(link_func(target, label)))
         raise nodes.SkipNode()
 
     def should_be_compact_paragraph(self, node: nodes.Node) -> bool:
@@ -246,6 +253,12 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     def depart_tip(self, node: nodes.Node) -> None:
         self.depart_admonition(node)
+
+    def visit_wbr(self, node: nodes.Node) -> None:
+        self.body.append('<wbr></wbr>')
+    
+    def depart_wbr(self, node: nodes.Node) -> None:
+        pass
 
     def visit_seealso(self, node: nodes.Node) -> None:
         self._visit_admonition(node, 'see also')

@@ -203,7 +203,8 @@ ul ul ul ul ul ul ul {
     font-size: 14px;
 }
 
-.fieldTable tr:not(.fieldStart) td:first-child{
+.fieldTable tr:not(.fieldStart) td:first-child,
+.valueTable tr:not(.fieldStart) td:first-child{
     padding: 3px 4px 3px 10px;
 }
 
@@ -364,10 +365,9 @@ code, .literal, .pre, #childList > div .functionHeader,
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 code, #childList > div .functionHeader, .fieldArg {
-    font-size: 90%;
     color: #222222;
 }
-code > a {
+code > a, #childList > div .functionHeader a {
     color:#c7254e;
     background-color:#f9f2f4;
 }
@@ -391,9 +391,9 @@ code, .literal {
 
 
 a.sourceLink {
-    color: #337ab7;
+    color: #337ab7!important;
     font-weight: normal;
-    background-color: transparent;
+    background-color: transparent!important;
 }
 
 
@@ -534,3 +534,21 @@ div.tip, div.hint, div.important {
     display: block;
     font-weight: bold;
 }
+
+/* Constant values repr */
+pre.constant-value              { padding: .5em; }
+.rst-variable-linewrap          { color: #604000; font-weight: bold; }
+.rst-variable-ellipsis          { color: #604000; font-weight: bold; }
+.rst-variable-quote             { color: #604000; font-weight: bold; }
+
+/* Those two are currently not used */
+.rst-variable-group             { color: #000000; }
+.rst-variable-op                { color: #000000; }
+
+.rst-variable-string            { color: #337ab7; }
+.rst-variable-unknown           { color: #a00000; font-weight: bold; }
+.rst-re                         { color: #000000; }
+.rst-re-char                    { color: #337ab7; }
+.rst-re-op                      { color: #fc7844; }
+.rst-re-group                   { color: #309078; }
+.rst-re-ref                     { color: #890000; }

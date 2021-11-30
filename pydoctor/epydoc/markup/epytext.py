@@ -88,6 +88,7 @@ Description::
    <!ATTLIST code style CDATA #IMPLIED>
 
    <!ELEMENT symbol (#PCDATA)>
+   <!ELEMENT wbr>
 
 @var SYMBOLS: A list of the of escape symbols that are supported by epydoc.  Currently the following symbols are supported ::
 
