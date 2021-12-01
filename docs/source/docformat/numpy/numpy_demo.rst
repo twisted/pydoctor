@@ -1,0 +1,2 @@
+Numpy-style demo package
+========================

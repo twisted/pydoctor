@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Type, overload
+from typing import Optional, Tuple, Type, overload, cast
 import ast
 import textwrap
 
@@ -7,7 +7,8 @@ import astor
 from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, flatten
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
 from pydoctor.zopeinterface import ZopeInterfaceSystem
@@ -73,7 +74,12 @@ def fromText(
     ast = astbuilder._parse(textwrap.dedent(text))
     return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
 
-def unwrap(parsed_docstring: ParsedEpytextDocstring) -> str:
+def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
+    
+    if parsed_docstring is None:
+        raise TypeError("parsed_docstring cannot be None")
+    if not isinstance(parsed_docstring, ParsedEpytextDocstring):
+        raise TypeError(f"parsed_docstring must be a ParsedEpytextDocstring instance, not {parsed_docstring.__class__.__name__}")
     epytext = parsed_docstring._tree
     assert epytext is not None
     assert epytext.tag == 'epytext'
@@ -176,6 +182,7 @@ def test_function_simple(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.f'
     assert func.docstring == """This is a docstring."""
+    assert isinstance(func, model.Function)
     assert func.is_async is False
 
 
@@ -191,6 +198,7 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     func, = mod.contents.values()
     assert func.fullName() == '<test>.a'
     assert func.docstring == """This is a docstring."""
+    assert isinstance(func, model.Function)
     assert func.is_async is True
 
 
@@ -201,17 +209,22 @@ def test_function_async(systemcls: Type[model.System]) -> None:
     '(a, b=3, *c, **kw)',
     '(f=True)',
     '(x=0.1, y=-2)',
-    '(s=\'theory\', t="con\'text")',
+    r"(s='theory', t='con\'text')",
     ))
 @systemcls_param
 def test_function_signature(signature: str, systemcls: Type[model.System]) -> None:
-    """A round trip from source to inspect.Signature and back produces
+    """
+    A round trip from source to inspect.Signature and back produces
     the original text.
+
+    @note: Our inspect.Signature Paramters objects are now tweaked such that they might produce HTML tags, handled by the L{PyvalColorizer}.
     """
     mod = fromText(f'def f{signature}: ...', systemcls=systemcls)
     docfunc, = mod.contents.values()
     assert isinstance(docfunc, model.Function)
-    assert str(docfunc.signature) == signature
+    # This little trick makes it possible to back reproduce the original signature from the genrated HTML.
+    text = flatten_text(html2stan(str(docfunc.signature)))
+    assert text == signature
 
 @posonlyargs
 @pytest.mark.parametrize('signature', (
@@ -288,6 +301,7 @@ def test_class_with_base(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 1
     base, = clsD.bases
     assert base == '<test>.C'
@@ -302,6 +316,8 @@ def test_follow_renaming(systemcls: Type[model.System]) -> None:
     mod = fromText(src, systemcls=systemcls)
     C = mod.contents['C']
     E = mod.contents['E']
+    assert isinstance(C, model.Class)
+    assert isinstance(E, model.Class)
     assert E.baseobjects == [C], E.baseobjects
 
 @systemcls_param
@@ -374,6 +390,7 @@ def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 2
     base1, base2 = clsD.bases
     assert base1 == 'X.Y.A'
@@ -394,6 +411,7 @@ def test_class_with_base_from_module(systemcls: Type[model.System]) -> None:
     assert clsD.docstring == None
     assert len(clsD.contents) == 1
 
+    assert isinstance(clsD, model.Class)
     assert len(clsD.bases) == 3
     base1, base2, base3 = clsD.bases
     assert base1 == 'X.A', base1
@@ -476,7 +494,9 @@ def test_aliasing_recursion(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, modname='mod', system=system)
-    assert mod.contents['D'].bases == ['mod.C'], mod.contents['D'].bases
+    D = mod.contents['D']
+    assert isinstance(D, model.Class)
+    assert D.bases == ['mod.C'], D.bases
 
 @systemcls_param
 def test_documented_no_alias(systemcls: Type[model.System]) -> None:
@@ -523,7 +543,9 @@ def test_inherit_names(systemcls: Type[model.System]) -> None:
         pass
     '''
     mod = fromText(src, systemcls=systemcls)
-    assert [b.name for b in mod.contents['A'].allbases()] == ['A 0']
+    A = mod.contents['A']
+    assert isinstance(A, model.Class)
+    assert [b.name for b in A.allbases()] == ['A 0']
 
 @systemcls_param
 def test_nested_class_inheriting_from_same_module(systemcls: Type[model.System]) -> None:
@@ -546,6 +568,75 @@ def test_all_recognition(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     assert mod.all == ['f']
     assert '__all__' not in mod.contents
+
+@systemcls_param
+def test_docformat_recognition(systemcls: Type[model.System]) -> None:
+    """The value assigned to __docformat__ is parsed to Module.docformat."""
+    mod = fromText('''
+    __docformat__ = 'Epytext en'
+
+    def f():
+        pass
+    ''', systemcls=systemcls)
+    assert mod.docformat == 'epytext'
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
+def test_docformat_warn_not_str(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    __docformat__ = [i for i in range(3)]
+
+    def f():
+        pass
+    ''', systemcls=systemcls, modname='mod')
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    assert mod.docformat is None
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
+def test_docformat_warn_not_str2(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    __docformat__ = 3.14
+
+    def f():
+        pass
+    ''', systemcls=systemcls, modname='mod')
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": not a string\n'
+    assert mod.docformat == None
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
+def test_docformat_warn_empty(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    __docformat__ = '  '
+
+    def f():
+        pass
+    ''', systemcls=systemcls, modname='mod')
+    captured = capsys.readouterr().out
+    assert captured == 'mod:2: Cannot parse value assigned to "__docformat__": empty value\n'
+    assert mod.docformat == None
+    assert '__docformat__' not in mod.contents
+
+@systemcls_param
+def test_docformat_warn_overrides(systemcls: Type[model.System], capsys: CapSys) -> None:
+    mod = fromText('''
+    __docformat__ = 'numpy'
+
+    def f():
+        pass
+
+    __docformat__ = 'restructuredtext'
+    ''', systemcls=systemcls, modname='mod')
+    captured = capsys.readouterr().out
+    assert captured == 'mod:7: Assignment to "__docformat__" overrides previous assignment\n'
+    assert mod.docformat == 'restructuredtext'
+    assert '__docformat__' not in mod.contents
 
 @systemcls_param
 def test_all_in_class_non_recognition(systemcls: Type[model.System]) -> None:
@@ -648,6 +739,7 @@ def test_classdecorator(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='mod', systemcls=systemcls)
     C = mod.contents['C']
+    assert isinstance(C, model.Class)
     assert C.decorators == [('mod.cd', None)]
 
 
@@ -661,9 +753,11 @@ def test_classdecorator_with_args(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
+    assert isinstance(C, model.Class)
     assert len(C.decorators) == 1
     (name, args), = C.decorators
     assert name == 'test.cd'
+    assert args is not None
     assert len(args) == 1
     arg, = args
     assert astbuilder.node2fullname(arg, mod) == 'test.A'
@@ -1270,10 +1364,10 @@ def test_type_comment(systemcls: Type[model.System], capsys: CapSys) -> None:
     d = {} # type: dict[str, int]
     i = [] # type: ignore[misc]
     ''', systemcls=systemcls)
-    assert type2str(mod.contents['d'].annotation) == 'dict[str, int]'
+    assert type2str(cast(model.Attribute, mod.contents['d']).annotation) == 'dict[str, int]'
     # We don't use ignore comments for anything at the moment,
     # but do verify that their presence doesn't break things.
-    assert type2str(mod.contents['i'].annotation) == 'list'
+    assert type2str(cast(model.Attribute, mod.contents['i']).annotation) == 'list'
     assert not capsys.readouterr().out
 
 @systemcls_param
@@ -1299,7 +1393,7 @@ def test_bad_string_annotation(
     mod = fromText(f'''
     x: "{annotation}"
     ''', modname='test', systemcls=systemcls)
-    assert isinstance(mod.contents['x'].annotation, ast.expr)
+    assert isinstance(cast(model.Attribute, mod.contents['x']).annotation, ast.expr)
     assert "syntax error in annotation" in capsys.readouterr().out
 
 @pytest.mark.parametrize('annotation,expected', (
@@ -1352,11 +1446,11 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert ann_str_and_line(C.contents['j']) == ('tuple', 12)
     # It is unlikely that a variable actually will contain only None,
     # so we should treat this as not be able to infer the type.
-    assert C.contents['n'].annotation is None
+    assert cast(model.Attribute, C.contents['n']).annotation is None
     # These expressions are considered too complex for pydoctor.
     # Maybe we can use an external type inferrer at some point.
-    assert C.contents['x'].annotation is None
-    assert C.contents['y'].annotation is None
+    assert cast(model.Attribute, C.contents['x']).annotation is None
+    assert cast(model.Attribute, C.contents['y']).annotation is None
     # Type inference isn't different for module and instance variables,
     # so we don't need to re-test everything.
     assert ann_str_and_line(C.contents['s']) == ('list[str]', 17)
@@ -1381,11 +1475,24 @@ def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
         e = attr.ib(123)
     ''', modname='test', systemcls=systemcls)
     C = mod.contents['C']
-    assert type2str(C.contents['a'].annotation) == 'int'
-    assert type2str(C.contents['b'].annotation) == 'int'
-    assert type2str(C.contents['c'].annotation) == 'C'
-    assert type2str(C.contents['d'].annotation) == 'bool'
-    assert type2str(C.contents['e'].annotation) == 'int'
+
+    A = C.contents['a']
+    B = C.contents['b']
+    _C = C.contents['c']
+    D = C.contents['d']
+    E = C.contents['e']
+
+    assert isinstance(A, model.Attribute)
+    assert isinstance(B, model.Attribute)
+    assert isinstance(_C, model.Attribute)
+    assert isinstance(D, model.Attribute)
+    assert isinstance(E, model.Attribute)
+
+    assert type2str(A.annotation) == 'int'
+    assert type2str(B.annotation) == 'int'
+    assert type2str(_C.annotation) == 'C'
+    assert type2str(D.annotation) == 'bool'
+    assert type2str(E.annotation) == 'int'
 
 @systemcls_param
 def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
@@ -1500,7 +1607,7 @@ def test_property_decorator(systemcls: Type[model.System]) -> None:
     assert oldschool.kind is model.DocumentableKind.PROPERTY
     assert isinstance(oldschool.parsed_docstring, ParsedEpytextDocstring)
     assert unwrap(oldschool.parsed_docstring) == """For rent."""
-    assert flatten(format_summary(oldschool)) == '<span>For rent.</span>'
+    assert flatten(format_summary(oldschool)) == 'For rent.'
     assert isinstance(oldschool.parsed_type, ParsedEpytextDocstring)
     assert str(unwrap(oldschool.parsed_type)) == 'string'
     fields = oldschool.parsed_docstring.fields
@@ -1612,3 +1719,272 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     ''', systemcls=systemcls)
     outer = mod.contents['outer']
     assert not outer.contents
+
+@systemcls_param
+def test_constant_module(systemcls: Type[model.System]) -> None:
+    """
+    Module variables with all-uppercase names are recognized as constants.
+    """
+    mod = fromText('''
+    LANG = 'FR'
+    ''', systemcls=systemcls)
+    lang = mod.contents['LANG']
+    assert isinstance(lang, model.Attribute)
+    assert lang.kind is model.DocumentableKind.CONSTANT
+    assert ast.literal_eval(getattr(mod.resolveName('LANG'), 'value')) == 'FR'
+
+@systemcls_param
+def test_constant_module_with_final(systemcls: Type[model.System]) -> None:
+    """
+    Module variables annotated with typing.Final are recognized as constants.
+    """
+    mod = fromText('''
+    from typing import Final
+    lang: Final = 'fr'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
+
+@systemcls_param
+def test_constant_module_with_typing_extensions_final(systemcls: Type[model.System]) -> None:
+    """
+    Module variables annotated with typing_extensions.Final are recognized as constants.
+    """
+    mod = fromText('''
+    from typing_extensions import Final
+    lang: Final = 'fr'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
+
+@systemcls_param
+def test_constant_module_with_final_subscript1(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final[something]
+    """
+    mod = fromText('''
+    from typing import Final
+    lang: Final[Sequence[str]] = ('fr', 'en')
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert astor.to_source(attr.annotation).strip() == "Sequence[str]"
+
+@systemcls_param
+def test_constant_module_with_final_subscript2(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final[something]. 
+    And it automatically remove the Final part from the annotation.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final[tuple] = ('fr', 'en')
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    assert astbuilder.node2fullname(attr.annotation, attr) == "tuple"
+
+@systemcls_param
+def test_constant_module_with_final_subscript_invalid_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns if there is an invalid Final annotation.
+    """
+    mod = fromText('''
+    from typing import Final
+    lang: Final[tuple, 12:13] = ('fr', 'en')
+    ''', systemcls=systemcls, modname='mod')
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    
+    captured = capsys.readouterr().out
+    assert "mod:3: Annotation is invalid, it should not contain slices.\n" == captured
+
+    assert astor.to_source(attr.annotation).strip() == "tuple[str, ...]"
+
+@systemcls_param
+def test_constant_module_with_final_subscript_invalid_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns if there is an invalid Final annotation.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final[12:13] = ('fr', 'en')
+    ''', systemcls=systemcls, modname='mod')
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == ('fr', 'en')
+    
+    captured = capsys.readouterr().out
+    assert "mod:3: Annotation is invalid, it should not contain slices.\n" == captured
+
+    assert astor.to_source(attr.annotation).strip() == "tuple[str, ...]"
+
+@systemcls_param
+def test_constant_module_with_final_annotation_gets_infered(systemcls: Type[model.System]) -> None:
+    """
+    It can recognize constants defined with typing.Final. 
+    It will infer the type of the constant if Final do not use subscripts.
+    """
+    mod = fromText('''
+    import typing
+    lang: typing.Final = 'fr'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('lang')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'fr'
+    assert astbuilder.node2fullname(attr.annotation, attr) == "str"
+
+@systemcls_param
+def test_constant_class(systemcls: Type[model.System]) -> None:
+    """
+    Class variables with all-uppercase names are recognized as constants.
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+        LANG = 'FR'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'FR'
+
+
+@systemcls_param
+def test_all_caps_variable_in_instance_is_not_a_constant(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Currently, it does not mark instance members as constants, never.
+    """
+    mod = fromText('''
+    from typing import Final
+    class Clazz:
+        """Class."""
+        def __init__(**args):
+            self.LANG: Final = 'FR'
+    ''', systemcls=systemcls)
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.INSTANCE_VARIABLE
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'FR'
+    captured = capsys.readouterr().out
+    assert not captured
+
+@systemcls_param
+def test_constant_override_in_instace_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+        LANG = 'EN'
+        def __init__(self, **args):
+            self.LANG = 'FR'
+    ''', systemcls=systemcls, modname="mod")
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'EN'
+
+    captured = capsys.readouterr().out
+    assert "mod:6: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+
+@systemcls_param
+def test_constant_override_in_instace_warns2(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    It warns when a constant is beeing re defined in instance. But it ignores it's value. 
+    Even if the actual constant definition is detected after the instance variable of the same name.
+    """
+    mod = fromText('''
+    class Clazz:
+        """Class."""
+        def __init__(self, **args):
+            self.LANG = 'FR'
+        LANG = 'EN'
+    ''', systemcls=systemcls, modname="mod")
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 'EN'
+
+    captured = capsys.readouterr().out
+    assert "mod:5: Assignment to constant \"LANG\" inside an instance is ignored, this value will not be part of the docs.\n" == captured
+
+@systemcls_param
+def test_constant_override_in_module_warns(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    """Mod."""
+    import sys
+    IS_64BITS = False
+    if sys.maxsize > 2**32:
+        IS_64BITS = True
+    ''', systemcls=systemcls, modname="mod")
+    attr = mod.resolveName('IS_64BITS')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == True
+
+    captured = capsys.readouterr().out
+    assert "mod:6: Assignment to constant \"IS_64BITS\" overrides previous assignment at line 4, the original value will not be part of the docs.\n" == captured
+
+@systemcls_param
+def test_constant_override_do_not_warns_when_defined_in_class_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Constant can be documented as variables at docstring level without any warnings.
+    """
+    mod = fromText('''
+    class Clazz:
+        """
+        @cvar LANG: French.
+        """
+        LANG = 99
+    ''', systemcls=systemcls, modname="mod")
+    attr = mod.resolveName('Clazz.LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 99
+    captured = capsys.readouterr().out
+    assert not captured
+
+@systemcls_param
+def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    mod = fromText('''
+    """
+    @var LANG: French.
+    """
+    LANG = 99
+    ''', systemcls=systemcls, modname="mod")
+    attr = mod.resolveName('LANG')
+    assert isinstance(attr, model.Attribute)
+    assert attr.kind == model.DocumentableKind.CONSTANT
+    assert attr.value is not None
+    assert ast.literal_eval(attr.value) == 99
+    captured = capsys.readouterr().out
+    assert not captured
