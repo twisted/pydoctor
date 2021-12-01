@@ -261,7 +261,7 @@ class ObjContent(Element):
 
     @property
     def has_contents(self) -> bool:
-        return self.classList or self.functionList or self.variableList or self.subModuleList or self.inheritedFunctionList or self.inheritedVariableList    
+        return bool(self.classList or self.functionList or self.variableList or self.subModuleList or self.inheritedFunctionList or self.inheritedVariableList)
 
 class ContentList(TemplateElement):
     """
