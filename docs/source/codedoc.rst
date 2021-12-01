@@ -102,7 +102,9 @@ In Python 3.6 and 3.7, you can use the qualifier present in the `typing_extensio
 
    from typing_extensions import Final
    z: Final = 'relative/path'
-   
+
+.. _codedoc-fields:
+
 Fields
 ------
 
@@ -137,8 +139,6 @@ Here are the supported fields (written with ReStructuredText format, but same fi
     for discussions and improvements.
 
 .. note:: Unlike Sphinx, ``vartype`` and ``kwtype`` are not recognized as valid fields, we simply use ``type`` everywhere.
-
-.. _codedoc-fields:
 
 Type fields
 ~~~~~~~~~~~
