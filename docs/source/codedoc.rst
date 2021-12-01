@@ -87,9 +87,9 @@ Constants
 ---------
 
 Following `PEP8 <https://www.python.org/dev/peps/pep-0008/#constants>`_, any variable defined with all upper case name will be considered as a constant.
-Additionaly, starting with Python 3.8, one can use the `typing.Final <https://www.python.org/dev/peps/pep-0008/#constants>`_ qualifier to declare a constant. 
+Additionally, starting with Python 3.8, one can use the `typing.Final <https://www.python.org/dev/peps/pep-0008/#constants>`_ qualifier to declare a constant. 
 
-For instane, these variables will be recognized as constants::
+For instance, these variables will be recognized as constants::
     
     from typing import Final
     X = 3.14
@@ -127,7 +127,7 @@ Here are the supported fields (written with ReStructuredText format, but same fi
     - ``:warn RuntimeWarning:`` (synonym: ``@warns ValueError:``), document the potential warning a function (or method) can trigger.
     - ``:see:`` (synonym: ``@seealso:``), add a see also section.
     - ``:since:``, document the date and/or version since a component is present in the API.
-    - ``:author:``, document the author of a component, generaly a module.
+    - ``:author:``, document the author of a component, generally a module.
 
 .. note:: Currently, any other fields will be considered "unknown" and will be flagged as such. 
     See `"fields" issues <https://github.com/twisted/pydoctor/issues?q=is%3Aissue+is%3Aopen+fields>`_
