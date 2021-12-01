@@ -5,20 +5,23 @@ Most part of this documentation is using Python type hinting.
 """
 
 from abc import ABC
-from typing import AnyStr, Dict, Generator, List, Union
+from typing import AnyStr, Dict, Generator, List, Union, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
-from typing import Final, Sequence
+from typing import Sequence, Optional
+
+if TYPE_CHECKING:
+    from typing_extensions import Final
 
 LANG = 'Fr'
 """
-This is a constant.
+This is a constant. See L{constants} for more examples.
 """
 
-lang: Final[Sequence[str]] = ['Fr', 'En']
+lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 """
-This is also a constant.
+This is also a constant, but annotated with typing.Final.
 """
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
@@ -37,13 +40,12 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     return -b/m
 
-
-def demo_typing_arguments(name: str, size: bytes) -> bool:
+def demo_typing_arguments(name: str, size: Optional[bytes] = None) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
 
     @param name: The human readable name for something.
-    @param size: How big the name should be.
+    @param size: How big the name should be. Leave none if you don't care.
     @return: Always C{True}.
     """
     return True

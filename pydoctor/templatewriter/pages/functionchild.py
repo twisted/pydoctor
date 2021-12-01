@@ -5,7 +5,7 @@ from twisted.web.template import Tag, renderer, tags
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import DocGetter, format_decorators, signature
+from pydoctor.templatewriter.pages import DocGetter, format_decorators, format_signature
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -53,7 +53,8 @@ class FunctionChild(TemplateElement):
             name = name[:name.rindex('.')]
         return [
             tags.span(def_stmt, class_='py-keyword'), ' ',
-            tags.span(name, class_='py-defname'), signature(self.ob), ':'
+            tags.span(name, class_='py-defname'), 
+            format_signature(self.ob), ':'
             ]
 
     @renderer

@@ -7,7 +7,7 @@ from twisted.web.template import Tag, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.epydoc.markup import DocstringLinker
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
@@ -985,13 +985,19 @@ class RecordingAnnotationLinker(DocstringLinker):
     '<typing.Iterable>[<int>]',
     '<Literal>[<True>]',
     '<Mapping>[<str>, <C>]',
+    '<Tuple>[<a.b.C>, <int>]',
     '<Tuple>[<a.b.C>, ...]',
     '<Callable>[[<str>, <bool>], <None>]',
     ))
-def test_annotation_formatter(annotation: str) -> None:
-    """Perform two checks on the annotation formatter:
-    - all type names in the annotation are passed to the linker
-    - the plain text version of the output matches the input
+def test_annotation_formatting(annotation: str) -> None:
+    """
+    Perform two checks on the annotation formatting:
+
+        - all type names in the annotation are passed to the linker
+        - the plain text version of the output matches the input
+
+    @note: The annotation formatting is now handled by L{PyvalColorizer}. We use the function C{flatten_text} in order
+        to back reproduce the original text annotations. 
     """
 
     expected_lookups = [found[1:-1] for found in re.findall('<[^>]*>', annotation)]
@@ -1006,11 +1012,13 @@ def test_annotation_formatter(annotation: str) -> None:
     linker = RecordingAnnotationLinker()
     stan = parsed.to_stan(linker)
     assert linker.requests == expected_lookups
+
     html = flatten(stan)
     assert html.startswith('<code>')
     assert html.endswith('</code>')
-    text = html[6:-7]
-    assert text.replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '') == expected_text
+
+    text = flatten_text(stan)
+    assert text == expected_text
 
 def test_module_docformat(capsys: CapSys) -> None:
     """
@@ -1122,6 +1130,44 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
 
     assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
 
+
+def test_constant_values_rst(capsys: CapSys) -> None:
+    """
+    Test epydoc2stan.format_constant_value().
+    """
+    mod1 = '''
+    def f(a, b): 
+        pass
+    '''
+    mod2 = '''
+    from .mod1 import f
+
+    CONST = (f,)
+    '''
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+
+    fromText("", modname='pack', system=system, is_package=True)
+    fromText(mod1, modname='mod1', system=system, parent_name='pack')
+    mod = fromText(mod2, modname='mod2', system=system, parent_name='pack')
+    
+    captured = capsys.readouterr().out
+    assert not captured
+
+    expected = ('<table class="valueTable"><tr class="fieldStart">'
+                '<td class="fieldName">Value</td></tr><tr><td>'
+                '<pre class="constant-value"><code>(<wbr></wbr>'
+                '<a href="pack.mod1.html#f">f</a>)</code></pre></td></tr></table>')
+    
+    attr = mod.contents['CONST']
+    assert isinstance(attr, model.Attribute)
+
+    docstring2html(attr)
+
+    assert ''.join(flatten(epydoc2stan.format_constant_value(attr)).splitlines()) == expected
+
+    
 def test_warns_field(capsys: CapSys) -> None:
     """Test if the :warns: field is correctly recognized."""
     mod = fromText('''
@@ -1171,3 +1217,4 @@ def test_yields_field(capsys: CapSys) -> None:
                     '</td></tr></table></div>')
     captured = capsys.readouterr().out
     assert captured == ''
+

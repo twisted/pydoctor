@@ -1,10 +1,11 @@
-from typing import cast
 
+from typing import cast
 from pydoctor.test.test_astbuilder import fromText, type2html
 from pydoctor.test.test_packages import processPackage
 from pydoctor.zopeinterface import ZopeInterfaceClass, ZopeInterfaceSystem
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
+from pydoctor.stanutils import flatten
 
 from . import CapSys, NotFoundLinker
 
@@ -220,14 +221,14 @@ def test_zopeschema_inheritance() -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert str(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyTextLine'])])"
+    assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyTextLine</code>"
     assert mytext.kind is model.DocumentableKind.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert str(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['MyOtherTextLine'])])"
+    assert flatten(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyOtherTextLine</code>"
     assert myothertext.kind is model.DocumentableKind.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert str(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "Tag('code', children=[Tag('', children=['INTEGERSCHMEMAFIELD'])])"
+    assert flatten(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "<code>INTEGERSCHMEMAFIELD</code>"
     assert myint.kind is model.DocumentableKind.SCHEMA_FIELD
 
 def test_docsources_includes_interface() -> None:
