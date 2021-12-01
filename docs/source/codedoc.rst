@@ -135,6 +135,8 @@ Here are the supported fields (written with ReStructuredText format, but same fi
 
 .. note:: Unlike Sphinx, ``vartype`` and ``kwtype`` are not recognized as valid fields, we simply use ``type`` everywhere.
 
+.. _codedoc-fields:
+
 Type fields
 ~~~~~~~~~~~
 
