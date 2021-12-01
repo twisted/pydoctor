@@ -73,6 +73,7 @@ What's New?
 in development
 ~~~~~~~~~~~~~~
 
+* Add support for reStructuredText directives ``.. deprecated::``, ``.. versionchanged::`` and ``.. versionadded::``.
 * Add syntax highlight for constant values, decorators and parameter defaults.
 * Embedded documentation links inside the value of constants, decorators and parameter defaults.
 * Provide option ``--pyval-repr-maxlines`` and ``--pyval-repr-linelen`` to control the size of a constant value representation. 

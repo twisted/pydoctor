@@ -266,3 +266,8 @@ class HTMLTranslator(html4css1.HTMLTranslator):
     def depart_seealso(self, node: nodes.Node) -> None:
         self.depart_admonition(node)
 
+    def visit_versionmodified(self, node: nodes.Node) -> None:
+        self.body.append(self.starttag(node, 'div', CLASS=node['type']))
+
+    def depart_versionmodified(self, node: nodes.Node) -> None:
+        self.body.append('</div>\n')

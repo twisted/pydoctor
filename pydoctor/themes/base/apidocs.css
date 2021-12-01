@@ -529,6 +529,12 @@ div.tip, div.hint, div.important {
     border-color: #bce8f1;
 }
 
+/* Version modified style */
+.rst-versionmodified {
+    display: block;
+    font-weight: bold;
+}
+
 /* Constant values repr */
 pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }

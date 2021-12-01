@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, cast, Union, TYPE_CHECKING
+from typing import Callable, Union, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -19,8 +19,7 @@ from pydoctor.test.test_packages import processPackage
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
-# Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
-if TYPE_CHECKING:
+    # Newer APIs from importlib_resources should arrive to stdlib importlib.resources in Python 3.9.
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:

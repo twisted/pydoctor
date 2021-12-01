@@ -109,6 +109,13 @@ class DemoClass(ABC, _PrivateClass):
 
     """
     This is the docstring of this class.
+
+    .. versionchanged:: 1.1
+        This class now inherits from `_PrivateClass` and 
+        demonstrate the ``.. versionchanged::`` directive support.
+    
+    .. versionchanged:: 1.2
+        Add `read_and_write_delete` property.
     """
 
     def __init__(self, one: str, two: bytes) -> None:
