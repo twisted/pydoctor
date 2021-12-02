@@ -263,9 +263,9 @@ def getparser() -> OptionParser:
 
     parser.add_option(
         '--sidebar-expand-depth', metavar="INTEGER", action="store",
-        type=int, default=3, dest='sidebarexpanddepth',
+        type=int, default=2, dest='sidebarexpanddepth',
         help=("How many nested modules and classes should be expandable, "
-              "first level is always expanded. (default: 3)"))
+              "first level is always expanded. (default: 2)"))
 
     parser.add_option(
         '--sidebar-toc-depth', metavar="INTEGER", action="store",
