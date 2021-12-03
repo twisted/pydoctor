@@ -62,7 +62,8 @@ The following process ensures correct version management:
    For instance, check the diff of the HTML templates since version ``21.9.1`` with the following git command::
 
        git diff 21.9.1 pydoctor/themes/*/*.html
-
+       
+   .. note:: The HTML template version can also be updated in the PR in which the actual HTML template change is done.
  - Create a PR for that branch, wait for tests to pass and get an approval.
  - Create a tag based on the ``HEAD`` of the release branch, name it by the full version number of the ``pydoctor`` version, i.e. ``21.9.1``, this will trigger the release. For instance::
 
