@@ -71,7 +71,10 @@ What's New?
 ~~~~~~~~~~~
 
 in development
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
+
+pydoctor 21.12.0
+^^^^^^^^^^^^^^^^
 
 * Add support for reStructuredText directives ``.. deprecated::``, ``.. versionchanged::`` and ``.. versionadded::``.
 * Add syntax highlight for constant values, decorators and parameter defaults.
