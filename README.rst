@@ -70,6 +70,9 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+in development
+^^^^^^^^^^^^^^
+
 pydoctor 21.12.0
 ^^^^^^^^^^^^^^^^
 
