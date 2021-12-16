@@ -620,6 +620,12 @@ div.tip, div.hint, div.important {
     padding-bottom: 15px;
 }
 
+.sidebar > div:nth-child(2) {
+    background-color: RGBA(0,20,44, 0.05);
+    box-shadow: 1px 1px 1px 7px RGBA(0,20,44, 0.05);
+    margin-top: 20px;
+}
+
 .sidebar ul {
     display: block;
     margin: 0 0 5px 0;
@@ -713,13 +719,6 @@ div.tip, div.hint, div.important {
     border-bottom: solid 1px #e7e7e7;
 }
 
-.sidebar hr {
-    margin-top: 10px;
-    margin-bottom: 10px;
-    border-color: #ddd;
-    border-style: solid;
-    border-width: thin;
-}
   
 /* Style page content */
 #main {

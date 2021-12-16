@@ -69,10 +69,6 @@ class SideBarSection(Element):
         
         # Does this sidebar section represents the object itself ?
         self._represents_documented_ob = self.ob == self.documented_ob
-    
-    @renderer
-    def separator(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
-        return Tag('hr') if not self._represents_documented_ob else ""
 
     @renderer
     def kind(self, request: IRequest, tag: Tag) -> str:

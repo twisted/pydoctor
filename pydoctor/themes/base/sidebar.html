@@ -1,17 +1,7 @@
 <nav class="sidebar" xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
   <meta name="pydoctor-template-version" content="1" />
 
-  <div t:render="sections"> 
-    
-      <t:transparent t:render="separator"></t:transparent>
-
-      <!-- 
-        
-        This block should be generated only once.
-        The issue is that it's currently generating the whole 
-        section again and again for each pages.
-
-      -->
+  <div t:render="sections">
 
       <div class="thingTitle">
         <span><t:transparent t:render="kind">Thing (module or class)</t:transparent></span>
