@@ -691,7 +691,8 @@ div.tip, div.hint, div.important {
     flex-wrap: wrap;
     align-items: baseline;
     word-break: break-all;
-    padding: 0 15px 3px 0;
+    padding: 0 15px 3px 1px;
+    box-shadow: -10px 12px 1px -11px #a49191;
 }
 
 .sidebar .thingTitle > span {
