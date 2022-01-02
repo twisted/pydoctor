@@ -134,26 +134,19 @@ __docformat__ = 'epytext en'
 
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
-import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
+from slugify import slugify
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
 
-
-def slugify(value):
-    """
-    Converts to lowercase, removes non-word characters (alphanumerics and
-    underscores) and converts spaces to hyphens. Also strips leading and
-    trailing whitespace.
-    """
-    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-    value = re.sub('[^\w\s-]', '', value).strip().lower()
-    return re.sub('[-\s]+', '-', value)
+##################################################
+## Helper functions
+##################################################
 
 def gettext(node: Union['Element', List['Element']]) -> List[str]:
     """Return the text inside the element(s)."""
