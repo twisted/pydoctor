@@ -134,6 +134,7 @@ __docformat__ = 'epytext en'
 
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
+import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
@@ -142,6 +143,29 @@ from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
+
+
+def slugify(value):
+    """
+    Converts to lowercase, removes non-word characters (alphanumerics and
+    underscores) and converts spaces to hyphens. Also strips leading and
+    trailing whitespace.
+    """
+    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub('[^\w\s-]', '', value).strip().lower()
+    return re.sub('[-\s]+', '-', value)
+
+def gettext(node: Union['Element', List['Element']]) -> List[str]:
+    """Return the text inside the element(s)."""
+    filtered: List[str] = []
+    if isinstance(node, str):
+        filtered.append(node)
+    elif isinstance(node, list):
+        for child in node:
+            filtered.extend(gettext(child))
+    elif isinstance(node, Element):
+        filtered.extend(gettext(node.children))
+    return filtered
 
 ##################################################
 ## DOM-Like Encoding
@@ -445,8 +469,9 @@ def _add_section(
     # Colorize the heading
     head = _colorize(heading_token, errors, 'heading')
 
-    # Add the section's and heading's DOM elements.
-    sec = Element('section')
+    # Add the section's and heading's DOM elements. 
+    # Add 'ids' attribute just like in docutils.
+    sec = Element('section', ids=[slugify(' '.join(gettext(head)))])
     stack[-1].children.append(sec)
     stack.append(sec)
     sec.children.append(head)
@@ -1428,7 +1453,9 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.doctest_block(tree.children[0], tree.children[0]), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('section', 'epytext'):
+        elif tree.tag == 'section':
+            yield set_node_attributes(nodes.section('', ids=tree.attribs['ids']), document=self._document, children=variables)
+        elif tree.tag == 'epytext':
             yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
