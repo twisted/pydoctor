@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+  <meta name="pydoctor-template-version" content="1" />
+
+  <t:transparent t:render="head">Head</t:transparent>
+
+  <body>
+
+    <div t:render="header" />
+
+    <nav class="navbar navbar-default mainnavbar">
+      <t:transparent t:render="nav" />
+    
+        <!-- Side navigation -->
+      <div class="sidebarcontainer" t:render="sidebarcontainer">
+        
+        <t:slot name="sidebar">SideBar contents </t:slot>
+       
+      </div>
+
+    </nav>
+    
+    <div class="container-fluid">
+
+      <div id="main">
+        <t:attr name="class" t:render="maindivclass" />
+
+        <div t:render="subheader" />
+
+        <div class="page-header">
+          <t:slot name="heading"><h1>Heading</h1></t:slot>
+          <div id="showPrivate">
+            <button class="btn btn-link" onclick="togglePrivate()">Toggle Private API</button>
+          </div>
+        </div>
+
+        <div class="categoryHeader">
+          <t:slot name="category">something documentation</t:slot>
+        </div>
+
+        <div class="extrasDocstring">
+          <t:slot name="extras">
+            Inheritance info.
+          </t:slot>
+          <p><a t:render="inhierarchy">View In Hierarchy</a></p>
+        </div>
+
+        <div class="moduleDocstring">
+          <t:slot name="docstring">
+            A docstring.
+          </t:slot>
+        </div>
+
+        <div id="splitTables">
+          <t:slot name="mainTable" />
+          <t:transparent t:render="baseTables">
+            <p class="inheritedFrom">
+              Inherited from <t:slot name="baseName" />:
+            </p>
+            <t:slot name="baseTable" />
+            </t:transparent>
+
+            <t:slot name="packageInitTable"> </t:slot>
+        </div>
+
+        <div id="childList">
+          <t:slot name="childlist"> </t:slot>
+        </div>
+      
+      </div>
+    </div>
+
+    <footer class="container-fluid" t:render="footer" />
+  
+    <script src="pydoctor.js" type='text/javascript'></script>
+
+  </body>
+</html>
