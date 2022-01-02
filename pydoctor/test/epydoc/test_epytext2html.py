@@ -150,14 +150,14 @@ def test_epytext_sections() -> None:
           <p>
            This paragraph is not in any section.
           </p>
-          <div class="rst-section">
+          <div class="rst-section" id="rst-section-1">
            <h2 class="heading">
             Section 1
            </h2>
            <p>
             This is a paragraph in section 1.
            </p>
-           <div class="rst-section">
+           <div class="rst-section" id="rst-section-1-1">
             <h3 class="heading">
              Section 1.1
             </h3>
@@ -166,7 +166,7 @@ def test_epytext_sections() -> None:
             </p>
            </div>
           </div>
-          <div class="rst-section">
+          <div class="rst-section" id="rst-section-2">
            <h2 class="heading">
             Section 2
            </h2>
