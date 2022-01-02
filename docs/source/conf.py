@@ -108,6 +108,15 @@ pydoctor_args = {
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
+    'rtd_theme_api': [
+        '--html-output={outdir}/rtd_theme_api/', 
+        '--project-name=pydoctor',
+        f'--project-version={version}',
+        '--docformat=epytext',
+        '--project-url=../index.html',
+        '--theme=readthedocs',
+        f'{_pydoctor_root}/pydoctor',
+        ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
         '--project-name=pydoctor with a twisted theme',
