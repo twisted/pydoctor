@@ -574,7 +574,7 @@ def test_ClosingBytesIO() -> None:
 
     assert cbio.closed
 
-    assert b''.join(buffer) == data
+    assert b''.join(buffer) == data #type:ignore[unreachable]
 
 
 class TestIntersphinxCache:

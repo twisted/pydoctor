@@ -148,8 +148,8 @@ from pydoctor.model import Documentable
 ## Helper functions
 ##################################################
 
-def gettext(node: Union['Element', List['Element']]) -> List[str]:
-    """Return the text inside the element(s)."""
+def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[str]:
+    """Return the text inside the epytext element(s)."""
     filtered: List[str] = []
     if isinstance(node, str):
         filtered.append(node)
