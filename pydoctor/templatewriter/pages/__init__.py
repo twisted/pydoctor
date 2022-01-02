@@ -1,7 +1,7 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
 from typing import (
-    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
+    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
 if TYPE_CHECKING:
@@ -14,17 +14,18 @@ else:
 import ast
 import abc
 
-import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
-from pydoctor.epydoc.markup import html2stan
+from pydoctor.stanutils import html2stan
 from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
+    from typing_extensions import Final
     from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
@@ -42,7 +43,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
+def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
             fn = node2fullname(dec.func, obj)
@@ -51,9 +52,15 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
+        
+        # Colorize decorators!
+        doc = colorize_inline_pyval(dec)
+        stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        for message in doc.warnings:
+            obj.report(message)
 
-        text = '@' + astor.to_source(dec).strip()
-        yield text, tags.br()
+        yield '@', stan.children, tags.br()
 
 def format_signature(function: model.Function) -> "Flattenable":
     """
@@ -383,7 +390,7 @@ def assembleList(
     lst = lst2
     if not lst:
         return None
-    r = []
+    r: List['Flattenable'] = []
     for i, item in enumerate(lst):
         if i>0:
             r.append(', ')
@@ -565,7 +572,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(ob))
         return r
 
-commonpages: Final[Mapping[str, Type[CommonPage]]] = {
+commonpages: 'Final[Mapping[str, Type[CommonPage]]]' = {
     'Module': ModulePage,
     'Package': PackagePage,
     'Class': ClassPage,

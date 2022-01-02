@@ -7,7 +7,8 @@ U{the epytext documentation<http://epydoc.sourceforge.net/epytext.html>}.
 
 from typing import List
 
-from pydoctor.epydoc.markup import ParseError, flatten, ParsedDocstring
+from pydoctor.epydoc.markup import ParseError, ParsedDocstring
+from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.epytext import parse_docstring
 from pydoctor.node2stan import node2stan
 from pydoctor.test import NotFoundLinker
@@ -25,8 +26,11 @@ def epytext2node(s: str)-> nodes.document:
     return parse_epytext(s).to_node()
 
 def epytext2html(s: str) -> str:
-    return ''.join((l.strip() for l in prettify(flatten(node2stan(epytext2node(s), NotFoundLinker()))).splitlines()))
-    
+    return squash(flatten(node2stan(epytext2node(s), NotFoundLinker())))
+
+def squash(s: str) -> str:
+    return ''.join(l.strip() for l in prettify(s).splitlines())
+
 def test_epytext_paragraph() -> None:
     doc = '''
         This is a paragraph.  Paragraphs can
@@ -51,7 +55,7 @@ def test_epytext_paragraph() -> None:
          </p>
 
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_ordered_list() -> None:
@@ -77,7 +81,7 @@ def test_epytext_ordered_list() -> None:
         <p> This ends the list.</p>
         <ol class="rst-simple"> <li>  This new list starts at four. </li></ol>
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_nested_list() -> None:
@@ -92,7 +96,7 @@ def test_epytext_nested_list() -> None:
     <p>This is a paragraph.</p><ol class="rst-simple"><li>This is a list item.</li>
     <li>This is a second list item.<ul><li>This is a sublist.</li></ul></li></ol>
     '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_complex_list() -> None:
@@ -122,7 +126,7 @@ def test_epytext_complex_list() -> None:
         <span class="py-builtin">len</span>(<span class="py-string">'This is a doctest block'</span>)
         <span class="py-output">23</span></pre><p>This is the second paragraph.</p></li></ol>
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_sections() -> None:
@@ -172,7 +176,7 @@ def test_epytext_sections() -> None:
           </div>
 
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_literal_block() -> None:
@@ -199,7 +203,7 @@ def test_epytext_literal_block() -> None:
           </p>
 
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_inline() -> None:
@@ -224,7 +228,7 @@ def test_epytext_inline() -> None:
         <p> Without the capital letter, matching braces are not interpreted as markup: <tt class="rst-docutils literal">  
         <span class="pre">   my_dict={1:2,  </span>  3:4} </tt> .</p>
         '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
     
 
 def test_epytext_url() -> None:
@@ -246,7 +250,7 @@ def test_epytext_url() -> None:
         <li><a class="rst-reference external" href="http://www.python.org" target="_top">The<strong><em>Python</em></strong>homepage</a></li>
         <li><a class="rst-reference external" href="mailto:edloper@gradient.cis.upenn.edu" target="_top">Edward Loper</a></li></ul>'''
 
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
 
 def test_epytext_symbol() -> None:
     doc = '''
@@ -262,16 +266,19 @@ def test_epytext_symbol() -> None:
     <ul class="rst-simple"> <li>  <span>   ∑  </span>  <span>   α  </span>  /x  <span>   ≤  </span>  <span>   β  </span> </li></ul>
     <p> <span>  ← </span> and <span>  ← </span> both give left arrows.  Some other arrows are <span>  → </span> , <span>  ↑ </span> , and <span>  ↓ </span> .</p>
     '''
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
 
 def test_nested_markup() -> None:
+    """
+    The Epytext nested inline markup are correctly transformed to HTML. 
+    """
     doc = '''
         I{B{Inline markup} may be nested; and
         it may span} multiple lines.
         '''
     expected = '''<em> <strong>  Inline markup </strong> may be nested; and it may span</em>multiple lines.'''
     
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)
 
     doc = '''
         It becomes a little bit complicated with U{B{custom} links <https://google.ca>}
@@ -280,4 +287,4 @@ def test_nested_markup() -> None:
       It becomes a little bit complicated with<a class="rst-reference external" href="https://google.ca" target="_top"><strong>custom</strong>links</a>
       '''
     
-    assert epytext2html(doc) == ''.join(l.strip() for l in prettify(expected).splitlines())
+    assert epytext2html(doc) == squash(expected)

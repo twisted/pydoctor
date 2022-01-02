@@ -8,13 +8,12 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, NoReturn, Optional, Sequence, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
 import astor
 from pydoctor import epydoc2stan, model, node2stan
-from pydoctor.epydoc.markup import flatten
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import bind_args, node2dottedname, node2fullname
 
@@ -120,15 +119,16 @@ def is_using_typing_final(obj: model.Attribute) -> bool:
     """
     Detect if C{obj}'s L{Attribute.annotation} is using L{typing.Final}.
     """
+    final_qualifiers = ("typing.Final", "typing_extensions.Final")
     fullName = node2fullname(obj.annotation, obj)
-    if fullName == "typing.Final":
+    if fullName in final_qualifiers:
         return True
     if isinstance(obj.annotation, ast.Subscript):
         # Final[...] or typing.Final[...] expressions
         if isinstance(obj.annotation.value, (ast.Name, ast.Attribute)):
             value = obj.annotation.value
             fullName = node2fullname(value, obj)
-            if fullName == "typing.Final":
+            if fullName in final_qualifiers:
                 return True
 
     return False
@@ -157,7 +157,7 @@ def _extract_annotation_subscript(annotation: ast.Subscript) -> ast.AST:
     Extract the "str, bytes" part from annotations like  "Union[str, bytes]".
     """
     ann_slice = annotation.slice
-    if isinstance(ann_slice, ast.Index):
+    if sys.version_info < (3,9) and isinstance(ann_slice, ast.Index):
         return ann_slice.value
     else:
         return ann_slice
@@ -371,6 +371,7 @@ class ModuleVistor(ast.NodeVisitor):
                     attr = current.contents.get(asname)
                     if not attr:
                         attr = self.builder.addAttribute(name=asname, kind=model.DocumentableKind.ALIAS, parent=current)
+                    assert isinstance(attr, model.Attribute)
                     attr._alias_to = f'{modname}.{orgname}'
                     # This is only for the HTML repr
                     attr.value=ast.Name(attr._alias_to)
@@ -387,6 +388,8 @@ class ModuleVistor(ast.NodeVisitor):
                                 "astbuilder",
                                 "moving %r into %r" % (ob.fullName(), current.fullName())
                                 )
+                            # Must be a Module since the exports is set to an empty list if it's not.
+                            assert isinstance(current, model.Module)
                             ob.reparent(current, asname)
                             continue
 
@@ -569,8 +572,10 @@ class ModuleVistor(ast.NodeVisitor):
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
             return
-        obj: Optional[model.Attribute] = cls.contents.get(name)
-        
+
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
+
         if obj is None:
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
@@ -616,8 +621,10 @@ class ModuleVistor(ast.NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
 
-        obj = cls.contents.get(name)
+        # Class variables can only be Attribute, so it's OK to cast
+        obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
+
             obj = self.builder.addAttribute(name=name, kind=None, parent=cls)
 
         if annotation is None and expr is not None:
@@ -934,10 +941,12 @@ class ModuleVistor(ast.NodeVisitor):
             yield from base_args.args
             varargs = base_args.vararg
             if varargs:
+                varargs.arg = epydoc2stan.VariableArgument(varargs.arg)
                 yield varargs
             yield from base_args.kwonlyargs
             kwargs = base_args.kwarg
             if kwargs:
+                kwargs.arg = epydoc2stan.KeywordArgument(kwargs.arg)
                 yield kwargs
         def _get_all_ast_annotations() -> Iterator[Tuple[str, Optional[ast.expr]]]:
             for arg in _get_all_args():
@@ -990,10 +999,6 @@ class _ValueFormatter:
         """
         Present the python value as HTML. 
         Without the englobing <code> tags.
-
-        Maybe it would be best to keep the englobing <code> tags.
-        Links would be in red directly instead of having to add some 
-        special style for those. But it would also break some tests.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
         # This avoids calling flatten() twice.

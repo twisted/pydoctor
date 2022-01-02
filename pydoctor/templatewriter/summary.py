@@ -19,6 +19,7 @@ from pydoctor.templatewriter.pages import Page
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from typing_extensions import Final
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
@@ -54,7 +55,7 @@ class ModuleIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Module Index"
@@ -79,12 +80,18 @@ def findRootClasses(
         if ' ' in cls.name or not cls.isVisible:
             continue
         if cls.bases:
-            for n, b in zip(cls.bases, cls.baseobjects):
-                if b is None or not b.isVisible:
-                    cast(List[model.Class], roots.setdefault(n, [])).append(cls)
-                elif b.system is not system:
-                    roots[b.fullName()] = b
+            for name, base in zip(cls.bases, cls.baseobjects):
+                if base is None or not base.isVisible:
+                    # The base object is in an external library or filtered out (not visible)
+                    # Take special care to avoid AttributeError: 'ZopeInterfaceClass' object has no attribute 'append'.
+                    if isinstance(roots.get(name), model.Class):
+                        roots[name] = [cast(model.Class, roots[name])]
+                    cast(List[model.Class], roots.setdefault(name, [])).append(cls)
+                elif base.system is not system:
+                    # Edge case with multiple systems, is it even possible to run into this code?
+                    roots[base.fullName()] = base
         else:
+            # This is a common root class. 
             roots[cls.fullName()] = cls
     return sorted(roots.items(), key=lambda x:x[0].lower())
 
@@ -144,7 +151,7 @@ class ClassIndexPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Class Hierarchy"
@@ -323,7 +330,7 @@ class UndocumentedSummaryPage(Page):
         # Override L{Page.loader} because here the page L{filename}
         # does not equal the template filename.
         super().__init__(system=system, template_lookup=template_lookup,
-            loader=template_lookup.get_template('summary.html').loader )
+            loader=template_lookup.get_loader('summary.html') )
 
     def title(self) -> str:
         return "Summary of Undocumented Objects"
@@ -346,7 +353,7 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: Final[Iterable[Type[Page]]] = [
+summarypages: 'Final[Iterable[Type[Page]]]' = [
     ModuleIndexPage,
     ClassIndexPage,
     IndexPage,

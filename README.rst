@@ -49,11 +49,21 @@ pydoctor currently supports the following markup languages in docstrings:
     The markup language used by Sphinx.
     More expressive than epytext, but also slightly more complex and verbose.
 
+`google`__
+    Docstrings formatted as specified by the Google Python Style Guide. 
+    (compatible with reStructuredText markup)
+
+`numpy`__
+    Docstrings formatted as specified by the Numpy Docstring Standard. 
+    (compatible with reStructuredText markup)
+
 ``plaintext``
     Text without any markup.
 
 __ http://epydoc.sourceforge.net/manual-epytext.html
 __ https://docutils.sourceforge.io/rst.html
+__ https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings
+__ https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
 
 You can select a different format using the ``--docformat`` option or the ``__docformat__`` module variable. 
 
@@ -63,7 +73,35 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
-* Mark variables as contants when their names is all caps or if using `typing.Final` annotation.
+pydoctor 21.12.0
+^^^^^^^^^^^^^^^^
+
+* Add support for reStructuredText directives ``.. deprecated::``, ``.. versionchanged::`` and ``.. versionadded::``.
+* Add syntax highlight for constant values, decorators and parameter defaults.
+* Embedded documentation links inside the value of constants, decorators and parameter defaults.
+* Provide option ``--pyval-repr-maxlines`` and ``--pyval-repr-linelen`` to control the size of a constant value representation. 
+* Provide option ``--process-types`` to automatically link types in docstring fields (`more info <https://pydoctor.readthedocs.io/en/latest/codedoc.html#type-fields>`_).
+* Forked Napoleon Sphinx extension to provide google-style and numpy-style docstring parsing. 
+* Introduced fields ``warns``,  ``yields`` and ``yieldtype``. 
+* Following google style guide, ``*args`` and ``**kwargs`` are now rendered with asterisks in the parameters table.
+* Mark variables as constants when their names is all caps or if using `Final` annotation.
+
+pydoctor 21.9.2
+^^^^^^^^^^^^^^^
+
+* Fix ``AttributeError`` raised when parsing reStructuredText consolidated fields, caused by a change in ``docutils`` 0.18.
+* Fix ``DeprecationWarning``, use newer APIs of ``importlib_resources`` module.
+
+pydoctor 21.9.1
+^^^^^^^^^^^^^^^
+
+* Fix deprecation warning and officially support Python 3.10.
+* Fix the literals style (use same style as before).
+
+pydoctor 21.9.0
+^^^^^^^^^^^^^^^
+
+* Add support for multiple themes, selectable with ``--theme`` option.
 * Support selecting a different docstring format for a module using the ``__docformat__`` variable.
 * HTML templates are now customizable with ``--template-dir`` option.
 * Change the fields layout to display the arguments type right after their name. Same goes for variables.
