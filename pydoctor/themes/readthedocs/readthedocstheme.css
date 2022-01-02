@@ -156,19 +156,14 @@ a[name] {
 
 .navbar-brand >  a.projecthome::before {
     background-image: url(fonts/home.svg);
-    background-size: 18px 15px;
-    background-position: center;
-    background-repeat: no-repeat;
-    display: inline-block;
-    width: 20px; 
-    height: 15px;
-    content:"";
-    -webkit-filter: invert(100%);
-    filter: invert(100%);
 }
 
 .navbar-brand >  a:last-child::before {
     background-image: url(fonts/book.svg);
+}
+
+.navbar-brand >  a.projecthome::before, 
+.navbar-brand >  a:last-child::before {
     background-size: 18px 15px;
     background-position: center;
     background-repeat: no-repeat;
@@ -178,6 +173,7 @@ a[name] {
     content:"";
     -webkit-filter: invert(100%);
     filter: invert(100%);
+    margin-bottom: -2px;
 }
 
 .navbar-brand > a:hover, .navlinks > a:hover {
@@ -425,6 +421,7 @@ pre {
 /* Sectionn title */
 .sidebar .thingTitle {
     padding-left: 10px;
+    box-shadow: none;
 }
 
 /* Setting margins to 0, 
@@ -447,6 +444,7 @@ pre {
     padding-left: 15px;
     padding-right: 15px;
     margin-left: 0;
+    box-shadow: none;
 }
 
 .sidebar li li a, .sidebar li .childrenKindTitle {
@@ -675,7 +673,8 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
     .page-header {
         margin-left: -15px;
         margin-top: -5px;
-        width: calc(100% + 30px);
+        width: 100%;
+        padding-left: 15px;
     }
     .navbar-header{
         width: 100%!important;
