@@ -85,7 +85,7 @@ def get_parser_by_name(docformat: str, obj: Optional['Documentable'] = None) -> 
     """
     mod = import_module(f'pydoctor.epydoc.markup.{docformat}')
     # We can safely ignore this mypy warning, since we can be sure the 'get_parser' function exist and is "correct".
-    return mod.get_parser(obj) # type:ignore[no-any-return, attr-defined]
+    return mod.get_parser(obj) # type:ignore[no-any-return]
 
 ##################################################
 ## ParsedDocstring

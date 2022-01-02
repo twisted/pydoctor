@@ -18,14 +18,13 @@ from inspect import Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
-from pydoctor.astutils import node2dottedname, node2fullname
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -353,7 +352,7 @@ class Documentable:
         return '.'.join([full_name] + parts[i + 1:])
 
     def _resolveAlias(self, alias: 'Attribute', 
-                      indirections:Optional[List['Attribute']]=None) -> str:
+                      indirections:Optional[List['Attribute']]=None) -> Optional[str]:
         """
         Resolve the alias value to it's target full name.
         Or fall back to original alias full name if we know we've exhausted the max recursions.
@@ -361,7 +360,7 @@ class Documentable:
         @param indirections: Chain of alias objects followed. 
             This variable is used to prevent infinite loops when doing the lookup.
         """
-        if len(indirections or ()) > self._RESOLVE_ALIAS_MAX_RECURSE:
+        if indirections and len(indirections or ()) > self._RESOLVE_ALIAS_MAX_RECURSE:
             return indirections[0].fullName() 
         
         # the _alias_to attribute should never be none for ALIAS objects
@@ -386,7 +385,7 @@ class Documentable:
         return None
 
     def _resolveDocumentable(self, o: 'Documentable', 
-                             indirections:Optional[List['Attribute']]=None) -> str:
+                             indirections:Optional[List['Attribute']]=None) -> Optional[str]:
         """
         Wrapper for L{_resolveAlias}. 
 
@@ -463,11 +462,13 @@ class Documentable:
         """
         Return the known aliases of an object. 
 
-        It seems that the list if not always complete, though.
+        @note: It seems that the list is not always complete, though.
         """
         aliases: List['Attribute'] = []
         for alias in filter(lambda ob: ob.kind is DocumentableKind.ALIAS and isinstance(ob, Attribute), 
                          self.system.allobjects.values()):
+            assert isinstance(alias, Attribute)
+            assert alias.parent is not None
             if alias.parent._resolveDocumentable(alias) == self.fullName():
                 aliases.append(alias)
         return aliases
@@ -508,18 +509,19 @@ class Module(CanContainImportsDocumentable):
     def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
         # Follows aliases
         if name in self.contents:
-            return self._resolveDocumentable(
+            resolved = self._resolveDocumentable(
                     self.contents[name], 
                     indirections)
-        elif name in self._localNameToFullName_map:
-            resolved = self._localNameToFullName_map[name]
-            if resolved in self.system.allobjects:
+            if resolved: 
+                return resolved
+        if name in self._localNameToFullName_map:
+            if self._localNameToFullName_map[name] in self.system.allobjects:
                 resolved = self._resolveDocumentable(
-                    self.system.allobjects[resolved], 
+                    self.system.allobjects[self._localNameToFullName_map[name]], 
                     indirections)
-            return resolved
-        else:
-            return name
+                if resolved:
+                    return resolved
+        return name
 
     @property
     def module(self) -> 'Module':
@@ -590,18 +592,19 @@ class Class(CanContainImportsDocumentable):
     def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
         # Follows aliases
         if name in self.contents:
-            return self._resolveDocumentable(
+            resolved = self._resolveDocumentable(
                     self.contents[name], 
                     indirections)
-        elif name in self._localNameToFullName_map:
-            resolved = self._localNameToFullName_map[name]
-            if resolved in self.system.allobjects:
+            if resolved:
+                return resolved
+        if name in self._localNameToFullName_map:
+            if self._localNameToFullName_map[name] in self.system.allobjects:
                 resolved = self._resolveDocumentable(
-                    self.system.allobjects[resolved], 
+                    self.system.allobjects[self._localNameToFullName_map[name]], 
                     indirections)
-            return resolved
-        else:
-            return self.parent._localNameToFullName(name)
+                if resolved:
+                    return resolved
+        return self.parent._localNameToFullName(name)
 
     @property
     def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:

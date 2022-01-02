@@ -6,11 +6,8 @@ from typing import (
 )
 if TYPE_CHECKING:
     from typing_extensions import Final
-else:
-    from collections import defaultdict
-    from functools import partial
-    Final = defaultdict(partial(defaultdict, defaultdict))
 
+from collections import defaultdict
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model
