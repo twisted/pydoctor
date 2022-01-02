@@ -100,7 +100,12 @@ class ParsedDocstring(abc.ABC):
     markup parsers such as L{pydoctor.epydoc.markup.epytext.parse_docstring()}
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
-    Subclasses must implement L{has_body()}, L{to_stan()}, L{to_node()} and L{get_toc()}.
+    Subclasses must implement L{has_body()} and L{to_node()}.
+    
+    A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
+    But some subclasses overide this behaviour.
+    
+    Implementation of L{get_toc()} also relies on L{to_node()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -112,7 +117,7 @@ class ParsedDocstring(abc.ABC):
 
         self._stan: Optional[Tag] = None
 
-    @property
+    @abc.abstractproperty
     def has_body(self) -> bool:
         """
         Does this docstring have a non-empty body?
@@ -120,7 +125,6 @@ class ParsedDocstring(abc.ABC):
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
-        raise NotImplementedError()
     
     def get_toc(self, depth: int) -> Optional['ParsedDocstring']:
         """
@@ -155,13 +159,16 @@ class ParsedDocstring(abc.ABC):
         self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
     
+    @abc.abstractproperty
     def to_node(self) -> nodes.document:
         """
         Translate this docstring to a L{docutils.nodes.document}.
 
         @return: The docstring presented as a L{docutils.nodes.document}.
+
+        @note: Some L{ParsedDocstring} subclasses do not support docutils nodes.
+            This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
-        raise NotImplementedError()
 
 ##################################################
 ## Fields
