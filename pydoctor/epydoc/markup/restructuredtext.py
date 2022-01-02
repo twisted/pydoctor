@@ -51,7 +51,7 @@ from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: i
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
 from docutils.parsers.rst import Directive, directives # type:ignore[attr-defined]
-from docutils.transforms import Transform, frontmatter, parts
+from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
@@ -147,54 +147,12 @@ class ParsedRstDocstring(ParsedDocstring):
             isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-    
-    def get_toc(self, depth: int) -> Optional[ParsedDocstring]:
-
-        contents = self._build_contents(self._document, depth=depth)
-        docstring_toc = new_document('toc')
-        if contents:
-            docstring_toc.extend(contents)
-            return ParsedRstDocstring(docstring_toc, ())
-        else:
-            return None
 
     def to_node(self) -> nodes.document:
         return self._document
 
     def __repr__(self) -> str:
         return '<ParsedRstDocstring: ...>'
-
-    def _build_contents(self, node: nodes.Node, depth: int, level: int = 0) -> Optional[nodes.Node]:
-        # Simplified from docutils Contents transform. 
-        level += 1
-        sections = [sect for sect in node if isinstance(sect, nodes.section)]
-        entries = []
-        for section in sections:
-            title = section[0]
-            entrytext = self._copy_and_filter(title)
-            reference = nodes.reference('', '', refid=section['ids'][0],
-                                        *entrytext)
-            ref_id = self._document.set_id(reference,
-                                     suggested_prefix='toc-entry')
-            entry = nodes.paragraph('', '', reference)
-            item = nodes.list_item('', entry)
-            if title.next_node(nodes.reference) is None:
-                title['refid'] = ref_id
-            if level < depth:
-                subsects = self._build_contents(section, depth=depth, level=level)
-                item += subsects or []
-            entries.append(item)
-        if entries:
-            contents = nodes.bullet_list('', *entries)
-            return contents
-        else:
-            return None
-
-    def _copy_and_filter(self, node: nodes.Node) -> nodes.Node:
-        """Return a copy of a title, with references, images, etc. removed."""
-        visitor = parts.ContentsFilter(self._document)
-        node.walkabout(visitor)
-        return visitor.get_entry_text()
 
 class _EpydocReader(StandaloneReader):
     """

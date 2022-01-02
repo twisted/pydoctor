@@ -47,7 +47,7 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-from docutils import nodes
+from docutils import nodes, utils
 from twisted.web.template import Tag
 
 
@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from pydoctor.model import Documentable
 
 from pydoctor import node2stan
+from pydoctor.epydoc import docutils
 
 ##################################################
 ## Contents
@@ -125,7 +126,18 @@ class ParsedDocstring(abc.ABC):
         """
         The table of contents of the docstring if titles are defined or C{None}.
         """
-        raise NotImplementedError()
+        try:
+            document = self.to_node()
+        except NotImplementedError:
+            return None
+        contents = docutils.build_table_of_content(document, depth=depth)
+        docstring_toc = utils.new_document('toc')
+        if contents:
+            docstring_toc.extend(contents)
+            from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+            return ParsedRstDocstring(docstring_toc, ())
+        else:
+            return None
 
     def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
         """

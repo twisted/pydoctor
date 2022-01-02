@@ -47,9 +47,6 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return bool(self._text)
-    
-    def get_toc(self, depth: int) -> None:
-        return None
 
     # plaintext parser overrides the default to_stan() method for performance and design reasons. 
     # We don't want to use docutils to process the plaintext format because we won't 
