@@ -24,7 +24,7 @@ body > nav {
     width: 300px!important;
 
     overflow-y: scroll;
-    scrollbar-width: 0;
+    scrollbar-width: none;
 }
 
 body > nav::-webkit-scrollbar{
