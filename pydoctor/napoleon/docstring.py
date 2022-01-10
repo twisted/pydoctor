@@ -14,7 +14,7 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
 
 import attr
 
