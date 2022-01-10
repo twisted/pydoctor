@@ -70,6 +70,9 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+in development
+^^^^^^^^^^^^^^
+
 pydoctor 21.12.1
 ^^^^^^^^^^^^^^^^
 * Include module ``sre_parse36.py`` within ``pydoctor.epydoc`` to avoid an extra PyPi dependency.
