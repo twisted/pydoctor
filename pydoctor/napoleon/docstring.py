@@ -14,7 +14,7 @@ from enum import Enum, auto
 import re
 
 from functools import partial
-from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Deque, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 import attr
 
@@ -1556,13 +1556,13 @@ class NumpyDocstring(GoogleDocstring):
         """
         items: List[Tuple[str, List[str], Optional[str]]] = []
 
-        def parse_item_name(text: str) -> Tuple[str, str]:
+        def parse_item_name(text: str) -> Tuple[str, Optional[str]]:
             """Match ':role:`name`' or 'name'"""
             m = self._name_rgx.match(text)
             if m:
                 g = m.groups()
                 if g[1] is None:
-                    return g[3], None  # type: ignore [unreachable]
+                    return g[3], None
                 else:
                     return g[2], g[1]
             raise ValueError(f"{text} is not a item name")
