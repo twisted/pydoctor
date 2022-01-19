@@ -314,4 +314,4 @@ The content of ``my_project/__init__.py`` includes::
 
     from .core._impl import MyClass
 
-    __all__ = ["MyClass"]
+    __all__ = ("MyClass",)
