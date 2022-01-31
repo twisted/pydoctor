@@ -4,15 +4,18 @@ Unit tests for model.
 
 from inspect import signature
 from optparse import Values
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+import subprocess
 from typing import cast
 import zlib
-
 import pytest
 
-from pydoctor import model
+from pydoctor import model, stanutils
+from pydoctor.templatewriter import pages
 from pydoctor.driver import parse_args
 from pydoctor.sphinx import CacheT
+from pydoctor.test import CapSys
 from pydoctor.test.test_astbuilder import fromText
 
 
@@ -270,3 +273,37 @@ def test_introspection_extension() -> None:
     func = module.contents['raiseException']
     assert func.docstring is not None
     assert func.docstring.strip() == "Raise L{RaiserException}."
+
+testpackages = Path(__file__).parent / 'testpackages'
+
+def test_c_module_text_signature(capsys:CapSys) -> None:
+    
+    c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
+    package_path = c_module_invalid_text_signature / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {c_module_invalid_text_signature} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        # does not need to process for c-modules, they are imported and analyzed directly.
+        
+        assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
+        
+        mymod_base = system.allobjects['mymod.base']
+        assert isinstance(mymod_base, model.Module)
+        assert mymod_base.contents['invalid_text_signature'].signature == None
+
+        assert "(...)" == pages.format_signature(mymod_base.contents['invalid_text_signature'])
+        assert "(a='r', b=-3.14)" == stanutils.flatten_text(pages.format_signature(mymod_base.contents['valid_text_signature']))
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')

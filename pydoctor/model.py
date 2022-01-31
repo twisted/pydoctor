@@ -807,11 +807,8 @@ class System:
                 try:
                     f.signature = signature(v)
                 except ValueError:
-                    # function either has an invalid text signature or no signature
-                    # at all. We distinguish between the two by looking at the
-                    # __text_signature__ attribute
-                    if getattr(v, "__text_signature__", None) is not None:
-                        parent.report("Cannot parse signature of {0.name}.{1}".format(parent, k))
+                    # function has an invalid signature.
+                    parent.report(f"Cannot parse signature of {parent.fullName()}.{k}")
                     f.signature = None
                         
                 f.is_async = False
