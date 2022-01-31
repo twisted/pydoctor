@@ -14,11 +14,11 @@ import platform
 import sys
 import types
 from enum import Enum
-from inspect import Signature
+from inspect import signature, Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
@@ -513,7 +513,7 @@ class Function(Inheritable):
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
-    signature: Signature
+    signature: Optional[Signature]
 
     def setup(self) -> None:
         super().setup()
@@ -536,6 +536,22 @@ _ModuleT = Module
 _PackageT = Package
 
 T = TypeVar('T')
+
+
+# Declare the types that we consider as functions (also when they are coming
+# from a C extension)
+func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
+if hasattr(types, "MethodDescriptorType"):
+    # This is Python >= 3.7 only
+    func_types += (types.MethodDescriptorType, )
+else:
+    func_types += (type(str.join), )
+if hasattr(types, "ClassMethodDescriptorType"):
+    # This is Python >= 3.7 only
+    func_types += (types.ClassMethodDescriptorType, )
+else:
+    func_types += (type(dict.__dict__["fromkeys"]), )
+
 
 class System:
     """A collection of related documentable objects.
@@ -780,15 +796,27 @@ class System:
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
+            if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the above abstract types.
-                    or v.__class__.__name__ == 'builtin_function_or_method'):
+                    # instances of the abstract types in func_types
+                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
                 f.decorators = None
-                f.signature = Signature()
+                try:
+                    f.signature = signature(v)
+                except ValueError:
+                    # function has an invalid signature.
+                    parent.report(f"Cannot parse signature of {parent.fullName()}.{k}")
+                    f.signature = None
+                except TypeError:
+                    # in pypy we get a TypeError calling signature() on classmethods, 
+                    # because apparently, they are not callable :/
+                    f.signature = None
+                        
+                f.is_async = False
+                f.annotations = {name: None for name in f.signature.parameters} if f.signature else {}
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)

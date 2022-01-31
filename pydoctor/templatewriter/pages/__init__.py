@@ -45,7 +45,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
-        
+
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
         stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
@@ -60,7 +60,7 @@ def format_signature(function: model.Function) -> "Flattenable":
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature))
+    return html2stan(str(function.signature)) if function.signature else "(...)"
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
@@ -71,8 +71,6 @@ class DocGetter:
             return epydoc2stan.format_docstring(ob)
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
-
-
 
 class Nav(TemplateElement):
     """
