@@ -11,6 +11,8 @@ from typing import cast
 import zlib
 import pytest
 
+from twisted.web.template import Tag
+
 from pydoctor import model, stanutils
 from pydoctor.templatewriter import pages
 from pydoctor.driver import parse_args
@@ -229,6 +231,7 @@ def test_introspection_python() -> None:
     assert module.docstring == __doc__
 
     func = module.contents['test_introspection_python']
+    assert isinstance(func, model.Function)
     assert func.docstring == "Find docstrings from this test using introspection on pure Python."
     assert func.signature == signature(test_introspection_python)
 
@@ -237,6 +240,7 @@ def test_introspection_python() -> None:
     assert method.docstring == "Mmm"
 
     func = module.contents['dummy_function_with_complex_signature']
+    assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
 
 
@@ -299,10 +303,15 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         
         mymod_base = system.allobjects['mymod.base']
         assert isinstance(mymod_base, model.Module)
-        assert mymod_base.contents['invalid_text_signature'].signature == None
+        func = mymod_base.contents['invalid_text_signature']
+        assert isinstance(func, model.Function)
+        assert func.signature == None
+        valid_func = mymod_base.contents['valid_text_signature']
+        assert isinstance(valid_func, model.Function)
 
-        assert "(...)" == pages.format_signature(mymod_base.contents['invalid_text_signature'])
-        assert "(a='r', b=-3.14)" == stanutils.flatten_text(pages.format_signature(mymod_base.contents['valid_text_signature']))
+        assert "(...)" == pages.format_signature(func)
+        assert "(a='r', b=-3.14)" == stanutils.flatten_text(
+            cast(Tag, pages.format_signature(valid_func)))
 
     finally:
         # cleanup
