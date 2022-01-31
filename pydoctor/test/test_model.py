@@ -243,7 +243,7 @@ def test_introspection_python() -> None:
     assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
 
-
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
@@ -280,6 +280,7 @@ def test_introspection_extension() -> None:
 
 testpackages = Path(__file__).parent / 'testpackages'
 
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
 def test_c_module_text_signature(capsys:CapSys) -> None:
     
     c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
