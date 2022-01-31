@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Fix introspection of functions comming from C-extensions.
 
 pydoctor 21.12.1
 ^^^^^^^^^^^^^^^^
