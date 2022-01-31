@@ -18,7 +18,7 @@ from inspect import signature, Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Collection, Dict, Iterable, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
