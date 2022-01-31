@@ -7,7 +7,6 @@ from typing import (
 import ast
 import abc
 
-import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
@@ -46,9 +45,6 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
-
-        text = '@' + astor.to_source(dec).strip()
-        yield text, tags.br()
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
