@@ -1,8 +1,13 @@
-from pydoctor.test.test_astbuilder import fromText
-from pydoctor.test.test_packages import processPackage
-from pydoctor.zopeinterface import ZopeInterfaceSystem
 
-from . import CapSys
+from typing import cast
+from pydoctor.test.test_astbuilder import fromText, type2html
+from pydoctor.test.test_packages import processPackage
+from pydoctor.zopeinterface import ZopeInterfaceClass, ZopeInterfaceSystem
+from pydoctor.epydoc.markup import ParsedDocstring
+from pydoctor import model
+from pydoctor.stanutils import flatten
+
+from . import CapSys, NotFoundLinker
 
 
 # we set up the same situation using both implements and
@@ -73,6 +78,12 @@ def implements_test(src: str) -> None:
     foobar = mod.contents['FooBar']
     onlybar = mod.contents['OnlyBar']
 
+    assert isinstance(ifoo, ZopeInterfaceClass)
+    assert isinstance(ibar, ZopeInterfaceClass)
+    assert isinstance(foo, ZopeInterfaceClass)
+    assert isinstance(foobar, ZopeInterfaceClass)
+    assert isinstance(onlybar, ZopeInterfaceClass)
+
     assert ifoo.isinterface and ibar.isinterface
     assert not foo.isinterface and not foobar.isinterface and not foobar.isinterface
 
@@ -110,7 +121,9 @@ def test_multiply_inheriting_interfaces() -> None:
     class Both(One, Two): pass
     '''
     mod = fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
-    assert len(mod.contents['Both'].allImplementedInterfaces) == 2
+    B = mod.contents['Both']
+    assert isinstance(B, ZopeInterfaceClass)
+    assert len(list(B.allImplementedInterfaces)) == 2
 
 def test_attribute(capsys: CapSys) -> None:
     src = '''
@@ -122,11 +135,11 @@ def test_attribute(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
-    assert attr.kind == 'Attribute'
+    assert attr.kind is model.DocumentableKind.ATTRIBUTE
     assert attr.name == 'attr'
     assert attr.docstring == "documented attribute"
     bad_attr = mod.contents['C'].contents['bad_attr']
-    assert bad_attr.kind == 'Attribute'
+    assert bad_attr.kind is model.DocumentableKind.ATTRIBUTE
     assert bad_attr.name == 'bad_attr'
     assert bad_attr.docstring is None
     captured = capsys.readouterr().out
@@ -135,9 +148,14 @@ def test_attribute(capsys: CapSys) -> None:
 def test_interfaceclass() -> None:
     system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceclass.mod']
-    assert mod.contents['MyInterface'].isinterface
-    assert mod.contents['MyInterface'].docstring == "This is my interface."
-    assert mod.contents['AnInterface'].isinterface
+    I = mod.contents['MyInterface']
+    assert isinstance(I, ZopeInterfaceClass)
+    assert I.isinterface
+    assert I.docstring == "This is my interface."
+
+    J = mod.contents['AnInterface']
+    assert isinstance(J, ZopeInterfaceClass)
+    assert J.isinterface
 
 def test_warnerproofing() -> None:
     src = '''
@@ -147,7 +165,9 @@ def test_warnerproofing() -> None:
         pass
     '''
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
-    assert mod.contents['IMyInterface'].isinterface
+    I = mod.contents['IMyInterface']
+    assert isinstance(I, ZopeInterfaceClass)
+    assert I.isinterface
 
 def test_zopeschema(capsys: CapSys) -> None:
     src = '''
@@ -160,13 +180,16 @@ def test_zopeschema(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
-    assert text.kind == "TextLine"
+    assert type2html(text)==  "<code>schema.TextLine</code>"
+    assert text.kind is model.DocumentableKind.SCHEMA_FIELD
     undoc = mod.contents['IMyInterface'].contents['undoc']
     assert undoc.docstring is None
-    assert undoc.kind == "Bool"
+    assert type2html(undoc) == "<code>schema.Bool</code>"
+    assert undoc.kind is model.DocumentableKind.SCHEMA_FIELD
     bad = mod.contents['IMyInterface'].contents['bad']
     assert bad.docstring is None
-    assert bad.kind == "ASCII"
+    assert type2html(bad) == "<code>schema.ASCII</code>"
+    assert bad.kind is model.DocumentableKind.SCHEMA_FIELD
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
@@ -180,7 +203,7 @@ def test_aliasing_in_class() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     attr = mod.contents['IMyInterface'].contents['attribute']
     assert attr.docstring == 'fun in a bun'
-    assert attr.kind == "Attribute"
+    assert attr.kind is model.DocumentableKind.ATTRIBUTE
 
 def test_zopeschema_inheritance() -> None:
     src = '''
@@ -195,15 +218,18 @@ def test_zopeschema_inheritance() -> None:
         myothertext = MyOtherTextLine(description="fun in another bun")
         myint = INTEGERSCHMEMAFIELD(description="not as much fun")
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
-    assert mytext.kind == "MyTextLine"
+    assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyTextLine</code>"
+    assert mytext.kind is model.DocumentableKind.SCHEMA_FIELD
     myothertext = mod.contents['IMyInterface'].contents['myothertext']
     assert myothertext.docstring == 'fun in another bun'
-    assert myothertext.kind == "MyOtherTextLine"
+    assert flatten(cast(ParsedDocstring, myothertext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyOtherTextLine</code>"
+    assert myothertext.kind is model.DocumentableKind.SCHEMA_FIELD
     myint = mod.contents['IMyInterface'].contents['myint']
-    assert myint.kind == "Int"
+    assert flatten(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "<code>INTEGERSCHMEMAFIELD</code>"
+    assert myint.kind is model.DocumentableKind.SCHEMA_FIELD
 
 def test_docsources_includes_interface() -> None:
     src = '''
@@ -267,6 +293,7 @@ def test_implementer_decoration() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == [iface.fullName()]
 
 def test_docsources_from_moduleprovides() -> None:
@@ -291,6 +318,7 @@ def test_interfaceallgames() -> None:
     system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
     mod = system.allobjects['interfaceallgames.interface']
     iface = mod.contents['IAnInterface']
+    assert isinstance(iface, ZopeInterfaceClass)
     assert [o.fullName() for o in iface.implementedby_directly] == [
         'interfaceallgames.implementation.Implementation'
         ]
@@ -314,6 +342,8 @@ def test_implementer_with_star() -> None:
     mod = fromText(src, systemcls=ZopeInterfaceSystem)
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
+    assert isinstance(iface, ZopeInterfaceClass)
     assert impl.implements_directly == [iface.fullName()]
 
 def test_implementer_nonname(capsys: CapSys) -> None:
@@ -328,6 +358,7 @@ def test_implementer_nonname(capsys: CapSys) -> None:
     '''
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     impl = mod.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == []
     captured = capsys.readouterr().out
     assert captured == 'mod:3: Interface argument 1 does not look like a name\n'
@@ -346,6 +377,7 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
     '''
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     impl = mod.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == ['mod.var']
     captured = capsys.readouterr().out
     assert captured == 'mod:4: Supposed interface "mod.var" not detected as a class\n'
@@ -366,8 +398,10 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
     C = mod.contents['C']
     impl = mod.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
+    assert isinstance(C, ZopeInterfaceClass)
     assert not C.isinterface
-    assert C.kind == "Class"
+    assert C.kind is model.DocumentableKind.CLASS
     assert impl.implements_directly == ['mod.C']
     captured = capsys.readouterr().out
     assert captured == 'mod:5: Class "mod.C" is not an interface\n'
@@ -413,11 +447,13 @@ def test_implementer_reparented() -> None:
     ''', modname='app', system=system)
 
     iface = mod_iface.contents['IMyInterface']
+    assert isinstance(iface, ZopeInterfaceClass)
     iface.reparent(mod_export, 'IMyInterface')
     assert iface.fullName() == 'public.IMyInterface'
     assert 'IMyInterface' not in mod_iface.contents
 
     impl = mod_impl.contents['Implementation']
+    assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == ['_private.IMyInterface']
     assert iface.implementedby_directly == []
 

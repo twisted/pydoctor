@@ -30,16 +30,18 @@ Why would I use it?
 -------------------
 
 ``pydoctor`` is probably best suited to documenting a library that have some degree of internal subclassing.
+
 It also has support for `zope.interface <https://zopeinterface.readthedocs.io/en/latest/>`_, and can recognize interfaces and classes which implement such interfaces.
 
 
 How is it different from ``sphinx-autodoc``
 -------------------------------------------
 
-``sphinx-autodoc`` can be hazardous and the output is sometimes overwhelming, ``pydoctor`` will generate
+``sphinx-autodoc`` can be complex and the output is sometimes overwhelming, ``pydoctor`` will generate
 one page per class, module and package, it tries to keeps it simple and present information in a efficient way with tables.
 
-It can be integrated to your Sphinx prose documentation seamlessly to link to your API documentation, please refer to `Usage <usage.html>`_ section.
+Sphinx narrative documentation can seamlessly link to API documentation formatted by pydoctor.
+Please refer to the `Sphinx Integration <sphinx-integration.html>`_ section for details.
 
 
 What does the output look like?
@@ -49,13 +51,24 @@ It looks `like this <http://twistedmatrix.com/documents/current/api/>`_, which i
 
 The output is reasonably simple.
 
-As a bonus here are other projects using ``pydoctor``:
-    - Wokkel
-    - msiempy
-    - An many others!
+Who is using ``pydoctor``?
+--------------------------
+
+Here are some projects using ``pydoctor``:
+    - `Twisted <https://twistedmatrix.com/trac/>`_
+    - `Incremental <https://github.com/twisted/incremental>`_
+    - `OTFBot <https://otfbot.org/start>`_
+    - `python-igraph <https://igraph.org/python/>`_
+    - `Wokkel <https://github.com/ralphm/wokkel>`_
+    - `msiempy <https://github.com/mfesiem/msiempy>`_
+    - `git-buildpackage <https://github.com/agx/git-buildpackage>`_
+    - `pycma <https://github.com/CMA-ES/pycma>`_
+    - `cocopp <https://github.com/numbbo/coco>`_
+    - `python-Wappalyzer <https://github.com/chorsley/python-Wappalyzer>`_
+    - and others
 
 
 How do I use it?
 ----------------
 
-Please review the `Usage <usage.html>`_ section.
+Please review the `Quick Start <quickstart.html>`_ section.

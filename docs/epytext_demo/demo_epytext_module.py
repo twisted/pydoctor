@@ -5,8 +5,24 @@ Most part of this documentation is using Python type hinting.
 """
 
 from abc import ABC
+from typing import AnyStr, Dict, Generator, List, Union, TYPE_CHECKING
 from somelib import SomeInterface
+import zope.interface
+import zope.schema
+from typing import Sequence, Optional
 
+if TYPE_CHECKING:
+    from typing_extensions import Final
+
+LANG = 'Fr'
+"""
+This is a constant. See L{constants} for more examples.
+"""
+
+lang: 'Final[Sequence[str]]' = ['Fr', 'En']
+"""
+This is also a constant, but annotated with typing.Final.
+"""
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
@@ -24,17 +40,23 @@ def demo_fields_docstring_arguments(m, b):  # type: ignore
     """
     return -b/m
 
-
-def demo_typing_arguments(name: str, size: bytes) -> bool:
+def demo_typing_arguments(name: str, size: Optional[bytes] = None) -> bool:
     """
     Type documentation can be extracted from standard Python type hints.
 
     @param name: The human readable name for something.
-    @param size: How big the name should be.
+    @param size: How big the name should be. Leave none if you don't care.
     @return: Always C{True}.
     """
     return True
 
+def demo_long_function_and_parameter_names__this_indeed_very_long(
+        this_is_a_very_long_parameter_name_aahh: str, 
+        what__another_super_super_long_name__ho_no: Generator[Union[List[AnyStr], Dict[str, AnyStr]], None, None]) -> bool:
+    """
+    Long names and annotations should display on several lines when they don't fit in a single line. 
+    """
+    return True
 
 def demo_cross_reference() -> None:
     """
@@ -76,7 +98,7 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
     This is the docstring of this class.
     """
 
-    def __init_(self, one: str, two: bytes) -> None:
+    def __init__(self, one: str, two: bytes) -> None:
         """
         Documentation for class initialization.
 
@@ -122,3 +144,20 @@ class DemoClass(ABC, SomeInterface, _PrivateClass):
         """
         This is a docstring for deleter.
         """
+
+
+class IContact(zope.interface.Interface):
+    """
+    Example of an interface with schemas.
+
+    Provides access to basic contact information.
+    """
+
+    first = zope.schema.TextLine(description="First name")
+
+    email = zope.schema.TextLine(description="Electronic mail address")
+
+    address = zope.schema.Text(description="Postal address")
+
+    def send_email(text: str) -> None:
+        pass

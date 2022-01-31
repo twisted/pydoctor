@@ -43,7 +43,7 @@ def on_build_finished(app: Sphinx, exception: Exception) -> None:
     """
     Called when Sphinx build is done.
     """
-    if app.builder.name != 'html':
+    if not app.builder or app.builder.name != 'html':
         return
 
     runs = app.config.pydoctor_args
@@ -73,7 +73,7 @@ def on_builder_inited(app: Sphinx) -> None:
     Called to build the API documentation HTML  files
     and inject our own intersphinx inventory object.
     """
-    if app.builder.name != 'html':
+    if not app.builder or app.builder.name != 'html':
         return
 
     rtd_version = 'latest'
