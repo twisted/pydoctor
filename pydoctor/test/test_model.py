@@ -243,7 +243,6 @@ def test_introspection_python() -> None:
     assert isinstance(func, model.Function)
     assert func.signature == signature(dummy_function_with_complex_signature)
 
-@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
 
