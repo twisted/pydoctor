@@ -810,6 +810,10 @@ class System:
                     # function has an invalid signature.
                     parent.report(f"Cannot parse signature of {parent.fullName()}.{k}")
                     f.signature = None
+                except TypeError:
+                    # in pypy we get a TypeError calling signature() on classmethods, 
+                    # because apparently, they are not callable :/
+                    f.signature = None
                         
                 f.is_async = False
                 f.annotations = {name: None for name in f.signature.parameters} if f.signature else {}
