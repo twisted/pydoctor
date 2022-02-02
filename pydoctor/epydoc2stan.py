@@ -9,6 +9,7 @@ from typing import (
 )
 import ast
 import itertools
+import re
 
 import attr
 
@@ -248,14 +249,16 @@ class FieldDesc:
         formatted = self.body or self._UNDOCUMENTED
         fieldNameTd: List[Tag] = []
         if self.name:
-            name = self.name
-
             # Add the stars to the params names just before generating the field stan, not before.
-            if isinstance(name, VariableArgument):
-                name = f"*{name}"
-            elif isinstance(name, KeywordArgument):
-                name = f"**{name}"
-            
+            if isinstance(self.name, VariableArgument):
+                prefix = "*"
+            elif isinstance(self.name, KeywordArgument):
+                prefix = "**"
+            else:
+                prefix = ""
+
+            name = prefix + insert_break_points(self.name)
+
             stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
                 stan_name(":")
@@ -942,3 +945,30 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     """
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
+
+def insert_break_points(text: str) -> str:
+    """
+    Browsers aren't smart enough to recognize word breaking opportunities in
+    snake_case or camelCase, so this function helps them out by inserting
+    zero-width spaces.
+    """
+    match = re.match('(__)?(.*?)(__)?$', text)
+    assert match is not None # the regex always matches
+    prefix, text, suffix = match.groups(default='')
+
+    if text.islower() or text.isupper():
+        # We assume snake_case or SCREAMING_SNAKE_CASE.
+        text_with_breaks = text.replace('_', '\u200b_')
+    else:
+        # We assume camelCase.  We're not using a regex because we also want it
+        # to work with non-ASCII characters (and the Python re module does not
+        # support checking for Unicode properties using something like \p{Lu}).
+        text_with_breaks = ''
+        previous_was_upper = False
+        for c in text:
+            if c.isupper() and not previous_was_upper:
+                text_with_breaks += '\u200b'
+            text_with_breaks += c
+            previous_was_upper = c.isupper()
+
+    return prefix + text_with_breaks + suffix

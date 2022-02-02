@@ -1218,3 +1218,16 @@ def test_yields_field(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == ''
 
+def test_insert_break_points_identity() -> None:
+    assert epydoc2stan.insert_break_points('test') == 'test'
+    assert epydoc2stan.insert_break_points('__test__') == '__test__'
+    assert epydoc2stan.insert_break_points('__someverylongname__') == '__someverylongname__'
+    assert epydoc2stan.insert_break_points('__SOMEVERYLONGNAME__') == '__SOMEVERYLONGNAME__'
+
+def test_insert_break_points_snake_case() -> None:
+    assert epydoc2stan.insert_break_points('__some_very_long_name__') == '__some\u200b_very\u200b_long\u200b_name__'
+    assert epydoc2stan.insert_break_points('__SOME_VERY_LONG_NAME__') == '__SOME\u200b_VERY\u200b_LONG\u200b_NAME__'
+
+def test_insert_break_points_camel_case() -> None:
+    assert epydoc2stan.insert_break_points('__someVeryLongName__') == '__some\u200bVery\u200bLong\u200bName__'
+    assert epydoc2stan.insert_break_points('__einÜberlangerName__') == '__ein\u200bÜberlanger\u200bName__'
