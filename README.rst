@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Smarter line wrapping in summary and parameters tables.
 * Fix introspection of functions comming from C-extensions.
 
 pydoctor 21.12.1
