@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Make intersphinx links blue instead of red. Keep red color for internal links only.
 * Smarter line wrapping in summary and parameters tables.
 * Fix introspection of functions comming from C-extensions.
 
