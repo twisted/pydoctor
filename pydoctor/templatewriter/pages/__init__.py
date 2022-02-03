@@ -435,25 +435,18 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
+        _linker = epydoc2stan._EpydocLinker(self.ob)
+        zipped = list(zip(self.ob.rawbases, self.ob.bases))
         if zipped:
             r.append('(')
-            for idx, (name, full_name, base) in enumerate(zipped):
+            for idx, (name, full_name) in enumerate(zipped):
                 if idx != 0:
                     r.append(', ')
 
-                if base is None:
-                    # External class.
-                    url = self.ob.system.intersphinx.getLink(full_name)
-                else:
-                    # Internal class.
-                    url = base.url
-
-                if url is None:
-                    tag = tags.span
-                else:
-                    tag = tags.a(href=url)
-                r.append(tag(name, title=full_name))
+                # link to external class or internal class
+                tag = _linker.link_to(full_name, name)
+                    
+                r.append(tag(title=full_name))
             r.append(')')
         return r
 
