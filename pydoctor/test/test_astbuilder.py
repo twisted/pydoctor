@@ -1988,3 +1988,25 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
+    """
+    Code inside of C{if __name__ == '__main__'} should be skipped.
+    """
+    mod = fromText('''
+    foo = True
+
+    if __name__ == '__main__':
+        var = True
+
+        def fun():
+            pass
+
+        class Class:
+            pass
+
+    def bar():
+        pass
+    ''', modname='test', systemcls=systemcls)
+    assert tuple(mod.contents) == ('foo', 'bar')
