@@ -79,7 +79,7 @@ class _EpydocLinker(DocstringLinker):
         self.obj = obj
 
     @staticmethod
-    def _create_intersphinx_link(label:str, url:str) -> Tag:
+    def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
         """
         Create a link with the special 'intersphinx-link' CSS class.
         """
