@@ -371,6 +371,12 @@ code > a, #childList > div .functionHeader a {
     color:#c7254e;
     background-color:#f9f2f4;
 }
+
+/* Intersphinx links are not red, but simply blue */
+a.intersphinx-link {
+    color:#306998!important;
+}
+
 /* top navagation bar */
 .page-header > h1 {
     margin-top: 0;

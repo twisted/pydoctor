@@ -53,6 +53,9 @@ def get_docstring(
 
 
 def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"] = None) -> Tag:
+    """
+    Create a link to an object that exists in the system.
+    """
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
 
@@ -74,6 +77,13 @@ class _EpydocLinker(DocstringLinker):
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
+
+    @staticmethod
+    def _create_intersphinx_link(label:str, url:str) -> "Flattenable":
+        """
+        Create a link with the special 'intersphinx-link' CSS class.
+        """
+        return tags.a(label, href=url, class_='intersphinx-link')
 
     def look_for_name(self,
             name: str,
@@ -115,7 +125,7 @@ class _EpydocLinker(DocstringLinker):
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
-            return tags.a(label, href=url)
+            return self._create_intersphinx_link(label, url=url)
 
         return tags.transparent(label)
 
@@ -129,7 +139,7 @@ class _EpydocLinker(DocstringLinker):
             if isinstance(resolved, model.Documentable):
                 xref = taglink(resolved, self.obj.page_object.url, label)
             else:
-                xref = tags.a(label, href=resolved)
+                xref = self._create_intersphinx_link(label, url=resolved)
         ret: Tag = tags.code(xref)
         return ret
 
