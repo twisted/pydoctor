@@ -69,7 +69,7 @@ def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"]
         # if the query string is non-empty.
         url = url[len(page_url):]
 
-    ret: Tag = tags.a(label, href=url)
+    ret: Tag = tags.a(label, href=url, class_='internal-link')
     return ret
 
 
