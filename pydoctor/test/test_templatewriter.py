@@ -12,7 +12,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage
 
@@ -469,3 +469,28 @@ def test_format_decorators() -> None:
                     r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
                     """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
                     """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
+
+def test_compact_module_summary() -> None:
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    for x in range(50):
+        fromText('', parent_name='top', modname='sub' + str(x), system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 50   # type: ignore
+
+    # the 51th module triggers the compact summary
+    fromText('', parent_name='top', modname='yet_another_sub', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 1    # type: ignore
+
+    # for the compact summary no submodule may have further submodules
+    fromText('', parent_name='top.sub33', modname='subsubmodule', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 51   # type: ignore

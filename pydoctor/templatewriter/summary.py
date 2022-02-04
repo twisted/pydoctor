@@ -29,11 +29,29 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
     contents = list(module.submodules())
     if not contents:
         return r
-    ul = tags.ul()
+
     def fullName(obj: model.Documentable) -> str:
         return obj.fullName()
-    for m in sorted(contents, key=fullName):
-        ul(moduleSummary(m, page_url))
+
+    ul = tags.ul()
+
+    if len(contents) > 50 and not any(any(s.submodules()) for s in contents):
+        # If there are more than 50 modules and no submodule has
+        # further submodules we use a more compact presentation.
+        li = tags.li(class_='compact-modules')
+        for m in sorted(contents, key=fullName):
+            span = tags.span()
+            span(tags.code(epydoc2stan.taglink(m, m.url, label=m.name)))
+            span(', ')
+            if m.isPrivate:
+                span(class_='private')
+            li(span)
+        # remove the last trailing comma
+        li.children[-1].children.pop() # type: ignore
+        ul(li)
+    else:
+        for m in sorted(contents, key=fullName):
+            ul(moduleSummary(m, page_url))
     r(ul)
     return r
 
