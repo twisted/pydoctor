@@ -355,9 +355,7 @@ tr.private {
 /*
 - Links to class/function/etc names are nested like this:
     <code><a>label</a></code>
-  This applies to inline docstring content marked up as code,
-  for example L{foo} in epytext or `bar` in restructuredtext,
-  but also to links that are present in summary tables.
+  
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
 code, .literal, .pre, #childList > div .functionHeader,
@@ -367,14 +365,21 @@ code, .literal, .pre, #childList > div .functionHeader,
 code, #childList > div .functionHeader, .fieldArg {
     color: #222222;
 }
-code > a, #childList > div .functionHeader a {
-    color:#c7254e;
-    background-color:#f9f2f4;
-}
 
 /* Intersphinx links are not red, but simply blue */
 a.intersphinx-link {
-    color:#306998!important;
+    color:#23527c;
+    background-color:#f9f2f4;
+}
+
+/* Links to objects within the system use this special css.
+This applies to inline docstring content marked up as code,
+  for example L{foo} in epytext or `bar` in restructuredtext,
+  but also to links that are present in summary tables.
+*/
+a.internal-link {
+    color:#c7254e;
+    background-color:#f9f2f4;
 }
 
 /* top navagation bar */
