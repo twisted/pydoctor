@@ -15,7 +15,7 @@ from typing import (
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname
+from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -219,6 +219,15 @@ class ModuleVistor(ast.NodeVisitor):
                 self.visit(child)
                 self.currAttr = self.newAttr
             self.newAttr = None
+
+    def visit_If(self, node: ast.If) -> None:
+        if isinstance(node.test, ast.Compare):
+            if is__name__equals__main__(node.test):
+                # skip if __name__ == '__main__': blocks since
+                # whatever is declared in them cannot be imported
+                # and thus is not part of the API
+                return
+        self.default(node)
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
