@@ -26,8 +26,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         r(class_='private')
     if not isinstance(module, model.Package):
         return r
-    contents = [m for m in module.contents.values()
-                if isinstance(m, model.Module) and m.isVisible]
+    contents = list(module.submodules())
     if not contents:
         return r
     ul = tags.ul()
