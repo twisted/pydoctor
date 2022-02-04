@@ -74,6 +74,7 @@ in development
 ^^^^^^^^^^^^^^
 * Smarter line wrapping in summary and parameters tables.
 * Any code inside of ``if __name__ == '__main__'`` is now excluded from the documentation.
+* Fix variables named like the current module not being documented.
 * Fix introspection of functions comming from C-extensions.
 
 pydoctor 21.12.1
