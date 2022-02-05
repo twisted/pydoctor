@@ -368,8 +368,8 @@ code, #childList > div .functionHeader, .fieldArg {
 
 /* Intersphinx links are not red, but simply blue */
 a.intersphinx-link {
-    color:#23527c;
-    background-color:#f9f2f4;
+    color: #03458a;
+    background-color: #f0ebe694;
 }
 
 /* Links to objects within the system use this special css.
