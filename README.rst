@@ -72,7 +72,9 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-* Make intersphinx links blue instead of red. Keep red color for internal links only.
+* Intersphinx links have now dedicated markup.
+  With the default theme,
+  this allows to have the external intershinx links blue while the internal links are red.
 * Smarter line wrapping in summary and parameters tables.
 * Fix introspection of functions comming from C-extensions.
 
