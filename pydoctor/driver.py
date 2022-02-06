@@ -430,6 +430,15 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         system.process()
 
+        # Cyclic imports can cause Class.baseobjects to contain None values for
+        # base classes that actually exist, see issue #482. This is a simple workaround
+        # for this more complex problem.
+        classes = {cls.fullName(): cls for cls in system.objectsOfType(model.Class)}
+        for cls in classes.values():
+            for idx, base in enumerate(cls.bases):
+                if cls.baseobjects[idx] is None and base in classes:
+                    cls.baseobjects[idx] = classes[base]
+
         # step 4: make html, if desired
 
         if options.makehtml:
