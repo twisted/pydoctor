@@ -596,7 +596,7 @@ class System:
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
-        self.unprocessed_modules: Set[Module] = set()
+        self.unprocessed_modules: List[Module] = []
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
@@ -789,7 +789,7 @@ class System:
         self.progress(
             "analyzeModule", len(self.allobjects),
             None, "modules and packages discovered")
-        self.unprocessed_modules.add(mod)
+        self.unprocessed_modules.append(mod)
         self.module_count += 1
         self.setSourceHref(mod, modpath)
         return mod
