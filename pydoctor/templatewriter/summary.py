@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        tags.code(epydoc2stan.taglink(module, page_url, label=module.name)), ' - ',
         epydoc2stan.format_summary(module)
         )
     if module.isPrivate:
