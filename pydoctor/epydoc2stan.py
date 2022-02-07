@@ -70,6 +70,8 @@ def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"]
         url = url[len(page_url):]
 
     ret: Tag = tags.a(label, href=url, class_='internal-link')
+    if label != o.fullName():
+        ret(title=o.fullName())
     return ret
 
 

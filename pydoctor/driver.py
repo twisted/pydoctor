@@ -141,10 +141,10 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
-    _docformat_choices = get_supported_docformats()
+    _docformat_choices = list(get_supported_docformats())
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        type="choice", choices=list(_docformat_choices),
+        type="choice", choices=_docformat_choices,
         help=("Format used for parsing docstrings. "
              f"Supported values: {', '.join(_docformat_choices)}"),
              metavar='FORMAT')
