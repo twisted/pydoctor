@@ -208,7 +208,10 @@ class Documentable:
         can be found.
         """
         page_obj = self.page_object
-        page_url = f'{quote(page_obj.fullName())}.html'
+        if list(self.system.root_names) == [page_obj.fullName()]:
+            page_url = 'index.html'
+        else:
+            page_url = f'{quote(page_obj.fullName())}.html'
         if page_obj is self:
             return page_url
         else:

@@ -90,6 +90,18 @@ class TemplateWriter(IWriter):
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
+        if len(system.root_names) == 1:
+            # If there is just a single root module it is written to index.html to produce nicer URLs.
+            # To not break old links we also create a symlink from the full module name to the index.html
+            # file. This is also good for consistency: every module is accessible by <full module name>.html
+            root_module_path = (self.build_directory / (list(system.root_names)[0] + '.html'))
+            try:
+                root_module_path.unlink()
+                # not using missing_ok=True because that was only added in Python 3.8 and we still support Python 3.6
+            except FileNotFoundError:
+                pass
+            root_module_path.symlink_to('index.html')
+
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
@@ -97,7 +109,7 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.build_directory.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.build_directory.joinpath(ob.url.split('#')[0]).open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)

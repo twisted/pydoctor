@@ -334,8 +334,9 @@ def summaryPages(system: model.System) -> Iterable[Type[Page]]:
     pages = [
         ModuleIndexPage,
         ClassIndexPage,
-        IndexPage,
         NameIndexPage,
         UndocumentedSummaryPage,
     ]
+    if len(system.root_names) > 1:
+        pages.append(IndexPage)
     return pages
