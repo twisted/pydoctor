@@ -390,7 +390,7 @@ def test_func_raise_linked() -> None:
         """
     ''', modname='test')
     html = docstring2html(mod.contents['f']).split('\n')
-    assert '<a href="test.SpanishInquisition.html">SpanishInquisition</a>' in html
+    assert '<a href="test.SpanishInquisition.html" title="test.SpanishInquisition">SpanishInquisition</a>' in html
 
 
 def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
@@ -1158,7 +1158,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
     expected = ('<table class="valueTable"><tr class="fieldStart">'
                 '<td class="fieldName">Value</td></tr><tr><td>'
                 '<pre class="constant-value"><code>(<wbr></wbr>'
-                '<a href="pack.mod1.html#f">f</a>)</code></pre></td></tr></table>')
+                '<a href="pack.mod1.html#f" title="pack.mod1.f">f</a>)</code></pre></td></tr></table>')
     
     attr = mod.contents['CONST']
     assert isinstance(attr, model.Attribute)
