@@ -390,7 +390,7 @@ def test_func_raise_linked() -> None:
         """
     ''', modname='test')
     html = docstring2html(mod.contents['f']).split('\n')
-    assert '<a href="test.SpanishInquisition.html" title="test.SpanishInquisition" class="internal-link">SpanishInquisition</a>' in html
+    assert '<a href="test.SpanishInquisition.html" class="internal-link" title="test.SpanishInquisition">SpanishInquisition</a>' in html
 
 
 def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
