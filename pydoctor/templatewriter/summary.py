@@ -277,23 +277,6 @@ class IndexPage(Page):
         return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) != 1:
-            return []
-        else:
-            root, = self.system.rootobjects
-            return tag.clear()(
-                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
-
-    @renderer
-    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) == 1:
-            return []
-        else:
-            return tag
-
-    @renderer
     def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
