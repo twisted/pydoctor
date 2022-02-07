@@ -14,7 +14,6 @@ from pydoctor.templatewriter.pages import Page
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from typing_extensions import Final
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
@@ -348,10 +347,12 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: 'Final[Iterable[Type[Page]]]' = [
-    ModuleIndexPage,
-    ClassIndexPage,
-    IndexPage,
-    NameIndexPage,
-    UndocumentedSummaryPage,
+def summaryPages(system: model.System) -> Iterable[Type[Page]]:
+    pages = [
+        ModuleIndexPage,
+        ClassIndexPage,
+        IndexPage,
+        NameIndexPage,
+        UndocumentedSummaryPage,
     ]
+    return pages
