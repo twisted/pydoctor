@@ -72,6 +72,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* C-modules wins over regular modules when there is a name clash.
+* Packages wins over modules when there is a name clash.
 * Intersphinx links have now dedicated markup.
   With the default theme,
   this allows to have the external intershinx links blue while the internal links are red.
