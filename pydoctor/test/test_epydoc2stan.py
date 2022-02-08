@@ -390,7 +390,7 @@ def test_func_raise_linked() -> None:
         """
     ''', modname='test')
     html = docstring2html(mod.contents['f']).split('\n')
-    assert '<a href="test.SpanishInquisition.html">SpanishInquisition</a>' in html
+    assert '<a href="test.SpanishInquisition.html" class="internal-link" title="test.SpanishInquisition">SpanishInquisition</a>' in html
 
 
 def test_func_raise_missing_exception_type(capsys: CapSys) -> None:
@@ -782,6 +782,23 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
 
     assert 'http://tm.tld/some.html' == result
 
+def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
+    """
+    The EpydocLinker return a link with the CSS class 'intersphinx-link' when it's using intersphinx.
+    """
+    system = model.System()
+    inventory = SphinxInventory(system.msg)
+    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name')
+    sut = epydoc2stan._EpydocLinker(target)
+
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
+    result2 = sut.link_to('base.module.other', 'base.module.other')
+    
+    res = flatten(result2)
+    assert flatten(result1) == res
+    assert 'class="intersphinx-link"' in res
 
 def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     """
@@ -1158,7 +1175,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
     expected = ('<table class="valueTable"><tr class="fieldStart">'
                 '<td class="fieldName">Value</td></tr><tr><td>'
                 '<pre class="constant-value"><code>(<wbr></wbr>'
-                '<a href="pack.mod1.html#f">f</a>)</code></pre></td></tr></table>')
+                '<a href="pack.mod1.html#f" class="internal-link" title="pack.mod1.f">f</a>)</code></pre></td></tr></table>')
     
     attr = mod.contents['CONST']
     assert isinstance(attr, model.Attribute)
