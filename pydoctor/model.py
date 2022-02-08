@@ -379,6 +379,11 @@ class Module(CanContainImportsDocumentable):
     def setup(self) -> None:
         super().setup()
 
+        self._is_c_module = False
+        """Whether this module is a C-extension."""
+        self._py_mod: Optional[types.ModuleType] = None
+        """The live module if the module was built from introspection."""
+
         self.all: Optional[Collection[str]] = None
         """Names listed in the C{__all__} variable of this module.
 
@@ -536,6 +541,16 @@ _ModuleT = Module
 _PackageT = Package
 
 T = TypeVar('T')
+
+def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
+    spec = importlib.util.spec_from_file_location(module_full_name, path)
+    if spec is None: 
+        raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
+    py_mod = importlib.util.module_from_spec(spec)
+    loader = spec.loader
+    assert isinstance(loader, importlib.abc.Loader), loader
+    loader.exec_module(py_mod)
+    return py_mod
 
 
 # Declare the types that we consider as functions (also when they are coming
@@ -839,22 +854,18 @@ class System:
         else:
             module_full_name = f'{package.fullName()}.{module_name}'
 
-        spec = importlib.util.spec_from_file_location(module_full_name, path)
-        if spec is None: 
-            raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
-        py_mod = importlib.util.module_from_spec(spec)
-        loader = spec.loader
-        assert isinstance(loader, importlib.abc.Loader), loader
-        loader.exec_module(py_mod)
+        py_mod = import_mod_from_file_location(module_full_name, path)
         is_package = py_mod.__package__ == py_mod.__name__
 
         factory = self.Package if is_package else self.Module
         module = factory(self, module_name, package, path)
-        self.addObject(module)
-
+        
         module.docstring = py_mod.__doc__
-        self._introspectThing(py_mod, module, module)
-
+        module._is_c_module = True
+        module._py_mod = py_mod
+        
+        self.addObject(module)
+        self.unprocessed_modules.add(module)
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
@@ -935,15 +946,18 @@ class System:
         mod.state = ProcessingState.PROCESSING
         if mod.source_path is None:
             return
-        builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.source_path)
-        if ast:
-            self.processing_modules.append(mod.fullName())
-            self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-            builder.processModuleAST(ast, mod)
-            mod.state = ProcessingState.PROCESSED
-            head = self.processing_modules.pop()
-            assert head == mod.fullName()
+        if mod._is_c_module:
+            self._introspectThing(mod._py_mod, mod, mod)
+        else:
+            builder = self.defaultBuilder(self)
+            ast = builder.parseFile(mod.source_path)
+            if ast:
+                self.processing_modules.append(mod.fullName())
+                self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+                builder.processModuleAST(ast, mod)
+                mod.state = ProcessingState.PROCESSED
+                head = self.processing_modules.pop()
+                assert head == mod.fullName()
         self.unprocessed_modules.remove(mod)
         self.progress(
             'process',
