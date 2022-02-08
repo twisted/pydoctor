@@ -18,9 +18,10 @@ from inspect import signature, Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, OrderedDict, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
+from collections import OrderedDict
 from urllib.parse import quote
 
 from pydoctor.epydoc.markup import ParsedDocstring
