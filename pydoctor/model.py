@@ -18,8 +18,8 @@ from inspect import signature, Signature
 from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, OrderedDict, Sequence, Set, Tuple, Type, TypeVar, Union, overload
 )
 from urllib.parse import quote
 
@@ -611,7 +611,7 @@ class System:
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
-        self.unprocessed_modules: Set[Module] = set()
+        self.unprocessed_modules: Dict[str, _ModuleT] = OrderedDict()
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
@@ -800,14 +800,48 @@ class System:
             ) -> _ModuleT:
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
-        self.addObject(mod)
-        self.progress(
-            "analyzeModule", len(self.allobjects),
-            None, "modules and packages discovered")
-        self.unprocessed_modules.add(mod)
-        self.module_count += 1
+        self._addUnprocessedModule(mod)
         self.setSourceHref(mod, modpath)
         return mod
+
+    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+        """
+        First add the new module into the unprocessed_modules mapping. 
+        Handle eventual duplication of module names, and finally add the 
+        module to the system.
+        """
+        assert mod.state is ProcessingState.UNPROCESSED
+        first = self.unprocessed_modules.setdefault(mod.fullName(), mod)
+        if mod is not first:
+            self._handleDuplicateModule(first, mod)
+        else:
+            self.addObject(mod)
+            self.progress(
+                "analyzeModule", len(self.allobjects),
+                None, "modules and packages discovered")        
+            self.module_count += 1
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        """
+        This is called when two modules have the same name. 
+
+        Current rules are the following: 
+            - C-modules wins over regular python modules
+            - Packages wins over modules
+            - Else, the last added module wins
+        """
+        self._warning(dup.parent, "duplicate", str(first))
+
+        if first._is_c_module and not isinstance(dup, Package):
+            # C-modules wins
+            return
+        elif isinstance(first, Package) and not isinstance(dup, Package):
+            # Packages wins
+            return
+        else:
+            # Else, the last added module wins
+            del self.unprocessed_modules[dup.fullName()]
+            self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -864,8 +898,7 @@ class System:
         module._is_c_module = True
         module._py_mod = py_mod
         
-        self.addObject(module)
-        self.unprocessed_modules.add(module)
+        self._addUnprocessedModule(module)
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
@@ -940,14 +973,18 @@ class System:
         assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
         return mod
 
-
     def processModule(self, mod: _ModuleT) -> None:
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
         if mod.source_path is None:
             return
         if mod._is_c_module:
+            self.processing_modules.append(mod.fullName())
+            self.msg("processModule", "processing %s"%(self.processing_modules), 1)
             self._introspectThing(mod._py_mod, mod, mod)
+            mod.state = ProcessingState.PROCESSED
+            head = self.processing_modules.pop()
+            assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
             ast = builder.parseFile(mod.source_path)
@@ -958,7 +995,7 @@ class System:
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
-        self.unprocessed_modules.remove(mod)
+        del self.unprocessed_modules[mod.fullName()]
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
@@ -968,7 +1005,7 @@ class System:
 
     def process(self) -> None:
         while self.unprocessed_modules:
-            mod = next(iter(self.unprocessed_modules))
+            mod = next(iter(self.unprocessed_modules.values()))
             self.processModule(mod)
         self.postProcess()
 
