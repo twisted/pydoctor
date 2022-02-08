@@ -525,7 +525,7 @@ class ModuleVistor(ast.NodeVisitor):
             # and therefore doesn't need an Attribute instance.
             return
         parent = self.builder.current
-        obj = parent.resolveName(target)
+        obj = parent.contents.get(target)
         
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)

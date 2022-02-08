@@ -2010,3 +2010,13 @@ def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
         pass
     ''', modname='test', systemcls=systemcls)
     assert tuple(mod.contents) == ('foo', 'bar')
+
+@systemcls_param
+def test_variable_named_like_current_module(systemcls: Type[model.System]) -> None:
+    """
+    Test for U{issue #474<https://github.com/twisted/pydoctor/issues/474>}.
+    """
+    mod = fromText('''
+    example = True
+    ''', systemcls=systemcls, modname="example")
+    assert 'example' in mod.contents
