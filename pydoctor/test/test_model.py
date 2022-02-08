@@ -338,13 +338,11 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
         system.addPackage(package_path, None)
         system.process()
 
-        # there is only one mymod.base module
-        assert [system.allobjects['mymod.base']] == list(system.allobjects['mymod'].contents.values())
-
         mod = system.allobjects['mymod.base']
+        # there is only one mymod.base module
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
         assert len(mod.contents) == 1
-        name, func = mod.contents.popitem()
-        assert name == "valid_text_signature"
+        assert 'coming_from_c_module' == mod.contents.popitem()[0]
 
     finally:
         # cleanup

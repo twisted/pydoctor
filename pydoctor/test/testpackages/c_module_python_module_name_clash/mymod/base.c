@@ -9,7 +9,7 @@ static PyObject* base_valid(PyObject *self, PyObject* args)
 }
 
 static PyMethodDef base_methods[] = {
-    {"valid_text_signature",             base_valid,      METH_VARARGS,   "valid_text_signature($self, a='r', b=-3.14)\n"
+    {"coming_from_c_module",             base_valid,      METH_VARARGS,   "coming_from_c_module($self, a='r', b=-3.14)\n"
     "--\n"
     "\n"
     "Function demonstrating a valid __text_signature__ from C code."},
