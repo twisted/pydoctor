@@ -320,32 +320,32 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
 
-# @pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
-# def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
-#     c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
-#     package_path = c_module_python_module_name_clash / 'mymod'
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
+    c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
+    package_path = c_module_python_module_name_clash / 'mymod'
     
-#     # build extension
-#     try:
-#         cwd = os.getcwd()
-#         code, outstr = subprocess.getstatusoutput(f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace')
-#         os.chdir(cwd)
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
         
-#         assert code==0, outstr
-#         system = model.System()
-#         system.options.introspect_c_modules = True
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
 
-#         system.addPackage(package_path, None)
-#         system.process()
+        system.addPackage(package_path, None)
+        system.process()
 
-#         # there is only one mymod.base module
-#         assert [system.allobjects['mymod.base']] == list(system.allobjects['mymod'].contents.values())
+        # there is only one mymod.base module
+        assert [system.allobjects['mymod.base']] == list(system.allobjects['mymod'].contents.values())
 
-#         mod = system.allobjects['mymod.base']
-#         assert len(mod.contents) == 1
-#         name, func = mod.contents.popitem()
-#         assert name == "valid_text_signature"
+        mod = system.allobjects['mymod.base']
+        assert len(mod.contents) == 1
+        name, func = mod.contents.popitem()
+        assert name == "valid_text_signature"
 
-#     finally:
-#         # cleanup
-#         subprocess.getoutput(f'rm -f {package_path}/*.so')
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
