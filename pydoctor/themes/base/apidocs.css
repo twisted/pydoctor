@@ -289,11 +289,7 @@ ul ul ul ul ul ul ul {
     }
 }
 
-tr.package {
-    background-color: #fff3e0;
-}
-
-tr.module {
+tr.module, tr.package {
     background-color: #fff8e1;
 }
 
