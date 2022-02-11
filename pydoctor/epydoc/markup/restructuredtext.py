@@ -482,7 +482,8 @@ class PythonCodeDirective(Directive):
     """
 
     has_content = True
-
+    optional_arguments = 1
+    
     # Listing all options that docutils.parsers.rst.directives.body.CodeBlock provides
     # And also sphinx.directives.code.CodeBlock. We don't care about their values, 
     # we just don't want to see them in self.content.
