@@ -479,7 +479,8 @@ def test_format_signature() -> None:
     def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
         ...
     ''')
-    assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','')
+    assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in \
+        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','') # type:ignore[arg-type]
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""
