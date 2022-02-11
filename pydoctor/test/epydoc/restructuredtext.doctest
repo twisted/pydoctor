@@ -104,3 +104,30 @@ as colorized Python code.
 <span class="py-keyword">class</span> <span class="py-defname">Foo</span>:
     <span class="py-keyword">def</span> <span class="py-defname">__init__</span>(self):
         <span class="py-keyword">pass</span></pre>
+>>> p = restructuredtext.parse_docstring(
+... """The directives options are ignored and do not show up in the HTML.
+... 
+... .. code::
+...     :number-lines:
+...     :linenos:
+...
+...     # This is some Python code
+...     def foo():
+...         pass
+...
+...     class Foo:
+...         def __init__(self):
+...             pass
+... """, err)
+>>> err
+[]
+>>> print(flatten(p.to_stan(None)))
+<p>The directives options are ignored and do not show up in the HTML.</p>
+<pre class="py-doctest">
+<span class="py-comment"># This is some Python code</span>
+<span class="py-keyword">def</span> <span class="py-defname">foo</span>():
+    <span class="py-keyword">pass</span>
+<BLANKLINE>
+<span class="py-keyword">class</span> <span class="py-defname">Foo</span>:
+    <span class="py-keyword">def</span> <span class="py-defname">__init__</span>(self):
+        <span class="py-keyword">pass</span></pre>
