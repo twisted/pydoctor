@@ -104,7 +104,7 @@ def test_index_contains_infos():
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
-              'Start at <code><a href="pydoctor.html">pydoctor</a></code>, the root package.',
+              'Start at <code><a href="pydoctor.html" class="internal-link">pydoctor</a></code>, the root package.',
               '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
 
     with open(BASE_DIR / 'api' / 'index.html', 'r', encoding='utf-8') as stream:

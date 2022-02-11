@@ -17,7 +17,7 @@ for the C{docutils.nodes.document} class.
 
 B{Creating C{ParsedRstDocstring}s}:
 
-C{ParsedRstDocstring}s are created by the C{parse_document} function,
+C{ParsedRstDocstring}s are created by the L{parse_docstring} function,
 using the C{docutils.core.publish_string()} method, with the following
 helpers:
 
@@ -41,29 +41,22 @@ the list.
 """
 __docformat__ = 'epytext en'
 
-from typing import Any, ClassVar, Iterable, List, Optional, Sequence, Set
-import optparse
+from typing import Callable, Iterable, List, Optional, Sequence, Set, cast
 import re
+from docutils import nodes
 
 from docutils.core import publish_string
 from docutils.writers import Writer
-from docutils.writers.html4css1 import HTMLTranslator, Writer as HTMLWriter
+from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.nodes import Node, NodeVisitor, SkipNode, Text
-from docutils.frontend import OptionParser
-from docutils.parsers.rst import Directive, directives
-from docutils.transforms import Transform
-import docutils.nodes
-import docutils.transforms.frontmatter
-import docutils.utils
+from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
+from docutils.transforms import Transform, frontmatter
 
-from twisted.web.template import Tag
-from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
-from pydoctor.epydoc.markup import (
-    DocstringLinker, Field, ParseError, ParsedDocstring, flatten, html2stan
-)
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
+from pydoctor.epydoc.markup._types import ParsedTypeDocstring
+from pydoctor.model import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc
@@ -86,7 +79,7 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring:
+def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -95,21 +88,35 @@ def parse_docstring(docstring: str, errors: List[ParseError]) -> ParsedDocstring
     @param docstring: The docstring to parse
     @param errors: A list where any errors generated during parsing
         will be stored.
+    @param processtypes: Use L{ParsedTypeDocstring} to parsed 'type' fields.
     """
     writer = _DocumentPseudoWriter()
     reader = _EpydocReader(errors) # Outputs errors to the list.
+
+    # Credits: mhils - Maximilian Hils from the pdoc repository https://github.com/mitmproxy/pdoc
+    # Strip Sphinx interpreted text roles for code references: :obj:`foo` -> `foo`
+    docstring = re.sub(
+        r"(:py)?:(mod|func|data|const|class|meth|attr|exc|obj):", "", docstring
+    )
+
     publish_string(docstring, writer=writer, reader=reader,
                    settings_overrides={'report_level':10000,
                                        'halt_level':10000,
                                        'warning_stream':None})
 
     document = writer.document
-    visitor = _SplitFieldsTranslator(document, errors)
+    visitor = _SplitFieldsTranslator(document, errors, processtypes=processtypes)
     document.walk(visitor)
 
     return ParsedRstDocstring(document, visitor.fields)
 
-class OptimizedReporter(docutils.utils.Reporter):
+def get_parser(obj:Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
+    """
+    Get the L{parse_docstring} function. 
+    """
+    return parse_docstring
+
+class OptimizedReporter(Reporter):
     """A reporter that ignores all debug messages.  This is used to
     shave a couple seconds off of epydoc's run time, since docutils
     isn't very fast about processing its own debug messages.
@@ -125,7 +132,7 @@ class ParsedRstDocstring(ParsedDocstring):
     variable.
     """
 
-    def __init__(self, document: docutils.nodes.document, fields: Sequence[Field]):
+    def __init__(self, document: nodes.document, fields: Sequence[Field]):
         self._document = document
         """A ReStructuredText document, encoding the docstring."""
 
@@ -137,15 +144,12 @@ class ParsedRstDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return any(
-            isinstance(child, Text) or child.children
+            isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
-        # Inherit docs
-        visitor = _EpydocHTMLTranslator(self._document, docstring_linker)
-        self._document.walkabout(visitor)
-        return html2stan(''.join(visitor.body))
+    
+    def to_node(self) -> nodes.document:
+        return self._document
 
     def __repr__(self) -> str:
         return '<ParsedRstDocstring: ...>'
@@ -153,7 +157,7 @@ class ParsedRstDocstring(ParsedDocstring):
 class _EpydocReader(StandaloneReader):
     """
     A reader that captures all errors that are generated by parsing,
-    and appends them to a list.
+    and appends them to a list as L{ParseError}.
     """
 
     def __init__(self, errors: List[ParseError]):
@@ -164,16 +168,16 @@ class _EpydocReader(StandaloneReader):
         # Remove the DocInfo transform, to ensure that :author: fields
         # are correctly handled.
         return [t for t in StandaloneReader.get_transforms(self)
-                if t != docutils.transforms.frontmatter.DocInfo]
+                if t != frontmatter.DocInfo]
 
-    def new_document(self) -> docutils.nodes.document:
+    def new_document(self) -> nodes.document:
         document = new_document(self.source.source_path, self.settings)
         # Capture all warning messages.
         document.reporter.attach_observer(self.report)
         # Return the new document.
         return document
 
-    def report(self, error: docutils.nodes.system_message) -> None:
+    def report(self, error: nodes.system_message) -> None:
         level: int = error['level']
         is_fatal = level >= Reporter.ERROR_LEVEL
 
@@ -192,13 +196,13 @@ class _DocumentPseudoWriter(Writer):
     C{document}.
     """
 
-    document: docutils.nodes.document
+    document: nodes.document
     """The most recently processed document."""
 
     def translate(self) -> None:
         self.output = ''
 
-class _SplitFieldsTranslator(NodeVisitor):
+class _SplitFieldsTranslator(nodes.NodeVisitor):
     """
     A docutils translator that removes all fields from a document, and
     collects them into the instance variable C{fields}
@@ -214,24 +218,30 @@ class _SplitFieldsTranslator(NodeVisitor):
     consolidated fields expressed as unordered lists still require
     backticks for now."""
 
-    def __init__(self, document: docutils.nodes.document, errors: List[ParseError]):
-        NodeVisitor.__init__(self, document)
+    def __init__(self, document: nodes.document, errors: List[ParseError], processtypes: bool = False):
+        nodes.NodeVisitor.__init__(self, document)
         self._errors = errors
         self.fields: List[Field] = []
         self._newfields: Set[str] = set()
+        self._processtypes = processtypes
 
-    def visit_document(self, node: Node) -> None:
+    def visit_document(self, node: nodes.Node) -> None:
         self.fields = []
 
-    def visit_field(self, node: Node) -> None:
+    def visit_field(self, node: nodes.Node) -> None:
         # Remove the field from the tree.
         node.parent.remove(node)
 
         # Extract the field name & optional argument
+        # FIXME: https://github.com/twisted/pydoctor/issues/267
+        #   Support combined parameter type and description, if the type is a single word like::
+        #       :param str user_agent: user agent
         tag = node[0].astext().split(None, 1)
         tagname = tag[0]
-        if len(tag)>1: arg = tag[1]
-        else: arg = None
+        if len(tag)>1: 
+            arg = tag[1]
+        else: 
+            arg = None
 
         # Handle special fields:
         fbody = node[1]
@@ -260,20 +270,29 @@ class _SplitFieldsTranslator(NodeVisitor):
     def _add_field(self,
             tagname: str,
             arg: Optional[str],
-            fbody: Iterable[Node],
+            fbody: Iterable[nodes.Node],
             lineno: int
             ) -> None:
         field_doc = self.document.copy()
-        for child in fbody: field_doc.append(child)
-        field_pdoc = ParsedRstDocstring(field_doc, ())
-        self.fields.append(Field(tagname, arg, field_pdoc, lineno - 1))
+        for child in fbody: 
+            field_doc.append(child)
 
-    def visit_field_list(self, node: Node) -> None:
+        # This allows restructuredtext markup to use TypeDocstring as well with a CLI option: --process-types
+        field_parsed_doc: ParsedDocstring
+        if self._processtypes and tagname in ParsedTypeDocstring.FIELDS:
+            field_parsed_doc = ParsedTypeDocstring(field_doc)
+            for warning_msg in field_parsed_doc.warnings:
+                    self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+        else:
+            field_parsed_doc = ParsedRstDocstring(field_doc, ())
+        self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
+
+    def visit_field_list(self, node: nodes.Node) -> None:
         # Remove the field list from the tree.  The visitor will still walk
         # over the node's children.
         node.parent.remove(node)
 
-    def handle_consolidated_field(self, body: Sequence[Node], tagname: str) -> None:
+    def handle_consolidated_field(self, body: Sequence[nodes.Node], tagname: str) -> None:
         """
         Attempt to handle a consolidated section.
         """
@@ -290,7 +309,7 @@ class _SplitFieldsTranslator(NodeVisitor):
         else:
             raise ValueError('does not contain a bulleted list.')
 
-    def handle_consolidated_bullet_list(self, items: Iterable[Node], tagname: str) -> None:
+    def handle_consolidated_bullet_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
         # Check the contents of the list.  In particular, each list
         # item should have the form:
         #   - `arg`: description...
@@ -327,21 +346,21 @@ class _SplitFieldsTranslator(NodeVisitor):
 
             # Remove the separating ":", if present
             if (len(fbody[0]) > 0 and
-                isinstance(fbody[0][0], docutils.nodes.Text)):
+                isinstance(fbody[0][0], nodes.Text)):
                 text = fbody[0][0].astext()
                 if text[:1] in ':-':
-                    fbody[0][0] = docutils.nodes.Text(
-                        text[1:].lstrip(), fbody[0][0].rawsource
+                    fbody[0][0] = nodes.Text(
+                        text[1:].lstrip(), fbody[0][0].astext()
                         )
                 elif text[:2] in (' -', ' :'):
-                    fbody[0][0] = docutils.nodes.Text(
-                        text[2:].lstrip(), fbody[0][0].rawsource
+                    fbody[0][0] = nodes.Text(
+                        text[2:].lstrip(), fbody[0][0].astext()
                         )
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
 
-    def handle_consolidated_definition_list(self, items: Iterable[Node], tagname: str) -> None:
+    def handle_consolidated_definition_list(self, items: Iterable[nodes.Node], tagname: str) -> None:
         # Check the list contents.
         n = 0
         _BAD_ITEM = ("item %d is not well formed.  Each item's term must "
@@ -357,7 +376,7 @@ class _SplitFieldsTranslator(NodeVisitor):
                 raise ValueError(_BAD_ITEM % n)
             if not ((item[0][0].tagname == 'title_reference') or
                     (self.ALLOW_UNMARKED_ARG_IN_CONSOLIDATED_FIELD and
-                     isinstance(item[0][0], docutils.nodes.Text))):
+                     isinstance(item[0][0], nodes.Text))):
                 raise ValueError(_BAD_ITEM % n)
             for child in item[0][1:]:
                 if child.astext() != '':
@@ -375,173 +394,81 @@ class _SplitFieldsTranslator(NodeVisitor):
                 type_descr = item[1]
                 self._add_field('type', arg, type_descr, lineno)
 
-    def unknown_visit(self, node: Node) -> None:
+    def unknown_visit(self, node: nodes.Node) -> None:
         'Ignore all unknown nodes'
 
-_TARGET_RE = re.compile(r'^(.*?)\s*<(?:URI:|URL:)?([^<>]+)>$')
+versionlabels = {
+    'versionadded':   'New in version %s',
+    'versionchanged': 'Changed in version %s',
+    'deprecated':     'Deprecated since version %s',
+}
 
-class _EpydocHTMLTranslator(HTMLTranslator):
+versionlabel_classes = {
+    'versionadded':     'added',
+    'versionchanged':   'changed',
+    'deprecated':       'deprecated',
+}
 
-    settings: ClassVar[Optional[optparse.Values]] = None
-
-    def __init__(self,
-            document: docutils.nodes.document,
-            docstring_linker: DocstringLinker
-            ):
-        self._linker = docstring_linker
-
-        # Set the document's settings.
-        if self.settings is None:
-            settings = OptionParser([HTMLWriter()]).get_default_values()
-            self.__class__.settings = settings
-        document.settings = self.settings
-
-        super().__init__(document)
-
-    # Handle interpreted text (crossreferences)
-    def visit_title_reference(self, node: Node) -> None:
-        m = _TARGET_RE.match(node.astext())
-        if m:
-            label, target = m.groups()
-        else:
-            label = target = node.astext()
-        # TODO: 'node.line' is None for some reason.
-        #       https://github.com/twisted/pydoctor/issues/237
-        lineno = 0
-        self.body.append(flatten(self._linker.link_xref(target, label, lineno)))
-        raise SkipNode()
-
-    def should_be_compact_paragraph(self, node: Node) -> bool:
-        if self.document.children == [node]:
-            return True
-        else:
-            return super().should_be_compact_paragraph(node)  # type: ignore[no-any-return]
-
-    def visit_document(self, node: Node) -> None:
-        pass
-
-    def depart_document(self, node: Node) -> None:
-        pass
-
-    def starttag(self, node: Node, tagname: str, suffix: str = '\n', **attributes: Any) -> str:
+class VersionChange(Directive):
+    """
+    Directive to describe a change/addition/deprecation in a specific version.
+    """
+    class versionmodified(nodes.Admonition, nodes.TextElement):
+        """Node for version change entries.
+        Currently used for "versionadded", "versionchanged" and "deprecated"
+        directives.
         """
-        This modified version of starttag makes a few changes to HTML
-        tags, to prevent them from conflicting with epydoc.  In particular:
-          - existing class attributes are prefixed with C{'rst-'}
-          - existing names are prefixed with C{'rst-'}
-          - hrefs starting with C{'#'} are prefixed with C{'rst-'}
-          - hrefs not starting with C{'#'} are given target='_top'
-          - all headings (C{<hM{n}>}) are given the css class C{'heading'}
-        """
-        # Get the list of all attribute dictionaries we need to munge.
-        attr_dicts = [attributes]
-        if isinstance(node, docutils.nodes.Node):
-            attr_dicts.append(node.attributes)
-        if isinstance(node, dict):
-            attr_dicts.append(node)
-        # Munge each attribute dictionary.  Unfortunately, we need to
-        # iterate through attributes one at a time because some
-        # versions of docutils don't case-normalize attributes.
-        for attr_dict in attr_dicts:
-            for key, val in list(attr_dict.items()):
-                # Prefix all CSS classes with "rst-"; and prefix all
-                # names with "rst-" to avoid conflicts.
-                if key.lower() in ('class', 'id', 'name'):
-                    attr_dict[key] = f'rst-{val}'
-                elif key.lower() in ('classes', 'ids', 'names'):
-                    attr_dict[key] = [f'rst-{cls}' for cls in val]
-                elif key.lower() == 'href':
-                    if attr_dict[key][:1]=='#':
-                        attr_dict[key] = f'#rst-{attr_dict[key][1:]}'
-                    else:
-                        # If it's an external link, open it in a new
-                        # page.
-                        attr_dict['target'] = '_top'
+    
+    has_content = True
+    required_arguments = 1
+    optional_arguments = 1
+    final_argument_whitespace = True
 
-        # For headings, use class="heading"
-        if re.match(r'^h\d+$', tagname):
-            attributes['class'] = ' '.join([attributes.get('class',''),
-                                            'heading']).strip()
-
-        return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
-
-    def visit_doctest_block(self, node: Node) -> None:
-        pysrc = node[0].astext()
-        if node.get('codeblock'):
-            self.body.append(flatten(colorize_codeblock(pysrc)))
+    def run(self) -> List[nodes.Node]:
+        node = self.versionmodified()
+        node.document = self.state.document
+        node['type'] = self.name
+        node['version'] = self.arguments[0]
+        text = versionlabels[self.name] % self.arguments[0]
+        if len(self.arguments) == 2:
+            inodes, messages = self.state.inline_text(self.arguments[1],
+                                                      self.lineno + 1)
+            para = nodes.paragraph(self.arguments[1], '', *inodes)
+            node.append(para)
         else:
-            self.body.append(flatten(colorize_doctest(pysrc)))
-        raise SkipNode()
+            messages = []
+        if self.content:
+            self.state.nested_parse(self.content, self.content_offset, node)
+        classes = ['versionmodified', versionlabel_classes[self.name]]
+        if len(node):
+            if isinstance(node[0], nodes.paragraph) and node[0].rawsource:
+                content = nodes.inline(node[0].rawsource)
+                content.source = node[0].source
+                content.line = node[0].line
+                content += node[0].children
+                node[0].replace_self(nodes.paragraph('', '', content))
 
+            para = cast(nodes.paragraph, node[0])
+            para.insert(0, nodes.inline('', '%s: ' % text, classes=classes))
+        else:
+            para = nodes.paragraph('', '',
+                                   nodes.inline('', '%s.' % text,
+                                                classes=classes), )
+            node.append(para)
 
-    # Other ressources on how to extend docutils:
-    # https://docutils.sourceforge.io/docs/user/tools.html
-    # https://docutils.sourceforge.io/docs/dev/hacking.html
-    # https://docutils.sourceforge.io/docs/howto/rst-directives.html
-    # docutils apidocs:
-    # http://code.nabla.net/doc/docutils/api/docutils.html#package-structure
+        ret = [node]  # type: List[nodes.Node]
+        ret += messages
+        return ret
 
-    # this part of the HTMLTranslator is based on sphinx's HTMLTranslator:
-    # https://github.com/sphinx-doc/sphinx/blob/3.x/sphinx/writers/html.py#L271
-    def _visit_admonition(self, node: Node, name: str) -> None:
-        self.body.append(self.starttag(
-            node, 'div', CLASS=('admonition ' + name)))
-        node.insert(0, docutils.nodes.title(name, name.title()))
-        self.set_first_last(node)
+# Do like Sphinx does for the seealso directive. 
+class SeeAlso(BaseAdmonition):
+    """
+    An admonition mentioning things to look at as reference.
+    """
+    class seealso(nodes.Admonition, nodes.Element):
+        """Custom "see also" admonition node."""
 
-    def visit_note(self, node: Node) -> None:
-        self._visit_admonition(node, 'note')
-
-    def depart_note(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_warning(self, node: Node) -> None:
-        self._visit_admonition(node, 'warning')
-
-    def depart_warning(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_attention(self, node: Node) -> None:
-        self._visit_admonition(node, 'attention')
-
-    def depart_attention(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_caution(self, node: Node) -> None:
-        self._visit_admonition(node, 'caution')
-
-    def depart_caution(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_danger(self, node: Node) -> None:
-        self._visit_admonition(node, 'danger')
-
-    def depart_danger(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_error(self, node: Node) -> None:
-        self._visit_admonition(node, 'error')
-
-    def depart_error(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_hint(self, node: Node) -> None:
-        self._visit_admonition(node, 'hint')
-
-    def depart_hint(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_important(self, node: Node) -> None:
-        self._visit_admonition(node, 'important')
-
-    def depart_important(self, node: Node) -> None:
-        self.depart_admonition(node)
-
-    def visit_tip(self, node: Node) -> None:
-        self._visit_admonition(node, 'tip')
-
-    def depart_tip(self, node: Node) -> None:
-        self.depart_admonition(node)
+    node_class = seealso
 
 class PythonCodeDirective(Directive):
     """
@@ -556,9 +483,13 @@ class PythonCodeDirective(Directive):
 
     has_content = True
 
-    def run(self) -> List[Node]:
+    def run(self) -> List[nodes.Node]:
         text = '\n'.join(self.content)
-        node = docutils.nodes.doctest_block(text, text, codeblock=True)
+        node = nodes.doctest_block(text, text, codeblock=True)
         return [ node ]
 
 directives.register_directive('python', PythonCodeDirective)
+directives.register_directive('versionadded', VersionChange)
+directives.register_directive('versionchanged', VersionChange)
+directives.register_directive('deprecated', VersionChange)
+directives.register_directive('seealso', SeeAlso)
