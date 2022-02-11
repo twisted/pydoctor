@@ -107,7 +107,7 @@ as colorized Python code.
 >>> p = restructuredtext.parse_docstring(
 ... """The directives options are ignored and do not show up in the HTML.
 ... 
-... .. code::
+... .. code:: python
 ...     :number-lines:
 ...     :linenos:
 ...
