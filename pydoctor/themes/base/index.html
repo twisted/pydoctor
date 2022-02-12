@@ -29,20 +29,15 @@
           A listing of <a href="nameIndex.html">all functions, classes,
           modules and packages</a>, ordered by name.
         </li>
-        <li t:render="onlyIfOneRoot">
-          Start at <a href="root.html">root</a>, the root package.
+        <li>
+          Or start at one of the root <t:transparent t:render="rootkind">
+          packages</t:transparent>:
+          <ul>
+            <li t:render="roots">
+              <t:slot name="root"/>
+            </li>
+          </ul>
         </li>
-        <t:transparent t:render="onlyIfMultipleRoots">
-          <li>
-            Or start at one of the root <t:transparent t:render="rootkind">
-            packages</t:transparent>:
-            <ul>
-              <li t:render="roots">
-                <t:slot name="root"/>
-              </li>
-            </ul>
-          </li>
-        </t:transparent>
       </ul>
     </div>
 

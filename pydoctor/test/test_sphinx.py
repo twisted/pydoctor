@@ -88,8 +88,10 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
         project_version='2.3.0',
         )
 
+class IgnoreSystem:
+    root_names = ()
 
-IGNORE_SYSTEM = cast(model.System, 'ignore-system')
+IGNORE_SYSTEM = cast(model.System, IgnoreSystem())
 """Passed as a System when we don't want the system to be accessed."""
 
 
