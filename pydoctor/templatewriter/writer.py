@@ -109,7 +109,7 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.build_directory.joinpath(ob.url.split('#')[0]).open('wb') as fobj:
+                with self.build_directory.joinpath(ob.url).open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)
