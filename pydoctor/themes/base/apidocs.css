@@ -386,6 +386,13 @@ a.internal-link {
     color: #971c3a;
 }
 
+/* Bootstart 3.x sets font-size to 17.5px which just
+   looks ridiculously large, so we unset it here.
+*/
+blockquote {
+    font-size: unset;
+}
+
 /*
 This defines the code style, it's black on light gray.
 It also overwrite the default values inherited from bootstrap min

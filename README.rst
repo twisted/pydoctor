@@ -80,6 +80,7 @@ in development
 * Fix variables named like the current module not being documented.
 * The Module Index now only shows module names instead of their full name. You can hover over a module link to see the full name.
 * Packages and modules are now listed together (they were separated previously).
+* If there is only a single root module, `index.html` now documents that module (previously it only linked the module page).
 * Fix introspection of functions comming from C-extensions.
 
 pydoctor 21.12.1
