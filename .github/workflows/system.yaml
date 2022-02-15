@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        tox_target: [twisted-apidoc, cpython-summary, cpython-apidocs]
+        tox_target: [twisted-apidoc, cpython-summary]
 
     steps:
     - uses: actions/checkout@v2
