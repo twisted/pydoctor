@@ -5,7 +5,7 @@ from typing import Any, Union
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text, html2stan
 from pydoctor.node2stan import gettext
 
 def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
@@ -1433,10 +1433,28 @@ def test_line_wrapping() -> None:
         ...\n"""
 
 def color2(v: Any) -> str:
+    """
+    Pain text colorize.
+    """
     colorizer = PyvalColorizer(linelen=50, maxlines=5)
     colorized = colorizer.colorize(v)
     text = ''.join(gettext(colorized.to_node()))
     return text
+
+def color3(v:Any) -> str:
+    """
+    HTML colorize.
+    """
+    colorizer = PyvalColorizer(linelen=50, maxlines=5)
+    colorized = colorizer.colorize(v)
+    return flatten(colorized.to_stan(NotFoundLinker()))
+
+
+def test_crash_surrogates_not_allowed() -> None:
+    """
+    Test that the colorizer does not make the flatten function crash when passing surrogates unicode strings.
+    """
+    assert flatten_text(html2stan(color3('surrogates:\udc80\udcff'))) == "'surrogates:\\udc80\\udcff'"
 
 def test_repr_text() -> None:
     """Test a few representations, with a plain text version.
