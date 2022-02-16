@@ -225,6 +225,7 @@ def test_introspection_python() -> None:
     """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
     system.introspectModule(Path(__file__), __name__, None)
+    system.process()
 
     module = system.objForFullName(__name__)
     assert module is not None
@@ -261,6 +262,8 @@ def test_introspection_extension() -> None:
         Path(cython_test_exception_raiser.raiser.__file__),
         'raiser',
         package)
+    system.process()
+
     assert not isinstance(module, model.Package)
 
     assert system.objForFullName('cython_test_exception_raiser') is package
@@ -297,7 +300,7 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         system.options.introspect_c_modules = True
 
         system.addPackage(package_path, None)
-        # does not need to process for c-modules, they are imported and analyzed directly.
+        system.process()
         
         assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
         
@@ -312,6 +315,34 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         assert "(...)" == pages.format_signature(func)
         assert "(a='r', b=-3.14)" == stanutils.flatten_text(
             cast(Tag, pages.format_signature(valid_func)))
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
+    c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
+    package_path = c_module_python_module_name_clash / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+
+        mod = system.allobjects['mymod.base']
+        # there is only one mymod.base module
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
+        assert len(mod.contents) == 1
+        assert 'coming_from_c_module' == mod.contents.popitem()[0]
 
     finally:
         # cleanup
