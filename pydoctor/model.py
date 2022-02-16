@@ -207,9 +207,16 @@ class Documentable:
     def url(self) -> str:
         """Relative URL at which the documentation for this Documentable
         can be found.
+
+        For page objects this method MUST return an C{.html} filename without a
+        URI fragment (because L{pydoctor.templatewriter.writer.TemplateWriter}
+        uses it directly to determine the output filename).
         """
         page_obj = self.page_object
-        page_url = f'{quote(page_obj.fullName())}.html'
+        if list(self.system.root_names) == [page_obj.fullName()]:
+            page_url = 'index.html'
+        else:
+            page_url = f'{quote(page_obj.fullName())}.html'
         if page_obj is self:
             return page_url
         else:

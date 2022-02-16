@@ -236,7 +236,19 @@ def _str_escape(s: str) -> str:
         elif c == "\\": 
             c = r'\\'
         return c
-    return ''.join(map(enc, s))
+
+    # Escape it
+    s = ''.join(map(enc, s))
+
+    # Ensures there is no funcky caracters (like surrogate unicode strings)
+    try:
+        s.encode('utf-8')
+    except UnicodeEncodeError:
+        # Otherwise replace them with backslashreplace
+        s = s.encode('utf-8', 'backslashreplace').decode('utf-8')
+    
+    return s
+
 def _bytes_escape(b: bytes) -> str:
     return repr(b)[2:-1]
 
