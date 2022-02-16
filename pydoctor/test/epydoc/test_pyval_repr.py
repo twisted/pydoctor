@@ -1438,23 +1438,23 @@ def color2(v: Any) -> str:
     """
     colorizer = PyvalColorizer(linelen=50, maxlines=5)
     colorized = colorizer.colorize(v)
-    text = ''.join(gettext(colorized.to_node()))
-    return text
-
-def color3(v:Any) -> str:
-    """
-    HTML colorize.
-    """
-    colorizer = PyvalColorizer(linelen=50, maxlines=5)
-    colorized = colorizer.colorize(v)
-    return flatten(colorized.to_stan(NotFoundLinker()))
+    text1 = ''.join(gettext(colorized.to_node()))
+    text2 = flatten_text(html2stan(flatten(colorized.to_stan(NotFoundLinker()))))
+    assert text1 == text2
+    return text2
 
 
 def test_crash_surrogates_not_allowed() -> None:
     """
     Test that the colorizer does not make the flatten function crash when passing surrogates unicode strings.
     """
-    assert flatten_text(html2stan(color3('surrogates:\udc80\udcff'))) == "'surrogates:\\udc80\\udcff'"
+    assert color2('surrogates:\udc80\udcff') == "'surrogates:\\udc80\\udcff'"
+
+def test_surrogates_cars_in_re() -> None:
+    """
+    Regex string are escaped their own way. See https://github.com/twisted/pydoctor/pull/493
+    """
+    assert color2(extract_expr(ast.parse("re.compile('surrogates:\\udc80\\udcff')"))) == "re.compile(r'surrogates:\\udc80\\udcff')"
 
 def test_repr_text() -> None:
     """Test a few representations, with a plain text version.
