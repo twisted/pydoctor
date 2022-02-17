@@ -347,3 +347,17 @@ def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
     finally:
         # cleanup
         subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+def test_resolve_name_subclass(capsys:CapSys) -> None:
+    """
+    C{Model.resolveName} knows about single inheritance.
+    """
+    m = fromText(
+        """
+        class B:
+            v=1
+        class C(B):
+            pass
+        """
+    )
+    assert m.resolveName('C.v') == m.contents['B'].contents['v']
