@@ -299,10 +299,17 @@ class Documentable:
             full_name = obj._localNameToFullName(p)
             if full_name == p and i != 0:
                 # The local name was not found.
-                # TODO: Instead of returning the input, _localNameToFullName()
-                #       should probably either return None or raise LookupError.
-                full_name = f'{obj.fullName()}.{p}'
-                break
+                # If we're looking at a class, we try our luck with the inherited members
+                if isinstance(obj, Class):
+                    inherited = obj.find(p)
+                    if inherited: 
+                        full_name = inherited.fullName()
+                if full_name == p:
+                    # We don't have a full name
+                    # TODO: Instead of returning the input, _localNameToFullName()
+                    #       should probably either return None or raise LookupError.
+                    full_name = f'{obj.fullName()}.{p}'
+                    break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
