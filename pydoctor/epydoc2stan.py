@@ -233,6 +233,61 @@ class _EpydocLinker(DocstringLinker):
         raise LookupError(identifier)
 
 
+class _CachedEpydocLinker(_EpydocLinker):
+    """
+    This linker implements simple caching functionality on top of methods defined in L{_EpydocLinker}.
+    """
+
+    class UnderDifferentLabel(Exception):
+        def __init__(self, link: Tag, *args: object) -> None:
+            super().__init__(*args)
+            self.link = link
+    
+    def __init__(self, obj: model.Documentable):
+        super().__init__(obj)
+        self._cache: Dict[str, List[Tuple["Flattenable", Tag]]] = {}
+    
+    def _look_in_cache(self, target: str, label: "Flattenable") -> Optional[Tag]:
+        values = self._cache.get(target)
+        if not values: return None
+        for _label, link in values:
+            if _label==label: return link
+        else: raise self.UnderDifferentLabel(values[-1][1])
+    
+    def _store_in_cache(self,target: str, label: "Flattenable", value: Tag) -> None:
+        values = self._cache.get(target)
+        if not values: self._cache[target] = []
+        self._cache[target].append((label,value))
+
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        try:
+            link = self._look_in_cache(target, label)
+        except self.UnderDifferentLabel as e:
+            # Smartly clone the tag and change the label instead of re-resolving the link
+            link = e.link.clone(True)
+            link.children = [label]
+            self._store_in_cache(target, label, link)
+        if link is None: 
+            link = super().link_to(target, label)
+            self._store_in_cache(target, label, link)          
+        return link
+    
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        try:
+            link = self._look_in_cache(target, label)
+        except self.UnderDifferentLabel as e:
+            # Smartly clone the tag and change the label instead of re-resolving the link
+            link = e.link.clone(True)
+            link.children = [label]
+            self._store_in_cache(target, label, link)
+            link = tags.code(link)
+        if link is None: 
+            link = super().link_xref(target, label, lineno)
+            self._store_in_cache(target, label, link.children[0])
+        else:
+            link = tags.code(link)   
+        return link
+
 @attr.s(auto_attribs=True)
 class FieldDesc:
     """

@@ -929,6 +929,30 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     assert "internal_module.C.html" == url
     assert int_mod.contents['C'] is xref
 
+def test_CachedEpydocLinker() -> None:
+    """
+    The CachedEpydocLinker returns the same Tag object without resolving the name and recreating it all the time.
+    """
+    system = model.System()
+    inventory = SphinxInventory(system.msg)
+    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name')
+    sut = epydoc2stan._CachedEpydocLinker(target)
+
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
+    assert 'base.module.other' in sut._cache
+    assert len(sut._cache['base.module.other'])==1
+    result2 = sut.link_to('base.module.other', 'base.module.other')
+    assert len(sut._cache['base.module.other'])==1
+    result3 = sut.link_to('base.module.other', 'other')
+    assert len(sut._cache['base.module.other'])==2
+    result4 = sut.link_xref('base.module.other', 'other', 0).children[0]
+    assert len(sut._cache['base.module.other'])==2
+
+    res = flatten(result2)
+    assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
+    assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
