@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Improve the name resolving algo such that it checks in super classes for inherited attributes.
 * C-modules wins over regular modules when there is a name clash.
 * Packages wins over modules when there is a name clash.
 * Fixed that modules were processed in a random order leading to several hard to reproduce bugs.
