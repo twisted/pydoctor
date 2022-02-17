@@ -2,13 +2,13 @@
 # Run tests after Python standard library's documentation is executed.
 #
 # These tests are designed to be executed inside tox, after pydoctor is run.
-#
+# Alternatively this can be excuted manually from the project root folder like:
+#   pytest docs/tests/test_standard_library_docs.py
 
-import pathlib
-import os
+from . import get_toxworkdir_subdir
 
-PYTHON_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / './.tox/cpython'
-BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / './.tox/cpython-output'
+PYTHON_DIR = get_toxworkdir_subdir('cpython')
+BASE_DIR = get_toxworkdir_subdir('cpython-output')
 
 def test_std_lib_docs() -> None:
     """
