@@ -7,7 +7,7 @@
 import pathlib
 import os
 
-BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / 'twisted-apidocs-build'
+BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / './.tox/twisted-apidocs-build'
 
 # Test for https://github.com/twisted/pydoctor/issues/428
 def test_IPAddress_implementations() -> None:

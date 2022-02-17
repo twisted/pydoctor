@@ -1,13 +1,13 @@
 #
 # Run tests after python-igraph's documentation is executed.
 #
-# These tests are designed to be executed inside tox, after bin/admin/build-apidocs.
+# These tests are designed to be executed inside tox, after pydoctor is run.
 #
 
 import pathlib
 import os
 
-BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / 'python-igraph-output'
+BASE_DIR = pathlib.Path(os.environ.get('TOX_WORK_DIR', os.getcwd())) / './.tox/python-igraph-output'
 
 def test_python_igraph_docs() -> None:
     """
