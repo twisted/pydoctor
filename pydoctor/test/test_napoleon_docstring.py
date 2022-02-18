@@ -5,7 +5,7 @@ Forked from the tests for ``sphinx.ext.napoleon.docstring`` module.
 :license: BSD, see LICENSE for details.
 """
 import re
-from typing import Type, Union, Any
+from typing import Type, Union
 from unittest import TestCase
 from textwrap import dedent
 
