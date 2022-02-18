@@ -265,7 +265,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         return cast('_CachedEpydocLinker._CacheType', cache_dict)
 
     def _look_in_cache(self, target: str, label: "Flattenable", 
-                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional[Tag]:
+                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional["Flattenable"]:
         # For xrefs, we first look into the link_to cache.
         if cache_kind == "link_xref":
             link_to_val = self._look_in_cache(target, label)
@@ -299,8 +299,7 @@ class _CachedEpydocLinker(_EpydocLinker):
                         )
                         return new_link
                 
-                if isinstance(entry.link, Tag):
-                    return entry.link
+                return entry.link
         else: 
             # Automatically infer what would be the link 
             # with a different label
@@ -361,6 +360,8 @@ class _CachedEpydocLinker(_EpydocLinker):
         if link is None: 
             link = super().link_to(target, label)
             self._store_in_cache(target, label, link)
+        if not isinstance(link, Tag):
+            link = tags.transparent(link)
         return link
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:

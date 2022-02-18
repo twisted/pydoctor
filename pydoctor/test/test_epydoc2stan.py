@@ -982,19 +982,21 @@ def test_CachedEpydocLinker() -> None:
 def test_CachedEpydocLinker_same_page_optimization() -> None:
 
     class TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
-        linked = False
+        lookups=0
+        max_lookups=3
         def link_to(self, target: str, label: "Flattenable") -> Tag:
             link = self._look_in_cache(target, label)
             if link is None: 
-                if not self.linked:
-                    self.linked = True
+                if self.lookups<self.max_lookups:
+                    self.lookups+=1
                     link = super().link_to(target, label)
                 else:
-                    raise AssertionError("Should not link twice")
+                    raise AssertionError(f"Should not link more that {self.max_lookups} times.")
             return link
 
     mod = fromText('''
     base=1
+    class someclass: ...
     ''', modname='module')
     sut = TestCachedEpydocLinker(mod)
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
@@ -1004,7 +1006,8 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     assert len(sut._link_to_cache['base'][False])==1, repr(sut._link_to_cache['base'][False])
     assert sut.link_to('base','base').attributes['href']=='index.html#base'
     assert len(sut._link_to_cache['base'][False])==2, sut._link_to_cache['base'][False]
-    
+    assert sut.link_to('someclass','some random name').attributes['href']=='module.someclass.html'
+
     sut.same_page_optimization=True
     assert sut.link_to('base','base').attributes['href']=='#base'
     assert sut.link_to('base','base').attributes['href']=='#base'
@@ -1013,7 +1016,17 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base' 
     # Tags are not properly understood right now but that's ok since these are only used
     # when inserting a link with nested markup like L{B{driver} <pydoctor.driver>}
+    assert len(sut._link_to_cache['base'][False])==2
     assert len(sut._link_to_cache['base'][True])==3
+
+    assert sut.link_to('someclass','some other name').attributes['href']=='module.someclass.html'
+    assert sut.link_to('someclass','a third name').attributes['href']=='module.someclass.html'
+    assert len(sut._link_to_cache['someclass'][False])==3
+    assert len(sut._link_to_cache['someclass'][True])==0
+
+    assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
+    assert sut.link_to('notfound', 'notfound.notfound').children[0] == 'notfound.notfound'
+    assert len(sut._link_to_cache['notfound'][True])==2
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
