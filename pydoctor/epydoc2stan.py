@@ -123,6 +123,7 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
+        # Can return a Tag('a') or Tag('transparent') if not found
         fullID = self.obj.expandName(identifier)
 
         target = self.obj.system.objForFullName(fullID)
@@ -137,6 +138,11 @@ class _EpydocLinker(DocstringLinker):
         return tags.transparent(label)
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+        # Always returns a Tag('code'). 
+        # If not foud the code tag will simply contain the label as Flattenable, like:
+        # Tag('code', children=['label as Flattenable'])
+        # If the link is found it gives something like:
+        # Tag('code', children=[Tag('a', href='...', children=['label as Flattenable'])])
         xref: "Flattenable"
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
@@ -241,14 +247,17 @@ class _EpydocLinker(DocstringLinker):
 
 class _CachedEpydocLinker(_EpydocLinker):
     """
-    This linker implements smart caching functionalities on top of methods defined in L{_EpydocLinker}.
+    This linker implements smart caching functionalities on top of public methods defined in L{DocstringLinker}.
+
+    The cache is implemented at the L{Tag} (Stan) level, letting us do transformation over cached L{Tag} instances
+    and recycle already resolved URLs and adjust them to be is the right formatting as requested by link_xref(). 
     """
     
     @attr.s(auto_attribs=True)
     class CacheEntry:
         name: str
         label: "Flattenable"
-        link: "Flattenable"
+        link: Tag
 
     _CacheType = Dict[str, Dict[bool, List['_CachedEpydocLinker.CacheEntry']]]
     _defaultCache: _CacheType = defaultdict(lambda:{True:[], False:[]})
@@ -265,10 +274,10 @@ class _CachedEpydocLinker(_EpydocLinker):
         return cast('_CachedEpydocLinker._CacheType', cache_dict)
 
     def _look_in_cache(self, target: str, label: "Flattenable", 
-                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional["Flattenable"]:
+                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional[Tag]:
         # For xrefs, we first look into the link_to cache.
         if cache_kind == "link_xref":
-            link_to_val = self._look_in_cache(target, label)
+            link_to_val = self._look_in_cache(target, label, cache_kind="link_to")
             if link_to_val is not None: return link_to_val
         
         # Get the cached entries
@@ -287,17 +296,17 @@ class _CachedEpydocLinker(_EpydocLinker):
         for entry in values:
             if entry.label==label: 
                 if not_same_value_for_same_page_optimization:
-                    # Transform the URL to omit the filename when self.same_page_optimization is True
-                    new_link = self._adjust_link(entry.link, 
-                                                 self.same_page_optimization)
-                    if new_link:
-                        self._store_in_cache(
-                            target, 
-                            label, 
-                            new_link, 
-                            cache_kind=cache_kind
-                        )
-                        return new_link
+                    # Transform the URL to omit the filename when self.same_page_optimization is True and
+                    # add it when self.same_page_optimization is False.
+                    link = self._adjust_link(entry.link, 
+                                                 self.same_page_optimization) or entry.link
+                    self._store_in_cache(
+                        target, 
+                        label, 
+                        link=link, 
+                        cache_kind=cache_kind
+                    )
+                    return link
                 
                 return entry.link
         else: 
@@ -310,37 +319,33 @@ class _CachedEpydocLinker(_EpydocLinker):
                 if not_same_value_for_same_page_optimization \
                 else self.same_page_optimization
 
-            if isinstance(cached.link, Tag):
-                link = cached.link.clone()
-                # Change the label       
-                link.children = [label]
+            link = cached.link.clone()
+            # Change the label       
+            link.children = [label]
 
-                self._store_in_cache(
-                                cached.name, 
-                                label, 
-                                link, 
-                                cache_kind=cache_kind, 
-                                same_page_optimization=use_same_page_opti)
+            self._store_in_cache(
+                            target, 
+                            label, 
+                            link=link, 
+                            cache_kind=cache_kind, 
+                            same_page_optimization=use_same_page_opti)
 
-                return self._look_in_cache(target, label, 
-                                           cache_kind=cache_kind)
-            
-        return None
+            return self._look_in_cache(target, label, 
+                                        cache_kind=cache_kind)
     
-    def _store_in_cache(self, target: str, label: "Flattenable", 
-                        value: "Flattenable",  
+    def _store_in_cache(self, target: str, 
+                        label: "Flattenable", 
+                        link: Tag,  
                         cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
                         same_page_optimization: Optional[bool]=None) -> None:
 
         cache = self._get_cache(cache_kind)
         values = cache[target][same_page_optimization if same_page_optimization is not None else self.same_page_optimization]
         assert isinstance(values, list)
-        values.append(self.CacheEntry(target, label, link=value))
+        values.append(self.CacheEntry(target, label, link=link))
     
-    def _adjust_link(self, link: "Flattenable", use_same_page_optimization:bool) -> Optional[Tag]:
-        if not isinstance(link, Tag):
-            return None
-        assert isinstance(link, Tag)
+    def _adjust_link(self, link: Tag, use_same_page_optimization:bool) -> Optional[Tag]:
+
         if use_same_page_optimization is False:
             if link.attributes.get('href', '').startswith("#"): # type:ignore
                 link = link.clone()
@@ -356,22 +361,21 @@ class _CachedEpydocLinker(_EpydocLinker):
         return None
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        link = self._look_in_cache(target, label)
+        link = self._look_in_cache(target, label, cache_kind="link_to")
         if link is None: 
             link = super().link_to(target, label)
-            self._store_in_cache(target, label, link)
-        if not isinstance(link, Tag):
-            link = tags.transparent(link)
+            self._store_in_cache(target, label, link, cache_kind="link_to")
         return link
     
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        link = self._look_in_cache(target, label, cache_kind="link_xref")
+        link: Optional["Flattenable"] = self._look_in_cache(target, label, cache_kind="link_xref")
         if link is None: 
-            link = super().link_xref(target, label, lineno)
-            self._store_in_cache(target, label, link.children[0], cache_kind="link_xref")
-        else:
-            link = tags.code(link)
-        return link
+            link = super().link_xref(target, label, lineno).children[0]
+            if not isinstance(link, Tag): 
+                # assert link is not None
+                link = tags.transparent(link)
+            self._store_in_cache(target, label, link, cache_kind="link_xref")
+        return tags.code(link)
 
 @attr.s(auto_attribs=True)
 class FieldDesc:

@@ -1021,8 +1021,8 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
 
     assert sut.link_to('someclass','some other name').attributes['href']=='module.someclass.html'
     assert sut.link_to('someclass','a third name').attributes['href']=='module.someclass.html'
-    assert len(sut._link_to_cache['someclass'][False])==3
-    assert len(sut._link_to_cache['someclass'][True])==0
+    assert len(sut._link_to_cache['someclass'][False])==2
+    assert len(sut._link_to_cache['someclass'][True])==2
 
     assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
     assert sut.link_to('notfound', 'notfound.notfound').children[0] == 'notfound.notfound'
