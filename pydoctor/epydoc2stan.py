@@ -81,6 +81,11 @@ def taglink(o: model.Documentable, page_url: str,
 class _EpydocLinker(DocstringLinker):
 
     class LookupFailed(LookupError):
+        """
+        Encapsulate a link tag that is not actually a link because we count not resolve the name. 
+
+        Used only if L{_EpydocLinker.strict} is True.
+        """
         def __init__(self, *args: object, link: Tag) -> None:
             super().__init__(*args)
             self.link: Tag = link
@@ -88,6 +93,7 @@ class _EpydocLinker(DocstringLinker):
     def __init__(self, obj: model.Documentable, same_page_optimization:bool):
         self.obj = obj
         self.same_page_optimization=same_page_optimization
+        self.strict=False
 
     @staticmethod
     def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
@@ -128,9 +134,7 @@ class _EpydocLinker(DocstringLinker):
         return self.obj.system.intersphinx.getLink(name)
 
     def link_to(self, identifier: str, label: "Flattenable") -> Tag:
-        """
-        :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved.
-        """
+        # :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved and self.strict is True.
         # Can return a Tag('a') or Tag('transparent') if not found
         fullID = self.obj.expandName(identifier)
 
@@ -143,13 +147,14 @@ class _EpydocLinker(DocstringLinker):
         if url is not None:
             return self._create_intersphinx_link(label, url=url)
 
-        raise self.LookupFailed(identifier, link=tags.transparent(label))
+        link = tags.transparent(label)
+        if self.strict:
+            raise self.LookupFailed(identifier, link=link)
+        return link
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        """
-        :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved.
-        """
-        # Always returns a Tag('code'). 
+        # :Raises _EpydocLinker.LookupFailed: If the identifier cannot be resolved and self.strict is True.
+        # Otherwise returns a Tag('code'). 
         # If not foud the code tag will simply contain the label as Flattenable, like:
         # Tag('code', children=['label as Flattenable'])
         # If the link is found it gives something like:
@@ -159,7 +164,8 @@ class _EpydocLinker(DocstringLinker):
             resolved = self._resolve_identifier_xref(target, lineno)
         except LookupError as e:
             xref = label
-            raise self.LookupFailed(str(e), link=tags.code(xref)) from e
+            if self.strict:
+                raise self.LookupFailed(str(e), link=tags.code(xref)) from e
         else:
             if isinstance(resolved, model.Documentable):
                 xref = taglink(resolved, self.obj.page_object.url, label, 
@@ -285,6 +291,8 @@ class _CachedEpydocLinker(_EpydocLinker):
         
         self._link_to_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
         self._link_xref_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
+
+        self.strict = True
     
     def _get_cache(self, cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> '_CachedEpydocLinker._CacheType':
         cache_dict = getattr(self, f"_{cache_kind}_cache")
@@ -327,7 +335,7 @@ class _CachedEpydocLinker(_EpydocLinker):
                         cache_kind=cache_kind,
                         lookup_failed=entry.lookup_failed,
                         linenos=entry.linenos # We do not use copy() here by design, 
-                                              # we want to deferents entries to share that same line numbers
+                                              # we want all the entries to share that same line numbers set.
                     )
                     raise self.NewDerivatedEntry('new cache entry', entry=new_entry)
                 
@@ -369,7 +377,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         assert isinstance(values, list)
         entry = self.CacheEntry(target, label, link=link, lookup_failed=lookup_failed)
         if linenos:
-            entry.linenos = linenos
+            entry.linenos = linenos # We do not use copy() here by design.
         values.insert(0, entry)
         return entry
     
@@ -432,7 +440,7 @@ class _CachedEpydocLinker(_EpydocLinker):
             try:
                 link = super().link_xref(target, label, lineno).children[0]
             except self.LookupFailed as e:
-                link = e.link
+                link = e.link.children[0]
                 failed=True
             if not isinstance(link, Tag): 
                 # assert link is not None
