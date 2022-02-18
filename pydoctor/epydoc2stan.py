@@ -330,7 +330,8 @@ class _CachedEpydocLinker(_EpydocLinker):
     
     def _store_in_cache(self, target: str, label: "Flattenable", 
                         value: "Flattenable",  
-                        cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", same_page_optimization:Optional[bool]=None) -> None:
+                        cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
+                        same_page_optimization: Optional[bool]=None) -> None:
 
         cache = self._get_cache(cache_kind)
         values = cache[target][same_page_optimization if same_page_optimization is not None else self.same_page_optimization]
