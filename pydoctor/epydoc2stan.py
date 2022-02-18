@@ -90,10 +90,10 @@ class _EpydocLinker(DocstringLinker):
             super().__init__(*args)
             self.link: Tag = link
 
-    def __init__(self, obj: model.Documentable, same_page_optimization:bool):
+    def __init__(self, obj: model.Documentable, same_page_optimization:bool, strict:bool=False):
         self.obj = obj
         self.same_page_optimization=same_page_optimization
-        self.strict=False
+        self.strict=strict
 
     @staticmethod
     def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
@@ -257,7 +257,7 @@ class _EpydocLinker(DocstringLinker):
             message = f'{message}, resolved from "{identifier}"'
         root_idx = fullID.find('.')
         if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
-            message += ' (you can link to external docs with --intersphinx)' 
+            message += ' (you can link to external docs with --intersphinx)'
         self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
@@ -276,7 +276,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         label: "Flattenable"
         link: Tag
         lookup_failed: bool
-        linenos: Set[int] = attr.ib(factory=set)
+        warned_linenos: Set[int] = attr.ib(factory=set)
 
     class NewDerivatedEntry(Exception):
         def __init__(self, *args: object, entry:'_CachedEpydocLinker.CacheEntry') -> None:
@@ -287,17 +287,39 @@ class _CachedEpydocLinker(_EpydocLinker):
     _defaultCache: _CacheType = defaultdict(lambda:{True:[], False:[]})
 
     def __init__(self, obj: model.Documentable, same_page_optimization:bool=True) -> None:
-        super().__init__(obj, same_page_optimization)
+        super().__init__(obj, same_page_optimization, strict=True)
         
         self._link_to_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
         self._link_xref_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
-
-        self.strict = True
     
     def _get_cache(self, cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> '_CachedEpydocLinker._CacheType':
         cache_dict = getattr(self, f"_{cache_kind}_cache")
         assert isinstance(cache_dict, dict)
         return cast('_CachedEpydocLinker._CacheType', cache_dict)
+
+    def _new_derivated_entry(self, 
+                             cached_entry: '_CachedEpydocLinker.CacheEntry', 
+                             label: Optional["Flattenable"], 
+                             cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> '_CachedEpydocLinker.CacheEntry':
+
+        # Transform the URL to omit the filename when self.same_page_optimization is True and
+        # add it when self.same_page_optimization is False.
+        link = self._adjust_link(cached_entry.link, 
+                                        # here we clone the link because we need to change the label anyway
+                                        self.same_page_optimization) or (cached_entry.link.clone() if label else cached_entry.link)
+
+        # Change the label    
+        if label:   
+            link.children = [label]
+
+        return self._store_in_cache(
+                        cached_entry.name, 
+                        label if label else link.children[0], 
+                        link=link, 
+                        cache_kind=cache_kind,
+                        lookup_failed=cached_entry.lookup_failed,
+                        warned_linenos=cached_entry.warned_linenos # We do not use copy() here by design.
+                    )
 
     def _lookup_cached_entry(self, target:str, label: "Flattenable", 
                           cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional['_CachedEpydocLinker.CacheEntry']:
@@ -324,45 +346,14 @@ class _CachedEpydocLinker(_EpydocLinker):
         for entry in values:
             if entry.label==label: 
                 if not_same_value_for_same_page_optimization:
-                    # Transform the URL to omit the filename when self.same_page_optimization is True and
-                    # add it when self.same_page_optimization is False.
-                    link = self._adjust_link(entry.link, 
-                                                 self.same_page_optimization) or entry.link
-                    new_entry = self._store_in_cache(
-                        target, 
-                        label, 
-                        link=link, 
-                        cache_kind=cache_kind,
-                        lookup_failed=entry.lookup_failed,
-                        linenos=entry.linenos # We do not use copy() here by design, 
-                                              # we want all the entries to share that same line numbers set.
-                    )
+                    new_entry = self._new_derivated_entry(entry, None, cache_kind)
                     raise self.NewDerivatedEntry('new cache entry', entry=new_entry)
-                
                 return entry
         else: 
             # Automatically infer what would be the link 
             # with a different label
-            
             entry = values[0]
-
-            # Transform the URL to omit the filename when self.same_page_optimization is True and
-            # add it when self.same_page_optimization is False.
-            link = self._adjust_link(entry.link, 
-                                            # here we clone the link because we need to change the label anyway
-                                            self.same_page_optimization) or entry.link.clone() 
-
-            # Change the label       
-            link.children = [label]
-
-            new_entry = self._store_in_cache(
-                            target, 
-                            label, 
-                            link=link, 
-                            cache_kind=cache_kind,
-                            lookup_failed=entry.lookup_failed,
-                            linenos=entry.linenos # We do not use copy() here by design.
-                        )
+            new_entry = self._new_derivated_entry(entry, label, cache_kind)
             raise self.NewDerivatedEntry('new cache entry', entry=new_entry)               
     
     def _store_in_cache(self, target: str, 
@@ -370,14 +361,14 @@ class _CachedEpydocLinker(_EpydocLinker):
                         link: Tag,  
                         cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
                         lookup_failed:bool=False, 
-                        linenos: Optional[Set[int]]=None) -> '_CachedEpydocLinker.CacheEntry':
+                        warned_linenos: Optional[Set[int]]=None) -> '_CachedEpydocLinker.CacheEntry':
 
         cache = self._get_cache(cache_kind)
         values = cache[target][self.same_page_optimization]
         assert isinstance(values, list)
         entry = self.CacheEntry(target, label, link=link, lookup_failed=lookup_failed)
-        if linenos:
-            entry.linenos = linenos # We do not use copy() here by design.
+        if warned_linenos:
+            entry.warned_linenos = warned_linenos # We do not use copy() here by design.
         values.insert(0, entry)
         return entry
     
@@ -416,7 +407,9 @@ class _CachedEpydocLinker(_EpydocLinker):
             except self.LookupFailed as e:
                 link = e.link
                 failed=True
-            self._store_in_cache(target, label, link, cache_kind="link_to", lookup_failed=failed)
+            self._store_in_cache(target, label, link, 
+                                 cache_kind="link_to", 
+                                 lookup_failed=failed)
         return link
     
     def _lookup_cached_xref(self, target: str, label: "Flattenable", lineno: int) -> Optional[Tag]:
@@ -424,10 +417,10 @@ class _CachedEpydocLinker(_EpydocLinker):
             cached = self._lookup_cached_entry(target, label, cache_kind="link_xref")
         except self.NewDerivatedEntry as e:            
             cached = e.entry
-            # Warns if the line number differs
-            if lineno not in cached.linenos and cached.lookup_failed:
+            # Warns onlt if the line number differs from any other values we have already in cache.
+            if cached.lookup_failed and lineno not in cached.warned_linenos:
                 self.obj.report(f'Cannot find link target for "{cached.name}"', 'resolve_identifier_xref', lineno_offset=lineno)
-            cached.linenos.add(lineno) # Add lineno such that the warning does not trigger again for this line.
+                cached.warned_linenos.add(lineno) # Add lineno such that the warning does not trigger again for this line.
         
         if cached:
             return cached.link
@@ -444,8 +437,11 @@ class _CachedEpydocLinker(_EpydocLinker):
                 failed=True
             if not isinstance(link, Tag): 
                 link = tags.transparent(link)
-            self._store_in_cache(target, label, link, cache_kind="link_xref", lookup_failed=failed, linenos=set([lineno]))
-        
+            new_cached = self._store_in_cache(target, label, link, 
+                                              cache_kind="link_xref", 
+                                              lookup_failed=failed)
+            if failed:
+                new_cached.warned_linenos.add(lineno)
         return tags.code(link)
 
 @attr.s(auto_attribs=True)
