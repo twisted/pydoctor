@@ -241,7 +241,7 @@ class _EpydocLinker(DocstringLinker):
 
 class _CachedEpydocLinker(_EpydocLinker):
     """
-    This linker implements smart caching functionality on top of methods defined in L{_EpydocLinker}.
+    This linker implements smart caching functionalities on top of methods defined in L{_EpydocLinker}.
     """
     
     @attr.s(auto_attribs=True)
@@ -291,7 +291,10 @@ class _CachedEpydocLinker(_EpydocLinker):
                     new_link = self._adjust_link(entry.link, self.same_page_optimization)
                     if new_link:
                         self._store_in_cache(
-                            target, label, new_link, cache_kind=cache_kind
+                            target, 
+                            label, 
+                            new_link, 
+                            cache_kind=cache_kind
                         )
                         return new_link
                 
