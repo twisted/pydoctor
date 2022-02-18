@@ -980,6 +980,9 @@ def test_CachedEpydocLinker() -> None:
     assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
 
 class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
+    """
+    Docstring linker for testing the caching of results.
+    """
     
     def __init__(self, obj: model.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
         super().__init__(obj, same_page_optimization)
@@ -1009,6 +1012,11 @@ class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
         return link
 
 def test_TestCachedEpydocLinker() -> None:
+    """
+    A test case for the testing linker L{_TestCachedEpydocLinker}. 
+    The test linker is initialized with a maximum number of non-cached requests it can make
+    and an AssertionError is raised if it makes too many requests.
+    """
     system = model.System()
     inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
@@ -1027,7 +1035,12 @@ def test_TestCachedEpydocLinker() -> None:
         sut.link_xref('anothername', 'again notfound', 1)
 
 def test_CachedEpydocLinker_same_page_optimization() -> None:
-
+    """
+    When _CachedEpydocLinker.same_page_optimization is True, the linker will create URLs with only the anchor
+    if we're lnking to an object on the same page. 
+    
+    Otherwise it will always use return a URL with a filename, this is used to generate the summaries.
+    """
     mod = fromText('''
     base=1
     class someclass: ...
@@ -1064,7 +1077,8 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
 
 def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
     """
-    Warnings should be reported only once, no matter the number of times we call summary2html() or docstring2html()
+    Warnings should be reported only once per invalid name per line, 
+    no matter the number of times we call summary2html() or docstring2html() or the order we call these functions.
     """
     _default_class = epydoc2stan._CachedEpydocLinker
     try:
