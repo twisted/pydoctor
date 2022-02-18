@@ -953,13 +953,14 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
 
 def test_CachedEpydocLinker() -> None:
     """
-    The CachedEpydocLinker returns the same Tag object without resolving the name and recreating it all the time.
+    The CachedEpydocLinker returns the same Tag object without resolving the name and re-creating the link tag all the time.
     """
     system = model.System()
     inventory = SphinxInventory(system.msg)
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
+    
     sut = epydoc2stan._CachedEpydocLinker(target)
 
     result2 = sut.link_to('base.module.other', 'base.module.other')
@@ -977,6 +978,42 @@ def test_CachedEpydocLinker() -> None:
     res = flatten(result2)
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
     assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
+
+def test_CachedEpydocLinker_same_page_optimization() -> None:
+
+    class TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
+        linked = False
+        def link_to(self, target: str, label: "Flattenable") -> Tag:
+            link = self._look_in_cache(target, label)
+            if link is None: 
+                if not self.linked:
+                    self.linked = True
+                    link = super().link_to(target, label)
+                else:
+                    raise AssertionError("Should not link twice")
+            return link
+
+    mod = fromText('''
+    base=1
+    ''', modname='module')
+    sut = TestCachedEpydocLinker(mod)
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    
+    sut.same_page_optimization=False
+    assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
+    assert len(sut._link_to_cache['base'][False])==1, repr(sut._link_to_cache['base'][False])
+    assert sut.link_to('base','base').attributes['href']=='index.html#base'
+    assert len(sut._link_to_cache['base'][False])==2, sut._link_to_cache['base'][False]
+    
+    sut.same_page_optimization=True
+    assert sut.link_to('base','base').attributes['href']=='#base'
+    assert sut.link_to('base','base').attributes['href']=='#base'
+    assert len(sut._link_to_cache['base'][True])==1
+    assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base'
+    assert sut.link_to('base', tags.transparent('module.base')).attributes['href']=='#base' 
+    # Tags are not properly understood right now but that's ok since these are only used
+    # when inserting a link with nested markup like L{B{driver} <pydoctor.driver>}
+    assert len(sut._link_to_cache['base'][True])==3
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
