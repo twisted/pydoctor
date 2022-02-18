@@ -248,7 +248,7 @@ class _CachedEpydocLinker(_EpydocLinker):
     class CacheEntry:
         name: str
         label: "Flattenable"
-        link: Tag
+        link: "Flattenable"
 
     _CacheType = Dict[str, Dict[bool, List['_CachedEpydocLinker.CacheEntry']]]
     _defaultCache: _CacheType = defaultdict(lambda:{True:[], False:[]})
@@ -331,7 +331,9 @@ class _CachedEpydocLinker(_EpydocLinker):
         assert isinstance(values, list)
         values.append(self.CacheEntry(target, label, link=value))
     
-    def _adjust_link(self, link: Tag, use_same_page_optimization:bool) -> Optional[Tag]:
+    def _adjust_link(self, link: "Flattenable", use_same_page_optimization:bool) -> Optional[Tag]:
+        if not isinstance(link, Tag):
+            return None
         if use_same_page_optimization is False:
             if link.attributes.get('href', '').startswith("#"):
                 link = link.clone()
