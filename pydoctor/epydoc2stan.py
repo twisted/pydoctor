@@ -265,7 +265,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         return cast('_CachedEpydocLinker._CacheType', cache_dict)
 
     def _look_in_cache(self, target: str, label: "Flattenable", 
-                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional["Flattenable"]:
+                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional[Tag]:
         # For xrefs, we first look into the link_to cache.
         if cache_kind == "link_xref":
             link_to_val = self._look_in_cache(target, label)
@@ -288,7 +288,8 @@ class _CachedEpydocLinker(_EpydocLinker):
             if entry.label==label: 
                 if not_same_value_for_same_page_optimization:
                     # Transform the URL to omit the filename when self.same_page_optimization is True
-                    new_link = self._adjust_link(entry.link, self.same_page_optimization)
+                    new_link = self._adjust_link(entry.link, 
+                                                 self.same_page_optimization)
                     if new_link:
                         self._store_in_cache(
                             target, 
@@ -298,7 +299,8 @@ class _CachedEpydocLinker(_EpydocLinker):
                         )
                         return new_link
                 
-                return entry.link
+                if isinstance(entry.link, Tag):
+                    return entry.link
         else: 
             # Automatically infer what would be the link 
             # with a different label
@@ -309,18 +311,22 @@ class _CachedEpydocLinker(_EpydocLinker):
                 if not_same_value_for_same_page_optimization \
                 else self.same_page_optimization
 
-            link = cached.link.clone()
-            # Change the label       
-            link.children = [label]
+            if isinstance(cached.link, Tag):
+                link = cached.link.clone()
+                # Change the label       
+                link.children = [label]
 
-            self._store_in_cache(
-                            cached.name, 
-                            label, 
-                            link, 
-                            cache_kind=cache_kind, 
-                            same_page_optimization=use_same_page_opti)
+                self._store_in_cache(
+                                cached.name, 
+                                label, 
+                                link, 
+                                cache_kind=cache_kind, 
+                                same_page_optimization=use_same_page_opti)
 
-            return self._look_in_cache(target, label, cache_kind=cache_kind)
+                return self._look_in_cache(target, label, 
+                                           cache_kind=cache_kind)
+            
+        return None
     
     def _store_in_cache(self, target: str, label: "Flattenable", 
                         value: "Flattenable",  
@@ -334,28 +340,29 @@ class _CachedEpydocLinker(_EpydocLinker):
     def _adjust_link(self, link: "Flattenable", use_same_page_optimization:bool) -> Optional[Tag]:
         if not isinstance(link, Tag):
             return None
+        assert isinstance(link, Tag)
         if use_same_page_optimization is False:
-            if link.attributes.get('href', '').startswith("#"):
+            if link.attributes.get('href', '').startswith("#"): # type:ignore
                 link = link.clone()
-                link.attributes['href'] = self.obj.page_object.url + link.attributes['href']
-                assert not link.attributes['href'].startswith("#")
+                link.attributes['href'] = self.obj.page_object.url + link.attributes['href'] # type:ignore
+                assert not link.attributes['href'].startswith("#") # type:ignore
                 return link
         else:
-            if link.attributes.get('href', '').startswith(self.obj.page_object.url+"#"):
+            if link.attributes.get('href', '').startswith(self.obj.page_object.url+"#"): # type:ignore
                 link = link.clone()
-                link.attributes['href'] = link.attributes['href'][len(self.obj.page_object.url):]
-                assert link.attributes['href'].startswith("#")
+                link.attributes['href'] = link.attributes['href'][len(self.obj.page_object.url):] # type:ignore
+                assert link.attributes['href'].startswith("#") # type:ignore
                 return link
         return None
 
-    def link_to(self, target: str, label: "Flattenable") -> "Flattenable":
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
         link = self._look_in_cache(target, label)
         if link is None: 
             link = super().link_to(target, label)
             self._store_in_cache(target, label, link)
         return link
     
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> "Flattenable":
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         link = self._look_in_cache(target, label, cache_kind="link_xref")
         if link is None: 
             link = super().link_xref(target, label, lineno)

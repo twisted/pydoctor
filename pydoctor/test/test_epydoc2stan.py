@@ -944,7 +944,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     # Dummy module that we want to link from.
     target = model.Module(system, 'ignore-name')
     sut = target.docstringlinker
-
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
     url = sut.resolve_identifier('internal_module.C')
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
