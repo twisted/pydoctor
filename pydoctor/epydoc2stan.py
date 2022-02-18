@@ -5,7 +5,7 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
-    Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+    Iterator, List, Mapping, Optional, Sequence, Tuple, Union, cast
 )
 import ast
 import itertools
@@ -22,6 +22,7 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_p
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from typing_extensions import Literal
 
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
@@ -52,7 +53,9 @@ def get_docstring(
     return None, None
 
 
-def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"] = None) -> Tag:
+def taglink(o: model.Documentable, page_url: str, 
+            label: Optional["Flattenable"] = None, 
+            same_page_optimization:bool=True) -> Tag:
     """
     Create a link to an object that exists in the system.
     """
@@ -63,7 +66,7 @@ def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"]
         label = o.fullName()
 
     url = o.url
-    if url.startswith(page_url + '#'):
+    if url.startswith(page_url + '#') and same_page_optimization is True:
         # When linking to an item on the same page, omit the path.
         # Besides shortening the HTML, this also avoids the page being reloaded
         # if the query string is non-empty.
@@ -77,8 +80,9 @@ def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"]
 
 class _EpydocLinker(DocstringLinker):
 
-    def __init__(self, obj: model.Documentable):
+    def __init__(self, obj: model.Documentable, same_page_optimization:bool):
         self.obj = obj
+        self.same_page_optimization=same_page_optimization
 
     @staticmethod
     def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
@@ -123,7 +127,8 @@ class _EpydocLinker(DocstringLinker):
 
         target = self.obj.system.objForFullName(fullID)
         if target is not None:
-            return taglink(target, self.obj.page_object.url, label)
+            return taglink(target, self.obj.page_object.url, label, 
+                           same_page_optimization=self.same_page_optimization)
 
         url = self.look_for_intersphinx(fullID)
         if url is not None:
@@ -139,7 +144,8 @@ class _EpydocLinker(DocstringLinker):
             xref = label
         else:
             if isinstance(resolved, model.Documentable):
-                xref = taglink(resolved, self.obj.page_object.url, label)
+                xref = taglink(resolved, self.obj.page_object.url, label, 
+                           same_page_optimization=self.same_page_optimization)
             else:
                 xref = self._create_intersphinx_link(label, url=resolved)
         ret: Tag = tags.code(xref)
@@ -228,64 +234,129 @@ class _EpydocLinker(DocstringLinker):
             message = f'{message}, resolved from "{identifier}"'
         root_idx = fullID.find('.')
         if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
-            message += ' (you can link to external docs with --intersphinx)'
+            message += ' (you can link to external docs with --intersphinx)' 
         self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
 
 
 class _CachedEpydocLinker(_EpydocLinker):
     """
-    This linker implements simple caching functionality on top of methods defined in L{_EpydocLinker}.
+    This linker implements smart caching functionality on top of methods defined in L{_EpydocLinker}.
     """
+    
+    @attr.s(auto_attribs=True)
+    class CacheEntry:
+        name: str
+        label: "Flattenable"
+        link: Tag
 
-    class UnderDifferentLabel(Exception):
-        def __init__(self, link: Tag, *args: object) -> None:
-            super().__init__(*args)
-            self.link = link
-    
-    def __init__(self, obj: model.Documentable):
-        super().__init__(obj)
-        self._cache: Dict[str, List[Tuple["Flattenable", Tag]]] = {}
-    
-    def _look_in_cache(self, target: str, label: "Flattenable") -> Optional[Tag]:
-        values = self._cache.get(target)
-        if not values: return None
-        for _label, link in values:
-            if _label==label: return link
-        else: raise self.UnderDifferentLabel(values[-1][1])
-    
-    def _store_in_cache(self,target: str, label: "Flattenable", value: Tag) -> None:
-        values = self._cache.get(target)
-        if not values: self._cache[target] = []
-        self._cache[target].append((label,value))
+    _CacheType = Dict[str, Dict[bool, List['_CachedEpydocLinker.CacheEntry']]]
+    _defaultCache: _CacheType = defaultdict(lambda:{True:[], False:[]})
 
-    def link_to(self, target: str, label: "Flattenable") -> Tag:
-        try:
-            link = self._look_in_cache(target, label)
-        except self.UnderDifferentLabel as e:
-            # Smartly clone the tag and change the label instead of re-resolving the link
-            link = e.link.clone(True)
+    def __init__(self, obj: model.Documentable, same_page_optimization:bool=True) -> None:
+        super().__init__(obj, same_page_optimization)
+        
+        self._link_to_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
+        self._link_xref_cache: '_CachedEpydocLinker._CacheType' = self._defaultCache.copy()
+    
+    def _get_cache(self, cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> '_CachedEpydocLinker._CacheType':
+        cache_dict = getattr(self, f"_{cache_kind}_cache")
+        assert isinstance(cache_dict, dict)
+        return cast('_CachedEpydocLinker._CacheType', cache_dict)
+
+    def _look_in_cache(self, target: str, label: "Flattenable", 
+                       cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional["Flattenable"]:
+        # For xrefs, we first look into the link_to cache.
+        if cache_kind == "link_xref":
+            link_to_val = self._look_in_cache(target, label)
+            if link_to_val is not None: return link_to_val
+        
+        # Get the cached entries
+        not_same_value_for_same_page_optimization = False
+        values = self._get_cache(cache_kind)[target][self.same_page_optimization]
+        
+        # Fallback to the entries that have not the same value for same_page_optimization
+        # This is ok because we have support for these URL transformation, see _adjust_link. 
+        if not values: 
+            values = self._get_cache(cache_kind)[target][not self.same_page_optimization]
+            not_same_value_for_same_page_optimization = True
+        
+        if not values: 
+            return None
+
+        for entry in values:
+            if entry.label==label: 
+                if not_same_value_for_same_page_optimization:
+                    # Transform the URL to omit the filename when self.same_page_optimization is True
+                    new_link = self._adjust_link(entry.link, self.same_page_optimization)
+                    if new_link:
+                        self._store_in_cache(
+                            target, label, new_link, cache_kind=cache_kind
+                        )
+                        return new_link
+                
+                return entry.link
+        else: 
+            # Automatically infer what would be the link 
+            # with a different label
+            
+            cached = values[-1]
+            
+            use_same_page_opti = not self.same_page_optimization \
+                if not_same_value_for_same_page_optimization \
+                else self.same_page_optimization
+
+            link = cached.link.clone()
+            # Change the label       
             link.children = [label]
-            self._store_in_cache(target, label, link)
+
+            self._store_in_cache(
+                            cached.name, 
+                            label, 
+                            link, 
+                            cache_kind=cache_kind, 
+                            same_page_optimization=use_same_page_opti)
+
+            return self._look_in_cache(target, label, cache_kind=cache_kind)
+    
+    def _store_in_cache(self, target: str, label: "Flattenable", 
+                        value: "Flattenable",  
+                        cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", same_page_optimization:Optional[bool]=None) -> None:
+
+        cache = self._get_cache(cache_kind)
+        values = cache[target][same_page_optimization if same_page_optimization is not None else self.same_page_optimization]
+        assert isinstance(values, list)
+        values.append(self.CacheEntry(target, label, link=value))
+    
+    def _adjust_link(self, link: Tag, use_same_page_optimization:bool) -> Optional[Tag]:
+        if use_same_page_optimization is False:
+            if link.attributes.get('href', '').startswith("#"):
+                link = link.clone()
+                link.attributes['href'] = self.obj.page_object.url + link.attributes['href']
+                assert not link.attributes['href'].startswith("#")
+                return link
+        else:
+            if link.attributes.get('href', '').startswith(self.obj.page_object.url+"#"):
+                link = link.clone()
+                link.attributes['href'] = link.attributes['href'][len(self.obj.page_object.url):]
+                assert link.attributes['href'].startswith("#")
+                return link
+        return None
+
+    def link_to(self, target: str, label: "Flattenable") -> "Flattenable":
+        link = self._look_in_cache(target, label)
         if link is None: 
             link = super().link_to(target, label)
-            self._store_in_cache(target, label, link)          
+            self._store_in_cache(target, label, link)
         return link
     
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        try:
-            link = self._look_in_cache(target, label)
-        except self.UnderDifferentLabel as e:
-            # Smartly clone the tag and change the label instead of re-resolving the link
-            link = e.link.clone(True)
-            link.children = [label]
-            self._store_in_cache(target, label, link)
-            link = tags.code(link)
+    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> "Flattenable":
+        link = self._look_in_cache(target, label, cache_kind="link_xref")
         if link is None: 
             link = super().link_xref(target, label, lineno)
-            self._store_in_cache(target, label, link.children[0])
+            self._store_in_cache(target, label, link.children[0], cache_kind="link_xref")
         else:
-            link = tags.code(link)   
+            link = tags.code(link)
         return link
 
 @attr.s(auto_attribs=True)
@@ -420,7 +491,7 @@ class Field:
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return self.body.to_stan(_EpydocLinker(self.source))
+        return self.body.to_stan(self.source.docstringlinker)
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -466,7 +537,7 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
-        self._linker = _EpydocLinker(self.obj)
+        self._linker = self.obj.docstringlinker
 
         self.types: Dict[str, Optional[Tag]] = {}
 
@@ -792,14 +863,14 @@ def format_docstring(obj: model.Documentable) -> Tag:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
         try:
-            stan = parsed_doc.to_stan(_EpydocLinker(source))
+            stan = parsed_doc.to_stan(source.docstringlinker)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if doc is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
                 parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-                stan = parsed_doc_plain.to_stan(_EpydocLinker(source))
+                stan = parsed_doc_plain.to_stan(source.docstringlinker)
             reportErrors(source, errs)
         if stan.tagName:
             ret(stan)
@@ -852,7 +923,13 @@ def format_summary(obj: model.Documentable) -> Tag:
         parsed_doc = parse_docstring(obj, ' '.join(lines), source)
 
     try:
-        stan = parsed_doc.to_stan(_EpydocLinker(source))
+        # Disallow same_page_optimization in order to make sure we're not
+        # breaking links when including the summaries on other pages.
+        assert isinstance(source.docstringlinker, _CachedEpydocLinker)
+        source.docstringlinker.same_page_optimization = False
+        stan = parsed_doc.to_stan(source.docstringlinker)
+        source.docstringlinker.same_page_optimization = True
+    
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
@@ -901,7 +978,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(_EpydocLinker(obj))
+        return parsed_type.to_stan(obj.docstringlinker)
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type = obj.parsed_type
@@ -995,7 +1072,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         linelen=obj.system.options.pyvalreprlinelen,
         maxlines=obj.system.options.pyvalreprmaxlines)
     
-    value_repr = doc.to_stan(_EpydocLinker(obj))
+    value_repr = doc.to_stan(obj.docstringlinker)
 
     # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
     for message in doc.warnings:

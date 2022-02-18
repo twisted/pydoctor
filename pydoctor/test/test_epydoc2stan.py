@@ -86,16 +86,31 @@ def test_xref_link_not_found() -> None:
 
 def test_xref_link_same_page() -> None:
     """A linked name that is documented on the same page is linked using only
-    a fragment as the URL.
+    a fragment as the URL. But that does not happend in summaries. 
     """
-    mod = fromText('''
+    src='''
     """The home of L{local_func}."""
 
     def local_func():
         pass
-    ''', modname='test')
+    '''
+    mod = fromText(src, modname='test')
+    assert mod.page_object.url == 'index.html'
     html = docstring2html(mod)
     assert 'href="#local_func"' in html
+    html = summary2html(mod)
+    assert 'href="index.html#local_func"' in html
+    html = docstring2html(mod)
+    assert 'href="#local_func"' in html
+    
+    mod = fromText(src, modname='test')
+    html = summary2html(mod)
+    assert 'href="index.html#local_func"' in html
+    html = docstring2html(mod)
+    assert 'href="#local_func"' in html
+    html = summary2html(mod)
+    assert 'href="index.html#local_func"' in html
+
 
 
 def test_xref_link_other_page() -> None:
@@ -760,7 +775,8 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     system = model.System()
     target = model.Module(system, 'ignore-name')
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module')
 
@@ -776,7 +792,8 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module.other')
 
@@ -791,7 +808,8 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
     result2 = sut.link_to('base.module.other', 'base.module.other')
@@ -811,7 +829,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     url = sut.resolve_identifier('base.module.other')
     url_xref = sut._resolve_identifier_xref('base.module.other', 0)
@@ -836,7 +855,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
 
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.resolve_identifier('ext_module')
@@ -860,7 +880,8 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     ext_package = model.Module(system, 'ext_package')
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
+    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     # This is called for the L{ext_module} markup.
     assert sut.resolve_identifier('ext_module') is None
@@ -899,7 +920,8 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
         socket = None
     ''')
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
-    linker = epydoc2stan._EpydocLinker(mod)
+    linker = mod.docstringlinker
+    assert isinstance(linker, epydoc2stan._CachedEpydocLinker)
 
     url = linker.resolve_identifier('socket.socket')
     url_xref = linker._resolve_identifier_xref('socket.socket', 0)
@@ -921,7 +943,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
 
     # Dummy module that we want to link from.
     target = model.Module(system, 'ignore-name')
-    sut = epydoc2stan._EpydocLinker(target)
+    sut = target.docstringlinker
 
     url = sut.resolve_identifier('internal_module.C')
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
@@ -940,15 +962,17 @@ def test_CachedEpydocLinker() -> None:
     target = model.Module(system, 'ignore-name')
     sut = epydoc2stan._CachedEpydocLinker(target)
 
-    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
-    assert 'base.module.other' in sut._cache
-    assert len(sut._cache['base.module.other'])==1
     result2 = sut.link_to('base.module.other', 'base.module.other')
-    assert len(sut._cache['base.module.other'])==1
+    assert 'base.module.other' in sut._link_to_cache
+    assert len(sut._link_to_cache['base.module.other'][True])==1
+    result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
+    assert 'base.module.other' not in sut._link_xref_cache
+    assert len(sut._link_to_cache['base.module.other'][True])==1
     result3 = sut.link_to('base.module.other', 'other')
-    assert len(sut._cache['base.module.other'])==2
+    assert len(sut._link_to_cache['base.module.other'][True])==2
     result4 = sut.link_xref('base.module.other', 'other', 0).children[0]
-    assert len(sut._cache['base.module.other'])==2
+    assert len(sut._link_to_cache['base.module.other'][True])==2
+    assert 'base.module.other' not in sut._link_xref_cache
 
     res = flatten(result2)
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
