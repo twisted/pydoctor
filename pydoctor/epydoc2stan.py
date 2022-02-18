@@ -281,15 +281,17 @@ class _CachedEpydocLinker(_EpydocLinker):
             if link_to_val is not None: return link_to_val
         
         # Get the cached entries
+        cache = self._get_cache(cache_kind)
         not_same_value_for_same_page_optimization = False
-        values = self._get_cache(cache_kind)[target][self.same_page_optimization]
+        values = cache[target][self.same_page_optimization]
         
         # Fallback to the entries that have not the same value for same_page_optimization
         # This is ok because we have support for these URL transformation, see _adjust_link. 
         if not values: 
-            values = self._get_cache(cache_kind)[target][not self.same_page_optimization]
+            values = cache[target][not self.same_page_optimization]
             not_same_value_for_same_page_optimization = True
         
+        # Not found
         if not values: 
             return None
 
