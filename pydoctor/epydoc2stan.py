@@ -434,7 +434,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         return None
 
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        link = self._lookup_cached_xref(target, label, lineno)
+        link: Optional["Flattenable"] = self._lookup_cached_xref(target, label, lineno)
         if link is None:
             failed=False 
             try:
@@ -443,7 +443,6 @@ class _CachedEpydocLinker(_EpydocLinker):
                 link = e.link.children[0]
                 failed=True
             if not isinstance(link, Tag): 
-                # assert link is not None
                 link = tags.transparent(link)
             self._store_in_cache(target, label, link, cache_kind="link_xref", lookup_failed=failed, linenos=set([lineno]))
         
