@@ -250,7 +250,7 @@ class _CachedEpydocLinker(_EpydocLinker):
     This linker implements smart caching functionalities on top of public methods defined in L{DocstringLinker}.
 
     The cache is implemented at the L{Tag} (Stan) level, letting us do transformation over cached L{Tag} instances
-    and recycle already resolved URLs and adjust them to be is the right formatting as requested by link_xref(). 
+    and recycle already resolved URLs and adjust them to change formatting as requested by link_xref(). 
     """
     
     @attr.s(auto_attribs=True)
