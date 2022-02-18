@@ -961,19 +961,19 @@ def test_CachedEpydocLinker() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     
-    sut = epydoc2stan._CachedEpydocLinker(target)
+    sut = _TestCachedEpydocLinker(target, max_lookups=1)
 
     result2 = sut.link_to('base.module.other', 'base.module.other')
     assert 'base.module.other' in sut._link_to_cache
     assert len(sut._link_to_cache['base.module.other'][True])==1
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
-    assert 'base.module.other' not in sut._link_xref_cache
+    assert len(sut._link_xref_cache['base.module.other'][True])==0
     assert len(sut._link_to_cache['base.module.other'][True])==1
     result3 = sut.link_to('base.module.other', 'other')
     assert len(sut._link_to_cache['base.module.other'][True])==2
     result4 = sut.link_xref('base.module.other', 'other', 0).children[0]
     assert len(sut._link_to_cache['base.module.other'][True])==2
-    assert 'base.module.other' not in sut._link_xref_cache
+    assert len(sut._link_xref_cache['base.module.other'][True])==0
 
     res = flatten(result2)
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
@@ -987,7 +987,7 @@ class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
         self.max_lookups = max_lookups
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        link = self._look_in_cache(target, label, cache_kind='link_to')
+        link = self._lookup_cached_link(target, label, cache_kind='link_to')
         if link is None: 
             if self.lookups<self.max_lookups:
                 self.lookups+=1
@@ -997,7 +997,7 @@ class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
         return link
     
     def link_xref(self, target: str, label: "Flattenable", lineno:int) -> Tag:
-        link = self._look_in_cache(target, label, cache_kind='link_xref')
+        link = self._lookup_cached_xref(target, label, lineno)
         if link is None: 
             if self.lookups<self.max_lookups:
                 self.lookups+=1
@@ -1055,7 +1055,7 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
 
     assert sut.link_to('someclass','some other name').attributes['href']=='module.someclass.html'
     assert sut.link_to('someclass','a third name').attributes['href']=='module.someclass.html'
-    assert len(sut._link_to_cache['someclass'][False])==2
+    assert len(sut._link_to_cache['someclass'][False])==1
     assert len(sut._link_to_cache['someclass'][True])==2
 
     assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
@@ -1068,11 +1068,12 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
     """
     _default_class = epydoc2stan._CachedEpydocLinker
     try:
-        epydoc2stan._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2)
+        epydoc2stan._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2) # type:ignore
         src = '''
         """
         L{base} L{regular text <notfound>} L{notfound} 
-        L{regular text <base>} L{B{look at the base} <base>} L{I{Important class} <notfound>}
+
+        L{regular text <base>} L{B{look at the base} <base>} L{I{Important class} <notfound>}  L{notfound} 
         """
         base=1
         '''
@@ -1084,9 +1085,11 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         captured = capsys.readouterr().out
 
         # Here, we can see that the warning got reported only once but the error is present 3 times in the
-        # docstring. This is not a very big deal since the errors will be reported once the other error is fixed,
-        # But still that's not the best...
-        assert captured == 'module:3: Cannot find link target for "notfound"\n'
+        # docstring. 
+        # The rationale about xref warnings is now the following: 
+        # - warns only once per unresolved identifier per line. 
+
+        assert captured == 'module:3: Cannot find link target for "notfound"\nmodule:5: Cannot find link target for "notfound"\n'
 
         assert 'href="index.html#base"' in summary2html(mod)
         summary2html(mod); docstring2html(mod)
@@ -1106,7 +1109,7 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         
         html = docstring2html(mod)
         captured = capsys.readouterr().out
-        assert captured == ''
+        assert captured == 'module:5: Cannot find link target for "notfound"\n'
         assert 'href="#base"' in html
         
         docstring2html(mod); summary2html(mod)
@@ -1114,7 +1117,7 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         assert captured == ''
     
     finally:
-        epydoc2stan._CachedEpydocLinker = _default_class
+        epydoc2stan._CachedEpydocLinker = _default_class # type:ignore
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
