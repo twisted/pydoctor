@@ -11,7 +11,7 @@ from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test import CapSys
+from pydoctor.test import CapSys, partialclass
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -979,26 +979,60 @@ def test_CachedEpydocLinker() -> None:
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
     assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
 
-def test_CachedEpydocLinker_same_page_optimization() -> None:
+class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
+    
+    def __init__(self, obj: model.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
+        super().__init__(obj, same_page_optimization)
+        self.lookups = 0
+        self.max_lookups = max_lookups
 
-    class TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
-        lookups=0
-        max_lookups=3
-        def link_to(self, target: str, label: "Flattenable") -> Tag:
-            link = self._look_in_cache(target, label)
-            if link is None: 
-                if self.lookups<self.max_lookups:
-                    self.lookups+=1
-                    link = super().link_to(target, label)
-                else:
-                    raise AssertionError(f"Should not link more that {self.max_lookups} times.")
-            return link
+    def link_to(self, target: str, label: "Flattenable") -> Tag:
+        link = self._look_in_cache(target, label, cache_kind='link_to')
+        if link is None: 
+            if self.lookups<self.max_lookups:
+                self.lookups+=1
+                link = super().link_to(target, label)
+            else:
+                raise AssertionError(f"Should not lookup link to {target!r}. Max lookups reached ({self.max_lookups} lookups). ")
+        return link
+    
+    def link_xref(self, target: str, label: "Flattenable", lineno:int) -> Tag:
+        link = self._look_in_cache(target, label, cache_kind='link_xref')
+        if link is None: 
+            if self.lookups<self.max_lookups:
+                self.lookups+=1
+                link = super().link_xref(target, label, lineno)
+            else:
+                raise AssertionError(f"Should not lookup link to {target!r}. Max lookups reached ({self.max_lookups} lookups). ")
+        else:
+            link = tags.code(link)
+        return link
+
+def test_TestCachedEpydocLinker() -> None:
+    system = model.System()
+    inventory = SphinxInventory(system.msg)
+    inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
+    system.intersphinx = inventory
+    target = model.Module(system, 'ignore-name')
+    
+    sut = _TestCachedEpydocLinker(target, 2)
+    sut.link_xref('base.module.other', 'other', 1)
+    assert sut.lookups==1
+    assert len(sut._link_xref_cache['base.module.other'][True])==1
+    sut.link_xref('notfound', 'notfound', 1)
+    assert sut.lookups==2
+    assert len(sut._link_xref_cache['notfound'][True])==1
+
+    with pytest.raises(AssertionError):
+        sut.link_xref('anothername', 'again notfound', 1)
+
+def test_CachedEpydocLinker_same_page_optimization() -> None:
 
     mod = fromText('''
     base=1
     class someclass: ...
     ''', modname='module')
-    sut = TestCachedEpydocLinker(mod)
+    sut = _TestCachedEpydocLinker(mod, 3) # Raise if it makes more than 3 lookups.
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
     
     sut.same_page_optimization=False
@@ -1027,6 +1061,60 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     assert sut.link_to('notfound', 'notfound').children[0] == 'notfound'
     assert sut.link_to('notfound', 'notfound.notfound').children[0] == 'notfound.notfound'
     assert len(sut._link_to_cache['notfound'][True])==2
+
+def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
+    """
+    Warnings should be reported only once, no matter the number of times we call summary2html() or docstring2html()
+    """
+    _default_class = epydoc2stan._CachedEpydocLinker
+    try:
+        epydoc2stan._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2)
+        src = '''
+        """
+        L{base} L{regular text <notfound>} L{notfound} 
+        L{regular text <base>} L{B{look at the base} <base>} L{I{Important class} <notfound>}
+        """
+        base=1
+        '''
+
+        mod = fromText(src, modname='module')
+        assert isinstance(mod.docstringlinker, _TestCachedEpydocLinker)
+        assert mod.docstringlinker.max_lookups==2
+        assert 'href="#base"' in docstring2html(mod)
+        captured = capsys.readouterr().out
+
+        # Here, we can see that the warning got reported only once but the error is present 3 times in the
+        # docstring. This is not a very big deal since the errors will be reported once the other error is fixed,
+        # But still that's not the best...
+        assert captured == 'module:3: Cannot find link target for "notfound"\n'
+
+        assert 'href="index.html#base"' in summary2html(mod)
+        summary2html(mod); docstring2html(mod)
+        
+        captured = capsys.readouterr().out
+
+        # Other warnings are not logged if running summary2html and docstring2html multiple times.
+        assert captured == ''
+
+        mod = fromText(src, modname='module')
+        assert isinstance(mod.docstringlinker, _TestCachedEpydocLinker)
+        assert mod.docstringlinker.max_lookups==2
+        assert 'href="index.html#base"' in summary2html(mod)
+        captured = capsys.readouterr().out
+
+        assert captured == 'module:3: Cannot find link target for "notfound"\n'
+        
+        html = docstring2html(mod)
+        captured = capsys.readouterr().out
+        assert captured == ''
+        assert 'href="#base"' in html
+        
+        docstring2html(mod); summary2html(mod)
+        captured = capsys.readouterr().out
+        assert captured == ''
+    
+    finally:
+        epydoc2stan._CachedEpydocLinker = _default_class
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """

@@ -80,6 +80,11 @@ def taglink(o: model.Documentable, page_url: str,
 
 class _EpydocLinker(DocstringLinker):
 
+    class LookupFailed(LookupError):
+        def __init__(self, *args: object, link: Tag) -> None:
+            super().__init__(*args)
+            self.link: Tag = link
+
     def __init__(self, obj: model.Documentable, same_page_optimization:bool):
         self.obj = obj
         self.same_page_optimization=same_page_optimization
@@ -137,7 +142,7 @@ class _EpydocLinker(DocstringLinker):
 
         return tags.transparent(label)
 
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
+    def link_xref(self, target: str, label: "Flattenable", lineno: int, strict: bool=False) -> Tag:
         # Always returns a Tag('code'). 
         # If not foud the code tag will simply contain the label as Flattenable, like:
         # Tag('code', children=['label as Flattenable'])
@@ -146,16 +151,17 @@ class _EpydocLinker(DocstringLinker):
         xref: "Flattenable"
         try:
             resolved = self._resolve_identifier_xref(target, lineno)
-        except LookupError:
+        except LookupError as e:
             xref = label
+            if strict:
+                raise self.LookupFailed(str(e), link=tags.code(xref)) from e
         else:
             if isinstance(resolved, model.Documentable):
                 xref = taglink(resolved, self.obj.page_object.url, label, 
                            same_page_optimization=self.same_page_optimization)
             else:
                 xref = self._create_intersphinx_link(label, url=resolved)
-        ret: Tag = tags.code(xref)
-        return ret
+        return tags.code(xref)
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         fullID = self.obj.expandName(identifier)
@@ -258,6 +264,7 @@ class _CachedEpydocLinker(_EpydocLinker):
         name: str
         label: "Flattenable"
         link: Tag
+        lookup_failed: bool
 
     _CacheType = Dict[str, Dict[bool, List['_CachedEpydocLinker.CacheEntry']]]
     _defaultCache: _CacheType = defaultdict(lambda:{True:[], False:[]})
@@ -339,12 +346,13 @@ class _CachedEpydocLinker(_EpydocLinker):
                         label: "Flattenable", 
                         link: Tag,  
                         cache_kind: 'Literal["link_to", "link_xref"]' = "link_to", 
-                        same_page_optimization: Optional[bool]=None) -> None:
+                        same_page_optimization: Optional[bool]=None, 
+                        lookup_failed:bool=False) -> None:
 
         cache = self._get_cache(cache_kind)
         values = cache[target][same_page_optimization if same_page_optimization is not None else self.same_page_optimization]
         assert isinstance(values, list)
-        values.append(self.CacheEntry(target, label, link=link))
+        values.append(self.CacheEntry(target, label, link=link, lookup_failed=lookup_failed))
     
     def _adjust_link(self, link: Tag, use_same_page_optimization:bool) -> Optional[Tag]:
 
@@ -372,7 +380,10 @@ class _CachedEpydocLinker(_EpydocLinker):
     def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
         link: Optional["Flattenable"] = self._look_in_cache(target, label, cache_kind="link_xref")
         if link is None: 
-            link = super().link_xref(target, label, lineno).children[0]
+            try:
+                link = super().link_xref(target, label, lineno, strict=True).children[0]
+            except self.LookupFailed as e:
+                link = e.link
             if not isinstance(link, Tag): 
                 # assert link is not None
                 link = tags.transparent(link)
@@ -439,7 +450,6 @@ class RaisesDesc(FieldDesc):
         assert self.type is not None  # TODO: Why can't it be None?
         yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
-
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
