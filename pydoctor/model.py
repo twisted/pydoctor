@@ -378,7 +378,8 @@ class Documentable:
     @property
     def docstringlinker(self) -> 'epydoc2stan.DocstringLinker':
         """
-        Returns an instance of L{epydoc2stan._CachedEpydocLinker}. 
+        Returns an instance of L{epydoc2stan.DocstringLinker} suitable for resolving names
+        in the context of the object scope. 
         """
         if self._linker is not None:
             return self._linker
