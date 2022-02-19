@@ -990,7 +990,7 @@ class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
         self.max_lookups = max_lookups
 
     def link_to(self, target: str, label: "Flattenable") -> Tag:
-        link = self._lookup_cached_link(target, label, cache_kind='link_to')
+        link = self._lookup_cached_link_to(target, label)
         if link is None: 
             if self.lookups<self.max_lookups:
                 self.lookups+=1
@@ -1000,7 +1000,7 @@ class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
         return link
     
     def link_xref(self, target: str, label: "Flattenable", lineno:int) -> Tag:
-        link = self._lookup_cached_xref(target, label, lineno)
+        link = self._lookup_cached_link_xref(target, label, lineno)
         if link is None: 
             if self.lookups<self.max_lookups:
                 self.lookups+=1
@@ -1098,10 +1098,12 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         assert 'href="#base"' in docstring2html(mod)
         captured = capsys.readouterr().out
 
-        # Here, we can see that the warning got reported only once but the error is present 3 times in the
-        # docstring. 
+        # Here, we can see that the warning got reported only 2 times but 
+        # the error is present 4 times in the docstring. This is because 
+        # links are on the same line.
+
         # The rationale about xref warnings is now the following: 
-        # - warns only once per unresolved identifier per line. 
+        # - Warns only once per unresolved identifier per line. 
 
         assert captured == 'module:3: Cannot find link target for "notfound"\nmodule:5: Cannot find link target for "notfound"\n'
 
