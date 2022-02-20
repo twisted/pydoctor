@@ -71,7 +71,10 @@ What's New?
 ~~~~~~~~~~~
 
 in development
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^ 
+
+pydoctor 22.2.0
+^^^^^^^^^^^^^^^
 * Improve the name resolving algo such that it checks in super classes for inherited attributes.
 * C-modules wins over regular modules when there is a name clash.
 * Packages wins over modules when there is a name clash.
