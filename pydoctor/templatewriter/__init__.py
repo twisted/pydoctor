@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Iterator, Optional, Dict, Union, overload, TYPE_CHECKING
+from typing import Iterable, Iterator, Optional, Union, cast, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -24,6 +24,7 @@ else:
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
+from pydoctor.templatewriter.util import CaseInsensitiveDict
 from pydoctor.model import System, Documentable
 
 DOCTYPE = b'''\
@@ -37,7 +38,8 @@ def parse_xml(text: str) -> minidom.Document:
     Create a L{minidom} representaton of the XML string.
     """
     try:
-        return minidom.parseString(text)
+        # TODO: submit a PR to typeshed to add a return type for parseString()
+        return cast(minidom.Document, minidom.parseString(text))
     except Exception as e:
         raise ValueError(f"Failed to parse template as XML: {e}") from e
     
@@ -60,9 +62,6 @@ class IWriter(Protocol):
     Interface class for pydoctor output writer.
     """
 
-    @overload
-    def __init__(self, build_directory: Path) -> None: ...
-    @overload
     def __init__(self, build_directory: Path, template_lookup: 'TemplateLookup') -> None: ...
 
     def prepOutputDirectory(self) -> None:
@@ -147,7 +146,7 @@ class Template(abc.ABC):
 
         try:
             # Only try to decode the file text if the file is an HTML template
-            if templatepath.suffix == '.html':
+            if templatepath.suffix.lower() == '.html':
                 try:
                     text = path.read_text(encoding='utf-8')
                 except UnicodeDecodeError as e:
@@ -271,6 +270,8 @@ class TemplateLookup:
 
     @note: The HTML templates versions are independent of the pydoctor version
            and are idependent from each other.
+    
+    @note: Template operations are case insensitive.
 
     @see: L{Template}, L{StaticTemplate}, L{HtmlTemplate}
     """
@@ -280,13 +281,11 @@ class TemplateLookup:
         Loads all templates from the given C{path} into the lookup.
 
         @param path: A L{Path} or L{Traversable} object pointing to a
-            directory to load the templates from.
+            directory to load the default set of templates from.
         """
-        self._templates: Dict[str, Template] = {}
+        self._templates: CaseInsensitiveDict[Template] = CaseInsensitiveDict()
 
         self.add_templatedir(path)
-        
-        self._default_templates = self._templates.copy()
     
     def _add_overriding_html_template(self, template: HtmlTemplate, current_template: HtmlTemplate) -> None:
         default_version = current_template.version
@@ -303,35 +302,56 @@ class TemplateLookup:
                                     "version of pydoctor with 'pip install -U pydoctor'. ")
         self._templates[template.name] = template
 
-    def add_template(self, template: Template) -> None:
-        """
-        Add a template to the lookup. The custom template override the default. 
-        
-        If the file doesn't exist in the default template, we assume it is additional data used by the custom template.
-
-        For HTML, compare the passed Template version with default template,
-        issue warnings if template are outdated.
-
-        @raises UnsupportedTemplateVersion: If the custom template is designed for a newer version of pydoctor.
-        @raises OverrideTemplateNotAllowed: If this template path overrides a path of a different type (HTML/static/directory).
-        """
-
+    def _raise_if_overrides_directory(self, template_name: str) -> None:
         # Since we cannot have a file named the same as a directory, 
         # we must reject files that overrides direcotries.
+        template_lowername = template_name.lower()
         for t in self.templates:
-            if t.name.startswith(f"{template.name}/"):
+            current_lowername = t.name.lower()
+            if current_lowername.startswith(f"{template_lowername}/"):
                 raise OverrideTemplateNotAllowed(f"Cannot override a directory with "
-                            f"a template. Rename '{template.name}' to something else.")
+                            f"a template. Rename '{template_name}' to something else.")
 
-        current_template = self._templates.get(template.name, None)
-        if current_template:
+    def add_template(self, template: Template) -> None:
+        """
+        Add a template to the lookup. 
+        The custom template override the default. 
+        
+        If the file doesn't already exist in the lookup, 
+        we assume it is additional data used by the custom template.
+
+        For HTML, compare the new Template version with the currently loaded template,
+        issue warnings if template are outdated.
+
+        @raises UnsupportedTemplateVersion: 
+            If the custom template is designed for a newer version of pydoctor.
+        @raises OverrideTemplateNotAllowed: 
+            If this template path overrides a path of a different type (HTML/static/directory).
+        """
+
+        self._raise_if_overrides_directory(template.name)
+
+        try:
+            current_template = self._templates[template.name]
+        except KeyError:
+            self._templates[template.name] = template
+        else:
+            # The real template name might not have the same casing as current_template.name.
+            # This variable is only used in error messages.
+            _real_template_name = template.name 
             
+            # The L{Template.name} attribute is overriden 
+            # to make it match the original (case sensitive) name.
+            # This way, we are sure to stay consistent in the output file names (keeping the original),
+            # while accepting any casing variation in the template directory.
+            template.name = current_template.name
+
             if isinstance(current_template, StaticTemplate):
                 if isinstance(template, StaticTemplate):
                     self._templates[template.name] = template
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override a static template with "
-                        f"a HTML template. Rename '{template.name}' to something else.")
+                        f"a HTML template. Rename '{_real_template_name}' to something else.")
                         # we can assume the template is HTML since there is only 
                         # two types of concrete templates
             
@@ -340,9 +360,7 @@ class TemplateLookup:
                     self._add_overriding_html_template(template, current_template)
                 else:
                     raise OverrideTemplateNotAllowed(f"Cannot override an HTML template with "
-                        f"a static template. Rename '{template.name}' to something else.")
-        else:
-            self._templates[template.name] = template
+                        f"a static template. Rename '{_real_template_name}' to something else.")
 
     def add_templatedir(self, path: Union[Path, Traversable]) -> None:
         """

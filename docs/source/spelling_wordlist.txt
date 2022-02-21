@@ -22,3 +22,8 @@ subclassing
 tox
 Wokkel
 runtime
+Numpy
+numpy
+reST
+py
+customizable

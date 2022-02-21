@@ -2,16 +2,22 @@
 Unit tests for model.
 """
 
+from inspect import signature
 from optparse import Values
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+import subprocess
 from typing import cast
 import zlib
-
 import pytest
 
-from pydoctor import model
+from twisted.web.template import Tag
+
+from pydoctor import model, stanutils
+from pydoctor.templatewriter import pages
 from pydoctor.driver import parse_args
 from pydoctor.sphinx import CacheT
+from pydoctor.test import CapSys
 from pydoctor.test.test_astbuilder import fromText
 
 
@@ -156,7 +162,9 @@ def test_constructor_params_empty() -> None:
         pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params == {}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params == {}
 
 
 def test_constructor_params_simple() -> None:
@@ -166,7 +174,9 @@ def test_constructor_params_simple() -> None:
             pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
 
 def test_constructor_params_inherited() -> None:
@@ -181,7 +191,9 @@ def test_constructor_params_inherited() -> None:
         pass
     '''
     mod = fromText(src)
-    assert mod.contents['C'].constructor_params.keys() == {'self', 'a', 'b'}
+    C = mod.contents['C']
+    assert isinstance(C, model.Class)
+    assert C.constructor_params.keys() == {'self', 'a', 'b'}
 
 
 def test_docstring_lineno() -> None:
@@ -204,22 +216,33 @@ class Dummy:
     def crash(self) -> None:
         """Mmm"""
 
+
+def dummy_function_with_complex_signature(foo: int, bar: float) -> str:
+    return "foo"
+
+
 def test_introspection_python() -> None:
     """Find docstrings from this test using introspection on pure Python."""
     system = model.System()
     system.introspectModule(Path(__file__), __name__, None)
+    system.process()
 
     module = system.objForFullName(__name__)
     assert module is not None
     assert module.docstring == __doc__
 
     func = module.contents['test_introspection_python']
+    assert isinstance(func, model.Function)
     assert func.docstring == "Find docstrings from this test using introspection on pure Python."
+    assert func.signature == signature(test_introspection_python)
 
     method = system.objForFullName(__name__ + '.Dummy.crash')
     assert method is not None
     assert method.docstring == "Mmm"
 
+    func = module.contents['dummy_function_with_complex_signature']
+    assert isinstance(func, model.Function)
+    assert func.signature == signature(dummy_function_with_complex_signature)
 
 def test_introspection_extension() -> None:
     """Find docstrings from this test using introspection of an extension."""
@@ -239,6 +262,8 @@ def test_introspection_extension() -> None:
         Path(cython_test_exception_raiser.raiser.__file__),
         'raiser',
         package)
+    system.process()
+
     assert not isinstance(module, model.Package)
 
     assert system.objForFullName('cython_test_exception_raiser') is package
@@ -254,3 +279,85 @@ def test_introspection_extension() -> None:
     func = module.contents['raiseException']
     assert func.docstring is not None
     assert func.docstring.strip() == "Raise L{RaiserException}."
+
+testpackages = Path(__file__).parent / 'testpackages'
+
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+def test_c_module_text_signature(capsys:CapSys) -> None:
+    
+    c_module_invalid_text_signature = testpackages / 'c_module_invalid_text_signature'
+    package_path = c_module_invalid_text_signature / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {c_module_invalid_text_signature} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+        
+        assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
+        
+        mymod_base = system.allobjects['mymod.base']
+        assert isinstance(mymod_base, model.Module)
+        func = mymod_base.contents['invalid_text_signature']
+        assert isinstance(func, model.Function)
+        assert func.signature == None
+        valid_func = mymod_base.contents['valid_text_signature']
+        assert isinstance(valid_func, model.Function)
+
+        assert "(...)" == pages.format_signature(func)
+        assert "(a='r', b=-3.14)" == stanutils.flatten_text(
+            cast(Tag, pages.format_signature(valid_func)))
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+@pytest.mark.skipif("platform.python_implementation() == 'PyPy'")
+def test_c_module_python_module_name_clash(capsys:CapSys) -> None:
+    c_module_python_module_name_clash = testpackages / 'c_module_python_module_name_clash'
+    package_path = c_module_python_module_name_clash / 'mymod'
+    
+    # build extension
+    try:
+        cwd = os.getcwd()
+        code, outstr = subprocess.getstatusoutput(f'cd {c_module_python_module_name_clash} && python3 setup.py build_ext --inplace')
+        os.chdir(cwd)
+        
+        assert code==0, outstr
+        system = model.System()
+        system.options.introspect_c_modules = True
+
+        system.addPackage(package_path, None)
+        system.process()
+
+        mod = system.allobjects['mymod.base']
+        # there is only one mymod.base module
+        assert [mod] == list(system.allobjects['mymod'].contents.values())
+        assert len(mod.contents) == 1
+        assert 'coming_from_c_module' == mod.contents.popitem()[0]
+
+    finally:
+        # cleanup
+        subprocess.getoutput(f'rm -f {package_path}/*.so')
+
+def test_resolve_name_subclass(capsys:CapSys) -> None:
+    """
+    C{Model.resolveName} knows about single inheritance.
+    """
+    m = fromText(
+        """
+        class B:
+            v=1
+        class C(B):
+            pass
+        """
+    )
+    assert m.resolveName('C.v') == m.contents['B'].contents['v']

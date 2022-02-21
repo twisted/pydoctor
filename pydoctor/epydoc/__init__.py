@@ -37,7 +37,8 @@ and subpackages.
     :contributor: `Daniele Varrazzo  <mailto:daniele.varrazzo@gmail.com>`__
     :contributor: `Jonathan Guyer <mailto:guyer@nist.gov>`__
 
-.. |copy| unicode:: 0xA9 .. copyright sign
+    .. |copy| unicode:: 0xA9 .. copyright sign
+
 """
 __docformat__ = 'restructuredtext en'
 

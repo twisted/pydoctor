@@ -1,22 +1,24 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
 from typing import (
-    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
+    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
 import ast
 import abc
 
-import astor
 from twisted.web.iweb import IRenderable, ITemplateLoader, IRequest
 from twisted.web.template import Element, Tag, renderer, tags
 
+from pydoctor.stanutils import html2stan
 from pydoctor import epydoc2stan, model, zopeinterface, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
+from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 if TYPE_CHECKING:
+    from typing_extensions import Final
     from twisted.web.template import Flattenable
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
@@ -34,7 +36,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[Any]:
+def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
             fn = node2fullname(dec.func, obj)
@@ -44,12 +46,21 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator[A
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
 
-        text = '@' + astor.to_source(dec).strip()
-        yield text, tags.br()
+        # Colorize decorators!
+        doc = colorize_inline_pyval(dec)
+        stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        for message in doc.warnings:
+            obj.report(message)
 
-def signature(function: model.Function) -> str:
-    """Return a nicely-formatted source-like function signature."""
-    return str(function.signature)
+        yield '@', stan.children, tags.br()
+
+def format_signature(function: model.Function) -> "Flattenable":
+    """
+    Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
+    Arguments default values are linked to the appropriate objects when possible.
+    """
+    return html2stan(str(function.signature)) if function.signature else "(...)"
 
 class DocGetter:
     """L{epydoc2stan} bridge."""
@@ -60,8 +71,6 @@ class DocGetter:
             return epydoc2stan.format_docstring(ob)
     def get_type(self, ob: model.Documentable) -> Optional[Tag]:
         return epydoc2stan.type2stan(ob)
-
-
 
 class Nav(TemplateElement):
     """
@@ -426,25 +435,18 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
+        _linker = epydoc2stan._EpydocLinker(self.ob)
+        zipped = list(zip(self.ob.rawbases, self.ob.bases))
         if zipped:
             r.append('(')
-            for idx, (name, full_name, base) in enumerate(zipped):
+            for idx, (name, full_name) in enumerate(zipped):
                 if idx != 0:
                     r.append(', ')
 
-                if base is None:
-                    # External class.
-                    url = self.ob.system.intersphinx.getLink(full_name)
-                else:
-                    # Internal class.
-                    url = base.url
-
-                if url is None:
-                    tag = tags.span
-                else:
-                    tag = tags.a(href=url)
-                r.append(tag(name, title=full_name))
+                # link to external class or internal class
+                tag = _linker.link_to(full_name, name)
+                    
+                r.append(tag(title=full_name))
             r.append(')')
         return r
 
@@ -547,7 +549,7 @@ class ZopeInterfaceClassPage(ClassPage):
         r.extend(super().functionExtras(ob))
         return r
 
-commonpages: Mapping[str, Type[CommonPage]] = {
+commonpages: 'Final[Mapping[str, Type[CommonPage]]]' = {
     'Module': ModulePage,
     'Package': PackagePage,
     'Class': ClassPage,

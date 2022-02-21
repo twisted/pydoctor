@@ -22,10 +22,10 @@ with the same method.
 
 HTML templates have their own versioning system and warnings will be triggered when an outdated custom template is used.
 
-.. admonition:: Ugly working example
-
-  - The `template directory  <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_. 
-  - The `output <custom_template_demo/pydoctor.html>`_.
+.. admonition:: Demo theme example
+    
+  There is a demo template inspired by Twisted web page for which the source code is `here <https://github.com/twisted/pydoctor/tree/master/docs/sample_template>`_.
+  You can try the result by checking `this page <custom_template_demo/pydoctor.html>`_.
 
   .. note:: 
 

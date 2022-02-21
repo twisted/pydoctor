@@ -47,7 +47,7 @@ class TableRow(Element):
     @renderer
     def name(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(tags.code(
-            epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
+            epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name))
             ))
 
     @renderer

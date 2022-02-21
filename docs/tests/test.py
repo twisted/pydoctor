@@ -89,29 +89,6 @@ def test_sphinx_object_inventory_version_epytext_demo():
             ), page
 
 
-def test_index_contains_infos():
-    """
-    Test if index.html contains the following informations:
-
-        - meta generator tag
-        - nav and links to modules, classes, names
-        - link to the root package
-        - pydoctor github link in the footer
-    """
-
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
-              '<nav class="navbar navbar-default"',
-              '<a href="moduleIndex.html"',
-              '<a href="classIndex.html"',
-              '<a href="nameIndex.html"',
-              'Start at <code><a href="pydoctor.html">pydoctor</a></code>, the root package.',
-              '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
-
-    with open(BASE_DIR / 'api' / 'index.html', 'r', encoding='utf-8') as stream:
-        page = stream.read()
-        for i in infos:
-            assert i in page, page
-
 def test_page_contains_infos():
     """
     Test if pydoctor.driver.html contains the following informations:

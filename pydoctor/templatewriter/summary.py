@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from typing import (
-    TYPE_CHECKING, DefaultDict, Dict, List, Mapping, MutableSet,
+    TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
 )
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        tags.code(epydoc2stan.taglink(module, page_url, label=module.name)), ' - ',
         epydoc2stan.format_summary(module)
         )
     if module.isPrivate:
@@ -74,12 +74,18 @@ def findRootClasses(
         if ' ' in cls.name or not cls.isVisible:
             continue
         if cls.bases:
-            for n, b in zip(cls.bases, cls.baseobjects):
-                if b is None or not b.isVisible:
-                    cast(List[model.Class], roots.setdefault(n, [])).append(cls)
-                elif b.system is not system:
-                    roots[b.fullName()] = b
+            for name, base in zip(cls.bases, cls.baseobjects):
+                if base is None or not base.isVisible:
+                    # The base object is in an external library or filtered out (not visible)
+                    # Take special care to avoid AttributeError: 'ZopeInterfaceClass' object has no attribute 'append'.
+                    if isinstance(roots.get(name), model.Class):
+                        roots[name] = [cast(model.Class, roots[name])]
+                    cast(List[model.Class], roots.setdefault(name, [])).append(cls)
+                elif base.system is not system:
+                    # Edge case with multiple systems, is it even possible to run into this code?
+                    roots[base.fullName()] = base
         else:
+            # This is a common root class. 
             roots[cls.fullName()] = cls
     return sorted(roots.items(), key=lambda x:x[0].lower())
 
@@ -271,23 +277,6 @@ class IndexPage(Page):
         return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) != 1:
-            return []
-        else:
-            root, = self.system.rootobjects
-            return tag.clear()(
-                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
-
-    @renderer
-    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) == 1:
-            return []
-        else:
-            return tag
-
-    @renderer
     def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
@@ -341,10 +330,13 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: List[Type[Page]] = [
-    ModuleIndexPage,
-    ClassIndexPage,
-    IndexPage,
-    NameIndexPage,
-    UndocumentedSummaryPage,
+def summaryPages(system: model.System) -> Iterable[Type[Page]]:
+    pages = [
+        ModuleIndexPage,
+        ClassIndexPage,
+        NameIndexPage,
+        UndocumentedSummaryPage,
     ]
+    if len(system.root_names) > 1:
+        pages.append(IndexPage)
+    return pages

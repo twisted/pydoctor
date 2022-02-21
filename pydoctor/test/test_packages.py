@@ -82,3 +82,11 @@ def test_cyclic_imports() -> None:
     assert mod_a.expandName('B') == 'cyclic_imports.b.B'
     mod_b = system.allobjects['cyclic_imports.b']
     assert mod_b.expandName('A') == 'cyclic_imports.a.A'
+
+def test_package_module_name_clash() -> None:
+    """
+    When a module and a package have the same full name, the package wins.
+    """
+    system = processPackage('package_module_name_clash')
+    pack = system.allobjects['package_module_name_clash.pack']
+    assert 'package' == pack.contents.popitem()[0]
