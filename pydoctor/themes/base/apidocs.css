@@ -585,12 +585,6 @@ div.tip, div.hint, div.important {
     padding: 5px 0 0 8px;
 }
 
-#search-help-box {
-    margin: 10px;
-    width: calc(100%-50px);
-    display: none;
-}
-
 #search-help-button {
     background-color: #e6e6e6;
 }

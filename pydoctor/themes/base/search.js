@@ -89,12 +89,13 @@ let results_list = document.getElementById('search-results');
 
 function hideResultContainer(){
   results_container.style.display = 'none';
-  document.getElementById('search-clear-button').style.display = 'none';
+  if (!document.body.classList.contains("search-help-hidden")){
+    document.body.classList.add("search-help-hidden")
+  }
 }
 
 function showResultContainer(){
   results_container.style.display = 'block';
-  document.getElementById('search-clear-button').style.display = 'inline-block';
 }
 
 window.addEventListener('load', (event) => {
@@ -118,20 +119,14 @@ window.addEventListener("click", function(event) {
   }
 });
 
-// Close the dropdown if the use click on echap key
-document.onkeydown = function(evt) {
-  evt = evt || window.event;
-  if (evt.key === "Escape" || evt.key === "Esc") {
-      hideResultContainer()
-  }
-};
-
-// hideResultContainer()
-// setInfos('')
-// setWarning('')
-
 function toggleSearchHelpText() {
   document.body.classList.toggle("search-help-hidden");
+  if (document.body.classList.contains("search-help-hidden") && input.value.length==0){
+    hideResultContainer()
+  }
+  else{
+    showResultContainer()
+  }
 }
 // Init search and help text
 document.getElementById('search-box-container').style.display = 'block';
@@ -156,15 +151,21 @@ function resetResultList(){
 }
 
 function clearSearch(){
-  input.value = '';
   hideResultContainer()
+  resetResultList()
+  setWarning('')
+  setStatus('')
+  setInfos('')
+
+  input.value = '';
+  showHideClearSearchBtn()
 }
 
 function search(){
 
   setInfos('')
   setWarning('')
-
+  showResultContainer()
   setStatus("Searching...")
 
   // Get the query terms 
@@ -176,6 +177,14 @@ function search(){
     setStatus('')
     hideResultContainer()
     return ;
+  }
+  else{
+    if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+')){
+      // Do not search string that we know are not valid query strings
+      setStatus('')
+      setWarning('Incomplete search query, missing terms or edit distance.')
+      return;
+    }
   }
 
   console.log("Your query is: "+ _query)
@@ -246,6 +255,9 @@ function search(){
         if (response.data.results.length > 500){
           setWarning("Your search yielded a lot of results! Maybe try with other terms?");
         }
+        else{
+          setWarning('')
+        }
       }
 
       let public_search_results = search_results_documents.filter(function(value){
@@ -283,12 +295,23 @@ function search(){
   _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
 }
 
+function showHideClearSearchBtn(){
+  if (input.value.length>0){
+    document.getElementById('search-clear-button').style.display = 'inline-block';
+  }
+  else{
+    document.getElementById('search-clear-button').style.display = 'none';
+  }
+}
+
 function launch_function(){
   try{
-    worker.terminate()
+    showHideClearSearchBtn()
     resetLongSearchTimerInfo()
+
+    worker.terminate()
     worker = new Worker('search-worker.js');
-    showResultContainer()
+    
     search()
   }
   catch (err){
@@ -304,3 +327,10 @@ input.addEventListener('input',function(event) {
 input.addEventListener("search", function(event) {
   launch_function();
 });
+// Close the dropdown if the use click on echap key
+document.onkeydown = function(evt) {
+  evt = evt || window.event;
+  if (evt.key === "Escape" || evt.key === "Esc") {
+      hideResultContainer()
+  }
+};
