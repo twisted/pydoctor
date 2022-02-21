@@ -581,7 +581,6 @@ div.tip, div.hint, div.important {
     display:inline;
 }
 
-
 #search-results section {
     padding: 5px 0 0 8px;
 }
@@ -604,18 +603,19 @@ div.tip, div.hint, div.important {
     background-color: #fff!important;
 }
 
-.search-results-container{
+.search-results-container {
     padding: 10px;
     width: 100%;
     max-width: 800px;
     max-height: calc(100vh - 70px);
     right: 0;
-    position:absolute;
+    position: absolute;
     overflow-y: scroll;
     background-color: whitesmoke;
     border: 1px solid #CCC;
+    border-radius: 4px;
     z-index: 500;
-    max-height: calc(100 - 40px);
+    margin-top: -9px;
 }
 
 #search-status{

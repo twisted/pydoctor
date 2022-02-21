@@ -87,12 +87,18 @@ var input = document.getElementById('search-box');
 var results_container = document.getElementsByClassName('search-results-container')[0];
 let results_list = document.getElementById('search-results'); 
 
-input.addEventListener('focus', function() {
+function hideResultContainer(){
+  results_container.style.display = 'none';
+  document.getElementById('search-clear-button').style.display = 'none';
+}
+
+function showResultContainer(){
   results_container.style.display = 'block';
-});
+  document.getElementById('search-clear-button').style.display = 'inline-block';
+}
 
 window.addEventListener('load', (event) => {
-  results_container.style.display = 'none';
+  hideResultContainer();
 });
 
 // Close the dropdown if the user clicks outside of it
@@ -101,10 +107,13 @@ window.addEventListener("click", function(event) {
       if (!event.target.closest('.search-results-container') 
           && !event.target.closest('#search-box')
           && !event.target.closest('#search-help-button')){
-        results_container.style.display = 'none';
+            hideResultContainer()
+            return;
       }
       if (event.target.closest('#search-box')){
-        results_container.style.display = 'block';
+        if (input.value.length>0){
+          showResultContainer()
+        }
       }
   }
 });
@@ -113,14 +122,13 @@ window.addEventListener("click", function(event) {
 document.onkeydown = function(evt) {
   evt = evt || window.event;
   if (evt.key === "Escape" || evt.key === "Esc") {
-      results_container.style.display = 'none';
+      hideResultContainer()
   }
 };
 
-
-results_container.style.display = 'none';
-setInfos('')
-setWarning('')
+// hideResultContainer()
+// setInfos('')
+// setWarning('')
 
 function toggleSearchHelpText() {
   document.body.classList.toggle("search-help-hidden");
@@ -147,6 +155,11 @@ function resetResultList(){
   results_list.innerHTML = '';
 }
 
+function clearSearch(){
+  input.value = '';
+  hideResultContainer()
+}
+
 function search(){
 
   setInfos('')
@@ -161,6 +174,7 @@ function search(){
   if (!_query.length>0){
     resetResultList()
     setStatus('')
+    hideResultContainer()
     return ;
   }
 
@@ -170,6 +184,8 @@ function search(){
     setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
     return ;
   }
+
+  resetResultList()
 
   // posting query to worker, he's going to do the job searching in Lunr index.
   worker.postMessage({
@@ -185,8 +201,6 @@ function search(){
       
       console.log("Message received from worker: ")
       console.dir(response.data)
-
-      resetResultList()
 
       if (!response.data.results){
         setErrorStatus();
@@ -274,7 +288,7 @@ function launch_function(){
     worker.terminate()
     resetLongSearchTimerInfo()
     worker = new Worker('search-worker.js');
-    results_container.style.display = 'block';
+    showResultContainer()
     search()
   }
   catch (err){
@@ -287,8 +301,6 @@ function launch_function(){
 input.addEventListener('input',function(event) {
   launch_function();
 });
-input.addEventListener("keyup", function(event) {
-  if (event.key === 'Enter') {
-    launch_function();
-  }
+input.addEventListener("search", function(event) {
+  launch_function();
 });
