@@ -324,8 +324,10 @@ function launch_function(){
 input.addEventListener('input',function(event) {
   launch_function();
 });
-input.addEventListener("search", function(event) {
-  launch_function();
+input.addEventListener("keyup", function(event) {
+  if (event.key === 'Enter') {
+    launch_function();
+  }
 });
 // Close the dropdown if the use click on echap key
 document.onkeydown = function(evt) {
