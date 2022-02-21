@@ -72,21 +72,6 @@ function buildSearchResult(dobj) {
   else{
     li.setAttribute('class', ob_css_class)
   }
-
-  //Add type metadata in order to be able to filter
-  let type_metadata = document.createElement('meta');
-  type_metadata.setAttribute('name', 'type');
-  type_metadata.setAttribute('class', 'type');
-  type_metadata.setAttribute('content', type_value);
-  li.appendChild(type_metadata);
-
-  //Add kind metadata in order to be able to filter
-  let kind_metadata = document.createElement('meta');
-  kind_metadata.setAttribute('name', 'kind');
-  kind_metadata.setAttribute('class', 'kind');
-  kind_metadata.setAttribute('content', kind_value);
-  li.appendChild(kind_metadata);
-
   return li;
 }
 
@@ -100,6 +85,7 @@ function setLongSearchInfos(){
 
 var input = document.getElementById('search-box');
 var results_container = document.getElementsByClassName('search-results-container')[0];
+let results_list = document.getElementById('search-results'); 
 
 input.addEventListener('focus', function() {
   results_container.style.display = 'block';
@@ -151,6 +137,16 @@ document.body.classList.add("search-help-hidden");
 var worker = new Worker('search-worker.js');
 var _setLongSearchInfosTimeout = null;
 
+function resetLongSearchTimerInfo(){
+  if (_setLongSearchInfosTimeout){
+    clearTimeout(_setLongSearchInfosTimeout)
+  }
+}
+
+function resetResultList(){
+  results_list.innerHTML = '';
+}
+
 function search(){
 
   setInfos('')
@@ -158,21 +154,12 @@ function search(){
 
   setStatus("Searching...")
 
-  httpGet("all-documents.html", function(_r) {})
-
-  let _url = new URL(document.URL);
-  console.log(_url);
-
-  
-  var _query = null;
-  let results_list = document.getElementById('search-results'); 
-
   // Get the query terms 
 
-  _query = input.value
+  let _query = input.value
 
   if (!_query.length>0){
-    results_list.innerHTML = '';
+    resetResultList()
     setStatus('')
     return ;
   }
@@ -184,6 +171,7 @@ function search(){
     return ;
   }
 
+  // posting query to worker, he's going to do the job searching in Lunr index.
   worker.postMessage({
     query: _query,
   });
@@ -193,34 +181,27 @@ function search(){
 
     worker.onmessage = function (response) {
 
-      if (_setLongSearchInfosTimeout){
-        clearTimeout(_setLongSearchInfosTimeout)
-      }
+      resetLongSearchTimerInfo()
       
       console.log("Message received from worker: ")
       console.dir(response.data)
 
+      resetResultList()
+
       if (!response.data.results){
         setErrorStatus();
         throw("No data received from worker")
-        results_list.innerHTML = '';
       }
 
       if (response.data.results.length == 0){
         setStatus('No results matches "' + _query + '"');
-        results_list.innerHTML = '';
         return ;
-      }
-      else{
-        setStatus('Building documents...');
       }
 
       // PARSE DATA FROM HTML DOCUMENT
       let parser = new self.DOMParser();
       let all_documents = parser.parseFromString(all_documents_response, "text/html");
       let search_results_documents = []
-      
-      results_list.innerHTML = '';
       
       response.data.results.forEach(function (result) {
           // Find the result model 
@@ -239,7 +220,7 @@ function search(){
 
       });
 
-      if (response.data.results[0].score <= 7){
+      if (response.data.results[0].score <= 3){
         if (response.data.results.length > 500){
           setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
         }
@@ -272,9 +253,7 @@ function search(){
     
     worker.onerror = function(error) {
       console.log(error);
-      if (_setLongSearchInfosTimeout){
-        clearTimeout(_setLongSearchInfosTimeout)
-      }
+      resetLongSearchTimerInfo()
       error.preventDefault();
       setErrorStatus();
       setErrorInfos(error.message);
@@ -283,6 +262,7 @@ function search(){
   },
   function(error){
     console.log(error);
+    resetLongSearchTimerInfo()
     setErrorStatus();
     setErrorInfos(error.message);
   });
@@ -292,9 +272,7 @@ function search(){
 function launch_function(){
   try{
     worker.terminate()
-    if (_setLongSearchInfosTimeout){
-      clearTimeout(_setLongSearchInfosTimeout)
-    }
+    resetLongSearchTimerInfo()
     worker = new Worker('search-worker.js');
     results_container.style.display = 'block';
     search()
