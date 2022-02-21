@@ -1,5 +1,16 @@
-importScripts('lunr.js', 'ajax.js'); 
+// Try very hard to import these scripts (5 times). This avoid random errors: 
+// Uncaught NetworkError: Failed to execute 'importScripts' on 'WorkerGlobalScope': 
+//  The script at 'https://pydoctor--500.org.readthedocs.build/en/500/api/lunr.js' failed to load.
 
+for (let i = 0; i < 5; i++) {
+    try{
+        importScripts('lunr.js', 'ajax.js'); 
+        break;
+    } catch (ex){
+        if (i<5) {continue;}
+        else {throw ex}
+    }
+}
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
     console.dir(message.data)
