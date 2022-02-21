@@ -322,7 +322,7 @@ tr.private {
 }
 
 
-#childList > div, #search-results > li {
+#childList > div {
     margin: 10px;
     padding: 10px;
     padding-bottom: 5px;
@@ -549,6 +549,12 @@ div.tip, div.hint, div.important {
     border-color: #bce8f1;
 }
 
+/* Version modified style */
+.rst-versionmodified {
+    display: block;
+    font-weight: bold;
+}
+
 /* Search */
 
 .navlinks > #search-box-container {
@@ -562,13 +568,26 @@ div.tip, div.hint, div.important {
     margin: 0;
 }
 
+#search-results li{
+    display:block;
+    border-bottom: 0.5px solid #CCC;
+}
+#search-results li:last-child{
+    border-bottom: none;
+}
+
+#search-results li article, #search-results li article *{
+    display:inline;
+}
+
+
 #search-results section {
     padding: 5px 0 0 8px;
 }
 
 #search-help-box {
     margin: 10px;
-    width: 100%;
+    width: calc(100%-50px);
     display: none;
 }
 
@@ -584,55 +603,24 @@ div.tip, div.hint, div.important {
     background-color: #fff!important;
 }
 
+.search-results-container{
+    padding: 10px;
+    min-width: 500px;
+    max-width: 800px;
+    max-height: calc(100% - 40px);
+    top: 40px;
+    right: 10px;
+    position:fixed;
+    overflow-y: scroll;
+    background-color: whitesmoke;
+    border: 1px solid #CCC;
+    border-radius: 4px;
+    z-index: 500;
+}
+
 .search-results-container .rst-admonition{
     display:none;
     margin: 10px 0 0 0;
-}
-
-.search-filter {
-    display: flex;
-    justify-content: space-between;
-}
-
-
-#search-filter-dropdown{
-    margin-left: 5px;
-    margin-right: 5px;
-    align-self: center;
-}
-
-#search-filter-button{
-    background-color: #4a87bc;
-    border-color: #337ab7;
-}
-
-#search-filter-button.active{
-    background-color: #337ab7;
-    border-color: #2e6da4;
-}
-
-/* hide the checkbox */
-#search-filter-dropdown-input{
-    display: none;
-}
-  
-/* show the dropdown when input is checked (generic) */
-input:checked ~ ul.dropdown-menu {
-    display: block;
-}
-
-#search-filter-dropdown-items hr {
-    margin-top: 5px;
-    margin-bottom: 0;
-}
-
-#search-filter-dropdown-items a {
-    cursor: pointer;
-}
-/* Version modified style */
-.rst-versionmodified {
-    display: block;
-    font-weight: bold;
 }
 
 /* Constant values repr */
