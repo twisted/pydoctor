@@ -569,15 +569,33 @@ div.tip, div.hint, div.important {
     margin: 0;
 }
 
-#search-results li{
+#search-results tr{
     display:block;
     border-bottom: 0.5px solid #CCC;
 }
-#search-results li:last-child{
+
+#search-results tr {
+    border-bottom-color: #ddd;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+}
+
+#search-results tr td {
+    border-left-color: #ddd;
+    border-left-width: 1px;
+    border-left-style: solid;
+    padding: 2px;
+}
+
+#search-results tr td:first-child {
+    width: 120px;
+}
+
+#search-results tr:last-child{
     border-bottom: none;
 }
 
-#search-results li article, #search-results li article *{
+#search-results tr article, #search-results tr article *{
     display:inline;
 }
 
@@ -600,7 +618,7 @@ div.tip, div.hint, div.important {
 .search-results-container {
     padding: 10px;
     width: 100%;
-    max-width: 800px;
+    max-width: 850px;
     max-height: calc(100vh - 70px);
     right: 0;
     position: absolute;

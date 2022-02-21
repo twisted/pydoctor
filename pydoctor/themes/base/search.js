@@ -36,7 +36,9 @@ function setErrorInfos(message) {
 function buildSearchResult(dobj) {
 
   // Build one result item
-  var li = document.createElement('li'),
+  var tr = document.createElement('tr'),
+      kindtd = document.createElement('td'),
+      contenttd = document.createElement('td'),
       article = document.createElement('article'),
       header = document.createElement('header'),
       section = document.createElement('section'),
@@ -46,6 +48,7 @@ function buildSearchResult(dobj) {
 
   p.innerHTML = dobj.querySelector('.summary').innerHTML;
   a.setAttribute('href', dobj.querySelector('.url').innerHTML);
+  a.setAttribute('class', 'internal-link');
   a.textContent = dobj.querySelector('.fullName').innerHTML;
   
   let kind_value = dobj.querySelector('.kind').innerHTML;
@@ -55,24 +58,29 @@ function buildSearchResult(dobj) {
   if (type_value.endsWith("Function")){
       a.textContent = a.textContent + '()';
   }
+
+  kindtd.innerHTML = kind_value
   
   // Putting everything together
-  li.appendChild(article);
+  tr.appendChild(kindtd);
+  tr.appendChild(contenttd);
+  contenttd.appendChild(article);
   article.appendChild(header);
   article.appendChild(section);
   header.appendChild(code);
   code.appendChild(a);
   section.appendChild(p);
 
-  // Set private and kind as the CSS class
+  // Set kind as the CSS class of the kind td tag
   let ob_css_class = dobj.querySelector('.kind').innerHTML.toLowerCase().replace(' ', '');
+  kindtd.setAttribute('class', ob_css_class)
+
+  // Set private
   if (dobj.querySelector('.privacy').innerHTML.includes('PRIVATE')){
-    li.setAttribute('class', 'private ' + ob_css_class);
+    tr.setAttribute('class', 'private');
   }
-  else{
-    li.setAttribute('class', ob_css_class)
-  }
-  return li;
+  
+  return tr;
 }
 
 function setLongSearchInfos(){
@@ -238,8 +246,8 @@ function search(){
           search_results_documents.push(dobj);
 
           // Display results: edit DOM
-          let li = buildSearchResult(dobj);
-          results_list.appendChild(li);
+          let tr = buildSearchResult(dobj);
+          results_list.appendChild(tr);
 
       });
 
