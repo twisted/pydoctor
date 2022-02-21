@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, List, Type, Final
+from typing import Iterable, List, Type, Final, Dict
 import json
 
 from pydoctor.templatewriter.pages import Page
@@ -16,6 +16,19 @@ class SearchResultsPage(Page):
     def title(self) -> str:
         return f"Search in {self.system.projectname} API Documentation"
 
+def get_all_documents_struct(system: model.System) -> List[Dict[str, str]]:
+    documents = [dict(id=ob.fullName(), 
+                          name=ob.name, 
+                          fullName=ob.fullName(), 
+                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
+                          type=str(ob.__class__.__name__),
+                          summary='',
+                          url=ob.url, 
+                          privacy=str(ob.privacyClass.name))   
+
+                          for ob in system.allobjects.values() if ob.isVisible]
+    return documents
+
 class AllDocuments(Page):
     
     filename = 'all-documents.html'
@@ -24,21 +37,15 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:
-        documents = [dict(id=ob.fullName(), 
-                          name=ob.name, 
-                          fullName=ob.fullName(), 
-                          kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                          type=str(ob.__class__.__name__),
-                          summary=epydoc2stan.format_summary(ob), 
-                          url=ob.url, 
-                          privacy=str(ob.privacyClass.name))   
-
-                          for ob in self.system.allobjects.values() if ob.isVisible]
-        
-        for doc in documents:
+    def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:        
+        for doc in get_all_documents_struct(self.system):
+            doc['summary'] = epydoc2stan.format_summary(self.system.allobjects[doc.get('fullName')])
             yield tag.clone().fillSlots(**doc)
 
+
+def write_all_documents_json(output_dir: Path, system: model.System) -> None:
+    with output_dir.joinpath('all-documents.json').open('w', encoding='utf-8') as fobj:
+        json.dump(get_all_documents_struct(system), fobj)
 
 # https://lunr.readthedocs.io/en/latest/
 def write_lunr_index(output_dir: Path, system: model.System) -> None:

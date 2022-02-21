@@ -93,6 +93,12 @@ class TemplateWriter(IWriter):
         search.write_lunr_index(self.build_directory, system=system)
         system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
+        # Generate the all
+        system.msg('html', 'starting all-documents.json ...', nonl=True)
+        T = time.time()
+        search.write_all_documents_json(self.build_directory, system=system)
+        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
             return
