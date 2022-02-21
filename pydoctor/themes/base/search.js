@@ -12,10 +12,6 @@ function _setInfos(message, box_id, text_id) {
   }
 }
 
-function setPrivateInfos(message) {
-  _setInfos(message, 'search-private-infos-box', 'search-private-infos');
-}
-
 function setInfos(message) {
   _setInfos(message, 'search-infos-box', 'search-infos');
 }
@@ -98,202 +94,62 @@ function setLongSearchInfos(){
   setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.");
 }
 
-function buildInfosString(search_results_documents, priv){
 
-  let nb_classes = search_results_documents.filter(function(value){
-    return (value.querySelector('.kind').innerHTML.endsWith("Class") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
-  }).length;  
+//////// SETUP /////////
+// Hide the div if the user clicks outside of it
 
-  let nb_interfaces = search_results_documents.filter(function(value){
-    return (value.querySelector('.kind').innerHTML.endsWith("Interface") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
-  }).length;  
+var input = document.getElementById('search-box');
+var results_container = document.getElementsByClassName('search-results-container')[0];
 
-  let nb_methods = search_results_documents.filter(function(value){
-    return (value.querySelector('.kind').innerHTML.endsWith("Method") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
-  }).length;  
+input.addEventListener('focus', function() {
+  results_container.style.display = 'block';
+});
 
-  let nb_functions = search_results_documents.filter(function(value){
-    return (value.querySelector('.kind').innerHTML.endsWith("Function") && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE")));
-  }).length;  
-
-  let nb_modules = search_results_documents.filter(function(value){
-    return (value.querySelector('.kind').innerHTML.endsWith("Module") || value.querySelector('.kind').innerHTML.endsWith("Package")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
-  }).length;  
-  
-  // We don't go in the details of property/attribute/instance variable. 
-  let nb_var = search_results_documents.filter(function(value){
-    return (value.querySelector('.type').innerHTML.endsWith("Attribute")) && (value.querySelector('.privacy').innerHTML.endsWith(priv ? "PRIVATE" : "VISIBLE"));
-
-  }).length; 
-
-  var infoStr = 'Including ' + 
-    (nb_modules>0 ? (nb_modules.toString() + (priv ? " private" : "")+ ' module'+(nb_modules>=2? 's' : '')+', ') : '')
-    + 
-    (nb_interfaces>0 ? (nb_interfaces.toString() + (priv ? " private" : "") + ' interface'+(nb_interfaces>=2 ? 'es' : '')+', ') : '')
-    + 
-    (nb_classes>0 ? (nb_classes.toString() + (priv ? " private" : "") + ' class'+(nb_classes>=2 ? 'es' : '')+', ') : '')
-    + 
-    (nb_methods>0 ? (nb_methods.toString() + (priv ? " private" : "")+ ' method'+(nb_methods>=2? 's' : '')+', ') : '')
-    +
-    (nb_functions>0 ? (nb_functions.toString() + (priv ? " private" : "")+ ' function'+(nb_functions>=2? 's' : '') + ', ' ) : '')
-    + 
-    (nb_var>0 ? (nb_var.toString() + (priv ? " private" : "") + ' variable'+(nb_var>=2? 's' : '')+', ') : '') ;
-
-  // Dirty replacing of the commas so the output is a phrase that finishes by ' and xx things.',
-  // which is more readable than commas everywhere.
-  var pos = infoStr.lastIndexOf(',');
-  var commas_count = (infoStr.match(/,/g) || []).length;
-  var infoStrPart1 = infoStr.substring(0,pos);
-  let infoStrPart2Init = infoStr.substring(pos+1);
-  var infoStrPart2 = infoStr.substring(pos+1);
-
-  if (infoStrPart2Init.trim().length==0){ 
-    infoStrPart2 = '.'; }
-  else{ 
-    infoStrPart2 = ' and' + infoStrPart2; }
-  if (commas_count>1 && infoStrPart2Init.trim().length == 0){
-    var pos2 = infoStrPart1.lastIndexOf(',');
-    infoStrPart1 = infoStrPart1.substring(0,pos2) + ' and' + infoStrPart1.substring(pos2+1); }
-  return(infoStrPart1 + infoStrPart2);
-}
-
-///////////////////// FILTER //////////////////////////
+window.addEventListener('load', (event) => {
+  results_container.style.display = 'none';
+});
 
 // Close the dropdown if the user clicks outside of it
 window.addEventListener("click", function(event) {
-  let dropdown_input = document.getElementById("search-filter-dropdown-input")
-  if (event && !event.target.matches('#search-filter-dropdown-input') && dropdown_input.checked == true) {
-    setTimeout(function(){
-      dropdown_input.checked = false;
-    }, 1);
+  if (event && !event.target.closest('.search-results-container') && !event.target.matches('#search-box')){
+    results_container.style.display = 'none';
   }
 });
-
-function filterItems(types, label, dropdown_item_pressed){
-
-  console.log("Filtering search results: " + label);
-
-  let results_list = Array.prototype.slice.call(document.getElementById('search-results').childNodes); 
-  
-  var match_items = [];
-
-  results_list.forEach(function(li){
-    var match = false;
-    
-    types.forEach(function(type){
-      // We don't go in the details of property/attribute/instance variable.
-      // So the when requesting to filter on 'Attribute', this is a special case.
-      let selector = type === 'Attribute' ? '.type' : '.kind';
-      if (li.querySelector(selector).getAttribute('content').endsWith(type)){
-        match = true;
-      }
-    })
-
-    if (match){
-      li.style.display = "block";
-      match_items.push(li);
-    }
-    else{
-      li.style.display = "none";
-    }
-  })
-
-  if (label.length>0){
-    document.getElementById("search-filter-button").querySelector(".button-label").textContent = 'Filter: ' + label;
-  }
-
-  // Reset filter dropdown
-  initFilterDropdown(results_list);
-  document.getElementById("search-filter-show-all").style.display = 'block';
-  document.getElementById("search-filter-button").classList.add("active")
-
-  dropdown_item_pressed.style.display = 'none';
-
-  console.log(match_items.length.toString() + " items matches the filter");
-  console.log(match_items);
-
-}
-
-function showAllItems(){
-  filterItems(['Class', 'Interface', 'Function', 'Method', 'Module', 'Package', 'Attribute'], 'Choose...', document.getElementById("search-filter-show-all"))
-  document.getElementById("search-filter-button").classList.remove("active")
-}
-
-function _initSearchFilter(results_list, input, types){
-
-  let nb_things = results_list.filter(function(value){
-    var match = false;
-    types.forEach(function(type){
-      
-      // We don't go in the details of property/attribute/instance variable
-      let selector = type === 'Attribute' ? '.type' : '.kind';
-      var _type = value.querySelector(selector).getAttribute('content')
-      
-      if (!_type){
-        // Filter on innerHTML if 'content' attr meta tags is undefined
-        // This is needed because initFilterDropdown() is both called on 
-        // the list of results build by buildSearchResult() with the kind/type data as meta tags
-        // and also on the the original data present on all-documents.html for initialisation, 
-        // where the data is stored in the innerHTML. 
-        _type = value.querySelector(selector).innerHTML;
-      }
-
-      if(_type.endsWith(type)){
-        match = true;
-      }
-    })
-    
-    return match;
-  
-  }).length;  
-
-  if (nb_things==0){
-    input.style.display = "none";
-  }
-  else{
-    input.style.display = "block";
-  }
-}
-
-function initFilterDropdown(results_list_p){
-
-  let results_list = Array.prototype.slice.call(results_list_p);
-
-  document.getElementById("search-filter-show-all").style.display = "none";
-
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-interfaces"), ["Interface"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-classes"), ["Class"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-functions"), ["Function"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-methods"), ["Method"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-modules"), ["Module", "Package"]);
-  _initSearchFilter(results_list, document.getElementById("search-filter-show-attributes"), ["Attribute"]);
-}
+results_container.style.display = 'none';
+setInfos('')
+setWarning('')
 
 ///////////////////// SEARCH //////////////////////////
 
+// Setup the search worker   
+var worker = new Worker('search-worker.js');
+var _setLongSearchInfosTimeout = null;
+
 function search(){
+
+  setInfos('')
+  setWarning('')
+
+  setStatus("Searching...")
+
+  httpGet("all-documents.html", function(_r) {})
 
   let _url = new URL(document.URL);
   console.log(_url);
 
-  var _setLongSearchInfosTimeout = null;
+  
   var _query = null;
+  let results_list = document.getElementById('search-results'); 
 
-  // Get the query terms
-  if (!_url.searchParams.has('search-query')){
-    setStatus('No search query provided.')
-    return ;
-  }
+  // Get the query terms 
 
-  _query = _url.searchParams.get('search-query');
+  _query = input.value
 
   if (!_query.length>0){
     setStatus('No search query provided.')
+    results_list.innerHTML = '';
     return ;
   }
-
-  // Set the search box text to the query terms
-  document.getElementById('search-box').value = _query;
 
   console.log("Your query is: "+ _query)
 
@@ -302,46 +158,43 @@ function search(){
     return ;
   }
 
-  let results_list = document.getElementById('search-results'); 
-
-  setStatus("Searching...")
-
-  // Setup the search worker   
-  let worker = new Worker('search-worker.js');
-
   worker.postMessage({
     query: _query,
   });
-  
-  worker.onmessage = function (response) {
 
-    if (_setLongSearchInfosTimeout){
-      clearTimeout(_setLongSearchInfosTimeout)
-    }
-    setInfos('')
-    setWarning('')
-    
-    console.log("Message received from worker: ")
-    console.dir(response.data)
+  // Get result data
+  httpGet("all-documents.html", function(all_documents_response) {
 
-    if (!response.data.results){
-      setErrorStatus();
-      throw("No data received from worker")
-    }
+    worker.onmessage = function (response) {
 
-    if (response.data.results.length == 0){
-      setStatus('No results matches "' + _query + '"');
-      return ;
-    }
-    else{
-      setStatus('Fetching documents...');
-    }
+      if (_setLongSearchInfosTimeout){
+        clearTimeout(_setLongSearchInfosTimeout)
+      }
+      
+      console.log("Message received from worker: ")
+      console.dir(response.data)
 
-    // Get result data
-    httpGet("all-documents.html", function(response2) {
+      if (!response.data.results){
+        setErrorStatus();
+        throw("No data received from worker")
+        results_list.innerHTML = '';
+      }
+
+      if (response.data.results.length == 0){
+        setStatus('No results matches "' + _query + '"');
+        results_list.innerHTML = '';
+        return ;
+      }
+      else{
+        setStatus('Building documents...');
+      }
+
+      // PARSE DATA FROM HTML DOCUMENT
       let parser = new self.DOMParser();
-      let all_documents = parser.parseFromString(response2, "text/html");
-      let search_results_documents = [];
+      let all_documents = parser.parseFromString(all_documents_response, "text/html");
+      let search_results_documents = []
+      
+      results_list.innerHTML = '';
       
       response.data.results.forEach(function (result) {
           // Find the result model 
@@ -378,10 +231,6 @@ function search(){
         return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
       })
 
-      let private_search_results = search_results_documents.filter(function(value){
-        return value.querySelector('.privacy').innerHTML.includes("PRIVATE");
-      })
-
       if (public_search_results.length==0){
         setStatus('No results matches "' + _query + '"');
         setInfos('Some private objects matches your search though.');
@@ -391,52 +240,43 @@ function search(){
         setStatus(
           'Search for "' + _query + '" yielded ' + public_search_results.length + ' ' +
           (public_search_results.length === 1 ? 'result' : 'results') + '.');
-
-        // Build complementary information string
-
-        setInfos(buildInfosString(search_results_documents, false));
       }
 
-      // Build PRIVATE complementary information string
-      if (private_search_results.length > 0){
-        setPrivateInfos(buildInfosString(search_results_documents, true));
-      }
-      else{
-        // Hide the cell
-        setPrivateInfos('')
-      }
-      
-
-      initFilterDropdown(search_results_documents)
-
-    },
-    function(error){
+      };
+    
+    worker.onerror = function(error) {
       console.log(error);
+      if (_setLongSearchInfosTimeout){
+        clearTimeout(_setLongSearchInfosTimeout)
+      }
+      error.preventDefault();
       setErrorStatus();
       setErrorInfos(error.message);
-  });
-
-  };
-
-  worker.onerror = function(error) {
-    console.log(error);
-    if (_setLongSearchInfosTimeout){
-      clearTimeout(_setLongSearchInfosTimeout)
     }
-    error.preventDefault();
+
+  },
+  function(error){
+    console.log(error);
     setErrorStatus();
     setErrorInfos(error.message);
-  }
-
-
+  });
   _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
 }
 
-try{
-  search()
-}
-catch (err){
-  console.log(err);
-  setErrorStatus();
-  setErrorInfos(err.message);
-}
+search_function = function(event){
+  try{
+    worker.terminate()
+    if (_setLongSearchInfosTimeout){
+      clearTimeout(_setLongSearchInfosTimeout)
+    }
+    worker = new Worker('search-worker.js');
+    search()
+  }
+  catch (err){
+    console.log(err);
+    setErrorStatus();
+    setErrorInfos(err.message);
+  }
+};
+
+input.addEventListener('input', search_function);

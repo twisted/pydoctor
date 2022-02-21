@@ -9,13 +9,6 @@ from twisted.web.iweb import IRenderable, IRequest
 from twisted.web.template import Tag, renderer
 from lunr import lunr
 
-class SearchResultsPage(Page):
-
-    filename = 'search-results.html'
-
-    def title(self) -> str:
-        return f"Search in {self.system.projectname} API Documentation"
-
 def get_all_documents_struct(system: model.System) -> List[Dict[str, str]]:
     documents = [dict(id=ob.fullName(), 
                           name=ob.name, 
@@ -84,4 +77,4 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     with output_dir.joinpath('searchindex.json').open('w', encoding='utf-8') as fobj:
         fobj.write(serialized_index)
 
-searchpages: Final[List[Type[Page]]] = [SearchResultsPage, AllDocuments]
+searchpages: Final[List[Type[Page]]] = [AllDocuments]
