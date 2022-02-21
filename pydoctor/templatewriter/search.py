@@ -15,7 +15,7 @@ def get_all_documents_struct(system: model.System) -> List[Dict[str, str]]:
                           fullName=ob.fullName(), 
                           kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
                           type=str(ob.__class__.__name__),
-                          summary='',
+                          summary=epydoc2stan.format_summary(ob),
                           url=ob.url, 
                           privacy=str(ob.privacyClass.name))   
 
@@ -32,13 +32,7 @@ class AllDocuments(Page):
     @renderer
     def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:        
         for doc in get_all_documents_struct(self.system):
-            doc['summary'] = epydoc2stan.format_summary(self.system.allobjects[doc.get('fullName')])
             yield tag.clone().fillSlots(**doc)
-
-
-def write_all_documents_json(output_dir: Path, system: model.System) -> None:
-    with output_dir.joinpath('all-documents.json').open('w', encoding='utf-8') as fobj:
-        json.dump(get_all_documents_struct(system), fobj)
 
 # https://lunr.readthedocs.io/en/latest/
 def write_lunr_index(output_dir: Path, system: model.System) -> None:
