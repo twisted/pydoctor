@@ -146,7 +146,6 @@ function search(){
   _query = input.value
 
   if (!_query.length>0){
-    setStatus('No search query provided.')
     results_list.innerHTML = '';
     return ;
   }
