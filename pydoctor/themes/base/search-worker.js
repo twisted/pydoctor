@@ -1,5 +1,3 @@
-'use strict';
-
 importScripts('lunr.js', 'ajax.js'); 
 
 onmessage = function (message) { // -> {'results': [lunr results]}
