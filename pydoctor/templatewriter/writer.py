@@ -96,12 +96,6 @@ class TemplateWriter(IWriter):
         search.write_lunr_index(self.build_directory, system=system)
         system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
-        # Generate the all
-        system.msg('html', 'starting all-documents.json ...', nonl=True)
-        T = time.time()
-        search.write_all_documents_json(self.build_directory, system=system)
-        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
-
         if len(system.root_names) == 1:
             # If there is just a single root module it is written to index.html to produce nicer URLs.
             # To not break old links we also create a symlink from the full module name to the index.html
