@@ -605,19 +605,22 @@ div.tip, div.hint, div.important {
 
 .search-results-container{
     padding: 10px;
-    min-width: 500px;
+    width: 100%;
     max-width: 800px;
-    max-height: calc(100% - 40px);
-    top: 40px;
+    max-height: calc(100vh - 55px);
     right: 10px;
-    position:fixed;
+    position:absolute;
     overflow-y: scroll;
     background-color: whitesmoke;
     border: 1px solid #CCC;
     border-radius: 4px;
     z-index: 500;
+    max-height: calc(100 - 40px);
 }
 
+#search-status{
+    padding-bottom:2px;
+}
 .search-results-container .rst-admonition{
     display:none;
     margin: 10px 0 0 0;

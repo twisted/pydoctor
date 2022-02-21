@@ -111,13 +111,45 @@ window.addEventListener('load', (event) => {
 
 // Close the dropdown if the user clicks outside of it
 window.addEventListener("click", function(event) {
-  if (event && !event.target.closest('.search-results-container') && !event.target.matches('#search-box')){
-    results_container.style.display = 'none';
+  if (event){
+      if (!event.target.closest('.search-results-container') 
+          && !event.target.closest('#search-box')
+          && !event.target.closest('#search-help-button')){
+        results_container.style.display = 'none';
+      }
+      if (event.target.closest('#search-box')){
+        results_container.style.display = 'block';
+      }
   }
 });
+
+// Close the dropdown if the use click on echap key
+document.onkeydown = function(evt) {
+  evt = evt || window.event;
+  var isEscape = false;
+  if ("key" in evt) {
+      isEscape = (evt.key === "Escape" || evt.key === "Esc");
+  } else {
+      isEscape = (evt.keyCode === 27);
+  }
+  if (isEscape) {
+      results_container.style.display = 'none';
+  }
+};
+
+
 results_container.style.display = 'none';
 setInfos('')
 setWarning('')
+
+function toggleSearchHelpText() {
+  document.body.classList.toggle("search-help-hidden");
+}
+// Init search and help text
+document.getElementById('search-box-container').style.display = 'block';
+document.getElementById('search-help-box').style.display = 'block';
+document.body.classList.add("search-help-hidden");
+
 
 ///////////////////// SEARCH //////////////////////////
 
@@ -269,6 +301,7 @@ search_function = function(event){
       clearTimeout(_setLongSearchInfosTimeout)
     }
     worker = new Worker('search-worker.js');
+    results_container.style.display = 'block';
     search()
   }
   catch (err){
