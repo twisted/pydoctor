@@ -631,14 +631,11 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     border-radius: 4px;
     z-index: 500;
     margin-top: -9px;
+    word-break: break-word;
 }
 
 #search-status{
     padding-bottom:2px;
-}
-.search-results-container .rst-admonition{
-    display:none;
-    margin: 10px 0 0 0;
 }
 
 /* Constant values repr */
