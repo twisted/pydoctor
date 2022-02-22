@@ -625,6 +625,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     max-height: calc(100vh - 70px);
     right: 0;
     position: absolute;
+    overflow-x: hidden;
     overflow-y: scroll;
     background-color: #fbfbfb;
     border: 1px solid #CCC;
@@ -632,7 +633,6 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     z-index: 500;
     margin-top: -9px;
     word-break: break-word;
-    overflow: hidden;
 }
 
 #search-status{
