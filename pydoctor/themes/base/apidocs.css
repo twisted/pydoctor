@@ -572,7 +572,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 }
 
 #search-results {
-    margin-top: 2px;
+    margin-top: 5px;
 }
 
 #search-results tr{
@@ -582,6 +582,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 
 #search-results tr {
     border-bottom: 1px #ddd solid;
+    padding-bottom: 1px;
 }
 
 #search-results tr td {

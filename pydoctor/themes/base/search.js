@@ -251,7 +251,7 @@ function search(){
 
       });
 
-      if (response.data.results[0].score <= 3){
+      if (response.data.results[0].score <= 5){
         if (response.data.results.length > 500){
           setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
         }
