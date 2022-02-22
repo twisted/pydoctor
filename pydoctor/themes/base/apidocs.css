@@ -558,7 +558,7 @@ div.tip, div.hint, div.important {
 
 /* Search */
 
-/* clears the ‘X’ from search input */
+/* clears the ‘X’ from search input for Chrome */
 input[type="search"]::-webkit-search-decoration,
 input[type="search"]::-webkit-search-cancel-button,
 input[type="search"]::-webkit-search-results-button,
@@ -625,7 +625,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     right: 0;
     position: absolute;
     overflow-y: scroll;
-    background-color: whitesmoke;
+    background-color: #fbfbfb;
     border: 1px solid #CCC;
     border-radius: 4px;
     z-index: 500;
