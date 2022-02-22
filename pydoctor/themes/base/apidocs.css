@@ -632,6 +632,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     z-index: 500;
     margin-top: -9px;
     word-break: break-word;
+    overflow: hidden;
 }
 
 #search-status{
