@@ -832,6 +832,8 @@ class System:
         assert mod.state is ProcessingState.UNPROCESSED
         first = self.allobjects.get(mod.fullName())
         if first is not None:
+            # At this step of processing only modules exists
+            assert isinstance(first, Module)
             self._handleDuplicateModule(first, mod)
         else:
             self.unprocessed_modules[id(mod)] = mod
