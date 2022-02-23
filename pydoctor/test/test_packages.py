@@ -106,7 +106,7 @@ def test_reparented_module() -> None:
     assert top.resolveName('module') is top.contents['module']
     assert top.resolveName('module.f') is mod.contents['f']
 
-    # The module is not in allobjects
+    # The module old name is not in allobjects
     assert 'reparented_module.mod' not in system.allobjects
     # But can still be resolved with it's old name
     assert top.resolveName('mod') is top.contents['module']
