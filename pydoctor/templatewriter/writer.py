@@ -1,6 +1,7 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
+import itertools
 from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
@@ -82,7 +83,7 @@ class TemplateWriter(IWriter):
 
     def writeSummaryPages(self, system: model.System) -> None:
         import time
-        for pclass in summary.summaryPages(system) + search.searchpages:
+        for pclass in itertools.chain(summary.summaryPages(system), search.searchpages):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, List, Type, Dict
+from typing import Iterable, List, Type, Dict, TYPE_CHECKING
 import json
 
 from pydoctor.templatewriter.pages import Page
@@ -9,8 +9,12 @@ from twisted.web.iweb import IRenderable, IRequest
 from twisted.web.template import Tag, renderer
 from lunr import lunr
 
-def get_all_documents_struct(system: model.System) -> List[Dict[str, str]]:
-    documents = [dict(id=ob.fullName(), 
+if TYPE_CHECKING:
+    from twisted.web.template import Flattenable
+
+def get_all_documents_struct(system: model.System) -> List[Dict[str, "Flattenable"]]:
+    documents: List[Dict[str, "Flattenable"]] = [dict(
+                          id=ob.fullName(), 
                           name=ob.name, 
                           fullName=ob.fullName(), 
                           kind=epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
@@ -30,11 +34,15 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: IRequest, tag: Tag) -> Iterable[IRenderable]:        
+    def documents(self, request: IRequest, tag: Tag) -> Iterable[Tag]:        
         for doc in get_all_documents_struct(self.system):
             yield tag.clone().fillSlots(**doc)
 
 # https://lunr.readthedocs.io/en/latest/
+
+# TODO: Disable the stop-word filter: https://github.com/yeraydiazdiaz/lunr.py/blob/master/lunr/stop_word_filter.py 
+# for the fields name and fullName, see https://github.com/yeraydiazdiaz/lunr.py/issues/108
+
 def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     @arg output_dir: Output directory.
