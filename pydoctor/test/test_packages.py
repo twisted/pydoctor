@@ -90,3 +90,16 @@ def test_package_module_name_clash() -> None:
     system = processPackage('package_module_name_clash')
     pack = system.allobjects['package_module_name_clash.pack']
     assert 'package' == pack.contents.popitem()[0]
+
+def test_reparented_module() -> None:
+    """
+    Reparented modules does not crash pydoctor, and are correctly reparented like any other objects.
+    """
+    system = processPackage('reparented_module')
+
+    mod = system.allobjects['reparented_module.module']
+    top = system.allobjects['reparented_module']
+
+    assert mod.fullName() == 'reparented_module.module'
+    assert top.resolveName('module') is top.contents['module']
+    assert top.resolveName('module.f') is mod.contents['f']
