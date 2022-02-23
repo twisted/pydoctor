@@ -70,8 +70,9 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^ 
+pydoctor 22.2.1
+^^^^^^^^^^^^^^^
+* Fix crash of pydoctor when processing a reparented module.
 
 pydoctor 22.2.0
 ^^^^^^^^^^^^^^^
