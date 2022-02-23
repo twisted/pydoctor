@@ -93,7 +93,9 @@ def test_package_module_name_clash() -> None:
 
 def test_reparented_module() -> None:
     """
-    Reparented modules does not crash pydoctor, and are correctly reparented like any other objects.
+    A module that is imported in a package as a different name and exported
+    in that package under the new name via C{__all__} is presented using the
+    new name.
     """
     system = processPackage('reparented_module')
 
