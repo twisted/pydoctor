@@ -105,3 +105,4 @@ def test_reparented_module() -> None:
     assert mod.fullName() == 'reparented_module.module'
     assert top.resolveName('module') is top.contents['module']
     assert top.resolveName('module.f') is mod.contents['f']
+    
