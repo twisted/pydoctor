@@ -1,2 +1,3 @@
+"""This module defines a class"""
 class MyClass:
     ...
