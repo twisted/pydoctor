@@ -153,4 +153,4 @@ def test_incons_get_copied():
     """
 
     assert (BASE_DIR / 'api' / 'fonts' / 'info.svg').is_file()
-    assert (BASE_DIR / 'api' / 'fonts' / 'search.svg').is_file()
+    assert (BASE_DIR / 'api' / 'fonts' / 'x-circle.svg').is_file()
