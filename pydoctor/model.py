@@ -640,7 +640,11 @@ class System:
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
-        self.unprocessed_modules: Dict[str, _ModuleT] = OrderedDict()
+
+        # We're using the id() of the modules as key, and not the fullName becaue modules can
+        # be reparented, generating KeyError.
+        self.unprocessed_modules: Dict[int, _ModuleT] = OrderedDict()
+
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
@@ -840,10 +844,13 @@ class System:
         module to the system.
         """
         assert mod.state is ProcessingState.UNPROCESSED
-        first = self.unprocessed_modules.setdefault(mod.fullName(), mod)
-        if mod is not first:
+        first = self.allobjects.get(mod.fullName())
+        if first is not None:
+            # At this step of processing only modules exists
+            assert isinstance(first, Module)
             self._handleDuplicateModule(first, mod)
         else:
+            self.unprocessed_modules[id(mod)] = mod
             self.addObject(mod)
             self.progress(
                 "analyzeModule", len(self.allobjects),
@@ -869,7 +876,7 @@ class System:
             return
         else:
             # Else, the last added module wins
-            del self.unprocessed_modules[dup.fullName()]
+            del self.unprocessed_modules[id(dup)]
             self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
@@ -1024,7 +1031,7 @@ class System:
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
-        del self.unprocessed_modules[mod.fullName()]
+        del self.unprocessed_modules[id(mod)]
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
