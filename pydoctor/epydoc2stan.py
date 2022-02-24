@@ -711,14 +711,12 @@ def parse_docstring(
 
 def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
     """
-    Currently, it's unclear at what point the L{Documentable.parsed_docstring} attribute is set.
-    It can be set from the AST builder for L{Attribute} objects, at the rendering time from the
-    L{epydoc2stan} module, or with the lunr index building.
+    Currently, it's not 100% clear at what point the L{Documentable.parsed_docstring} attribute is set.
+    It can be set from the ast builder or later processing step.
     
-    This function ensures the C{parsed_docstring} attribute of a documentable is set to it's final value. 
-    Do not call L{parse_docstring()} several times. 
+    This function ensures that the C{parsed_docstring} attribute of a documentable is set to it's final value. 
 
-    Returns: 
+    @returns: 
         - If the C{obj.parsed_docstring} is set to a L{ParsedDocstring} instance: 
           The source object of the docstring (might be different 
           from C{obj} if the documentation is inherited).
