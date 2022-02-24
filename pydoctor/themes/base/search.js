@@ -1,6 +1,20 @@
-function setStatus(message) {
-  document.getElementById('search-status').textContent = message;
-}
+// This file contains the code that drives the search system.
+// It's included in every HTML file.
+
+//////// GLOBAL VARS /////////
+
+var input = document.getElementById('search-box');
+// TODO: Use getElementById()
+var results_container = document.getElementsByClassName('search-results-container')[0];
+let results_list = document.getElementById('search-results'); 
+
+// Setup the search worker   
+var worker = new Worker('search-worker.js');
+
+// setTimeout variable to warn when a search takes too long
+var _setLongSearchInfosTimeout = null;
+
+//////// FUNCTIONS /////////
 
 function _setInfos(message, box_id, text_id) {
   document.getElementById(text_id).textContent = message;
@@ -12,10 +26,16 @@ function _setInfos(message, box_id, text_id) {
   }
 }
 
-function setInfos(message) {
-  _setInfos(message, 'search-infos-box', 'search-infos');
+/**
+ * Set the search status.
+ */
+function setStatus(message) {
+  document.getElementById('search-status').textContent = message;
 }
 
+/**
+ * Show a warning, hide warning box if empty string.
+ */
 function setWarning(message) {
   _setInfos(message, 'search-warn-box', 'search-warn');
 }
@@ -33,6 +53,15 @@ function setErrorInfos(message) {
   }
 }
 
+function resetLongSearchTimerInfo(){
+  if (_setLongSearchInfosTimeout){
+    clearTimeout(_setLongSearchInfosTimeout)
+  }
+}
+
+/**
+ * Transform list item as in all-documents.html into a search result row.
+ */
 function buildSearchResult(dobj) {
 
   // Build one result item
@@ -87,14 +116,6 @@ function setLongSearchInfos(){
   setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.");
 }
 
-
-//////// SETUP /////////
-// Hide the div if the user clicks outside of it
-
-var input = document.getElementById('search-box');
-var results_container = document.getElementsByClassName('search-results-container')[0];
-let results_list = document.getElementById('search-results'); 
-
 function hideResultContainer(){
   results_container.style.display = 'none';
   if (!document.body.classList.contains("search-help-hidden")){
@@ -106,27 +127,6 @@ function showResultContainer(){
   results_container.style.display = 'block';
 }
 
-window.addEventListener('load', (event) => {
-  hideResultContainer();
-});
-
-// Close the dropdown if the user clicks outside of it
-window.addEventListener("click", function(event) {
-  if (event){
-      if (!event.target.closest('.search-results-container') 
-          && !event.target.closest('#search-box')
-          && !event.target.closest('#search-help-button')){
-            hideResultContainer()
-            return;
-      }
-      if (event.target.closest('#search-box')){
-        if (input.value.length>0){
-          showResultContainer()
-        }
-      }
-  }
-});
-
 function toggleSearchHelpText() {
   document.body.classList.toggle("search-help-hidden");
   if (document.body.classList.contains("search-help-hidden") && input.value.length==0){
@@ -134,23 +134,6 @@ function toggleSearchHelpText() {
   }
   else{
     showResultContainer()
-  }
-}
-// Init search and help text
-document.getElementById('search-box-container').style.display = 'block';
-document.getElementById('search-help-box').style.display = 'block';
-document.body.classList.add("search-help-hidden");
-
-
-///////////////////// SEARCH //////////////////////////
-
-// Setup the search worker   
-var worker = new Worker('search-worker.js');
-var _setLongSearchInfosTimeout = null;
-
-function resetLongSearchTimerInfo(){
-  if (_setLongSearchInfosTimeout){
-    clearTimeout(_setLongSearchInfosTimeout)
   }
 }
 
@@ -163,15 +146,16 @@ function clearSearch(){
   resetResultList()
   setWarning('')
   setStatus('')
-  setInfos('')
 
   input.value = '';
-  showHideClearSearchBtn()
+  updateClearSearchBtn()
 }
 
+/** 
+ * Do the actual searching business
+ */
 function search(){
 
-  setInfos('')
   setWarning('')
   showResultContainer()
   setStatus("Searching...")
@@ -187,7 +171,7 @@ function search(){
     return ;
   }
   else{
-    if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+')){
+    if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+') || _query.endsWith(':')){
       // Do not search string that we know are not valid query strings
       setStatus('')
       setWarning('Incomplete search query, missing terms or edit distance.')
@@ -273,8 +257,7 @@ function search(){
       })
 
       if (public_search_results.length==0){
-        setStatus('No results matches "' + _query + '"');
-        setInfos('Some private objects matches your search though.');
+        setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
       }
       else{
 
@@ -303,7 +286,12 @@ function search(){
   _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
 }
 
-function showHideClearSearchBtn(){
+/**
+ * Show and hide the (X) button depending on the current search input.
+ * We do not show the (X) button when there is no search going on.
+ */
+function updateClearSearchBtn(){
+  
   if (input.value.length>0){
     document.getElementById('search-clear-button').style.display = 'inline-block';
   }
@@ -312,11 +300,17 @@ function showHideClearSearchBtn(){
   }
 }
 
-function launch_function(){
+/** 
+ * Main entrypoint to [re]launch the search.
+ * Called everytime the search bar is edited.
+*/
+function launch_search(){
   try{
-    showHideClearSearchBtn()
+    updateClearSearchBtn()
     resetLongSearchTimerInfo()
 
+    // We don't want to run concurrent searches.
+    // Kill and re-create worker.
     worker.terminate()
     worker = new Worker('search-worker.js');
     
@@ -329,18 +323,48 @@ function launch_function(){
   }
 };
 
+////// SETUP //////
+
+// Attach launch_search() to search text field update events.
 input.addEventListener('input',function(event) {
-  launch_function();
+  launch_search();
 });
 input.addEventListener("keyup", function(event) {
   if (event.key === 'Enter') {
-    launch_function();
+    launch_search();
   }
 });
-// Close the dropdown if the use click on echap key
+
+// Close the dropdown if the user clicks on echap key
 document.onkeydown = function(evt) {
   evt = evt || window.event;
   if (evt.key === "Escape" || evt.key === "Esc") {
       hideResultContainer()
   }
 };
+
+// Init search and help text. 
+// search box is not visible by default because
+// we don't want to show it if the browser do not support JS.
+window.addEventListener('load', (event) => {
+  document.getElementById('search-box-container').style.display = 'block';
+  document.getElementById('search-help-box').style.display = 'block';
+  hideResultContainer();
+});
+
+// Hide the dropdown if the user clicks outside of it
+window.addEventListener("click", function(event) {
+  if (event){
+      if (!event.target.closest('.search-results-container') 
+          && !event.target.closest('#search-box')
+          && !event.target.closest('#search-help-button')){
+            hideResultContainer()
+            return;
+      }
+      if (event.target.closest('#search-box')){
+        if (input.value.length>0){
+          showResultContainer()
+        }
+      }
+  }
+});
