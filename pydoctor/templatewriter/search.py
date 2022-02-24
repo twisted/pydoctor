@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import Iterable, List, Type, Dict, TYPE_CHECKING
+from typing import Any, Iterable, List, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
 from pydoctor.templatewriter.pages import Page
-from pydoctor import model, epydoc2stan
+from pydoctor import model, epydoc2stan, node2stan
 
-from twisted.web.iweb import IRenderable, IRequest
 from twisted.web.template import Tag, renderer
 from lunr import lunr
 
@@ -34,7 +33,7 @@ class AllDocuments(Page):
         return "All Documents"
 
     @renderer
-    def documents(self, request: IRequest, tag: Tag) -> Iterable[Tag]:        
+    def documents(self, request: None, tag: Tag) -> Iterable[Tag]:        
         for doc in get_all_documents_struct(self.system):
             yield tag.clone().fillSlots(**doc)
 
@@ -57,16 +56,35 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         else:
             return 1
 
-    # TODO: sanitize docstring in a proper way to be more easily indexable by lunr.
-    # Once https://github.com/twisted/pydoctor/pull/386 is merged, use node2stan.gettext() to index the docstring text only.
+    documents: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+    for ob in (o for o in system.allobjects.values() if o.isVisible):
+        
+        # sanitize docstring in a proper way to be more easily indexable by lunr.
+        doc = None
+        source = epydoc2stan.ensure_parsed_docstring(ob)
+        if source is not None:
+            assert ob.parsed_docstring is not None
+            try:
+                doc = ' '.join(node2stan.gettext(ob.parsed_docstring.to_node()))
+            except NotImplementedError:
+                # some ParsedDocstring subclass raises NotImplementedError on calling to_node()
+                # Like ParsedPlaintextDocstring.
+                doc = source.docstring
 
-    documents = [(dict(name=ob.name, 
-                        fullName=ob.fullName(), 
-                        docstring=ob.docstring,), 
-                 dict(boost=get_ob_boost(ob)))   
+        documents.append(
+                    (
+                        {
+                            "name": ob.name, 
+                            "fullName": ob.fullName(), 
+                            "docstring": doc
+                        }, 
+                        {
+                            "boost": get_ob_boost(ob)
+                        }
+                    )
+        )   
                         
-                 for ob in system.allobjects.values() if ob.isVisible]
-
+    
     index = lunr(
         ref='fullName',
         fields=[dict(field_name='name', boost=2), 
