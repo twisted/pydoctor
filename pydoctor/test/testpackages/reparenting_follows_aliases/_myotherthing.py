@@ -1,0 +1,1 @@
+from ._mything import MyClass

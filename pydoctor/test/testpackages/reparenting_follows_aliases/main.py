@@ -1,0 +1,3 @@
+from ._myotherthing import MyClass
+__all__=('myfunc', 'MyClass')
+def myfunc(): ...

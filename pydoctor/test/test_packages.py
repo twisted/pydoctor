@@ -110,3 +110,19 @@ def test_reparented_module() -> None:
     assert 'reparented_module.mod' not in system.allobjects
     # But can still be resolved with it's old name
     assert top.resolveName('mod') is top.contents['module']
+
+def test_reparenting_follows_aliases() -> None:
+    """
+    Test for https://github.com/twisted/pydoctor/issues/505
+
+    Reparenting process follows aliases.
+    """
+
+    system = processPackage('reparenting_follows_aliases')
+
+    # reparenting_follows_aliases.main: imports MyClass from ._myotherthing and re-export it in it's __all__ variable.
+    # reparenting_follows_aliases._mything: defines class MyClass.
+    # reparenting_follows_aliases._myotherthing: imports class MyClass from ._mything, but do not export it.
+
+    # Test that we do not get KeyError
+    system.allobjects['reparenting_follows_aliases.main.MyClass']
