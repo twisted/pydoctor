@@ -383,6 +383,7 @@ class Documentable:
         """
         if self._linker is not None:
             return self._linker
+        # FIXME: avoid cyclic import https://github.com/twisted/pydoctor/issues/507
         from pydoctor.epydoc2stan import _CachedEpydocLinker
         self._linker = _CachedEpydocLinker(self)
         return self._linker
