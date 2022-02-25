@@ -88,7 +88,7 @@ def test_xref_link_same_page() -> None:
     """A linked name that is documented on the same page is linked using only
     a fragment as the URL. But that does not happend in summaries. 
     """
-    src='''
+    src = '''
     """The home of L{local_func}."""
 
     def local_func():
