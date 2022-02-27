@@ -4,8 +4,7 @@
 //////// GLOBAL VARS /////////
 
 var input = document.getElementById('search-box');
-// TODO: Use getElementById()
-var results_container = document.getElementsByClassName('search-results-container')[0];
+var results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
 
 // Setup the search worker   
@@ -355,7 +354,7 @@ window.addEventListener('load', (event) => {
 // Hide the dropdown if the user clicks outside of it
 window.addEventListener("click", function(event) {
   if (event){
-      if (!event.target.closest('.search-results-container') 
+      if (!event.target.closest('#search-results-container') 
           && !event.target.closest('#search-box')
           && !event.target.closest('#search-help-button')){
             hideResultContainer()

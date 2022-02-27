@@ -618,7 +618,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     background-color: #fff!important;
 }
 
-.search-results-container {
+#search-results-container {
     padding: 10px;
     width: 100%;
     max-width: 850px;
