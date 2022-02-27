@@ -6,7 +6,7 @@ from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan, node2stan
 
 from twisted.web.template import Tag, renderer
-from lunr import lunr
+from lunr import lunr, get_default_builder, stop_word_filter
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -38,10 +38,6 @@ class AllDocuments(Page):
             yield tag.clone().fillSlots(**doc)
 
 # https://lunr.readthedocs.io/en/latest/
-
-# TODO: Disable the stop-word filter: https://github.com/yeraydiazdiaz/lunr.py/blob/master/lunr/stop_word_filter.py 
-# for the fields name and fullName, see https://github.com/yeraydiazdiaz/lunr.py/issues/108
-
 def write_lunr_index(output_dir: Path, system: model.System) -> None:
     """
     @arg output_dir: Output directory.
@@ -83,14 +79,19 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
                         }
                     )
         )   
-                        
+
+    # Disable the stop-word filter for fields fullName and name. 
+    # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
     
+    builder = get_default_builder()
+    builder.pipeline.skip(stop_word_filter.stop_word_filter, ["fullName", "name"])  
     index = lunr(
         ref='fullName',
-        fields=[dict(field_name='name', boost=2), 
-                dict(field_name='docstring', boost=1),
-                dict(field_name='fullName', boost=1) ],
-        documents=documents )   
+        fields=[{'field_name':'name', 'boost':2}, 
+                {'field_name':'docstring', 'boost':1},
+                {'field_name':'fullName', 'boost':1} ],
+        documents=documents, 
+        builder=builder)   
     
     serialized_index = json.dumps(index.serialize())
 
