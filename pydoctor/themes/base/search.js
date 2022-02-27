@@ -7,8 +7,8 @@ var input = document.getElementById('search-box');
 var results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
 
-// Setup the search worker   
-var worker = new Worker('search-worker.js');
+// Setup the search worker variable
+var worker = undefined
 
 // setTimeout variable to warn when a search takes too long
 var _setLongSearchInfosTimeout = null;
@@ -310,7 +310,10 @@ function launch_search(){
 
     // We don't want to run concurrent searches.
     // Kill and re-create worker.
-    worker.terminate()
+    if (worker!=undefined){
+      worker.terminate()
+    }
+    
     worker = new Worker('search-worker.js');
     
     search()
