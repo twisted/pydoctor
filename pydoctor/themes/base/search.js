@@ -8,7 +8,7 @@ var results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
 
 // Setup the search worker variable
-var worker = undefined
+var worker = undefined;
 
 // setTimeout variable to warn when a search takes too long
 var _setLongSearchInfosTimeout = null;
@@ -54,7 +54,7 @@ function setErrorInfos(message) {
 
 function resetLongSearchTimerInfo(){
   if (_setLongSearchInfosTimeout){
-    clearTimeout(_setLongSearchInfosTimeout)
+    clearTimeout(_setLongSearchInfosTimeout);
   }
 }
 
@@ -87,7 +87,7 @@ function buildSearchResult(dobj) {
       a.textContent = a.textContent + '()';
   }
 
-  kindtd.innerHTML = kind_value
+  kindtd.innerHTML = kind_value;
   
   // Putting everything together
   tr.appendChild(kindtd);
@@ -101,7 +101,7 @@ function buildSearchResult(dobj) {
 
   // Set kind as the CSS class of the kind td tag
   let ob_css_class = dobj.querySelector('.kind').innerHTML.toLowerCase().replace(' ', '');
-  kindtd.setAttribute('class', ob_css_class)
+  kindtd.setAttribute('class', ob_css_class);
 
   // Set private
   if (dobj.querySelector('.privacy').innerHTML.includes('PRIVATE')){
@@ -118,7 +118,7 @@ function setLongSearchInfos(){
 function hideResultContainer(){
   results_container.style.display = 'none';
   if (!document.body.classList.contains("search-help-hidden")){
-    document.body.classList.add("search-help-hidden")
+    document.body.classList.add("search-help-hidden");
   }
 }
 
@@ -129,10 +129,10 @@ function showResultContainer(){
 function toggleSearchHelpText() {
   document.body.classList.toggle("search-help-hidden");
   if (document.body.classList.contains("search-help-hidden") && input.value.length==0){
-    hideResultContainer()
+    hideResultContainer();
   }
   else{
-    showResultContainer()
+    showResultContainer();
   }
 }
 
@@ -141,13 +141,13 @@ function resetResultList(){
 }
 
 function clearSearch(){
-  hideResultContainer()
-  resetResultList()
-  setWarning('')
-  setStatus('')
+  hideResultContainer();
+  resetResultList();
+  setWarning('');
+  setStatus('');
 
   input.value = '';
-  updateClearSearchBtn()
+  updateClearSearchBtn();
 }
 
 /** 
@@ -155,25 +155,25 @@ function clearSearch(){
  */
 function search(){
 
-  setWarning('')
-  showResultContainer()
-  setStatus("Searching...")
+  setWarning('');
+  showResultContainer();
+  setStatus("Searching...");
 
   // Get the query terms 
 
-  let _query = input.value
+  let _query = input.value;
 
   if (!_query.length>0){
-    resetResultList()
-    setStatus('')
-    hideResultContainer()
-    return ;
+    resetResultList();
+    setStatus('');
+    hideResultContainer();
+    return;
   }
   else{
     if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+') || _query.endsWith(':')){
       // Do not search string that we know are not valid query strings
-      setStatus('')
-      setWarning('Incomplete search query, missing terms or edit distance.')
+      setStatus('');
+      setWarning('Incomplete search query, missing terms or edit distance.');
       return;
     }
   }
@@ -182,10 +182,10 @@ function search(){
 
   if (!window.Worker) {
     setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
-    return ;
+    return;
   }
 
-  resetResultList()
+  resetResultList();
 
   // posting query to worker, he's going to do the job searching in Lunr index.
   worker.postMessage({
@@ -197,25 +197,25 @@ function search(){
 
     worker.onmessage = function (response) {
 
-      resetLongSearchTimerInfo()
+      resetLongSearchTimerInfo();
       
-      console.log("Message received from worker: ")
-      console.dir(response.data)
+      console.log("Message received from worker: ");
+      console.dir(response.data);
 
       if (!response.data.results){
         setErrorStatus();
-        throw("No data received from worker")
+        throw("No data received from worker");
       }
 
       if (response.data.results.length == 0){
         setStatus('No results matches "' + _query + '"');
-        return ;
+        return;
       }
 
       // PARSE DATA FROM HTML DOCUMENT
       let parser = new self.DOMParser();
       let all_documents = parser.parseFromString(all_documents_response, "text/html");
-      let search_results_documents = []
+      let search_results_documents = [];
       
       response.data.results.forEach(function (result) {
           // Find the result model 
@@ -247,7 +247,7 @@ function search(){
           setWarning("Your search yielded a lot of results! Maybe try with other terms?");
         }
         else{
-          setWarning('')
+          setWarning('');
         }
       }
 
@@ -269,7 +269,7 @@ function search(){
     
     worker.onerror = function(error) {
       console.log(error);
-      resetLongSearchTimerInfo()
+      resetLongSearchTimerInfo();
       error.preventDefault();
       setErrorStatus();
       setErrorInfos(error.message);
@@ -278,7 +278,7 @@ function search(){
   },
   function(error){
     console.log(error);
-    resetLongSearchTimerInfo()
+    resetLongSearchTimerInfo();
     setErrorStatus();
     setErrorInfos(error.message);
   });
@@ -305,13 +305,13 @@ function updateClearSearchBtn(){
 */
 function launch_search(){
   try{
-    updateClearSearchBtn()
-    resetLongSearchTimerInfo()
+    updateClearSearchBtn();
+    resetLongSearchTimerInfo();
 
     // We don't want to run concurrent searches.
     // Kill and re-create worker.
     if (worker!=undefined){
-      worker.terminate()
+      worker.terminate();
     }
     
     worker = new Worker('search-worker.js');
@@ -341,7 +341,7 @@ input.addEventListener("keyup", function(event) {
 document.onkeydown = function(evt) {
   evt = evt || window.event;
   if (evt.key === "Escape" || evt.key === "Esc") {
-      hideResultContainer()
+      hideResultContainer();
   }
 };
 
@@ -360,12 +360,12 @@ window.addEventListener("click", function(event) {
       if (!event.target.closest('#search-results-container') 
           && !event.target.closest('#search-box')
           && !event.target.closest('#search-help-button')){
-            hideResultContainer()
+            hideResultContainer();
             return;
       }
       if (event.target.closest('#search-box')){
         if (input.value.length>0){
-          showResultContainer()
+          showResultContainer();
         }
       }
   }
