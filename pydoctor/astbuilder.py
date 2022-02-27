@@ -397,10 +397,9 @@ class ModuleVistor(ast.NodeVisitor):
 
             # Move re-exported objects into current module.
             if asname in exports and mod is not None:
-                try:
-                    ob = mod.contents[orgname]
-                except KeyError:
-                    self.builder.warning("cannot find re-exported name",
+                ob = mod.resolveName(orgname)
+                if ob is None:
+                    self.builder.warning("cannot resolve re-exported name",
                                          f'{modname}.{orgname}')
                 else:
                     if mod.all is None or orgname not in mod.all:
