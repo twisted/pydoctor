@@ -110,3 +110,47 @@ def test_reparented_module() -> None:
     assert 'reparented_module.mod' not in system.allobjects
     # But can still be resolved with it's old name
     assert top.resolveName('mod') is top.contents['module']
+
+def test_reparenting_follows_aliases() -> None:
+    """
+    Test for https://github.com/twisted/pydoctor/issues/505
+
+    Reparenting process follows aliases.
+    """
+
+    system = processPackage('reparenting_follows_aliases')
+
+    # reparenting_follows_aliases.main: imports MyClass from ._myotherthing and re-export it in it's __all__ variable.
+    # reparenting_follows_aliases._mything: defines class MyClass.
+    # reparenting_follows_aliases._myotherthing: imports class MyClass from ._mything, but do not export it.
+
+    # Test that we do not get KeyError
+    klass = system.allobjects['reparenting_follows_aliases.main.MyClass']
+    
+    # Test older names still resolves to reparented object
+    top = system.allobjects['reparenting_follows_aliases']
+
+    myotherthing = top.contents['_myotherthing']
+    mything = top.contents['_mything']
+
+    assert isinstance(mything, model.Module)
+    assert isinstance(myotherthing, model.Module)
+
+    assert mything._localNameToFullName('MyClass') == 'reparenting_follows_aliases.main.MyClass'
+    assert myotherthing._localNameToFullName('MyClass') == 'reparenting_follows_aliases._mything.MyClass'
+
+    system.find_object('reparenting_follows_aliases._mything.MyClass') == klass
+
+    # This part of the test cannot pass for now since we don't recursively resolve aliases.
+    # See https://github.com/twisted/pydoctor/pull/414 and https://github.com/twisted/pydoctor/issues/430
+
+    try:
+        assert system.find_object('reparenting_follows_aliases._myotherthing.MyClass') == klass
+        assert myotherthing.resolveName('MyClass') == klass
+        assert mything.resolveName('MyClass') == klass
+        assert top.resolveName('_myotherthing.MyClass') == klass
+        assert top.resolveName('_mything.MyClass') == klass
+    except (AssertionError, LookupError):
+        return
+    else:
+        raise AssertionError("Congratulation!")
