@@ -709,10 +709,19 @@ def parse_docstring(
         reportErrors(source, errs)
     return parsed_doc
 
+def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
+    """
+    Currently, it's not 100% clear at what point the L{Documentable.parsed_docstring} attribute is set.
+    It can be set from the ast builder or later processing step.
+    
+    This function ensures that the C{parsed_docstring} attribute of a documentable is set to it's final value. 
 
-def format_docstring(obj: model.Documentable) -> Tag:
-    """Generate an HTML representation of a docstring"""
-
+    @returns: 
+        - If the C{obj.parsed_docstring} is set to a L{ParsedDocstring} instance: 
+          The source object of the docstring (might be different 
+          from C{obj} if the documentation is inherited).
+        - If the object is undocumented: C{None}.
+    """
     doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
@@ -731,19 +740,30 @@ def format_docstring(obj: model.Documentable) -> Tag:
     if parsed_doc is None and doc is not None:
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
+    
+    if obj.parsed_docstring is not None:
+        return source
+    else:
+        return None
+
+def format_docstring(obj: model.Documentable) -> Tag:
+    """Generate an HTML representation of a docstring"""
+
+    source = ensure_parsed_docstring(obj)
 
     ret: Tag = tags.div
-    if parsed_doc is None:
+    if source is None:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = parsed_doc.to_stan(_EpydocLinker(source))
+            stan = obj.parsed_docstring.to_stan(_EpydocLinker(source))
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-            if doc is None:
+            if source.docstring is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
-                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(source.docstring, errs)
                 stan = parsed_doc_plain.to_stan(_EpydocLinker(source))
             reportErrors(source, errs)
         if stan.tagName:
@@ -754,8 +774,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    if parsed_doc is not None:
-        for field in parsed_doc.fields:
+    if source is not None:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
+        for field in obj.parsed_docstring.fields:
             fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
         fh.resolve_types()
