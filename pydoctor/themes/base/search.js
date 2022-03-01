@@ -150,6 +150,24 @@ function clearSearch(){
   updateClearSearchBtn();
 }
 
+// This gives the UI the opportunity to refresh while we're iterating over a large list.
+function asyncFor(iters, callback) { // -> Promise of List of results returned by callback
+  const promise_global = new Promise((resolve_global, _reject) => {
+    let promises = [];
+    iters.forEach((element) => {
+        promises.push(new Promise((resolve, _reject) => {
+          setTimeout(() => {
+            resolve(callback(element));
+          }, 0);
+        }));
+    }); 
+    Promise.all(promises).then((results) =>{
+      resolve_global(results);
+    });
+  });
+  return promise_global;
+}
+
 /** 
  * Do the actual searching business
  */
@@ -194,10 +212,13 @@ function search(){
 
   // Get result data
   httpGet("all-documents.html", function(all_documents_response) {
+    
+    // Save a worker reference here to check if the worker has been
+    // re-created or not, if it has been re-created, it means that the search
+    // results should be discarded.
+    let _search_worker = worker
 
-    worker.onmessage = function (response) {
-
-      resetLongSearchTimerInfo();
+    _search_worker.onmessage = function (response) {
       
       console.log("Message received from worker: ");
       console.dir(response.data);
@@ -212,85 +233,102 @@ function search(){
         return;
       }
 
-      // PARSE DATA FROM HTML DOCUMENT
-      let parser = new self.DOMParser();
-      let all_documents = parser.parseFromString(all_documents_response, "text/html");
-      let search_results_documents = [];
-      
-      response.data.results.forEach(function (result) {
+      setStatus("One sec...");
 
-        // Edit the DOM inside setTimeout not to block UI
-        // give the UI the opportunity to refresh here.
-        setTimeout(function (){
+      // Parse data from HTML document, 
+      // this can take some time, so we wrap it in a setTimeout()
+      setTimeout(() => {
+        let parser = new self.DOMParser();
+        let all_documents = parser.parseFromString(all_documents_response, "text/html");
+        
+        // Look for results data in parsed all-documents.html
+        asyncFor(response.data.results, (result) => {
 
-          // Find the result model and display result row.
-          var dobj = all_documents.getElementById(result.ref);
-          
-          if (!dobj){
-              setErrorStatus();
-              throw ("Cannot find document ID: " + result.ref)
+            // Find the result model and display result row.
+            var dobj = all_documents.getElementById(result.ref);
+            
+            if (!dobj){
+                setErrorStatus();
+                throw ("Cannot find document ID: " + result.ref);
+            }
+
+            // Return result data
+            return dobj;
+
+        }).then((results) => {
+          // Check if this search results should be displayed or not
+          if (!(worker === _search_worker)){
+            // Do not display results for a search that is not the last one
+            return;
           }
-          // Save
-          search_results_documents.push(dobj);
 
-          // Display results: edit DOM
-          let tr = buildSearchResult(dobj);
-          results_list.appendChild(tr);
+          // Edit DOM
+          resetResultList();
+          results.forEach((dobj) => {
+            results_list.appendChild(buildSearchResult(dobj));
+          });
 
-        }, 1);
+          if (response.data.results[0].score <= 5){
+            if (response.data.results.length > 500){
+              setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
+            }
+            else{
+              setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?");
+            }
+          }
+          else {
+            if (response.data.results.length > 500){
+              setWarning("Your search yielded a lot of results! Maybe try with other terms?");
+            }
+            else{
+              setWarning('');
+            }
+          }
 
-      });
+          let public_search_results = results.filter(function(value){
+            return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
+          })
 
-      if (response.data.results[0].score <= 5){
-        if (response.data.results.length > 500){
-          setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
-        }
-        else{
-          setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?");
-        }
-      }
-      else {
-        if (response.data.results.length > 500){
-          setWarning("Your search yielded a lot of results! Maybe try with other terms?");
-        }
-        else{
-          setWarning('');
-        }
-      }
+          if (public_search_results.length==0){
+            setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
+          }
+          else{
+            setStatus(
+              'Search for "' + _query + '" yielded ' + public_search_results.length + ' ' +
+              (public_search_results.length === 1 ? 'result' : 'results') + '.');
+          }
 
-      let public_search_results = search_results_documents.filter(function(value){
-        return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
-      })
+          resetLongSearchTimerInfo();
+          // End
+        
+        }).catch((err) => {
+          setErrorStatus();
+          throw err;
+        }); // Results promise resolved
 
-      if (public_search_results.length==0){
-        setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
-      }
-      else{
+      }, 0); // setTimeout block
 
-        setStatus(
-          'Search for "' + _query + '" yielded ' + public_search_results.length + ' ' +
-          (public_search_results.length === 1 ? 'result' : 'results') + '.');
-      }
-
-      };
-    
-    worker.onerror = function(error) {
+    }; // Worker on message block
+    _search_worker.onerror = function(error) {
       console.log(error);
       resetLongSearchTimerInfo();
       error.preventDefault();
       setErrorStatus();
       setErrorInfos(error.message);
-    }
+    };
 
-  },
+  }, // On httpGet all-documents.html block
+
   function(error){
     console.log(error);
     resetLongSearchTimerInfo();
     setErrorStatus();
     setErrorInfos(error.message);
   });
+
   _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
-}
+
+} // end search() function
 
 /**
  * Show and hide the (X) button depending on the current search input.
@@ -312,12 +350,13 @@ function updateClearSearchBtn(){
 */
 function launch_search(){
   try{
-    updateClearSearchBtn();
-    resetLongSearchTimerInfo();
 
     // creating new Worker could be UI blocking, 
     // we give the UI the opportunity to refresh here
-    setTimeout(function(){
+    setTimeout(() => {
+      updateClearSearchBtn();
+      resetLongSearchTimerInfo();
+
       // We don't want to run concurrent searches.
       // Kill and re-create worker.
       if (worker!=undefined){
@@ -325,7 +364,7 @@ function launch_search(){
       }
       worker = new Worker('search-worker.js');
       search();
-    }, 1);
+    }, 0);
   }
   catch (err){
     console.log(err);
