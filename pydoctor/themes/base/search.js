@@ -218,7 +218,12 @@ function search(){
       let search_results_documents = [];
       
       response.data.results.forEach(function (result) {
-          // Find the result model 
+
+        // Edit the DOM inside setTimeout not to block UI
+        // give the UI the opportunity to refresh here.
+        setTimeout(function (){
+
+          // Find the result model and display result row.
           var dobj = all_documents.getElementById(result.ref);
           
           if (!dobj){
@@ -231,6 +236,8 @@ function search(){
           // Display results: edit DOM
           let tr = buildSearchResult(dobj);
           results_list.appendChild(tr);
+
+        }, 1);
 
       });
 
@@ -308,15 +315,17 @@ function launch_search(){
     updateClearSearchBtn();
     resetLongSearchTimerInfo();
 
-    // We don't want to run concurrent searches.
-    // Kill and re-create worker.
-    if (worker!=undefined){
-      worker.terminate();
-    }
-    
-    worker = new Worker('search-worker.js');
-    
-    search()
+    // creating new Worker could be UI blocking, 
+    // we give the UI the opportunity to refresh here
+    setTimeout(function(){
+      // We don't want to run concurrent searches.
+      // Kill and re-create worker.
+      if (worker!=undefined){
+        worker.terminate();
+      }
+      worker = new Worker('search-worker.js');
+      search();
+    }, 1);
   }
   catch (err){
     console.log(err);
