@@ -40,12 +40,14 @@ function setWarning(message) {
 }
 
 function setErrorStatus() {
+  resetLongSearchTimerInfo()
   setStatus("Something went wrong.");
+  setErrorInfos();
 }
 
 function setErrorInfos(message) {
   if (message != undefined){
-    setWarning("Error: " +  message + ". See development console for details.");
+    setWarning(message);
   }
   else{
     setWarning("Error: See development console for details.");
@@ -187,14 +189,6 @@ function search(){
     hideResultContainer();
     return;
   }
-  else{
-    if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+') || _query.endsWith(':')){
-      // Do not search string that we know are not valid query strings
-      setStatus('');
-      setWarning('Incomplete search query, missing terms or edit distance.');
-      return;
-    }
-  }
 
   console.log("Your query is: "+ _query)
 
@@ -308,25 +302,21 @@ function search(){
 
       }, 0); // setTimeout block
 
-    }; // Worker on message block
+    }; // Worker on message block, most likely an error in query parsing.
     _search_worker.onerror = function(error) {
       console.log(error);
-      resetLongSearchTimerInfo();
-      error.preventDefault();
       setErrorStatus();
       setErrorInfos(error.message);
     };
 
   }, // On httpGet all-documents.html block
 
-  function(error){
-    console.log(error);
-    resetLongSearchTimerInfo();
+  function(error){ // On error: httpGet all-documents.html
     setErrorStatus();
-    setErrorInfos(error.message);
   });
 
-  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
+  // After five seconds of searching, warn that this is taking more time than usual.
+  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 5000);
 
 } // end search() function
 
@@ -349,29 +339,23 @@ function updateClearSearchBtn(){
  * Called everytime the search bar is edited.
 */
 function launch_search(){
-  try{
 
-    // creating new Worker could be UI blocking, 
-    // we give the UI the opportunity to refresh here
-    setTimeout(() => {
-      updateClearSearchBtn();
-      resetLongSearchTimerInfo();
+  // creating new Worker could be UI blocking, 
+  // we give the UI the opportunity to refresh here
+  setTimeout(() => {
+    updateClearSearchBtn();
+    resetLongSearchTimerInfo();
 
-      // We don't want to run concurrent searches.
-      // Kill and re-create worker.
-      if (worker!=undefined){
-        worker.terminate();
-      }
-      worker = new Worker('search-worker.js');
-      search();
-    }, 0);
-  }
-  catch (err){
-    console.log(err);
-    setErrorStatus();
-    setErrorInfos(err.message);
-  }
-};
+    // We don't want to run concurrent searches.
+    // Kill and re-create worker.
+    if (worker!=undefined){
+      worker.terminate();
+    }
+    worker = new Worker('search-worker.js');
+    search();
+  }, 0);
+}
+
 
 ////// SETUP //////
 
