@@ -217,7 +217,8 @@ function search(){
     let _search_worker = worker
 
     _search_worker.onmessage = function (response) {
-      
+      resetLongSearchTimerInfo();
+
       console.log("Message received from worker: ");
       console.dir(response.data);
 
@@ -254,8 +255,7 @@ function search(){
             return dobj;
 
         }).then((results) => {
-          // Check if this search results should be displayed or not, anyway, reset the counter
-          resetLongSearchTimerInfo();
+          // Check if this search results should be displayed or not
           if (!(worker === _search_worker)){
             // Do not display results for a search that is not the last one
             return;
