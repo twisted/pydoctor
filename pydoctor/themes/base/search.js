@@ -1,5 +1,9 @@
 // This file contains the code that drives the search system.
 // It's included in every HTML file.
+// Ideas for improvments: 
+// - Include filtering buttons:
+//    - search only in the current module
+//    - search only for specific types / kind
 
 //////// GLOBAL VARS /////////
 
@@ -250,7 +254,8 @@ function search(){
             return dobj;
 
         }).then((results) => {
-          // Check if this search results should be displayed or not
+          // Check if this search results should be displayed or not, anyway, reset the counter
+          resetLongSearchTimerInfo();
           if (!(worker === _search_worker)){
             // Do not display results for a search that is not the last one
             return;
@@ -292,7 +297,6 @@ function search(){
               (public_search_results.length === 1 ? 'result' : 'results') + '.');
           }
 
-          resetLongSearchTimerInfo();
           // End
         
         }).catch((err) => {
