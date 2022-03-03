@@ -3,7 +3,7 @@
 // Ideas for improvments: 
 // - Include filtering buttons:
 //    - search only in the current module
-//    - search only for specific types / kind
+//    - have a query frontend that helps build complex queries
 
 //////// GLOBAL VARS /////////
 
