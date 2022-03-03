@@ -1269,3 +1269,10 @@ def test_stem_identifier() -> None:
         '__someVeryLongName__',
         'Very', 'Long', 'Name' # 'some' not here because it has been filtered.
     ]
+    assert list(stem_identifier('_name')) == [
+        '_name',
+        'name',
+    ]
+    assert list(stem_identifier('name')) == [
+        'name',
+    ]
