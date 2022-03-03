@@ -4,6 +4,11 @@
 // - Include filtering buttons:
 //    - search only in the current module
 //    - have a query frontend that helps build complex queries
+// - Filter out results that have score > 0.001 by default and show them on demand.
+// - Should we change the default term presence to be MUST and not SHOULD ?
+//        -> Hack something like 'name index -value' -> '+name +index -value'
+//        ->      'name ?index -value' -> '+name index -value'
+// - Highlight can use https://github.com/bep/docuapi/blob/5bfdc7d366ef2de58dc4e52106ad474d06410907/assets/js/helpers/highlight.js#L1
 
 //////// GLOBAL VARS /////////
 
