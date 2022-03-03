@@ -30,7 +30,22 @@ onmessage = function (message) { // -> {'results': [lunr results]}
         // Call lunr.Index.search
         // https://lunrjs.com/docs/lunr.Index.html
         let lunr_index = lunr.Index.load(data);
-        let search_results = lunr_index.search(message.data.query);
+
+        // Edit the parsed query clauses that are applicable for all fields (default) in order
+        // to remove the field 'kind' from the clause since this is only useful when specifically requested.
+        let query_fn = function (query) {
+            var parser = new lunr.QueryParser(message.data.query, query)
+            parser.parse()
+            query.clauses.forEach(clause => {
+                if (clause.fields == query.allFields){
+                    // By default, only search on those 3 fields.
+                    clause.fields = ["name", "fullName", "docstring"]
+                }
+            });
+        }
+
+        let search_results = lunr_index.query(query_fn);
+        
         postMessage({'results':search_results});
 
         }, function(error){
