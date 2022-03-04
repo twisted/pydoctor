@@ -12,6 +12,36 @@ for (let i = 0; i < 5; i++) {
     }
 }
 
+// Build lunr index from serialized JSON constructed while generating the documentation. 
+// Build both indexes as soon as possible with Promises.
+// (When new Promise is created, the executor runs automatically)
+
+function getIndexPromise(indexurl) { // -> Promise of a lunr.Index
+    return new Promise((_resolve, _reject) => {
+        httpGet(indexurl, 
+            function(response) {
+                // Parse JSON string into object
+                let data = JSON.parse(response);
+                
+                // Call lunr.Index.search
+                // https://lunrjs.com/docs/lunr.Index.html
+                let lunr_index = lunr.Index.load(data);
+
+                _resolve(lunr_index)
+            },
+            function(error) {
+                _reject('Cannot load the search index: ' + error.message);
+            }
+        );
+    });
+}
+
+// A Promise of a lunr.Index with name fields only
+const promiseDefaultIndex = getIndexPromise("searchindex.json");
+// A Promise of a lunr.Index with all fields
+// fullsearchindex.json includes field 'docstring', whereas searchindex.json.
+const promiseFullIndex = getIndexPromise("fullsearchindex.json");
+
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
     console.dir(message.data);
@@ -23,21 +53,10 @@ onmessage = function (message) { // -> {'results': [lunr results]}
         throw ('No index type provided.');
     }
 
-    // fullsearchindex.json includes field 'docstring', whereas searchindex.json.
-    indexurl = message.data.indextype === 'full' ?  "fullsearchindex.json" : "searchindex.json";
+    var indexPromise = message.data.indextype === 'full' ?  promiseFullIndex : promiseDefaultIndex;
 
     // Launch the search
-
-    // Build lunr index from serialized JSON constructed while generating the documentation. 
-    httpGet(indexurl, function(response) {
-
-        // Parse JSON string into object
-        let data = JSON.parse(response);
-        
-        // Call lunr.Index.search
-        // https://lunrjs.com/docs/lunr.Index.html
-        let lunr_index = lunr.Index.load(data);
-
+    indexPromise.then((lunr_index) => {
         // Edit the parsed query clauses that are applicable for all fields (default) in order
         // to remove the field 'kind' from the clause since this is only useful when specifically requested.
         let query_fn = function (query) {
@@ -56,13 +75,10 @@ onmessage = function (message) { // -> {'results': [lunr results]}
                 }
             });
         }
-
         let search_results = lunr_index.query(query_fn);
-        
         postMessage({'results':search_results});
-
-        }, function(error){
-            throw ('Cannot load the search index: ' + error.message);
-        });
-
+    
+    }).catch((error) => {
+        throw error;
+    });
   };
