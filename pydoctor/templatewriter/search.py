@@ -74,7 +74,7 @@ class LunrIndexWriter:
     
     def format(self, ob: model.Documentable, field:str) -> Optional[str]:
         try:
-            return getattr(self, f'format_{field}')(ob)
+            return getattr(self, f'format_{field}')(ob) #type:ignore[no-any-return]
         except AttributeError as e:
             raise AssertionError() from e
     

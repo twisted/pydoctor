@@ -269,7 +269,7 @@ class FieldDesc:
             else:
                 prefix = ""
 
-            name = prefix + insert_break_points(self.name)
+            name = tags.transparent(prefix, insert_break_points(self.name))
 
             stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
