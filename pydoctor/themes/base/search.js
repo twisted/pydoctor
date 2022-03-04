@@ -15,6 +15,7 @@
 var input = document.getElementById('search-box');
 var results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
+let search_in_docstrings_button = document.getElementById('search-docstrings-button'); 
 
 // Setup the search worker variable
 var worker = undefined;
@@ -211,6 +212,7 @@ function search(){
   // posting query to worker, he's going to do the job searching in Lunr index.
   worker.postMessage({
     query: _query,
+    indextype: getIndexType()
   });
 
   // Get result data
@@ -356,30 +358,39 @@ function launch_search(){
     resetLongSearchTimerInfo();
 
     // We don't want to run concurrent searches.
-    // Kill and re-create worker.
+    // Kill and re-create worker global variable.
     if (worker!=undefined){
       worker.terminate();
     }
     worker = new Worker('search-worker.js');
     search();
+  
   }, 0);
 }
 
+function toggleSearchInDocstrings() {
+  search_in_docstrings_button.classList.toggle('label-success')
+  if (input.value.length>0){
+    launch_search()
+  }
+}
+function _isSearchInDocstringsEnabled() {
+  return search_in_docstrings_button.classList.contains('label-success')
+}
+function getIndexType() {
+  return _isSearchInDocstringsEnabled() ? 'full' : 'default'
+}
 
 ////// SETUP //////
 
 // Attach launch_search() to search text field update events.
-input.addEventListener('input',function(event) {
+input.onkeyup = function(event) {
   launch_search();
-});
-input.addEventListener("keyup", function(event) {
-  if (event.key === 'Enter') {
-    launch_search();
-  }
-});
+};
+
 
 // Close the dropdown if the user clicks on echap key
-document.onkeydown = function(evt) {
+document.onkeyup = function(evt) {
   evt = evt || window.event;
   if (evt.key === "Escape" || evt.key === "Esc") {
       hideResultContainer();

@@ -1,6 +1,6 @@
 // Try very hard to import these scripts (5 times). This avoid random errors: 
 // Uncaught NetworkError: Failed to execute 'importScripts' on 'WorkerGlobalScope': 
-//  The script at 'https://pydoctor--500.org.readthedocs.build/en/500/api/lunr.js' failed to load.
+// The script at 'https://pydoctor--500.org.readthedocs.build/en/500/api/lunr.js' failed to load.
 
 for (let i = 0; i < 5; i++) {
     try{
@@ -11,6 +11,7 @@ for (let i = 0; i < 5; i++) {
         else {throw ex}
     }
 }
+
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
     console.dir(message.data)
@@ -18,11 +19,17 @@ onmessage = function (message) { // -> {'results': [lunr results]}
     if (!message.data.query) {
         throw ('No search query provided.');
     }
+    if (!message.data.indextype) {
+        throw ('No index type provided.');
+    }
+
+    // fullsearchindex.json includes field 'docstring', whereas searchindex.json.
+    indexurl = message.data.indextype === 'full' ?  "fullsearchindex.json" : "searchindex.json"
 
     // Launch the search
 
     // Build lunr index from serialized JSON constructed while generating the documentation. 
-    httpGet("searchindex.json", function(response) {
+    httpGet(indexurl, function(response) {
 
         // Parse JSON string into object
         let data = JSON.parse(response);
@@ -38,8 +45,14 @@ onmessage = function (message) { // -> {'results': [lunr results]}
             parser.parse()
             query.clauses.forEach(clause => {
                 if (clause.fields == query.allFields){
-                    // By default, only search on those 3 fields.
-                    clause.fields = ["name", "fullName", "docstring"]
+                    if (message.data.indextype === 'full'){
+                        // By default, for full index searches, only search on those 3 fields.
+                        clause.fields = ["name", "fullName", "docstring"]
+                    }
+                    else{
+                        // By default, for small index searches, only search on those 2 fields.
+                        clause.fields = ["name", "fullName"]
+                    }
                 }
             });
         }

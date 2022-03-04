@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Tuple, Type, Dict, TYPE_CHECKING
 import json
 
+import attr
+
 from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan, node2stan
 
@@ -44,15 +46,20 @@ class AllDocuments(Page):
         for doc in get_all_documents_flattenable(self.system):
             yield tag.clone().fillSlots(**doc)
 
-# https://lunr.readthedocs.io/en/latest/
-def write_lunr_index(output_dir: Path, system: model.System) -> None:
-    """
-    Write ``searchindex.json`` to the output directory.
+@attr.s(auto_attribs=True)
+class LunrIndexWriter:
+    output_file: Path
+    system: model.System
+    fields: List[str]
 
-    @arg output_dir: Output directory.
-    @arg system: System. 
-    """
+    _BOOSTS = {
+                'name':2,
+                'fullName':1,
+                'docstring':1,
+                'kind':-1
+              }
 
+    @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
         if isinstance(ob, (model.Class, model.Package, model.Module)):
             return 3
@@ -60,10 +67,20 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
             return 2
         else:
             return 1
-
-    documents: List[Tuple[Dict[str, Optional[str]], Dict[str, int]]] = []
-    for ob in (o for o in system.allobjects.values() if o.isVisible):
-        
+    
+    def format(self, ob: model.Documentable, field:str) -> Optional[str]:
+        try:
+            return getattr(self, f'format_{field}')(ob)
+        except AttributeError as e:
+            raise AssertionError() from e
+    
+    def format_name(self, ob: model.Documentable) -> str:
+        return ' '.join(stem_identifier(ob.name))
+    
+    def format_fullName(self, ob: model.Documentable) -> str:
+        return ob.fullName()
+    
+    def format_docstring(self, ob: model.Documentable) -> Optional[str]:
         # sanitize docstring in a proper way to be more easily indexable by lunr.
         doc = None
         source = epydoc2stan.ensure_parsed_docstring(ob)
@@ -75,44 +92,58 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
                 # some ParsedDocstring subclass raises NotImplementedError on calling to_node()
                 # Like ParsedPlaintextDocstring.
                 doc = source.docstring
+        return doc
 
-        documents.append(
-                    (
-                        {
-                            # Stem name indentifiers, i.e. 'DocumentableKind' -> 'DocumentableKind Documentable Kind'
-                            "name": ' '.join(stem_identifier(ob.name)), 
-                            "fullName": ob.fullName(), 
-                            "docstring": doc,
-                            "kind": epydoc2stan.format_kind(ob.kind) if ob.kind else '', 
-                        }, 
-                        {
-                            "boost": get_ob_boost(ob)
-                        }
-                    )
-        )   
+    def format_kind(self, ob:model.Documentable) -> str:
+        return epydoc2stan.format_kind(ob.kind) if ob.kind else ''
 
-    # Disable the stop-word filter for fields fullName, name and kind. 
-    # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
-    
-    builder = get_default_builder()
-    builder.pipeline.skip(stop_word_filter.stop_word_filter, ["fullName", "name", "kind"])  
+    def get_corpus(self) -> List[Tuple[Dict[str, Optional[str]], Dict[str, int]]]:
 
-    index = lunr(
-        ref='fullName',
-        fields=[
-                    {'field_name':'name', 'boost':2}, 
-                {'field_name':'docstring', 'boost':1},
-                    {'field_name':'fullName', 'boost':1},
-                    {'field_name':'kind', 'boost':-1}
-               ],
+        documents: List[Tuple[Dict[str, Optional[str]], Dict[str, int]]] = []
+
+        for ob in (o for o in self.system.allobjects.values() if o.isVisible):
+
+            documents.append(
+                        (
+                            {
+                                f:self.format(ob, f) for f in self.fields
+                            }, 
+                            {
+                                "boost": self.get_ob_boost(ob)
+                            }
+                        )
+            )   
         
-        documents=documents, 
-        builder=builder)   
-    
-    serialized_index = json.dumps(index.serialize())
+        return documents
 
-    with output_dir.joinpath('searchindex.json').open('w', encoding='utf-8') as fobj:
-        fobj.write(serialized_index)
+    def write(self) -> None:
+        # Disable the stop-word filter for fields fullName, name and kind. 
+        # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
+        
+        builder = get_default_builder()
+        builder.pipeline.skip(stop_word_filter.stop_word_filter, ["fullName", "name", "kind"])  
+
+        index = lunr(
+            ref='fullName',
+            fields=[{'field_name':name, 'boost':self._BOOSTS[name]} for name in self.fields],
+            documents=self.get_corpus(), 
+            builder=builder)   
+        
+        serialized_index = json.dumps(index.serialize())
+
+        with self.output_file.open('w', encoding='utf-8') as fobj:
+            fobj.write(serialized_index)
+
+# https://lunr.readthedocs.io/en/latest/
+def write_lunr_index(output_dir: Path, system: model.System) -> None:
+    """
+    Write ``searchindex.json`` and ``fullsearchindex.json`` to the output directory.
+
+    @arg output_dir: Output directory.
+    @arg system: System. 
+    """
+    LunrIndexWriter(output_dir / "searchindex.json", system, ["name", "fullName"]).write()
+    LunrIndexWriter(output_dir / "fullsearchindex.json", system, ["name", "fullName", "docstring", "kind"]).write()
 
 def stem_identifier(_t: str) -> Iterator[str]:
     yield _t
