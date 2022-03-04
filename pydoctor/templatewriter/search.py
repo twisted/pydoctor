@@ -155,7 +155,7 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
         ).write()
 
     LunrIndexWriter(output_dir / "fullsearchindex.json", 
-        sustem=system, 
+        system=system, 
         fields=["name", "names", "qname", "docstring", "kind"]
         ).write()
 
