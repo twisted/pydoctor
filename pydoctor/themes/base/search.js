@@ -384,11 +384,14 @@ function getIndexType() {
 ////// SETUP //////
 
 // Attach launch_search() to search text field update events.
-input.onchange = (event) => {
-  launch_search();
-};
+
 input.oninput = (event) => {
   launch_search();
+};
+input.onkeyup = (event) => {
+    if (event.key === 'Enter') {
+      launch_search();
+    }
 };
 
 // Close the dropdown if the user clicks on echap key
