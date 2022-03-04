@@ -132,7 +132,7 @@ class LunrIndexWriter:
         builder.pipeline.skip(stop_word_filter.stop_word_filter, ["qname", "name", "kind", "names"])  
 
         index = lunr(
-            ref='fullName',
+            ref='qname',
             fields=[{'field_name':name, 'boost':self._BOOSTS[name]} for name in self.fields],
             documents=self.get_corpus(), 
             builder=builder)   

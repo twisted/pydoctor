@@ -1262,17 +1262,11 @@ def test_insert_break_points_dotted_name() -> None:
 def test_stem_identifier() -> None:
     from pydoctor.templatewriter.search import stem_identifier
     assert list(stem_identifier('__some_very_long_name__')) == [
-        '__some_very_long_name__',
         'very', 'long', 'name'
     ] 
     assert list(stem_identifier('__someVeryLongName__')) == [
-        '__someVeryLongName__',
         'Very', 'Long', 'Name' # 'some' not here because it has been filtered.
     ]
-    assert list(stem_identifier('_name')) == [
-        '_name',
-        'name',
-    ]
-    assert list(stem_identifier('name')) == [
-        'name',
-    ]
+    assert list(stem_identifier('_name')) == ['name']
+    assert list(stem_identifier('name')) == []
+    assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']
