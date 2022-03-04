@@ -1010,8 +1010,10 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
         
         if current_part:
             text_parts.append(current_part)
-    if not text_parts:
+
+    if not text_parts: # the name is composed only by underscores
         text_parts = ['']
+    
     if prefix:
         text_parts[0] = prefix + text_parts[0]
     if suffix:
@@ -1019,7 +1021,9 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
 
     return text_parts
 
-def insert_break_points(text: str) -> str:
+# TODO: Use tags.wbr instead of zero-width spaces
+# zero-width spaces can interfer in subtle ways when copy/pasting a name.
+def insert_break_points(text: str) -> 'Flattenable':
     """
     Browsers aren't smart enough to recognize word breaking opportunities in
     snake_case or camelCase, so this function helps them out by inserting
