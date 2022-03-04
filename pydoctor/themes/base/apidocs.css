@@ -648,6 +648,10 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     cursor: pointer;
 }
 
+#search-docstrings-button a:hover {
+    text-decoration: none;
+}
+
 /* Constant values repr */
 pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }
