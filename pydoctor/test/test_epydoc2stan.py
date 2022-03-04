@@ -12,6 +12,7 @@ from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys
+from pydoctor.templatewriter.search import stem_identifier
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -1260,7 +1261,6 @@ def test_insert_break_points_dotted_name() -> None:
     assert epydoc2stan.insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack\u200b._mod_\u200b.__ein\u200bÜberlanger\u200bName__'
 
 def test_stem_identifier() -> None:
-    from pydoctor.templatewriter.search import stem_identifier
     assert list(stem_identifier('__some_very_long_name__')) == [
         'very', 'long', 'name'
     ] 
