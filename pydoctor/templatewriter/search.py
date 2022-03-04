@@ -66,9 +66,8 @@ class LunrIndexWriter:
 
     @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
-        if isinstance(ob, (model.Class, model.Package, model.Module)):
-            return 3
-        elif isinstance(ob, model.Function):
+        # Advantage container types because they hold more informations.
+        if isinstance(ob, (model.Class, model.Module)):
             return 2
         else:
             return 1
@@ -150,14 +149,21 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     @arg output_dir: Output directory.
     @arg system: System. 
     """
-    LunrIndexWriter(output_dir / "searchindex.json", system, ["name", "names", "qname"]).write()
-    LunrIndexWriter(output_dir / "fullsearchindex.json", system, ["name", "names", "qname", "docstring", "kind"]).write()
+    LunrIndexWriter(output_dir / "searchindex.json", 
+        system=system, 
+        fields=["name", "names", "qname"]
+        ).write()
 
-def stem_identifier(_t: str) -> Iterator[str]:
-    parts = epydoc2stan._split_indentifier_parts_on_case(_t)
+    LunrIndexWriter(output_dir / "fullsearchindex.json", 
+        sustem=system, 
+        fields=["name", "names", "qname", "docstring", "kind"]
+        ).write()
+
+def stem_identifier(identifier: str) -> Iterator[str]:
+    parts = epydoc2stan._split_indentifier_parts_on_case(identifier)
     for p in parts:
         p = p.strip('_')
-        if p and p.lower() not in stop_word_filter.WORDS and p!=_t: 
+        if p and p.lower() not in stop_word_filter.WORDS and p != identifier: 
             yield p
 
 searchpages: List[Type[Page]] = [AllDocuments]
