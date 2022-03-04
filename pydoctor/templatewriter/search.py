@@ -48,13 +48,18 @@ class AllDocuments(Page):
 
 @attr.s(auto_attribs=True)
 class LunrIndexWriter:
+    """
+    Class to write lunr indexes with configurable fields. 
+    """
+    
     output_file: Path
     system: model.System
     fields: List[str]
 
     _BOOSTS = {
-                'name':2,
-                'fullName':1,
+                'name':4,
+                'names': 2,
+                'qname':1,
                 'docstring':1,
                 'kind':-1
               }
@@ -75,9 +80,12 @@ class LunrIndexWriter:
             raise AssertionError() from e
     
     def format_name(self, ob: model.Documentable) -> str:
+        return ob.name
+    
+    def format_names(self, ob: model.Documentable) -> str:
         return ' '.join(stem_identifier(ob.name))
     
-    def format_fullName(self, ob: model.Documentable) -> str:
+    def format_qname(self, ob: model.Documentable) -> str:
         return ob.fullName()
     
     def format_docstring(self, ob: model.Documentable) -> Optional[str]:
@@ -117,11 +125,11 @@ class LunrIndexWriter:
         return documents
 
     def write(self) -> None:
-        # Disable the stop-word filter for fields fullName, name and kind. 
+        # Disable the stop-word filter for some fields
         # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
         
         builder = get_default_builder()
-        builder.pipeline.skip(stop_word_filter.stop_word_filter, ["fullName", "name", "kind"])  
+        builder.pipeline.skip(stop_word_filter.stop_word_filter, ["qname", "name", "kind", "names"])  
 
         index = lunr(
             ref='fullName',
@@ -142,11 +150,10 @@ def write_lunr_index(output_dir: Path, system: model.System) -> None:
     @arg output_dir: Output directory.
     @arg system: System. 
     """
-    LunrIndexWriter(output_dir / "searchindex.json", system, ["name", "fullName"]).write()
-    LunrIndexWriter(output_dir / "fullsearchindex.json", system, ["name", "fullName", "docstring", "kind"]).write()
+    LunrIndexWriter(output_dir / "searchindex.json", system, ["name", "names", "qname"]).write()
+    LunrIndexWriter(output_dir / "fullsearchindex.json", system, ["name", "names", "qname", "docstring", "kind"]).write()
 
 def stem_identifier(_t: str) -> Iterator[str]:
-    yield _t
     parts = epydoc2stan._split_indentifier_parts_on_case(_t)
     for p in parts:
         p = p.strip('_')

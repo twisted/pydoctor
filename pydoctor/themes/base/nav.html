@@ -60,11 +60,12 @@
                 </li> 
 
                 <li>
-                  <strong>Search in specific fields.</strong> The following search matches all Functions 
-                  that contains "foo" in their full dotted name and with “bar” in any field: <code>+fullName:*foo* +bar +kind:Function</code>
+                  <strong>Search in specific fields.</strong> The following search matches all objects 
+                  in "twisted.mail" that matches “search”: <code>+qname:twisted.mail.* +search</code>
 
                   <p>
-                    Possible fields: 'name', 'docstring', 'fullName', 'kind'.
+                    Possible fields: 'name', 'qname' (fully qualified name), 'docstring', and 'kind'.
+                    Last two fields are only applicable if "search in docstrings" is enabled.
                   </p>
                 </li>
 

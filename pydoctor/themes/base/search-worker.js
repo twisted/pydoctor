@@ -8,13 +8,13 @@ for (let i = 0; i < 5; i++) {
         break;
     } catch (ex){
         if (i<5) {continue;}
-        else {throw ex}
+        else {throw ex;}
     }
 }
 
 onmessage = function (message) { // -> {'results': [lunr results]}
     console.log("Message received from main script: ");
-    console.dir(message.data)
+    console.dir(message.data);
     
     if (!message.data.query) {
         throw ('No search query provided.');
@@ -24,7 +24,7 @@ onmessage = function (message) { // -> {'results': [lunr results]}
     }
 
     // fullsearchindex.json includes field 'docstring', whereas searchindex.json.
-    indexurl = message.data.indextype === 'full' ?  "fullsearchindex.json" : "searchindex.json"
+    indexurl = message.data.indextype === 'full' ?  "fullsearchindex.json" : "searchindex.json";
 
     // Launch the search
 
@@ -47,11 +47,11 @@ onmessage = function (message) { // -> {'results': [lunr results]}
                 if (clause.fields == query.allFields){
                     if (message.data.indextype === 'full'){
                         // By default, for full index searches, only search on those 3 fields.
-                        clause.fields = ["name", "fullName", "docstring"]
+                        clause.fields = ["name", "names", "qname", "docstring"];
                     }
                     else{
                         // By default, for small index searches, only search on those 2 fields.
-                        clause.fields = ["name", "fullName"]
+                        clause.fields = ["name", "names", "qname"];
                     }
                 }
             });
