@@ -64,12 +64,11 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
     return _getIndexDataPromise(indexURL).then((lunrIndexData) => {
         // Include lunr.js source inside the worker such that it has no dependencies.
         return httpGetPromise(lunrJsURL).then((responseText) => {
-            let lunrWorkerCode = responseText + _lunrWorkerCode;
-
             // Do the search business, wrap the process inside an inline Worker.
             // This is a hack such that the UI can refresh during the search.
             if (_workerBlob===null){
                 // Create only one blob
+                let lunrWorkerCode = responseText + _lunrWorkerCode;
                 _workerBlob = new Blob([lunrWorkerCode], {type: 'text/javascript'});
             }
             
@@ -123,7 +122,7 @@ function fetchResultsData(results, allDocumentsURL){
 }
 
 /**
- * Transform list item as in all-documents.html into a search result row.
+ * Transform list item as in all-documents.html into a formatted search result row.
  */
 function buildSearchResult(dobj) {
 
