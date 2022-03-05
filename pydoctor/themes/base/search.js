@@ -9,6 +9,7 @@
 //        -> Hack something like 'name index -value' -> '+name +index -value'
 //        ->      'name ?index -value' -> '+name index -value'
 // - Highlight can use https://github.com/bep/docuapi/blob/5bfdc7d366ef2de58dc4e52106ad474d06410907/assets/js/helpers/highlight.js#L1
+// Better: Add support for AND and OR with parenthesis, ajust this code https://stackoverflow.com/a/20374128
 
 //////// GLOBAL VARS /////////
 
@@ -185,6 +186,8 @@ function asyncFor(iters, callback) { // -> Promise of List of results returned b
  */
 function search(){
 
+  var start = performance.now();
+
   setWarning('');
   showResultContainer();
   setStatus("Searching...");
@@ -218,12 +221,20 @@ function search(){
   // Get result data
   httpGet("all-documents.html", function(all_documents_response) {
     
+    // Stat
+    console.log('Getting all-documents.html before query "' + _query + '" took ' + 
+              ((performance.now() - start)/1000).toString() + ' seconds.')
+    
     // Save a worker reference here to check if the worker has been
     // re-created or not, if it has been re-created, it means that the search
     // results should be discarded.
     let _search_worker = worker
 
     _search_worker.onmessage = function (response) {
+      // Stat
+      console.log('Got answer from Worker query "' + _query + '" took ' + 
+        ((performance.now() - start)/1000).toString() + ' seconds.')
+
       resetLongSearchTimerInfo();
 
       console.log("Message received from worker: ");
@@ -303,6 +314,10 @@ function search(){
               'Search for "' + _query + '" yielded ' + public_search_results.length + ' ' +
               (public_search_results.length === 1 ? 'result' : 'results') + '.');
           }
+
+          // Stats (last)
+          console.log('Complete search process for "' + _query + '" took ' + 
+              ((performance.now() - start)/1000).toString() + ' seconds.')
 
           // End
         

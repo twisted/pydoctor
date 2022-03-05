@@ -22,15 +22,13 @@ function getIndexPromise(indexurl) { // -> Promise of a lunr.Index
             function(response) {
                 // Parse JSON string into object
                 let data = JSON.parse(response);
-                
                 // Call lunr.Index.search
                 // https://lunrjs.com/docs/lunr.Index.html
                 let lunr_index = lunr.Index.load(data);
-
                 _resolve(lunr_index)
             },
             function(error) {
-                _reject('Cannot load the search index: ' + error.message);
+                setTimeout(() => { throw('Cannot load the search index: ' + error.message)},0);
             }
         );
     });
@@ -43,6 +41,8 @@ const promiseDefaultIndex = getIndexPromise("searchindex.json");
 const promiseFullIndex = getIndexPromise("fullsearchindex.json");
 
 onmessage = function (message) { // -> {'results': [lunr results]}
+    var _start = performance.now();
+
     console.log("Message received from main script: ");
     console.dir(message.data);
     
@@ -57,6 +57,9 @@ onmessage = function (message) { // -> {'results': [lunr results]}
 
     // Launch the search
     indexPromise.then((lunr_index) => {
+        console.log('Getting '+ message.data.indextype +' JSON index before query "' + message.data.query + '" took ' + 
+              ((performance.now() - _start)/1000).toString() + ' seconds.')
+
         // Edit the parsed query clauses that are applicable for all fields (default) in order
         // to remove the field 'kind' from the clause since this is only useful when specifically requested.
         let query_fn = function (query) {
@@ -75,10 +78,18 @@ onmessage = function (message) { // -> {'results': [lunr results]}
                 }
             });
         }
+
+        var start = performance.now();
+        
+        // Do the search business
         let search_results = lunr_index.query(query_fn);
+
+        var end = performance.now();
+        var duration = end - start;
+        console.log('Lunr search for "' + message.data.query + '" took ' + (duration/1000).toString() + ' seconds.')
         postMessage({'results':search_results});
     
     }).catch((error) => {
-        throw error;
+        setTimeout(function() { throw error; });
     });
   };
