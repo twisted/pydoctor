@@ -52,6 +52,7 @@ onmessage = (message) => {
 `;
 
 var _workerBlob = null;
+var _worker = null
 /**
  * Launch a search and get a promise of results.
  * @param query: Query string.
@@ -71,10 +72,13 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
                 let lunrWorkerCode = responseText + _lunrWorkerCode;
                 _workerBlob = new Blob([lunrWorkerCode], {type: 'text/javascript'});
             }
+            if (_worker!=null){
+                _worker.terminate()
+            }
             
-            let worker = new Worker(window.URL.createObjectURL(_workerBlob));
+            _worker = new Worker(window.URL.createObjectURL(_workerBlob));
             let promise = new Promise((resolve, reject) => {
-                worker.onmessage = (message) => {
+                _worker.onmessage = (message) => {
                     if (!message.data.results){
                         reject("No data received from worker");
                     }
@@ -84,7 +88,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
                         resolve(message.data.results)
                     }
                 }
-                worker.onerror = function(error) {
+                _worker.onerror = function(error) {
                     reject(error);
                 };
             });
@@ -95,7 +99,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
             }
             console.log("Posting query to worker:")
             console.dir(_msg_data)
-            worker.postMessage(_msg_data);
+            _worker.postMessage(_msg_data);
             return promise
         });
     });

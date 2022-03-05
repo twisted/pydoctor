@@ -111,6 +111,7 @@ function toggleSearchHelpText() {
 }
 
 function resetResultList(){
+  resetLongSearchTimerInfo();
   results_list.innerHTML = '';
 }
 
@@ -143,20 +144,29 @@ function clearSearch(){
 /** 
  * Do the actual searching business
  */
-var _SearchIDSentinel = undefined
+var _lastSearchStartTime = null;
+var _lastSearchInput = null;
 function search(){
-  let _start = performance.now();
+  let _searchStartTime = performance.now();
+
+  // Get the query terms 
+  let _query = input.value;
+
+  // In chrome, two events are triggered simultaneously for the input event.
+  // So we discard consecutive (within the same 0.001s) requests that have the same search query.
+  if ((
+    (_searchStartTime-_lastSearchStartTime) < (0.001*1000)
+    ) && (_query === _lastSearchInput) ){
+      return;
+  }
 
   setWarning('');
   showResultContainer();
   setStatus("Searching...");
 
-  // Setup search ID
-  let _searchID = Math.random()
-  _SearchIDSentinel = _searchID
-
-  // Get the query terms 
-  let _query = input.value;
+  // Setup query meta infos.
+  _lastSearchStartTime = _searchStartTime
+  _lastSearchInput = _query;
 
   if (!_query.length>0){
     resetResultList();
@@ -182,15 +192,14 @@ function search(){
   let _fields = _isSearchInDocstringsEnabled() ? ["name", "names", "qname", "docstring"] : ["name", "names", "qname"];
 
   // After 4 seconds of searching, warn that this is taking more time than usual.
-  resetLongSearchTimerInfo();
   _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 4000);
 
   // Search 
   lunrSearch(_query, indexURL, _fields, "lunr.js").then((lunrResults) => { 
 
       // outdated query results
-      if (_searchID != _SearchIDSentinel){return;}
-
+      if (_searchStartTime != _lastSearchStartTime){return;}
+      
       if (!lunrResults){
         setErrorStatus();
         throw("No data to show");
@@ -198,6 +207,7 @@ function search(){
 
       if (lunrResults.length == 0){
         setStatus('No results matches "' + _query + '"');
+        resetLongSearchTimerInfo();
         return;
       }
 
@@ -207,7 +217,7 @@ function search(){
       fetchResultsData(lunrResults, "all-documents.html").then((documentResults) => {
 
         // outdated query results
-        if (_searchID != _SearchIDSentinel){return;}
+        if (_searchStartTime != _lastSearchStartTime){return;}
 
         // Edit DOM
         resetLongSearchTimerInfo();
@@ -215,7 +225,7 @@ function search(){
         
         // Log stats
         console.log('Search for "' + _query + '" took ' + 
-          ((performance.now() - _start)/1000).toString() + ' seconds.')
+          ((performance.now() - _searchStartTime)/1000).toString() + ' seconds.')
 
         // End
       }).catch((err) => {
