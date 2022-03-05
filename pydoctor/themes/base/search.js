@@ -19,6 +19,7 @@ let input = document.getElementById('search-box');
 let results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
 let searchInDocstringsButton = document.getElementById('search-docstrings-button'); 
+let searchInDocstringsCheckbox = document.getElementById('toggle-search-in-docstrings-checkbox');
 
 // setTimeout variable to warn when a search takes too long
 var _setLongSearchInfosTimeout = null;
@@ -141,11 +142,11 @@ function clearSearch(){
 
 //////// SEARCH WARPPER FUNCTIONS /////////
 
+var _lastSearchStartTime = null;
+var _lastSearchInput = null;
 /** 
  * Do the actual searching business
  */
-var _lastSearchStartTime = null;
-var _lastSearchInput = null;
 function search(){
   let _searchStartTime = performance.now();
 
@@ -160,9 +161,11 @@ function search(){
       return;
   }
 
-  setWarning('');
-  showResultContainer();
-  setStatus("Searching...");
+  setTimeout(() =>{
+    setWarning('');
+    showResultContainer();
+    setStatus("Searching...");
+  }, 0);
 
   // Setup query meta infos.
   _lastSearchStartTime = _searchStartTime
@@ -172,6 +175,8 @@ function search(){
     resetResultList();
     setStatus('');
     hideResultContainer();
+    // Special case: we need to terminate the worker manualy if user deleted everything is the saerch box
+    terminateSearchWorker();
     return;
   }
 
@@ -214,7 +219,7 @@ function search(){
       setStatus("One sec...");
 
       // Get result data
-      fetchResultsData(lunrResults, "all-documents.html").then((documentResults) => {
+      return fetchResultsData(lunrResults, "all-documents.html").then((documentResults) => {
 
         // outdated query results
         if (_searchStartTime != _lastSearchStartTime){return;}
@@ -228,11 +233,7 @@ function search(){
           ((performance.now() - _searchStartTime)/1000).toString() + ' seconds.')
 
         // End
-      }).catch((err) => {
-        console.dir(err);
-        setStatus('')
-        setErrorStatus();
-      }); // documentResults promise resolved
+      });
 
   }).catch((err) => {
     console.dir(err);
@@ -295,15 +296,15 @@ function displaySearchResults(_query, documentResults, lunrResults){
  * Called everytime the search bar is edited.
 */
 function launchSearch(){
-  setTimeout(() => {search();});
+  search();
 }
 
 function _isSearchInDocstringsEnabled() {
-  return document.getElementById('toggle-search-in-docstrings-checkbox').checked;
+  return searchInDocstringsCheckbox.checked;
 }
 
 function toggleSearchInDocstrings() {
-  if (document.getElementById('toggle-search-in-docstrings-checkbox').checked){
+  if (searchInDocstringsCheckbox.checked){
     searchInDocstringsButton.classList.add('label-success')
   }
   else{
