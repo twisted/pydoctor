@@ -643,6 +643,10 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     float: right;
 }
 
+#search-buttons > span {
+    padding: 0.4em 0.5em 0.4em;
+}
+
 #toggle-search-in-docstrings-checkbox{
     margin-top: -2.5px;
     cursor: pointer;
