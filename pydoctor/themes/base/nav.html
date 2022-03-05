@@ -36,11 +36,18 @@
       </div>
 
       <div id="search-results-container" style="display: none;">
-        <div>
+        
+        <div id="search-buttons">
           <span class="label label-default" id="search-docstrings-button">
-            <a title="Search in docstrings" onclick="toggleSearchInDocstrings()">search in docstrings</a></span>
+          <label class="checkbox-inline">
+            <input type="checkbox" id="toggle-search-in-docstrings-checkbox" value="false" onclick="toggleSearchInDocstrings()">
+              search in docstrings
+            </input>
+          </label>
+          </span>
+          
         </div>
-
+        
         <noscript>
             <h1>Cannot search: JavaScript is not supported/enabled in your browser.</h1>
         </noscript>
@@ -79,7 +86,7 @@
         </div>
 
         <div id="search-status"> </div>
-        
+
         <div class="warning" id="search-warn-box" style="display: none;">
           <p class="rst-last"><span id="search-warn"></span></p>
         </div>
