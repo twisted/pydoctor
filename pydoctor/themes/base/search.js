@@ -289,11 +289,18 @@ function launchSearch(){
 }
 
 function _isSearchInDocstringsEnabled() {
-  return searchInDocstringsButton.classList.contains('label-success')
+  return document.getElementById('toggle-search-in-docstrings-checkbox').checked;
 }
 
 function toggleSearchInDocstrings() {
-  searchInDocstringsButton.classList.toggle('label-success')
+  if (document.getElementById('toggle-search-in-docstrings-checkbox').checked){
+    searchInDocstringsButton.classList.add('label-success')
+  }
+  else{
+    if (searchInDocstringsButton.classList.contains('label-success')){
+      searchInDocstringsButton.classList.remove('label-success')
+    }
+  }
   if (input.value.length>0){
     launchSearch()
   }

@@ -80,6 +80,8 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
                         reject("No data received from worker");
                     }
                     else{
+                        console.log("Got result from worker:")
+                        console.dir(message.data.results)
                         resolve(message.data.results)
                     }
                 }
@@ -87,11 +89,14 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
                     reject(error);
                 };
             });
-            worker.postMessage({
+            _msg_data = {
                 'query': query,
                 'indexJSONData': lunrIndexData,
                 'defaultFields': defaultFields
-            });
+            }
+            console.log("Posting query to worker:")
+            console.dir(_msg_data)
+            worker.postMessage(_msg_data);
             return promise
         });
     });
@@ -103,9 +108,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
 *   list elements matching your search results.
 */
 function fetchResultsData(results, allDocumentsURL){
-    return httpGetPromise(allDocumentsURL).then((responseText) => {
-        let _parser = new self.DOMParser();
-        let allDocuments = _parser.parseFromString(responseText, "text/html");
+    return _getAllDocumentsPromise(allDocumentsURL).then((allDocuments) => {
         // Look for results data in parsed all-documents.html
         return _asyncFor(results, (result) => {
             // Find the result model row data.
@@ -191,12 +194,39 @@ function _asyncFor(iterable, callback) { // -> Promise of List of results return
     return promise_global;
   }
 
-// Cache indexes JSON and see if there is speed improvments?
+// Cache indexes JSON data since it takes a little bit if time to load JSON into stuctured data
+var _indexDataCache = {};
 function _getIndexDataPromise(indexURL) { // -> Promise of a structured data for the lunr Index.
-    return httpGetPromise(indexURL).then((responseText) => {
-        return (JSON.parse(responseText));
-    }).catch((error) => {
-        // this will be converted to a promise rejection that will need to be hanled in a later .catch().
-        throw ('Cannot load the search index: ' + error.toString());
-    });
+    if (!_indexDataCache[indexURL]){
+        return httpGetPromise(indexURL).then((responseText) => {
+            _indexDataCache[indexURL] = JSON.parse(responseText)
+            return (_indexDataCache[indexURL]);
+        });
+    }
+    else{
+        return new Promise((_resolve, _reject) => {
+            _resolve(_indexDataCache[indexURL]);
+        }, (error) => {
+            _reject(error);
+        });
+    }
+}
+
+// Cache Document object
+var _allDocumentsCache = {};
+function _getAllDocumentsPromise(allDocumentsURL) { // -> Promise of a Document object.
+    if (!_allDocumentsCache[allDocumentsURL]){
+        return httpGetPromise(allDocumentsURL).then((responseText) => {
+            let _parser = new self.DOMParser();
+            _allDocumentsCache[allDocumentsURL] = _parser.parseFromString(responseText, "text/html");
+            return (_allDocumentsCache[allDocumentsURL]);
+        });
+    }
+    else{
+        return new Promise((_resolve, _reject) => {
+            _resolve(_allDocumentsCache[allDocumentsURL]);
+        }, (error) => {
+            _reject(error);
+        });
+    }
 }
