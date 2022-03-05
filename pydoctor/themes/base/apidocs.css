@@ -644,7 +644,7 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 }
 
 #search-buttons > span {
-    padding: 0.4em 0.5em 0.4em;
+    padding: 0.3em 0.4em 0.4em;
 }
 
 #toggle-search-in-docstrings-checkbox{
