@@ -1262,11 +1262,11 @@ def test_insert_break_points_dotted_name() -> None:
 
 def test_stem_identifier() -> None:
     assert list(stem_identifier('__some_very_long_name__')) == [
-        'very', 'long', 'name'
+        'very', 'long', 'name'  # 'some' has been filtered out because it's part of the stop words.
     ] 
     assert list(stem_identifier('__someVeryLongName__')) == [
-        'Very', 'Long', 'Name' # 'some' not here because it has been filtered.
+        'Very', 'Long', 'Name'
     ]
     assert list(stem_identifier('_name')) == ['name']
-    assert list(stem_identifier('name')) == []
+    assert list(stem_identifier('name')) == ['name']
     assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']

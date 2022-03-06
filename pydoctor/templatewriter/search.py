@@ -170,7 +170,7 @@ def stem_identifier(identifier: str) -> Iterator[str]:
     parts = epydoc2stan._split_indentifier_parts_on_case(identifier)
     for p in parts:
         p = p.strip('_')
-        if p and p.lower() not in stop_word_filter.WORDS and p != identifier: 
+        if p and p.lower() not in stop_word_filter.WORDS: 
             yield p
 
 searchpages: List[Type[Page]] = [AllDocuments]
