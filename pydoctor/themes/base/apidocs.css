@@ -639,6 +639,19 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     padding-bottom:2px;
 }
 
+#search-buttons{
+    float: right;
+}
+
+#search-buttons > span {
+    padding: 0.3em 0.4em 0.4em;
+}
+
+#toggle-search-in-docstrings-checkbox{
+    margin-top: -2.5px;
+    cursor: pointer;
+}
+
 /* Constant values repr */
 pre.constant-value              { padding: .5em; }
 .rst-variable-linewrap          { color: #604000; font-weight: bold; }

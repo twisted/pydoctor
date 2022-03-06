@@ -154,3 +154,14 @@ def test_incons_get_copied():
 
     assert (BASE_DIR / 'api' / 'fonts' / 'info.svg').is_file()
     assert (BASE_DIR / 'api' / 'fonts' / 'x-circle.svg').is_file()
+
+def test_search_index_generated():
+    """
+    Test if the icons the fonts directory get copid to the ouput folder
+
+    Incons from https://primer.style/octicons/
+    """
+
+    assert (BASE_DIR / 'api' / 'searchindex.json').is_file()
+    assert (BASE_DIR / 'api' / 'fullsearchindex.json').is_file()
+    assert (BASE_DIR / 'api' / 'all-documents.html').is_file()

@@ -269,7 +269,7 @@ class FieldDesc:
             else:
                 prefix = ""
 
-            name = prefix + insert_break_points(self.name)
+            name = tags.transparent(prefix, insert_break_points(self.name))
 
             stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
@@ -979,29 +979,57 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
-def insert_break_points(text: str) -> str:
+def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
+
+    def split(text:str, sep:str) -> List[str]:
+        # We use \u200b as temp token to hack a split that passes the tests.
+        return text.replace(sep, '\u200b'+sep).split('\u200b')
+
+    match = re.match('(_{1,2})?(.*?)(_{1,2})?$', indentifier)
+    assert match is not None # the regex always matches
+    prefix, text, suffix = match.groups(default='')
+    text_parts = []
+    
+    if text.islower() or text.isupper():
+        # We assume snake_case or SCREAMING_SNAKE_CASE.
+        text_parts = split(text, '_')
+    else:
+        # We assume camelCase.  We're not using a regex because we also want it
+        # to work with non-ASCII characters (and the Python re module does not
+        # support checking for Unicode properties using something like \p{Lu}).
+        current_part = ''
+        previous_was_upper = False
+        for c in text:
+
+            if c.isupper() and not previous_was_upper:
+                text_parts.append(current_part)
+                current_part = ''
+            
+            current_part += c
+            previous_was_upper = c.isupper()
+        
+        if current_part:
+            text_parts.append(current_part)
+
+    if not text_parts: # the name is composed only by underscores
+        text_parts = ['']
+    
+    if prefix:
+        text_parts[0] = prefix + text_parts[0]
+    if suffix:
+        text_parts[-1] = text_parts[-1] + suffix
+
+    return text_parts
+
+# TODO: Use tags.wbr instead of zero-width spaces
+# zero-width spaces can interfer in subtle ways when copy/pasting a name.
+def insert_break_points(text: str) -> 'Flattenable':
     """
     Browsers aren't smart enough to recognize word breaking opportunities in
     snake_case or camelCase, so this function helps them out by inserting
     zero-width spaces.
     """
-    match = re.match('(__)?(.*?)(__)?$', text)
-    assert match is not None # the regex always matches
-    prefix, text, suffix = match.groups(default='')
-
-    if text.islower() or text.isupper():
-        # We assume snake_case or SCREAMING_SNAKE_CASE.
-        text_with_breaks = text.replace('_', '\u200b_')
-    else:
-        # We assume camelCase.  We're not using a regex because we also want it
-        # to work with non-ASCII characters (and the Python re module does not
-        # support checking for Unicode properties using something like \p{Lu}).
-        text_with_breaks = ''
-        previous_was_upper = False
-        for c in text:
-            if c.isupper() and not previous_was_upper:
-                text_with_breaks += '\u200b'
-            text_with_breaks += c
-            previous_was_upper = c.isupper()
-
-    return prefix + text_with_breaks + suffix
+    return '\u200b.'.join(
+                '\u200b'.join(
+                    _split_indentifier_parts_on_case(t)) 
+                        for t in text.split('.'))

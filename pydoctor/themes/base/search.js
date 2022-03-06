@@ -1,19 +1,30 @@
-// This file contains the code that drives the search system.
+// This file contains the code that drives the search system UX.
 // It's included in every HTML file.
+// Depends on library files searchlib.js and ajax.js (and of course lunr.js)
+
+// Ideas for improvments: 
+// - Include filtering buttons:
+//    - search only in the current module
+//    - have a query frontend that helps build complex queries
+// - Filter out results that have score > 0.001 by default and show them on demand.
+// - Should we change the default term presence to be MUST and not SHOULD ?
+//        -> Hack something like 'name index -value' -> '+name +index -value'
+//        ->      'name ?index -value' -> '+name index -value'
+// - Highlight can use https://github.com/bep/docuapi/blob/5bfdc7d366ef2de58dc4e52106ad474d06410907/assets/js/helpers/highlight.js#L1
+// Better: Add support for AND and OR with parenthesis, ajust this code https://stackoverflow.com/a/20374128
 
 //////// GLOBAL VARS /////////
 
-var input = document.getElementById('search-box');
-var results_container = document.getElementById('search-results-container');
+let input = document.getElementById('search-box');
+let results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
-
-// Setup the search worker variable
-var worker = undefined;
+let searchInDocstringsButton = document.getElementById('search-docstrings-button'); 
+let searchInDocstringsCheckbox = document.getElementById('toggle-search-in-docstrings-checkbox');
 
 // setTimeout variable to warn when a search takes too long
 var _setLongSearchInfosTimeout = null;
 
-//////// FUNCTIONS /////////
+//////// UI META INFORMATIONS FUNCTIONS /////////
 
 function _setInfos(message, box_id, text_id) {
   document.getElementById(text_id).textContent = message;
@@ -39,19 +50,31 @@ function setWarning(message) {
   _setInfos(message, 'search-warn-box', 'search-warn');
 }
 
+/**
+ * Say that Something went wrong.
+ */
 function setErrorStatus() {
+  resetLongSearchTimerInfo()
   setStatus("Something went wrong.");
+  setErrorInfos();
 }
 
+/**
+ * Show additional error infos (used to show query parser errors infos) or tell to go check the console.
+ * @param message: (optional) string
+ */
 function setErrorInfos(message) {
   if (message != undefined){
-    setWarning("Error: " +  message + ". See development console for details.");
+    setWarning(message);
   }
   else{
     setWarning("Error: See development console for details.");
   }
 }
 
+/**
+ * Reset the long search timer warning.
+ */
 function resetLongSearchTimerInfo(){
   if (_setLongSearchInfosTimeout){
     clearTimeout(_setLongSearchInfosTimeout);
@@ -59,61 +82,13 @@ function resetLongSearchTimerInfo(){
 }
 
 /**
- * Transform list item as in all-documents.html into a search result row.
+ * Say that this search is taking longer than usual.
  */
-function buildSearchResult(dobj) {
-
-  // Build one result item
-  var tr = document.createElement('tr'),
-      kindtd = document.createElement('td'),
-      contenttd = document.createElement('td'),
-      article = document.createElement('article'),
-      header = document.createElement('header'),
-      section = document.createElement('section'),
-      code = document.createElement('code'),
-      a = document.createElement('a'),
-      p = document.createElement('p');
-
-  p.innerHTML = dobj.querySelector('.summary').innerHTML;
-  a.setAttribute('href', dobj.querySelector('.url').innerHTML);
-  a.setAttribute('class', 'internal-link');
-  a.textContent = dobj.querySelector('.fullName').innerHTML;
-  
-  let kind_value = dobj.querySelector('.kind').innerHTML;
-  let type_value = dobj.querySelector('.type').innerHTML;
-
-  // Adding '()' on functions and methods
-  if (type_value.endsWith("Function")){
-      a.textContent = a.textContent + '()';
-  }
-
-  kindtd.innerHTML = kind_value;
-  
-  // Putting everything together
-  tr.appendChild(kindtd);
-  tr.appendChild(contenttd);
-  contenttd.appendChild(article);
-  article.appendChild(header);
-  article.appendChild(section);
-  header.appendChild(code);
-  code.appendChild(a);
-  section.appendChild(p);
-
-  // Set kind as the CSS class of the kind td tag
-  let ob_css_class = dobj.querySelector('.kind').innerHTML.toLowerCase().replace(' ', '');
-  kindtd.setAttribute('class', ob_css_class);
-
-  // Set private
-  if (dobj.querySelector('.privacy').innerHTML.includes('PRIVATE')){
-    tr.setAttribute('class', 'private');
-  }
-  
-  return tr;
-}
-
 function setLongSearchInfos(){
   setWarning("This is taking longer than usual... You can keep waiting for the search to complete, or retry the search with other terms.");
 }
+
+//////// UI SHOW/HIDE FUNCTIONS /////////
 
 function hideResultContainer(){
   results_container.style.display = 'none';
@@ -137,6 +112,7 @@ function toggleSearchHelpText() {
 }
 
 function resetResultList(){
+  resetLongSearchTimerInfo();
   results_list.innerHTML = '';
 }
 
@@ -150,191 +126,11 @@ function clearSearch(){
   updateClearSearchBtn();
 }
 
-// This gives the UI the opportunity to refresh while we're iterating over a large list.
-function asyncFor(iters, callback) { // -> Promise of List of results returned by callback
-  const promise_global = new Promise((resolve_global, _reject) => {
-    let promises = [];
-    iters.forEach((element) => {
-        promises.push(new Promise((resolve, _reject) => {
-          setTimeout(() => {
-            resolve(callback(element));
-          }, 0);
-        }));
-    }); 
-    Promise.all(promises).then((results) =>{
-      resolve_global(results);
-    });
-  });
-  return promise_global;
-}
-
-/** 
- * Do the actual searching business
- */
-function search(){
-
-  setWarning('');
-  showResultContainer();
-  setStatus("Searching...");
-
-  // Get the query terms 
-
-  let _query = input.value;
-
-  if (!_query.length>0){
-    resetResultList();
-    setStatus('');
-    hideResultContainer();
-    return;
-  }
-  else{
-    if (_query.endsWith('~') || _query.endsWith('-') || _query.endsWith('+') || _query.endsWith(':')){
-      // Do not search string that we know are not valid query strings
-      setStatus('');
-      setWarning('Incomplete search query, missing terms or edit distance.');
-      return;
-    }
-  }
-
-  console.log("Your query is: "+ _query)
-
-  if (!window.Worker) {
-    setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
-    return;
-  }
-
-  resetResultList();
-
-  // posting query to worker, he's going to do the job searching in Lunr index.
-  worker.postMessage({
-    query: _query,
-  });
-
-  // Get result data
-  httpGet("all-documents.html", function(all_documents_response) {
-    
-    // Save a worker reference here to check if the worker has been
-    // re-created or not, if it has been re-created, it means that the search
-    // results should be discarded.
-    let _search_worker = worker
-
-    _search_worker.onmessage = function (response) {
-      
-      console.log("Message received from worker: ");
-      console.dir(response.data);
-
-      if (!response.data.results){
-        setErrorStatus();
-        throw("No data received from worker");
-      }
-
-      if (response.data.results.length == 0){
-        setStatus('No results matches "' + _query + '"');
-        return;
-      }
-
-      setStatus("One sec...");
-
-      // Parse data from HTML document, 
-      // this can take some time, so we wrap it in a setTimeout()
-      setTimeout(() => {
-        let parser = new self.DOMParser();
-        let all_documents = parser.parseFromString(all_documents_response, "text/html");
-        
-        // Look for results data in parsed all-documents.html
-        asyncFor(response.data.results, (result) => {
-
-            // Find the result model and display result row.
-            var dobj = all_documents.getElementById(result.ref);
-            
-            if (!dobj){
-                setErrorStatus();
-                throw ("Cannot find document ID: " + result.ref);
-            }
-
-            // Return result data
-            return dobj;
-
-        }).then((results) => {
-          // Check if this search results should be displayed or not
-          if (!(worker === _search_worker)){
-            // Do not display results for a search that is not the last one
-            return;
-          }
-
-          // Edit DOM
-          resetResultList();
-          results.forEach((dobj) => {
-            results_list.appendChild(buildSearchResult(dobj));
-          });
-
-          if (response.data.results[0].score <= 5){
-            if (response.data.results.length > 500){
-              setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
-            }
-            else{
-              setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?");
-            }
-          }
-          else {
-            if (response.data.results.length > 500){
-              setWarning("Your search yielded a lot of results! Maybe try with other terms?");
-            }
-            else{
-              setWarning('');
-            }
-          }
-
-          let public_search_results = results.filter(function(value){
-            return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
-          })
-
-          if (public_search_results.length==0){
-            setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
-          }
-          else{
-            setStatus(
-              'Search for "' + _query + '" yielded ' + public_search_results.length + ' ' +
-              (public_search_results.length === 1 ? 'result' : 'results') + '.');
-          }
-
-          resetLongSearchTimerInfo();
-          // End
-        
-        }).catch((err) => {
-          setErrorStatus();
-          throw err;
-        }); // Results promise resolved
-
-      }, 0); // setTimeout block
-
-    }; // Worker on message block
-    _search_worker.onerror = function(error) {
-      console.log(error);
-      resetLongSearchTimerInfo();
-      error.preventDefault();
-      setErrorStatus();
-      setErrorInfos(error.message);
-    };
-
-  }, // On httpGet all-documents.html block
-
-  function(error){
-    console.log(error);
-    resetLongSearchTimerInfo();
-    setErrorStatus();
-    setErrorInfos(error.message);
-  });
-
-  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 8000);
-
-} // end search() function
-
 /**
  * Show and hide the (X) button depending on the current search input.
  * We do not show the (X) button when there is no search going on.
  */
-function updateClearSearchBtn(){
+ function updateClearSearchBtn(){
   
   if (input.value.length>0){
     document.getElementById('search-clear-button').style.display = 'inline-block';
@@ -344,49 +140,204 @@ function updateClearSearchBtn(){
   }
 }
 
+//////// SEARCH WARPPER FUNCTIONS /////////
+
+var _lastSearchStartTime = null;
+var _lastSearchInput = null;
+/** 
+ * Do the actual searching business
+ */
+function search(){
+  let _searchStartTime = performance.now();
+
+  // Get the query terms 
+  let _query = input.value;
+
+  // In chrome, two events are triggered simultaneously for the input event.
+  // So we discard consecutive (within the same 0.001s) requests that have the same search query.
+  if ((
+    (_searchStartTime-_lastSearchStartTime) < (0.001*1000)
+    ) && (_query === _lastSearchInput) ){
+      return;
+  }
+
+  // Setup query meta infos.
+  _lastSearchStartTime = _searchStartTime
+  _lastSearchInput = _query;
+
+  if (!_query.length>0){
+    resetResultList();
+    setStatus('');
+    hideResultContainer();
+    // Special case: we need to terminate the worker manualy if user deleted everything is the saerch box
+    terminateSearchWorker();
+    return;
+  }
+
+  console.log("Your query is: "+ _query)
+
+  if (!window.Worker) {
+    setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
+    return;
+  }
+  
+  setTimeout(() =>{
+    setWarning('');
+    resetResultList();
+    showResultContainer();
+    setStatus("Searching...");
+  }, 0);
+
+  // Determine indexURL
+  let indexURL = _isSearchInDocstringsEnabled() ? "fullsearchindex.json" : "searchindex.json";
+  
+  // If search in docstring is enabled: 
+  //  -> customize query function to include docstring for clauses applicable for all fields
+  let _fields = _isSearchInDocstringsEnabled() ? ["name", "names", "qname", "docstring"] : ["name", "names", "qname"];
+
+  // After 7 seconds of searching, warn that this is taking more time than usual.
+  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 7000);
+
+  // Search 
+  lunrSearch(_query, indexURL, _fields, "lunr.js").then((lunrResults) => { 
+
+      // outdated query results
+      if (_searchStartTime != _lastSearchStartTime){return;}
+      
+      if (!lunrResults){
+        setErrorStatus();
+        throw("No data to show");
+      }
+
+      if (lunrResults.length == 0){
+        setStatus('No results matches "' + _query + '"');
+        resetLongSearchTimerInfo();
+        return;
+      }
+
+      setStatus("One sec...");
+
+      // Get result data
+      return fetchResultsData(lunrResults, "all-documents.html").then((documentResults) => {
+
+        // outdated query results
+        if (_searchStartTime != _lastSearchStartTime){return;}
+
+        // Edit DOM
+        resetLongSearchTimerInfo();
+        displaySearchResults(_query, documentResults, lunrResults)
+        
+        // Log stats
+        console.log('Search for "' + _query + '" took ' + 
+          ((performance.now() - _searchStartTime)/1000).toString() + ' seconds.')
+
+        // End
+      });
+
+  }).catch((err) => {
+    console.dir(err);
+    setStatus('')
+    if (err.message){
+      resetLongSearchTimerInfo();
+      setWarning(err.message) // Here we show the error because it's likely a query parser error.
+    }
+    else{
+      setErrorStatus();
+    }
+    
+  }); // lunrResults promise resolved
+
+} // end search() function
+
+/**
+ * Given the query string, documentResults and lunrResults as used in search(), 
+ * edit the DOM to add them in the search results list.
+ */
+function displaySearchResults(_query, documentResults, lunrResults){
+  resetResultList();
+  documentResults.forEach((dobj) => {
+    results_list.appendChild(buildSearchResult(dobj));
+  });
+
+  if (lunrResults[0].score <= 5){
+    if (lunrResults.length > 500){
+      setWarning("Your search yielded a lot of results! and there aren't many great matches. Maybe try with other terms?");
+    }
+    else{
+      setWarning("Unfortunately, it looks like there aren't many great matches for your search. Maybe try with other terms?");
+    }
+  }
+  else {
+    if (lunrResults.length > 500){
+      setWarning("Your search yielded a lot of results! Maybe try with other terms?");
+    }
+    else{
+      setWarning('');
+    }
+  }
+
+  let publicResults = documentResults.filter(function(value){
+    return !value.querySelector('.privacy').innerHTML.includes("PRIVATE");
+  })
+
+  if (publicResults.length==0){
+    setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
+  }
+  else{
+    setStatus(
+      'Search for "' + _query + '" yielded ' + publicResults.length + ' ' +
+      (publicResults.length === 1 ? 'result' : 'results') + '.');
+  }
+}
+
 /** 
  * Main entrypoint to [re]launch the search.
  * Called everytime the search bar is edited.
 */
-function launch_search(){
-  try{
+function launchSearch(){
+  search();
+}
 
-    // creating new Worker could be UI blocking, 
-    // we give the UI the opportunity to refresh here
-    setTimeout(() => {
-      updateClearSearchBtn();
-      resetLongSearchTimerInfo();
+function _isSearchInDocstringsEnabled() {
+  return searchInDocstringsCheckbox.checked;
+}
 
-      // We don't want to run concurrent searches.
-      // Kill and re-create worker.
-      if (worker!=undefined){
-        worker.terminate();
-      }
-      worker = new Worker('search-worker.js');
-      search();
-    }, 0);
+function toggleSearchInDocstrings() {
+  if (searchInDocstringsCheckbox.checked){
+    searchInDocstringsButton.classList.add('label-success')
   }
-  catch (err){
-    console.log(err);
-    setErrorStatus();
-    setErrorInfos(err.message);
+  else{
+    if (searchInDocstringsButton.classList.contains('label-success')){
+      searchInDocstringsButton.classList.remove('label-success')
+    }
   }
-};
+  if (input.value.length>0){
+    launchSearch()
+  }
+}
 
 ////// SETUP //////
 
-// Attach launch_search() to search text field update events.
-input.addEventListener('input',function(event) {
-  launch_search();
-});
-input.addEventListener("keyup", function(event) {
+// Attach launchSearch() to search text field update events.
+
+input.oninput = (event) => {
+  launchSearch();
+};
+input.onkeyup = (event) => {
   if (event.key === 'Enter') {
-    launch_search();
+    launchSearch();
   }
-});
+};
+input.onfocus = (event) => {
+  // Load fullsearchindex.json, searchindex.json and all-documents.html to have them in the cache asap.
+  httpGet("all-documents.html", ()=>{}, ()=>{});
+  httpGet("searchindex.json", ()=>{}, ()=>{});
+  httpGet("fullsearchindex.json", ()=>{}, ()=>{});
+  httpGet("lunr.js", ()=>{}, ()=>{});
+}
 
 // Close the dropdown if the user clicks on echap key
-document.onkeydown = function(evt) {
+document.onkeyup = function(evt) {
   evt = evt || window.event;
   if (evt.key === "Escape" || evt.key === "Esc") {
       hideResultContainer();
