@@ -161,12 +161,6 @@ function search(){
       return;
   }
 
-  setTimeout(() =>{
-    setWarning('');
-    showResultContainer();
-    setStatus("Searching...");
-  }, 0);
-
   // Setup query meta infos.
   _lastSearchStartTime = _searchStartTime
   _lastSearchInput = _query;
@@ -186,8 +180,13 @@ function search(){
     setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
     return;
   }
-
-  resetResultList();
+  
+  setTimeout(() =>{
+    setWarning('');
+    resetResultList();
+    showResultContainer();
+    setStatus("Searching...");
+  }, 0);
 
   // Determine indexURL
   let indexURL = _isSearchInDocstringsEnabled() ? "fullsearchindex.json" : "searchindex.json";
