@@ -207,7 +207,7 @@ function _asyncFor(iterable, callback) { // -> Promise of List of results return
     return promise_global;
   }
 
-// Cache indexes JSON data since it takes a little bit if time to load JSON into stuctured data
+// Cache indexes JSON data since it takes a little bit of time to load JSON into stuctured data
 var _indexDataCache = {};
 function _getIndexDataPromise(indexURL) { // -> Promise of a structured data for the lunr Index.
     if (!_indexDataCache[indexURL]){
@@ -227,7 +227,7 @@ function _getIndexDataPromise(indexURL) { // -> Promise of a structured data for
 
 // Cache Document object
 var _allDocumentsCache = {};
-function _getAllDocumentsPromise(allDocumentsURL) { // -> Promise of a Document object.
+function _getAllDocumentsPromise(allDocumentsURL) { // -> Promise of the all-documents.html Document object.
     if (!_allDocumentsCache[allDocumentsURL]){
         return httpGetPromise(allDocumentsURL).then((responseText) => {
             let _parser = new self.DOMParser();
