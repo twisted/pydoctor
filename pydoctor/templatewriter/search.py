@@ -1,5 +1,5 @@
 """
-Code building ``all-documents.html`` and ``searchindex.json``.
+Code building ``all-documents.html``, ``searchindex.json`` and ``fullsearchindex.json``.
 """
 
 from pathlib import Path
@@ -12,7 +12,7 @@ from pydoctor.templatewriter.pages import Page
 from pydoctor import model, epydoc2stan, node2stan
 
 from twisted.web.template import Tag, renderer
-from lunr import lunr, get_default_builder, stop_word_filter
+from lunr import lunr, get_default_builder, stop_word_filter, stemmer
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -124,11 +124,18 @@ class LunrIndexWriter:
         return documents
 
     def write(self) -> None:
-        # Disable the stop-word filter for some fields
+
+        builder = get_default_builder()
+
+        # Skip some pipelines for better UX
         # https://lunr.readthedocs.io/en/latest/customisation.html#skip-a-pipeline-function-for-specific-field-names
         
-        builder = get_default_builder()
+        # We want classes named like "For" to be indexed with their name, even if it's matching stop words.
         builder.pipeline.skip(stop_word_filter.stop_word_filter, ["qname", "name", "kind", "names"])  
+
+        # We don't want "name" and related fields to be stemmed since the field "names"
+        # contains all cased breaked combinaisons and will be stemmed.
+        builder.pipeline.skip(stemmer.stemmer, ["name", "kind", "qname"])
 
         index = lunr(
             ref='qname',
