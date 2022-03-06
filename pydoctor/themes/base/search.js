@@ -196,8 +196,8 @@ function search(){
   //  -> customize query function to include docstring for clauses applicable for all fields
   let _fields = _isSearchInDocstringsEnabled() ? ["name", "names", "qname", "docstring"] : ["name", "names", "qname"];
 
-  // After 4 seconds of searching, warn that this is taking more time than usual.
-  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 4000);
+  // After 7 seconds of searching, warn that this is taking more time than usual.
+  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 7000);
 
   // Search 
   lunrSearch(_query, indexURL, _fields, "lunr.js").then((lunrResults) => { 
