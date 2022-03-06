@@ -12,6 +12,7 @@ from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
 from pydoctor.test import CapSys, partialclass
+from pydoctor.templatewriter.search import stem_identifier
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -1442,6 +1443,10 @@ def test_yields_field(capsys: CapSys) -> None:
 
 def test_insert_break_points_identity() -> None:
     assert epydoc2stan.insert_break_points('test') == 'test'
+    assert epydoc2stan.insert_break_points('_test') == '_test'
+    assert epydoc2stan.insert_break_points('_test_') == '_test_'
+    assert epydoc2stan.insert_break_points('') == ''
+    assert epydoc2stan.insert_break_points('____') == '____'
     assert epydoc2stan.insert_break_points('__test__') == '__test__'
     assert epydoc2stan.insert_break_points('__someverylongname__') == '__someverylongname__'
     assert epydoc2stan.insert_break_points('__SOMEVERYLONGNAME__') == '__SOMEVERYLONGNAME__'
@@ -1453,3 +1458,20 @@ def test_insert_break_points_snake_case() -> None:
 def test_insert_break_points_camel_case() -> None:
     assert epydoc2stan.insert_break_points('__someVeryLongName__') == '__some\u200bVery\u200bLong\u200bName__'
     assert epydoc2stan.insert_break_points('__einÜberlangerName__') == '__ein\u200bÜberlanger\u200bName__'
+
+def test_insert_break_points_dotted_name() -> None:
+    assert epydoc2stan.insert_break_points('mod.__some_very_long_name__') == 'mod\u200b.__some\u200b_very\u200b_long\u200b_name__'
+    assert epydoc2stan.insert_break_points('_mod.__SOME_VERY_LONG_NAME__') == '_mod\u200b.__SOME\u200b_VERY\u200b_LONG\u200b_NAME__'
+    assert epydoc2stan.insert_break_points('pack.mod.__someVeryLongName__') == 'pack\u200b.mod\u200b.__some\u200bVery\u200bLong\u200bName__'
+    assert epydoc2stan.insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack\u200b._mod_\u200b.__ein\u200bÜberlanger\u200bName__'
+
+def test_stem_identifier() -> None:
+    assert list(stem_identifier('__some_very_long_name__')) == [
+        'very', 'long', 'name'  # 'some' has been filtered out because it's part of the stop words.
+    ] 
+    assert list(stem_identifier('__someVeryLongName__')) == [
+        'Very', 'Long', 'Name'
+    ]
+    assert list(stem_identifier('_name')) == ['name']
+    assert list(stem_identifier('name')) == ['name']
+    assert list(stem_identifier('processModuleAST')) == ['process', 'Module', 'AST']

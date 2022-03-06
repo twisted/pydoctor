@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add client side search system based on lunr.js.
 
 pydoctor 22.2.2
 ^^^^^^^^^^^^^^^

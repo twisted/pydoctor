@@ -144,3 +144,24 @@ def test_meta_pydoctor_template_version_tag_gets_removed():
     with open(BASE_DIR / 'api' / 'index.html', 'r', encoding='utf-8') as stream:
         page = stream.read()
         assert '<meta name="pydoctor-template-version" content="' not in page, page
+
+def test_incons_get_copied():
+    """
+    Test if the icons the fonts directory get copid to the ouput folder
+
+    Incons from https://primer.style/octicons/
+    """
+
+    assert (BASE_DIR / 'api' / 'fonts' / 'info.svg').is_file()
+    assert (BASE_DIR / 'api' / 'fonts' / 'x-circle.svg').is_file()
+
+def test_search_index_generated():
+    """
+    Test if the icons the fonts directory get copid to the ouput folder
+
+    Incons from https://primer.style/octicons/
+    """
+
+    assert (BASE_DIR / 'api' / 'searchindex.json').is_file()
+    assert (BASE_DIR / 'api' / 'fullsearchindex.json').is_file()
+    assert (BASE_DIR / 'api' / 'all-documents.html').is_file()

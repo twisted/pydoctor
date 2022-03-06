@@ -493,7 +493,7 @@ class FieldDesc:
             else:
                 prefix = ""
 
-            name = prefix + insert_break_points(self.name)
+            name = tags.transparent(prefix, insert_break_points(self.name))
 
             stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
@@ -932,10 +932,19 @@ def parse_docstring(
         reportErrors(source, errs)
     return parsed_doc
 
+def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
+    """
+    Currently, it's not 100% clear at what point the L{Documentable.parsed_docstring} attribute is set.
+    It can be set from the ast builder or later processing step.
+    
+    This function ensures that the C{parsed_docstring} attribute of a documentable is set to it's final value. 
 
-def format_docstring(obj: model.Documentable) -> Tag:
-    """Generate an HTML representation of a docstring"""
-
+    @returns: 
+        - If the C{obj.parsed_docstring} is set to a L{ParsedDocstring} instance: 
+          The source object of the docstring (might be different 
+          from C{obj} if the documentation is inherited).
+        - If the object is undocumented: C{None}.
+    """
     doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
@@ -954,19 +963,30 @@ def format_docstring(obj: model.Documentable) -> Tag:
     if parsed_doc is None and doc is not None:
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
+    
+    if obj.parsed_docstring is not None:
+        return source
+    else:
+        return None
+
+def format_docstring(obj: model.Documentable) -> Tag:
+    """Generate an HTML representation of a docstring"""
+
+    source = ensure_parsed_docstring(obj)
 
     ret: Tag = tags.div
-    if parsed_doc is None:
+    if source is None:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = parsed_doc.to_stan(source.docstringlinker)
+            stan = obj.parsed_docstring.to_stan(source.docstringlinker)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-            if doc is None:
+            if source.docstring is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
-                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
+                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(source.docstring, errs)
                 stan = parsed_doc_plain.to_stan(source.docstringlinker)
             reportErrors(source, errs)
         if stan.tagName:
@@ -977,8 +997,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    if parsed_doc is not None:
-        for field in parsed_doc.fields:
+    if source is not None:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
+        for field in obj.parsed_docstring.fields:
             fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
         fh.resolve_types()
@@ -1187,29 +1208,57 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
-def insert_break_points(text: str) -> str:
+def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
+
+    def split(text:str, sep:str) -> List[str]:
+        # We use \u200b as temp token to hack a split that passes the tests.
+        return text.replace(sep, '\u200b'+sep).split('\u200b')
+
+    match = re.match('(_{1,2})?(.*?)(_{1,2})?$', indentifier)
+    assert match is not None # the regex always matches
+    prefix, text, suffix = match.groups(default='')
+    text_parts = []
+    
+    if text.islower() or text.isupper():
+        # We assume snake_case or SCREAMING_SNAKE_CASE.
+        text_parts = split(text, '_')
+    else:
+        # We assume camelCase.  We're not using a regex because we also want it
+        # to work with non-ASCII characters (and the Python re module does not
+        # support checking for Unicode properties using something like \p{Lu}).
+        current_part = ''
+        previous_was_upper = False
+        for c in text:
+
+            if c.isupper() and not previous_was_upper:
+                text_parts.append(current_part)
+                current_part = ''
+            
+            current_part += c
+            previous_was_upper = c.isupper()
+        
+        if current_part:
+            text_parts.append(current_part)
+
+    if not text_parts: # the name is composed only by underscores
+        text_parts = ['']
+    
+    if prefix:
+        text_parts[0] = prefix + text_parts[0]
+    if suffix:
+        text_parts[-1] = text_parts[-1] + suffix
+
+    return text_parts
+
+# TODO: Use tags.wbr instead of zero-width spaces
+# zero-width spaces can interfer in subtle ways when copy/pasting a name.
+def insert_break_points(text: str) -> 'Flattenable':
     """
     Browsers aren't smart enough to recognize word breaking opportunities in
     snake_case or camelCase, so this function helps them out by inserting
     zero-width spaces.
     """
-    match = re.match('(__)?(.*?)(__)?$', text)
-    assert match is not None # the regex always matches
-    prefix, text, suffix = match.groups(default='')
-
-    if text.islower() or text.isupper():
-        # We assume snake_case or SCREAMING_SNAKE_CASE.
-        text_with_breaks = text.replace('_', '\u200b_')
-    else:
-        # We assume camelCase.  We're not using a regex because we also want it
-        # to work with non-ASCII characters (and the Python re module does not
-        # support checking for Unicode properties using something like \p{Lu}).
-        text_with_breaks = ''
-        previous_was_upper = False
-        for c in text:
-            if c.isupper() and not previous_was_upper:
-                text_with_breaks += '\u200b'
-            text_with_breaks += c
-            previous_was_upper = c.isupper()
-
-    return prefix + text_with_breaks + suffix
+    return '\u200b.'.join(
+                '\u200b'.join(
+                    _split_indentifier_parts_on_case(t)) 
+                        for t in text.split('.'))
