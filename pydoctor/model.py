@@ -762,12 +762,24 @@ class System:
                 yield o
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
+        # kind should not be is None, this is probably a relica of a past age of pydoctor.
+        # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
+        
+        privacy = PrivacyClass.VISIBLE
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
-            return PrivacyClass.PRIVATE
-        return PrivacyClass.VISIBLE
+            privacy = PrivacyClass.PRIVATE
+        
+        make_public: List[str]
+        make_private: List[str]
+        make_hidden: List[str]
+        
+        # Precedence order: public, private, hidden
+        # Check exact matches first, then fnma
+
+        return privacy
 
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
