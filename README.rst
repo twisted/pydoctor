@@ -73,6 +73,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Add client side search system based on lunr.js.
+* Fix broken links in docstring summaries.
+* Add cache for the xref linker, reduces the number of identical warnings.
 
 pydoctor 22.2.2
 ^^^^^^^^^^^^^^^
