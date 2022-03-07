@@ -20,11 +20,18 @@ let results_container = document.getElementById('search-results-container');
 let results_list = document.getElementById('search-results'); 
 let searchInDocstringsButton = document.getElementById('search-docstrings-button'); 
 let searchInDocstringsCheckbox = document.getElementById('toggle-search-in-docstrings-checkbox');
+var isSearchReadyPromise = null;
 
 // setTimeout variable to warn when a search takes too long
 var _setLongSearchInfosTimeout = null;
 
 //////// UI META INFORMATIONS FUNCTIONS /////////
+
+// Taken from https://stackoverflow.com/a/14130005
+// For security.
+function htmlEncode(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 function _setInfos(message, box_id, text_id) {
   document.getElementById(text_id).textContent = message;
@@ -80,6 +87,10 @@ function resetLongSearchTimerInfo(){
     clearTimeout(_setLongSearchInfosTimeout);
   }
 }
+function launchLongSearchTimerInfo(){
+  // After 10 seconds of searching, warn that this is taking more time than usual.
+  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 10000);
+}
 
 /**
  * Say that this search is taking longer than usual.
@@ -117,13 +128,26 @@ function resetResultList(){
 }
 
 function clearSearch(){
+  stopSearching();
+
+  input.value = '';
+  updateClearSearchBtn();
+}
+
+function stopSearching(){
+  // UI
   hideResultContainer();
   resetResultList();
   setWarning('');
   setStatus('');
 
-  input.value = '';
-  updateClearSearchBtn();
+  // NOT UI
+  _stopSearchingProcess();
+}
+
+function _stopSearchingProcess(){
+  abortSearch();
+  restartSearchWorker();
 }
 
 /**
@@ -142,12 +166,83 @@ function clearSearch(){
 
 //////// SEARCH WARPPER FUNCTIONS /////////
 
+// Values configuring the search-as-you-type feature.
+const SEARCH_DEFAULT_DELAY = 100; // in miliseconds
+const SEARCH_INCREASED_DELAY = 200;
+const SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY = 10; // in MB
+const SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE = 20;
+
+// Search delay depends on index size.
+function _getIndexSizePromise(indexURL){
+  return httpGetPromise(indexURL).then((responseText) => {
+    if (responseText==null){
+      return 0;
+    }
+    indexSizeApprox = responseText.length / 1000000; // in MB
+    return indexSizeApprox;
+  });
+}
+function _getSearchDelayPromise(indexURL){ // -> Promise of a Search delay number.
+  return _getIndexSizePromise(indexURL).then((indexSizeApprox) => {
+    searchDelay = SEARCH_DEFAULT_DELAY;
+    if (indexSizeApprox===0){
+      return searchDelay;
+    }
+    if (indexSizeApprox>SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY){
+      // For better UX
+      searchDelay = SEARCH_INCREASED_DELAY; // in miliseconds, this avoids searching several times when typing several leters very rapidly 
+    }
+    return searchDelay;
+  });
+}
+
+function _getIsSearchReadyPromise(){
+  return Promise.all([
+    httpGetPromise("all-documents.html"),
+    httpGetPromise("searchindex.json"),
+    httpGetPromise("fullsearchindex.json"),
+    httpGetPromise("lunr.js"),
+  ]);
+}
+
+// Launch search as user types if the size of the index is small enought,
+// else say "Press 'Enter' to search".
+function searchAsYouType(){
+  if (input.value.length>0){
+    showResultContainer();
+  }
+  _getIndexSizePromise("searchindex.json").then((indexSizeApprox) => {
+    if (indexSizeApprox > SEARCH_INDEX_SIZE_TRESH_DISABLE_SEARCH_AS_YOU_TYPE){
+      // Not searching as we type if "default" index size if greater than 20MB.
+      if (input.value.length===0){ // No actual query, this only resets some UI components.
+        launchSearch(); 
+      }
+      else{
+        setTimeout(() => {
+          _stopSearchingProcess();
+          resetResultList();
+          setStatus("Press 'Enter' to search.");
+        });
+      }
+    }
+    else{
+      launchSearch();
+    }
+  });
+}
+
+searchEventsEnv.addEventListener("searchStarted", (ev) => {
+  setStatus("Searching...");
+});
+
 var _lastSearchStartTime = null;
 var _lastSearchInput = null;
 /** 
  * Do the actual searching business
- */
-function search(){
+ * Main entrypoint to [re]launch the search.
+ * Called everytime the search bar is edited.
+*/
+function launchSearch(noDelay){
   let _searchStartTime = performance.now();
 
   // Get the query terms 
@@ -161,32 +256,26 @@ function search(){
       return;
   }
 
+  updateClearSearchBtn();
+
   // Setup query meta infos.
   _lastSearchStartTime = _searchStartTime
   _lastSearchInput = _query;
 
-  if (!_query.length>0){
-    resetResultList();
-    setStatus('');
-    hideResultContainer();
-    // Special case: we need to terminate the worker manualy if user deleted everything is the saerch box
-    terminateSearchWorker();
+  if (_query.length===0){
+    stopSearching();
     return;
   }
-
-  console.log("Your query is: "+ _query)
 
   if (!window.Worker) {
     setStatus("Cannot search: JavaScript Worker API is not supported in your browser. ");
     return;
   }
   
-  setTimeout(() =>{
-    setWarning('');
-    resetResultList();
-    showResultContainer();
-    setStatus("Searching...");
-  }, 0);
+  setWarning('');
+  resetResultList();
+  showResultContainer();
+  setStatus("...");
 
   // Determine indexURL
   let indexURL = _isSearchInDocstringsEnabled() ? "fullsearchindex.json" : "searchindex.json";
@@ -195,11 +284,16 @@ function search(){
   //  -> customize query function to include docstring for clauses applicable for all fields
   let _fields = _isSearchInDocstringsEnabled() ? ["name", "names", "qname", "docstring"] : ["name", "names", "qname"];
 
-  // After 7 seconds of searching, warn that this is taking more time than usual.
-  _setLongSearchInfosTimeout = setTimeout(setLongSearchInfos, 7000);
-
-  // Search 
-  lunrSearch(_query, indexURL, _fields, "lunr.js").then((lunrResults) => { 
+  resetLongSearchTimerInfo();
+  launchLongSearchTimerInfo();
+  
+  // Get search delay, wait the all search resources to be cached and actually launch the search 
+  return _getSearchDelayPromise(indexURL).then((searchDelay) => {
+  if (isSearchReadyPromise==null){
+    isSearchReadyPromise = _getIsSearchReadyPromise()
+  }
+  return isSearchReadyPromise.then((r)=>{ 
+  return lunrSearch(_query, indexURL, _fields, "lunr.js", !noDelay?searchDelay:0).then((lunrResults) => { 
 
       // outdated query results
       if (_searchStartTime != _lastSearchStartTime){return;}
@@ -210,7 +304,7 @@ function search(){
       }
 
       if (lunrResults.length == 0){
-        setStatus('No results matches "' + _query + '"');
+        setStatus('No results matches "' + htmlEncode(_query) + '"');
         resetLongSearchTimerInfo();
         return;
       }
@@ -232,10 +326,15 @@ function search(){
           ((performance.now() - _searchStartTime)/1000).toString() + ' seconds.')
 
         // End
-      });
+      })
+  }); // lunrResults promise resolved
+  });
+  }).catch((err) => {_handleErr(err);});
 
-  }).catch((err) => {
-    console.dir(err);
+} // end search() function
+
+function _handleErr(err){
+  console.dir(err);
     setStatus('')
     if (err.message){
       resetLongSearchTimerInfo();
@@ -244,10 +343,7 @@ function search(){
     else{
       setErrorStatus();
     }
-    
-  }); // lunrResults promise resolved
-
-} // end search() function
+}
 
 /**
  * Given the query string, documentResults and lunrResults as used in search(), 
@@ -281,21 +377,13 @@ function displaySearchResults(_query, documentResults, lunrResults){
   })
 
   if (publicResults.length==0){
-    setStatus('No results matches "' + _query + '". Some private objects matches your search though.');
+    setStatus('No results matches "' + htmlEncode(_query) + '". Some private objects matches your search though.');
   }
   else{
     setStatus(
-      'Search for "' + _query + '" yielded ' + publicResults.length + ' ' +
+      'Search for "' + htmlEncode(_query) + '" yielded ' + publicResults.length + ' ' +
       (publicResults.length === 1 ? 'result' : 'results') + '.');
   }
-}
-
-/** 
- * Main entrypoint to [re]launch the search.
- * Called everytime the search bar is edited.
-*/
-function launchSearch(){
-  search();
 }
 
 function _isSearchInDocstringsEnabled() {
@@ -312,7 +400,7 @@ function toggleSearchInDocstrings() {
     }
   }
   if (input.value.length>0){
-    launchSearch()
+    launchSearch(true)
   }
 }
 
@@ -321,21 +409,19 @@ function toggleSearchInDocstrings() {
 // Attach launchSearch() to search text field update events.
 
 input.oninput = (event) => {
-  launchSearch();
+  setTimeout(() =>{
+    searchAsYouType();
+  }, 0);
 };
 input.onkeyup = (event) => {
   if (event.key === 'Enter') {
-    launchSearch();
+    launchSearch(true);
   }
 };
 input.onfocus = (event) => {
   // Load fullsearchindex.json, searchindex.json and all-documents.html to have them in the cache asap.
-  httpGet("all-documents.html", ()=>{}, ()=>{});
-  httpGet("searchindex.json", ()=>{}, ()=>{});
-  httpGet("fullsearchindex.json", ()=>{}, ()=>{});
-  httpGet("lunr.js", ()=>{}, ()=>{});
+  isSearchReadyPromise = _getIsSearchReadyPromise();
 }
-
 // Close the dropdown if the user clicks on echap key
 document.onkeyup = function(evt) {
   evt = evt || window.event;
