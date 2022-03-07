@@ -20,13 +20,13 @@ let _lunrWorkerCode = `
 
 onmessage = (message) => {
     if (!message.data.query) {
-        throw ('No search query provided.');
+        throw new Error('No search query provided.');
     }
     if (!message.data.indexJSONData) {
-        throw ('No index data provided.');
+        throw new Error('No index data provided.');
     }
     if (!message.data.defaultFields) {
-        throw ('No default fields provided.');
+        throw new Error('No default fields provided.');
     }
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
@@ -186,7 +186,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
                     reject(error);
                 };
             });
-            _msgData = {
+            let _msgData = {
                 'query': query,
                 'indexJSONData': lunrIndexData,
                 'defaultFields': defaultFields
@@ -206,10 +206,7 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
         });
         })
         );}, searchDelay);
-    }, (error) => {
-        _reject(error);
-        }
-    );
+    });
 }
 
 /** 
@@ -320,8 +317,6 @@ function _getIndexDataPromise(indexURL) { // -> Promise of a structured data for
     else{
         return new Promise((_resolve, _reject) => {
             _resolve(_indexDataCache[indexURL]);
-        }, (error) => {
-            _reject(error);
         });
     }
 }
@@ -339,8 +334,6 @@ function _getAllDocumentsPromise(allDocumentsURL) { // -> Promise of the all-doc
     else{
         return new Promise((_resolve, _reject) => {
             _resolve(_allDocumentsCache[allDocumentsURL]);
-        }, (error) => {
-            _reject(error);
         });
     }
 }

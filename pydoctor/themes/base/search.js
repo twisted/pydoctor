@@ -110,6 +110,7 @@ function hideResultContainer(){
 
 function showResultContainer(){
   results_container.style.display = 'block';
+  updateClearSearchBtn();
 }
 
 function toggleSearchHelpText() {
@@ -178,17 +179,17 @@ function _getIndexSizePromise(indexURL){
     if (responseText==null){
       return 0;
     }
-    indexSizeApprox = responseText.length / 1000000; // in MB
+    let indexSizeApprox = responseText.length / 1000000; // in MB
     return indexSizeApprox;
   });
 }
 function _getSearchDelayPromise(indexURL){ // -> Promise of a Search delay number.
-  return _getIndexSizePromise(indexURL).then((indexSizeApprox) => {
-    searchDelay = SEARCH_DEFAULT_DELAY;
-    if (indexSizeApprox===0){
+  return _getIndexSizePromise(indexURL).then((size) => {
+    var searchDelay = SEARCH_DEFAULT_DELAY;
+    if (size===0){
       return searchDelay;
     }
-    if (indexSizeApprox>SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY){
+    if (size>SEARCH_INDEX_SIZE_TRESH_INCREASE_DELAY){
       // For better UX
       searchDelay = SEARCH_INCREASED_DELAY; // in miliseconds, this avoids searching several times when typing several leters very rapidly 
     }
@@ -300,7 +301,7 @@ function launchSearch(noDelay){
       
       if (!lunrResults){
         setErrorStatus();
-        throw("No data to show");
+        throw new Error("No data to show");
       }
 
       if (lunrResults.length == 0){
