@@ -1,0 +1,81 @@
+<html>
+    <!-- 
+        This is a test file for pydoctor's search system.
+     -->
+
+    <pre id="test-results"></pre>
+
+    <script type="text/javascript">
+        /**
+         * part of expect
+         * the essential JavaScript test library
+         * 
+         * @copyright 2013 Enrico Marino
+         * @license MIT
+         */
+        
+        /**
+         * equal
+         * Expect `value` to be equal to `expected`
+         * 
+         * @param value
+         * @param expected
+         * @param {String} message
+         */
+        
+        function equal(value, expected, message) {
+        if (value == expected) return;
+            throw new Error(message);
+        };
+    </script>
+    
+    <script src="ajax.js" type='text/javascript'></script>
+    <script src="searchlib.js" type='text/javascript'></script>
+    
+    <!-- Search test script -->
+    <script type="text/javascript">
+
+        function testSearch(query, expectedResults){
+            return lunrSearch(query, 'searchindex.json', ['qname', 'name', 'names'], 'lunr.js', 0).then((results) => {
+                let flatResults = [];
+                results.forEach(element => {
+                    flatResults.push(element.ref);
+                });
+                _flat = JSON.stringify(flatResults, space=4);
+                _expected = JSON.stringify(expectedResults, space=4);
+                equal(_flat, _expected, `Got ${_flat} instead of ${_expected}.`);
+            }).then(() => {
+                document.getElementById('test-results').innerHTML += "Success!\n";
+            }).catch((error) => {
+                document.getElementById('test-results').innerHTML += `Failure: ${error}\n`;
+            });
+        }
+
+        async function test(){
+            await testSearch('+qname:pydoctor', ['pydoctor']); 
+            await testSearch('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan']); 
+            await testSearch('_colorize_re_pattern', ['pydoctor.epydoc.markup._pyval_repr.PyvalColorizer._colorize_re_pattern'])
+            await testSearch('+name:Class', ['pydoctor.model.Class', 'pydoctor.model.DocumentableKind.CLASS'])
+           
+            let to_node_results = [
+                'pydoctor.epydoc.markup.ParsedDocstring.to_node', 
+                'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_node',
+                'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_node',
+                'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
+                'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
+            ];
+            
+            await testSearch('to_node*', to_node_results);
+
+            // TODO: Fix those tests.
+            await testSearch('to_node', to_node_results);
+            await testSearch('qname:pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+                ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring']);
+            await testSearch('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+                ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring']);
+        }
+
+        test();
+
+    </script>
+</html>
