@@ -56,7 +56,17 @@
             await testSearch('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan']); 
             await testSearch('_colorize_re_pattern', ['pydoctor.epydoc.markup._pyval_repr.PyvalColorizer._colorize_re_pattern'])
             await testSearch('+name:Class', ['pydoctor.model.Class', 'pydoctor.model.DocumentableKind.CLASS'])
-           
+            
+            let to_stan_results = [
+                    'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
+                    'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
+                    'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_stan',
+                    'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
+            ];
+
+            await testSearch('to_stan*', to_stan_results);
+            await testSearch('to_stan', to_stan_results);
+
             let to_node_results = [
                 'pydoctor.epydoc.markup.ParsedDocstring.to_node', 
                 'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_node',
