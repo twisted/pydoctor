@@ -397,7 +397,9 @@ class ModuleVistor(ast.NodeVisitor):
 
             # Move re-exported objects into current module.
             if asname in exports and mod is not None:
-                ob = mod.resolveName(orgname)
+                # In case of duplicates names, we can't rely on resolveName,
+                # So we use content.get first to resolve non-alias names. 
+                ob = mod.contents.get(orgname) or mod.resolveName(orgname)
                 if ob is None:
                     self.builder.warning("cannot resolve re-exported name",
                                          f'{modname}.{orgname}')

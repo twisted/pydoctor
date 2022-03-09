@@ -249,7 +249,7 @@ class Documentable:
         # :/
         self._handle_reparenting_pre()
         old_parent = self.parent
-        assert isinstance(old_parent, Module)
+        assert isinstance(old_parent, CanContainImportsDocumentable)
         old_name = self.name
         self.parent = self.parentMod = new_parent
         self.name = new_name
