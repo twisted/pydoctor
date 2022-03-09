@@ -70,7 +70,7 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-pydoctor 22.2.2
+pydoctor 22.2.3
 ^^^^^^^^^^^^^^^
 * Fix crash when reparenting objects with duplicate names.
 
