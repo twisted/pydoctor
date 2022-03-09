@@ -265,7 +265,7 @@ def getparser() -> OptionParser:
 
 def readConfigFile(options: Values) -> None:
     # this is all a bit horrible.  rethink, then rewrite!
-    for i, line in enumerate(open(options.configfile)):
+    for i, line in enumerate(open(options.configfile, encoding='utf-8')):
         line = line.strip()
         if not line or line.startswith('#'):
             continue
