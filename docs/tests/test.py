@@ -5,7 +5,6 @@
 #
 import os
 import pathlib
-import pytest
 import json
 from typing import List
 from lunr.index import Index
