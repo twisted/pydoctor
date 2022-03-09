@@ -730,7 +730,7 @@ def test_prepareCache(
     cacheDirectory.mkdir(exist_ok=True)
     for child in cacheDirectory.iterdir():
         child.unlink()
-    with open(cacheDirectory / cacheDirectoryName, 'w', encoding='utf-8'):
+    with open(cacheDirectory / cacheDirectoryName, 'w'):
         pass
 
     try:

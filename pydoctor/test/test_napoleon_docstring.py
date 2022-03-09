@@ -5,18 +5,27 @@ Forked from the tests for ``sphinx.ext.napoleon.docstring`` module.
 :license: BSD, see LICENSE for details.
 """
 import re
-from typing import Type, Union
+from typing import Type, Union, Any
 from unittest import TestCase
 from textwrap import dedent
+import functools
 
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
         TokenType, TypeDocstring, is_type, is_google_typed_arg)
-from pydoctor.test import partialclass
 
 import sphinx.ext.napoleon as sphinx_napoleon
 
 __docformat__ = "restructuredtext"
+
+def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
+    # mypy gets errors: - Variable "cls" is not valid as a type
+    #                   - Invalid base class "cls" 
+    class NewCls(cls): #type: ignore
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
+        __class__ = cls
+    assert isinstance(NewCls, type)
+    return NewCls
 
 sphinx_napoleon_config = sphinx_napoleon.Config(
     napoleon_use_admonition_for_examples=True, 

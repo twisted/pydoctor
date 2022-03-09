@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
-    from pydoctor import epydoc2stan
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -146,7 +145,6 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
-        self._linker: Optional['epydoc2stan.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
         doc = node.s
@@ -374,19 +372,6 @@ class Documentable:
             section,
             f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
-
-    @property
-    def docstringlinker(self) -> 'epydoc2stan.DocstringLinker':
-        """
-        Returns an instance of L{epydoc2stan.DocstringLinker} suitable for resolving names
-        in the context of the object scope. 
-        """
-        if self._linker is not None:
-            return self._linker
-        # FIXME: avoid cyclic import https://github.com/twisted/pydoctor/issues/507
-        from pydoctor.epydoc2stan import _CachedEpydocLinker
-        self._linker = _CachedEpydocLinker(self)
-        return self._linker
 
 
 class CanContainImportsDocumentable(Documentable):

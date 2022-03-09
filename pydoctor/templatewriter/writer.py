@@ -1,13 +1,12 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
-import itertools
 from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
 from pydoctor.templatewriter import (
-    DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
+    DOCTYPE, pages, summary, TemplateLookup, IWriter, StaticTemplate
 )
 
 from twisted.python.failure import Failure
@@ -83,19 +82,13 @@ class TemplateWriter(IWriter):
 
     def writeSummaryPages(self, system: model.System) -> None:
         import time
-        for pclass in itertools.chain(summary.summaryPages(system), search.searchpages):
+        for pclass in summary.summaryPages(system):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
             with self.build_directory.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
-        
-        # Generate the searchindex.json file
-        system.msg('html', 'starting lunr search index ...', nonl=True)
-        T = time.time()
-        search.write_lunr_index(self.build_directory, system=system)
-        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
 
         if len(system.root_names) == 1:
             # If there is just a single root module it is written to index.html to produce nicer URLs.
