@@ -204,13 +204,8 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
                 ]
         test_search('to_node*', to_node_results)
-
-        # FIXME!
-        with pytest.raises(AssertionError):
-            test_search('to_node', to_node_results)
-        with pytest.raises(AssertionError):
-            test_search('qname:pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+        test_search('to_node', to_node_results)
+        test_search('qname:pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])
-        with pytest.raises(AssertionError):
-            test_search('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+        test_search('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])

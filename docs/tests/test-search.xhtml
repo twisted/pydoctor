@@ -1,6 +1,7 @@
 <html>
     <!-- 
-        This is a test file for pydoctor's search system.
+        This is a test file for pydoctor's search system. 
+        It needs to manually copied to the output directory once the build is finished.
      -->
 
     <pre id="test-results"></pre>
@@ -76,8 +77,6 @@
             ];
             
             await testSearch('to_node*', to_node_results);
-
-            // TODO: Fix those tests.
             await testSearch('to_node', to_node_results);
             await testSearch('qname:pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring']);

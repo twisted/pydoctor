@@ -137,6 +137,9 @@ class LunrIndexWriter:
         # contains all cased breaked combinaisons and will be stemmed.
         builder.pipeline.skip(stemmer.stemmer, ["name", "kind", "qname"])
 
+        # Removing the stemmer from the search pipeline, see https://github.com/yeraydiazdiaz/lunr.py/issues/112
+        builder.search_pipeline.remove(stemmer.stemmer)
+
         index = lunr(
             ref='qname',
             fields=[{'field_name':name, 'boost':self._BOOSTS[name]} for name in self.fields],
