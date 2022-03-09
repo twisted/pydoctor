@@ -154,3 +154,13 @@ def test_reparenting_follows_aliases() -> None:
         return
     else:
         raise AssertionError("Congratulation!")
+
+def test_reparenting_crash() -> None:
+    """
+    Test for https://github.com/twisted/pydoctor/issues/513
+    """
+    system = processPackage('reparenting_crash')
+    mod = system.allobjects['reparenting_crash']
+    assert isinstance(mod.contents['reparenting_crash'], model.Class)
+    assert isinstance(mod.contents['reparented_func'], model.Function)
+    assert isinstance(mod.contents['reparenting_crash'].contents['reparented_func'], model.Function)
