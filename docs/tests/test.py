@@ -172,7 +172,6 @@ def test_search_index_generated():
 def test_lunr_index() -> None:
     """
     Run some searches on the lunr index to test it's validity. 
-    There is currently an issue that prevent some results to be returned for specific keywords.
     """
 
     with (BASE_DIR / 'api' / 'searchindex.json').open() as fobj:
