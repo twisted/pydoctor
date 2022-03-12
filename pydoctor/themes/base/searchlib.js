@@ -6,7 +6,8 @@
 // Depends on ajax.js, bundled with pydoctor. 
 // Other required ressources like lunr.js, searchindex.json and all-documents.html are passed as URL
 //      to functions. This makes the code reusable outside of pydoctor build directory.    
-
+// Implementation note: Searches are designed to be launched synchronously, if lunrSearch() is called sucessively (while already running),
+// old promise will never resolves and the searhc worker will be restarted.
 
 // Hacky way to make the worker code inline with the rest of the source file handling the search.
 // Worker message params are the following: 
@@ -19,13 +20,13 @@ let _lunrWorkerCode = `
 
 onmessage = (message) => {
     if (!message.data.query) {
-        throw ('No search query provided.');
+        throw new Error('No search query provided.');
     }
     if (!message.data.indexJSONData) {
-        throw ('No index data provided.');
+        throw new Error('No index data provided.');
     }
     if (!message.data.defaultFields) {
-        throw ('No default fields provided.');
+        throw new Error('No default fields provided.');
     }
     // Create index
     let index = lunr.Index.load(message.data.indexJSONData);
@@ -55,39 +56,123 @@ onmessage = (message) => {
 };
 `;
 
-var _workerBlob = null;
-var _worker = null
-
-// Kills search worker that is currently going on
-function terminateSearchWorker() {
-    if (_worker!=null){
-        _worker.terminate()
+// Adapted from https://stackoverflow.com/a/44137284
+// Override worker methods to detect termination and count message posting and restart() method.
+// This allows some optimizations since the worker doesn't need to be restarted when it hasn't been used.
+function _makeWorkerSmart(workerURL) {
+    // make normal worker
+    var worker = new Worker(workerURL);
+    // assume that it's running from the start
+    worker.terminated = false;
+    worker.postMessageCount = 0;
+    // count the number of times postMessage() is called
+    worker.postMessage = function() {
+        this.postMessageCount = this.postMessageCount + 1;
+        // normal post message
+        return Worker.prototype.postMessage.apply(this, arguments);
     }
+    // sets terminated to true
+    worker.terminate = function() {
+        if (this.terminated===true){return;}
+        this.terminated = true;
+        // normal terminate
+        return Worker.prototype.terminate.apply(this, arguments);
+    }
+    // creates NEW WORKER with the same URL as itself, terminate worker first.
+    worker.restart = function() {
+        this.terminate();
+        return _makeWorkerSmart(workerURL);
+    }
+    return worker;
+}
+
+var _searchWorker = null
+
+/**
+ * The searchEventsEnv Document variable let's let caller register a event listener "searchStarted" for sending
+ * a signal when the search actually starts, could be up to 0.2 or 0.3 secs ater user finished typing.
+ */
+let searchEventsEnv = document.implementation.createHTMLDocument(
+    'This is a document to popagate search related events, we avoid using "document" for performance reasons.');
+
+// there is a difference in abortSearch() vs restartSearchWorker().
+// abortSearch() triggers a abortSearch event, which have a effect on searches that are not yet running in workers.
+// whereas restartSearchWorker() which kills the worker if it's in use, but does not abort search that is not yet posted to the worker.
+function abortSearch(){
+    searchEventsEnv.dispatchEvent(new CustomEvent('abortSearch', {}));
+}
+// Kills and restarts search worker (if needed).
+function restartSearchWorker() {
+    var w = _searchWorker;
+    if (w!=null){
+        if (w.postMessageCount>0){
+            // the worker has been used, it has to be restarted
+            // TODO: Actually it needs to be restarted only if it's running a search right now.
+            // Otherwise we can reuse the same worker, but that's not a very big deal in this context.
+            w = w.restart();
+        } 
+        // Else, the worker has never been used, it can be returned as is. 
+        // This can happens when typing fast with a very large index JSON to load.
+    }
+    _searchWorker = w;
+}
+
+function _getWorkerPromise(lunJsSourceCode){ // -> Promise of a fresh worker to run a query.
+    let promise = new Promise((resolve, reject) => {
+        // Do the search business, wrap the process inside an inline Worker.
+        // This is a hack such that the UI can refresh during the search.
+        if (_searchWorker===null){
+            // Create only one blob and URL.
+            let lunrWorkerCode = lunJsSourceCode + _lunrWorkerCode;
+            let _workerBlob = new Blob([lunrWorkerCode], {type: 'text/javascript'});
+            let _workerObjectURL = window.URL.createObjectURL(_workerBlob);
+            _searchWorker = _makeWorkerSmart(_workerObjectURL)
+        }
+        else{
+            restartSearchWorker();
+        }
+        resolve(_searchWorker);
+    });
+    return promise
 }
 
 /**
- * Launch a search and get a promise of results.
+ * Launch a search and get a promise of results. One search can be lauch at a time only.
+ * Old promise never resolves if calling lunrSearch() again while already running.
  * @param query: Query string.
  * @param indexURL: URL pointing to the Lunr search index, generated by pydoctor.
  * @param defaultFields: List of strings: default fields to apply to query clauses when none is specified. ["name", "names", "qname"] for instance.
  * @param lunrJsURL: URL pointing to a copy of lunr.js.
+ * @param searchDelay: Number of miliseconds to wait before actually launching the query. This is useful to set for "search as you type" kind of search box
+ *                     because it let a chance to users to continue typing without triggering useless searches (because previous search is aborted on launching a new one).
  */
-function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
+function lunrSearch(query, indexURL, defaultFields, lunrJsURL, searchDelay){
+    // Abort ongoing search
+    abortSearch();
 
-    return _getIndexDataPromise(indexURL).then((lunrIndexData) => {
+    // Register abort procedure.
+    var _aborted = false;
+    searchEventsEnv.addEventListener('abortSearch', (ev) => {
+        _aborted = true;
+        searchEventsEnv.removeEventListener('abortSearch', this);
+    });
+
+    // Pref:
+    // Because this function can be called a lot of times in a very few moments, 
+    // Actually launch search after a delay to let a chance to users to continue typing,
+    // which would trigger a search abort event, which would avoid wasting a worker 
+    // for a search that is not wanted anymore.
+    return new Promise((_resolve, _reject) => {
+        setTimeout(() => {
+        _resolve(
+        _getIndexDataPromise(indexURL).then((lunrIndexData) => {
         // Include lunr.js source inside the worker such that it has no dependencies.
         return httpGetPromise(lunrJsURL).then((responseText) => {
-            // Do the search business, wrap the process inside an inline Worker.
-            // This is a hack such that the UI can refresh during the search.
-            if (_workerBlob===null){
-                // Create only one blob
-                let lunrWorkerCode = responseText + _lunrWorkerCode;
-                _workerBlob = new Blob([lunrWorkerCode], {type: 'text/javascript'});
-            }
-            terminateSearchWorker()
-            _worker = new Worker(window.URL.createObjectURL(_workerBlob));
+        // Do the search business, wrap the process inside an inline Worker.
+        // This is a hack such that the UI can refresh during the search.
+        return _getWorkerPromise(responseText).then((worker) => {
             let promise = new Promise((resolve, reject) => {
-                _worker.onmessage = (message) => {
+                worker.onmessage = (message) => {
                     if (!message.data.results){
                         reject("No data received from worker");
                     }
@@ -97,20 +182,30 @@ function lunrSearch(query, indexURL, defaultFields, lunrJsURL){
                         resolve(message.data.results)
                     }
                 }
-                _worker.onerror = function(error) {
+                worker.onerror = function(error) {
                     reject(error);
                 };
             });
-            _msg_data = {
+            let _msgData = {
                 'query': query,
                 'indexJSONData': lunrIndexData,
                 'defaultFields': defaultFields
             }
-            console.log("Posting query to worker:")
-            console.dir(_msg_data)
-            _worker.postMessage(_msg_data);
+            
+            if (!_aborted){
+                console.log(`Posting query "${query}" to worker:`)
+                console.dir(_msgData)
+                worker.postMessage(_msgData);
+                searchEventsEnv.dispatchEvent(
+                    new CustomEvent("searchStarted", {'query':query})
+                );
+            }
+
             return promise
         });
+        });
+        })
+        );}, searchDelay);
     });
 }
 
@@ -127,7 +222,7 @@ function fetchResultsData(results, allDocumentsURL){
             // Find the result model row data.
             var dobj = allDocuments.getElementById(result.ref);
             if (!dobj){
-                throw ("Cannot find document ID: " + result.ref);
+                throw new Error("Cannot find document ID: " + result.ref);
             }
             // Return result data
             return dobj;
@@ -191,17 +286,20 @@ function buildSearchResult(dobj) {
 
 // This gives the UI the opportunity to refresh while we're iterating over a large list.
 function _asyncFor(iterable, callback) { // -> Promise of List of results returned by callback
-    const promise_global = new Promise((resolve_global, _reject) => {
+    const promise_global = new Promise((resolve_global, reject_global) => {
       let promises = [];
       iterable.forEach((element) => {
           promises.push(new Promise((resolve, _reject) => {
             setTimeout(() => {
-              resolve(callback(element));
+                try{ resolve(callback(element)); }
+                catch (error){ _reject(error); }
             }, 0);
           }));
       }); 
       Promise.all(promises).then((results) =>{
         resolve_global(results);
+      }).catch((err) => {
+          reject_global(err);
       });
     });
     return promise_global;
@@ -219,8 +317,6 @@ function _getIndexDataPromise(indexURL) { // -> Promise of a structured data for
     else{
         return new Promise((_resolve, _reject) => {
             _resolve(_indexDataCache[indexURL]);
-        }, (error) => {
-            _reject(error);
         });
     }
 }
@@ -238,8 +334,6 @@ function _getAllDocumentsPromise(allDocumentsURL) { // -> Promise of the all-doc
     else{
         return new Promise((_resolve, _reject) => {
             _resolve(_allDocumentsCache[allDocumentsURL]);
-        }, (error) => {
-            _reject(error);
         });
     }
 }
