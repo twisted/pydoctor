@@ -1249,13 +1249,13 @@ def test_module_docformat(capsys: CapSys) -> None:
     """
 
     system = model.System()
-    system.options.docformat = 'plaintext'
+    system.options.docformat = 'epytext'
 
     mod = fromText('''
     """
-    Link to pydoctor: U{pydoctor <https://github.com/twisted/pydoctor>}.
+    Link to pydoctor: `pydoctor <https://github.com/twisted/pydoctor>`_.
     """
-    __docformat__ = "epytext"
+    __docformat__ = "google"
     ''', modname='test_epy', system=system)
 
     epytext_output = epydoc2stan.format_docstring(mod)
@@ -1275,11 +1275,8 @@ def test_module_docformat(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert not captured
 
-    assert ('Link to pydoctor: <a class="rst-reference external" href="https://github.com/twisted/pydoctor"'
-        ' target="_top">pydoctor</a>' in flatten(epytext_output))
-    
-    assert ('Link to pydoctor: <a class="rst-reference external"'
-        ' href="https://github.com/twisted/pydoctor" target="_top">pydoctor</a>' in flatten(restructuredtext_output))
+    assert ('href="https://github.com/twisted/pydoctor"' in flatten(epytext_output))
+    assert ('href="https://github.com/twisted/pydoctor"' in flatten(restructuredtext_output))
 
 def test_module_docformat_inheritence(capsys: CapSys) -> None:
     top_src = '''
@@ -1353,6 +1350,28 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
 
     assert ''.join(docstring2html(B_f).splitlines()) == ''.join(docstring2html(A_f).splitlines())
 
+def test_cli_docformat_plaintext_overrides_module_docformat(capsys: CapSys) -> None:
+    """
+    Test if System.options.docformat overrides Module.docformat in the case of plaintext docformat only.
+    Issue https://github.com/twisted/pydoctor/issues/503.
+    """
+
+    system = model.System()
+    system.options.docformat = 'plaintext'
+
+    mod = fromText('''
+    """
+    L{unknown} link.
+    """
+    __docformat__ = "epytext"
+    ''', system=system)
+
+    epytext_output = epydoc2stan.format_docstring(mod)
+
+    captured = capsys.readouterr().out
+    assert not captured
+
+    assert flatten(epytext_output).startswith('<div><p class="pre">')
 
 def test_constant_values_rst(capsys: CapSys) -> None:
     """
