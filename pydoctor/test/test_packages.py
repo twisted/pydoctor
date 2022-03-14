@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Type
+import pytest
 
 from pydoctor import model
 
@@ -154,3 +155,14 @@ def test_reparenting_follows_aliases() -> None:
         return
     else:
         raise AssertionError("Congratulation!")
+
+@pytest.mark.parametrize('modname', ['reparenting_crash','reparenting_crash_alt'])
+def test_reparenting_crash(modname: str) -> None:
+    """
+    Test for https://github.com/twisted/pydoctor/issues/513
+    """
+    system = processPackage(modname)
+    mod = system.allobjects[modname]
+    assert isinstance(mod.contents[modname], model.Class)
+    assert isinstance(mod.contents['reparented_func'], model.Function)
+    assert isinstance(mod.contents[modname].contents['reparented_func'], model.Function)
