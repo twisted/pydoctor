@@ -76,6 +76,9 @@ Privacy tweak examples
 
 .. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax.
 
+.. note:: Quotation marks must be added around each rule to avoid shell expansions.
+    Unless the arguments are passed directly to pydoctor, like in Sphinx's ``conf.py``, in this case you should not quote the patterns.
+
 Use a custom system class
 -------------------------
 
