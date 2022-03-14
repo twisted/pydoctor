@@ -29,7 +29,9 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function. 
     """    
     # Use module's __docformat__ if specified, else use system's. 
-    # Except if system's docformat is plaintext, in this case, use plaintext (#503).
+    # Except if system's docformat is plaintext, in this case, use plaintext.
+    # See https://github.com/twisted/pydoctor/issues/503 for the reason
+    # of this behavior. 
     if obj.system.options.docformat == 'plaintext':
         return pydoctor.epydoc.markup.plaintext.parse_docstring
 

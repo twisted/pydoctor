@@ -1352,8 +1352,11 @@ def test_module_docformat_with_docstring_inheritence(capsys: CapSys) -> None:
 
 def test_cli_docformat_plaintext_overrides_module_docformat(capsys: CapSys) -> None:
     """
-    Test if System.options.docformat overrides Module.docformat in the case of plaintext docformat only.
-    Issue https://github.com/twisted/pydoctor/issues/503.
+    When System.options.docformat is set to C{plaintext} it
+    overwrites any specific Module.docformat defined for a module.
+    
+    See https://github.com/twisted/pydoctor/issues/503 for the reason
+    of this behavior.
     """
 
     system = model.System()
