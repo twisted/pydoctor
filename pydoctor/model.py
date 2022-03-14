@@ -337,7 +337,11 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.HIDDEN
+        isVisible = self.privacyClass is not PrivacyClass.HIDDEN
+        # If a module/package/class is hidden, all it's members are hidden as well.
+        if isVisible and self.parent:
+            isVisible = self.parent.isVisible
+        return isVisible
 
     @property
     def isPrivate(self) -> bool:
@@ -789,13 +793,13 @@ class System:
         # Check exact matches first, then qnmatch
         fullName = ob.fullName()
         _found_exact_match = False
-        for priv, match in self.options.privacy:
+        for priv, match in reversed(self.options.privacy):
             if fullName == match:
                 privacy = priv
                 _found_exact_match = True
                 break
         if not _found_exact_match:
-            for priv, match in self.options.privacy:
+            for priv, match in reversed(self.options.privacy):
                 if qnmatch.qnmatch(fullName, match):
                     privacy = priv
                     break
