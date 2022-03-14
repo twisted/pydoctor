@@ -3,7 +3,7 @@ import os
 
 from pydoctor.qnmatch import qnmatch, translate
 
-def test_qnmatch():
+def test_qnmatch() -> None:
 
     assert(qnmatch('site.yml', 'site.yml'))
 
@@ -55,7 +55,7 @@ def test_qnmatch():
     assert(not qnmatch('site.yml.Class._property', '**._*.**'))
 
 class TranslateTestCase(unittest.TestCase):
-    def test_translate(self):
+    def test_translate(self) -> None:
         self.assertEqual(translate('*'), r'(?s:[^\.]*?)\Z')
         self.assertEqual(translate('**'), r'(?s:.*?)\Z')
         self.assertEqual(translate('?'), r'(?s:.)\Z')
@@ -68,7 +68,7 @@ class TranslateTestCase(unittest.TestCase):
 
 class FnmatchTestCase(unittest.TestCase):
 
-    def check_match(self, filename, pattern, should_match=True, fn=qnmatch):
+    def check_match(self, filename, pattern, should_match=True, fn=qnmatch) -> None: # type: ignore
         if should_match:
             self.assertTrue(fn(filename, pattern),
                          "expected %r to match pattern %r"
@@ -78,7 +78,7 @@ class FnmatchTestCase(unittest.TestCase):
                          "expected %r not to match pattern %r"
                          % (filename, pattern))
 
-    def test_fnmatch(self):
+    def test_fnmatch(self) -> None:
         check = self.check_match
         check('abc', 'abc')
         check('abc', '?*?')
@@ -105,13 +105,13 @@ class FnmatchTestCase(unittest.TestCase):
         check('\nfoo', 'foo*', False)
         check('\n', '*')
 
-    def test_mix_bytes_str(self):
+    def test_mix_bytes_str(self) -> None:
         self.assertRaises(TypeError, qnmatch, 'test', b'*')
         self.assertRaises(TypeError, qnmatch, b'test', '*')
         self.assertRaises(TypeError, qnmatch, 'test', b'*')
         self.assertRaises(TypeError, qnmatch, b'test', '*')
 
-    def test_fnmatchcase(self):
+    def test_fnmatchcase(self) -> None:
         check = self.check_match
         check('abc', 'abc', True, qnmatch)
         check('AbC', 'abc', False, qnmatch)
@@ -123,7 +123,7 @@ class FnmatchTestCase(unittest.TestCase):
         check('usr/bin', 'usr\\bin', False, qnmatch)
         check('usr\\bin', 'usr\\bin', True, qnmatch)
 
-    def test_case(self):
+    def test_case(self) -> None:
         ignorecase = os.path.normcase('ABC') == os.path.normcase('abc')
         check = self.check_match
         check('abc', 'abc')

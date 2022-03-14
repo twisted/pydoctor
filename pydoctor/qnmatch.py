@@ -11,9 +11,10 @@ Special patterns are::
 """
 import functools
 import re
+from typing import Any, Callable
 
 @functools.lru_cache(maxsize=256, typed=True)
-def _compile_pattern(pat):
+def _compile_pattern(pat: str) -> Callable[[str], Any]:
     res = translate(pat)
     return re.compile(res).match
 
