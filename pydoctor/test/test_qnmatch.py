@@ -124,9 +124,8 @@ class FnmatchTestCase(unittest.TestCase):
         check('usr\\bin', 'usr\\bin', True, qnmatch)
 
     def test_case(self) -> None:
-        ignorecase = os.path.normcase('ABC') == os.path.normcase('abc')
         check = self.check_match
         check('abc', 'abc')
-        check('AbC', 'abc', ignorecase)
-        check('abc', 'AbC', ignorecase)
+        check('AbC', 'abc', False)
+        check('abc', 'AbC', False)
         check('AbC', 'AbC')
