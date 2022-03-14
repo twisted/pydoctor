@@ -52,7 +52,7 @@ Below is the description of each type and the default association:
   Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
 
 When the default rules regarding privacy doesn't fit your use case,
-use the `--privacy` command line option.
+use the ``--privacy`` command line option.
 It can be used multiple times to define multiple privacy rules::
 
   --privacy=<PRIVACY>:<PATTERN>
