@@ -72,6 +72,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
+  module variable in order to focus on potential python code parsing errors.
 
 pydoctor 22.3.0
 ^^^^^^^^^^^^^^^
