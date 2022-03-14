@@ -84,9 +84,23 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
+def parse_privacy_tuple(option: Option, opt: str, val:str) -> Tuple[model.PrivacyClass, str]:
+    """
+    Parse string like 'public:match*' to a tuple (PrivacyClass.PUBLIC, 'match*').
+    """
+    parts = val.split(':')
+    if len(parts)!=2:
+        raise OptionValueError(f"{opt}: malformatted value {val!r} should be like '<privacy>:<match>'.")
+    try:
+        priv = model.PrivacyClass[parts[0].strip().upper()]
+    except:
+        raise OptionValueError(f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}")
+    else:
+        return (priv, parts[1].strip())
+
 class CustomOption(Option):
-    TYPES = Option.TYPES + ("path",)
-    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
+    TYPES = Option.TYPES + ("path","privacy_tuple")
+    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path, privacy_tuple=parse_privacy_tuple)
 
 def getparser() -> OptionParser:
     parser = OptionParser(
@@ -158,6 +172,11 @@ def getparser() -> OptionParser:
         choices=list(get_themes()) ,
         help=("The theme to use when building your API documentation. "),
     )
+    parser.add_option(
+        '--privacy', action='append', dest='privacy',
+        metavar='PRIVACYPATTERN', default=[], type="privacy_tuple",
+        help=("Format: '<privacy>:<match>', where <privacy> can be one of 'public', 'private' or 'hidden' (case insensitive), and <match> can be the fullName (or fnmatch pattern) of objects. "
+              "Can be repeated. Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"
