@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
 
 pydoctor 22.3.0
 ^^^^^^^^^^^^^^^
