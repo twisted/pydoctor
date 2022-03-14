@@ -295,7 +295,7 @@ Modules, classes and functions of which the name starts with an underscore are c
 
 .. note::
     Pydoctor actually supports 3 types of privacy: public, private and hidden. 
-    See `Override objects privacy <customize-privacy>`_ for more informations.
+    See `Override objects privacy <customize-privacy>` for more informations.
 
 Re-exporting
 ------------
