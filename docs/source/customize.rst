@@ -39,16 +39,16 @@ Override objects privacy (show/hide)
 
 Pydoctor supports 3 types of privacy:
 
-  - ``PRIVATE`` (If object name starts with an underscore and it's not a dunder method): 
-    Rendered in HTML, but hidden via CSS by default.
-  
-  - ``PUBLIC`` (Everything else):
-    Always rendered and visible in HTML.
+- ``PRIVATE`` (If object name starts with an underscore and it's not a dunder method): 
+  Rendered in HTML, but hidden via CSS by default.
 
-  - ``HIDDEN`` (Nothing by default):
-    Not rendered at all and no links can be created to hidden objects. 
-    Not present in the search index nor the intersphinx inventory.
-    Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
+- ``PUBLIC`` (Everything else):
+  Always rendered and visible in HTML.
+
+- ``HIDDEN`` (Nothing by default):
+  Not rendered at all and no links can be created to hidden objects. 
+  Not present in the search index nor the intersphinx inventory.
+  Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
 
 When the default rules regarding privacy doesn't fit the use case, you can use the following repeatable option::
 
@@ -59,22 +59,13 @@ pattern matching objects fullName.
 
 Pricavy tweak examples
 ^^^^^^^^^^^^^^^^^^^^^^
-- 
-  ```
-  --privacy="PUBLIC:**" 
-  ```
+- ``--privacy="PUBLIC:**"``
   Makes everything public.
--
-  ```
-  --privacy="HIDDEN:twisted.test.*" \
-  --privacy="PUBLIC:twisted.test.proto_helpers" \
-  ```
+
+- ``--privacy="HIDDEN:twisted.test.*" --privacy="PUBLIC:twisted.test.proto_helpers"``
   Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
-- 
-  ```
-  --privacy="PRIVATE:**.__*__" \
-  --privacy="PUBLIC:**.__init__" \
-  ```
+  
+- ``--privacy="PRIVATE:**.__*__" --privacy="PUBLIC:**.__init__"``
   Makes all dunder methods private except ``__init__``.
 
 .. note:: The order of arguments matters. Pattern added last have priority over a pattern added before,
