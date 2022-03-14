@@ -1,5 +1,4 @@
 import unittest
-import os
 
 from pydoctor.qnmatch import qnmatch, translate
 
