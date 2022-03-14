@@ -363,8 +363,8 @@ def test_resolve_name_subclass(capsys:CapSys) -> None:
     assert m.resolveName('C.v') == m.contents['B'].contents['v']
 
 @pytest.mark.parametrize('privacy', [
-    (['public:m._public*', 'public:m.tests', 'public:m.tests.helpers', 'private:m._public.private', 'hidden:m._public.hidden', 'hidden:m.tests.*']), 
-    (['private:*private', 'hidden:*hidden', 'public:*_public', 'hidden:m.tests.test*', ]), 
+    (['public:m._public**', 'public:m.tests', 'public:m.tests.helpers', 'private:m._public.private', 'hidden:m._public.hidden', 'hidden:m.tests.*']), 
+    (['private:**private', 'hidden:**hidden', 'public:**_public', 'hidden:m.tests.test**', ]), 
 ])
 def test_privacy_switch(privacy:object) -> None:
     s = model.System()

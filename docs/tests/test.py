@@ -5,8 +5,8 @@
 #
 import os
 import pathlib
-from typing import Any, List
-from xml.dom.minidom import parseString
+from typing import List
+import xml.etree.ElementTree as ET
 import json
 
 from lunr.index import Index
@@ -212,33 +212,21 @@ def test_lunr_index() -> None:
 
 def test_pydoctor_test_is_private():
 
-    def getText(nodelist: List[Any]) -> str:
-        # from https://docs.python.org/3/library/xml.dom.minidom.html?highlight=xml%20dom#dom-example
-        rc = []
-        for node in nodelist:
-            if node.nodeType == node.TEXT_NODE:
-                rc.append(node.data)
-        return ''.join(rc)
+    def getText(node: ET.Element) -> str:
+        return ''.join(node.itertext()).strip().replace('\u200b', '')
 
     with open(BASE_DIR / 'api' / 'all-documents.html', 'r', encoding='utf-8') as stream:
-        document = parseString(stream.read())
-        for liobj in document.getElementsByTagName('li'):
-            if not str(liobj.getAttribute("id")).startswith("pydoctor"):
+        document = ET.fromstring(stream.read())
+        for liobj in document.findall('body/div/ul/li[@id]'):
+            
+            if not str(liobj.get("id")).startswith("pydoctor"):
                 continue # not a all-documents list item, maybe in the menu or whatever.
             
             # figure obj name
-            fullName = None
-            for div in liobj.getElementsByTagName('div'):
-                if div.getAttribute('class') == 'fullName':
-                    fullName = getText(div.childNodes)
-                    break
+            fullName = getText(liobj.findall('./div[@class=\'fullName\']')[0])
             
             if fullName.startswith("pydoctor.test"):
                 # figure obj privacy
-                for div in liobj.getElementsByTagName('div'):
-                    if div.getAttribute('class') == 'privacy':
-                        privacy = getText(div.childNodes)
-                        break
-                
-                # check that it's indeed made private
+                privacy = getText(liobj.findall('./div[@class=\'privacy\']')[0])
+                # check that it's indeed private
                 assert privacy == 'PRIVATE'

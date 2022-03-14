@@ -13,7 +13,6 @@ import inspect
 import platform
 import sys
 import types
-import fnmatch
 from enum import Enum
 from inspect import signature, Signature
 from optparse import Values
@@ -25,6 +24,7 @@ from typing import (
 from collections import OrderedDict
 from urllib.parse import quote
 
+from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -786,7 +786,7 @@ class System:
             privacy = PrivacyClass.PRIVATE
         
         # Precedence order: CLI arguments order
-        # Check exact matches first, then fnmatch
+        # Check exact matches first, then qnmatch
         fullName = ob.fullName()
         _found_exact_match = False
         for priv, match in self.options.privacy:
@@ -796,7 +796,7 @@ class System:
                 break
         if not _found_exact_match:
             for priv, match in self.options.privacy:
-                if fnmatch.fnmatchcase(fullName, match):
+                if qnmatch.qnmatch(fullName, match):
                     privacy = priv
                     break
 
