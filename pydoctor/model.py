@@ -773,7 +773,7 @@ class System:
         if cached_privacy is not None:
             return cached_privacy
         
-        # kind should not be is None, this is probably a relica of a past age of pydoctor.
+        # kind should not be None, this is probably a relica of a past age of pydoctor.
         # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
