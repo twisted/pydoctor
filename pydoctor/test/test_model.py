@@ -7,7 +7,7 @@ from optparse import Values
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import subprocess
-from typing import cast
+from typing import List, cast
 import zlib
 import pytest
 
@@ -15,7 +15,7 @@ from twisted.web.template import Tag
 
 from pydoctor import model, stanutils
 from pydoctor.templatewriter import pages
-from pydoctor.driver import parse_args
+from pydoctor.driver import parse_args, parse_privacy_tuple
 from pydoctor.sphinx import CacheT
 from pydoctor.test import CapSys
 from pydoctor.test.test_astbuilder import fromText
@@ -361,3 +361,45 @@ def test_resolve_name_subclass(capsys:CapSys) -> None:
         """
     )
     assert m.resolveName('C.v') == m.contents['B'].contents['v']
+
+@pytest.mark.parametrize('privacy', [
+    (['public:m._public*', 'public:m.tests', 'public:m.tests.helpers', 'private:m._public.private', 'hidden:m._public.hidden', 'hidden:m.tests.*']), 
+    (['private:*private', 'hidden:*hidden', 'public:*_public', 'hidden:m.tests.test*', ]), 
+])
+def test_privacy_switch(privacy:List[str]) -> None:
+    s = model.System()
+    s.options.privacy = [parse_privacy_tuple(None, '--privacy', p) for p in privacy] # type:ignore
+
+    fromText(
+        """
+        class _public:
+            class _still_public:
+                ...
+            class private:
+                ...
+            class hidden:
+                ...
+
+        class tests(B): # public
+            class helpers: # public
+                ...
+            class test1: # everything else hidden
+                ...
+            class test2:
+                ...
+            class test3:
+                ...
+        """, system=s, modname='m'
+    )
+    allobjs = s.allobjects
+
+    assert allobjs['m._public'].privacyClass == model.PrivacyClass.PUBLIC
+    assert allobjs['m._public._still_public'].privacyClass == model.PrivacyClass.PUBLIC
+    assert allobjs['m._public.private'].privacyClass == model.PrivacyClass.PRIVATE
+    assert allobjs['m._public.hidden'].privacyClass == model.PrivacyClass.HIDDEN
+
+    assert allobjs['m.tests'].privacyClass == model.PrivacyClass.PUBLIC
+    assert allobjs['m.tests.helpers'].privacyClass == model.PrivacyClass.PUBLIC
+    assert allobjs['m.tests.test1'].privacyClass == model.PrivacyClass.HIDDEN
+    assert allobjs['m.tests.test2'].privacyClass == model.PrivacyClass.HIDDEN
+    assert allobjs['m.tests.test3'].privacyClass == model.PrivacyClass.HIDDEN

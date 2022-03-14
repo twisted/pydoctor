@@ -104,7 +104,8 @@ pydoctor_args = {
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         f'--project-version={version}',
-        '--docformat=epytext',
+        '--docformat=epytext', 
+        '--privacy=private:pydoctor.test*',
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,

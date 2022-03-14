@@ -5,6 +5,8 @@
 #
 import os
 import pathlib
+from typing import Any, List
+from xml.dom.minidom import parseString
 
 from sphinx.ext.intersphinx import inspect_main
 
@@ -165,3 +167,36 @@ def test_search_index_generated():
     assert (BASE_DIR / 'api' / 'searchindex.json').is_file()
     assert (BASE_DIR / 'api' / 'fullsearchindex.json').is_file()
     assert (BASE_DIR / 'api' / 'all-documents.html').is_file()
+
+def test_pydoctor_test_is_private():
+
+    def getText(nodelist: List[Any]) -> str:
+        # from https://docs.python.org/3/library/xml.dom.minidom.html?highlight=xml%20dom#dom-example
+        rc = []
+        for node in nodelist:
+            if node.nodeType == node.TEXT_NODE:
+                rc.append(node.data)
+        return ''.join(rc)
+
+    with open(BASE_DIR / 'api' / 'all-documents.html', 'r', encoding='utf-8') as stream:
+        document = parseString(stream.read())
+        for liobj in document.getElementsByTagName('li'):
+            if not str(liobj.getAttribute("id")).startswith("pydoctor"):
+                continue # not a all-documents list item, maybe in the menu or whatever.
+            
+            # figure obj name
+            fullName = None
+            for div in liobj.getElementsByTagName('div'):
+                if div.getAttribute('class') == 'fullName':
+                    fullName = getText(div.childNodes)
+                    break
+            
+            if fullName.startswith("pydoctor.test"):
+                # figure obj privacy
+                for div in liobj.getElementsByTagName('div'):
+                    if div.getAttribute('class') == 'privacy':
+                        privacy = getText(div.childNodes)
+                        break
+                
+                # check that it's indeed made private
+                assert privacy == 'PRIVATE'
