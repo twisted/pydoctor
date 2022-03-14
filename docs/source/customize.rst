@@ -32,16 +32,66 @@ HTML templates have their own versioning system and warnings will be triggered w
     This example is using new ``pydoctor`` option, ``--theme=base``. 
     This means that bootstrap CSS will not be copied to build directory.
 
+.. _customize-privacy:
+
 Override objects privacy (show/hide)
 ------------------------------------
 
+.. list-table:: Objects privacy
+  :header-rows: 1
+
+  * - Privacy
+    - Behaviour
+    - Rule
+  
+  * - ``PRIVATE``
+    - Rendered in HTML, but hidden via CSS by default.
+    - If object name starts with an underscore and it does not start and end with double underscores.
+  
+  * - ``PUBLIC``
+    - Always rendered and visible in HTML.
+    - Everything else.
+
+  * - ``HIDDEN``
+    - Not rendered at all and no links can be created to hidden objects. 
+      Not present in the search index nor the intersphinx inventory.
+      Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
+    - Nothing by default.
+
 When the default rules regarding privacy doesn't fit the use case, you can use the following repeatable option::
 
-  --privacy=<PRIVACY>:<MATCH>
+  --privacy=<PRIVACY>:<PATTERN>
 
-For instance, ``--privacy="private:pydoctor.test*"`` makes the module ``pydoctor.test`` and all objects under it private.
+where ``<PRIVACY>`` can be one of ``PUBLIC``, ``PRIVATE`` or ``HIDDEN`` (case insensitive), and ``<PATTERN>`` is fnmatch-like 
+pattern matching objects fullName.
 
-See ``pydoctor --help`` for more informations.
+.. list-table:: Pricavy tweak examples
+  :header-rows: 1
+
+  * - Arguments
+    - Behaviour
+  
+  * - ```
+      --privacy="PUBLIC:**" \
+      ```
+    - Makes everything public.
+  
+  * - ```
+      --privacy="HIDDEN:twisted.test.*" \
+      --privacy="PUBLIC:twisted.test.proto_helpers" \
+      ```
+    - Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
+  
+  * - ```
+      --privacy="PRIVATE:**.__*__" \
+      --privacy="PUBLIC:**.__init__" \
+      ```
+    - Makes all dunder methods private except ``__init__``.
+
+.. note:: The order of arguments matters. Pattern added last have priority over a pattern added before,
+  but an exact match wins over a fnmatch.
+
+.. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax.
 
 Use a custom system class
 -------------------------

@@ -90,7 +90,7 @@ def parse_privacy_tuple(option: Option, opt: str, val:str) -> Tuple[model.Privac
     """
     parts = val.split(':')
     if len(parts)!=2:
-        raise OptionValueError(f"{opt}: malformatted value {val!r} should be like '<privacy>:<match>'.")
+        raise OptionValueError(f"{opt}: malformatted value {val!r} should be like '<privacy>:<PATTERN>'.")
     try:
         priv = model.PrivacyClass[parts[0].strip().upper()]
     except:
@@ -174,13 +174,11 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--privacy', action='append', dest='privacy',
-        metavar='<PRIVACY>:<MATCH>', default=[], type="privacy_tuple",
+        metavar='<PRIVACY>:<PATTERN>', default=[], type="privacy_tuple",
         help=("Set the privacy of specific objects when default rules doesn't fit the use case. "
-              "Format: '<PRIVACY>:<MATCH>', where <PRIVACY> can be one of 'PUBLIC', 'PRIVATE' or "
-              "'HIDDEN' (case insensitive), and <MATCH> is fnmatch-like pattern matching objects fullName. "
-              "Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch. Can be repeated. "
-              "For instance, --privacy=\"PUBLIC:twisted.test.proto_helpers*\" --privacy=\"HIDDEN:twisted.test.**\" recursively makes "
-              "all objects under module 'twisted.test' hidden expect module 'twisted.test.proto_helpers' and it's direct members."))
+              "Format: '<PRIVACY>:<PATTERN>', where <PRIVACY> can be one of 'PUBLIC', 'PRIVATE' or "
+              "'HIDDEN' (case insensitive), and <PATTERN> is fnmatch-like pattern matching objects fullName. "
+              "Pattern added last have priority over a pattern added before, but an exact match wins over a fnmatch. Can be repeated."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"
