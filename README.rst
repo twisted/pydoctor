@@ -72,8 +72,10 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
 * Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
   module variable in order to focus on potential python code parsing errors.
+
 
 pydoctor 22.3.0
 ^^^^^^^^^^^^^^^

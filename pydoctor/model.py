@@ -24,6 +24,7 @@ from typing import (
 from collections import OrderedDict
 from urllib.parse import quote
 
+from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -76,13 +77,15 @@ class PrivacyClass(Enum):
 
     @cvar HIDDEN: Don't show the object at all.
     @cvar PRIVATE: Show, but de-emphasize the object.
-    @cvar VISIBLE: Show the object as normal.
+    @cvar PUBLIC: Show the object as normal.
     """
 
     HIDDEN = 0
     PRIVATE = 1
-    VISIBLE = 2
-    
+    PUBLIC = 2
+    # For compatibility
+    VISIBLE = PUBLIC
+
 class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
@@ -334,7 +337,11 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.HIDDEN
+        isVisible = self.privacyClass is not PrivacyClass.HIDDEN
+        # If a module/package/class is hidden, all it's members are hidden as well.
+        if isVisible and self.parent:
+            isVisible = self.parent.isVisible
+        return isVisible
 
     @property
     def isPrivate(self) -> bool:
@@ -342,7 +349,7 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.VISIBLE
+        return self.privacyClass is not PrivacyClass.PUBLIC
 
     @property
     def module(self) -> 'Module':
@@ -651,6 +658,11 @@ class System:
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
+        # since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
+        # it's ok to cache privacy class results since the potential renames (with reparenting) happends before we begin to
+        # generate HTML, which is when we call Documentable.PrivacyClass.
+        self._privacyClassCache: Dict[int, PrivacyClass] = {}
+
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
@@ -762,12 +774,39 @@ class System:
                 yield o
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
+        ob_id = id(ob)
+        cached_privacy = self._privacyClassCache.get(ob_id)
+        if cached_privacy is not None:
+            return cached_privacy
+        
+        # kind should not be None, this is probably a relica of a past age of pydoctor.
+        # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
+        
+        privacy = PrivacyClass.PUBLIC
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
-            return PrivacyClass.PRIVATE
-        return PrivacyClass.VISIBLE
+            privacy = PrivacyClass.PRIVATE
+        
+        # Precedence order: CLI arguments order
+        # Check exact matches first, then qnmatch
+        fullName = ob.fullName()
+        _found_exact_match = False
+        for priv, match in reversed(self.options.privacy):
+            if fullName == match:
+                privacy = priv
+                _found_exact_match = True
+                break
+        if not _found_exact_match:
+            for priv, match in reversed(self.options.privacy):
+                if qnmatch.qnmatch(fullName, match):
+                    privacy = priv
+                    break
+
+        # Store in cache
+        self._privacyClassCache[ob_id] = privacy
+        return privacy
 
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""

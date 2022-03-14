@@ -104,7 +104,8 @@ pydoctor_args = {
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         f'--project-version={version}',
-        '--docformat=epytext',
+        '--docformat=epytext', 
+        '--privacy=HIDDEN:pydoctor.test',
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
@@ -113,6 +114,7 @@ pydoctor_args = {
         '--project-name=pydoctor with a twisted theme',
         f'--project-version={version}',
         '--docformat=epytext',
+        '--privacy=HIDDEN:pydoctor.test',
         '--project-url=../customize.html',
         '--theme=base',
         f'--template-dir={_pydoctor_root}/docs/sample_template',

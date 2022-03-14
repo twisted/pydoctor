@@ -5,8 +5,10 @@
 #
 import os
 import pathlib
-import json
 from typing import List
+import xml.etree.ElementTree as ET
+import json
+
 from lunr.index import Index
 
 from sphinx.ext.intersphinx import inspect_main
@@ -207,3 +209,27 @@ def test_lunr_index() -> None:
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])
         test_search('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])
+
+def test_pydoctor_test_is_hidden():
+    """
+    Test that option --privacy=HIDDEN:pydoctor.test makes everything under pydoctor.test HIDDEN.
+    """
+
+    def getText(node: ET.Element) -> str:
+        return ''.join(node.itertext()).strip().replace('\u200b', '')
+
+    with open(BASE_DIR / 'api' / 'all-documents.html', 'r', encoding='utf-8') as stream:
+        document = ET.fromstring(stream.read())
+        for liobj in document.findall('body/div/ul/li[@id]'):
+            
+            if not str(liobj.get("id")).startswith("pydoctor"):
+                continue # not a all-documents list item, maybe in the menu or whatever.
+            
+            # figure obj name
+            fullName = getText(liobj.findall('./div[@class=\'fullName\']')[0])
+            
+            if fullName.startswith("pydoctor.test"):
+                # figure obj privacy
+                privacy = getText(liobj.findall('./div[@class=\'privacy\']')[0])
+                # check that it's indeed private
+                assert privacy == 'HIDDEN'
