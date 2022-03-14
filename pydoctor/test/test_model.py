@@ -7,7 +7,7 @@ from optparse import Values
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import subprocess
-from typing import List, cast
+from typing import cast
 import zlib
 import pytest
 
@@ -366,7 +366,7 @@ def test_resolve_name_subclass(capsys:CapSys) -> None:
     (['public:m._public*', 'public:m.tests', 'public:m.tests.helpers', 'private:m._public.private', 'hidden:m._public.hidden', 'hidden:m.tests.*']), 
     (['private:*private', 'hidden:*hidden', 'public:*_public', 'hidden:m.tests.test*', ]), 
 ])
-def test_privacy_switch(privacy:List[str]) -> None:
+def test_privacy_switch(privacy:object) -> None:
     s = model.System()
     s.options.privacy = [parse_privacy_tuple(None, '--privacy', p) for p in privacy] # type:ignore
 
