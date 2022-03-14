@@ -37,27 +37,30 @@ HTML templates have their own versioning system and warnings will be triggered w
 Override objects privacy (show/hide)
 ------------------------------------
 
-Pydoctor supports 3 types of privacy:
+Pydoctor supports 3 types of privacy.
+Below is the description of each type and the default association:
 
-- ``PRIVATE`` (If object name starts with an underscore and it's not a dunder method): 
+- ``PRIVATE``: By default for objects whose name starts with an underscore and are not a dunder method. 
   Rendered in HTML, but hidden via CSS by default.
 
-- ``PUBLIC`` (Everything else):
+- ``PUBLIC``: By default everything else that is not private.
   Always rendered and visible in HTML.
 
-- ``HIDDEN`` (Nothing by default):
+- ``HIDDEN``: Nothing is hidden by default.
   Not rendered at all and no links can be created to hidden objects. 
   Not present in the search index nor the intersphinx inventory.
   Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
 
-When the default rules regarding privacy doesn't fit the use case, you can use the following repeatable option::
+When the default rules regarding privacy doesn't fit your use case,
+use the `--privacy` command line option.
+It can be used multiple times to define multiple privacy rules::
 
   --privacy=<PRIVACY>:<PATTERN>
 
 where ``<PRIVACY>`` can be one of ``PUBLIC``, ``PRIVATE`` or ``HIDDEN`` (case insensitive), and ``<PATTERN>`` is fnmatch-like 
 pattern matching objects fullName.
 
-Pricavy tweak examples
+Privacy tweak examples
 ^^^^^^^^^^^^^^^^^^^^^^
 - ``--privacy="PUBLIC:**"``
   Makes everything public.
@@ -68,7 +71,7 @@ Pricavy tweak examples
 - ``--privacy="PRIVATE:**.__*__" --privacy="PUBLIC:**.__init__"``
   Makes all dunder methods private except ``__init__``.
 
-.. note:: The order of arguments matters. Pattern added last have priority over a pattern added before,
+.. important:: The order of arguments matters. Pattern added last have priority over a pattern added before,
   but an exact match wins over a fnmatch.
 
 .. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax.
