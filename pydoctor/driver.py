@@ -174,10 +174,13 @@ def getparser() -> OptionParser:
     )
     parser.add_option(
         '--privacy', action='append', dest='privacy',
-        metavar='PRIVACYPATTERN', default=[], type="privacy_tuple",
-        help=("Set the privacy of specific objects. "
-              "Format: '<privacy>:<match>', where <privacy> can be one of 'public', 'private' or 'hidden' (case insensitive), and <match> can be the fullName (or fnmatch pattern) of objects. "
-              "Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch. Can be repeated."))
+        metavar='<PRIVACY>:<MATCH>', default=[], type="privacy_tuple",
+        help=("Set the privacy of specific objects when default rules doesn't fit the use case. "
+              "Format: '<PRIVACY>:<MATCH>', where <PRIVACY> can be one of 'PUBLIC', 'PRIVATE' or "
+              "'HIDDEN' (case insensitive), and <MATCH> is fnmatch pattern matching objects fullName. "
+              "Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch. Can be repeated. "
+              "For instance, --privacy=\"public:twisted.test.proto_helpers*\" --privacy=\"private:twisted.test.*\" makes "
+              "all objects under module 'twisted.test' private expect module 'twisted.test.proto_helpers' and it's members."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"

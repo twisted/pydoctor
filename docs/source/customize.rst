@@ -32,6 +32,17 @@ HTML templates have their own versioning system and warnings will be triggered w
     This example is using new ``pydoctor`` option, ``--theme=base``. 
     This means that bootstrap CSS will not be copied to build directory.
 
+Override objects privacy (show/hide)
+------------------------------------
+
+When the default rules regarding privacy doesn't fit the use case, you can use the following repeatable option::
+
+  --privacy=<PRIVACY>:<MATCH>
+
+For instance, ``--privacy="private:pydoctor.test*"`` makes the module ``pydoctor.test`` and all objects under it private.
+
+See ``pydoctor --help`` for more informations.
+
 Use a custom system class
 -------------------------
 
