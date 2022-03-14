@@ -210,7 +210,10 @@ def test_lunr_index() -> None:
         test_search('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])
 
-def test_pydoctor_test_is_private():
+def test_pydoctor_test_is_hidden():
+    """
+    Test that option --privacy=HIDDEN:pydoctor.test makes everything under pydoctor.test HIDDEN.
+    """
 
     def getText(node: ET.Element) -> str:
         return ''.join(node.itertext()).strip().replace('\u200b', '')
@@ -229,4 +232,4 @@ def test_pydoctor_test_is_private():
                 # figure obj privacy
                 privacy = getText(liobj.findall('./div[@class=\'privacy\']')[0])
                 # check that it's indeed private
-                assert privacy == 'PRIVATE'
+                assert privacy == 'HIDDEN'
