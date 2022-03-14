@@ -175,8 +175,9 @@ def getparser() -> OptionParser:
     parser.add_option(
         '--privacy', action='append', dest='privacy',
         metavar='PRIVACYPATTERN', default=[], type="privacy_tuple",
-        help=("Format: '<privacy>:<match>', where <privacy> can be one of 'public', 'private' or 'hidden' (case insensitive), and <match> can be the fullName (or fnmatch pattern) of objects. "
-              "Can be repeated. Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch."))
+        help=("Set the privacy of specific objects. "
+              "Format: '<privacy>:<match>', where <privacy> can be one of 'public', 'private' or 'hidden' (case insensitive), and <match> can be the fullName (or fnmatch pattern) of objects. "
+              "Match priority: Use same order as the CLI arguments, an exact match wins over a fnmatch. Can be repeated."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"
