@@ -83,7 +83,9 @@ class PrivacyClass(Enum):
     HIDDEN = 0
     PRIVATE = 1
     PUBLIC = 2
-    
+    # For compatibility
+    VISIBLE = PUBLIC
+
 class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
