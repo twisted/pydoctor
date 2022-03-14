@@ -37,26 +37,18 @@ HTML templates have their own versioning system and warnings will be triggered w
 Override objects privacy (show/hide)
 ------------------------------------
 
-.. list-table:: Objects privacy
-  :header-rows: 1
+Pydoctor supports 3 types of privacy:
 
-  * - Privacy
-    - Behaviour
-    - Rule
+  - ``PRIVATE`` (If object name starts with an underscore and it's not a dunder method): 
+    Rendered in HTML, but hidden via CSS by default.
   
-  * - ``PRIVATE``
-    - Rendered in HTML, but hidden via CSS by default.
-    - If object name starts with an underscore and it does not start and end with double underscores.
-  
-  * - ``PUBLIC``
-    - Always rendered and visible in HTML.
-    - Everything else.
+  - ``PUBLIC`` (Everything else):
+    Always rendered and visible in HTML.
 
-  * - ``HIDDEN``
-    - Not rendered at all and no links can be created to hidden objects. 
-      Not present in the search index nor the intersphinx inventory.
-      Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
-    - Nothing by default.
+  - ``HIDDEN`` (Nothing by default):
+    Not rendered at all and no links can be created to hidden objects. 
+    Not present in the search index nor the intersphinx inventory.
+    Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
 
 When the default rules regarding privacy doesn't fit the use case, you can use the following repeatable option::
 
@@ -65,28 +57,25 @@ When the default rules regarding privacy doesn't fit the use case, you can use t
 where ``<PRIVACY>`` can be one of ``PUBLIC``, ``PRIVATE`` or ``HIDDEN`` (case insensitive), and ``<PATTERN>`` is fnmatch-like 
 pattern matching objects fullName.
 
-.. list-table:: Pricavy tweak examples
-  :header-rows: 1
-
-  * - Arguments
-    - Behaviour
-  
-  * - ```
-      --privacy="PUBLIC:**" \
-      ```
-    - Makes everything public.
-  
-  * - ```
-      --privacy="HIDDEN:twisted.test.*" \
-      --privacy="PUBLIC:twisted.test.proto_helpers" \
-      ```
-    - Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
-  
-  * - ```
-      --privacy="PRIVATE:**.__*__" \
-      --privacy="PUBLIC:**.__init__" \
-      ```
-    - Makes all dunder methods private except ``__init__``.
+Pricavy tweak examples
+^^^^^^^^^^^^^^^^^^^^^^
+- 
+  ```
+  --privacy="PUBLIC:**" 
+  ```
+  Makes everything public.
+-
+  ```
+  --privacy="HIDDEN:twisted.test.*" \
+  --privacy="PUBLIC:twisted.test.proto_helpers" \
+  ```
+  Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
+- 
+  ```
+  --privacy="PRIVATE:**.__*__" \
+  --privacy="PUBLIC:**.__init__" \
+  ```
+  Makes all dunder methods private except ``__init__``.
 
 .. note:: The order of arguments matters. Pattern added last have priority over a pattern added before,
   but an exact match wins over a fnmatch.
