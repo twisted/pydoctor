@@ -90,7 +90,8 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
-    f'--project-base-dir={_pydoctor_root}',
+    f'--project-base-dir={_pydoctor_root}', 
+    f'--config={_pydoctor_root}/pydoctor.ini',
 ]
 pydoctor_args = {
     'main': [
