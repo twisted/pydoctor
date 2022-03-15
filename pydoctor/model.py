@@ -15,24 +15,29 @@ import sys
 import types
 from enum import Enum
 from inspect import signature, Signature
-from optparse import Values
+from argparse import Namespace
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
 from collections import OrderedDict
 from urllib.parse import quote
+import functools
+
+import attr
 
 from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
-from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.sphinx import CacheT, SphinxInventory, USER_INTERSPHINX_CACHE
+from pydoctor.utils import parse_path, findClassFromDottedName, error, parse_privacy_tuple
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
     from pydoctor import epydoc2stan
+    from pydoctor.templatewriter import IWriter
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -620,9 +625,9 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase: Optional[str] = None
+    options: 'Options'
 
-    def __init__(self, options: Optional[Values] = None):
+    def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -637,7 +642,7 @@ class System:
             self.options = options
         else:
             from pydoctor.driver import parse_args
-            self.options, _ = parse_args([])
+            self.options = Options.from_namespace(parse_args([]))
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -664,24 +669,20 @@ class System:
         self._privacyClassCache: Dict[int, PrivacyClass] = {}
 
     @property
+    def sourcebase(self) -> Optional[str]:
+        return self.options.htmlsourcebase
+
+    @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
         return {obj.name for obj in self.rootobjects}
-
-    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
-        if isinstance(section, str):
-            section = (section,)
-        delta: int = max(self.options.verbosity_details.get(sect, 0)
-                         for sect in section)
-        base: int = self.options.verbosity
-        return base + delta
 
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
             d = str(i)
         else:
             d = f'{i}/{n}'
-        if self.verbosity(section) == 0 and sys.stdout.isatty():
+        if self.options.verbosity == 0 and sys.stdout.isatty():
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
@@ -711,7 +712,7 @@ class System:
             # on top of the logging system.
             self.violations += 1
 
-        if thresh <= self.verbosity(section) <= topthresh:
+        if thresh <= self.options.verbosity <= topthresh:
             if self.needsnl and wantsnl:
                 print()
             print(msg, end='')
@@ -846,6 +847,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
+            assert projBaseDir is not None
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
@@ -1102,3 +1104,94 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+# converters for model.Options values
+def _convert_sourcepath(l: List[str]) -> List[Path]:
+    return list(map(functools.partial(parse_path, opt='SOURCEPATH'), l))
+def _convert_templatedir(l: List[str]) -> List[Path]:
+    return list(map(functools.partial(parse_path, opt='--template-dir'), l))
+def _convert_projectbasedirectory(s: Optional[str]) -> Optional[Path]:
+    if s: return parse_path(s, opt='--project-base-dir')
+    else: return None
+def _convert_systemclass(s: str) -> Type[System]:
+    return findClassFromDottedName(s, '--system-class', base_class=System)
+def _convert_htmlwriter(s: str) -> Type['IWriter']:
+    from pydoctor.templatewriter import IWriter
+    return findClassFromDottedName(s, '--html-writer', base_class=IWriter) # type:ignore[misc]
+def _convert_privacy(l: List[str]) -> List[Tuple[PrivacyClass, str]]:
+    return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
+
+@attr.s(auto_attribs=True)
+class Options:
+    """
+    Container for all possible pydoctor options. 
+
+    See ``pydoctor --help`` for more informations. 
+    """
+    MAKE_HTML_DEFAULT = object()
+    
+    sourcepath: List[Path]                  = attr.ib(factory=list, converter=_convert_sourcepath)
+    systemclass: Type[System]               = attr.ib(default='pydoctor.zopeinterface.ZopeInterfaceSystem', #type: ignore[assignment] 
+                                                      converter=_convert_systemclass)                       # see https://github.com/python/mypy/issues/10998
+    projectname: Optional[str]              = None
+    projectversion: str                     = ''
+    projecturl: Optional[str]               = None
+    projectbasedirectory: Optional[Path]    = attr.ib(default=None, converter=_convert_projectbasedirectory)
+    testing: bool                           = False
+    pdb: bool                               = False # only working via driver.main()
+    makehtml: bool                          = False
+    makeintersphinx: bool                   = False
+    prependedpackage: Optional[str]         = None
+    docformat: str                          = 'epytext'
+    theme: str                              = 'classic'
+    processtypes: bool                      = False
+    templatedir: List[Path]                 = attr.ib(factory=list, converter=_convert_templatedir)
+    privacy: List[Tuple[PrivacyClass, str]] = attr.ib(factory=list, converter=_convert_privacy)
+    htmlsubjects: Optional[List[str]]       = None
+    htmlsummarypages: bool                  = False
+    htmloutput: str                         = 'apidocs' # TODO: make this a Path object once https://github.com/twisted/pydoctor/pull/389/files is merged
+    htmlwriter: Type['IWriter']             = attr.ib(default='pydoctor.templatewriter.TemplateWriter', #type: ignore[assignment]
+                                                      converter=_convert_htmlwriter)
+    htmlsourcebase: Optional[str]           = None
+    buildtime: Optional[str]                = None
+    warnings_as_errors: bool                = False
+    verbosity: int                          = 0
+    quietness: int                          = 0
+    introspect_c_modules: bool              = False
+    intersphinx: List[str]                  = attr.ib(factory=list)
+    enable_intersphinx_cache: bool          = False
+    intersphinx_cache_path: str             = USER_INTERSPHINX_CACHE
+    clear_intersphinx_cache: bool           = False
+    intersphinx_cache_max_age: str          = '1d'
+    pyvalreprlinelen: int                   = 80
+    pyvalreprmaxlines: int                  = 7
+
+    def __attrs_post_init__(self) -> None:
+        # do some validations
+        if self.htmlsourcebase:
+            if self.projectbasedirectory is None:
+                error("you must specify --project-base-dir "
+                        "when using --html-viewsource-base")
+
+    @classmethod
+    def from_namespace(cls, args: Namespace) -> 'Options':
+        argsdict = vars(args)
+
+        # set correct default for --make-html
+        if args.makehtml == cls.MAKE_HTML_DEFAULT:
+            if not args.testing and not args.makeintersphinx:
+                argsdict['makehtml'] = True
+            else:
+                argsdict['makehtml'] = False
+
+        # handle deprecated arguments
+        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--packages'), argsdict.pop('packages'))))
+        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--modules'), argsdict.pop('modules'))))
+
+        # remove deprecated arguments
+        argsdict.pop('enable_intersphinx_cache_deprecated')
+
+        # remove the config argument
+        argsdict.pop('config')
+        
+        return cls(**argsdict)
