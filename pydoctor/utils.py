@@ -1,7 +1,7 @@
 """General purpose utility functions."""
 from pathlib import Path
 import sys
-from typing import Type, TypeVar, Tuple, cast, TYPE_CHECKING
+from typing import Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydoctor import model
@@ -20,7 +20,7 @@ def error(msg: str, *args: object) -> NoReturn:
 def findClassFromDottedName(
         dottedname: str,
         optionname: str,
-        base_class: Type[T]
+        base_class: Union[str, Type[T]]
         ) -> Type[T]:
     """
     Looks up a class by full name.
@@ -37,6 +37,9 @@ def findClassFromDottedName(
         cls = getattr(mod, parts[1])
     except AttributeError:
         error("did not find %s in module %s", parts[1], parts[0])
+    if isinstance(base_class, str):
+        base_class = findClassFromDottedName(base_class, optionname, object) # type:ignore[arg-type]
+    assert isinstance(base_class, type)
     if not issubclass(cls, base_class):
         error("%s is not a subclass of %s", cls, base_class)
     return cast(Type[T], cls)

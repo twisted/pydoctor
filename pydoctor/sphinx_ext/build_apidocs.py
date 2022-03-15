@@ -33,7 +33,8 @@ from sphinx.errors import ConfigError
 from sphinx.util import logging
 
 from pydoctor import __version__
-from pydoctor.driver import main, parse_args
+from pydoctor.driver import main
+from pydoctor.options import parse_args
 
 
 logger = logging.getLogger(__name__)

@@ -12,6 +12,7 @@ import pytest
 
 from twisted.web.template import Tag
 
+from pydoctor.options import Options
 from pydoctor import model, stanutils
 from pydoctor.templatewriter import pages
 from pydoctor.utils import parse_privacy_tuple
@@ -78,7 +79,7 @@ def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
-    options = model.Options()
+    options = Options.defaults()
 
     sut = model.System(options=options)
 
@@ -89,7 +90,7 @@ def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
-    options = model.Options()
+    options = Options.defaults()
     options.intersphinx = []
     sut = model.System(options=options)
 
@@ -105,7 +106,7 @@ def test_fetchIntersphinxInventories_content() -> None:
     Download and parse intersphinx inventories for each configured
     intersphix.
     """
-    options = model.Options()
+    options = Options.defaults()
     options.intersphinx = [
         'http://sphinx/objects.inv',
         'file:///twisted/index.inv',
