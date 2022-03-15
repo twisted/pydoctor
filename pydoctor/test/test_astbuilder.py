@@ -517,7 +517,7 @@ def test_documented_no_alias(systemcls: Type[model.System]) -> None:
     P = mod.contents['Processor']
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert f.linenumber
 
@@ -980,7 +980,7 @@ def test_inline_docstring_classvar(systemcls: Type[model.System]) -> None:
     assert not f.docstring
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1001,7 +1001,7 @@ def test_inline_docstring_annotated_classvar(systemcls: Type[model.System]) -> N
     assert sorted(C.contents.keys()) == ['_b', 'a']
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1047,7 +1047,7 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
         ]
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     assert a.kind is model.DocumentableKind.INSTANCE_VARIABLE
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
@@ -1055,17 +1055,17 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
     assert b.kind is model.DocumentableKind.INSTANCE_VARIABLE
     c = C.contents['c']
     assert c.docstring == """inline doc for c"""
-    assert c.privacyClass is model.PrivacyClass.VISIBLE
+    assert c.privacyClass is model.PrivacyClass.PUBLIC
     assert c.kind is model.DocumentableKind.INSTANCE_VARIABLE
     d = C.contents['d']
     assert d.docstring == """inline doc for d"""
-    assert d.privacyClass is model.PrivacyClass.VISIBLE
+    assert d.privacyClass is model.PrivacyClass.PUBLIC
     assert d.kind is model.DocumentableKind.INSTANCE_VARIABLE
     e = C.contents['e']
     assert not e.docstring
     f = C.contents['f']
     assert f.docstring == """inline doc for f"""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
@@ -1988,3 +1988,35 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
+    """
+    Code inside of C{if __name__ == '__main__'} should be skipped.
+    """
+    mod = fromText('''
+    foo = True
+
+    if __name__ == '__main__':
+        var = True
+
+        def fun():
+            pass
+
+        class Class:
+            pass
+
+    def bar():
+        pass
+    ''', modname='test', systemcls=systemcls)
+    assert tuple(mod.contents) == ('foo', 'bar')
+
+@systemcls_param
+def test_variable_named_like_current_module(systemcls: Type[model.System]) -> None:
+    """
+    Test for U{issue #474<https://github.com/twisted/pydoctor/issues/474>}.
+    """
+    mod = fromText('''
+    example = True
+    ''', systemcls=systemcls, modname="example")
+    assert 'example' in mod.contents

@@ -88,8 +88,10 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
         project_version='2.3.0',
         )
 
+class IgnoreSystem:
+    root_names = ()
 
-IGNORE_SYSTEM = cast(model.System, 'ignore-system')
+IGNORE_SYSTEM = cast(model.System, IgnoreSystem())
 """Passed as a System when we don't want the system to be accessed."""
 
 
@@ -574,7 +576,7 @@ def test_ClosingBytesIO() -> None:
 
     assert cbio.closed
 
-    assert b''.join(buffer) == data #type:ignore[unreachable]
+    assert b''.join(buffer) == data # type:ignore[unreachable]
 
 
 class TestIntersphinxCache:
@@ -728,7 +730,7 @@ def test_prepareCache(
     cacheDirectory.mkdir(exist_ok=True)
     for child in cacheDirectory.iterdir():
         child.unlink()
-    with open(cacheDirectory / cacheDirectoryName, 'w'):
+    with open(cacheDirectory / cacheDirectoryName, 'w', encoding='utf-8'):
         pass
 
     try:

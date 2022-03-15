@@ -14,12 +14,11 @@ from pydoctor.templatewriter.pages import Page
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from typing_extensions import Final
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        tags.code(epydoc2stan.taglink(module, page_url, label=module.name)), ' - ',
         epydoc2stan.format_summary(module)
         )
     if module.isPrivate:
@@ -278,23 +277,6 @@ class IndexPage(Page):
         return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) != 1:
-            return []
-        else:
-            root, = self.system.rootobjects
-            return tag.clear()(
-                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
-
-    @renderer
-    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) == 1:
-            return []
-        else:
-            return tag
-
-    @renderer
     def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
@@ -348,10 +330,13 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: 'Final[Iterable[Type[Page]]]' = [
-    ModuleIndexPage,
-    ClassIndexPage,
-    IndexPage,
-    NameIndexPage,
-    UndocumentedSummaryPage,
+def summaryPages(system: model.System) -> Iterable[Type[Page]]:
+    pages = [
+        ModuleIndexPage,
+        ClassIndexPage,
+        NameIndexPage,
+        UndocumentedSummaryPage,
     ]
+    if len(system.root_names) > 1:
+        pages.append(IndexPage)
+    return pages

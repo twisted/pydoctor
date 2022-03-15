@@ -46,10 +46,10 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
             if fn in ("twisted.python.deprecate.deprecated",
                       "twisted.python.deprecate.deprecatedProperty"):
                 break
-        
+
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
+        stan = doc.to_stan(obj.docstringlinker)
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         for message in doc.warnings:
             obj.report(message)
@@ -61,7 +61,7 @@ def format_signature(function: model.Function) -> "Flattenable":
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature))
+    return html2stan(str(function.signature)) if function.signature else "(...)"
 
 class Nav(TemplateElement):
     """
@@ -412,25 +412,18 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        zipped = list(zip(self.ob.rawbases, self.ob.bases, self.ob.baseobjects))
+        _linker = self.ob.docstringlinker
+        zipped = list(zip(self.ob.rawbases, self.ob.bases))
         if zipped:
             r.append('(')
-            for idx, (name, full_name, base) in enumerate(zipped):
+            for idx, (name, full_name) in enumerate(zipped):
                 if idx != 0:
                     r.append(', ')
 
-                if base is None:
-                    # External class.
-                    url = self.ob.system.intersphinx.getLink(full_name)
-                else:
-                    # Internal class.
-                    url = base.url
-
-                if url is None:
-                    tag = tags.span
-                else:
-                    tag = tags.a(href=url)
-                r.append(tag(name, title=full_name))
+                # link to external class or internal class
+                tag = _linker.link_to(full_name, name)
+                    
+                r.append(tag(title=full_name))
             r.append(')')
         return r
 

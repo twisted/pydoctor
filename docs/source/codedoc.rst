@@ -293,6 +293,9 @@ Modules, classes and functions of which the name starts with an underscore are c
             This method is public.
             """
 
+.. note::
+    Pydoctor actually supports 3 types of privacy: public, private and hidden. 
+    See :ref:`Override objects privacy <customize-privacy>` for more informations.
 
 Re-exporting
 ------------
@@ -314,4 +317,4 @@ The content of ``my_project/__init__.py`` includes::
 
     from .core._impl import MyClass
 
-    __all__ = ["MyClass"]
+    __all__ = ("MyClass",)

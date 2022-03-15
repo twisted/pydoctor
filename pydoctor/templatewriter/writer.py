@@ -1,12 +1,13 @@
 """Badly named module that contains the driving code for the rendering."""
 
 
+import itertools
 from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
 from pydoctor import model
 from pydoctor.templatewriter import (
-    DOCTYPE, pages, summary, TemplateLookup, IWriter, StaticTemplate
+    DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
 )
 
 from twisted.python.failure import Failure
@@ -82,13 +83,31 @@ class TemplateWriter(IWriter):
 
     def writeSummaryPages(self, system: model.System) -> None:
         import time
-        for pclass in summary.summarypages:
+        for pclass in itertools.chain(summary.summaryPages(system), search.searchpages):
             system.msg('html', 'starting ' + pclass.__name__ + ' ...', nonl=True)
             T = time.time()
             page = pclass(system=system, template_lookup=self.template_lookup)
             with self.build_directory.joinpath(pclass.filename).open('wb') as fobj:
                 flattenToFile(fobj, page)
             system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+        
+        # Generate the searchindex.json file
+        system.msg('html', 'starting lunr search index ...', nonl=True)
+        T = time.time()
+        search.write_lunr_index(self.build_directory, system=system)
+        system.msg('html', "took %fs"%(time.time() - T), wantsnl=False)
+
+        if len(system.root_names) == 1:
+            # If there is just a single root module it is written to index.html to produce nicer URLs.
+            # To not break old links we also create a symlink from the full module name to the index.html
+            # file. This is also good for consistency: every module is accessible by <full module name>.html
+            root_module_path = (self.build_directory / (list(system.root_names)[0] + '.html'))
+            try:
+                root_module_path.unlink()
+                # not using missing_ok=True because that was only added in Python 3.8 and we still support Python 3.6
+            except FileNotFoundError:
+                pass
+            root_module_path.symlink_to('index.html')
 
     def _writeDocsFor(self, ob: model.Documentable) -> None:
         if not ob.isVisible:
@@ -97,7 +116,7 @@ class TemplateWriter(IWriter):
             if self.dry_run:
                 self.total_pages += 1
             else:
-                with self.build_directory.joinpath(f'{ob.fullName()}.html').open('wb') as fobj:
+                with self.build_directory.joinpath(ob.url).open('wb') as fobj:
                     self._writeDocsForOne(ob, fobj)
         for o in ob.contents.values():
             self._writeDocsFor(o)

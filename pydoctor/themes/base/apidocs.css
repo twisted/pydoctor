@@ -15,14 +15,6 @@ nav.navbar {
     margin-bottom: 0;
 }
 
-nav.navbar > .navbar-header {
-    margin-right: 0;
-    margin-left: 0;
-    height: 100%;
-    display: inline-block;
-    margin-right: 50px;
-}
-
 nav.mainnavbar > div.container-fluid {
     display: flex;
     flex-wrap: wrap;
@@ -36,6 +28,12 @@ nav div.layoutOptions {
     padding-top:11px;
 }
 
+nav.navbar .navbar-header {
+    float: none;
+    width: 100%;
+    position: relative;
+}
+
 .page-header {
     margin-top: 22px;
     position: sticky;
@@ -47,7 +45,8 @@ nav div.layoutOptions {
     background-color: #fff;
     margin-bottom: 3px;
     border-bottom: 0;
-    box-shadow: 5px 0px 8px 8px #fff;
+    box-shadow: 0 0 8px 8px #fff;
+    z-index: 99;
 }
 
 .navbar-brand {
@@ -88,6 +87,7 @@ a.projecthome:hover {
 .navlinks > a {
     padding: 10px 0 10px 15px;
 }
+
 
 .navlinks > a:hover {
     background-color: transparent;
@@ -313,31 +313,31 @@ ul ul ul ul ul ul ul {
     }
 }
 
-tr.package {
+table .package {
     background-color: #fff3e0;
 }
 
-tr.module {
+table .module {
     background-color: #fff8e1;
 }
 
-tr.class, tr.classvariable, tr.baseclassvariable {
+table .class, table .classvariable, table .baseclassvariable {
     background-color: #fffde7;
 }
 
-tr.instancevariable, tr.baseinstancevariable, tr.variable, tr.attribute, tr.property {
+table .instancevariable, table .baseinstancevariable, table .variable, table .attribute, table .property {
     background-color: #f3e5f5;
 }
 
-tr.interface {
+table .interface {
     background-color: #fbe9e7;
 }
 
-tr.method, tr.function, tr.basemethod, tr.baseclassmethod, tr.classmethod {
+table .method, table .function, table .basemethod, table .baseclassmethod, table .classmethod {
     background-color: #f1f8e9;
 }
 
-tr.private {
+table .private {
     background-color: #f1f1f1;
 }
 
@@ -350,6 +350,11 @@ tr.private {
     margin: 10px;
     padding: 10px;
     padding-bottom: 5px;
+    display: block;
+    border-left-color: #03a9f4;
+    border-left-width: 1px;
+    border-left-style: solid;
+    background: #fafafa;
 }
 
 .functionBody {
@@ -379,9 +384,7 @@ tr.private {
 /*
 - Links to class/function/etc names are nested like this:
     <code><a>label</a></code>
-  This applies to inline docstring content marked up as code,
-  for example L{foo} in epytext or `bar` in restructuredtext,
-  but also to links that are present in summary tables.
+  
 - 'functionHeader' is used for lines like `def func():` and `var =`
 */
 code, .literal, .pre, #childList > div .functionHeader,
@@ -391,16 +394,36 @@ code, .literal, .pre, #childList > div .functionHeader,
 code, #childList > div .functionHeader, .fieldArg {
     color: #222222;
 }
-code > a, #childList > div .functionHeader a {
+
+/* Intersphinx links are not red, but simply blue */
+a.intersphinx-link {
+    color: #03458a;
+    background-color: #f0ebe694;
+}
+
+/* Links to objects within the system use this special css.
+This applies to inline docstring content marked up as code,
+  for example L{foo} in epytext or `bar` in restructuredtext,
+  but also to links that are present in summary tables.
+*/
+a.internal-link {
     color:#c7254e;
     background-color:#f9f2f4;
 }
+
 /* top navagation bar */
 .page-header > h1 {
     margin-top: 0;
 }
 .page-header > h1 > code {
     color: #971c3a;
+}
+
+/* Bootstart 3.x sets font-size to 17.5px which just
+   looks ridiculously large, so we unset it here.
+*/
+blockquote {
+    font-size: unset;
 }
 
 /*
@@ -421,12 +444,7 @@ a.sourceLink {
 }
 
 
-#childList > div {
-    border-left-color: #03a9f4;
-    border-left-width: 1px;
-    border-left-style: solid;
-    background: #fafafa;
-}
+
 
 .moduleDocstring {
     margin: 20px;
@@ -450,8 +468,10 @@ pre {
 body.private-hidden #splitTables .private,
 body.private-hidden #childList .private,
 body.private-hidden #summaryTree .private,
-body.private-hidden nav.sidebar .private {
-    display: none;
+body.private-hidden nav.sidebar .private,
+body.private-hidden #search-results .private,
+body.private-hidden .container > .private {
+    display: none!important;
 }
 
 /* Show private and other options */ 
@@ -961,6 +981,102 @@ input.tocChildrenToggle {
 .rst-versionmodified {
     display: block;
     font-weight: bold;
+}
+
+/* Search */
+
+/* clears the ‘X’ from search input for Chrome */
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration { display: none; }
+
+.navlinks > #search-box-container {
+    padding: 0 0 8px 15px;
+    align-self: flex-end;
+    margin-left: auto;
+    display: none;
+}
+
+#search-results {
+    margin-top: 5px;
+}
+
+#search-results tr{
+    display:block;
+    border-bottom: 0.5px solid #CCC;
+}
+
+#search-results tr {
+    border-bottom: 1px #ddd solid;
+    padding-bottom: 1px;
+}
+
+#search-results tr td {
+    border-left: 1px #ddd solid;
+    padding: 2px;
+}
+
+#search-results tr td:first-child {
+    width: 120px;
+}
+
+#search-results tr:last-child{
+    border-bottom: none;
+}
+
+#search-results tr article, #search-results tr article *{
+    display:inline;
+}
+
+#search-results section {
+    padding: 5px 0 0 8px;
+}
+
+#search-help-button {
+    background-color: #e6e6e6;
+}
+
+.search-help-hidden #search-help-box{
+    display: none!important;
+}
+
+.search-help-hidden #search-help-button{
+    background-color: #fff!important;
+}
+
+#search-results-container {
+    padding: 10px;
+    width: 100%;
+    max-width: 850px;
+    max-height: calc(100vh - 70px);
+    right: 0;
+    position: absolute;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    background-color: #fbfbfb;
+    border: 1px solid #CCC;
+    border-radius: 4px;
+    z-index: 500;
+    margin-top: -9px;
+    word-break: break-word;
+}
+
+#search-status{
+    padding-bottom:2px;
+}
+
+#search-buttons{
+    float: right;
+}
+
+#search-buttons > span {
+    padding: 0.3em 0.4em 0.4em;
+}
+
+#toggle-search-in-docstrings-checkbox{
+    margin-top: -2.5px;
+    cursor: pointer;
 }
 
 /* Constant values repr */

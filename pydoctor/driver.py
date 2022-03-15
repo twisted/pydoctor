@@ -84,9 +84,23 @@ def parse_path(option: Option, opt: str, value: str) -> Path:
     except Exception as ex:
         raise OptionValueError(f"{opt}: invalid path: {ex}")
 
+def parse_privacy_tuple(option: Option, opt: str, val:str) -> Tuple[model.PrivacyClass, str]:
+    """
+    Parse string like 'public:match*' to a tuple (PrivacyClass.PUBLIC, 'match*').
+    """
+    parts = val.split(':')
+    if len(parts)!=2:
+        raise OptionValueError(f"{opt}: malformatted value {val!r} should be like '<privacy>:<PATTERN>'.")
+    try:
+        priv = model.PrivacyClass[parts[0].strip().upper()]
+    except:
+        raise OptionValueError(f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}")
+    else:
+        return (priv, parts[1].strip())
+
 class CustomOption(Option):
-    TYPES = Option.TYPES + ("path",)
-    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path)
+    TYPES = Option.TYPES + ("path","privacy_tuple")
+    TYPE_CHECKER = dict(Option.TYPE_CHECKER, path=parse_path, privacy_tuple=parse_privacy_tuple)
 
 def getparser() -> OptionParser:
     parser = OptionParser(
@@ -141,10 +155,10 @@ def getparser() -> OptionParser:
         '--prepend-package', action='store', dest='prependedpackage',
         help=("Pretend that all packages are within this one.  "
               "Can be used to document part of a package."))
-    _docformat_choices = get_supported_docformats()
+    _docformat_choices = list(get_supported_docformats())
     parser.add_option(
         '--docformat', dest='docformat', action='store', default='epytext',
-        type="choice", choices=list(_docformat_choices),
+        type="choice", choices=_docformat_choices,
         help=("Format used for parsing docstrings. "
              f"Supported values: {', '.join(_docformat_choices)}"),
              metavar='FORMAT')
@@ -158,6 +172,13 @@ def getparser() -> OptionParser:
         choices=list(get_themes()) ,
         help=("The theme to use when building your API documentation. "),
     )
+    parser.add_option(
+        '--privacy', action='append', dest='privacy',
+        metavar='<PRIVACY>:<PATTERN>', default=[], type="privacy_tuple",
+        help=("Set the privacy of specific objects when default rules doesn't fit the use case. "
+              "Format: '<PRIVACY>:<PATTERN>', where <PRIVACY> can be one of 'PUBLIC', 'PRIVATE' or "
+              "'HIDDEN' (case insensitive), and <PATTERN> is fnmatch-like pattern matching objects fullName. "
+              "Pattern added last have priority over a pattern added before, but an exact match wins over a fnmatch. Can be repeated."))
     parser.add_option(
         '--html-subject', dest='htmlsubjects', action='append',
         help=("The fullName of objects to generate API docs for"
@@ -281,7 +302,7 @@ def getparser() -> OptionParser:
 
 def readConfigFile(options: Values) -> None:
     # this is all a bit horrible.  rethink, then rewrite!
-    for i, line in enumerate(open(options.configfile)):
+    for i, line in enumerate(open(options.configfile, encoding='utf-8')):
         line = line.strip()
         if not line or line.startswith('#'):
             continue

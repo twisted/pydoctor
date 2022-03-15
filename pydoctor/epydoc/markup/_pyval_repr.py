@@ -43,12 +43,12 @@ import sre_constants
 from inspect import signature
 from typing import Any, AnyStr, Union, Callable, Dict, Iterable, Sequence, Optional, List, Tuple, cast
 
-import sre_parse36 #https://github.com/tristanlatr/sre_parse36
 import attr
 import astor.op_util
 from docutils import nodes, utils
 from twisted.web.template import Tag
 
+from pydoctor.epydoc import sre_parse36
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
@@ -236,7 +236,19 @@ def _str_escape(s: str) -> str:
         elif c == "\\": 
             c = r'\\'
         return c
-    return ''.join(map(enc, s))
+
+    # Escape it
+    s = ''.join(map(enc, s))
+
+    # Ensures there is no funcky caracters (like surrogate unicode strings)
+    try:
+        s.encode('utf-8')
+    except UnicodeEncodeError:
+        # Otherwise replace them with backslashreplace
+        s = s.encode('utf-8', 'backslashreplace').decode('utf-8')
+    
+    return s
+
 def _bytes_escape(b: bytes) -> str:
     return repr(b)[2:-1]
 
