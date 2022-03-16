@@ -5,7 +5,7 @@ Command line options
 --------------------
 
 .. argparse::
-   :ref: pydoctor.driver.get_parser
+   :ref: pydoctor.options.get_parser
    :prog: pydoctor
    :nodefault:
 
