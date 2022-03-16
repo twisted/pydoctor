@@ -1124,7 +1124,7 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth != 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return toc.to_stan(_EpydocLinker(obj))
+                return toc.to_stan(obj.docstringlinker)
     return None
 
 
