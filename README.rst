@@ -75,7 +75,7 @@ in development
 * Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
 * Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
   module variable in order to focus on potential python code parsing errors.
-* Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <>`_).
+* Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <https://pydoctor.readthedocs.io/en/latest/help.html>`_).
 
 pydoctor 22.3.0
 ^^^^^^^^^^^^^^^
