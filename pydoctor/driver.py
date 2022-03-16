@@ -188,11 +188,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         # Print summary of docstring syntax errors
         if system.docstring_syntax_errors:
+            exitcode = 2
+
             def p(msg: str) -> None:
                 system.msg('docstring-summary', msg, thresh=-1, topthresh=1)
             p("these %s objects' docstrings contain syntax errors:"
                 %(len(system.docstring_syntax_errors),))
-            exitcode = 2
             for fn in sorted(system.docstring_syntax_errors):
                 p('    '+fn)
 
