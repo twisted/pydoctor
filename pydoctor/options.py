@@ -305,6 +305,7 @@ class Options:
     pyvalreprmaxlines:      int                                     = attr.ib()
 
     def __attrs_post_init__(self) -> None:
+        # FIXME: https://github.com/twisted/pydoctor/issues/441
         # do some validations
         if self.htmlsourcebase:
             if self.projectbasedirectory is None:
