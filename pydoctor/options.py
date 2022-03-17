@@ -95,7 +95,7 @@ class TomlConfigParser(ConfigFileParser):
             raise ConfigFileParserException("Couldn't parse TOML file: %s" % e)
 
         # convert to dict and filter based on section names
-        result = OrderedDict()
+        result: Dict[str, Any] = OrderedDict()
 
         for section in self.sections:
             data = get_toml_section(config, parse_toml_section_name(section))
