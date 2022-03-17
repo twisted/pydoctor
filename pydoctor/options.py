@@ -2,20 +2,26 @@
 Provides L{Options} container with high level factory methods.
 """
 
-from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
+from collections import OrderedDict
+import re
+from typing import Any, Dict, Sequence, List, Optional, Type, Tuple, TextIO, TYPE_CHECKING
 import sys
+import csv
 import functools
 from pathlib import Path
-
+import configparser
+from ast import literal_eval
 from argparse import SUPPRESS, Namespace
-from configargparse import ArgumentParser, ConfigparserConfigFileParser
+
+from configargparse import ArgumentParser, ConfigFileParserException, ConfigFileParser
 import attr
+import toml
 
 from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
-from pydoctor.utils import parse_path, findClassFromDottedName, error, parse_privacy_tuple
+from pydoctor.utils import parse_path, findClassFromDottedName, error, parse_privacy_tuple, partialclass
 
 if TYPE_CHECKING:
     from pydoctor import model
@@ -24,10 +30,162 @@ if TYPE_CHECKING:
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 
-# DEFAULT_CONFIG_FILES = ['./setup.cfg', './pyproject.toml', './pydoctor.ini']
-DEFAULT_CONFIG_FILES = ['./pydoctor.ini']
+DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.toml', './pydoctor.ini']
+CONFIG_SECTIONS = ['tool.pydoctor', 'tool:pydoctor', 'pydoctor']
 
 __all__ = ("Options", )
+
+# CONFIGURATION PARSING
+
+_QUOTED_STR_REGEX = re.compile(r'(^\"(?:\\.|[^\"\\])*\"$)|'
+                               r'(^\'(?:\\.|[^\'\\])*\'$)')
+                               # older version (not very strong): (^\'\'\'(\s+)?(((?!\'\'\').)*)?(\s+)?\'\'\'$)
+_TRIPLE_QUOTED_STR_REGEX = re.compile(r'(^\"\"\"(\s+)?(([^\"]|\"([^\"]|\"[^\"]))*(\"\"?)?)?(\s+)?(?:\\.|[^\"\\])?\"\"\"$)|'
+                                                                                                 # Unescaped quotes at the end of a string generates 
+                                                                                                 # "SyntaxError: EOL while scanning string literal", 
+                                                                                                 # so we don't account for those kind of strings as quoted.
+                                      r'(^\'\'\'(\s+)?(([^\']|\'([^\']|\'[^\']))*(\'\'?)?)?(\s+)?(?:\\.|[^\'\\])?\'\'\'$)', flags=re.DOTALL)
+
+def _is_quoted(text:str) -> bool:
+    return bool(_QUOTED_STR_REGEX.match(text)) or \
+        bool(_TRIPLE_QUOTED_STR_REGEX.match(text))
+
+def unquote_str(text:str) -> str:
+    """
+    Unquote a maybe quoted string representation. 
+    If it the string is not detected as being a quoted representation
+    It processes all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
+    """
+    if _is_quoted(text):
+        s = literal_eval(text)
+        assert isinstance(s, str)
+        return s
+    return text
+
+def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
+    section = []
+    for row in csv.reader([section_name], delimiter='.'):
+        for a in row:
+            section.append(unquote_str(a.strip()))
+    return tuple(section)
+
+def get_toml_section(tomldata:Dict[str, Any], section:Tuple[str, ...]) -> Optional[Dict[str, Any]]:
+    itemdata = tomldata.get(section[0])
+    if not itemdata:
+        return None
+    section = section[1:]
+    if section:
+        return get_toml_section(itemdata, section)
+    else:
+        assert isinstance(itemdata, dict), f"No section named {'.'.join(repr(section))}. Got field value instead."
+        return itemdata
+
+class TomlConfigParser(ConfigFileParser):
+
+    def __init__(self, sections:List[str]) -> None:
+        super().__init__()
+        self.sections = sections #[parse_toml_section_name(s) for s in  sections]
+
+    def parse(self, stream:TextIO) -> Dict[str, Any]:
+        """Parses the keys and values from a TOML config file."""
+        # parse with configparser to allow multi-line values
+        try:
+            config = toml.load(stream)
+        except Exception as e:
+            raise ConfigFileParserException("Couldn't parse TOML file: %s" % e)
+
+        # convert to dict and filter based on section names
+        result = OrderedDict()
+
+        for section in self.sections:
+            data = get_toml_section(config, parse_toml_section_name(section))
+            if data:
+                result.update(data)
+                break
+        
+        return result
+
+    def get_syntax_description(self) -> str:
+        return ("Config file syntax is Tom's Obvious, Minimal Language. "
+                "See https://github.com/toml-lang/toml/blob/v0.5.0/README.md for details.")
+
+class IniConfigParser(ConfigFileParser):
+    
+    def __init__(self, sections:List[str]) -> None:
+        super().__init__()
+        self.sections = sections
+
+    def parse(self, stream:TextIO) -> Dict[str, Any]:
+        """Parses the keys and values from an INI config file."""
+        # parse with configparser to allow multi-line values
+        config = configparser.ConfigParser()
+        try:
+            config.read_string(stream.read())
+        except Exception as e:
+            raise ConfigFileParserException("Couldn't parse INI file: %s" % e)
+
+        # convert to dict and filter based on INI section names
+        result = OrderedDict()
+        for section in config.sections() + [configparser.DEFAULTSECT]:
+            if section not in self.sections:
+                continue
+            for k,v in config[section].items():
+                sv = v.strip()
+                # evaluate lists
+                # evaluate dicts 
+                if sv.startswith('[') and sv.endswith(']') or \
+                   sv.startswith('{') and sv.endswith('}'):
+                    try:
+                        result[k] = literal_eval(sv)
+                    except ValueError:
+                        # error evaluating object
+                        result[k] = v
+                else:
+                    # evaluate quoted string
+                    try:
+                        result[k] = unquote_str(sv)
+                    except ValueError:
+                        # error evaluating string
+                        result[k] = v
+        return result
+
+    def get_syntax_description(self) -> str:
+        return ("Uses configparser module to parse an INI file which allows multi-line values. "
+                "See https://docs.python.org/3/library/configparser.html for details. "
+                "This parser includes support for quoting strings literal as well as python dict and list syntax evaluation. ")
+
+class CompositeConfigParser(ConfigFileParser):
+    """
+    A config parser that is composed by others L{ConfigFileParser}s.  
+
+    Successively tries to parse the file with each parser, until it succeeds, else raise execption with all encountered errors. 
+    """
+
+    def __init__(self, parsers: List[Type[ConfigFileParser]]) -> None:
+        super().__init__()
+        self.parsers = [p() for p in parsers]
+
+    def parse(self, stream:TextIO) -> Dict[str, Any]:
+        errors = []
+        for p in self.parsers:
+            try:
+                return p.parse(stream) # type: ignore[no-any-return]
+            except Exception as e:
+                stream.seek(0)
+                errors.append(e)
+        raise ConfigFileParserException(
+                f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
+    
+    def get_syntax_description(self) -> str:
+        msg = "Uses multiple config parser settings (in order): \n"
+        for parser in self.parsers: 
+            msg += f"- {parser.__class__.__name__}: {parser.get_syntax_description()} \n"
+        return msg
+
+def get_config_parser_class(sections:List[str]) -> Type[ConfigFileParser]:
+    return partialclass(CompositeConfigParser, 
+        parsers=[partialclass(TomlConfigParser, sections=sections), 
+                 partialclass(IniConfigParser, sections=sections)] )
 
 # ARGUMENTS PARSING
 
@@ -37,7 +195,7 @@ def get_parser() -> ArgumentParser:
         description="API doc generator.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
-        config_file_parser_class=ConfigparserConfigFileParser)
+        config_file_parser_class=get_config_parser_class(CONFIG_SECTIONS))
     parser.add_argument(
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
