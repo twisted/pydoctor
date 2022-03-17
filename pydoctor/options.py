@@ -53,8 +53,8 @@ def _is_quoted(text:str) -> bool:
 def unquote_str(text:str) -> str:
     """
     Unquote a maybe quoted string representation. 
-    If it the string is not detected as being a quoted representation
-    It processes all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
+    If the string is not detected as being a quoted representation, it returns the same string as passed.
+    It supports all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
     """
     if _is_quoted(text):
         s = literal_eval(text)
