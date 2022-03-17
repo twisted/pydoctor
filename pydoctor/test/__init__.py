@@ -1,11 +1,10 @@
 """PyDoctor's test suite."""
 
 from logging import LogRecord
-from typing import Any, Iterable, TYPE_CHECKING, Optional, Sequence, Type
+from typing import Iterable, TYPE_CHECKING, Optional, Sequence
 import sys
 import pytest
 from pathlib import Path
-import functools
 
 from twisted.web.template import Tag, tags
 
@@ -95,12 +94,3 @@ class NotFoundLinker(DocstringLinker):
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None
-
-def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
-    # mypy gets errors: - Variable "cls" is not valid as a type
-    #                   - Invalid base class "cls" 
-    class NewCls(cls): #type: ignore
-        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
-        __class__ = cls
-    assert isinstance(NewCls, type)
-    return NewCls

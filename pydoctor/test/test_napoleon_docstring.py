@@ -12,7 +12,7 @@ from textwrap import dedent
 from pydoctor.napoleon.docstring import (GoogleDocstring as _GoogleDocstring, 
         NumpyDocstring as _NumpyDocstring, 
         TokenType, TypeDocstring, is_type, is_google_typed_arg)
-from pydoctor.test import partialclass
+from pydoctor.utils import partialclass
 
 import sphinx.ext.napoleon as sphinx_napoleon
 
