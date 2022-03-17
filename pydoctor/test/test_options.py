@@ -5,8 +5,8 @@ from io import StringIO
 
 
 from pydoctor import model
-from pydoctor.options import get_config_parser_class, parse_toml_section_name, unquote_str, _is_quoted, Options, CONFIG_SECTIONS
-
+from pydoctor.options import PydoctorConfigParser, Options
+from pydoctor._configparser import parse_toml_section_name, _is_quoted, unquote_str
 from pydoctor.test.epydoc.test_pyval_repr import color2
 from pydoctor.test import FixtureRequest, TempPathFactory
 
@@ -206,7 +206,7 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
         # colons to defined key pairs are not supported in TOML
         return
 
-    parser = get_config_parser_class(CONFIG_SECTIONS)()
+    parser = PydoctorConfigParser()
     stream = StringIO(project_conf + '\n' + pydoctor_conf)
     data = parser.parse(stream)
 
