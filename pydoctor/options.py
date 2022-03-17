@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 BUILDTIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 
-DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.toml', './pydoctor.ini']
+DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.ini']
 CONFIG_SECTIONS = ['tool.pydoctor', 'tool:pydoctor', 'pydoctor']
 
 __all__ = ("Options", )
@@ -195,7 +195,8 @@ def get_parser() -> ArgumentParser:
         description="API doc generator.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
-        config_file_parser_class=get_config_parser_class(CONFIG_SECTIONS))
+        config_file_parser_class=get_config_parser_class(CONFIG_SECTIONS), 
+        ignore_unknown_config_file_keys=True,)
     parser.add_argument(
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
