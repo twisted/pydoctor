@@ -40,6 +40,10 @@ def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
     assert isinstance(NewCls, type)
     return NewCls
 
+# I did not invented these regex, just put together some stuff from:
+# - https://stackoverflow.com/questions/11859442/how-to-match-string-in-quotes-using-regex
+# - and https://stackoverflow.com/a/41005190
+
 _QUOTED_STR_REGEX = re.compile(r'(^\"(?:\\.|[^\"\\])*\"$)|'
                                r'(^\'(?:\\.|[^\'\\])*\'$)')
 
