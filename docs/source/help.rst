@@ -18,17 +18,46 @@ Currently, positional arguments cannot be configured with a file.
 By convention, the config file resides on the root of your repository. 
 
 Pydoctor automatically integrates with common project files ``./pyproject.toml`` or ``./setup.cfg`` and loads file ``./pydoctor.ini`` if if exists.
-You can set a different config file path with option ``--config``. 
 
-The configuration parser supports TOML and INI formats.
+.. note:: No path processing is done to determine the project root directory, pydoctor only looks at the current working directory. 
+    You can set a different config file path with option ``--config``, this is necessary to load project configuration files from Sphinx's ``conf.py``.
 
-.. note:: INI parser note
+The configuration parser supports TOML and INI formats. 
+
+.. note:: 
     The INI parser includes support for quoting strings literal as well as python list syntax evaluation for repeatable options. 
     It will use ``configparser`` module to parse an INI file which allows multi-line values.
     Allowed syntax is that for a ``ConfigParser`` with the default options.See `the configparser docs`__ for details.          
 
+``pydoctor.ini``
+^^^^^^^^^^^^^^^^
+
+If more than one config file exists, ``./pydoctor.ini`` overrides values from other config files. 
+Declaring section ``[pydoctor]`` is required. 
+
+:: 
+
+    [pydoctor]
+    privacy = ["HIDDEN:pydoctor.test"]
+    quiet = 1
+
+``pyproject.toml``
+^^^^^^^^^^^^^^^^^^
+
+``pyproject.toml`` are considered for configuration when they contain a ``tool.pydoctor`` table.
+
+:: 
+
+    [tool.pydoctor]
+    pyvalreprmaxlines = 0
+    docformat = "restructuredtext"
+    project-name = "MyProject"
+    project-url = "https://github.com/twisted/pydoctor"
+
 ``setup.cfg``
 ^^^^^^^^^^^^^
+
+``setup.cfg`` can also be used to hold pydoctor configuration if they have a ``[tool:pydoctor]`` section.
 
 :: 
 
@@ -39,46 +68,11 @@ The configuration parser supports TOML and INI formats.
                     "https://requests.readthedocs.io/en/latest/objects.inv",
                     "https://www.attrs.org/en/stable/objects.inv",
                     "https://tristanlatr.github.io/apidocs/docutils/objects.inv"]
-    docformat = restructuredtext
-    project-name = MyProject
-    project-url = https://github.com/twisted/pydoctor
-
-``pyproject.toml``
-^^^^^^^^^^^^^^^^^^
-
-:: 
-
-    [tool.pydoctor]
-    intersphinx = ["https://docs.python.org/3/objects.inv",
-                    "https://twistedmatrix.com/documents/current/api/objects.inv",
-                    "https://urllib3.readthedocs.io/en/latest/objects.inv",
-                    "https://requests.readthedocs.io/en/latest/objects.inv",
-                    "https://www.attrs.org/en/stable/objects.inv",
-                    "https://tristanlatr.github.io/apidocs/docutils/objects.inv"]
-    docformat = "restructuredtext"
-    project-name = "MyProject"
-    project-url = "https://github.com/twisted/pydoctor"
-
-``pydoctor.ini``
-^^^^^^^^^^^^^^^^
-
-:: 
-
-    [pydoctor]
-    intersphinx = ["https://docs.python.org/3/objects.inv",
-                    "https://twistedmatrix.com/documents/current/api/objects.inv",
-                    "https://urllib3.readthedocs.io/en/latest/objects.inv",
-                    "https://requests.readthedocs.io/en/latest/objects.inv",
-                    "https://www.attrs.org/en/stable/objects.inv",
-                    "https://tristanlatr.github.io/apidocs/docutils/objects.inv"]
-    docformat = restructuredtext
-    project-name = MyProject
-    project-url = https://github.com/twisted/pydoctor
+    verbose = 1
+    warnings_as_errors = true
 
 .. Note:: If an argument is specified in more than one place, 
     then commandline values override config file values which override defaults.
-
-.. Note:: If more than one config file exists, ``./pydoctor.ini`` overrides values from other config files.
 
 __ https://github.com/bw2/ConfigArgParse
 __ https://docs.python.org/3/library/configparser.html

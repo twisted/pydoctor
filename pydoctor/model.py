@@ -694,6 +694,16 @@ class System:
             wantsnl: bool = True,
             once: bool = False
             ) -> None:
+        """
+        Log a message. pydoctor's logging system is bit messy.
+        
+        @param section: API doc generation step this message belongs to.
+        @param msg: The message.
+        @param tresh: The minimum verbosity level of the system for this message to actually be printed.
+            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
+            Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+        @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
+        """
         if once:
             if (section, msg) in self.once_msgs:
                 return
