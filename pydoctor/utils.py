@@ -1,7 +1,8 @@
 """General purpose utility functions."""
 from pathlib import Path
 import sys
-from typing import Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
+import functools
+from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydoctor import model
@@ -81,3 +82,15 @@ def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]
         error(f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}")
     else:
         return (priv, parts[1].strip())
+
+def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
+    """
+    Bind a class to be created with some predefined __init__ arguments.
+    """
+    # mypy gets errors: - Variable "cls" is not valid as a type
+    #                   - Invalid base class "cls" 
+    class NewCls(cls): #type: ignore
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
+        __class__ = cls
+    assert isinstance(NewCls, type)
+    return NewCls
