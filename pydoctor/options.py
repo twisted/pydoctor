@@ -303,7 +303,7 @@ def get_parser() -> ArgumentParser:
         help="Process the 'type' and 'rtype' fields, add links and inline markup automatically. "
             "This settings should not be enabled when using google or numpy docformat because the types are always processed by default.",)
     parser.add_argument(
-        '-W', '--warnings-as-errors', action='store_true',
+        '--warnings-as-errors', '-W', action='store_true',
         dest='warnings_as_errors', default=False,
         help=("Return exit code 3 on warnings."))
     parser.add_argument(
@@ -510,3 +510,4 @@ class Options:
         argsdict.pop('config')
         
         return cls(**argsdict)
+        
