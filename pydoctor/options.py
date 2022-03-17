@@ -159,7 +159,7 @@ class IniConfigParser(ConfigFileParser):
     def get_syntax_description(self) -> str:
         return ("Uses configparser module to parse an INI file which allows multi-line values. "
                 "See https://docs.python.org/3/library/configparser.html for details. "
-                "This parser includes support for quoting strings literal as well as python dict and list syntax evaluation. ")
+                "This parser includes support for quoting strings literal as well as python list syntax evaluation. ")
 
 class CompositeConfigParser(ConfigFileParser):
     """
