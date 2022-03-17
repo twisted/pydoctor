@@ -1432,11 +1432,11 @@ def test_line_wrapping() -> None:
     <inline classes="variable-ellipsis">
         ...\n"""
 
-def color2(v: Any) -> str:
+def color2(v: Any, linelen:int=50) -> str:
     """
     Pain text colorize.
     """
-    colorizer = PyvalColorizer(linelen=50, maxlines=5)
+    colorizer = PyvalColorizer(linelen=linelen, maxlines=5)
     colorized = colorizer.colorize(v)
     text1 = ''.join(gettext(colorized.to_node()))
     text2 = flatten_text(html2stan(flatten(colorized.to_stan(NotFoundLinker()))))
