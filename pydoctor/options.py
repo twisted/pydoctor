@@ -84,7 +84,7 @@ class TomlConfigParser(ConfigFileParser):
 
     def __init__(self, sections:List[str]) -> None:
         super().__init__()
-        self.sections = sections #[parse_toml_section_name(s) for s in  sections]
+        self.sections = sections
 
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         """Parses the keys and values from a TOML config file."""
