@@ -21,6 +21,7 @@ from collections import OrderedDict
 import re
 from typing import Any, Dict, List, Optional, Type, Tuple, TextIO
 import csv
+import functools
 import configparser
 from ast import literal_eval
 
