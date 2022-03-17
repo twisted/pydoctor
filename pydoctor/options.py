@@ -100,7 +100,16 @@ class TomlConfigParser(ConfigFileParser):
         for section in self.sections:
             data = get_toml_section(config, parse_toml_section_name(section))
             if data:
-                result.update(data)
+                # Seems a little weird, but anything that is not a list is converted to string, 
+                # It will be converted back to boolean, int or whatever after.
+                # Because config values are still passed to argparser for computation.
+                for key, value in data.items():
+                    if isinstance(value, list):
+                        result[key] = value
+                    elif value is None:
+                        pass
+                    else:
+                        result[key] = str(value)
                 break
         
         return result
@@ -132,9 +141,7 @@ class IniConfigParser(ConfigFileParser):
             for k,v in config[section].items():
                 sv = v.strip()
                 # evaluate lists
-                # evaluate dicts 
-                if sv.startswith('[') and sv.endswith(']') or \
-                   sv.startswith('{') and sv.endswith('}'):
+                if sv.startswith('[') and sv.endswith(']'):
                     try:
                         result[k] = literal_eval(sv)
                     except ValueError:
@@ -300,7 +307,7 @@ def get_parser() -> ArgumentParser:
         dest='warnings_as_errors', default=False,
         help=("Return exit code 3 on warnings."))
     parser.add_argument(
-        '--verbose', '-v',action='count', dest='verbosity',
+        '--verbose', '-v', action='count', dest='verbosity',
         default=0,
         help=("Be noisier.  Can be repeated for more noise."))
     parser.add_argument(

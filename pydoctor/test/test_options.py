@@ -1,10 +1,14 @@
+from pathlib import Path
 import pytest
 import requests
 from io import StringIO
 
-from pydoctor.options import get_config_parser_class, parse_toml_section_name, unquote_str, _is_quoted, CONFIG_SECTIONS
+
+from pydoctor import model
+from pydoctor.options import get_config_parser_class, parse_toml_section_name, unquote_str, _is_quoted, Options, CONFIG_SECTIONS
 
 from pydoctor.test.epydoc.test_pyval_repr import color2
+from pydoctor.test import FixtureRequest, TempPathFactory
 
 def test_unquote_str() -> None:
 
@@ -132,6 +136,9 @@ intersphinx = ["https://docs.python.org/3/objects.inv",
 docformat = 'restructuredtext'
 project-name = 'MyProject'
 project-url = "https://github.com/twisted/pydoctor"
+privacy = ["HIDDEN:pydoctor.test"]
+quiet = 1
+warnings-as-errors = true
 """, # toml/ini
 
 """
@@ -145,6 +152,9 @@ intersphinx = ["https://docs.python.org/3/objects.inv",
 docformat = "restructuredtext"
 project-name = "MyProject"
 project-url = "https://github.com/twisted/pydoctor"
+privacy = ["HIDDEN:pydoctor.test"]
+quiet = 1
+warnings-as-errors = true
 """, # toml/ini
 
 """
@@ -158,6 +168,9 @@ intersphinx = ["https://docs.python.org/3/objects.inv",
 docformat = restructuredtext
 project-name = MyProject
 project-url = https://github.com/twisted/pydoctor
+privacy = ["HIDDEN:pydoctor.test"]
+quiet = 1
+warnings-as-errors = true
 """, # ini only
 
 """
@@ -171,12 +184,20 @@ intersphinx: ["https://docs.python.org/3/objects.inv",
 docformat: restructuredtext
 project-name: MyProject
 project-url: '''https://github.com/twisted/pydoctor'''
+privacy = ["HIDDEN:pydoctor.test"]
+quiet = 1
+warnings-as-errors = true
 """, # ini only
 ]
 
+@pytest.fixture(scope='module')
+def tempDir(request: FixtureRequest, tmp_path_factory: TempPathFactory) -> Path:
+    name = request.module.__name__.split('.')[-1]
+    return tmp_path_factory.mktemp(f'{name}-cache')
+
 @pytest.mark.parametrize('project_conf', [EXAMPLE_TOML_CONF, EXAMPLE_INI_CONF])
 @pytest.mark.parametrize('pydoctor_conf', PYDOCTOR_SECTIONS)
-def test_config_parsers(project_conf:str, pydoctor_conf:str) -> None:
+def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> None:
 
     if '[tool:pydoctor]' in pydoctor_conf and '[tool.poetry]' in project_conf:
         # colons in section names are not supported in TOML (without quotes)
@@ -193,3 +214,12 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str) -> None:
     assert data['project-url'] == 'https://github.com/twisted/pydoctor', data
     assert len(data['intersphinx']) == 6, data
     
+    conf_file = (tempDir / "pydoctor_temp_conf")
+    
+    with conf_file.open('w') as f:
+        f.write(project_conf + '\n' + pydoctor_conf)
+
+    options = Options.from_args([f"--config={conf_file}"])
+    assert options.verbosity == -1
+    assert options.warnings_as_errors == True
+    assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
