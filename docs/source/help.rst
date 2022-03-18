@@ -23,11 +23,6 @@ The configuration parser supports `TOML <https://github.com/toml-lang/toml/blob/
 .. note:: No path processing is done to determine the project root directory, pydoctor only looks at the current working directory. 
     You can set a different config file path with option ``--config``, this is necessary to load project configuration files from Sphinx's ``conf.py``.
 
-.. note:: 
-    The INI parser includes support for quoting strings literal as well as python list syntax evaluation for repeatable options. 
-    Inside INI files, plain multiline values will be converted to list, each non-empty line will be converted to a list item.
-    Allowed syntax is that for a ``ConfigParser`` with the default options. See `the configparser docs <https://docs.python.org/3/library/configparser.html>`_ for details.          
-
 ``pydoctor.ini``
 ^^^^^^^^^^^^^^^^
 
@@ -36,10 +31,15 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [pydoctor]
+    intersphinx = 
+        https://docs.python.org/3/objects.inv
+        https://twistedmatrix.com/documents/current/api/objects.inv
+    docformat = restructuredtext
+    verbose = 1
+    warnings-as-errors = true
     privacy = 
         HIDDEN:pydoctor.test
         PUBLIC:pydoctor._configparser
-    quiet = 1
 
 ``pyproject.toml``
 ^^^^^^^^^^^^^^^^^^
@@ -49,12 +49,15 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [tool.pydoctor]
-    pyval-repr-maxlines = 0
-    docformat = "restructuredtext"
-    project-name = "MyProject"
-    project-url = "https://github.com/twisted/pydoctor"
     intersphinx = ["https://docs.python.org/3/objects.inv", 
                    "https://twistedmatrix.com/documents/current/api/objects.inv"]
+    docformat = "restructuredtext"
+    verbose = 1
+    warnings-as-errors = true
+    privacy = ["HIDDEN:pydoctor.test",
+               "PUBLIC:pydoctor._configparser",]
+
+Note that the config file fragment above is also valid INI format and could be parsed from a ``setup.cfg`` file successfully.
 
 ``setup.cfg``
 ^^^^^^^^^^^^^
@@ -67,15 +70,24 @@ Declaring section ``[pydoctor]`` is required.
     intersphinx = 
         https://docs.python.org/3/objects.inv
         https://twistedmatrix.com/documents/current/api/objects.inv
-        https://urllib3.readthedocs.io/en/latest/objects.inv
-        https://requests.readthedocs.io/en/latest/objects.inv
-        https://www.attrs.org/en/stable/objects.inv
-        https://tristanlatr.github.io/apidocs/docutils/objects.inv
+    docformat = restructuredtext
     verbose = 1
     warnings-as-errors = true
+    privacy = 
+        HIDDEN:pydoctor.test
+        PUBLIC:pydoctor._configparser
+
+.. Note:: Repeatable arguments must be defined as list. 
 
 .. Note:: If an argument is specified in more than one place, 
     then command line values override config file values which override defaults.
     If more than one config file exists, ``pydoctor.ini`` overrides values from 
     ``pyproject.toml`` which overrrides ``setup.cfg``. Repeatable options are not 
     merged together, there are overriden as well. 
+
+.. note:: 
+    The INI parser behaves like :py:class:`configargparse:configargparse.ConfigparserConfigFileParser` in addition that it 
+    converts plain multiline values to list, each non-empty line will be converted to a list item.
+    If for some reason you need newlines in a string value, just tripple quote your string like you would do in python. 
+    
+    Allowed syntax is that for a :py:class:`std:configparser.ConfigParser` with the default options.

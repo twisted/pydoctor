@@ -59,6 +59,8 @@ spelling_word_list_filename = 'spelling_wordlist.txt'
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
+    'configargparse': ('https://bw2.github.io/ConfigArgParse/', None),
+    'std': ('https://docs.python.org/3/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
