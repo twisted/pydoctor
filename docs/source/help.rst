@@ -85,9 +85,15 @@ Note that the config file fragment above is also valid INI format and could be p
     ``pyproject.toml`` which overrrides ``setup.cfg``. Repeatable options are not 
     merged together, there are overriden as well. 
 
-.. note:: 
+.. Note:: 
     The INI parser behaves like :py:class:`configargparse:configargparse.ConfigparserConfigFileParser` in addition that it 
     converts plain multiline values to list, each non-empty line will be converted to a list item.
     If for some reason you need newlines in a string value, just tripple quote your string like you would do in python. 
     
     Allowed syntax is that for a :py:class:`std:configparser.ConfigParser` with the default options.
+
+.. Note:: 
+    Last note: pydoctor has always supported a ``--config`` option, but before 2022, the format was undocumentd and rather fragile.
+    This new configuration format breaks compatibility with older config file in two main ways: 
+        - Options names are now the same as argument without the leading ``--`` (e.g ``project-name`` and not ``projectname``).
+        - Define repeatable options with multiline strings or list literals instead of commas separated string.
