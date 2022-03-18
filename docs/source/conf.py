@@ -105,15 +105,12 @@ pydoctor_args = {
         ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
-        '--project-name=pydoctor with a twisted theme',
         f'--project-version={version}',
-        '--docformat=epytext',
-        '--privacy=HIDDEN:pydoctor.test',
-        '--project-url=../customize.html',
-        '--theme=base',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
         f'{_pydoctor_root}/pydoctor',
-        ] + _common_args,
+        ] + _common_args + 
+            [f'--config={_pydoctor_root}/docs/source/custom_template_demo/pyproject.toml',
+              '-qqq' ], # we don't want to hear any warnings from this custom template demo.
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext',
         '--project-name=pydoctor-epytext-demo',
