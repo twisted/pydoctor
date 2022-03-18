@@ -20,7 +20,7 @@ L{CompositeConfigParser} usage:
 """
 from collections import OrderedDict
 import re
-from typing import Any, Dict, List, Optional, Type, Tuple, TextIO
+from typing import Any, Callable, Dict, List, Optional, Tuple, TextIO, Union
 import csv
 import functools
 import configparser
@@ -28,18 +28,6 @@ from ast import literal_eval
 
 from configargparse import ConfigFileParserException, ConfigFileParser
 import toml
-
-def partialclass(cls: Type[Any], *args: Any, **kwds: Any) -> Type[Any]:
-    """
-    Bind a class to be created with some predefined __init__ arguments.
-    """
-    # mypy gets errors: - Variable "cls" is not valid as a type
-    #                   - Invalid base class "cls" 
-    class NewCls(cls): #type: ignore
-        __init__ = functools.partialmethod(cls.__init__, *args, **kwds) #type: ignore
-        __class__ = cls
-    assert isinstance(NewCls, type)
-    return NewCls
 
 # I did not invented these regex, just put together some stuff from:
 # - https://stackoverflow.com/questions/11859442/how-to-match-string-in-quotes-using-regex
@@ -55,45 +43,81 @@ _TRIPLE_QUOTED_STR_REGEX = re.compile(r'(^\"\"\"(\s+)?(([^\"]|\"([^\"]|\"[^\"]))
                                       r'(^\'\'\'(\s+)?(([^\']|\'([^\']|\'[^\']))*(\'\'?)?)?(\s+)?(?:\\.|[^\'\\])?\'\'\'$)', flags=re.DOTALL)
 
 @functools.lru_cache(maxsize=256, typed=True)
-def is_quoted(text:str) -> bool:
-    return bool(_QUOTED_STR_REGEX.match(text)) or \
-        bool(_TRIPLE_QUOTED_STR_REGEX.match(text))
+def is_quoted(text:str, triple:bool=True) -> bool:
+    """
+    Detect whether a string is a quoted representation. 
 
-def unquote_str(text:str) -> str:
+    @param triple: Also match tripple quoted strings.
+    """
+    return bool(_QUOTED_STR_REGEX.match(text)) or \
+        (triple and bool(_TRIPLE_QUOTED_STR_REGEX.match(text)))
+
+def unquote_str(text:str, triple:bool=True) -> str:
     """
     Unquote a maybe quoted string representation. 
     If the string is not detected as being a quoted representation, it returns the same string as passed.
     It supports all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
+
+    @param triple: Also unquote tripple quoted strings.
+    @raises ValueError: If the string is detected as beeing quoted but literal_eval() fails to evaluate it as string.
+        This would be a bug in the regex. 
     """
-    if is_quoted(text):
-        s = literal_eval(text)
-        assert isinstance(s, str)
+    if is_quoted(text, triple=triple):
+        try:
+            s = literal_eval(text)
+            assert isinstance(s, str)
+        except Exception as e:
+            raise ValueError(f"Error trying to unquote the quoted string: {text}: {e}") from e
         return s
     return text
 
 def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
+    """
+    Parse a TOML section name to a sequence of strings.
+
+    The following names are all valid: 
+
+    .. python::
+
+        "a.b.c"            # this is best practice -> returns ("a", "b", "c")
+        " d.e.f "          # same as [d.e.f] -> returns ("d", "e", "f")
+        " g .  h  . i "    # same as [g.h.i] -> returns ("g", "h", "i")
+        ' j . "ʞ" . "l" '  # same as [j."ʞ"."l"], double or simple quotes here are supported. -> returns ("j", "ʞ", "l")
+    """
     section = []
     for row in csv.reader([section_name], delimiter='.'):
         for a in row:
-            section.append(unquote_str(a.strip()))
+            section.append(unquote_str(a.strip(), triple=False))
     return tuple(section)
 
-def get_toml_section(tomldata:Dict[str, Any], section:Tuple[str, ...]) -> Optional[Dict[str, Any]]:
-    itemdata = tomldata.get(section[0])
+def get_toml_section(data:Dict[str, Any], section:Union[Tuple[str, ...], str]) -> Optional[Dict[str, Any]]:
+    """
+    Given some TOML data (as loaded with L{toml.load()}), returns the requested section of the data.
+    Returns C{None} if the section is not found.
+    """
+    sections = parse_toml_section_name(section) if isinstance(section, str) else section
+    itemdata = data.get(sections[0])
     if not itemdata:
         return None
-    section = section[1:]
-    if section:
-        return get_toml_section(itemdata, section)
+    sections = sections[1:]
+    if sections:
+        return get_toml_section(itemdata, sections)
     else:
-        assert isinstance(itemdata, dict), f"No section named {'.'.join(repr(section))}. Got field value instead."
+        if not isinstance(itemdata, dict):
+            return None
         return itemdata
 
-class _TomlConfigParser(ConfigFileParser):
+class TomlConfigParser(ConfigFileParser):
+    """
+    Create a TOML parser bounded to the list of provided sections.
+    """
 
-    def __init__(self, sections:List[str]) -> None:
+    def __init__(self, sections: List[str]) -> None:
         super().__init__()
         self.sections = sections
+    
+    def __call__(self) -> ConfigFileParser:
+        return self
 
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         """Parses the keys and values from a TOML config file."""
@@ -107,7 +131,7 @@ class _TomlConfigParser(ConfigFileParser):
         result: Dict[str, Any] = OrderedDict()
 
         for section in self.sections:
-            data = get_toml_section(config, parse_toml_section_name(section))
+            data = get_toml_section(config, section)
             if data:
                 # Seems a little weird, but anything that is not a list is converted to string, 
                 # It will be converted back to boolean, int or whatever after.
@@ -127,12 +151,19 @@ class _TomlConfigParser(ConfigFileParser):
         return ("Config file syntax is Tom's Obvious, Minimal Language. "
                 "See https://github.com/toml-lang/toml/blob/v0.5.0/README.md for details.")
 
-class _IniConfigParser(ConfigFileParser):
+class IniConfigParser(ConfigFileParser):
+    """
+    Create a INI parser bounded to the list of provided sections.
+    Optionaly convert multiline strings to list.
+    """
 
     def __init__(self, sections:List[str], split_ml_text_to_list:bool) -> None:
         super().__init__()
         self.sections = sections
         self.split_ml_text_to_list = split_ml_text_to_list
+
+    def __call__(self) -> ConfigFileParser:
+        return self
 
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         """Parses the keys and values from an INI config file."""
@@ -157,20 +188,24 @@ class _IniConfigParser(ConfigFileParser):
                 if strip_v.startswith('[') and strip_v.endswith(']'):
                     try:
                         result[k] = literal_eval(strip_v)
-                    except ValueError:
+                    except ValueError as e:
                         # error evaluating object
-                        result[k] = v
+                        raise ConfigFileParserException("Error evaluating list: " + str(e) + ". Put quotes around your text if it's meant to be a string.") from e
                 else:
                     if is_quoted(strip_v):
                         # evaluate quoted string
                         try:
                             result[k] = unquote_str(strip_v)
-                        except ValueError:
-                            # error evaluating string
-                            result[k] = v
+                        except ValueError as e:
+                            # error unquoting string
+                            raise ConfigFileParserException(str(e)) from e
                     # split multi-line text into list of strings if split_ml_text_to_list is enabled.
                     elif self.split_ml_text_to_list and '\n' in v.rstrip('\n'):
+                        try:
                             result[k] = [unquote_str(i) for i in strip_v.split('\n') if i]
+                        except ValueError as e:
+                            # error unquoting string
+                            raise ConfigFileParserException(str(e)) from e
                     else:
                         result[k] = v
         return result
@@ -184,16 +219,20 @@ class _IniConfigParser(ConfigFileParser):
                 "each non-empty line will be converted to a list item.")
         return msg
 
-class _CompositeConfigParser(ConfigFileParser):
+class CompositeConfigParser(ConfigFileParser):
     """
-    A config parser that is composed by others L{ConfigFileParser}s.  
+    Createa a config parser composed by others L{ConfigFileParser}s.  
 
-    Successively tries to parse the file with each parser, until it succeeds, else raise execption with all encountered errors. 
+    The composite parser will successively try to parse the file with each parser, 
+    until it succeeds, else raise execption with all encountered errors. 
     """
 
-    def __init__(self, config_parser_types: List[Type[ConfigFileParser]]) -> None:
+    def __init__(self, config_parser_types: List[Callable[[], ConfigFileParser]]) -> None:
         super().__init__()
         self.parsers = [p() for p in config_parser_types]
+
+    def __call__(self) -> ConfigFileParser:
+        return self
 
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         errors = []
@@ -215,18 +254,3 @@ class _CompositeConfigParser(ConfigFileParser):
         for i, parser in enumerate(self.parsers): 
             msg += f"[{i+1}] {guess_format_name(parser.__class__.__name__)}: {parser.get_syntax_description()} \n"
         return msg
-
-def TomlConfigParser(sections:List[str]) -> Type[ConfigFileParser]:
-    """Create a TOML parser class bounded to the list of provided sections."""
-    return partialclass(_TomlConfigParser, sections=sections)
-
-def IniConfigParser(sections:List[str], split_ml_text_to_list:bool=False) -> Type[ConfigFileParser]:
-    """Create a INI parser class bounded to the list of provided sections."""
-    return partialclass(_IniConfigParser, sections=sections, split_ml_text_to_list=split_ml_text_to_list)
-
-def CompositeConfigParser(config_parser_types: List[Type[ConfigFileParser]]) -> Type[ConfigFileParser]:
-    """
-    Create a composite parser: it will successively try to parse the file with each parser, 
-    until it succeeds, else raise execption with all encountered errors. 
-    """
-    return partialclass(_CompositeConfigParser, config_parser_types=config_parser_types)
