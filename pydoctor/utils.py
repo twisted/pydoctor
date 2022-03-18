@@ -1,6 +1,7 @@
 """General purpose utility functions."""
 from pathlib import Path
 import sys
+import functools
 from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
