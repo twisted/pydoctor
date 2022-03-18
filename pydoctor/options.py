@@ -34,7 +34,7 @@ __all__ = ("Options", )
 
 PydoctorConfigParser = CompositeConfigParser(
                 [TomlConfigParser(CONFIG_SECTIONS),
-                 IniConfigParser(CONFIG_SECTIONS)])
+                 IniConfigParser(CONFIG_SECTIONS, split_ml_text_to_list=True)])
 
 # ARGUMENTS PARSING
 

@@ -12,7 +12,7 @@ L{IniConfigParser} works exactly the same.
 L{CompositeConfigParser} usage:
 
 >>> TomlParser =  TomlConfigParser(['tool.my_super_tool'])
->>> IniParser = IniConfigParser(['tool:my_super_tool', 'my_super_tool'])
+>>> IniParser = IniConfigParser(['tool:my_super_tool', 'my_super_tool'], split_ml_text_to_list=True)
 >>> MixedParser = CompositeConfigParser([TomlParser, IniParser]) # This parser supports both TOML and INI formats.
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml', 'setup.cfg', 'my_super_tool.ini'], config_file_parser_class=MixedParser)
 
@@ -53,7 +53,8 @@ _TRIPLE_QUOTED_STR_REGEX = re.compile(r'(^\"\"\"(\s+)?(([^\"]|\"([^\"]|\"[^\"]))
                                                                                                  # so we don't account for those kind of strings as quoted.
                                       r'(^\'\'\'(\s+)?(([^\']|\'([^\']|\'[^\']))*(\'\'?)?)?(\s+)?(?:\\.|[^\'\\])?\'\'\'$)', flags=re.DOTALL)
 
-def _is_quoted(text:str) -> bool:
+@functools.lru_cache(maxsize=256, typed=True)
+def is_quoted(text:str) -> bool:
     return bool(_QUOTED_STR_REGEX.match(text)) or \
         bool(_TRIPLE_QUOTED_STR_REGEX.match(text))
 
@@ -63,7 +64,7 @@ def unquote_str(text:str) -> str:
     If the string is not detected as being a quoted representation, it returns the same string as passed.
     It supports all kinds of python quotes: C{\"\"\"}, C{'''}, C{"} and C{'}.
     """
-    if _is_quoted(text):
+    if is_quoted(text):
         s = literal_eval(text)
         assert isinstance(s, str)
         return s
@@ -126,10 +127,11 @@ class _TomlConfigParser(ConfigFileParser):
                 "See https://github.com/toml-lang/toml/blob/v0.5.0/README.md for details.")
 
 class _IniConfigParser(ConfigFileParser):
-    
-    def __init__(self, sections:List[str]) -> None:
+
+    def __init__(self, sections:List[str], split_ml_text_to_list:bool) -> None:
         super().__init__()
         self.sections = sections
+        self.split_ml_text_to_list = split_ml_text_to_list
 
     def parse(self, stream:TextIO) -> Dict[str, Any]:
         """Parses the keys and values from an INI config file."""
@@ -147,6 +149,9 @@ class _IniConfigParser(ConfigFileParser):
                 continue
             for k,v in config[section].items():
                 sv = v.strip()
+                if not sv:
+                    # ignores empty values, anyway allow_no_value=False by default so this should not happend.
+                    continue
                 # evaluate lists
                 if sv.startswith('[') and sv.endswith(']'):
                     try:
@@ -155,18 +160,29 @@ class _IniConfigParser(ConfigFileParser):
                         # error evaluating object
                         result[k] = v
                 else:
-                    # evaluate quoted string
-                    try:
-                        result[k] = unquote_str(sv)
-                    except ValueError:
-                        # error evaluating string
-                        result[k] = v
+                    if is_quoted(sv):
+                        # evaluate quoted string
+                        try:
+                            result[k] = unquote_str(sv)
+                        except ValueError:
+                            # error evaluating string
+                            result[k] = v
+                    # split multi-line text into list of strings 
+                    else:
+                        if self.split_ml_text_to_list and '\n' in v.rstrip('\n'):
+                            result[k] = [unquote_str(i) for i in sv.split('\n') if i]
+                        else:
+                            result[k] = v
         return result
 
     def get_syntax_description(self) -> str:
-        return ("Uses configparser module to parse an INI file which allows multi-line values. "
+        msg = ("Uses configparser module to parse an INI file which allows multi-line values. "
                 "See https://docs.python.org/3/library/configparser.html for details. "
                 "This parser includes support for quoting strings literal as well as python list syntax evaluation. ")
+        if self.split_ml_text_to_list:
+            msg += ("Alternatively lists can be constructed with a plain multiline string, "
+                "each non-empty line will be converted to a list item.")
+        return msg
 
 class _CompositeConfigParser(ConfigFileParser):
     """
@@ -191,18 +207,22 @@ class _CompositeConfigParser(ConfigFileParser):
                 f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
     
     def get_syntax_description(self) -> str:
+        def guess_format_name(classname:str) -> str:
+            return classname.strip('_').replace('Parser', 
+                '').replace('Config', '').replace('File', '').upper()
+        
         msg = "Uses multiple config parser settings (in order): \n"
-        for parser in self.parsers: 
-            msg += f"- {parser.__class__.__name__}: {parser.get_syntax_description()} \n"
+        for i, parser in enumerate(self.parsers): 
+            msg += f"[{i+1}] {guess_format_name(parser.__class__.__name__)}: {parser.get_syntax_description()} \n"
         return msg
 
 def TomlConfigParser(sections:List[str]) -> Type[ConfigFileParser]:
     """Create a TOML parser class bounded to the list of provided sections."""
     return partialclass(_TomlConfigParser, sections=sections)
 
-def IniConfigParser(sections:List[str]) -> Type[ConfigFileParser]:
+def IniConfigParser(sections:List[str], split_ml_text_to_list:bool=False) -> Type[ConfigFileParser]:
     """Create a INI parser class bounded to the list of provided sections."""
-    return partialclass(_IniConfigParser, sections=sections)
+    return partialclass(_IniConfigParser, sections=sections, split_ml_text_to_list=split_ml_text_to_list)
 
 def CompositeConfigParser(config_parser_types: List[Type[ConfigFileParser]]) -> Type[ConfigFileParser]:
     """

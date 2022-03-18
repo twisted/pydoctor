@@ -7,7 +7,7 @@ from io import StringIO
 
 from pydoctor import model
 from pydoctor.options import PydoctorConfigParser, Options
-from pydoctor._configparser import parse_toml_section_name, _is_quoted, unquote_str
+from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str
 from pydoctor.test.epydoc.test_pyval_repr import color2
 from pydoctor.test import FixtureRequest, TempPathFactory
 
@@ -35,8 +35,8 @@ def test_unquote_str() -> None:
 def test_unquote_naughty_quoted_strings() -> None:
     # See https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
     res = requests.get('https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt')
-
-    for i, string in enumerate(res.text.split('\n')):
+    text = res.text
+    for i, string in enumerate(text.split('\n')):
         if string.strip().startswith('#'):
             continue
 
@@ -58,7 +58,7 @@ def test_unquote_naughty_quoted_strings() -> None:
 
             assert unquote_str(unquote_str(naughty_string_quoted2_alt)) == string
 
-            if _is_quoted(string):
+            if is_quoted(string):
                 assert unquote_str(string) == string[1:-1]
             else:
                 assert unquote_str(string) == string
@@ -164,16 +164,18 @@ warnings-as-errors = true
 
 """
 [tool:pydoctor]
-intersphinx = ["https://docs.python.org/3/objects.inv",
-                "https://twistedmatrix.com/documents/current/api/objects.inv",
-                "https://urllib3.readthedocs.io/en/latest/objects.inv",
-                "https://requests.readthedocs.io/en/latest/objects.inv",
-                "https://www.attrs.org/en/stable/objects.inv",
-                "https://tristanlatr.github.io/apidocs/docutils/objects.inv"]
+intersphinx = 
+    https://docs.python.org/3/objects.inv
+    https://twistedmatrix.com/documents/current/api/objects.inv
+    https://urllib3.readthedocs.io/en/latest/objects.inv
+    "https://requests.readthedocs.io/en/latest/objects.inv"
+    "https://www.attrs.org/en/stable/objects.inv"
+    "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
 docformat = restructuredtext
 project-name = MyProject
 project-url = https://github.com/twisted/pydoctor
-privacy = ["HIDDEN:pydoctor.test"]
+privacy = 
+    HIDDEN:pydoctor.test
 quiet = 1
 warnings-as-errors = true
 """, # ini only
@@ -189,7 +191,8 @@ intersphinx: ["https://docs.python.org/3/objects.inv",
 docformat: restructuredtext
 project-name: MyProject
 project-url: '''https://github.com/twisted/pydoctor'''
-privacy = ["HIDDEN:pydoctor.test"]
+privacy = 
+    HIDDEN:pydoctor.test
 quiet = 1
 warnings-as-errors = true
 """, # ini only
@@ -228,6 +231,8 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.verbosity == -1
     assert options.warnings_as_errors == True
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
+    assert options.intersphinx[0] == "https://docs.python.org/3/objects.inv"
+    assert options.intersphinx[-1] == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
 
 def test_repeatable_options_multiple_configs_and_args(tempDir:Path) -> None:
     config1 = """

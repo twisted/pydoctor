@@ -25,7 +25,7 @@ The configuration parser supports `TOML <https://github.com/toml-lang/toml/blob/
 
 .. note:: 
     The INI parser includes support for quoting strings literal as well as python list syntax evaluation for repeatable options. 
-    It will use ``configparser`` module to parse an INI file which allows multi-line values.
+    Inside INI files, plain multiline values will be converted to list, each non-empty line will be converted to a list item.
     Allowed syntax is that for a ``ConfigParser`` with the default options. See `the configparser docs <https://docs.python.org/3/library/configparser.html>`_ for details.          
 
 ``pydoctor.ini``
@@ -36,7 +36,9 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [pydoctor]
-    privacy = ["HIDDEN:pydoctor.test"]
+    privacy = 
+        HIDDEN:pydoctor.test
+        PUBLIC:pydoctor._configparser
     quiet = 1
 
 ``pyproject.toml``
@@ -47,10 +49,12 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [tool.pydoctor]
-    pyvalreprmaxlines = 0
+    pyval-repr-maxlines = 0
     docformat = "restructuredtext"
     project-name = "MyProject"
     project-url = "https://github.com/twisted/pydoctor"
+    intersphinx = ["https://docs.python.org/3/objects.inv", 
+                   "https://twistedmatrix.com/documents/current/api/objects.inv"]
 
 ``setup.cfg``
 ^^^^^^^^^^^^^
@@ -60,14 +64,15 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [tool:pydoctor]
-    intersphinx = ["https://docs.python.org/3/objects.inv",
-                    "https://twistedmatrix.com/documents/current/api/objects.inv",
-                    "https://urllib3.readthedocs.io/en/latest/objects.inv",
-                    "https://requests.readthedocs.io/en/latest/objects.inv",
-                    "https://www.attrs.org/en/stable/objects.inv",
-                    "https://tristanlatr.github.io/apidocs/docutils/objects.inv"]
+    intersphinx = 
+        https://docs.python.org/3/objects.inv
+        https://twistedmatrix.com/documents/current/api/objects.inv
+        https://urllib3.readthedocs.io/en/latest/objects.inv
+        https://requests.readthedocs.io/en/latest/objects.inv
+        https://www.attrs.org/en/stable/objects.inv
+        https://tristanlatr.github.io/apidocs/docutils/objects.inv
     verbose = 1
-    warnings_as_errors = true
+    warnings-as-errors = true
 
 .. Note:: If an argument is specified in more than one place, 
     then command line values override config file values which override defaults.
