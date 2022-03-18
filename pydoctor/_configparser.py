@@ -7,7 +7,7 @@ L{TomlConfigParser} usage:
 >>> TomlParser = TomlConfigParser(['tool.my_super_tool']) # Simple TOML parser.
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml'], config_file_parser_class=TomlParser)
 
-L{IniConfigParser} works exactly the same. 
+L{IniConfigParser} works the same way (also it optionaly convert multiline strings to list with argument C{split_ml_text_to_list}).
 
 L{CompositeConfigParser} usage:
 
@@ -148,31 +148,30 @@ class _IniConfigParser(ConfigFileParser):
             if section not in self.sections:
                 continue
             for k,v in config[section].items():
-                sv = v.strip()
-                if not sv:
+                strip_v = v.strip()
+                if not strip_v:
                     # ignores empty values, anyway allow_no_value=False by default so this should not happend.
                     continue
                 # evaluate lists
-                if sv.startswith('[') and sv.endswith(']'):
+                if strip_v.startswith('[') and strip_v.endswith(']'):
                     try:
-                        result[k] = literal_eval(sv)
+                        result[k] = literal_eval(strip_v)
                     except ValueError:
                         # error evaluating object
                         result[k] = v
                 else:
-                    if is_quoted(sv):
+                    if is_quoted(strip_v):
                         # evaluate quoted string
                         try:
-                            result[k] = unquote_str(sv)
+                            result[k] = unquote_str(strip_v)
                         except ValueError:
                             # error evaluating string
                             result[k] = v
-                    # split multi-line text into list of strings 
+                    # split multi-line text into list of strings if split_ml_text_to_list is enabled.
+                    elif self.split_ml_text_to_list and '\n' in v.rstrip('\n'):
+                            result[k] = [unquote_str(i) for i in strip_v.split('\n') if i]
                     else:
-                        if self.split_ml_text_to_list and '\n' in v.rstrip('\n'):
-                            result[k] = [unquote_str(i) for i in sv.split('\n') if i]
-                        else:
-                            result[k] = v
+                        result[k] = v
         return result
 
     def get_syntax_description(self) -> str:
