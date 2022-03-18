@@ -95,6 +95,7 @@ Note that the config file fragment above is also valid INI format and could be p
 .. Note:: 
     Last note: pydoctor has always supported a ``--config`` option, but before 2022, the format was undocumentd and rather fragile.
     This new configuration format breaks compatibility with older config file in three main ways: 
-        - Options names are now the same as argument without the leading ``--`` (e.g ``project-name`` and not ``projectname``).
-        - Define repeatable options with multiline strings or list literals instead of commas separated string.
-        - Currently, positional arguments cannot be configured with a file.
+    
+    - Options names are now the same as argument without the leading ``--`` (e.g ``project-name`` and not ``projectname``).
+    - Define repeatable options with multiline strings or list literals instead of commas separated string.
+    - Currently, positional arguments cannot be configured with a file.
