@@ -11,8 +11,9 @@ L{IniConfigParser} works the same way (also it optionaly convert multiline strin
 
 L{CompositeConfigParser} usage:
 
->>> TomlParser =  TomlConfigParser(['tool.my_super_tool'])
->>> IniParser = IniConfigParser(['tool:my_super_tool', 'my_super_tool'], split_ml_text_to_list=True)
+>>> MY_CONFIG_SECTIONS = ['tool.my_super_tool', 'tool:my_super_tool', 'my_super_tool']
+>>> TomlParser =  TomlConfigParser(MY_CONFIG_SECTIONS)
+>>> IniParser = IniConfigParser(MY_CONFIG_SECTIONS, split_ml_text_to_list=True)
 >>> MixedParser = CompositeConfigParser([TomlParser, IniParser]) # This parser supports both TOML and INI formats.
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml', 'setup.cfg', 'my_super_tool.ini'], config_file_parser_class=MixedParser)
 
