@@ -31,7 +31,6 @@ The configuration parser supports `TOML <https://github.com/toml-lang/toml/blob/
 ``pydoctor.ini``
 ^^^^^^^^^^^^^^^^
 
-If more than one config file exists, ``./pydoctor.ini`` overrides values from other config files. 
 Declaring section ``[pydoctor]`` is required.
 
 :: 
@@ -71,4 +70,7 @@ Declaring section ``[pydoctor]`` is required.
     warnings_as_errors = true
 
 .. Note:: If an argument is specified in more than one place, 
-    then commandline values override config file values which override defaults.
+    then command line values override config file values which override defaults.
+    If more than one config file exists, ``pydoctor.ini`` overrides values from 
+    ``pyproject.toml`` which overrrides ``setup.cfg``. Repeatable options are not 
+    merged together, there are overriden as well. 

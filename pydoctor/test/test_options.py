@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pytest
 import requests
@@ -46,12 +47,16 @@ def test_unquote_naughty_quoted_strings() -> None:
         # (we insert \n such that we force the colorier to produce tripple quoted strings)
         naughty_string_quoted2 = color2(f"\n{string!r}", linelen=0) 
         assert naughty_string_quoted2.startswith("'''")
+
+        naughty_string_quoted2_alt = repr(f"{string!r}") 
         
         # test unquote that repr
         try:
             assert unquote_str(naughty_string_quoted) == string
 
             assert unquote_str(unquote_str(naughty_string_quoted2).strip()) == string
+
+            assert unquote_str(unquote_str(naughty_string_quoted2_alt)) == string
 
             if _is_quoted(string):
                 assert unquote_str(string) == string[1:-1]
@@ -223,3 +228,57 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     assert options.verbosity == -1
     assert options.warnings_as_errors == True
     assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
+
+def test_repeatable_options_multiple_configs_and_args(tempDir:Path) -> None:
+    config1 = """
+[pydoctor]
+intersphinx = ["https://docs.python.org/3/objects.inv"]
+verbose = 1
+"""
+    config2 = """
+[tool.pydoctor]
+intersphinx = ["https://twistedmatrix.com/documents/current/api/objects.inv"]
+verbose = -1
+project-version = 2050.4C
+"""
+    config3 = """
+[tool:pydoctor]
+intersphinx = ["https://requests.readthedocs.io/en/latest/objects.inv"]
+verbose = 0
+project-name = "Hello World!"
+"""
+
+    cwd = os.getcwd()
+    try:
+        conf_file1 = (tempDir / "pydoctor.ini")
+        conf_file2 = (tempDir / "pyproject.toml")
+        conf_file3 = (tempDir / "setup.cfg")
+
+        for cfg, file in zip([config1, config2, config3],[conf_file1, conf_file2, conf_file3]):
+            with open(file, 'w') as f:
+                f.write(cfg)
+        
+        os.chdir(tempDir)
+        options = Options.defaults()
+
+        assert options.verbosity == 1
+        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.projectname == "Hello World!"
+        assert options.projectversion == "2050.4C"
+
+        options = Options.from_args(['-vv'])
+
+        assert options.verbosity == 3 # I would have expected 2
+        assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
+        assert options.projectname == "Hello World!"
+        assert options.projectversion == "2050.4C"
+
+        options = Options.from_args(['-vv', '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv', '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv'])
+
+        assert options.verbosity == 3 # I would have expected 2
+        assert options.intersphinx == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
+        assert options.projectname == "Hello World!"
+        assert options.projectversion == "2050.4C"
+
+    finally:
+        os.chdir(cwd)
