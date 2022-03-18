@@ -33,11 +33,16 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from importlib import import_module
 from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
+from importlib import import_module
 from inspect import getmodulename
+
+from docutils import nodes
+from twisted.web.template import Tag
+
+from pydoctor import node2stan
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -46,14 +51,9 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-from docutils import nodes
-from twisted.web.template import Tag
-
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
-
-from pydoctor import node2stan
 
 ##################################################
 ## Contents

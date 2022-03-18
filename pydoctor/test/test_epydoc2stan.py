@@ -11,8 +11,9 @@ from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
 from pydoctor.sphinx import SphinxInventory
 from pydoctor.test.test_astbuilder import fromText, unwrap
-from pydoctor.test import CapSys, partialclass
+from pydoctor.test import CapSys
 from pydoctor.templatewriter.search import stem_identifier
+from pydoctor.utils import partialclass
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable

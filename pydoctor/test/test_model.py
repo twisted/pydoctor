@@ -2,20 +2,20 @@
 Unit tests for model.
 """
 
-from inspect import signature
-from optparse import Values
-import os
-from pathlib import Path, PurePosixPath, PureWindowsPath
 import subprocess
-from typing import cast
+import os
+from inspect import signature
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import cast, Optional
 import zlib
 import pytest
 
 from twisted.web.template import Tag
 
+from pydoctor.options import Options
 from pydoctor import model, stanutils
 from pydoctor.templatewriter import pages
-from pydoctor.driver import parse_args, parse_privacy_tuple
+from pydoctor.utils import parse_privacy_tuple
 from pydoctor.sphinx import CacheT
 from pydoctor.test import CapSys
 from pydoctor.test.test_astbuilder import fromText
@@ -23,9 +23,10 @@ from pydoctor.test.test_astbuilder import fromText
 
 class FakeOptions:
     """
-    A fake options object as if it came from that stupid optparse thing.
+    A fake options object as if it came from argparse.
     """
     sourcehref = None
+    htmlsourcebase: Optional[str] = None
     projectbasedirectory: Path
     docformat = 'epytext'
 
@@ -55,10 +56,8 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     options = FakeOptions()
     options.projectbasedirectory = projectBaseDir
-
-    system = model.System()
-    system.sourcebase = "http://example.org/trac/browser/trunk"
-    system.options = cast(Values, options)
+    options.htmlsourcebase = "http://example.org/trac/browser/trunk"
+    system = model.System(options) # type:ignore[arg-type]
     mod.system = system
     system.setSourceHref(mod, projectBaseDir / "package" / "module.py")
 
@@ -80,7 +79,7 @@ def test_initialization_options() -> None:
     """
     Can be initialized with options.
     """
-    options = cast(Values, object())
+    options = Options.defaults()
 
     sut = model.System(options=options)
 
@@ -91,11 +90,11 @@ def test_fetchIntersphinxInventories_empty() -> None:
     """
     Convert option to empty dict.
     """
-    options, _ = parse_args([])
+    options = Options.defaults()
     options.intersphinx = []
     sut = model.System(options=options)
 
-    sut.fetchIntersphinxInventories({})
+    sut.fetchIntersphinxInventories(cast('CacheT', {}))
 
     # Use internal state since I don't know how else to
     # check for SphinxInventory state.
@@ -107,7 +106,7 @@ def test_fetchIntersphinxInventories_content() -> None:
     Download and parse intersphinx inventories for each configured
     intersphix.
     """
-    options, _ = parse_args([])
+    options = Options.defaults()
     options.intersphinx = [
         'http://sphinx/objects.inv',
         'file:///twisted/index.inv',
@@ -368,7 +367,7 @@ def test_resolve_name_subclass(capsys:CapSys) -> None:
 ])
 def test_privacy_switch(privacy:object) -> None:
     s = model.System()
-    s.options.privacy = [parse_privacy_tuple(None, '--privacy', p) for p in privacy] # type:ignore
+    s.options.privacy = [parse_privacy_tuple(p, '--privacy') for p in privacy] # type:ignore
 
     fromText(
         """
