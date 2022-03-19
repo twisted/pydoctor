@@ -1,76 +1,12 @@
 import os
 from pathlib import Path
 import pytest
-import requests
 from io import StringIO
-
 
 from pydoctor import model
 from pydoctor.options import PydoctorConfigParser, Options
-from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str
-from pydoctor.test.epydoc.test_pyval_repr import color2
+
 from pydoctor.test import FixtureRequest, TempPathFactory
-
-def test_unquote_str() -> None:
-
-    assert unquote_str('string') == 'string'
-    assert unquote_str('"string') == '"string'
-    assert unquote_str('string"') == 'string"'
-    assert unquote_str('"string"') == 'string'
-    assert unquote_str('\'string\'') == 'string'
-    assert unquote_str('"""string"""') == 'string'
-    assert unquote_str('\'\'\'string\'\'\'') == 'string'
-    assert unquote_str('"""\nstring"""') == '\nstring'
-    assert unquote_str('\'\'\'string\n\'\'\'') == 'string\n'
-    assert unquote_str('"""\nstring  \n"""') == '\nstring  \n'
-    assert unquote_str('\'\'\'\n  string\n\'\'\'') == '\n  string\n'
-    
-    assert unquote_str('\'\'\'string') == '\'\'\'string'
-    assert unquote_str('string\'\'\'') == 'string\'\'\''
-    assert unquote_str('"""string') == '"""string'
-    assert unquote_str('string"""') == 'string"""'
-    assert unquote_str('"""str"""ing"""') == '"""str"""ing"""'
-    assert unquote_str('str\'ing') == 'str\'ing'
-
-def test_unquote_naughty_quoted_strings() -> None:
-    # See https://github.com/minimaxir/big-list-of-naughty-strings/blob/master/blns.txt
-    res = requests.get('https://raw.githubusercontent.com/minimaxir/big-list-of-naughty-strings/master/blns.txt')
-    text = res.text
-    for i, string in enumerate(text.split('\n')):
-        if string.strip().startswith('#'):
-            continue
-
-        # gerenerate two quoted version of the naughty string
-        # simply once
-        naughty_string_quoted = repr(string) 
-        # quoted twice, once with repr, once with our colorizer 
-        # (we insert \n such that we force the colorier to produce tripple quoted strings)
-        naughty_string_quoted2 = color2(f"\n{string!r}", linelen=0) 
-        assert naughty_string_quoted2.startswith("'''")
-
-        naughty_string_quoted2_alt = repr(f"{string!r}") 
-        
-        # test unquote that repr
-        try:
-            assert unquote_str(naughty_string_quoted) == string
-
-            assert unquote_str(unquote_str(naughty_string_quoted2).strip()) == string
-
-            assert unquote_str(unquote_str(naughty_string_quoted2_alt)) == string
-
-            if is_quoted(string):
-                assert unquote_str(string) == string[1:-1]
-            else:
-                assert unquote_str(string) == string
-
-        except Exception as e:
-            raise AssertionError(f'error with naughty string at line {i}: {e}') from e
-
-def test_parse_toml_section_keys() -> None:
-    assert parse_toml_section_name('tool.pydoctor') == ('tool', 'pydoctor')
-    assert parse_toml_section_name(' tool.pydoctor ') == ('tool', 'pydoctor')
-    assert parse_toml_section_name(' "tool".pydoctor ') == ('tool', 'pydoctor')
-    assert parse_toml_section_name(' tool."pydoctor" ') == ('tool', 'pydoctor')
 
 EXAMPLE_TOML_CONF = """
 [tool.poetry]
