@@ -92,7 +92,7 @@ def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
 
 def get_toml_section(data:Dict[str, Any], section:Union[Tuple[str, ...], str]) -> Optional[Dict[str, Any]]:
     """
-    Given some TOML data (as loaded with L{toml.load()}), returns the requested section of the data.
+    Given some TOML data (as loaded with C{toml.load()}), returns the requested section of the data.
     Returns C{None} if the section is not found.
     """
     sections = parse_toml_section_name(section) if isinstance(section, str) else section
@@ -109,7 +109,40 @@ def get_toml_section(data:Dict[str, Any], section:Union[Tuple[str, ...], str]) -
 
 class TomlConfigParser(ConfigFileParser):
     """
-    Create a TOML parser bounded to the list of provided sections.
+    U{TOML <https://github.com/toml-lang/toml/blob/main/toml.md>} parser with support for sections.
+
+    This config parser can be used to integrate with C{pyproject.toml} files.
+
+    Example::
+
+        # this is a comment
+        # this is TOML section table:
+        [tool.my-software] 
+        # how to specify a key-value pair
+        # strings must be quoted
+        format-string = "restructuredtext"
+        # how to set an arg which has action="store_true"
+        warnings-as-errors = true
+        # how to set an arg which has action="count" or type=int
+        verbosity = 1
+        # how to specify a list arg (eg. arg which has action="append")
+        repeatable-option = ["https://docs.python.org/3/objects.inv",
+                        "https://twistedmatrix.com/documents/current/api/objects.inv"]
+        # how to specify a multiline text:
+        multi-line-text = '''
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
+            Maecenas quis dapibus leo, a pellentesque leo. 
+            '''
+
+    Usage:
+
+    >>> import configargparse
+    >>> parser = configargparse.ArgParser(
+    ...             default_config_files=['pyproject.toml', 'my_super_tool.toml'],
+    ...             config_file_parser_class=configargparse.TomlConfigParser(['tool.my_super_tool']),
+    ...          )
+
     """
 
     def __init__(self, sections: List[str]) -> None:
@@ -153,8 +186,80 @@ class TomlConfigParser(ConfigFileParser):
 
 class IniConfigParser(ConfigFileParser):
     """
-    Create a INI parser bounded to the list of provided sections.
-    Optionaly convert multiline strings to list.
+    INI parser with support for sections.
+    
+    This parser somewhat ressembles L{configargparse.ConfigparserConfigFileParser}. It uses configparser and apply the same kind of processing to 
+    values written with python list syntax. 
+
+    With the following changes: 
+        - Must be created with argument to bind the parser to a list of sections.
+        - Does not convert multiline strings to single line.
+        - Optional support for converting multiline strings to list (if ``split_ml_text_to_list=True``). 
+        - Optional support for quoting strings in config file 
+            (useful when text must not be converted to list or when text 
+            should contain trailing whitespaces).
+        - Comments may appear on their own in an otherwise empty line (like in configparser).
+
+    This config parser can be used to integrate with ``setup.cfg`` files.
+
+    Example::
+
+        # this is a comment
+        ; also a comment
+        [my_super_tool]
+        # how to specify a key-value pair
+        format-string: restructuredtext 
+        # white space are ignored, so name = value same as name=value
+        # this is why you can quote strings (double quotes works just as well)
+        quoted-string = '\thello\tmom...  '
+        # how to set an arg which has action="store_true"
+        warnings-as-errors = true
+        # how to set an arg which has action="count" or type=int
+        verbosity = 1
+        # how to specify a list arg (eg. arg which has action="append")
+        repeatable-option = ["https://docs.python.org/3/objects.inv",
+                        "https://twistedmatrix.com/documents/current/api/objects.inv"]
+        # how to specify a multiline text:
+        multi-line-text = 
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
+            Maecenas quis dapibus leo, a pellentesque leo. 
+        # how to specify a empty text:
+        empty-text = 
+        # how to specify a empty list:
+        empty-list = []
+
+    If you use L{IniConfigParser(sections, split_ml_text_to_list=True)}, 
+    the same rules are applicable with the following changes::
+
+        [my-software]
+        # to specify a list arg (eg. arg which has action="append"), 
+        # just enter one value per line (the list literal format can still be used)
+        repeatable-option =
+            https://docs.python.org/3/objects.inv
+            https://twistedmatrix.com/documents/current/api/objects.inv
+        # to specify a multiline text, you have to quote it:
+        multi-line-text = '''
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+            Vivamus tortor odio, dignissim non ornare non, laoreet quis nunc. 
+            Maecenas quis dapibus leo, a pellentesque leo. 
+            '''
+        # how to specify a empty text:
+        empty-text = ''
+        # how to specify a empty list:
+        empty-list = []
+        # the following would be simply ignored because we can't 
+        # differenciate between simple value and list value without any data:
+        totally-ignored-field = 
+
+    Usage:
+
+    >>> import configargparse
+    >>> parser = configargparse.ArgParser(
+    ...             default_config_files=['setup.cfg', 'my_super_tool.ini'],
+    ...             config_file_parser_class=configargparse.IniConfigParser(['tool:my_super_tool', 'my_super_tool']),
+    ...          )
+
     """
 
     def __init__(self, sections:List[str], split_ml_text_to_list:bool) -> None:
@@ -181,7 +286,7 @@ class IniConfigParser(ConfigFileParser):
                 continue
             for k,v in config[section].items():
                 strip_v = v.strip()
-                if not strip_v:
+                if not strip_v and self.split_ml_text_to_list:
                     # ignores empty values, anyway allow_no_value=False by default so this should not happend.
                     continue
                 # evaluate lists
@@ -221,10 +326,25 @@ class IniConfigParser(ConfigFileParser):
 
 class CompositeConfigParser(ConfigFileParser):
     """
-    Createa a config parser composed by others L{ConfigFileParser}s.  
+    A config parser that understands multiple formats.
 
-    The composite parser will successively try to parse the file with each parser, 
-    until it succeeds, else raise execption with all encountered errors. 
+    This parser will successively try to parse the file with each compisite parser, until it succeeds, 
+    else it fails showing all encountered error messages.
+
+    The following code will make configargparse understand both TOML and INI formats. 
+    Making it easy to integrate in both C{pyproject.toml} and C{setup.cfg}.
+
+    >>> import configargparse
+    >>> my_tool_sections = ['tool.my_super_tool', 'tool:my_super_tool', 'my_super_tool']
+    ...                     # pyproject.toml like section, setup.cfg like section, custom section
+    >>> parser = configargparse.ArgParser(
+    ...             default_config_files=['setup.cfg', 'my_super_tool.ini'],
+    ...             config_file_parser_class=configargparse.CompositeConfigParser(
+    ...             [configargparse.TomlConfigParser(my_tool_sections), 
+    ...                 configargparse.IniConfigParser(my_tool_sections, split_ml_text_to_list=True)]
+    ...             ),
+    ...          )
+
     """
 
     def __init__(self, config_parser_types: List[Callable[[], ConfigFileParser]]) -> None:
@@ -246,11 +366,7 @@ class CompositeConfigParser(ConfigFileParser):
                 f"Error parsing config: {', '.join(repr(str(e)) for e in errors)}")
     
     def get_syntax_description(self) -> str:
-        def guess_format_name(classname:str) -> str:
-            return classname.strip('_').replace('Parser', 
-                '').replace('Config', '').replace('File', '').upper()
-        
         msg = "Uses multiple config parser settings (in order): \n"
         for i, parser in enumerate(self.parsers): 
-            msg += f"[{i+1}] {guess_format_name(parser.__class__.__name__)}: {parser.get_syntax_description()} \n"
+            msg += f"[{i+1}] {parser.__class__.__name__}: {parser.get_syntax_description()} \n"
         return msg
