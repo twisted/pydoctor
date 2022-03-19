@@ -1,7 +1,8 @@
 from io import StringIO
+from typing import Any, Dict, List
 import requests
 
-from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str, IniConfigParser, TomlConfigParser
+from pydoctor._configparser import parse_toml_section_name, is_quoted, unquote_str, IniConfigParser
 from pydoctor.test.epydoc.test_pyval_repr import color2
 
 def test_unquote_str() -> None:
@@ -65,7 +66,7 @@ def test_parse_toml_section_keys() -> None:
     assert parse_toml_section_name(' "tool".pydoctor ') == ('tool', 'pydoctor')
     assert parse_toml_section_name(' tool."pydoctor" ') == ('tool', 'pydoctor')
 
-IN_SIMPLE_STRINGS = [
+INI_SIMPLE_STRINGS: List[Dict[str, Any]] = [
     {'line': 'key = value # not_a_comment # not_a_comment',   'expected': ('key', 'value # not_a_comment # not_a_comment', None)}, # that's normal behaviour for configparser
     {'line': 'key=value#not_a_comment ',                'expected': ('key', 'value#not_a_comment', None)},
     {'line': 'key=value',                         'expected': ('key', 'value', None)},
@@ -82,7 +83,7 @@ IN_SIMPLE_STRINGS = [
     {'line': ' key  :  value ',                   'expected': ('key', 'value', None)},
 ]
 
-INI_QUOTED_STRINGS = [
+INI_QUOTED_STRINGS: List[Dict[str, Any]] = [
     {'line': 'key="value"',                       'expected': ('key', 'value', None)},
     {'line': 'key  =  "value"',                   'expected': ('key', 'value', None)},
     {'line': ' key  =  "value" ',                 'expected': ('key', 'value', None)},
@@ -116,7 +117,7 @@ INI_QUOTED_STRINGS = [
     {'line': " key  =  value ' ",                 'expected': ('key', "value '", None)},
 ]
 
-INI_BLANK_LINES = [
+INI_BLANK_LINES: List[Dict[str, Any]] = [
     {'line': 'key=',                              'expected': ('key', '', None)},
     {'line': 'key =',                             'expected': ('key', '', None)},
     {'line': 'key= ',                             'expected': ('key', '', None)},
@@ -131,7 +132,7 @@ INI_BLANK_LINES = [
     {'line': ' key  :   ',                        'expected': ('key', '', None)},
 ]
 
-INI_EQUAL_SIGN_VALUE = [
+INI_EQUAL_SIGN_VALUE: List[Dict[str, Any]] = [
     {'line': 'key=:',                             'expected': ('key', ':', None)},
     {'line': 'key =:',                            'expected': ('key', ':', None)},
     {'line': 'key= :',                            'expected': ('key', ':', None)},
@@ -158,7 +159,7 @@ INI_EQUAL_SIGN_VALUE = [
     {'line': ' key  :  : ',                       'expected': ('key', ':', None)},
 ]
 
-INI_NEGATIVE_VALUES = [
+INI_NEGATIVE_VALUES: List[Dict[str, Any]] = [
     {'line': 'key = -10',                       'expected': ('key', '-10', None)},
     {'line': 'key : -10',                       'expected': ('key', '-10', None)},
     # {'line': 'key -10',                         'expected': ('key', '-10', None)}, # Not supported
@@ -167,7 +168,7 @@ INI_NEGATIVE_VALUES = [
     {'line': 'key=-10',                         'expected': ('key', '-10', None)},
 ]
 
-INI_KEY_SYNTAX_EMPTY = [
+INI_KEY_SYNTAX_EMPTY: List[Dict[str, Any]] = [
     {'line': 'key_underscore=',                   'expected': ('key_underscore', '', None)},
     {'line': '_key_underscore=',                  'expected': ('_key_underscore', '', None)},
     {'line': 'key_underscore_=',                  'expected': ('key_underscore_', '', None)},
@@ -177,7 +178,7 @@ INI_KEY_SYNTAX_EMPTY = [
     {'line': 'key.word=',                         'expected': ('key.word', '', None)},
 ]
 
-INI_KEY_SYNTAX = [
+INI_KEY_SYNTAX: List[Dict[str, Any]] = [
     {'line': 'key_underscore = value',            'expected': ('key_underscore', 'value', None)},
     # {'line': 'key_underscore',                    'expected': ('key_underscore', 'true', None)}, # Not supported
     {'line': '_key_underscore = value',           'expected': ('_key_underscore', 'value', None)},
@@ -194,8 +195,8 @@ INI_KEY_SYNTAX = [
     # {'line': 'key.word',                          'expected': ('key.word', 'true', None)}, Idem
 ]
 
-INI_LITERAL_LIST = [
-    {'line': 'key = [1,2,3]',                       'expected': ('key', [1,2,3], None)},
+INI_LITERAL_LIST: List[Dict[str, Any]] = [
+    {'line': 'key = [1,2,3]',                       'expected': ('key', ['1','2','3'], None)},
     {'line': 'key = []',                       'expected': ('key', [], None)},
     {'line': 'key : ["hello", "world", ]',                       'expected': ('key', ["hello", "world"], None)},
     {'line': 'key : [\'hello\', \'world\', ]',                       'expected': ('key', ["hello", "world"], None)},
@@ -216,7 +217,7 @@ def test_IniConfigParser() -> None:
     
     p = IniConfigParser(['soft'], False)
 
-    config_lines = IN_SIMPLE_STRINGS + \
+    config_lines: List[Dict[str, Any]] = INI_SIMPLE_STRINGS + \
             INI_QUOTED_STRINGS + \
             INI_BLANK_LINES + \
             INI_EQUAL_SIGN_VALUE + \
@@ -229,7 +230,7 @@ def test_IniConfigParser() -> None:
         expected = {test['expected'][0]: test['expected'][1]}
         assert parsed_obj==expected, "Line %r" % (test['line'])
 
-INI_BLANK_LINES_QUOTED = [
+INI_BLANK_LINES_QUOTED: List[Dict[str, Any]] = [
     {'line': 'key=""',                              'expected': ('key', '', None)},
     {'line': 'key =""',                             'expected': ('key', '', None)},
     {'line': 'key= ""',                             'expected': ('key', '', None)},
@@ -244,7 +245,7 @@ INI_BLANK_LINES_QUOTED = [
     {'line': ' key  :  "" ',                        'expected': ('key', '', None)},
 ]
 
-INI_MULTILINE_STRING_LIST = [
+INI_MULTILINE_STRING_LIST: List[Dict[str, Any]] = [
     {'line': 'key = \n hello\n hoho',                       'expected': ('key', ["hello", "hoho"], None)},
     {'line': 'key = hello\n hoho',                       'expected': ('key', ["hello", "hoho"], None)},
     {'line': 'key : "hello"\n \'hoho\'',                       'expected': ('key', ["hello", "hoho"], None)},
@@ -256,7 +257,7 @@ def test_IniConfigParser_multiline_text_to_list() -> None:
     
     p = IniConfigParser(['soft'], True)
 
-    config_lines = IN_SIMPLE_STRINGS + \
+    config_lines = INI_SIMPLE_STRINGS + \
             INI_QUOTED_STRINGS + \
             INI_EQUAL_SIGN_VALUE + \
             INI_NEGATIVE_VALUES + \
