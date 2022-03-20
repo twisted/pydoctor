@@ -157,7 +157,7 @@ def test_epytext_sections() -> None:
            <p>
             This is a paragraph in section 1.
            </p>
-           <div class="rst-section" id="rst-section-1-1">
+           <div class="rst-section" id="rst-section-11">
             <h3 class="heading">
              Section 1.1
             </h3>

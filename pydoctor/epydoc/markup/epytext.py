@@ -134,10 +134,10 @@ __docformat__ = 'epytext en'
 
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
+import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
-from slugify import slugify
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
@@ -159,6 +159,22 @@ def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[st
     elif isinstance(node, Element):
         filtered.extend(gettext(node.children))
     return filtered
+
+def slugify(string:str) -> str:
+    # zacharyvoase/slugify is licensed under the The Unlicense
+    """
+    A generic slugifier utility (currently only for Latin-based scripts).
+    Example:
+        >>> slugify("Héllo Wörld")
+        "hello-world"
+    """
+    return re.sub(r'[-\s]+', '-', 
+                re.sub(rb'[^\w\s-]', b'',
+                    unicodedata.normalize('NFKD', string)
+                    .encode('ascii', 'ignore'))
+                .strip()
+                .lower()
+                .decode())
 
 ##################################################
 ## DOM-Like Encoding

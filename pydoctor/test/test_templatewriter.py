@@ -481,7 +481,7 @@ def test_index_contains_infos(tmp_path: Path) -> None:
     """
 
     infos = (f'<meta name="generator" content="pydoctor {__version__}"',
-              '<nav class="navbar navbar-default"',
+              '<nav class="navbar',
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
