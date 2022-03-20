@@ -232,6 +232,12 @@ Level 4
 Level 5
 !!!!!!!
 
+Level 2.2
+---------
+
+Level 22
+--------
+
 Lists
 =====
 
@@ -241,7 +247,7 @@ Other
 
     errors: List[ParseError] = []
     parsed = parse_docstring(docstring, errors)
-    assert not errors
+    assert not errors, [str(e.descr) for e in errors]
     
     toc = parsed.get_toc(4)
     assert toc is not None
@@ -272,17 +278,23 @@ Other
        </li>
       </ul>
      </li>
+    <a class="rst-reference internal" href="#rst-level-22" id="rst-id5">
+     Level 2
+    </a>
+    <a class="rst-reference internal" href="#rst-level-22-1" id="rst-id6">
+     Level 2
+    </a>
     </ul>
    </li>
   </ul>
  </li>
  <li>
-  <a class="rst-reference internal" href="#rst-lists" id="rst-id5">
+  <a class="rst-reference internal" href="#rst-lists" id="rst-id7">
    Lists
   </a>
  </li>
  <li>
-  <a class="rst-reference internal" href="#rst-other" id="rst-id6">
+  <a class="rst-reference internal" href="#rst-other" id="rst-id8">
    Other
   </a>
  </li>

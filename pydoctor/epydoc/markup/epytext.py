@@ -134,7 +134,6 @@ __docformat__ = 'epytext en'
 
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Union, cast, overload
 import re
-import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
@@ -143,38 +142,6 @@ from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
-
-##################################################
-## Helper functions
-##################################################
-
-def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[str]:
-    """Return the text inside the epytext element(s)."""
-    filtered: List[str] = []
-    if isinstance(node, str):
-        filtered.append(node)
-    elif isinstance(node, list):
-        for child in node:
-            filtered.extend(gettext(child))
-    elif isinstance(node, Element):
-        filtered.extend(gettext(node.children))
-    return filtered
-
-def slugify(string:str) -> str:
-    # zacharyvoase/slugify is licensed under the The Unlicense
-    """
-    A generic slugifier utility (currently only for Latin-based scripts).
-    Example:
-        >>> slugify("Héllo Wörld")
-        "hello-world"
-    """
-    return re.sub(r'[-\s]+', '-', 
-                re.sub(rb'[^\w\s-]', b'',
-                    unicodedata.normalize('NFKD', string)
-                    .encode('ascii', 'ignore'))
-                .strip()
-                .lower()
-                .decode())
 
 ##################################################
 ## DOM-Like Encoding
@@ -478,9 +445,8 @@ def _add_section(
     # Colorize the heading
     head = _colorize(heading_token, errors, 'heading')
 
-    # Add the section's and heading's DOM elements. 
-    # Add 'ids' attribute just like in docutils.
-    sec = Element('section', ids=[slugify(' '.join(gettext(head)))])
+    # Add the section's and heading's DOM elements.
+    sec = Element('section')
     stack[-1].children.append(sec)
     stack.append(sec)
     sec.children.append(head)
@@ -1388,7 +1354,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return self._tree is not None
-
+    
     def to_node(self) -> nodes.document:
 
         if self._document is not None:
@@ -1462,9 +1428,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.doctest_block(tree.children[0], tree.children[0]), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag == 'section':
-            yield set_node_attributes(nodes.section('', ids=tree.attribs['ids']), document=self._document, children=variables)
-        elif tree.tag == 'epytext':
+        elif tree.tag in ('section', 'epytext'):
             yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])
