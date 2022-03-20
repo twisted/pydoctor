@@ -19,15 +19,6 @@ from pydoctor import __version__
 BASE_DIR = pathlib.Path(os.environ.get('TOX_INI_DIR', os.getcwd())) / 'build' / 'docs'
 
 
-def test_help_output_extension():
-    """
-    The help output extension will include the CLI help on the Sphinx page.
-    """
-    with open(BASE_DIR / 'help.html', 'r') as stream:
-        page = stream.read()
-        assert '--project-url=PROJECTURL' in page, page
-
-
 def test_rtd_pydoctor_call():
     """
     With the pydoctor Sphinx extension, the pydoctor API HTML files are
@@ -180,8 +171,11 @@ def test_lunr_index() -> None:
         index_data = json.load(fobj)
         index = Index.load(index_data)
 
-        def test_search(query:str, expected:List[str]) -> None:
-            assert [r["ref"] for r in index.search(query)] == expected
+        def test_search(query:str, expected:List[str], order_is_important:bool=True) -> None:
+            if order_is_important:
+                assert [r["ref"] for r in index.search(query)] == expected
+            else:
+                assert sorted([r["ref"] for r in index.search(query)]) == sorted(expected)
 
         test_search('+qname:pydoctor', ['pydoctor'])
         test_search('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan'])
@@ -193,8 +187,8 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup._types.ParsedTypeDocstring.to_stan',
                     'pydoctor.epydoc.markup._pyval_repr.ColorizedPyvalRepr.to_stan',
                 ]
-        test_search('to_stan*', to_stan_results)
-        test_search('to_stan', to_stan_results)
+        test_search('to_stan*', to_stan_results, order_is_important=False)
+        test_search('to_stan', to_stan_results, order_is_important=False)
 
         to_node_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_node', 
@@ -203,8 +197,9 @@ def test_lunr_index() -> None:
                     'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring.to_node',
                     'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring.to_node',
                 ]
-        test_search('to_node*', to_node_results)
-        test_search('to_node', to_node_results)
+        test_search('to_node*', to_node_results, order_is_important=False)
+        test_search('to_node', to_node_results, order_is_important=False)
+        
         test_search('qname:pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
                 ['pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring'])
         test_search('pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 

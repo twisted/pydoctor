@@ -15,15 +15,15 @@ import sys
 import types
 from enum import Enum
 from inspect import signature, Signature
-from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
 from collections import OrderedDict
 from urllib.parse import quote
 
+from pydoctor.options import Options
 from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
@@ -620,9 +620,9 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase: Optional[str] = None
+    options: 'Options'
 
-    def __init__(self, options: Optional[Values] = None):
+    def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -636,8 +636,7 @@ class System:
         if options:
             self.options = options
         else:
-            from pydoctor.driver import parse_args
-            self.options, _ = parse_args([])
+            self.options = Options.defaults()
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -664,24 +663,20 @@ class System:
         self._privacyClassCache: Dict[int, PrivacyClass] = {}
 
     @property
+    def sourcebase(self) -> Optional[str]:
+        return self.options.htmlsourcebase
+
+    @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
         return {obj.name for obj in self.rootobjects}
-
-    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
-        if isinstance(section, str):
-            section = (section,)
-        delta: int = max(self.options.verbosity_details.get(sect, 0)
-                         for sect in section)
-        base: int = self.options.verbosity
-        return base + delta
 
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
             d = str(i)
         else:
             d = f'{i}/{n}'
-        if self.verbosity(section) == 0 and sys.stdout.isatty():
+        if self.options.verbosity == 0 and sys.stdout.isatty():
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
@@ -699,6 +694,16 @@ class System:
             wantsnl: bool = True,
             once: bool = False
             ) -> None:
+        """
+        Log a message. pydoctor's logging system is bit messy.
+        
+        @param section: API doc generation step this message belongs to.
+        @param msg: The message.
+        @param thresh: The minimum verbosity level of the system for this message to actually be printed.
+            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
+            Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+        @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
+        """
         if once:
             if (section, msg) in self.once_msgs:
                 return
@@ -711,7 +716,7 @@ class System:
             # on top of the logging system.
             self.violations += 1
 
-        if thresh <= self.verbosity(section) <= topthresh:
+        if thresh <= self.options.verbosity <= topthresh:
             if self.needsnl and wantsnl:
                 print()
             print(msg, end='')
@@ -846,6 +851,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
+            assert projBaseDir is not None
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 

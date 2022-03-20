@@ -33,12 +33,17 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-
-from importlib import import_module
 from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
+from importlib import import_module
 from inspect import getmodulename
+
+from docutils import nodes, utils
+from twisted.web.template import Tag
+
+from pydoctor import node2stan
+from pydoctor.epydoc.docutils import build_table_of_content
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -47,16 +52,9 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-from docutils import nodes, utils
-from twisted.web.template import Tag
-
-
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
-
-from pydoctor import node2stan
-from pydoctor.epydoc import docutils
 
 ##################################################
 ## Contents
@@ -134,7 +132,7 @@ class ParsedDocstring(abc.ABC):
             document = self.to_node()
         except NotImplementedError:
             return None
-        contents = docutils.build_table_of_content(document, depth=depth)
+        contents = build_table_of_content(document, depth=depth)
         docstring_toc = utils.new_document('toc')
         if contents:
             docstring_toc.extend(contents)
@@ -159,12 +157,12 @@ class ParsedDocstring(abc.ABC):
         self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
         return self._stan
     
-    @abc.abstractproperty
+    @abc.abstractmethod
     def to_node(self) -> nodes.document:
         """
-        Translate this docstring to a L{docutils.nodes.document}.
+        Translate this docstring to a L{nodes.document}.
 
-        @return: The docstring presented as a L{docutils.nodes.document}.
+        @return: The docstring presented as a L{nodes.document}.
 
         @note: Some L{ParsedDocstring} subclasses do not support docutils nodes.
             This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})

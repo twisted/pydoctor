@@ -93,8 +93,6 @@ def test_document_code_in_init_module() -> None:
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
     w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
-    system.options.htmlusesplitlinks = True
-    system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
