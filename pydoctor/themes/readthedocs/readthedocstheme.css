@@ -182,7 +182,7 @@ a[name] {
 }
 
 .navlinks > a {
-    color: rgba(210, 239, 255, 1);
+    color: #D2EFFF;
     display: inline-block;
     height: 32px;
     line-height: 32px;
@@ -685,6 +685,15 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
     
 }
 
+/* Search results */
+#search-results-container {
+    position: relative;
+}
+
+#search-box-container img {
+    /* Fom back image to color #D2EFFF, check https://codepen.io/sosuke/pen/Pjoqqp */
+    filter: invert(86%) sepia(18%) saturate(760%) hue-rotate(183deg) brightness(104%) contrast(106%);
+}
 
 /* For bigger displays, i.e. full screen
 @media only screen and (min-width: 1330px) {
