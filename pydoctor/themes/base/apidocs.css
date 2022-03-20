@@ -289,7 +289,7 @@ ul ul ul ul ul ul ul {
 
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
-        width: 175px;
+        width: 200px;
     } 
 
     /* Summary column table */
@@ -302,7 +302,7 @@ ul ul ul ul ul ul ul {
 @media only screen and (max-width: 750px) {
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
-        width: 155px;
+        width: 170px;
     } 
 }
 
