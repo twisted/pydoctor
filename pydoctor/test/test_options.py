@@ -104,9 +104,9 @@ intersphinx =
     https://docs.python.org/3/objects.inv
     https://twistedmatrix.com/documents/current/api/objects.inv
     https://urllib3.readthedocs.io/en/latest/objects.inv
-    "https://requests.readthedocs.io/en/latest/objects.inv"
-    "https://www.attrs.org/en/stable/objects.inv"
-    "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
+    https://requests.readthedocs.io/en/latest/objects.inv
+    https://www.attrs.org/en/stable/objects.inv
+    https://tristanlatr.github.io/apidocs/docutils/objects.inv
 docformat = restructuredtext
 project-name = MyProject
 project-url = https://github.com/twisted/pydoctor
