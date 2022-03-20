@@ -94,3 +94,4 @@ class NotFoundLinker(DocstringLinker):
 
     def resolve_identifier(self, identifier: str) -> Optional[str]:
         return None
+        

@@ -1,0 +1,9 @@
+[tool.pydoctor]
+project-name = 'pydoctor with a twisted theme'
+docformat = 'epytext'
+privacy = 'HIDDEN:pydoctor.test'
+project-url = '../customize.html'
+theme = base
+intersphinx = ["https://docs.python.org/3/objects.inv",
+                "https://twistedmatrix.com/documents/current/api/objects.inv",]
+                # Yes, it's missing a lot of intersphinx links, but that's ok, this is just an example.

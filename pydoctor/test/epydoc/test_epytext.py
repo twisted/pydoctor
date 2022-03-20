@@ -84,3 +84,6 @@ def test_literal_braces() -> None:
     assert epytext2html("{1:C{{2:3}}}") == '{1:<tt class="rst-docutils literal">{2:3}</tt>}'
     assert epytext2html("{{{}{}}{}}") == '{{{}{}}{}}'
     assert epytext2html("{{E{lb}E{lb}E{lb}}}") == '{{{{{}}'
+
+def test_slugify() -> None:
+    assert epytext.slugify("Héllo Wörld 1.2.3") == "hello-world-123"

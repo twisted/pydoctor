@@ -71,7 +71,50 @@ What's New?
 ~~~~~~~~~~~
 
 in development
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
+* Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
+* Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
+  module variable in order to focus on potential python code parsing errors.
+* Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <https://pydoctor.readthedocs.io/en/latest/help.html>`_).
+
+pydoctor 22.3.0
+^^^^^^^^^^^^^^^
+* Add client side search system based on lunr.js.
+* Fix broken links in docstring summaries.
+* Add cache for the xref linker, reduces the number of identical warnings.
+* Fix crash when reparenting objects with duplicate names.
+
+pydoctor 22.2.2
+^^^^^^^^^^^^^^^
+* Fix resolving names re-exported in ``__all__`` variable.
+
+pydoctor 22.2.1
+^^^^^^^^^^^^^^^
+* Fix crash of pydoctor when processing a reparented module.
+
+pydoctor 22.2.0
+^^^^^^^^^^^^^^^
+* Improve the name resolving algo such that it checks in super classes for inherited attributes.
+* C-modules wins over regular modules when there is a name clash.
+* Packages wins over modules when there is a name clash.
+* Fixed that modules were processed in a random order leading to several hard to reproduce bugs.
+* Intersphinx links have now dedicated markup.
+  With the default theme,
+  this allows to have the external intershinx links blue while the internal links are red.
+* Smarter line wrapping in summary and parameters tables.
+* Any code inside of ``if __name__ == '__main__'`` is now excluded from the documentation.
+* Fix variables named like the current module not being documented.
+* The Module Index now only shows module names instead of their full name. You can hover over a module link to see the full name.
+* If there is only a single root module, `index.html` now documents that module (previously it only linked the module page).
+* Fix introspection of functions comming from C-extensions.
+* Fix that the colorizer might make Twisted's flatten function crash with surrogates unicode strings.
+
+pydoctor 21.12.1
+^^^^^^^^^^^^^^^^
+* Include module ``sre_parse36.py`` within ``pydoctor.epydoc`` to avoid an extra PyPi dependency.
+
+pydoctor 21.12.0
+^^^^^^^^^^^^^^^^
 
 * Add support for reStructuredText directives ``.. deprecated::``, ``.. versionchanged::`` and ``.. versionadded::``.
 * Add syntax highlight for constant values, decorators and parameter defaults.

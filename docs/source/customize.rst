@@ -43,6 +43,53 @@ HTML templates have their own versioning system and warnings will be triggered w
 
     This example is using the ``base`` theme. 
 
+.. _customize-privacy:
+
+Override objects privacy (show/hide)
+------------------------------------
+
+Pydoctor supports 3 types of privacy.
+Below is the description of each type and the default association:
+
+- ``PRIVATE``: By default for objects whose name starts with an underscore and are not a dunder method. 
+  Rendered in HTML, but hidden via CSS by default.
+
+- ``PUBLIC``: By default everything else that is not private.
+  Always rendered and visible in HTML.
+
+- ``HIDDEN``: Nothing is hidden by default.
+  Not rendered at all and no links can be created to hidden objects. 
+  Not present in the search index nor the intersphinx inventory.
+  Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
+
+When the default rules regarding privacy doesn't fit your use case,
+use the ``--privacy`` command line option.
+It can be used multiple times to define multiple privacy rules::
+
+  --privacy=<PRIVACY>:<PATTERN>
+
+where ``<PRIVACY>`` can be one of ``PUBLIC``, ``PRIVATE`` or ``HIDDEN`` (case insensitive), and ``<PATTERN>`` is fnmatch-like 
+pattern matching objects fullName.
+
+Privacy tweak examples
+^^^^^^^^^^^^^^^^^^^^^^
+- ``--privacy="PUBLIC:**"``
+  Makes everything public.
+
+- ``--privacy="HIDDEN:twisted.test.*" --privacy="PUBLIC:twisted.test.proto_helpers"``
+  Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
+  
+- ``--privacy="PRIVATE:**.__*__" --privacy="PUBLIC:**.__init__"``
+  Makes all dunder methods private except ``__init__``.
+
+.. important:: The order of arguments matters. Pattern added last have priority over a pattern added before,
+  but an exact match wins over a fnmatch.
+
+.. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax.
+
+.. note:: Quotation marks should be added around each rule to avoid shell expansions.
+    Unless the arguments are passed directly to pydoctor, like in Sphinx's ``conf.py``, in this case you must not quote the privacy rules.
+
 Use a custom system class
 -------------------------
 

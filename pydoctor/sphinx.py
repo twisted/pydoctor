@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     class CacheT(Protocol):
         def get(self, url: str) -> Optional[bytes]: ...
+        def close(self) -> None: ...
 else:
     Documentable = object
     CacheT = object
@@ -401,6 +402,8 @@ class IntersphinxCache(CacheT):
             )
             return None
 
+    def close(self) -> None:
+        self._session.close()
 
 def prepareCache(
         clearCache: bool,
