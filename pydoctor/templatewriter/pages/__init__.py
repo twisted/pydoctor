@@ -70,12 +70,6 @@ class Nav(TemplateElement):
 
     filename = 'nav.html'
 
-    def __init__(self, system: model.System, loader: ITemplateLoader, template_lookup: TemplateLookup) -> None:
-        super().__init__(loader)
-        self.system = system
-        self.template_lookup = template_lookup
-
-
 class Head(TemplateElement):
     """
     Common metadata.
@@ -138,8 +132,7 @@ class Page(TemplateElement):
 
     @renderer
     def nav(self, request: IRequest, tag: Tag) -> IRenderable:
-        return Nav(self.system, Nav.lookup_loader(self.template_lookup), 
-                   template_lookup=self.template_lookup)
+        return Nav(Nav.lookup_loader(self.template_lookup))
 
     @renderer
     def header(self, request: IRequest, tag: Tag) -> IRenderable:
