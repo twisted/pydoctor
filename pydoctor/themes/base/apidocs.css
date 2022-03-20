@@ -846,7 +846,7 @@ body.sidebar-collapsed .sidebarcontainer {
 }
 
 body.sidebar-collapsed #main {
-    margin: 0 0 0 25px!important;
+    margin: 0 0 0 25px;
 }
 
 body.sidebar-collapsed #collapseSideBar {
@@ -870,13 +870,10 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
         display: none;
     }
     #main {
-        margin: 0;
+        margin: 0!important;
     }
     .sidebarcontainer {
         display: none!important;
-    }
-    #main {
-        margin: 0;
     }
     #collapseSideBar {
         display: none;
