@@ -6,7 +6,7 @@ body {
 }
 
 .container-fluid{
-    max-width: 1330px;
+    max-width: 1380px;
     width: 100%;
 }
 
@@ -641,8 +641,8 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar > div:nth-child(2) {
-    background-color: RGBA(0,20,44, 0.05);
-    box-shadow: 0px 0px 0px 7px RGBA(0,20,44, 0.05);
+    background-color: RGBA(0,10,10, 0.05);
+    box-shadow: -5px 5px 1px 10px RGBA(0,10,10, 0.05);
     margin-top: 20px;
 }
 
@@ -745,7 +745,6 @@ div.tip, div.hint, div.important {
 /* Style page content */
 #main {
     margin-left: 317px; /* Same as the width of the sidebar + 20px*/
-    max-width: 970px; /* Arbitrary "good for reading" width for the content */ 
 }
 
 /* Special case for the --nosidebar option */   
