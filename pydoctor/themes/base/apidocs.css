@@ -647,7 +647,7 @@ div.tip, div.hint, div.important {
 
 .sidebar > div:nth-child(2) {
     background-color: RGBA(0,10,10, 0.03);
-    box-shadow: -5px 5px 1px 10px RGBA(0,10,10, 0.03);
+    box-shadow: -5px 5px 0px 10px RGBA(0,10,10, 0.03);
     margin-top: 20px;
 }
 
