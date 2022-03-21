@@ -7,7 +7,7 @@ Tests for the L{node2stan} module.
 from pydoctor.test.epydoc.test_epytext2html import epytext2node
 from pydoctor.test.epydoc.test_restructuredtext import rst2node
 
-from pydoctor.node2stan import gettext, slugify
+from pydoctor.node2stan import gettext
 
 
 def test_gettext() -> None:
@@ -85,6 +85,3 @@ def test_gettext() -> None:
 
     assert gettext(rst2node(doc)) == ['This paragraph is not in any section.', 
     'mailto:postmaster@example.net', 'This is just a note with nested contents']
-
-def test_slugify() -> None:
-    assert slugify("Héllo Wörld 1.2.3") == "hello-world-123"

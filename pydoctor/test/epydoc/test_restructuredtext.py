@@ -254,49 +254,53 @@ Other
     html = flatten(toc.to_stan(NotFoundLinker()))
     
     expected_html="""
-     <li>
-  <p class="rst-first">
-   <a class="rst-reference internal" href="#rst-titles" id="rst-id1">
-    Titles
+<li>
+ <p class="rst-first">
+  <a class="rst-reference internal" href="#rst-titles" id="rst-id1">
+   Titles
+  </a>
+ </p>
+ <ul class="rst-simple">
+  <li>
+   <a class="rst-reference internal" href="#rst-level-2" id="rst-id2">
+    Level 2
    </a>
-  </p>
-  <ul class="rst-simple">
-   <li>
-    <a class="rst-reference internal" href="#rst-level-2" id="rst-id2">
-     Level 2
-    </a>
-    <ul>
-     <li>
-      <a class="rst-reference internal" href="#rst-level-3" id="rst-id3">
-       Level 3
-      </a>
-      <ul>
-       <li>
-        <a class="rst-reference internal" href="#rst-level-4" id="rst-id4">
-         Level 4
-        </a>
-       </li>
-      </ul>
-     </li>
-    <a class="rst-reference internal" href="#rst-level-22" id="rst-id5">
-     Level 2
-    </a>
-    <a class="rst-reference internal" href="#rst-level-22-1" id="rst-id6">
-     Level 2
-    </a>
-    </ul>
-   </li>
-  </ul>
- </li>
- <li>
-  <a class="rst-reference internal" href="#rst-lists" id="rst-id7">
-   Lists
-  </a>
- </li>
- <li>
-  <a class="rst-reference internal" href="#rst-other" id="rst-id8">
-   Other
-  </a>
- </li>
-    """
+   <ul>
+    <li>
+     <a class="rst-reference internal" href="#rst-level-3" id="rst-id3">
+      Level 3
+     </a>
+     <ul>
+      <li>
+       <a class="rst-reference internal" href="#rst-level-4" id="rst-id4">
+        Level 4
+       </a>
+      </li>
+     </ul>
+    </li>
+   </ul>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-2-2" id="rst-id5">
+    Level 2.2
+   </a>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-22" id="rst-id6">
+    Level 22
+   </a>
+  </li>
+ </ul>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-lists" id="rst-id7">
+  Lists
+ </a>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-other" id="rst-id8">
+  Other
+ </a>
+</li>
+"""
     assert prettify(html) == prettify(expected_html)
