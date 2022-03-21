@@ -33,9 +33,6 @@ function initSideBarCollapse() {
         setCookie("pydoctor-sidebar-collapsed", "no", 365);
     }
     updateSideBarCollapse();
-    
-    // Set the sidebar display on load to avoid showing it for few miliseconds when loading..
-    // document.querySelector('.sidebarcontainer').style.display = 'flex'; 
 }
 
 function toggleSideBarCollapse() {
@@ -55,7 +52,7 @@ function updateSideBarCollapse() {
     let link = document.querySelector('#collapseSideBar a')
     // Since this script is called before the page finishes the parsing,
     // link is undefined when it's first called. 
-    if (link){
+    if (link!=undefined){
         var collapsed = document.body.classList.contains('sidebar-collapsed');
         link.innerText = collapsed ? '»' : '«';
     }
@@ -64,6 +61,7 @@ function updateSideBarCollapse() {
     var sidebarcontainer = document.querySelector('.sidebarcontainer');
     sidebarcontainer.style.display='none';
     sidebarcontainer.offsetHeight; // no need to store this anywhere, the reference is enough
+    // Set the sidebar display on load to avoid showing it for few miliseconds when loading..
     sidebarcontainer.style.display='flex';
     
 }

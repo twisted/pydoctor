@@ -101,7 +101,7 @@ class ParsedDocstring(abc.ABC):
     Subclasses must implement L{has_body()} and L{to_node()}.
     
     A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
-    But some subclasses overide this behaviour.
+    But some subclasses override this behaviour.
     
     Implementation of L{get_toc()} also relies on L{to_node()}.
     """
@@ -114,6 +114,7 @@ class ParsedDocstring(abc.ABC):
         """
 
         self._stan: Optional[Tag] = None
+        self._compact = True
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -141,7 +142,7 @@ class ParsedDocstring(abc.ABC):
         else:
             return None
 
-    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
+    def to_stan(self, docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -152,9 +153,21 @@ class ParsedDocstring(abc.ABC):
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
         """
+        # The following three lines is a hack in order to still show p tags 
+        # around docstrings content when there is only a single line text
+        # and arguement compact=False is passed. We clear cached stan if required.
+        if compact != self._compact and self._stan is not None:
+            self._stan = None
+        self._compact = compact
+
         if self._stan is not None:
-            return self._stan
-        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
+            return self._stan      
+
+        docstring_stan = node2stan.node2stan(self.to_node(), 
+                                        docstring_linker, 
+                                        compact=compact)
+
+        self._stan = Tag('', children=docstring_stan.children)
         return self._stan
     
     @abc.abstractmethod

@@ -986,7 +986,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = obj.parsed_docstring.to_stan(source.docstringlinker)
+            stan = obj.parsed_docstring.to_stan(source.docstringlinker, compact=False)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if source.docstring is None:
@@ -1117,11 +1117,10 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
 
 def format_toc(obj: model.Documentable) -> Optional[Tag]:
     # Load the parsed_docstring if it's not already done. 
-    if not obj.parsed_docstring and obj.docstring:
-        obj.parsed_docstring = parse_docstring(obj, obj.docstring, obj)
+    ensure_parsed_docstring(obj)
 
     if obj.parsed_docstring:
-        if obj.system.options.sidebartocdepth != 0:
+        if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
                 return toc.to_stan(obj.docstringlinker)

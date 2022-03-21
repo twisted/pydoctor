@@ -116,9 +116,9 @@ pydoctor_args = {
         ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
+        '--sidebar-expand-depth=1',
         f'--project-version={version}',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
-        '--no-sidebar',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args + 
             [f'--config={_pydoctor_root}/docs/source/custom_template_demo/pyproject.toml',

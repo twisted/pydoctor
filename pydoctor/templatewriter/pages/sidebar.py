@@ -3,7 +3,7 @@ Classes for the sidebar generation.
 """
 from typing import Any, Iterable, Iterator, List, Optional, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
-from twisted.web.template import TagLoader, renderer, Tag, Element
+from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Attribute, Class, Function, Documentable, Module
@@ -23,12 +23,10 @@ class SideBar(TemplateElement):
 
     filename = 'sidebar.html'
 
-    def __init__(self, ob: Documentable, docgetter: util.DocGetter, 
-                 template_lookup: TemplateLookup):
+    def __init__(self, ob: Documentable, template_lookup: TemplateLookup):
         super().__init__(loader=self.lookup_loader(template_lookup))
         self.ob = ob
         self.template_lookup = template_lookup
-        self.docgetter = docgetter
 
 
     @renderer
@@ -38,19 +36,22 @@ class SideBar(TemplateElement):
         """
 
         # The object itself
-        yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob, 
+        yield SideBarSection(loader=TagLoader(tag), ob=self.ob, 
                         documented_ob=self.ob, template_lookup=self.template_lookup)
 
-        if isinstance(self.ob, Module):            
+        parent: Optional[Documentable] = None
+        if isinstance(self.ob, Module):
+            # The object is a module, we document the parent package in the second section (if it's not a root module).
             if self.ob.parent:
-                # The parent package of the module
-                yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.parent, 
-                              documented_ob=self.ob, template_lookup=self.template_lookup)
+                parent = self.ob.parent
         else:
-            # The parent of the object
-            yield SideBarSection(docgetter=self.docgetter, loader=TagLoader(tag), ob=self.ob.module, 
+            # The object is a class/function or attribute, we docuement the module that contains the object, not it's direct parent. 
+            # 
+            parent = self.ob.module
+            
+        if parent:
+            yield SideBarSection(loader=TagLoader(tag), ob=parent, 
                             documented_ob=self.ob, template_lookup=self.template_lookup)
-
 class SideBarSection(Element):
     """
     Main sidebar section. 
@@ -59,13 +60,12 @@ class SideBarSection(Element):
     Root modules have only one section. 
     """
     
-    def __init__(self, ob: Documentable, documented_ob: Documentable, docgetter: util.DocGetter, 
+    def __init__(self, ob: Documentable, documented_ob: Documentable, 
                  loader: ITemplateLoader, template_lookup: TemplateLookup):
         super().__init__(loader)
         self.ob = ob
         self.documented_ob = documented_ob
         self.template_lookup = template_lookup
-        self.docgetter = docgetter
         
         # Does this sidebar section represents the object itself ?
         self._represents_documented_ob = self.ob == self.documented_ob
@@ -78,11 +78,11 @@ class SideBarSection(Element):
     def name(self, request: IRequest, tag: Tag) -> Tag:
         """Craft a <code><a> block for the title with custom description when hovering. """
         name = self.ob.name
-        link = epydoc2stan.taglink(self.ob, self.ob.url, name)
-        link.attributes['title'] = self.description()
-        tag = Tag('code')(link)
+        link = epydoc2stan.taglink(self.ob, self.ob.page_object.url, 
+            epydoc2stan.insert_break_points(name))
+        tag = tags.code(link(title=self.description()))
         if self._represents_documented_ob:
-            tag.attributes['class'] = 'thisobject'
+            tag(class_='thisobject')
         return tag
 
     def description(self) -> str:
@@ -96,7 +96,7 @@ class SideBarSection(Element):
     @renderer
     def content(self, request: IRequest, tag: Tag) -> 'ObjContent':
         
-        return ObjContent(ob=self.ob, docgetter=self.docgetter, 
+        return ObjContent(ob=self.ob,
                     loader=TagLoader(tag), 
                     documented_ob=self.documented_ob,
                     template_lookup=self.template_lookup, 
@@ -114,14 +114,13 @@ class ObjContent(Element):
 
     #TODO: Hide the childrenKindTitle if they are all private and show private is off -> need JS
 
-    def __init__(self, docgetter: util.DocGetter, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
+    def __init__(self, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
                  template_lookup: TemplateLookup, depth: int, level: int = 0):
 
         super().__init__(loader)
         self.ob = ob
-        self.documented_ob=documented_ob
+        self.documented_ob = documented_ob
         self.template_lookup = template_lookup
-        self.docgetter = docgetter
 
         self._depth = depth
         self._level = level + 1
@@ -150,7 +149,6 @@ class ObjContent(Element):
             assert self.loader is not None
             return ContentList(ob=self.ob, children=things, 
                     documented_ob=self.documented_ob,
-                    docgetter=self.docgetter,
                     expand=expand,
                     nested_content_loader=self.loader, 
                     template_lookup=self.template_lookup,
@@ -196,7 +194,7 @@ class ObjContent(Element):
     @renderer
     def docstringToc(self, request: IRequest, tag: Tag) -> Union[Tag, str]:
         
-        toc = self.docgetter.get_toc(self.ob)
+        toc = util.DocGetter().get_toc(self.ob)
 
         # Only show the TOC if visiting the object page itself, in other words, the TOC do dot show up
         # in the object's parent section or any other subsections except the main one.
@@ -275,7 +273,7 @@ class ContentList(TemplateElement):
 
     filename = 'sidebar-list.html'
 
-    def __init__(self, ob: Documentable, docgetter: util.DocGetter,
+    def __init__(self, ob: Documentable, 
                  children: Iterable[Documentable], documented_ob: Documentable, 
                  expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
@@ -288,11 +286,10 @@ class ContentList(TemplateElement):
         self._level_depth = level_depth
 
         self.nested_content_loader = nested_content_loader
-        self.docgetter = docgetter
         self.template_lookup = template_lookup
     
     @renderer
-    def items(self, request: IRequest, tag: Tag) -> Iterable[Element]:
+    def items(self, request: IRequest, tag: Tag) -> Iterable['ContentItem']:
 
         for child in self.children:
 
@@ -301,7 +298,6 @@ class ContentList(TemplateElement):
                 ob=self.ob,
                 child=child,
                 documented_ob=self.documented_ob,
-                docgetter=self.docgetter,
                 expand=self._expand, 
                 nested_content_loader=self.nested_content_loader,
                 template_lookup=self.template_lookup, 
@@ -315,7 +311,7 @@ class ContentItem(Element):
 
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, child: Documentable, documented_ob: Documentable,
-                 docgetter: util.DocGetter, expand: bool, nested_content_loader: ITemplateLoader, 
+                 expand: bool, nested_content_loader: ITemplateLoader, 
                  template_lookup: TemplateLookup, level_depth: Tuple[int, int]):
         
         super().__init__(loader)
@@ -327,7 +323,6 @@ class ContentItem(Element):
         self._level_depth = level_depth
 
         self.nested_content_loader = nested_content_loader
-        self.docgetter = docgetter
         self.template_lookup = template_lookup
 
     @renderer
@@ -343,7 +338,7 @@ class ContentItem(Element):
 
     def _contents(self) -> ObjContent:
 
-        return ObjContent(ob=self.child, docgetter=self.docgetter,
+        return ObjContent(ob=self.child, 
                     loader=self.nested_content_loader, 
                     documented_ob=self.documented_ob,
                     level=self._level_depth[0], 
@@ -357,7 +352,7 @@ class ContentItem(Element):
 
             # pass do_not_expand=True also when an object do not have any members, 
             # instead of expanding on an empty div. 
-            return ExpandableItem(TagLoader(tag), self.child, nested_contents, 
+            return ExpandableItem(TagLoader(tag), self.child, self.documented_ob, nested_contents, 
                     do_not_expand=self.child == self.documented_ob or not nested_contents.has_contents)
         else:
             return ""
@@ -365,7 +360,7 @@ class ContentItem(Element):
     @renderer
     def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[str, 'LinkOnlyItem']:
         if not self._expand:
-            return LinkOnlyItem(TagLoader(tag), self.child)
+            return LinkOnlyItem(TagLoader(tag), self.child, self.documented_ob)
         else:
             return ""
 
@@ -376,12 +371,14 @@ class LinkOnlyItem(Element):
     Used by L{ContentItem.linkOnlyItem}
     """
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable):
+    def __init__(self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable):
         super().__init__(loader)
         self.child = child
+        self.documented_ob = documented_ob
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
-        return Tag('code', children=[epydoc2stan.taglink(self.child, self.child.url, self.child.name)])
+        return tags.code(epydoc2stan.taglink(self.child, self.documented_ob.page_object.url, 
+                                        epydoc2stan.insert_break_points(self.child.name)))
 
 class ExpandableItem(LinkOnlyItem):
     """
@@ -397,8 +394,9 @@ class ExpandableItem(LinkOnlyItem):
 
     last_ExpandableItem_id = 0
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: ObjContent, do_not_expand: bool = False):
-        super().__init__(loader, child)
+    def __init__(self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable, 
+                contents: ObjContent, do_not_expand: bool = False):
+        super().__init__(loader, child, documented_ob)
         self._contents =  contents
         self._do_not_expand = do_not_expand
         ExpandableItem.last_ExpandableItem_id += 1
