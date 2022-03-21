@@ -101,7 +101,7 @@ class ParsedDocstring(abc.ABC):
     Subclasses must implement L{has_body()} and L{to_node()}.
     
     A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
-    But some subclasses overide this behaviour.
+    But some subclasses override this behaviour.
     
     Implementation of L{get_toc()} also relies on L{to_node()}.
     """
