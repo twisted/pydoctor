@@ -693,6 +693,10 @@ div.tip, div.hint, div.important {
     color: #414141;
 }
 
+.sidebar li a:hover {
+    color: #C7354E;
+}
+
 .sidebar > div ul > li > .itemName > code, .sidebar > div ul > li > .itemName > code > a { 
     background-color: transparent;
 }
@@ -738,12 +742,13 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar .childrenKindTitle {
-    color: #555;
+    color: #414141;
     margin-left: 4px;
     margin-bottom: 3px;
     font-size: 15px;
     /*! border-bottom: solid 1px #9d9d9d; */
     box-shadow: -11px 11px 0px -10px #aeaeaec4;
+    font-style: italic;
 }
 
   
