@@ -14,10 +14,8 @@
     <div class="container-fluid">
 
       <!-- Side navigation -->
-      <div class="sidebarcontainer" t:render="sidebarcontainer">
+      <div class="sidebarcontainer" style="display: none;" t:render="sidebarcontainer">
         
-        <script src="sidebartoggle.js" type='text/javascript'></script>
-
         <div class="sidebar"><t:slot name="sidebar">
           SideBar contents </t:slot>
         </div>
@@ -25,6 +23,8 @@
           <a class="btn btn-link" onclick="toggleSideBarCollapse()" title="Toggle Sidebar Collapse">
           </a>
         </div> 
+        <script src="sidebartoggle.js" type='text/javascript'></script>
+       
       </div>
 
       <div id="main">
