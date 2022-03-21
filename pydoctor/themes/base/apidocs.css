@@ -589,15 +589,13 @@ div.tip, div.hint, div.important {
     margin:24px 20px 20px 0;
     border: 1px solid;
     border-radius: 4px;
-    
     display: flex; 
-    
     position: sticky;
     top: 0;
     overflow-wrap: break-word;
     overflow-x: none;
     overflow-y: scroll;
-    background-color: #f8f8f8;
+    background-color: #fbfbfb;
     border-color: #e7e7e7;
     scrollbar-width: thin;
     scrollbar-color: rgb(194,194,194) rgb(249,249,249);
@@ -647,8 +645,8 @@ div.tip, div.hint, div.important {
 }
 
 .sidebar > div:nth-child(2) {
-    background-color: RGBA(0,10,10, 0.05);
-    box-shadow: -5px 5px 1px 10px RGBA(0,10,10, 0.05);
+    background-color: RGBA(0,10,10, 0.03);
+    box-shadow: -5px 5px 1px 10px RGBA(0,10,10, 0.03);
     margin-top: 20px;
 }
 
