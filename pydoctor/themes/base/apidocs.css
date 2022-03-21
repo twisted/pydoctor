@@ -178,8 +178,8 @@ ul ul ul ul ul ul ul {
 }
 
 .functionBody p {
-    padding-top: 6px;
-    padding-bottom: 6px;
+    margin-top: 6px;
+    margin-bottom: 6px;
 }
 
 #splitTables > p {
