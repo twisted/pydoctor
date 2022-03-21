@@ -352,7 +352,7 @@ class ContentItem(Element):
 
             # pass do_not_expand=True also when an object do not have any members, 
             # instead of expanding on an empty div. 
-            return ExpandableItem(TagLoader(tag), self.child, nested_contents, 
+            return ExpandableItem(TagLoader(tag), self.child, self.documented_ob, nested_contents, 
                     do_not_expand=self.child == self.documented_ob or not nested_contents.has_contents)
         else:
             return ""
@@ -360,7 +360,7 @@ class ContentItem(Element):
     @renderer
     def linkOnlyItem(self, request: IRequest, tag: Tag) -> Union[str, 'LinkOnlyItem']:
         if not self._expand:
-            return LinkOnlyItem(TagLoader(tag), self.child)
+            return LinkOnlyItem(TagLoader(tag), self.child, self.documented_ob)
         else:
             return ""
 
@@ -371,12 +371,13 @@ class LinkOnlyItem(Element):
     Used by L{ContentItem.linkOnlyItem}
     """
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable):
+    def __init__(self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable):
         super().__init__(loader)
         self.child = child
+        self.documented_ob = documented_ob
     @renderer
     def name(self, request: IRequest, tag: Tag) -> Tag:
-        return tags.code(epydoc2stan.taglink(self.child, self.child.page_object.url, 
+        return tags.code(epydoc2stan.taglink(self.child, self.documented_ob.page_object.url, 
                                         epydoc2stan.insert_break_points(self.child.name)))
 
 class ExpandableItem(LinkOnlyItem):
@@ -393,8 +394,9 @@ class ExpandableItem(LinkOnlyItem):
 
     last_ExpandableItem_id = 0
 
-    def __init__(self, loader: ITemplateLoader, child: Documentable, contents: ObjContent, do_not_expand: bool = False):
-        super().__init__(loader, child)
+    def __init__(self, loader: ITemplateLoader, child: Documentable, documented_ob: Documentable, 
+                contents: ObjContent, do_not_expand: bool = False):
+        super().__init__(loader, child, documented_ob)
         self._contents =  contents
         self._do_not_expand = do_not_expand
         ExpandableItem.last_ExpandableItem_id += 1
