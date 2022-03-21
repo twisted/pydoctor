@@ -589,7 +589,7 @@ div.tip, div.hint, div.important {
     margin:24px 20px 20px 0;
     border: 1px solid;
     border-radius: 4px;
-    display: flex; 
+    display: flex;
     position: sticky;
     top: 0;
     overflow-wrap: break-word;
@@ -690,6 +690,7 @@ div.tip, div.hint, div.important {
     width: 100%;
     padding-top: 3px;
     padding-bottom: 3px;
+    color: #414141;
 }
 
 .sidebar > div ul > li > .itemName > code, .sidebar > div ul > li > .itemName > code > a { 
@@ -972,7 +973,7 @@ input.tocChildrenToggle {
 
 /* Special cases to display the current object name in the sidebar */ 
 .thisobject a {
-    color: #555;
+    color: #414141;
 }
 .expandableItem label.notExpandable {
     cursor: not-allowed;
