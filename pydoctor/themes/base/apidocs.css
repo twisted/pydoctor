@@ -309,7 +309,7 @@ ul ul ul ul ul ul ul {
     }
 }
 
-@media only screen and (max-width: 400px) {
+@media only screen and (max-width: 500px) {
     /* Attr name column table  */
     #splitTables > table tr td:nth-child(2) {
         width: 100px;
