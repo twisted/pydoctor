@@ -3,8 +3,7 @@ Helper function to convert L{docutils} nodes to Stan tree.
 """
 import re
 import optparse
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Set, Union, TYPE_CHECKING
-import unicodedata
+from typing import Any, Callable, ClassVar, Iterable, List, Optional, Union, TYPE_CHECKING
 from docutils.writers import html4css1
 from docutils import nodes
 from docutils.frontend import OptionParser
@@ -16,22 +15,6 @@ if TYPE_CHECKING:
     
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.stanutils import flatten, html2stan
-
-def slugify(string:str) -> str:
-    # zacharyvoase/slugify is licensed under the The Unlicense
-    """
-    A generic slugifier utility (currently only for Latin-based scripts).
-    Example:
-        >>> slugify("Héllo Wörld")
-        "hello-world"
-    """
-    return re.sub(r'[-\s]+', '-', 
-                re.sub(rb'[^\w\s-]', b'',
-                    unicodedata.normalize('NFKD', string)
-                    .encode('ascii', 'ignore'))
-                .strip()
-                .lower()
-                .decode())
 
 def node2html(node: nodes.Node, docstring_linker: 'DocstringLinker') -> List[str]:
     """
@@ -102,18 +85,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         # don't allow <h1> tags, start at <h2>
         # h1 is reserved for the page nodes.title. 
         self.section_level += 1
-        self._section_slugs: Set[str] = set()
-
-    def slugify(self, text:str) -> str:
-        # Takes special care to ensure we don't generate 
-        # twice the same ID for sections.
-        s = slugify(text)
-        i = 1
-        while s in self._section_slugs:
-            s = slugify(f"{text}-{i}")
-            i+=1
-        self._section_slugs.add(s)
-        return s
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
@@ -204,12 +175,6 @@ class HTMLTranslator(html4css1.HTMLTranslator):
                                             'heading']).strip()
 
         return super().starttag(node, tagname, suffix, **attributes)  # type: ignore[no-any-return]
-
-    def visit_section(self, node: nodes.Node) -> None:
-        # override default ID with our own
-        if node.hasattr('id'): del node['id']
-        node['ids'] = [self.slugify(' '.join(gettext(node[0])))]
-        super().visit_section(node)
 
     def visit_doctest_block(self, node: nodes.Node) -> None:
         pysrc = node[0].astext()

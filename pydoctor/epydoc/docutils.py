@@ -46,7 +46,11 @@ def set_node_attributes(node: nodes.Node,
     return node
 
 def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Optional[nodes.Node]:
-    """Simplified from docutils Contents transform. """
+    """
+    Simplified from docutils Contents transform. 
+
+    All section nodes MUST have set attribute 'ids' to a list of strings.
+    """
 
     def _copy_and_filter(node: nodes.Node) -> nodes.Node:
         """Return a copy of a title, with references, images, etc. removed."""
