@@ -263,17 +263,17 @@ ul ul ul ul ul ul ul {
 
 /* Attr name column table  */
 #splitTables > table tr td:nth-child(2) {
-    width: 200px;
+    width: 240px;
     word-break: break-word;
+}
+
+/* Fix proportion size of summary table columns */
+#splitTables > table {
+    table-layout: fixed;
 }
 
 /* For smaller displays, i.e. half screen or mobile phone */
 @media only screen and (max-width: 1000px) {
-
-    /* Fix proportion size of summary table columns */
-    #splitTables > table {
-        table-layout: fixed;
-    }
 
     /* Attr name column table  */
     #splitTables > table tr td:nth-child(2) {
