@@ -241,18 +241,6 @@ a:hover{
     border-bottom: 1px solid rgb(210, 220, 216);
 }
 
-#splitTables > table tr td:nth-child(1) {
-    width: 130px;
-}
-#splitTables > table tr td:nth-child(2) {
-    width: 300px;
-}
-
-@media only screen and (max-width: 1000px){
-    #splitTables > table tr td:nth-child(2) {
-        width: 35%;
-    }
-}
 
 /* Child list */
 
@@ -695,15 +683,6 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
     filter: invert(86%) sepia(18%) saturate(760%) hue-rotate(183deg) brightness(104%) contrast(106%);
 }
 
-/* For bigger displays, i.e. full screen
-@media only screen and (min-width: 1330px) {
-    body > nav {
-        width: 350px!important;
-    }
-    body > div, body > footer {
-        margin-left: 350px!important;
-    }
-} */
 
 @font-face {
     font-family: Lato;
