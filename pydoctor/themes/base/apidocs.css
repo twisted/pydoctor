@@ -178,8 +178,8 @@ ul ul ul ul ul ul ul {
 }
 
 .functionBody p {
-    margin-top: 6px;
-    margin-bottom: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
 }
 
 #splitTables > p {
@@ -1097,3 +1097,14 @@ pre.constant-value              { padding: .5em; }
 .rst-re-op                      { color: #fc7844; }
 .rst-re-group                   { color: #309078; }
 .rst-re-ref                     { color: #890000; }
+
+/* Hightlight the targeted item with "#" */
+#childList a:target ~ .functionHeader, #childList a:target ~ .functionBody{
+    background-color: rgb(253, 255, 223);
+}
+#childList a:target ~ .functionHeader{
+    box-shadow: 0px 0px 0px 10px rgb(253, 255, 223);
+}
+#childList a:target ~ .functionBody{
+    box-shadow: -3px -7px 0px 12px rgb(253, 255, 223);
+}
