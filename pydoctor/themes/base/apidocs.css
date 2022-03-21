@@ -207,7 +207,6 @@ ul ul ul ul ul ul ul {
 
 .fieldTable {
     width: 100%;
-    display: block;
     border: 0;
 }
 
@@ -234,7 +233,7 @@ ul ul ul ul ul ul ul {
 
 /* Argument name + type column table  */
 .fieldTable tr td.fieldArgContainer {
-    width: 250px;
+    width: 325px;
     word-break: break-word;
 }
 
@@ -271,42 +270,49 @@ ul ul ul ul ul ul ul {
 /* For smaller displays, i.e. half screen or mobile phone */
 @media only screen and (max-width: 1000px) {
 
-    /* Fix size of summary table columns */
+    /* Fix proportion size of summary table columns */
     #splitTables > table {
         table-layout: fixed;
     }
 
-    /* Kind column table  */
-    #splitTables > table tr td:first-child {
-        border-left: none;
-        width: 20%;
-    }
-
     /* Attr name column table  */
     #splitTables > table tr td:nth-child(2) {
-        width: 35%;
-    }
-
-    /* Argument name + type column table  */
-    .fieldTable tr td.fieldArgContainer {
         width: 200px;
-    } 
+    }
 
     /* Summary column table */
     #splitTables > table tr td:nth-child(3) {
-        width: 45%;
+        width: auto;
     }
 
 }
 
 @media only screen and (max-width: 750px) {
+    
+    /* Kind column table  */
+    #splitTables > table tr td:first-child {
+        border-left: none;
+        width: 20%;
+    }
+    
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2) {
+        width: 160px;
+    }
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 170px;
     } 
+    .fieldTable {
+        table-layout: fixed;
+    }
 }
 
 @media only screen and (max-width: 400px) {
+    /* Attr name column table  */
+    #splitTables > table tr td:nth-child(2) {
+        width: 100px;
+    }
     /* Argument name + type column table  */
     .fieldTable tr td.fieldArgContainer {
         width: 125px;
@@ -358,7 +364,7 @@ table .private {
 }
 
 .functionBody {
-    margin-left: 15px;
+    margin-left: 5px;
 }
 
 .functionBody > #part {
@@ -846,7 +852,7 @@ body.sidebar-collapsed .sidebarcontainer {
 }
 
 body.sidebar-collapsed #main {
-    margin: 0 0 0 25px;
+    margin: 0 0 0 25px!important;
 }
 
 body.sidebar-collapsed #collapseSideBar {
@@ -870,7 +876,7 @@ body.sidebar-collapsed #collapseSideBar > a:hover {
         display: none;
     }
     #main {
-        margin: 0!important;
+        margin: 0;
     }
     .sidebarcontainer {
         display: none!important;
