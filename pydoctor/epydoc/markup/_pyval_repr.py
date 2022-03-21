@@ -190,7 +190,7 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         List of warnings
         """
     
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
         try:
             return Tag('code')(super().to_stan(docstring_linker))
         except Exception as e:

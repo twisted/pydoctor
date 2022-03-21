@@ -986,7 +986,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = obj.parsed_docstring.to_stan(source.docstringlinker)
+            stan = obj.parsed_docstring.to_stan(source.docstringlinker, compact=False)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if source.docstring is None:

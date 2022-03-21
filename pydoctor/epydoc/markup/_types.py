@@ -48,7 +48,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         """
         raise NotImplementedError()
 
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
         """
         Present the type as a stan tree. 
         """
