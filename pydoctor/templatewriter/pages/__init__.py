@@ -272,8 +272,7 @@ class CommonPage(Page):
         if self.ob.system.options.nosidebar:
             return ""
         else:
-            return tag.fillSlots(sidebar=SideBar(docgetter=self.docgetter,
-                                 ob=self.ob, template_lookup=self.template_lookup))
+            return tag.fillSlots(sidebar=SideBar(ob=self.ob, template_lookup=self.template_lookup))
 
     @property
     def slot_map(self) -> Dict[str, "Flattenable"]:
