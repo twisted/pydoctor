@@ -8,6 +8,7 @@ body {
 .container-fluid{
     max-width: 1380px;
     width: 100%;
+    flex: auto;
 }
 
 nav.navbar {
@@ -663,7 +664,7 @@ div.tip, div.hint, div.important {
     display: flex;
     overflow: hidden;
     flex-wrap: wrap;
-    word-break: break-all;
+    word-break: break-word;
 }
 
 .sidebar li p {
@@ -719,7 +720,7 @@ div.tip, div.hint, div.important {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    word-break: break-all;
+    word-break: break-word;
     padding: 0 15px 3px 1px;
     box-shadow: -10px 12px 0px -11px #888;
 }
@@ -754,7 +755,10 @@ div.tip, div.hint, div.important {
   
 /* Style page content */
 #main {
-    margin-left: 317px; /* Same as the width of the sidebar + 20px*/
+    
+     /* Same as the width of the sidebar + 20px*/
+    display: flex;
+    flex-direction: column;
 }
 
 /* Special case for the --nosidebar option */   
@@ -767,9 +771,6 @@ div.tip, div.hint, div.important {
     .sidebarcontainer {
         width: 317px; /* Set the width of the sidebar: 310px + 2px for the border + 5px for the scrollbar */
     }
-    #main {
-        margin-left: 347px; /* Same as the width of the sidebar + 30px*/
-    }
 }
 
 /* For smaller displays, i.e. half screen */
@@ -777,18 +778,12 @@ div.tip, div.hint, div.important {
     .sidebarcontainer {
         width: 257px; /* Set the width of the sidebar: 250px + 2px for the border + 5px for the scrollbar */
     }
-    #main {
-        margin-left: 277px; /* Same as the width of the sidebar + 20px*/
-    }
 }
 
 /* For smaller displays mobile phone */
 @media only screen and (max-width: 900px) {
     .sidebarcontainer {
         width: 207px; /* Set the width of the sidebar: 200px + 2px for the border + 5px for the scrollbar */
-    }
-    #main {
-        margin-left: 227px; /* Same as the width of the sidebar + 20px */
     }
 }
 
