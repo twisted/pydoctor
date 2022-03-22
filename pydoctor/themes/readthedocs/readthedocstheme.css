@@ -241,6 +241,11 @@ a:hover{
     border-bottom: 1px solid rgb(210, 220, 216);
 }
 
+@media only screen and (max-width: 1000px){
+    #splitTables > table tr td:nth-child(2) {
+        width: 35%;
+    }
+}
 
 /* Child list */
 
