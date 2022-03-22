@@ -74,8 +74,12 @@ The following process ensures correct version management:
  - Update the README file and add an empty placeholder for unreleased changes.
  - Merge the branch
 
-Updating pydoctor in Debian and Ubuntu
---------------------------------------
+Updating pydoctor for Linux distributions
+-----------------------------------------
+
+The information below covers Debian and its derivative distributions.
+The same principles should be applied for Fedora, Arch, Alpine or any other
+Linux distribution.
 
 There shouldn't be any additional steps needed to get pydoctor updated in
 Debian (and its downstream distributions like Ubuntu).
