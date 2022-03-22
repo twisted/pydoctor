@@ -633,12 +633,6 @@ nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableCon
     margin-left: 0;
 }
 
-/* Sidebar This object special case */
-
-.thisobject a {
-    font-weight: bold;
-}
-
 /* Search results */
 #search-results-container {
     position: fixed;
