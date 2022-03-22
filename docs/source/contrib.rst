@@ -74,6 +74,51 @@ The following process ensures correct version management:
  - Update the README file and add an empty placeholder for unreleased changes.
  - Merge the branch
 
+Updating pydoctor in Debian and Ubuntu
+--------------------------------------
+
+There shouldn't be any additional steps needed to get pydoctor updated in
+Debian (and its downstream distributions like Ubuntu).
+As pydoctor is a Python based package the `Debian Python Team
+<https://wiki.debian.org/Teams/PythonTeam>`_ is usually taking care about
+updating pydoctor in Debian. The DPT is available through the team mailing
+list (``Debian Python List <debian-python@lists.debian.org>``) there everyone
+can get in contact by email. If you just want to ask something quickly please
+use this option.
+
+Debian uses a separate, non GitHub, BTS (Bug Tracking System) to keep track
+of issues. The package maintainers like to use this system in case of more
+specific requests or problems. The preferred and suggested way to open up
+new issues within the Debian BTS is to use the tool `reportbug
+<https://wiki.debian.org/reportbug>`_ that will do some additional magic
+while collecting the data for the bug report like collecting installed
+packages and there versions. ``reportbug`` should be used if you are working
+on a Debian based system.
+
+But you can also use any email client to open up bug reports on the Debian
+BTS by simply writing an email to the address ``submit@bugs.debian.org``.
+
+If you want to help to keep the pydoctor package up to date in Debian the
+DPT is happy to take your help! Helping out can be done in various ways.
+
+* Keep an eye on `reported issues <https://bugs.debian.org/cgi-bin/pkgreport.cgi?repeatmerged=yes&src=pydoctor>`_
+  for the pydoctor package and forward them upstream if needed.
+* Have also a look at cross connected packages and possible build issues
+  there regarding the build dependency onpydoctor. These packages are mostly
+  `twisted <https://tracker.debian.org/pkg/twisted>`_ or
+  `git-buildpackage <https://tracker.debian.org/pkg/git-buildpackage>`_.
+* Ideally taking over some maintainer responsibilities for pydoctor in Debian.
+
+pydoctor and new depending packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It might happen that pydoctor is requiring new additional Python libraries
+due to new wanted features or to enhance the internal test suite.
+
+Such new packages shouldn't get vendored. They need to be packaged in
+Debian. Best is to get in contact with the DPT to talk about about new
+requirements and the best way to get things done.
+
 Author Design Notes
 -------------------
 
