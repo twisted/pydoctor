@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="1" />
+  <meta name="pydoctor-template-version" content="2" />
 
   <t:transparent t:render="head">Head</t:transparent>
 
@@ -13,9 +13,10 @@
     
         <!-- Side navigation -->
       <div class="sidebarcontainer" t:render="sidebarcontainer">
-        
         <t:slot name="sidebar">SideBar contents </t:slot>
-       
+        <!-- No sidebar toggle for read the docs theme, the sidebar is always
+          visible when the screen is width enough.
+        -->
       </div>
 
     </nav>
