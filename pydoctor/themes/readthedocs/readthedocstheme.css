@@ -434,7 +434,7 @@ pre {
     color: #d9d9d9;
 }
 
-.sidebar li a:hover{
+.sidebar > div:nth-child(2) li a:hover{
     color: #d9d9d9;
 }
 
