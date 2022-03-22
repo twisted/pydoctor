@@ -6,6 +6,15 @@ import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
+
+# In newer Python versions, use importlib.resources from the standard library.
+# On older versions, a compatibility package must be installed from PyPI.
+if sys.version_info < (3, 9):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
+
 from pydoctor import model, templatewriter, stanutils, __version__
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
@@ -15,6 +24,7 @@ from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -402,6 +412,17 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
     assert not test_build_dir.joinpath('Static/Fonts').is_dir()
     assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
 
+def test_themes_template_versions() -> None:
+    """
+    All our templates should be up to date.
+    """
+
+    for theme in get_themes():
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+            lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / theme)
+            assert len(w) == 0, [str(_w) for _w in w]
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
