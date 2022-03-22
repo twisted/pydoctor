@@ -68,15 +68,8 @@ body > footer > hr {
 code > a {
     background: rgb(255, 255, 255);
     font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-    border: 2px solid rgb(225, 228, 229);
-    border-bottom: 2px solid rgb(225, 228, 229);
-    border-color: rgb(225, 228, 229);
-    border-left: 2px solid rgb(225, 228, 229);
-    border-right: 2px solid rgb(225, 228, 229);
-    border-style: solid;
-    border-top: 2px solid rgb(225, 228, 229);
-    border-width: 2px;
-    padding: 1px 5px;
+    border: 1px solid rgb(225, 228, 229);
+    padding: 1px 2px;
     font-size: 14px;
 }
 
