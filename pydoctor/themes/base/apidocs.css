@@ -972,7 +972,7 @@ input.tocChildrenToggle {
 
 /* Special cases to display the current object name in the sidebar */ 
 .thisobject a {
-    color: #414141;
+    font-weight: bold;
 }
 .expandableItem label.notExpandable {
     cursor: not-allowed;
