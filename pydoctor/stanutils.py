@@ -2,7 +2,7 @@
 Utilities related to Stan tree building and HTML flattening.
 """
 import re
-from typing import Any, Union, List, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING
 
 from twisted.web.template import Tag, XMLString, flattenString
 from twisted.python.failure import Failure
