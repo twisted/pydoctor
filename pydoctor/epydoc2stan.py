@@ -1000,7 +1000,7 @@ def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
 
 def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
-    Ensures that the C{parsed_summary} attribute of a documentable is set to it's final value. 
+    Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value. 
     Do not generate summary twice.
     
     @returns: Tuple: C{source}, C{parsed docstring}
