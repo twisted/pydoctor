@@ -116,6 +116,12 @@ footer.navbar {
     text-align: center;
 }
 
+a[name] {
+    position: relative;
+    bottom: 10px;
+    font-size: 0;
+}
+
 ul {
     margin-top: 10px;
     margin-left: 10px;
