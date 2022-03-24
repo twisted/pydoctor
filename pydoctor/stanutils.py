@@ -2,14 +2,13 @@
 Utilities related to Stan tree building and HTML flattening.
 """
 import re
-from typing import Any, Union, List, TYPE_CHECKING, cast
+from typing import Any, Union, List, TYPE_CHECKING
 
 from twisted.web.template import Tag, XMLString, flattenString
 from twisted.python.failure import Failure
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from pydoctor.epydoc.markup import ParsedDocstring
 
 _RE_CONTROL = re.compile((
     '[' + ''.join(
