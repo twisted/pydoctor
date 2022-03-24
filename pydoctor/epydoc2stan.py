@@ -977,6 +977,11 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
 
 
 class _ParsedDocFromStan(ParsedDocstring):
+    """
+    A dummy L{ParsedDocstring}. 
+    
+    L{to_stan} method simply returns back what's given to L{_ParsedDocFromStan.__init__}. 
+    """
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
         self._fromstan = stan
@@ -997,6 +1002,8 @@ def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Docum
     """
     Ensures that the C{parsed_summary} attribute of a documentable is set to it's final value. 
     Do not generate summary twice.
+    
+    @returns: Tuple: C{source}, C{parsed docstring}
     """
 
     doc, source = get_docstring(obj)
