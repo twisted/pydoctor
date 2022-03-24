@@ -37,7 +37,6 @@ nav.navbar .navbar-header {
 
 .page-header {
     margin-top: 22px;
-    position: sticky;
     top: 0;
     display: flex;
     flex-wrap: wrap;
@@ -115,12 +114,6 @@ footer.navbar {
     border-width: 1px 0 0 0;
     border-radius: 0;
     text-align: center;
-}
-
-a[name] {
-    position: relative;
-    bottom: 80px;
-    font-size: 0;
 }
 
 ul {
