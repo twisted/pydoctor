@@ -2,13 +2,14 @@
 Utilities related to Stan tree building and HTML flattening.
 """
 import re
-from typing import Union, List, TYPE_CHECKING
+from typing import Any, Union, List, TYPE_CHECKING, cast
 
 from twisted.web.template import Tag, XMLString, flattenString
 from twisted.python.failure import Failure
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
+    from pydoctor.epydoc.markup import ParsedDocstring
 
 _RE_CONTROL = re.compile((
     '[' + ''.join(
@@ -61,3 +62,16 @@ def flatten_text(stan: Union[Tag, str]) -> str:
             if isinstance(child, (Tag, str)):
                 text += flatten_text(child)
     return text
+
+class _ParsedDocFromStan:
+    def __init__(self, stan: Tag):
+        self.fields: List[Any] = []
+        self._stan = stan
+        self.has_body = True
+    def to_stan(self, docstring_linker: Any) -> Tag:
+        return self._stan
+    def to_node(self) -> Any:
+        raise NotImplementedError()
+
+def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
+    return cast('ParsedDocstring', _ParsedDocFromStan(stan))
