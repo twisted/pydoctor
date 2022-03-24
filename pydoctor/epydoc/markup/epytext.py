@@ -478,7 +478,7 @@ def _add_section(
     # Colorize the heading
     head = _colorize(heading_token, errors, 'heading')
 
-    # Add the section's and heading's DOM elements. 
+    # Add the section's and heading's DOM elements.
     sec = Element('section')
     stack[-1].children.append(sec)
     stack.append(sec)
