@@ -988,9 +988,16 @@ class _ParsedDocFromStan(ParsedDocstring):
         raise NotImplementedError()
 
 def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
+    """
+    Encapsulate the given L{Tag} into a L{ParsedDocstring}.
+    """
     return _ParsedDocFromStan(stan)
 
 def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
+    """
+    Ensures that the C{parsed_summary} attribute of a documentable is set to it's final value. 
+    Do not generate summary twice.
+    """
 
     doc, source = get_docstring(obj)
     
