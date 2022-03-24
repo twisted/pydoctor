@@ -4,7 +4,7 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 from typing import (
-    TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
+    TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
     Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Union, cast
 )
 import ast
@@ -18,7 +18,6 @@ from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
-from pydoctor.stanutils import parsed_doc_from_stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
@@ -976,6 +975,20 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     else:
         return None
 
+
+class _ParsedDocFromStan(ParsedDocstring):
+    def __init__(self, stan: Tag):
+        super().__init__(fields=[])
+        self._fromstan = stan
+    def has_body(self) -> bool:
+        return True
+    def to_stan(self, docstring_linker: Any) -> Tag:
+        return self._fromstan
+    def to_node(self) -> Any:
+        raise NotImplementedError()
+
+def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
+    return _ParsedDocFromStan(stan)
 
 def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
 

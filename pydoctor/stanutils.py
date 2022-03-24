@@ -62,16 +62,3 @@ def flatten_text(stan: Union[Tag, str]) -> str:
             if isinstance(child, (Tag, str)):
                 text += flatten_text(child)
     return text
-
-class _ParsedDocFromStan:
-    def __init__(self, stan: Tag):
-        self.fields: List[Any] = []
-        self._stan = stan
-        self.has_body = True
-    def to_stan(self, docstring_linker: Any) -> Tag:
-        return self._stan
-    def to_node(self) -> Any:
-        raise NotImplementedError()
-
-def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
-    return cast('ParsedDocstring', _ParsedDocFromStan(stan))
