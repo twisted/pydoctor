@@ -978,7 +978,7 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
 
 class _ParsedStanOnly(ParsedDocstring):
     """
-    A L{ParsedDocstring} that only contains cached stan. 
+    A L{ParsedDocstring} directly constructed from stan, for caching purposes.
     
     L{to_stan} method simply returns back what's given to L{_ParsedStanOnly.__init__}. 
     """
@@ -991,12 +991,6 @@ class _ParsedStanOnly(ParsedDocstring):
         return self._fromstan
     def to_node(self) -> Any:
         raise NotImplementedError()
-
-def _cache_parsed_stan(stan: Tag) -> 'ParsedDocstring':
-    """
-    Encapsulate the given L{Tag} into a L{ParsedDocstring}.
-    """
-    return _ParsedStanOnly(stan)
 
 def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
@@ -1023,7 +1017,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         source = obj.parent
         assert source is not None
     elif doc is None:
-        parsed_doc = _cache_parsed_stan(format_undocumented(obj))
+        parsed_doc = _ParsedStanOnly(format_undocumented(obj))
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert source is not None
@@ -1036,7 +1030,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
                 )
             ]
         if len(lines) > 3:
-            parsed_doc = _cache_parsed_stan(tags.span(class_='undocumented')("No summary"))
+            parsed_doc = _ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
         else:
             parsed_doc = parse_docstring(obj, ' '.join(lines), source)
     
@@ -1103,7 +1097,7 @@ def format_summary(obj: model.Documentable) -> Tag:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
         stan = tags.span(class_='undocumented')("Broken description")
-        obj.parsed_summary = _cache_parsed_stan(stan)
+        obj.parsed_summary = _ParsedStanOnly(stan)
 
     return stan
 
