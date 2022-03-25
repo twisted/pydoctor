@@ -976,11 +976,11 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
         return None
 
 
-class _ParsedDocFromStan(ParsedDocstring):
+class _ParsedStanOnly(ParsedDocstring):
     """
-    A dummy L{ParsedDocstring}. 
+    A L{ParsedDocstring} that only contains cached stan. 
     
-    L{to_stan} method simply returns back what's given to L{_ParsedDocFromStan.__init__}. 
+    L{to_stan} method simply returns back what's given to L{_ParsedStanOnly.__init__}. 
     """
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
@@ -992,13 +992,13 @@ class _ParsedDocFromStan(ParsedDocstring):
     def to_node(self) -> Any:
         raise NotImplementedError()
 
-def parsed_doc_from_stan(stan: Tag) -> 'ParsedDocstring':
+def _cache_parsed_stan(stan: Tag) -> 'ParsedDocstring':
     """
     Encapsulate the given L{Tag} into a L{ParsedDocstring}.
     """
-    return _ParsedDocFromStan(stan)
+    return _ParsedStanOnly(stan)
 
-def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
+def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
     """
     Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value. 
     Do not generate summary twice.
@@ -1023,7 +1023,7 @@ def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Docum
         source = obj.parent
         assert source is not None
     elif doc is None:
-        parsed_doc = parsed_doc_from_stan(format_undocumented(obj))
+        parsed_doc = _cache_parsed_stan(format_undocumented(obj))
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert source is not None
@@ -1036,7 +1036,7 @@ def ensure_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Docum
                 )
             ]
         if len(lines) > 3:
-            parsed_doc = parsed_doc_from_stan(tags.span(class_='undocumented')("No summary"))
+            parsed_doc = _cache_parsed_stan(tags.span(class_='undocumented')("No summary"))
         else:
             parsed_doc = parse_docstring(obj, ' '.join(lines), source)
     
@@ -1088,7 +1088,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
-    source, parsed_doc = ensure_parsed_summary(obj)
+    source, parsed_doc = _get_parsed_summary(obj)
     if not source:
         source = obj
     try:
@@ -1103,7 +1103,7 @@ def format_summary(obj: model.Documentable) -> Tag:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
         stan = tags.span(class_='undocumented')("Broken description")
-        obj.parsed_summary = parsed_doc_from_stan(stan)
+        obj.parsed_summary = _cache_parsed_stan(stan)
 
     return stan
 
