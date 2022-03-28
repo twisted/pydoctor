@@ -119,6 +119,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
