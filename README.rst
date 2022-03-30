@@ -70,8 +70,8 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
-in development
-^^^^^^^^^^^^^^
+pydoctor 22.4.0
+^^^^^^^^^^^^^^^
 * Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
 * Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
   module variable in order to focus on potential python code parsing errors.
