@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, Union, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = Any
 else:
     Traversable = object
 
