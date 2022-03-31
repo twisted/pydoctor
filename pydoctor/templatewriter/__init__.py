@@ -1,5 +1,5 @@
 """Render pydoctor data as HTML."""
-from typing import Iterable, Iterator, Optional, Union, cast, TYPE_CHECKING
+from typing import Any, Iterable, Iterator, Optional, Union, cast, TYPE_CHECKING
 if TYPE_CHECKING:
     from typing_extensions import Protocol, runtime_checkable
 else:
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = object
+        Traversable = Any
 else:
     Traversable = object
 
