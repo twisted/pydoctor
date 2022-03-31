@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = object
 else:
     Traversable = object
 
