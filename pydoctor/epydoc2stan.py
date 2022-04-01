@@ -987,7 +987,7 @@ class _ParsedStanOnly(ParsedDocstring):
         self._fromstan = stan
     def has_body(self) -> bool:
         return True
-    def to_stan(self, docstring_linker: Any) -> Tag:
+    def to_stan(self, docstring_linker: Any, compact:bool=False) -> Tag:
         return self._fromstan
     def to_node(self) -> Any:
         raise NotImplementedError()
