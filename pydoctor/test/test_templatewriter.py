@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, Union, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = Any
 else:
     Traversable = object
 
@@ -499,3 +499,19 @@ def test_index_contains_infos(tmp_path: Path) -> None:
         page = f.read()
         for i in infos:
             assert i in page, page
+
+def test_objects_order_mixed_modules_and_packages() -> None:
+    """
+    Packages and modules are mixed when sorting with objects_order.
+    """
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    fromText('', parent_name='top', modname='aaa', system=system)
+    fromText('', parent_name='top', modname='bbb', system=system)
+    fromText('', parent_name='top', modname='aba', system=system, is_package=True)
+    
+    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    names = [s.name for s in _sorted]
+
+    assert names == ['aaa', 'aba', 'bbb']
