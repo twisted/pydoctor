@@ -10,7 +10,7 @@ from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import Page
+from pydoctor.templatewriter.pages import Page, objects_order
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -28,9 +28,6 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
     contents = list(module.submodules())
     if not contents:
         return r
-
-    def fullName(obj: model.Documentable) -> str:
-        return obj.fullName()
 
     ul = tags.ul()
 
