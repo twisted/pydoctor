@@ -57,16 +57,24 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
+        # This code is mainly used to generate summary of plaintext docstrings.
 
         if self._document is not None:
             return self._document
         else:
+            # create document
             _document = utils.new_document('plaintext')
-            _document = set_node_attributes(self._document, 
-                children=[set_node_attributes(nodes.paragraph('',''), 
-                    children=[set_node_attributes(nodes.Text(self._text), document=_document, lineno=1)], 
-                    document=_document, lineno=1)]
-                )
+
+            # split text into paragraphs
+            paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[
+                            set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)], 
+                            document=_document, lineno=0)
+                                for p in self._text.split('\n\n')] 
+            
+            # assemble document
+            _document = set_node_attributes(_document, 
+                                            children=paragraphs,
+                                            document=_document, lineno=0)
 
             self._document = _document
             return self._document

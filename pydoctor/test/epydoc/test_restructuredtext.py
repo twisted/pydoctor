@@ -9,6 +9,7 @@ from pydoctor.stanutils import flatten, flatten_text
 
 from docutils import nodes
 from bs4 import BeautifulSoup
+import pytest
 
 def prettify(html: str) -> str:
     return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
@@ -215,30 +216,33 @@ def test_rst_directive_seealso() -> None:
     assert prettify(html).strip() == prettify(expected_html).strip(), html
 
 
-
-def test_summary() -> None:
+@pytest.mark.parametrize(
+    'markup', ('epytext', 'plaintext', 'numpy')
+    )
+def test_summary(markup) -> None:
     cases = [
         ("Single line", "Single line"), 
         ("Single line.", "Single line."), 
-        ("Single line C{with} period.", "Single line with period."),
+        ("Single line with period.", "Single line with period."),
         ("""
-        Single line C{with} period.
+        Single line with period.
         
         @type: Also with a tag.
         """, "Single line with period."), 
-        ("Other lines C{with} period.\nThis is attached", "Other lines with period. This is attached"),
+        ("Other lines with period.\nThis is attached", "Other lines with period. This is attached"),
         ("Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ", 
          "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line..."),
         ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ", 
          "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line..."),
         ("""
-        Return a fully qualified name for the possibly-dotted C{name}.
+        Return a fully qualified name for the possibly-dotted name.
 
         To explain what this means, consider the following modules... blabla""",
         "Return a fully qualified name for the possibly-dotted name.")
     ]
     for src, summary_text in cases:
         errors: List[ParseError] = []
-        pdoc = get_parser_by_name('epytext')(dedent(src), errors, False)
+        pdoc = get_parser_by_name(markup)(dedent(src), errors, False)
         assert not errors
-        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
+        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
+        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())).replace('\n', ' ') == summary_text
