@@ -73,6 +73,9 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Packages and modules are now listed together.
+* Docstring summaries are now genrated from docutils nodes:
+   - fixes a bug in restructuredtext references in summary.
+   - still display summary when the first paragraph is long instead of "No summary".
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^
