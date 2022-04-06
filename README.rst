@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Packages and modules are now listed together.
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^
