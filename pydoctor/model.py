@@ -15,14 +15,16 @@ import sys
 import types
 from enum import Enum
 from inspect import signature, Signature
-from optparse import Values
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
+from collections import OrderedDict
 from urllib.parse import quote
 
+from pydoctor.options import Options
+from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
     from pydoctor.astbuilder import ASTBuilder
+    from pydoctor import epydoc2stan
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -74,13 +77,15 @@ class PrivacyClass(Enum):
 
     @cvar HIDDEN: Don't show the object at all.
     @cvar PRIVATE: Show, but de-emphasize the object.
-    @cvar VISIBLE: Show the object as normal.
+    @cvar PUBLIC: Show the object as normal.
     """
 
     HIDDEN = 0
     PRIVATE = 1
-    VISIBLE = 2
-    
+    PUBLIC = 2
+    # For compatibility
+    VISIBLE = PUBLIC
+
 class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
@@ -114,6 +119,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -144,6 +150,7 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
+        self._linker: Optional['epydoc2stan.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
         doc = node.s
@@ -248,7 +255,7 @@ class Documentable:
         # :/
         self._handle_reparenting_pre()
         old_parent = self.parent
-        assert isinstance(old_parent, Module)
+        assert isinstance(old_parent, CanContainImportsDocumentable)
         old_name = self.name
         self.parent = self.parentMod = new_parent
         self.name = new_name
@@ -298,10 +305,17 @@ class Documentable:
             full_name = obj._localNameToFullName(p)
             if full_name == p and i != 0:
                 # The local name was not found.
-                # TODO: Instead of returning the input, _localNameToFullName()
-                #       should probably either return None or raise LookupError.
-                full_name = f'{obj.fullName()}.{p}'
-                break
+                # If we're looking at a class, we try our luck with the inherited members
+                if isinstance(obj, Class):
+                    inherited = obj.find(p)
+                    if inherited: 
+                        full_name = inherited.fullName()
+                if full_name == p:
+                    # We don't have a full name
+                    # TODO: Instead of returning the input, _localNameToFullName()
+                    #       should probably either return None or raise LookupError.
+                    full_name = f'{obj.fullName()}.{p}'
+                    break
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
@@ -324,7 +338,11 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.HIDDEN
+        isVisible = self.privacyClass is not PrivacyClass.HIDDEN
+        # If a module/package/class is hidden, all it's members are hidden as well.
+        if isVisible and self.parent:
+            isVisible = self.parent.isVisible
+        return isVisible
 
     @property
     def isPrivate(self) -> bool:
@@ -332,7 +350,7 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.VISIBLE
+        return self.privacyClass is not PrivacyClass.PUBLIC
 
     @property
     def module(self) -> 'Module':
@@ -365,6 +383,19 @@ class Documentable:
             f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
 
+    @property
+    def docstringlinker(self) -> 'epydoc2stan.DocstringLinker':
+        """
+        Returns an instance of L{epydoc2stan.DocstringLinker} suitable for resolving names
+        in the context of the object scope. 
+        """
+        if self._linker is not None:
+            return self._linker
+        # FIXME: avoid cyclic import https://github.com/twisted/pydoctor/issues/507
+        from pydoctor.epydoc2stan import _CachedEpydocLinker
+        self._linker = _CachedEpydocLinker(self)
+        return self._linker
+
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
@@ -385,6 +416,11 @@ class Module(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
+
+        self._is_c_module = False
+        """Whether this module is a C-extension."""
+        self._py_mod: Optional[types.ModuleType] = None
+        """The live module if the module was built from introspection."""
 
         self.all: Optional[Collection[str]] = None
         """Names listed in the C{__all__} variable of this module.
@@ -544,6 +580,16 @@ _PackageT = Package
 
 T = TypeVar('T')
 
+def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
+    spec = importlib.util.spec_from_file_location(module_full_name, path)
+    if spec is None: 
+        raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
+    py_mod = importlib.util.module_from_spec(spec)
+    loader = spec.loader
+    assert isinstance(loader, importlib.abc.Loader), loader
+    loader.exec_module(py_mod)
+    return py_mod
+
 
 # Declare the types that we consider as functions (also when they are coming
 # from a C extension)
@@ -575,9 +621,9 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase: Optional[str] = None
+    options: 'Options'
 
-    def __init__(self, options: Optional[Values] = None):
+    def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -591,8 +637,7 @@ class System:
         if options:
             self.options = options
         else:
-            from pydoctor.driver import parse_args
-            self.options, _ = parse_args([])
+            self.options = Options.defaults()
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -603,31 +648,36 @@ class System:
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
-        self.unprocessed_modules: Set[Module] = set()
+
+        # We're using the id() of the modules as key, and not the fullName becaue modules can
+        # be reparented, generating KeyError.
+        self.unprocessed_modules: Dict[int, _ModuleT] = OrderedDict()
+
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+
+        # since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
+        # it's ok to cache privacy class results since the potential renames (with reparenting) happends before we begin to
+        # generate HTML, which is when we call Documentable.PrivacyClass.
+        self._privacyClassCache: Dict[int, PrivacyClass] = {}
+
+    @property
+    def sourcebase(self) -> Optional[str]:
+        return self.options.htmlsourcebase
 
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
         return {obj.name for obj in self.rootobjects}
 
-    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
-        if isinstance(section, str):
-            section = (section,)
-        delta: int = max(self.options.verbosity_details.get(sect, 0)
-                         for sect in section)
-        base: int = self.options.verbosity
-        return base + delta
-
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
             d = str(i)
         else:
             d = f'{i}/{n}'
-        if self.verbosity(section) == 0 and sys.stdout.isatty():
+        if self.options.verbosity == 0 and sys.stdout.isatty():
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
@@ -645,6 +695,16 @@ class System:
             wantsnl: bool = True,
             once: bool = False
             ) -> None:
+        """
+        Log a message. pydoctor's logging system is bit messy.
+        
+        @param section: API doc generation step this message belongs to.
+        @param msg: The message.
+        @param thresh: The minimum verbosity level of the system for this message to actually be printed.
+            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
+            Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+        @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
+        """
         if once:
             if (section, msg) in self.once_msgs:
                 return
@@ -657,7 +717,7 @@ class System:
             # on top of the logging system.
             self.violations += 1
 
-        if thresh <= self.verbosity(section) <= topthresh:
+        if thresh <= self.options.verbosity <= topthresh:
             if self.needsnl and wantsnl:
                 print()
             print(msg, end='')
@@ -720,12 +780,39 @@ class System:
                 yield o
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
+        ob_id = id(ob)
+        cached_privacy = self._privacyClassCache.get(ob_id)
+        if cached_privacy is not None:
+            return cached_privacy
+        
+        # kind should not be None, this is probably a relica of a past age of pydoctor.
+        # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
+        
+        privacy = PrivacyClass.PUBLIC
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
-            return PrivacyClass.PRIVATE
-        return PrivacyClass.VISIBLE
+            privacy = PrivacyClass.PRIVATE
+        
+        # Precedence order: CLI arguments order
+        # Check exact matches first, then qnmatch
+        fullName = ob.fullName()
+        _found_exact_match = False
+        for priv, match in reversed(self.options.privacy):
+            if fullName == match:
+                privacy = priv
+                _found_exact_match = True
+                break
+        if not _found_exact_match:
+            for priv, match in reversed(self.options.privacy):
+                if qnmatch.qnmatch(fullName, match):
+                    privacy = priv
+                    break
+
+        # Store in cache
+        self._privacyClassCache[ob_id] = privacy
+        return privacy
 
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
@@ -765,6 +852,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
+            assert projBaseDir is not None
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
@@ -792,14 +880,51 @@ class System:
             ) -> _ModuleT:
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
-        self.addObject(mod)
-        self.progress(
-            "analyzeModule", len(self.allobjects),
-            None, "modules and packages discovered")
-        self.unprocessed_modules.add(mod)
-        self.module_count += 1
+        self._addUnprocessedModule(mod)
         self.setSourceHref(mod, modpath)
         return mod
+
+    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+        """
+        First add the new module into the unprocessed_modules mapping. 
+        Handle eventual duplication of module names, and finally add the 
+        module to the system.
+        """
+        assert mod.state is ProcessingState.UNPROCESSED
+        first = self.allobjects.get(mod.fullName())
+        if first is not None:
+            # At this step of processing only modules exists
+            assert isinstance(first, Module)
+            self._handleDuplicateModule(first, mod)
+        else:
+            self.unprocessed_modules[id(mod)] = mod
+            self.addObject(mod)
+            self.progress(
+                "analyzeModule", len(self.allobjects),
+                None, "modules and packages discovered")        
+            self.module_count += 1
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        """
+        This is called when two modules have the same name. 
+
+        Current rules are the following: 
+            - C-modules wins over regular python modules
+            - Packages wins over modules
+            - Else, the last added module wins
+        """
+        self._warning(dup.parent, "duplicate", str(first))
+
+        if first._is_c_module and not isinstance(dup, Package):
+            # C-modules wins
+            return
+        elif isinstance(first, Package) and not isinstance(dup, Package):
+            # Packages wins
+            return
+        else:
+            # Else, the last added module wins
+            del self.unprocessed_modules[id(dup)]
+            self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
@@ -846,22 +971,17 @@ class System:
         else:
             module_full_name = f'{package.fullName()}.{module_name}'
 
-        spec = importlib.util.spec_from_file_location(module_full_name, path)
-        if spec is None: 
-            raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
-        py_mod = importlib.util.module_from_spec(spec)
-        loader = spec.loader
-        assert isinstance(loader, importlib.abc.Loader), loader
-        loader.exec_module(py_mod)
+        py_mod = import_mod_from_file_location(module_full_name, path)
         is_package = py_mod.__package__ == py_mod.__name__
 
         factory = self.Package if is_package else self.Module
         module = factory(self, module_name, package, path)
-        self.addObject(module)
-
+        
         module.docstring = py_mod.__doc__
-        self._introspectThing(py_mod, module, module)
-
+        module._is_c_module = True
+        module._py_mod = py_mod
+        
+        self._addUnprocessedModule(module)
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
@@ -936,22 +1056,29 @@ class System:
         assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
         return mod
 
-
     def processModule(self, mod: _ModuleT) -> None:
         assert mod.state is ProcessingState.UNPROCESSED
         mod.state = ProcessingState.PROCESSING
         if mod.source_path is None:
             return
-        builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.source_path)
-        if ast:
+        if mod._is_c_module:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-            builder.processModuleAST(ast, mod)
+            self._introspectThing(mod._py_mod, mod, mod)
             mod.state = ProcessingState.PROCESSED
             head = self.processing_modules.pop()
             assert head == mod.fullName()
-        self.unprocessed_modules.remove(mod)
+        else:
+            builder = self.defaultBuilder(self)
+            ast = builder.parseFile(mod.source_path)
+            if ast:
+                self.processing_modules.append(mod.fullName())
+                self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+                builder.processModuleAST(ast, mod)
+                mod.state = ProcessingState.PROCESSED
+                head = self.processing_modules.pop()
+                assert head == mod.fullName()
+        del self.unprocessed_modules[id(mod)]
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
@@ -961,7 +1088,7 @@ class System:
 
     def process(self) -> None:
         while self.unprocessed_modules:
-            mod = next(iter(self.unprocessed_modules))
+            mod = next(iter(self.unprocessed_modules.values()))
             self.processModule(mod)
         self.postProcess()
 

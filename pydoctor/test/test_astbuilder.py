@@ -517,7 +517,7 @@ def test_documented_no_alias(systemcls: Type[model.System]) -> None:
     P = mod.contents['Processor']
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
     assert f.linenumber
 
@@ -980,7 +980,7 @@ def test_inline_docstring_classvar(systemcls: Type[model.System]) -> None:
     assert not f.docstring
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1001,7 +1001,7 @@ def test_inline_docstring_annotated_classvar(systemcls: Type[model.System]) -> N
     assert sorted(C.contents.keys()) == ['_b', 'a']
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1047,7 +1047,7 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
         ]
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     assert a.kind is model.DocumentableKind.INSTANCE_VARIABLE
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
@@ -1055,17 +1055,17 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
     assert b.kind is model.DocumentableKind.INSTANCE_VARIABLE
     c = C.contents['c']
     assert c.docstring == """inline doc for c"""
-    assert c.privacyClass is model.PrivacyClass.VISIBLE
+    assert c.privacyClass is model.PrivacyClass.PUBLIC
     assert c.kind is model.DocumentableKind.INSTANCE_VARIABLE
     d = C.contents['d']
     assert d.docstring == """inline doc for d"""
-    assert d.privacyClass is model.PrivacyClass.VISIBLE
+    assert d.privacyClass is model.PrivacyClass.PUBLIC
     assert d.kind is model.DocumentableKind.INSTANCE_VARIABLE
     e = C.contents['e']
     assert not e.docstring
     f = C.contents['f']
     assert f.docstring == """inline doc for f"""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param

@@ -397,10 +397,11 @@ class ModuleVistor(ast.NodeVisitor):
 
             # Move re-exported objects into current module.
             if asname in exports and mod is not None:
-                try:
-                    ob = mod.contents[orgname]
-                except KeyError:
-                    self.builder.warning("cannot find re-exported name",
+                # In case of duplicates names, we can't rely on resolveName,
+                # So we use content.get first to resolve non-alias names. 
+                ob = mod.contents.get(orgname) or mod.resolveName(orgname)
+                if ob is None:
+                    self.builder.warning("cannot resolve re-exported name",
                                          f'{modname}.{orgname}')
                 else:
                     if mod.all is None or orgname not in mod.all:
@@ -985,7 +986,7 @@ class _ValueFormatter:
         The colorized value as L{ParsedDocstring}.
         """
 
-        self._linker = epydoc2stan._EpydocLinker(ctx)
+        self._linker = ctx.docstringlinker
         """
         Linker.
         """
