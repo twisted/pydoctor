@@ -150,6 +150,7 @@ class ParsedDocstring(abc.ABC):
         """
         Returns the summary of this docstring.
         """
+        from pydoctor import epydoc2stan
         if self._summary is not None:
             return self._summary
         try: 
@@ -157,10 +158,9 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            from pydoctor.epydoc2stan import _ParsedStanOnly
-            self._summary = _ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+            self._summary = epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
-            self._summary = visitor.summary
+            self._summary = visitor.summary or epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
         assert self._summary is not None
         return self._summary
 
