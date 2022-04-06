@@ -219,7 +219,7 @@ def test_rst_directive_seealso() -> None:
 @pytest.mark.parametrize(
     'markup', ('epytext', 'plaintext', 'numpy')
     )
-def test_summary(markup) -> None:
+def test_summary(markup:str) -> None:
     cases = [
         ("Single line", "Single line"), 
         ("Single line.", "Single line."), 
