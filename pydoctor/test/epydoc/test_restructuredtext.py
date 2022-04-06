@@ -4,7 +4,7 @@ from textwrap import dedent
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
-from pydoctor.node2stan import node2stan, gettext
+from pydoctor.node2stan import node2stan
 from pydoctor.stanutils import flatten, flatten_text
 
 from docutils import nodes
@@ -227,9 +227,18 @@ def test_summary() -> None:
         @type: Also with a tag.
         """, "Single line with period."), 
         ("Other lines C{with} period.\nThis is attached", "Other lines with period. This is attached"),
+        ("Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ", 
+         "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line..."),
+        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ", 
+         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line..."),
+        ("""
+        Return a fully qualified name for the possibly-dotted C{name}.
+
+        To explain what this means, consider the following modules... blabla""",
+        "Return a fully qualified name for the possibly-dotted name.")
     ]
     for src, summary_text in cases:
         errors: List[ParseError] = []
-        pdoc = get_parser_by_name('epytext')(src, errors, False)
+        pdoc = get_parser_by_name('epytext')(dedent(src), errors, False)
         assert not errors
         assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text

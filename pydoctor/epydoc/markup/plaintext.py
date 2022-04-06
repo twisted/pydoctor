@@ -16,7 +16,7 @@ from typing import List, Callable, Optional
 from docutils import nodes, utils
 from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, _SummaryExtractor
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
 from pydoctor.model import Documentable
 from pydoctor.epydoc.docutils import set_node_attributes
 

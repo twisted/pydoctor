@@ -41,7 +41,7 @@ from importlib import import_module
 from inspect import getmodulename
 
 from docutils import nodes, utils
-from twisted.web.template import Tag
+from twisted.web.template import Tag, tags
 
 from pydoctor import node2stan
 from pydoctor.epydoc.docutils import set_node_attributes
@@ -148,20 +148,20 @@ class ParsedDocstring(abc.ABC):
     
     def get_summary(self) -> 'ParsedDocstring':
         """
-        @rtype: L{ParsedDocstring}
+        Returns the summary of this docstring.
         """
         if self._summary is not None:
             return self._summary
         try: 
             _document = self.to_node()
-            visitor = _SummaryExtractor(_document)
+            visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
             from pydoctor.epydoc2stan import _ParsedStanOnly
-            from twisted.web.template import tags
             self._summary = _ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
             self._summary = visitor.summary
+        assert self._summary is not None
         return self._summary
 
 ##################################################
@@ -336,38 +336,44 @@ class ParseError(Exception):
         else:
             return f'<ParseError on line {self._linenum + 1:d}>'
 
-class _SummaryExtractor(nodes.NodeVisitor):
+class SummaryExtractor(nodes.NodeVisitor):
     """
     A docutils node visitor that extracts first sentences from
     the first paragraph in a document.
     """
-    def __init__(self, document):
+    def __init__(self, document: nodes.document, maxchars:int=200) -> None:
+        """
+        @param document: The docutils document to extract a summary from.
+        @param maxchars: Maximum of characters the summary can span. 
+            Sentences are not cut in the middle, so the actual length
+            might be longer if your have a large first paragraph.
+        """
         super().__init__(document)
-        self.summary = None
-        self.other_docs = None
+        self.summary: Optional['ParsedDocstring'] = None
+        self.other_docs: bool = False
+        self.maxchars = maxchars
 
-    def visit_document(self, node: nodes.Node):
+    def visit_document(self, node: nodes.Node) -> None:
         self.summary = None
 
     _SENTENCE_RE_SPLIT = re.compile(r'( *[\.\?!][\'"\)\]]* *)')
 
-    def visit_paragraph(self, node):
+    def visit_paragraph(self, node: nodes.Node) -> None:
         if self.summary is not None:
             # found a paragraph after the first one
             self.other_docs = True
-            raise nodes.SkipNode()
+            raise nodes.StopTraversal()
 
-        summary_doc = utils.new_document('plaintext')
+        summary_doc = utils.new_document('summary')
         summary_pieces = []
 
         # Extract the first sentences from the first paragraph until maximum number 
         # of characters is reach or until the end of the paragraph.
-        MAX_CHARACTERS = 200
         char_count = 0
 
         for child in node:
 
-            if char_count > MAX_CHARACTERS:
+            if char_count > self.maxchars:
                 break
             
             if isinstance(child, nodes.Text):
@@ -376,7 +382,7 @@ class _SummaryExtractor(nodes.NodeVisitor):
                 
                 for s in sentences:
                     
-                    if char_count > MAX_CHARACTERS:
+                    if char_count > self.maxchars:
                         break
 
                     summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
@@ -386,7 +392,7 @@ class _SummaryExtractor(nodes.NodeVisitor):
                 summary_pieces.append(set_node_attributes(child.deepcopy(), document=summary_doc))
                 char_count += len(''.join(node2stan.gettext(child)))
             
-        if char_count > MAX_CHARACTERS:
+        if char_count > self.maxchars:
             summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
             self.other_docs = True
 
@@ -397,8 +403,8 @@ class _SummaryExtractor(nodes.NodeVisitor):
         from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
         self.summary = ParsedRstDocstring(summary_doc, fields=[])
 
-    def visit_field(self, node: nodes.Node):
+    def visit_field(self, node: nodes.Node) -> None:
         raise nodes.SkipNode()
 
-    def unknown_visit(self, node: nodes.Node):
+    def unknown_visit(self, node: nodes.Node) -> None:
         '''Ignore all unknown nodes'''
