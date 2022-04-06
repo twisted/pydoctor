@@ -999,46 +999,24 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
     
     @returns: Tuple: C{source}, C{parsed docstring}
     """
-
-    doc, source = get_docstring(obj)
+    _, source = get_docstring(obj)
     
     if obj.parsed_summary is not None:
         return (source, obj.parsed_summary)
 
-    parsed_doc = None
-    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
-        # Attributes can be documented as fields in their parent's docstring.
-        parsed_doc = obj.parsed_docstring
+    if source is None:
+        summary_parsed_doc: ParsedDocstring = _ParsedStanOnly(format_undocumented(obj))
     else:
-        parsed_doc = None
-
-    if parsed_doc is not None:
-        # The docstring was split off from the Attribute's parent docstring.
-        source = obj.parent
-        assert source is not None
-    elif doc is None:
-        parsed_doc = _ParsedStanOnly(format_undocumented(obj))
-    else:
+        ensure_parsed_docstring(obj)
+        docstring_parsed_doc = obj.parsed_docstring
         # Tell mypy that if we found a docstring, we also have its source.
-        assert source is not None
-        # Use up to three first non-empty lines of doc string as summary.
-        lines = [
-            line.strip()
-            for line in itertools.takewhile(
-                lambda line: line.strip(),
-                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
-                )
-            ]
-        if len(lines) > 3:
-            parsed_doc = _ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
-        else:
-            parsed_doc = parse_docstring(obj, ' '.join(lines), source)
+        assert docstring_parsed_doc is not None
+        summary_parsed_doc = docstring_parsed_doc.get_summary()
     
-    assert parsed_doc is not None
+    assert summary_parsed_doc is not None
+    obj.parsed_summary = summary_parsed_doc
 
-    obj.parsed_summary = parsed_doc
-    return (source, parsed_doc)
-
+    return (source, summary_parsed_doc)
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
