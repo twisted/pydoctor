@@ -378,12 +378,14 @@ class SummaryExtractor(nodes.NodeVisitor):
             
             if isinstance(child, nodes.Text):
                 text = child.astext().replace('\n', ' ')
-                sentences = self._SENTENCE_RE_SPLIT.split(text)
+                sentences = [item for item in self._SENTENCE_RE_SPLIT.split(text) if item] # Not empty values only
                 
-                for s in sentences:
+                for i,s in enumerate(sentences):
                     
                     if char_count > self.maxchars:
-                        break
+                        # Leave final point alone.
+                        if not (i == len(sentences)-1 and len(s)==1):
+                            break
 
                     summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
                     char_count += len(s)
@@ -393,7 +395,8 @@ class SummaryExtractor(nodes.NodeVisitor):
                 char_count += len(''.join(node2stan.gettext(child)))
             
         if char_count > self.maxchars:
-            summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
+            if not summary_pieces[-1].astext().endswith('.'):
+                summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
             self.other_docs = True
 
         set_node_attributes(summary_doc, children=[
