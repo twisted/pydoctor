@@ -73,6 +73,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Packages and modules are now listed together.
+* The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^
@@ -108,7 +109,6 @@ pydoctor 22.2.0
   this allows to have the external intershinx links blue while the internal links are red.
 * Smarter line wrapping in summary and parameters tables.
 * Any code inside of ``if __name__ == '__main__'`` is now excluded from the documentation.
-* The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 * Fix variables named like the current module not being documented.
 * The Module Index now only shows module names instead of their full name. You can hover over a module link to see the full name.
 * If there is only a single root module, `index.html` now documents that module (previously it only linked the module page).
