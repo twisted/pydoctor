@@ -999,7 +999,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
     
     @returns: Tuple: C{source}, C{parsed docstring}
     """
-    _, source = get_docstring(obj)
+    source = ensure_parsed_docstring(obj)
     
     if obj.parsed_summary is not None:
         return (source, obj.parsed_summary)
@@ -1007,11 +1007,9 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
     if source is None:
         summary_parsed_doc: ParsedDocstring = _ParsedStanOnly(format_undocumented(obj))
     else:
-        ensure_parsed_docstring(obj)
-        docstring_parsed_doc = obj.parsed_docstring
         # Tell mypy that if we found a docstring, we also have its source.
-        assert docstring_parsed_doc is not None
-        summary_parsed_doc = docstring_parsed_doc.get_summary()
+        assert obj.parsed_docstring is not None
+        summary_parsed_doc = obj.parsed_docstring.get_summary()
     
     assert summary_parsed_doc is not None
     obj.parsed_summary = summary_parsed_doc
