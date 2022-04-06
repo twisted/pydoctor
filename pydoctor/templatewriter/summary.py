@@ -39,7 +39,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         # If there are more than 50 modules and no submodule has
         # further submodules we use a more compact presentation.
         li = tags.li(class_='compact-modules')
-        for m in sorted(contents, key=fullName):
+        for m in sorted(contents, key=objects_order):
             span = tags.span()
             span(tags.code(epydoc2stan.taglink(m, m.url, label=m.name)))
             span(', ')
@@ -50,7 +50,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         li.children[-1].children.pop() # type: ignore
         ul(li)
     else:
-        for m in sorted(contents, key=fullName):
+        for m in sorted(contents, key=objects_order):
             ul(moduleSummary(m, page_url))
     r(ul)
     return r
