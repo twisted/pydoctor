@@ -502,7 +502,7 @@ def test_index_contains_infos(tmp_path: Path) -> None:
 
 def test_objects_order_mixed_modules_and_packages() -> None:
     """
-    Packages and modules and mixed when sorting with objects_order
+    Packages and modules are mixed when sorting with objects_order.
     """
     system = model.System()
 
@@ -513,5 +513,5 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     
     _sorted = sorted(top.contents.values(), key=pages.objects_order)
     names = [s.name for s in _sorted]
-    
+
     assert names == ['aaa', 'aba', 'bbb']
