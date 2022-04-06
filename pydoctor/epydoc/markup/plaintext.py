@@ -13,11 +13,12 @@ __docformat__ = 'epytext en'
 
 from typing import List, Callable, Optional
 
-from docutils import nodes
+from docutils import nodes, utils
 from twisted.web.template import Tag, tags
 
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
+from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError, _SummaryExtractor
 from pydoctor.model import Documentable
+from pydoctor.epydoc.docutils import set_node_attributes
 
 def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
@@ -42,7 +43,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self._text = text
         # Caching:
-        # self._document: Optional[nodes.document] = None
+        self._document: Optional[nodes.document] = None
 
     @property
     def has_body(self) -> bool:
@@ -56,13 +57,16 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
-        raise NotImplementedError()
 
-        # TODO: Delete this code when we're sure this is the right thing to do.
-        # if self._document is not None:
-        #     return self._document
-        # else:
-        #     self._document = utils.new_document('plaintext')
-        #     self._document = set_node_attributes(self._document, 
-        #         children=set_nodes_parent((nodes.literal_block(rawsource=self._text, text=self._text)), self._document))
-        #     return self._document
+        if self._document is not None:
+            return self._document
+        else:
+            _document = utils.new_document('plaintext')
+            _document = set_node_attributes(self._document, 
+                children=[set_node_attributes(nodes.paragraph('',''), 
+                    children=[set_node_attributes(nodes.Text(self._text), document=_document, lineno=1)], 
+                    document=_document, lineno=1)]
+                )
+
+            self._document = _document
+            return self._document

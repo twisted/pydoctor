@@ -1,11 +1,11 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
-from pydoctor.node2stan import node2stan
-from pydoctor.stanutils import flatten
+from pydoctor.node2stan import node2stan, gettext
+from pydoctor.stanutils import flatten, flatten_text
 
 from docutils import nodes
 from bs4 import BeautifulSoup
@@ -213,3 +213,23 @@ def test_rst_directive_seealso() -> None:
         <p class="rst-last">Hey</p>
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
+
+
+
+def test_summary() -> None:
+    cases = [
+        ("Single line", "Single line"), 
+        ("Single line.", "Single line."), 
+        ("Single line C{with} period.", "Single line with period."),
+        ("""
+        Single line C{with} period.
+        
+        @type: Also with a tag.
+        """, "Single line with period."), 
+        ("Other lines C{with} period.\nThis is attached", "Other lines with period. This is attached"),
+    ]
+    for src, summary_text in cases:
+        errors: List[ParseError] = []
+        pdoc = get_parser_by_name('epytext')(src, errors, False)
+        assert not errors
+        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text

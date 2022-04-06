@@ -36,13 +36,15 @@ __docformat__ = 'epytext en'
 from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
+import re
 from importlib import import_module
 from inspect import getmodulename
 
-from docutils import nodes
+from docutils import nodes, utils
 from twisted.web.template import Tag
 
 from pydoctor import node2stan
+from pydoctor.epydoc.docutils import set_node_attributes
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -108,6 +110,7 @@ class ParsedDocstring(abc.ABC):
         """
 
         self._stan: Optional[Tag] = None
+        self._summary: Optional['ParsedDocstring'] = None
 
     @abc.abstractproperty
     def has_body(self) -> bool:
@@ -142,6 +145,24 @@ class ParsedDocstring(abc.ABC):
         @return: The docstring presented as a L{docutils.nodes.document}.
         """
         raise NotImplementedError()
+    
+    def get_summary(self) -> 'ParsedDocstring':
+        """
+        @rtype: L{ParsedDocstring}
+        """
+        if self._summary is not None:
+            return self._summary
+        try: 
+            _document = self.to_node()
+            visitor = _SummaryExtractor(_document)
+            _document.walk(visitor)
+        except Exception: 
+            from pydoctor.epydoc2stan import _ParsedStanOnly
+            from twisted.web.template import tags
+            self._summary = _ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+        else:
+            self._summary = visitor.summary
+        return self._summary
 
 ##################################################
 ## Fields
@@ -314,3 +335,70 @@ class ParseError(Exception):
             return '<ParseError on unknown line>'
         else:
             return f'<ParseError on line {self._linenum + 1:d}>'
+
+class _SummaryExtractor(nodes.NodeVisitor):
+    """
+    A docutils node visitor that extracts first sentences from
+    the first paragraph in a document.
+    """
+    def __init__(self, document):
+        super().__init__(document)
+        self.summary = None
+        self.other_docs = None
+
+    def visit_document(self, node: nodes.Node):
+        self.summary = None
+
+    _SENTENCE_RE_SPLIT = re.compile(r'( *[\.\?!][\'"\)\]]* *)')
+
+    def visit_paragraph(self, node):
+        if self.summary is not None:
+            # found a paragraph after the first one
+            self.other_docs = True
+            raise nodes.SkipNode()
+
+        summary_doc = utils.new_document('plaintext')
+        summary_pieces = []
+
+        # Extract the first sentences from the first paragraph until maximum number 
+        # of characters is reach or until the end of the paragraph.
+        MAX_CHARACTERS = 200
+        char_count = 0
+
+        for child in node:
+
+            if char_count > MAX_CHARACTERS:
+                break
+            
+            if isinstance(child, nodes.Text):
+                text = child.astext()
+                sentences = self._SENTENCE_RE_SPLIT.split(text)
+                
+                for s in sentences:
+                    
+                    if char_count > MAX_CHARACTERS:
+                        break
+
+                    summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
+                    char_count += len(s)
+
+            else:
+                summary_pieces.append(set_node_attributes(child.deepcopy(), document=summary_doc))
+                char_count += len(''.join(node2stan.gettext(child)))
+            
+        if char_count > MAX_CHARACTERS:
+            summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
+            self.other_docs = True
+
+        set_node_attributes(summary_doc, children=[
+            set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, 
+            children=summary_pieces)])
+
+        from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+        self.summary = ParsedRstDocstring(summary_doc, fields=[])
+
+    def visit_field(self, node: nodes.Node):
+        raise nodes.SkipNode()
+
+    def unknown_visit(self, node: nodes.Node):
+        '''Ignore all unknown nodes'''
