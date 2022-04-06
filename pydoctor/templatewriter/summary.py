@@ -287,7 +287,7 @@ class IndexPage(Page):
 
     @renderer
     def rootkind(self, request: object, tag: Tag) -> Tag:
-        rootkinds = sorted(set([o.kind for o in self.system.rootobjects]))
+        rootkinds = sorted(set([o.kind for o in self.system.rootobjects])) # type:ignore[type-var]
         return tag.clear()('/'.join(
              epydoc2stan.format_kind(o, plural=True).lower()
              for o in rootkinds ))
