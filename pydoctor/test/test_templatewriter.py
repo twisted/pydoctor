@@ -483,7 +483,7 @@ def test_index_contains_infos(tmp_path: Path) -> None:
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
-              'Or start at one of the root packages',
+              'Or start at one of the root packages:',
               '<code><a href="allgames.html" class="internal-link">allgames</a></code>',
               '<code><a href="basic.html" class="internal-link">basic</a></code>',
               '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
