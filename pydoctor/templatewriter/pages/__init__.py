@@ -34,7 +34,14 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
         children = sorted((o for o in ob.contents.values() if o.isVisible),
                       key=objects_order)
     """
-    return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
+
+    def map_kind(kind: model.DocumentableKind) -> model.DocumentableKind:
+        if kind == model.DocumentableKind.PACKAGE:
+            # packages and modules should be listed together
+            return model.DocumentableKind.MODULE
+        return kind
+
+    return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
@@ -48,7 +55,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(epydoc2stan._EpydocLinker(obj))
+        stan = doc.to_stan(obj.docstringlinker)
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         for message in doc.warnings:
             obj.report(message)
@@ -434,7 +441,7 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        _linker = epydoc2stan._EpydocLinker(self.ob)
+        _linker = self.ob.docstringlinker
         zipped = list(zip(self.ob.rawbases, self.ob.bases))
         if zipped:
             r.append('(')

@@ -1,12 +1,12 @@
 from io import BytesIO
-from typing import Callable, Union, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
-from pydoctor import model, templatewriter, stanutils
+from pydoctor import model, templatewriter, stanutils, __version__
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
@@ -14,7 +14,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
-from pydoctor.test.test_packages import processPackage
+from pydoctor.test.test_packages import processPackage, testpackages
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = Any
 else:
     Traversable = object
 
@@ -93,8 +93,6 @@ def test_document_code_in_init_module() -> None:
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
     w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
-    system.options.htmlusesplitlinks = True
-    system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
@@ -470,6 +468,7 @@ def test_format_decorators() -> None:
                     """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
                     """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
 
+
 def test_compact_module_summary() -> None:
     system = model.System()
 
@@ -497,3 +496,53 @@ def test_compact_module_summary() -> None:
     ul = moduleSummary(top, '').children[-1]
     assert ul.tagName == 'ul'       # type: ignore
     assert len(ul.children) == 51   # type: ignore
+
+    
+def test_index_contains_infos(tmp_path: Path) -> None:
+    """
+    Test if index.html contains the following informations:
+
+        - meta generator tag
+        - nav and links to modules, classes, names
+        - link to the root packages
+        - pydoctor github link in the footer
+    """
+
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
+              '<nav class="navbar navbar-default"',
+              '<a href="moduleIndex.html"',
+              '<a href="classIndex.html"',
+              '<a href="nameIndex.html"',
+              'Or start at one of the root packages',
+              '<code><a href="allgames.html" class="internal-link">allgames</a></code>',
+              '<code><a href="basic.html" class="internal-link">basic</a></code>',
+              '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
+
+    system = model.System()
+    system.addPackage(testpackages / "allgames")
+    system.addPackage(testpackages / "basic")
+    system.process()
+    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
+    w.writeSummaryPages(system)
+
+    with open(tmp_path / 'index.html', encoding='utf-8') as f:
+        page = f.read()
+        for i in infos:
+            assert i in page, page
+
+def test_objects_order_mixed_modules_and_packages() -> None:
+    """
+    Packages and modules are mixed when sorting with objects_order.
+    """
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    fromText('', parent_name='top', modname='aaa', system=system)
+    fromText('', parent_name='top', modname='bbb', system=system)
+    fromText('', parent_name='top', modname='aba', system=system, is_package=True)
+    
+    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    names = [s.name for s in _sorted]
+
+    assert names == ['aaa', 'aba', 'bbb']
+

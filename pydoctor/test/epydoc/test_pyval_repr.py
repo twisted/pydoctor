@@ -5,7 +5,7 @@ from typing import Any, Union
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text, html2stan
 from pydoctor.node2stan import gettext
 
 def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
@@ -1432,11 +1432,29 @@ def test_line_wrapping() -> None:
     <inline classes="variable-ellipsis">
         ...\n"""
 
-def color2(v: Any) -> str:
-    colorizer = PyvalColorizer(linelen=50, maxlines=5)
+def color2(v: Any, linelen:int=50) -> str:
+    """
+    Pain text colorize.
+    """
+    colorizer = PyvalColorizer(linelen=linelen, maxlines=5)
     colorized = colorizer.colorize(v)
-    text = ''.join(gettext(colorized.to_node()))
-    return text
+    text1 = ''.join(gettext(colorized.to_node()))
+    text2 = flatten_text(html2stan(flatten(colorized.to_stan(NotFoundLinker()))))
+    assert text1 == text2
+    return text2
+
+
+def test_crash_surrogates_not_allowed() -> None:
+    """
+    Test that the colorizer does not make the flatten function crash when passing surrogates unicode strings.
+    """
+    assert color2('surrogates:\udc80\udcff') == "'surrogates:\\udc80\\udcff'"
+
+def test_surrogates_cars_in_re() -> None:
+    """
+    Regex string are escaped their own way. See https://github.com/twisted/pydoctor/pull/493
+    """
+    assert color2(extract_expr(ast.parse("re.compile('surrogates:\\udc80\\udcff')"))) == "re.compile(r'surrogates:\\udc80\\udcff')"
 
 def test_repr_text() -> None:
     """Test a few representations, with a plain text version.
