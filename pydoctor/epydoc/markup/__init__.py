@@ -377,7 +377,7 @@ class SummaryExtractor(nodes.NodeVisitor):
                 break
             
             if isinstance(child, nodes.Text):
-                text = child.astext()
+                text = child.astext().replace('\n', ' ')
                 sentences = self._SENTENCE_RE_SPLIT.split(text)
                 
                 for s in sentences:
