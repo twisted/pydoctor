@@ -8,7 +8,6 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Union, cast
 )
 import ast
-import itertools
 import re
 
 import attr
