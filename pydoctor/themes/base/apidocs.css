@@ -115,6 +115,11 @@ li {
     padding-bottom: 5px;
 }
 
+#summaryTree .compact-modules {
+    list-style: none;
+    line-height: 1.8em;
+}
+
 li a {
     text-decoration: none;
 }

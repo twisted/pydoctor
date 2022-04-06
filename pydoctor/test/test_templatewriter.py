@@ -12,7 +12,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage, testpackages
 
@@ -468,6 +468,36 @@ def test_format_decorators() -> None:
                     """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
                     """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
 
+
+def test_compact_module_summary() -> None:
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    for x in range(50):
+        fromText('', parent_name='top', modname='sub' + str(x), system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 50   # type: ignore
+
+    # the 51th module triggers the compact summary
+    fromText('', parent_name='top', modname='_yet_another_sub', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 1    # type: ignore
+    
+    # test that the last module is private
+    assert 'private' in ul.children[0].children[-1].attributes['class'] # type: ignore
+
+    # for the compact summary no submodule may have further submodules
+    fromText('', parent_name='top.sub33', modname='subsubmodule', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 51   # type: ignore
+
+    
 def test_index_contains_infos(tmp_path: Path) -> None:
     """
     Test if index.html contains the following informations:
@@ -515,3 +545,4 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     names = [s.name for s in _sorted]
 
     assert names == ['aaa', 'aba', 'bbb']
+

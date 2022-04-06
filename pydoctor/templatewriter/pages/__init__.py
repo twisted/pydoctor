@@ -300,6 +300,8 @@ class CommonPage(Page):
 
 
 class ModulePage(CommonPage):
+    ob: model.Module
+
     def extras(self) -> List["Flattenable"]:
         r = super().extras()
 
@@ -312,10 +314,7 @@ class ModulePage(CommonPage):
 
 class PackagePage(ModulePage):
     def children(self) -> Sequence[model.Documentable]:
-        return sorted(
-            (o for o in self.ob.contents.values()
-             if isinstance(o, model.Module) and o.isVisible),
-            key=objects_order)
+        return sorted(self.ob.submodules(), key=objects_order)
 
     def packageInitTable(self) -> "Flattenable":
         children = sorted(

@@ -468,6 +468,11 @@ class Module(CanContainImportsDocumentable):
     def docformat(self, value: str) -> None:
         self._docformat = value
 
+    def submodules(self) -> Iterator['Module']:
+        """Returns an iterator over the visible submodules."""
+        return (m for m in self.contents.values()
+                if isinstance(m, Module) and m.isVisible)
+
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
