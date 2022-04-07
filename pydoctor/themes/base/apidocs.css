@@ -1106,7 +1106,7 @@ pre.constant-value              { padding: .5em; }
 .rst-re-group                   { color: #309078; }
 .rst-re-ref                     { color: #890000; }
 
-/* Hightlight the targeted item with "#" */
+/* highlight the targeted item with "#" */
 #childList a:target ~ .functionHeader, #childList a:target ~ .functionBody{
     background-color: rgb(253, 255, 223);
 }

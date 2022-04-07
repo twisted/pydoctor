@@ -710,16 +710,16 @@ input[type="search"] {
     vertical-align: middle;
 }
 
-/* Active hightlight */
+/* Active highlight */
 
-/* Hightlight the targeted item with "#" */
+/* highlight the targeted item with "#" */
 #childList a:target ~ .functionHeader{
     background-color: unset;
     border-left: 3px solid rgb(80, 80, 90);
 }
 #childList a:target ~ .functionBody{
-    background-color: rgb(253, 255, 223);
-    box-shadow: 0px 5px 0px 10px rgb(253 255 223);
+    background-color: transparent;
+    box-shadow: none;
 }
 
 @font-face {
