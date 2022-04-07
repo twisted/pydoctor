@@ -69,6 +69,7 @@ You can select a different format using the ``--docformat`` option or the ``__do
 
 What's New?
 ~~~~~~~~~~~
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 
 in development
 ^^^^^^^^^^^^^^
@@ -81,7 +82,6 @@ pydoctor 22.4.0
 * Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
   module variable in order to focus on potential python code parsing errors.
 * Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <https://pydoctor.readthedocs.io/en/latest/help.html>`_).
-* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Improved performances with caching of docstring summaries.
 
 pydoctor 22.3.0
