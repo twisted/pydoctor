@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Type
+from typing import Callable
 import pytest
 
 from pydoctor import model
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-def processPackage(packname: str, systemcls: Type[model.System] = model.System) -> model.System:
+def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
     system = systemcls()
     system.addPackage(testpackages / packname)
     system.process()

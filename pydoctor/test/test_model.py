@@ -64,7 +64,7 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
-def test_htmlsourcebase_providers(tmp_path: Path) -> None:
+def test_htmlsourcebase_providers() -> None:
     """
     Tests for the recognition of different version control providers
     tha uses differents URL templates to describe objetcs line numbers.
@@ -91,6 +91,16 @@ def test_htmlsourcebase_providers(tmp_path: Path) -> None:
 
         processPackage('basic', systemcls=lambda:system)
         assert system.allobjects['basic.mod.C'].sourceHref == var_href
+
+def test_htmlsourcebase_providers_custom() -> None:
+    options = model.Options.from_args([
+        '--html-viewsource-base=http://example.org/trac/browser/trunk', 
+        '--project-base-dir=.', 
+        '--html-viewsource-template={mod_source_href}#n{lineno}'])
+    system = model.System(options)
+
+    processPackage('basic', systemcls=lambda:system)
+    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
 
 def test_initialization_default() -> None:
     """
