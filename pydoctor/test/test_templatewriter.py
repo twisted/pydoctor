@@ -52,6 +52,36 @@ def getHTMLOf(ob: model.Documentable) -> str:
     return f.getvalue().decode()
 
 
+def test_sidebar() -> None:
+    src = '''
+    class C:
+
+        def f(): ...
+        def h(): ...
+        
+        class D:
+            def l(): ...
+
+    '''
+    system = model.System(model.Options.from_args(
+        ['--sidebar-expand-depth=3']))
+
+    mod = fromText(src, modname='mod', system=system)
+    
+    mod_html = getHTMLOf(mod)
+
+    mod_parts = [
+        '<a href="mod.C.html"',
+        '<a href="mod.C.html#f"',
+        '<a href="mod.C.html#h"',
+        '<a href="mod.C.D.html"',
+        '<a href="mod.C.D.html#l"',
+    ]
+
+    for p in mod_parts:
+        assert p in mod_html, f"{p!r} not found in HTML: {mod_html}"
+   
+
 def test_simple() -> None:
     src = '''
     def f():
