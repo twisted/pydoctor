@@ -122,12 +122,6 @@ p.caption, h1, h2, h3, h4, h5, h6, legend, .categoryHeader, #search-status{
     margin: 15px 0 20px 0;
 }
 
-/* Remove anchor hack */
-a[name] {
-    position: initial;
-} 
-
-
 /* Top-left navigation links */
 .navlinks {
     background-color: rgb(41, 128, 185);
