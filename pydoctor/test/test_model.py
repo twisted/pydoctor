@@ -64,10 +64,10 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
-def test_htmlsourcebase_providers() -> None:
+def test_htmlsourcetemplate_auto_detect() -> None:
     """
     Tests for the recognition of different version control providers
-    tha uses differents URL templates to describe objetcs line numbers.
+    that uses differents URL templates to point to line numbers.
 
     Supported templates are::
 
@@ -92,7 +92,7 @@ def test_htmlsourcebase_providers() -> None:
         processPackage('basic', systemcls=lambda:system)
         assert system.allobjects['basic.mod.C'].sourceHref == var_href
 
-def test_htmlsourcebase_providers_custom() -> None:
+def test_htmlsourcetemplate_custom() -> None:
     options = model.Options.from_args([
         '--html-viewsource-base=http://example.org/trac/browser/trunk', 
         '--project-base-dir=.', 
