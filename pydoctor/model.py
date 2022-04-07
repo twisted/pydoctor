@@ -11,6 +11,7 @@ import datetime
 import importlib
 import inspect
 import platform
+import re
 import sys
 import types
 from enum import Enum
@@ -180,7 +181,10 @@ class Documentable:
             if parentMod is not None:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
-                    self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
+                    self.sourceHref = self.system.viewsource_template.format(
+                        mod_source_href=parentSourceHref,
+                        lineno=str(lineno)
+                    )
 
     @property
     def description(self) -> str:
@@ -628,6 +632,21 @@ class System:
     defaultBuilder: Type[ASTBuilder]
     options: 'Options'
 
+    _RECOGNIZED_SOURCE_HREF = {
+        # Sourceforge
+        '{mod_source_href}#l{lineno}': re.compile(r'(^https?:\/\/sourceforge\.net\/)'),
+
+        # Bitbucket 
+        '{mod_source_href}#lines-{lineno}': re.compile(r'(^https?:\/\/bitbucket\.org\/)'),
+        
+        # Matches all other plaforms: Github, Gitlab, etc. 
+        # This match should be kept last in the list.
+        '{mod_source_href}#L{lineno}': re.compile(r'(.*)') 
+    }
+    # TODO: Since we can't guess git-web platform form URL, 
+    # we would have to pass the template string wih new option:
+    # --html-viewsource-template="{mod_source_href}#n{lineno}"
+
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
@@ -667,6 +686,21 @@ class System:
         # it's ok to cache privacy class results since the potential renames (with reparenting) happends before we begin to
         # generate HTML, which is when we call Documentable.PrivacyClass.
         self._privacyClassCache: Dict[int, PrivacyClass] = {}
+
+        self.viewsource_template = self._get_viewsource_template()
+
+    def _get_viewsource_template(self) -> str:
+        """
+        Recognize several version control providers based on option C{--html-viewsource-base}.
+        """
+        baserepo = self.sourcebase
+        if not baserepo:
+            return list(self._RECOGNIZED_SOURCE_HREF.keys())[-1]
+        for template, regex in self._RECOGNIZED_SOURCE_HREF.items():
+            if regex.match(baserepo):
+                return template
+        else:
+            assert False
 
     @property
     def sourcebase(self) -> Optional[str]:
