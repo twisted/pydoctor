@@ -986,7 +986,7 @@ class _ParsedStanOnly(ParsedDocstring):
         self._fromstan = stan
     def has_body(self) -> bool:
         return True
-    def to_stan(self, docstring_linker: Any) -> Tag:
+    def to_stan(self, docstring_linker: Any, compact:bool=False) -> Tag:
         return self._fromstan
     def to_node(self) -> Any:
         raise NotImplementedError()
@@ -1026,7 +1026,7 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = obj.parsed_docstring.to_stan(source.docstringlinker)
+            stan = obj.parsed_docstring.to_stan(source.docstringlinker, compact=False)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if source.docstring is None:
@@ -1125,6 +1125,17 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     if annotation is not None:
         return colorize_inline_pyval(annotation)
 
+    return None
+
+def format_toc(obj: model.Documentable) -> Optional[Tag]:
+    # Load the parsed_docstring if it's not already done. 
+    ensure_parsed_docstring(obj)
+
+    if obj.parsed_docstring:
+        if obj.system.options.sidebartocdepth > 0:
+            toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
+            if toc:
+                return toc.to_stan(obj.docstringlinker)
     return None
 
 

@@ -13,7 +13,7 @@ returns a L{ParsedRstDocstring}, which supports all of the methods
 defined by L{ParsedDocstring}.
 
 L{ParsedRstDocstring} is basically just a L{ParsedDocstring} wrapper
-for the C{docutils.nodes.document} class.
+for the C{nodes.document} class.
 
 B{Creating C{ParsedRstDocstring}s}:
 
@@ -50,7 +50,7 @@ from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
+from docutils.parsers.rst import Directive, directives # type:ignore[attr-defined]
 from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
@@ -147,7 +147,7 @@ class ParsedRstDocstring(ParsedDocstring):
             isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-    
+
     def to_node(self) -> nodes.document:
         return self._document
 

@@ -5,7 +5,7 @@ from twisted.web.template import Tag, renderer, tags
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import DocGetter, format_decorators, format_signature
+from pydoctor.templatewriter.pages import format_decorators, format_signature
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -16,7 +16,7 @@ class FunctionChild(TemplateElement):
     filename = 'function-child.html'
 
     def __init__(self,
-            docgetter: DocGetter,
+            docgetter: util.DocGetter,
             ob: Function,
             extras: "Flattenable",
             loader: ITemplateLoader
