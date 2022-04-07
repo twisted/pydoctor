@@ -23,6 +23,5 @@ Welcome to ``pydoctor``'s documentation!
    :caption: Quick links
 
    api/index
-   rtd_theme_api/index
    GitHub <https://github.com/twisted/pydoctor>
    PyPI <https://pypi.org/project/pydoctor>
