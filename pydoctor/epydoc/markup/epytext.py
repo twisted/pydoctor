@@ -1474,6 +1474,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
         elif tree.tag == 'section':
+            assert len(tree.children)>0, f"empty section {tree}"
             yield set_node_attributes(nodes.section('', ids=[self._slugify(' '.join(gettext(tree.children[0])))]), 
                 document=self._document, children=variables)
         elif tree.tag == 'epytext':
