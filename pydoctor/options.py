@@ -16,7 +16,7 @@ from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
-from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple
+from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser
 
 if TYPE_CHECKING:
