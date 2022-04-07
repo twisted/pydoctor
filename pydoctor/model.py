@@ -11,7 +11,6 @@ import datetime
 import importlib
 import inspect
 import platform
-import re
 import sys
 import types
 from enum import Enum
