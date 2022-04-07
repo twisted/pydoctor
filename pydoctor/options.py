@@ -211,9 +211,9 @@ def get_parser() -> ArgumentParser:
         '--pyval-repr-linelen', dest='pyvalreprlinelen', default=80, type=int, metavar='INT',
         help='Maxinum number of caracters for a constant value representation line. Use 0 for unlimited.')
     parser.add_argument(
-        '--sidebar-expand-depth', metavar="INT", type=int, default=2, dest='sidebarexpanddepth',
+        '--sidebar-expand-depth', metavar="INT", type=int, default=1, dest='sidebarexpanddepth',
         help=("How many nested modules and classes should be expandable, "
-              "first level is always expanded. (default: 2)"))
+              "first level is always expanded, nested levels can expand/collapse. Value should be 1 or greater. (default: 1)"))
     parser.add_argument(
         '--sidebar-toc-depth', metavar="INT", type=int, default=6, dest='sidebartocdepth',
         help=("How many nested titles should be listed in the docstring TOC "

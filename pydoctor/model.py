@@ -119,6 +119,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -466,6 +467,11 @@ class Module(CanContainImportsDocumentable):
     @docformat.setter
     def docformat(self, value: str) -> None:
         self._docformat = value
+
+    def submodules(self) -> Iterator['Module']:
+        """Returns an iterator over the visible submodules."""
+        return (m for m in self.contents.values()
+                if isinstance(m, Module) and m.isVisible)
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE

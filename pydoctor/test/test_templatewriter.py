@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, Union, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -13,7 +13,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage, testpackages
 from pydoctor.themes import get_themes
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = Any
 else:
     Traversable = object
 
@@ -53,6 +53,36 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
+
+def test_sidebar() -> None:
+    src = '''
+    class C:
+
+        def f(): ...
+        def h(): ...
+        
+        class D:
+            def l(): ...
+
+    '''
+    system = model.System(model.Options.from_args(
+        ['--sidebar-expand-depth=3']))
+
+    mod = fromText(src, modname='mod', system=system)
+    
+    mod_html = getHTMLOf(mod)
+
+    mod_parts = [
+        '<a href="mod.C.html"',
+        '<a href="mod.C.html#f"',
+        '<a href="mod.C.html#h"',
+        '<a href="mod.C.D.html"',
+        '<a href="mod.C.D.html#l"',
+    ]
+
+    for p in mod_parts:
+        assert p in mod_html, f"{p!r} not found in HTML: {mod_html}"
+   
 
 def test_simple() -> None:
     src = '''
@@ -481,6 +511,36 @@ def test_format_decorators() -> None:
                     """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
                     """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
 
+
+def test_compact_module_summary() -> None:
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    for x in range(50):
+        fromText('', parent_name='top', modname='sub' + str(x), system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 50   # type: ignore
+
+    # the 51th module triggers the compact summary
+    fromText('', parent_name='top', modname='_yet_another_sub', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 1    # type: ignore
+    
+    # test that the last module is private
+    assert 'private' in ul.children[0].children[-1].attributes['class'] # type: ignore
+
+    # for the compact summary no submodule may have further submodules
+    fromText('', parent_name='top.sub33', modname='subsubmodule', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 51   # type: ignore
+
+    
 def test_index_contains_infos(tmp_path: Path) -> None:
     """
     Test if index.html contains the following informations:
@@ -512,3 +572,20 @@ def test_index_contains_infos(tmp_path: Path) -> None:
         page = f.read()
         for i in infos:
             assert i in page, page
+
+def test_objects_order_mixed_modules_and_packages() -> None:
+    """
+    Packages and modules are mixed when sorting with objects_order.
+    """
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    fromText('', parent_name='top', modname='aaa', system=system)
+    fromText('', parent_name='top', modname='bbb', system=system)
+    fromText('', parent_name='top', modname='aba', system=system, is_package=True)
+    
+    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    names = [s.name for s in _sorted]
+
+    assert names == ['aaa', 'aba', 'bbb']
+

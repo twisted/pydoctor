@@ -72,10 +72,17 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
+* Packages and modules are now listed together.
+* The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
+
+pydoctor 22.4.0
+^^^^^^^^^^^^^^^
 * Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
 * Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
   module variable in order to focus on potential python code parsing errors.
 * Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <https://pydoctor.readthedocs.io/en/latest/help.html>`_).
+* Improved performances with caching of docstring summaries.
 
 pydoctor 22.3.0
 ^^^^^^^^^^^^^^^

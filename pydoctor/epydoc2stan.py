@@ -4,7 +4,7 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 from typing import (
-    TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
+    TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
     Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Union, cast
 )
 import ast
@@ -975,6 +975,71 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     else:
         return None
 
+
+class _ParsedStanOnly(ParsedDocstring):
+    """
+    A L{ParsedDocstring} directly constructed from stan, for caching purposes.
+    
+    L{to_stan} method simply returns back what's given to L{_ParsedStanOnly.__init__}. 
+    """
+    def __init__(self, stan: Tag):
+        super().__init__(fields=[])
+        self._fromstan = stan
+    def has_body(self) -> bool:
+        return True
+    def to_stan(self, docstring_linker: Any, compact:bool=False) -> Tag:
+        return self._fromstan
+    def to_node(self) -> Any:
+        raise NotImplementedError()
+
+def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
+    """
+    Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value. 
+    Do not generate summary twice.
+    
+    @returns: Tuple: C{source}, C{parsed docstring}
+    """
+
+    doc, source = get_docstring(obj)
+    
+    if obj.parsed_summary is not None:
+        return (source, obj.parsed_summary)
+
+    parsed_doc = None
+    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
+        # Attributes can be documented as fields in their parent's docstring.
+        parsed_doc = obj.parsed_docstring
+    else:
+        parsed_doc = None
+
+    if parsed_doc is not None:
+        # The docstring was split off from the Attribute's parent docstring.
+        source = obj.parent
+        assert source is not None
+    elif doc is None:
+        parsed_doc = _ParsedStanOnly(format_undocumented(obj))
+    else:
+        # Tell mypy that if we found a docstring, we also have its source.
+        assert source is not None
+        # Use up to three first non-empty lines of doc string as summary.
+        lines = [
+            line.strip()
+            for line in itertools.takewhile(
+                lambda line: line.strip(),
+                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
+                )
+            ]
+        if len(lines) > 3:
+            parsed_doc = _ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
+        else:
+            parsed_doc = parse_docstring(obj, ' '.join(lines), source)
+    
+    assert parsed_doc is not None
+
+    obj.parsed_summary = parsed_doc
+    return (source, parsed_doc)
+
+
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
 
@@ -1017,35 +1082,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
-    doc, source = get_docstring(obj)
-
-    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
-        # Attributes can be documented as fields in their parent's docstring.
-        parsed_doc = obj.parsed_docstring
-    else:
-        parsed_doc = None
-
-    if parsed_doc is not None:
-        # The docstring was split off from the Attribute's parent docstring.
-        source = obj.parent
-        assert source is not None
-    elif doc is None:
-        return format_undocumented(obj)
-    else:
-        # Tell mypy that if we found a docstring, we also have its source.
-        assert source is not None
-        # Use up to three first non-empty lines of doc string as summary.
-        lines = [
-            line.strip()
-            for line in itertools.takewhile(
-                lambda line: line.strip(),
-                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
-                )
-            ]
-        if len(lines) > 3:
-            return tags.span(class_='undocumented')("No summary")
-        parsed_doc = parse_docstring(obj, ' '.join(lines), source)
-
+    source, parsed_doc = _get_parsed_summary(obj)
+    if not source:
+        source = obj
     try:
         # Disallow same_page_optimization in order to make sure we're not
         # breaking links when including the summaries on other pages.
@@ -1057,12 +1096,10 @@ def format_summary(obj: model.Documentable) -> Tag:
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
-        return tags.span(class_='undocumented')("Broken description")
+        stan = tags.span(class_='undocumented')("Broken description")
+        obj.parsed_summary = _ParsedStanOnly(stan)
 
-    content: Sequence["Flattenable"] = [stan] if stan.tagName else stan.children
-    if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
-        content = content[0].children
-    return Tag('')(*content)
+    return stan
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
