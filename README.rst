@@ -72,6 +72,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Packages and modules are now listed together.
 * The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 * Fix source links for code hosted on Bitbucket or SourceForge.

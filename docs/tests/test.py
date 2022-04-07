@@ -95,8 +95,8 @@ def test_page_contains_infos():
         - pydoctor github link in the footer
     """
 
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
-              '<nav class="navbar navbar-default"',
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
+              '<nav class="navbar navbar-default mainnavbar"', 
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',
@@ -119,8 +119,8 @@ def test_custom_template_contains_infos():
         - link to teh extra.css
     """
 
-    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
-              '<nav class="navbar navbar-default"',
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"', 
+              '<nav class="navbar navbar-default mainnavbar"', 
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',

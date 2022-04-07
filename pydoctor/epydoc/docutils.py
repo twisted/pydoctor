@@ -1,9 +1,10 @@
 """
-Collection of helper functions and classes related to the creation L{docutils} nodes.
+Collection of helper functions and classes related to the creation and processing of L{docutils} nodes.
 """
 from typing import Iterable, Iterator, Optional
 
 from docutils import nodes
+from docutils.transforms import parts
 
 __docformat__ = 'epytext en'
 
@@ -43,6 +44,43 @@ def set_node_attributes(node: nodes.Node,
         node.extend(_set_nodes_parent(children, node))
 
     return node
+
+def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Optional[nodes.Node]:
+    """
+    Simplified from docutils Contents transform. 
+
+    All section nodes MUST have set attribute 'ids' to a list of strings.
+    """
+
+    def _copy_and_filter(node: nodes.Node) -> nodes.Node:
+        """Return a copy of a title, with references, images, etc. removed."""
+        visitor = parts.ContentsFilter(node.document)
+        node.walkabout(visitor)
+        return visitor.get_entry_text()
+
+    level += 1
+    sections = [sect for sect in node if isinstance(sect, nodes.section)]
+    entries = []
+    for section in sections:
+        title = section[0]
+        entrytext = _copy_and_filter(title)
+        reference = nodes.reference('', '', refid=section['ids'][0],
+                                    *entrytext)
+        ref_id = node.document.set_id(reference,
+                                    suggested_prefix='toc-entry')
+        entry = nodes.paragraph('', '', reference)
+        item = nodes.list_item('', entry)
+        if title.next_node(nodes.reference) is None:
+            title['refid'] = ref_id
+        if level < depth:
+            subsects = build_table_of_content(section, depth=depth, level=level)
+            item += subsects or []
+        entries.append(item)
+    if entries:
+        contents = nodes.bullet_list('', *entries)
+        return contents
+    else:
+        return None
 
 class wbr(nodes.inline):
     """

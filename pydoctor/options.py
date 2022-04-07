@@ -218,6 +218,18 @@ def get_parser() -> ArgumentParser:
         '--pyval-repr-linelen', dest='pyvalreprlinelen', default=80, type=int, metavar='INT',
         help='Maxinum number of caracters for a constant value representation line. Use 0 for unlimited.')
     parser.add_argument(
+        '--sidebar-expand-depth', metavar="INT", type=int, default=1, dest='sidebarexpanddepth',
+        help=("How many nested modules and classes should be expandable, "
+              "first level is always expanded, nested levels can expand/collapse. Value should be 1 or greater. (default: 1)"))
+    parser.add_argument(
+        '--sidebar-toc-depth', metavar="INT", type=int, default=6, dest='sidebartocdepth',
+        help=("How many nested titles should be listed in the docstring TOC "
+              "(default: 6)"))
+    parser.add_argument(
+        '--no-sidebar', default=False, action='store_true', dest='nosidebar',
+        help=("Do not generate the sidebar at all."))
+    
+    parser.add_argument(
         '--system-class', dest='systemclass', default='pydoctor.zopeinterface.ZopeInterfaceSystem',
         help=("A dotted name of the class to use to make a system."))
     
@@ -348,7 +360,20 @@ class Options:
     intersphinx_cache_max_age:  str                                 = attr.ib()
     pyvalreprlinelen:       int                                     = attr.ib()
     pyvalreprmaxlines:      int                                     = attr.ib()
+    sidebarexpanddepth:     int                                     = attr.ib()
+    sidebartocdepth:        int                                     = attr.ib()
+    nosidebar:              int                                     = attr.ib()
 
+    def __attrs_post_init__(self) -> None:
+        # do some validations...
+        # check if sidebar related arguments are valid
+        if self.sidebarexpanddepth < 1:
+            error("Invalid --sidebar-expand-depth value." + 'The value of --sidebar-expand-depth option should be greater or equal to 1, '
+                                'to suppress sidebar generation all together: use --no-sidebar')
+        if self.sidebartocdepth < 0:
+            error("Invalid --sidebar-toc-depth value" + 'The value of --sidebar-toc-depth option should be greater or equal to 0, '
+                                'to suppress sidebar generation all together: use --no-sidebar')
+            
     # HIGH LEVEL FACTORY METHODS
 
     @classmethod

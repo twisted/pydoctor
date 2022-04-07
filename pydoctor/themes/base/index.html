@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="2" />
+  <meta name="pydoctor-template-version" content="3" />
 
   <t:transparent t:render="head">Head</t:transparent>
 
@@ -8,11 +8,13 @@
 
     <div t:render="header" />
     
-    <t:transparent t:render="nav">Nav</t:transparent>
+    <nav class="navbar navbar-default mainnavbar">
+      <t:transparent t:render="nav" /></nav>
 
-    <div class="container" t:render="subheader" />
+    <div class="container-fluid">
 
-    <div class="container">
+      <div t:render="subheader" />
+
       <h2>
         Get Started
       </h2>
@@ -41,7 +43,7 @@
       </ul>
     </div>
 
-    <footer t:render="footer" />
+    <footer class="container-fluid" t:render="footer" />
 
   </body>
 </html>

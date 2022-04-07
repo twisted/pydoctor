@@ -132,8 +132,9 @@ __docformat__ = 'epytext en'
 #   4. helpers
 #   5. testing
 
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Union, cast, overload
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Union, cast, overload
 import re
+import unicodedata
 
 from docutils import utils, nodes
 from twisted.web.template import Tag
@@ -142,6 +143,38 @@ from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
 from pydoctor.model import Documentable
+
+##################################################
+## Helper functions
+##################################################
+
+def gettext(node: Union[str, 'Element', List[Union[str, 'Element']]]) -> List[str]:
+    """Return the text inside the epytext element(s)."""
+    filtered: List[str] = []
+    if isinstance(node, str):
+        filtered.append(node)
+    elif isinstance(node, list):
+        for child in node:
+            filtered.extend(gettext(child))
+    elif isinstance(node, Element):
+        filtered.extend(gettext(node.children))
+    return filtered
+
+def slugify(string:str) -> str:
+    # zacharyvoase/slugify is licensed under the The Unlicense
+    """
+    A generic slugifier utility (currently only for Latin-based scripts).
+    Example:
+        >>> slugify("Héllo Wörld")
+        "hello-world"
+    """
+    return re.sub(r'[-\s]+', '-', 
+                re.sub(rb'[^\w\s-]', b'',
+                    unicodedata.normalize('NFKD', string)
+                    .encode('ascii', 'ignore'))
+                .strip()
+                .lower()
+                .decode())
 
 ##################################################
 ## DOM-Like Encoding
@@ -1347,6 +1380,7 @@ class ParsedEpytextDocstring(ParsedDocstring):
         # Caching:
         self._stan: Optional[Tag] = None
         self._document: Optional[nodes.document] = None
+        self._section_slugs: Set[str] = set()
 
     def __str__(self) -> str:
         return str(self._tree)
@@ -1354,7 +1388,18 @@ class ParsedEpytextDocstring(ParsedDocstring):
     @property
     def has_body(self) -> bool:
         return self._tree is not None
-    
+
+    def _slugify(self, text:str) -> str:
+        # Takes special care to ensure we don't generate 
+        # twice the same ID for sections.
+        s = slugify(text)
+        i = 1
+        while s in self._section_slugs:
+            s = slugify(f"{text}-{i}")
+            i+=1
+        self._section_slugs.add(s)
+        return s
+
     def to_node(self) -> nodes.document:
 
         if self._document is not None:
@@ -1428,7 +1473,11 @@ class ParsedEpytextDocstring(ParsedDocstring):
             yield set_node_attributes(nodes.doctest_block(tree.children[0], tree.children[0]), document=self._document)
         elif tree.tag in ('fieldlist', 'tag', 'arg'):
             raise AssertionError("There should not be any field lists left")
-        elif tree.tag in ('section', 'epytext'):
+        elif tree.tag == 'section':
+            assert len(tree.children)>0, f"empty section {tree}"
+            yield set_node_attributes(nodes.section('', ids=[self._slugify(' '.join(gettext(tree.children[0])))]), 
+                document=self._document, children=variables)
+        elif tree.tag == 'epytext':
             yield set_node_attributes(nodes.section(''), document=self._document, children=variables)
         elif tree.tag == 'symbol':
             symbol = cast(str, tree.children[0])

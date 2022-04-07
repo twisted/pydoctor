@@ -39,10 +39,11 @@ import sys
 from importlib import import_module
 from inspect import getmodulename
 
-from docutils import nodes
+from docutils import nodes, utils
 from twisted.web.template import Tag
 
 from pydoctor import node2stan
+from pydoctor.epydoc.docutils import build_table_of_content
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -98,6 +99,11 @@ class ParsedDocstring(abc.ABC):
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
     Subclasses must implement L{has_body()} and L{to_node()}.
+    
+    A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
+    But some subclasses override this behaviour.
+    
+    Implementation of L{get_toc()} also relies on L{to_node()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -108,17 +114,35 @@ class ParsedDocstring(abc.ABC):
         """
 
         self._stan: Optional[Tag] = None
+        self._compact = True
 
     @abc.abstractproperty
     def has_body(self) -> bool:
-        """Does this docstring have a non-empty body?
+        """
+        Does this docstring have a non-empty body?
 
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
-        raise NotImplementedError()
+    
+    def get_toc(self, depth: int) -> Optional['ParsedDocstring']:
+        """
+        The table of contents of the docstring if titles are defined or C{None}.
+        """
+        try:
+            document = self.to_node()
+        except NotImplementedError:
+            return None
+        contents = build_table_of_content(document, depth=depth)
+        docstring_toc = utils.new_document('toc')
+        if contents:
+            docstring_toc.extend(contents)
+            from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+            return ParsedRstDocstring(docstring_toc, ())
+        else:
+            return None
 
-    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
+    def to_stan(self, docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -129,19 +153,33 @@ class ParsedDocstring(abc.ABC):
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
         """
+        # The following three lines is a hack in order to still show p tags 
+        # around docstrings content when there is only a single line text
+        # and arguement compact=False is passed. We clear cached stan if required.
+        if compact != self._compact and self._stan is not None:
+            self._stan = None
+        self._compact = compact
+
         if self._stan is not None:
-            return self._stan
-        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
+            return self._stan      
+
+        docstring_stan = node2stan.node2stan(self.to_node(), 
+                                        docstring_linker, 
+                                        compact=compact)
+
+        self._stan = Tag('', children=docstring_stan.children)
         return self._stan
     
     @abc.abstractmethod
     def to_node(self) -> nodes.document:
         """
-        Translate this docstring to a L{docutils.nodes.document}.
+        Translate this docstring to a L{nodes.document}.
 
-        @return: The docstring presented as a L{docutils.nodes.document}.
+        @return: The docstring presented as a L{nodes.document}.
+
+        @note: Some L{ParsedDocstring} subclasses do not support docutils nodes.
+            This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
-        raise NotImplementedError()
 
 ##################################################
 ## Fields
