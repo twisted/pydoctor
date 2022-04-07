@@ -1042,6 +1042,18 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     display: none!important;
 }
 
+#search-help-button{
+    background-color: #e6e6e6;
+}
+
+.search-help-hidden #search-help-button{
+    background-color: rgb(255, 255, 255);
+}
+
+.search-help-hidden #search-help-button:hover {
+    background-color: #e6e6e6;
+}
+
 #search-results-container {
     padding: 10px;
     width: 100%;
