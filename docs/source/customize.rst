@@ -2,6 +2,22 @@
 Customize Output
 ================
 
+Configure sidebar expanding/collapsing
+--------------------------------------
+
+By default, the sidebar only lists one level of objects (always expanded), 
+to allow objects to expand/collapse and show first nested content, use the following option::
+
+  --sidebar-expand-depth=2
+
+This value describe how many nested modules and classes should be expandable.
+
+.. note:: 
+  Careful, a value higher than ``1`` (which is the default) can make your HTML files 
+  significantly larger if you have many modules or classes.
+
+  To disable completely the sidebar, use option ``--no-sidebar``
+
 Tweak HTML templates
 --------------------
 

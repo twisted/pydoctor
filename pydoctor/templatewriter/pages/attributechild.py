@@ -6,7 +6,7 @@ from twisted.web.template import Tag, renderer, tags
 from pydoctor.model import Attribute, DocumentableKind
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import DocGetter, format_decorators
+from pydoctor.templatewriter.pages import format_decorators
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -17,7 +17,7 @@ class AttributeChild(TemplateElement):
     filename = 'attribute-child.html'
 
     def __init__(self,
-            docgetter: DocGetter,
+            docgetter: util.DocGetter,
             ob: Attribute,
             extras: "Flattenable",
             loader: ITemplateLoader
