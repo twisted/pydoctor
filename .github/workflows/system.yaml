@@ -16,7 +16,8 @@ jobs:
                      cpython-summary, 
                      python-igraph-apidocs, 
                      cpython-apidocs,
-                     numpy-apidocs,]
+                     numpy-apidocs,
+                     git-buildpackage-apidocs,]
 
     steps:
     - uses: actions/checkout@v2

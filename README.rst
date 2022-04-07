@@ -72,6 +72,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Packages and modules are now listed together.
+* The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^

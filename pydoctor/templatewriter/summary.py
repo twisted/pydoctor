@@ -10,7 +10,7 @@ from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import Page
+from pydoctor.templatewriter.pages import Page, objects_order
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -25,15 +25,29 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         r(class_='private')
     if not isinstance(module, model.Package):
         return r
-    contents = [m for m in module.contents.values()
-                if isinstance(m, model.Module) and m.isVisible]
+    contents = list(module.submodules())
     if not contents:
         return r
+
     ul = tags.ul()
-    def fullName(obj: model.Documentable) -> str:
-        return obj.fullName()
-    for m in sorted(contents, key=fullName):
-        ul(moduleSummary(m, page_url))
+
+    if len(contents) > 50 and not any(any(s.submodules()) for s in contents):
+        # If there are more than 50 modules and no submodule has
+        # further submodules we use a more compact presentation.
+        li = tags.li(class_='compact-modules')
+        for m in sorted(contents, key=objects_order):
+            span = tags.span()
+            span(tags.code(epydoc2stan.taglink(m, m.url, label=m.name)))
+            span(', ')
+            if m.isPrivate:
+                span(class_='private')
+            li(span)
+        # remove the last trailing comma
+        li.children[-1].children.pop() # type: ignore
+        ul(li)
+    else:
+        for m in sorted(contents, key=objects_order):
+            ul(moduleSummary(m, page_url))
     r(ul)
     return r
 
