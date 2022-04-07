@@ -107,7 +107,6 @@ pydoctor_args = {
         ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
-        '--sidebar-expand-depth=1',
         f'--project-version={version}',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
         f'{_pydoctor_root}/pydoctor',
