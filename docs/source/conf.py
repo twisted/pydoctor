@@ -105,15 +105,6 @@ pydoctor_args = {
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
-    'rtd_theme_api': [
-        '--html-output={outdir}/rtd_theme_api/', 
-        '--project-name=pydoctor',
-        f'--project-version={version}',
-        '--docformat=epytext',
-        '--project-url=../index.html',
-        '--theme=readthedocs',
-        f'{_pydoctor_root}/pydoctor',
-        ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
         f'--project-version={version}',
@@ -128,9 +119,8 @@ pydoctor_args = {
         '--project-version=1.3.0',
         '--docformat=epytext',
         '--sidebar-toc-depth=3',
-        '--intersphinx=https://zopeschema.readthedocs.io/en/latest/objects.inv',
-        '--intersphinx=https://zopeinterface.readthedocs.io/en/latest/objects.inv',
         '--project-url=../epytext.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     'restructuredtext_demo': [
@@ -141,14 +131,15 @@ pydoctor_args = {
         '--sidebar-toc-depth=3',
         '--project-url=../restructuredtext.html',
         '--process-types',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,
-    'numpy_demo': [
+    'numpy_demo': [ # no need to pass --docformat here, we use __docformat__
         '--html-output={outdir}/docformat/numpy',
         '--project-name=pydoctor-numpy-style-demo',
         '--project-version=1.0.0',
-        '--docformat=numpy',
         '--project-url=../google-numpy.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/numpy_demo',
         f'{_pydoctor_root}/pydoctor/napoleon'
         ] + _common_args,
@@ -158,6 +149,7 @@ pydoctor_args = {
         '--project-version=1.0.0',
         '--docformat=google',
         '--project-url=../google-numpy.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/google_demo',
         ] + _common_args,
     }

@@ -1,19 +1,6 @@
 Theming and other customizations
 ================================
 
-Theming
--------
-
-There are 3 builtin themes: ``classic`` and ``readthedocs`` are the main themes. 
-
-The ``base`` theme is included in both main themes and can be used as a base for other themes.
-Bootstrap CSS will not be copied to build directory when using the read the docs theme or the base theme.
-
-
-Choose your theme with option:: 
-
-  --theme
-
 Configure sidebar expanding/collapsing
 --------------------------------------
 
@@ -29,6 +16,18 @@ This value describe how many nested modules and classes should be expandable.
   significantly larger if you have many modules or classes.
 
   To disable completely the sidebar, use option ``--no-sidebar``
+
+Theming
+-------
+
+Currently, there are 2 main themes packaged with pydoctor: ``classic`` and ``readthedocs``.
+
+Choose your theme with option:: 
+
+  --theme
+
+.. note::
+  Additionnaly, the ``base`` theme can be used as a base for customizations.
 
 Tweak HTML templates
 --------------------
