@@ -69,10 +69,10 @@ You can select a different format using the ``--docformat`` option or the ``__do
 
 What's New?
 ~~~~~~~~~~~
-* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 
 in development
 ^^^^^^^^^^^^^^
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Packages and modules are now listed together.
 * The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 
