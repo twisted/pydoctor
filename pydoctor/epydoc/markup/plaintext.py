@@ -52,7 +52,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     # We don't want to use docutils to process the plaintext format because we won't 
     # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring. 
     # Also, the consolidated fields handling in restructuredtext.py relies on this "pre" class.
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:

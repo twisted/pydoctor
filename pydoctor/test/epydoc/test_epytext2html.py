@@ -150,14 +150,14 @@ def test_epytext_sections() -> None:
           <p>
            This paragraph is not in any section.
           </p>
-          <div class="rst-section">
+          <div class="rst-section" id="rst-section-1">
            <h2 class="heading">
             Section 1
            </h2>
            <p>
             This is a paragraph in section 1.
            </p>
-           <div class="rst-section">
+           <div class="rst-section" id="rst-section-11">
             <h3 class="heading">
              Section 1.1
             </h3>
@@ -166,7 +166,7 @@ def test_epytext_sections() -> None:
             </p>
            </div>
           </div>
-          <div class="rst-section">
+          <div class="rst-section" id="rst-section-2">
            <h2 class="heading">
             Section 2
            </h2>
@@ -288,3 +288,87 @@ def test_nested_markup() -> None:
       '''
     
     assert epytext2html(doc) == squash(expected)
+
+def test_get_toc() -> None:
+
+    docstring = """
+Titles
+======
+
+Level 2
+-------
+
+Level 3
+~~~~~~~
+
+Level 4
+^^^^^^^
+
+Level 5
+!!!!!!!
+
+Level 2.2
+---------
+
+Level 22
+--------
+
+Lists
+=====
+
+Other
+=====
+"""
+
+    errors: List[ParseError] = []
+    parsed = parse_docstring(docstring, errors)
+    assert not errors, [str(e.descr()) for e in errors]
+    
+    toc = parsed.get_toc(4)
+    assert toc is not None
+    html = flatten(toc.to_stan(NotFoundLinker()))
+    
+    expected_html="""
+    <li>
+ <p class="rst-first">
+  <a class="rst-reference internal" href="#rst-titles" id="rst-id1">
+   Titles
+  </a>
+ </p>
+ <ul class="rst-simple">
+  <li>
+   <a class="rst-reference internal" href="#rst-level-2" id="rst-id2">
+    Level 2
+   </a>
+   <ul>
+    <li>
+     <a class="rst-reference internal" href="#rst-level-3" id="rst-id3">
+      Level 3
+     </a>
+    </li>
+   </ul>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-22" id="rst-id4">
+    Level 2.2
+   </a>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-22-1" id="rst-id5">
+    Level 22
+   </a>
+  </li>
+ </ul>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-lists" id="rst-id6">
+  Lists
+ </a>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-other" id="rst-id7">
+  Other
+ </a>
+</li>
+"""
+    assert prettify(html) == prettify(expected_html)

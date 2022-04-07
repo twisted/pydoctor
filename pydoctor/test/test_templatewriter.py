@@ -7,7 +7,7 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 from pydoctor import model, templatewriter, stanutils, __version__
-from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
+from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
@@ -52,6 +52,36 @@ def getHTMLOf(ob: model.Documentable) -> str:
     return f.getvalue().decode()
 
 
+def test_sidebar() -> None:
+    src = '''
+    class C:
+
+        def f(): ...
+        def h(): ...
+        
+        class D:
+            def l(): ...
+
+    '''
+    system = model.System(model.Options.from_args(
+        ['--sidebar-expand-depth=3']))
+
+    mod = fromText(src, modname='mod', system=system)
+    
+    mod_html = getHTMLOf(mod)
+
+    mod_parts = [
+        '<a href="mod.C.html"',
+        '<a href="mod.C.html#f"',
+        '<a href="mod.C.html#h"',
+        '<a href="mod.C.D.html"',
+        '<a href="mod.C.D.html#l"',
+    ]
+
+    for p in mod_parts:
+        assert p in mod_html, f"{p!r} not found in HTML: {mod_html}"
+   
+
 def test_simple() -> None:
     src = '''
     def f():
@@ -63,13 +93,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -509,7 +539,7 @@ def test_index_contains_infos(tmp_path: Path) -> None:
     """
 
     infos = (f'<meta name="generator" content="pydoctor {__version__}"',
-              '<nav class="navbar navbar-default"',
+              '<nav class="navbar',
               '<a href="moduleIndex.html"',
               '<a href="classIndex.html"',
               '<a href="nameIndex.html"',

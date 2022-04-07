@@ -69,6 +69,7 @@ You can select a different format using the ``--docformat`` option or the ``__do
 
 What's New?
 ~~~~~~~~~~~
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 
 in development
 ^^^^^^^^^^^^^^
