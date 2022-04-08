@@ -188,6 +188,8 @@ class ParsedDocstring(abc.ABC):
     def get_summary(self) -> 'ParsedDocstring':
         """
         Returns the summary of this docstring.
+        
+        @note: The summary is cached.
         """
         from pydoctor import epydoc2stan
         if self._summary is not None:
@@ -200,7 +202,6 @@ class ParsedDocstring(abc.ABC):
             self._summary = epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
             self._summary = visitor.summary or epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
-        assert self._summary is not None
         return self._summary
 
       

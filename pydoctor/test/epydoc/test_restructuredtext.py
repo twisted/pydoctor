@@ -219,6 +219,10 @@ def test_rst_directive_seealso() -> None:
     'markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google')
     )
 def test_summary(markup:str) -> None:
+    """
+    Summaries are generated from the inline text inside the first paragraph. 
+    The text is trimmed as soon as we reach a break point (or another docutils element) after 200 characters.
+    """
     cases = [
         ("Single line", "Single line"), 
         ("Single line.", "Single line."), 
