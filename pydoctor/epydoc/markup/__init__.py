@@ -191,6 +191,7 @@ class ParsedDocstring(abc.ABC):
         
         @note: The summary is cached.
         """
+        # Avoid rare cyclic import error, see https://github.com/twisted/pydoctor/pull/538#discussion_r845668735
         from pydoctor import epydoc2stan
         if self._summary is not None:
             return self._summary
