@@ -1,6 +1,9 @@
 pydoctor
 --------
 
+.. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
+  :target: https://pypi.python.org/pypi/pydoctor
+
 .. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
   :target: https://travis-ci.org/twisted/pydoctor
 
