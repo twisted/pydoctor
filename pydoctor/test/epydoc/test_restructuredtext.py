@@ -1,14 +1,15 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text
 
 from docutils import nodes
 from bs4 import BeautifulSoup
+import pytest
 
 def prettify(html: str) -> str:
     return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
@@ -214,6 +215,44 @@ def test_rst_directive_seealso() -> None:
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
 
+@pytest.mark.parametrize(
+    'markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google')
+    )
+def test_summary(markup:str) -> None:
+    """
+    Summaries are generated from the inline text inside the first paragraph. 
+    The text is trimmed as soon as we reach a break point (or another docutils element) after 200 characters.
+    """
+    cases = [
+        ("Single line", "Single line"), 
+        ("Single line.", "Single line."), 
+        ("Single line with period.", "Single line with period."),
+        ("""
+        Single line with period.
+        
+        @type: Also with a tag.
+        """, "Single line with period."), 
+        ("Other lines with period.\nThis is attached", "Other lines with period. This is attached"),
+        ("Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ", 
+         "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line..."),
+        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ", 
+         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line..."),
+        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line.",
+         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line."),
+        ("""
+        Return a fully qualified name for the possibly-dotted name.
+
+        To explain what this means, consider the following modules... blabla""",
+        "Return a fully qualified name for the possibly-dotted name.")
+    ]
+    for src, summary_text in cases:
+        errors: List[ParseError] = []
+        pdoc = get_parser_by_name(markup)(dedent(src), errors, False)
+        assert not errors
+        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
+        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
+
+        
 def test_get_toc() -> None:
 
     docstring = """
@@ -304,3 +343,4 @@ Other
 </li>
 """
     assert prettify(html) == prettify(expected_html)
+

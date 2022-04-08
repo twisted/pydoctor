@@ -77,6 +77,11 @@ in development
 ^^^^^^^^^^^^^^
 * Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Packages and modules are now listed together.
+* Docstring summaries are now generated from docutils nodes:
+
+  - fixes a bug in restructuredtext references in summary.
+  - still display summary when the first paragraph is long instead of "No summary".
+
 * The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 
 pydoctor 22.4.0
