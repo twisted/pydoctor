@@ -1279,15 +1279,27 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
 
     return text_parts
 
-# TODO: Use tags.wbr instead of zero-width spaces
-# zero-width spaces can interfer in subtle ways when copy/pasting a name.
 def insert_break_points(text: str) -> 'Flattenable':
     """
     Browsers aren't smart enough to recognize word breaking opportunities in
     snake_case or camelCase, so this function helps them out by inserting
-    zero-width spaces.
+    word break opportunities.
+
+    :note: It support full dotted names and will add a wbr tag after each dot.
     """
-    return '\u200b.'.join(
-                '\u200b'.join(
-                    _split_indentifier_parts_on_case(t)) 
-                        for t in text.split('.'))
+
+    # We use tags.wbr instead of zero-width spaces because
+    # zero-width spaces can interfer in subtle ways when copy/pasting a name.
+    
+    r: List['Flattenable'] = []
+    parts = text.split('.')
+    for i,t in enumerate(parts):
+        _parts = _split_indentifier_parts_on_case(t)
+        for i_,p in enumerate(_parts):
+            r += [p]
+            if i_ != len(_parts)-1:
+                r += [tags.wbr()]
+        if i != len(parts)-1:
+            r += [tags.wbr(), '.']
+    return tags.transparent(*r)
+
