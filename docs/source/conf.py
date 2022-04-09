@@ -131,7 +131,6 @@ pydoctor_args = {
         '--sidebar-toc-depth=3',
         '--project-url=../restructuredtext.html',
         '--process-types',
-        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,
     'numpy_demo': [ # no need to pass --docformat here, we use __docformat__
