@@ -1472,6 +1472,9 @@ def insert_break_points(t:str) -> str:
     return flatten(epydoc2stan.insert_break_points(t))
 
 def test_insert_break_points_identity() -> None:
+    """
+    No break points are introduced for values containing a single world.
+    """
     assert insert_break_points('test') == 'test'
     assert insert_break_points('_test') == '_test'
     assert insert_break_points('_test_') == '_test_'
