@@ -84,7 +84,7 @@ in development
 
 * The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
 * Fix source links for code hosted on Bitbucket or SourceForge.
-* The ``--html-viewsource-template` option was added to allow for custom URL scheme when linking to the source code pages and lines. 
+* The ``--html-viewsource-template`` option was added to allow for custom URL scheme when linking to the source code pages and lines. 
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^
