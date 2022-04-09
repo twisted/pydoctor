@@ -2,6 +2,7 @@
 Provides L{Options} container with high level factory methods.
 """
 
+import re
 from typing import Sequence, List, Optional, Type, Tuple, TYPE_CHECKING
 import sys
 import functools
@@ -15,7 +16,7 @@ from pydoctor import __version__
 from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
-from pydoctor.utils import parse_path, findClassFromDottedName, error, parse_privacy_tuple
+from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
 from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--project-base-dir', dest='projectbasedirectory',  
         help=("Path to the base directory of the project.  Source links "
-              "will be computed based on this value."), metavar="PATH")
+              "will be computed based on this value."), metavar="PATH", default='.')
     parser.add_argument(
         '--testing', dest='testing', action='store_true',
         help=("Don't complain if the run doesn't have any effects."))
@@ -136,6 +137,12 @@ def get_parser() -> ArgumentParser:
         '--html-viewsource-base', dest='htmlsourcebase', 
         help=("This should be the path to the trac browser for the top "
               "of the svn checkout we are documenting part of."), metavar='URL',)
+    parser.add_argument(
+        '--html-viewsource-template', dest='htmlsourcetemplate', 
+        help=("A format string used to generate the source link of documented objects. "
+            "The default behaviour auto detects most common providers like Github, Bitbucket, GitLab or SourceForge. "
+            "But in some cases you might have to override the template string, for instance to make it work with git-web, use: "
+            '--html-viewsource-template="{mod_source_href}#n{lineno}"'), metavar='SOURCETEMPLATE', default=Options.HTML_SOURCE_TEMPLATE_DEFAULT)
     parser.add_argument(
         '--buildtime', dest='buildtime',
         help=("Use the specified build time over the current time. "
@@ -278,6 +285,33 @@ def _convert_htmlwriter(s: str) -> Type['IWriter']:
 def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
     return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
 
+_RECOGNIZED_SOURCE_HREF = {
+        # Sourceforge
+        '{mod_source_href}#l{lineno}': re.compile(r'(^https?:\/\/sourceforge\.net\/)'),
+
+        # Bitbucket 
+        '{mod_source_href}#lines-{lineno}': re.compile(r'(^https?:\/\/bitbucket\.org\/)'),
+        
+        # Matches all other plaforms: Github, Gitlab, etc. 
+        # This match should be kept last in the list.
+        '{mod_source_href}#L{lineno}': re.compile(r'(.*)?') 
+    }
+    # Since we can't guess git-web platform form URL, 
+    # we have to pass the template string wih option:
+    # --html-viewsource-template="{mod_source_href}#n{lineno}"
+
+def _get_viewsource_template(sourcebase: Optional[str]) -> str:
+    """
+    Recognize several version control providers based on option C{--html-viewsource-base}.
+    """
+    if not sourcebase:
+        return '{mod_source_href}#L{lineno}'
+    for template, regex in _RECOGNIZED_SOURCE_HREF.items():
+        if regex.match(sourcebase):
+            return template
+    else:
+        assert False
+
 # TYPED OPTIONS CONTAINER
 
 @attr.s
@@ -289,13 +323,15 @@ class Options:
     """
     MAKE_HTML_DEFAULT = object()
     # Avoid to define default values for config options here because it's taken care of by argparse.
+    
+    HTML_SOURCE_TEMPLATE_DEFAULT = object()
 
     sourcepath:             List[Path]                              = attr.ib(converter=_convert_sourcepath)
     systemclass:            Type['model.System']                    = attr.ib(converter=_convert_systemclass)
     projectname:            Optional[str]                           = attr.ib()
     projectversion:         str                                     = attr.ib()
     projecturl:             Optional[str]                           = attr.ib()
-    projectbasedirectory:   Optional[Path]                          = attr.ib(converter=_convert_projectbasedirectory)
+    projectbasedirectory:   Path                                    = attr.ib(converter=_convert_projectbasedirectory)
     testing:                bool                                    = attr.ib()
     pdb:                    bool                                    = attr.ib() # only working via driver.main()
     makehtml:               bool                                    = attr.ib()
@@ -311,6 +347,7 @@ class Options:
     htmloutput:             str                                     = attr.ib() # TODO: make this a Path object once https://github.com/twisted/pydoctor/pull/389/files is merged
     htmlwriter:             Type['IWriter']                         = attr.ib(converter=_convert_htmlwriter)
     htmlsourcebase:         Optional[str]                           = attr.ib()
+    htmlsourcetemplate:     str                                     = attr.ib()
     buildtime:              Optional[str]                           = attr.ib()
     warnings_as_errors:     bool                                    = attr.ib()
     verbosity:              int                                     = attr.ib()
@@ -328,12 +365,7 @@ class Options:
     nosidebar:              int                                     = attr.ib()
 
     def __attrs_post_init__(self) -> None:
-        # FIXME: https://github.com/twisted/pydoctor/issues/441
-        # do some validations
-        if self.htmlsourcebase:
-            if self.projectbasedirectory is None:
-                error("you must specify --project-base-dir "
-                        "when using --html-viewsource-base")
+        # do some validations...
         # check if sidebar related arguments are valid
         if self.sidebarexpanddepth < 1:
             error("Invalid --sidebar-expand-depth value." + 'The value of --sidebar-expand-depth option should be greater or equal to 1, '
@@ -362,6 +394,10 @@ class Options:
                 argsdict['makehtml'] = True
             else:
                 argsdict['makehtml'] = False
+        
+        # auto-detect source link template if the default value is used.
+        if args.htmlsourcetemplate == cls.HTML_SOURCE_TEMPLATE_DEFAULT:
+            argsdict['htmlsourcetemplate'] = _get_viewsource_template(args.htmlsourcebase)
 
         # handle deprecated arguments
         argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--add-package'), argsdict.pop('packages'))))

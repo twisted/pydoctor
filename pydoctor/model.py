@@ -180,7 +180,10 @@ class Documentable:
             if parentMod is not None:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
-                    self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
+                    self.sourceHref = self.system.options.htmlsourcetemplate.format(
+                        mod_source_href=parentSourceHref,
+                        lineno=str(lineno)
+                    )
 
     @property
     def description(self) -> str:
@@ -628,6 +631,7 @@ class System:
     defaultBuilder: Type[ASTBuilder]
     options: 'Options'
 
+
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
@@ -667,6 +671,7 @@ class System:
         # it's ok to cache privacy class results since the potential renames (with reparenting) happends before we begin to
         # generate HTML, which is when we call Documentable.PrivacyClass.
         self._privacyClassCache: Dict[int, PrivacyClass] = {}
+
 
     @property
     def sourcebase(self) -> Optional[str]:
