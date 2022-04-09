@@ -628,7 +628,7 @@ def test_summary() -> None:
 
         Ipsum Lorem
         """
-    def no_summary():
+    def still_summary_since_2022():
         """
         Foo
         Bar
@@ -646,7 +646,11 @@ def test_summary() -> None:
     ''')
     assert 'Lorem Ipsum' == summary2html(mod.contents['single_line_summary'])
     assert 'Foo Bar Baz' == summary2html(mod.contents['three_lines_summary'])
-    assert 'No summary' == summary2html(mod.contents['no_summary'])
+
+    # We get a summary based on the first sentences of the first 
+    # paragraph until reached maximum number characters or the paragraph ends.
+    # So no matter the number of lines the first paragraph is, we'll always get a summary.
+    assert 'Foo Bar Baz Qux' == summary2html(mod.contents['still_summary_since_2022']) 
 
 
 def test_ivar_overriding_attribute() -> None:
