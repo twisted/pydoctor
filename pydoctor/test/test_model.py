@@ -93,6 +93,9 @@ def test_htmlsourcetemplate_auto_detect() -> None:
         assert system.allobjects['basic.mod.C'].sourceHref == var_href
 
 def test_htmlsourcetemplate_custom() -> None:
+    """
+    The links to source code web pages can be customized via an CLI argument.
+    """
     options = model.Options.from_args([
         '--html-viewsource-base=http://example.org/trac/browser/trunk', 
         '--project-base-dir=.', 
