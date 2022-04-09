@@ -294,7 +294,7 @@ _RECOGNIZED_SOURCE_HREF = {
         
         # Matches all other plaforms: Github, Gitlab, etc. 
         # This match should be kept last in the list.
-        '{mod_source_href}#L{lineno}': re.compile(r'(.*)') 
+        '{mod_source_href}#L{lineno}': re.compile(r'(.*)?') 
     }
     # Since we can't guess git-web platform form URL, 
     # we have to pass the template string wih option:
