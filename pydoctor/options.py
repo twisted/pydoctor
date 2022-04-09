@@ -305,7 +305,7 @@ def _get_viewsource_template(sourcebase: Optional[str]) -> str:
     Recognize several version control providers based on option C{--html-viewsource-base}.
     """
     if not sourcebase:
-        return list(_RECOGNIZED_SOURCE_HREF.keys())[-1]
+        return '{mod_source_href}#L{lineno}'
     for template, regex in _RECOGNIZED_SOURCE_HREF.items():
         if regex.match(sourcebase):
             return template
