@@ -19,6 +19,7 @@ from pydoctor.utils import parse_privacy_tuple
 from pydoctor.sphinx import CacheT
 from pydoctor.test import CapSys
 from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_packages import processPackage
 
 
 class FakeOptions:
@@ -63,6 +64,46 @@ def test_setSourceHrefOption(projectBaseDir: Path) -> None:
 
     assert mod.sourceHref == "http://example.org/trac/browser/trunk/package/module.py"
 
+def test_htmlsourcetemplate_auto_detect() -> None:
+    """
+    Tests for the recognition of different version control providers
+    that uses differents URL templates to point to line numbers.
+
+    Supported templates are::
+
+        Github : {}#L{lineno}
+        Bitbucket: {}#lines-{lineno}
+        SourceForge : {}#l{lineno}
+    """
+    cases = [
+        ("http://example.org/trac/browser/trunk", 
+         "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#L7"),
+
+        ("https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc", 
+         "https://sourceforge.net/p/epydoc/code/HEAD/tree/trunk/epydoc/pydoctor/test/testpackages/basic/mod.py#l7"),
+        
+        ("https://bitbucket.org/user/scripts/src/master", 
+         "https://bitbucket.org/user/scripts/src/master/pydoctor/test/testpackages/basic/mod.py#lines-7"),
+    ]
+    for base, var_href in cases:
+        options = model.Options.from_args([f'--html-viewsource-base={base}', '--project-base-dir=.'])
+        system = model.System(options)
+
+        processPackage('basic', systemcls=lambda:system)
+        assert system.allobjects['basic.mod.C'].sourceHref == var_href
+
+def test_htmlsourcetemplate_custom() -> None:
+    """
+    The links to source code web pages can be customized via an CLI argument.
+    """
+    options = model.Options.from_args([
+        '--html-viewsource-base=http://example.org/trac/browser/trunk', 
+        '--project-base-dir=.', 
+        '--html-viewsource-template={mod_source_href}#n{lineno}'])
+    system = model.System(options)
+
+    processPackage('basic', systemcls=lambda:system)
+    assert system.allobjects['basic.mod.C'].sourceHref == "http://example.org/trac/browser/trunk/pydoctor/test/testpackages/basic/mod.py#n7"
 
 def test_initialization_default() -> None:
     """

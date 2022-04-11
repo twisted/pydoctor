@@ -628,7 +628,7 @@ def test_summary() -> None:
 
         Ipsum Lorem
         """
-    def no_summary():
+    def still_summary_since_2022():
         """
         Foo
         Bar
@@ -646,7 +646,11 @@ def test_summary() -> None:
     ''')
     assert 'Lorem Ipsum' == summary2html(mod.contents['single_line_summary'])
     assert 'Foo Bar Baz' == summary2html(mod.contents['three_lines_summary'])
-    assert 'No summary' == summary2html(mod.contents['no_summary'])
+
+    # We get a summary based on the first sentences of the first 
+    # paragraph until reached maximum number characters or the paragraph ends.
+    # So no matter the number of lines the first paragraph is, we'll always get a summary.
+    assert 'Foo Bar Baz Qux' == summary2html(mod.contents['still_summary_since_2022']) 
 
 
 def test_ivar_overriding_attribute() -> None:
@@ -1464,29 +1468,35 @@ def test_yields_field(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == ''
 
+def insert_break_points(t:str) -> str:
+    return flatten(epydoc2stan.insert_break_points(t))
+
 def test_insert_break_points_identity() -> None:
-    assert epydoc2stan.insert_break_points('test') == 'test'
-    assert epydoc2stan.insert_break_points('_test') == '_test'
-    assert epydoc2stan.insert_break_points('_test_') == '_test_'
-    assert epydoc2stan.insert_break_points('') == ''
-    assert epydoc2stan.insert_break_points('____') == '____'
-    assert epydoc2stan.insert_break_points('__test__') == '__test__'
-    assert epydoc2stan.insert_break_points('__someverylongname__') == '__someverylongname__'
-    assert epydoc2stan.insert_break_points('__SOMEVERYLONGNAME__') == '__SOMEVERYLONGNAME__'
+    """
+    No break points are introduced for values containing a single world.
+    """
+    assert insert_break_points('test') == 'test'
+    assert insert_break_points('_test') == '_test'
+    assert insert_break_points('_test_') == '_test_'
+    assert insert_break_points('') == ''
+    assert insert_break_points('____') == '____'
+    assert insert_break_points('__test__') == '__test__'
+    assert insert_break_points('__someverylongname__') == '__someverylongname__'
+    assert insert_break_points('__SOMEVERYLONGNAME__') == '__SOMEVERYLONGNAME__'
 
 def test_insert_break_points_snake_case() -> None:
-    assert epydoc2stan.insert_break_points('__some_very_long_name__') == '__some\u200b_very\u200b_long\u200b_name__'
-    assert epydoc2stan.insert_break_points('__SOME_VERY_LONG_NAME__') == '__SOME\u200b_VERY\u200b_LONG\u200b_NAME__'
+    assert insert_break_points('__some_very_long_name__') == '__some<wbr></wbr>_very<wbr></wbr>_long<wbr></wbr>_name__'
+    assert insert_break_points('__SOME_VERY_LONG_NAME__') == '__SOME<wbr></wbr>_VERY<wbr></wbr>_LONG<wbr></wbr>_NAME__'
 
 def test_insert_break_points_camel_case() -> None:
-    assert epydoc2stan.insert_break_points('__someVeryLongName__') == '__some\u200bVery\u200bLong\u200bName__'
-    assert epydoc2stan.insert_break_points('__einÜberlangerName__') == '__ein\u200bÜberlanger\u200bName__'
+    assert insert_break_points('__someVeryLongName__') == '__some<wbr></wbr>Very<wbr></wbr>Long<wbr></wbr>Name__'
+    assert insert_break_points('__einÜberlangerName__') == '__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
 
 def test_insert_break_points_dotted_name() -> None:
-    assert epydoc2stan.insert_break_points('mod.__some_very_long_name__') == 'mod\u200b.__some\u200b_very\u200b_long\u200b_name__'
-    assert epydoc2stan.insert_break_points('_mod.__SOME_VERY_LONG_NAME__') == '_mod\u200b.__SOME\u200b_VERY\u200b_LONG\u200b_NAME__'
-    assert epydoc2stan.insert_break_points('pack.mod.__someVeryLongName__') == 'pack\u200b.mod\u200b.__some\u200bVery\u200bLong\u200bName__'
-    assert epydoc2stan.insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack\u200b._mod_\u200b.__ein\u200bÜberlanger\u200bName__'
+    assert insert_break_points('mod.__some_very_long_name__') == 'mod<wbr></wbr>.__some<wbr></wbr>_very<wbr></wbr>_long<wbr></wbr>_name__'
+    assert insert_break_points('_mod.__SOME_VERY_LONG_NAME__') == '_mod<wbr></wbr>.__SOME<wbr></wbr>_VERY<wbr></wbr>_LONG<wbr></wbr>_NAME__'
+    assert insert_break_points('pack.mod.__someVeryLongName__') == 'pack<wbr></wbr>.mod<wbr></wbr>.__some<wbr></wbr>Very<wbr></wbr>Long<wbr></wbr>Name__'
+    assert insert_break_points('pack._mod_.__einÜberlangerName__') == 'pack<wbr></wbr>._mod_<wbr></wbr>.__ein<wbr></wbr>Überlanger<wbr></wbr>Name__'
 
 def test_stem_identifier() -> None:
     assert list(stem_identifier('__some_very_long_name__')) == [

@@ -8,7 +8,6 @@ from typing import (
     Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Union, cast
 )
 import ast
-import itertools
 import re
 
 import attr
@@ -999,46 +998,22 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
     
     @returns: Tuple: C{source}, C{parsed docstring}
     """
-
-    doc, source = get_docstring(obj)
+    source = ensure_parsed_docstring(obj)
     
     if obj.parsed_summary is not None:
         return (source, obj.parsed_summary)
 
-    parsed_doc = None
-    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
-        # Attributes can be documented as fields in their parent's docstring.
-        parsed_doc = obj.parsed_docstring
-    else:
-        parsed_doc = None
-
-    if parsed_doc is not None:
-        # The docstring was split off from the Attribute's parent docstring.
-        source = obj.parent
-        assert source is not None
-    elif doc is None:
-        parsed_doc = _ParsedStanOnly(format_undocumented(obj))
+    if source is None:
+        summary_parsed_doc: ParsedDocstring = _ParsedStanOnly(format_undocumented(obj))
     else:
         # Tell mypy that if we found a docstring, we also have its source.
-        assert source is not None
-        # Use up to three first non-empty lines of doc string as summary.
-        lines = [
-            line.strip()
-            for line in itertools.takewhile(
-                lambda line: line.strip(),
-                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
-                )
-            ]
-        if len(lines) > 3:
-            parsed_doc = _ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
-        else:
-            parsed_doc = parse_docstring(obj, ' '.join(lines), source)
+        assert obj.parsed_docstring is not None
+        summary_parsed_doc = obj.parsed_docstring.get_summary()
     
-    assert parsed_doc is not None
+    assert summary_parsed_doc is not None
+    obj.parsed_summary = summary_parsed_doc
 
-    obj.parsed_summary = parsed_doc
-    return (source, parsed_doc)
-
+    return (source, summary_parsed_doc)
 
 def format_docstring(obj: model.Documentable) -> Tag:
     """Generate an HTML representation of a docstring"""
@@ -1304,15 +1279,27 @@ def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
 
     return text_parts
 
-# TODO: Use tags.wbr instead of zero-width spaces
-# zero-width spaces can interfer in subtle ways when copy/pasting a name.
 def insert_break_points(text: str) -> 'Flattenable':
     """
     Browsers aren't smart enough to recognize word breaking opportunities in
     snake_case or camelCase, so this function helps them out by inserting
-    zero-width spaces.
+    word break opportunities.
+
+    :note: It support full dotted names and will add a wbr tag after each dot.
     """
-    return '\u200b.'.join(
-                '\u200b'.join(
-                    _split_indentifier_parts_on_case(t)) 
-                        for t in text.split('.'))
+
+    # We use tags.wbr instead of zero-width spaces because
+    # zero-width spaces can interfer in subtle ways when copy/pasting a name.
+    
+    r: List['Flattenable'] = []
+    parts = text.split('.')
+    for i,t in enumerate(parts):
+        _parts = _split_indentifier_parts_on_case(t)
+        for i_,p in enumerate(_parts):
+            r += [p]
+            if i_ != len(_parts)-1:
+                r += [tags.wbr()]
+        if i != len(parts)-1:
+            r += [tags.wbr(), '.']
+    return tags.transparent(*r)
+

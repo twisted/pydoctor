@@ -1,6 +1,9 @@
 pydoctor
 --------
 
+.. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
+  :target: https://pypi.python.org/pypi/pydoctor
+
 .. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
   :target: https://travis-ci.org/twisted/pydoctor
 
@@ -74,7 +77,14 @@ in development
 ^^^^^^^^^^^^^^
 * Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Packages and modules are now listed together.
+* Docstring summaries are now generated from docutils nodes:
+
+  - fixes a bug in restructuredtext references in summary.
+  - still display summary when the first paragraph is long instead of "No summary".
+
 * The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
+* Fix source links for code hosted on Bitbucket or SourceForge.
+* The ``--html-viewsource-template`` option was added to allow for custom URL scheme when linking to the source code pages and lines. 
 
 pydoctor 22.4.0
 ^^^^^^^^^^^^^^^
