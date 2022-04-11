@@ -6,6 +6,7 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
+import abc
 import ast
 import datetime
 import importlib
@@ -27,6 +28,7 @@ from pydoctor.options import Options
 from pydoctor import qnmatch
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
+from pydoctor.utils import error
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -1119,3 +1121,61 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+class ISystemBuilder(abc.ABC):
+
+    @abc.abstractmethod
+    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:...
+    @abc.abstractmethod
+    def addModuleString(self, text: str, modname: str,
+                            parent_name: Optional[str] = None,
+                            path: str = '<fromtext>',
+                            is_package: bool = False, ) -> None: ...
+    @abc.abstractmethod
+    def buildModules(self): ...
+
+class SystemBuilder(abc.ABC):
+    """
+    This class is only an adapter for some System methods. 
+    """
+    def __init__(self, system: 'System') -> None:
+        self.system = system
+        self._added = set()
+
+    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+        if path in self._added:
+            return
+        # Path validity check
+        if self.system.options.projectbasedirectory is not None:
+            # Note: Path.is_relative_to() was only added in Python 3.9,
+            #       so we have to use this workaround for now.
+            try:
+                path.relative_to(self.system.options.projectbasedirectory)
+            except ValueError as ex:
+                error(f"Source path lies outside base directory: {ex}")
+        parent: Optional[Package] = None
+        if parent_name:
+            parent = self.system.allobjects[parent_name]
+            assert isinstance(parent, Package)
+        if path.is_dir():
+            self.system.msg('addPackage', f"adding directory {path}")
+            if not (path / '__init__.py').is_file():
+                error(f"Source directory lacks __init__.py: {path}")
+            self.system.addPackage(path, parent)
+        elif path.is_file():
+            self.system.msg('addModuleFromPath', f"adding module {path}")
+            self.system.addModuleFromPath(path, parent)
+        elif path.exists():
+            error(f"Source path is neither file nor directory: {path}")
+        else:
+            error(f"Source path does not exist: {path}")
+        self._added.add(path)
+
+    def addModuleString(self, text: str, modname: str,
+                            parent_name: Optional[str] = None,
+                            path: str = '<fromtext>',
+                            is_package: bool = False, ) -> None:
+            raise NotImplementedError()
+
+    def buildModules(self) -> None:
+        self.system.process()
