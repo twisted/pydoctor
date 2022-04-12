@@ -13,6 +13,7 @@ import importlib
 import inspect
 import platform
 import sys
+import textwrap
 import types
 from enum import Enum
 from inspect import signature, Signature
@@ -21,7 +22,6 @@ from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, overload
 )
-from collections import OrderedDict
 from urllib.parse import quote
 
 from pydoctor.options import Options
@@ -426,6 +426,8 @@ class Module(CanContainImportsDocumentable):
         """Whether this module is a C-extension."""
         self._py_mod: Optional[types.ModuleType] = None
         """The live module if the module was built from introspection."""
+        self._py_string: Optional[str] = None
+        """The module string if the module was built from text."""
 
         self.all: Optional[Collection[str]] = None
         """Names listed in the C{__all__} variable of this module.
@@ -631,6 +633,7 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
+    systemBuilder: Type['ISystemBuilder']
     options: 'Options'
 
 
@@ -662,7 +665,7 @@ class System:
 
         # We're using the id() of the modules as key, and not the fullName becaue modules can
         # be reparented, generating KeyError.
-        self.unprocessed_modules: Dict[int, _ModuleT] = OrderedDict()
+        self.unprocessed_modules: List[_ModuleT] = []
 
         self.module_count = 0
         self.processing_modules: List[str] = []
@@ -898,7 +901,7 @@ class System:
 
     def _addUnprocessedModule(self, mod: _ModuleT) -> None:
         """
-        First add the new module into the unprocessed_modules mapping. 
+        First add the new module into the unprocessed_modules list. 
         Handle eventual duplication of module names, and finally add the 
         module to the system.
         """
@@ -909,7 +912,7 @@ class System:
             assert isinstance(first, Module)
             self._handleDuplicateModule(first, mod)
         else:
-            self.unprocessed_modules[id(mod)] = mod
+            self.unprocessed_modules.append(mod)
             self.addObject(mod)
             self.progress(
                 "analyzeModule", len(self.allobjects),
@@ -935,7 +938,8 @@ class System:
             return
         else:
             # Else, the last added module wins
-            del self.unprocessed_modules[id(dup)]
+            self._remove(first)
+            self.unprocessed_modules.remove(first)
             self._addUnprocessedModule(dup)
 
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
@@ -1019,6 +1023,12 @@ class System:
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.analyzeModule(path, module_name, package)
             break
+    
+    def _remove(self, o: Documentable) -> None:
+        del self.allobjects[o.fullName()]
+        oc = list(o.contents.values())
+        for c in oc:
+            self._remove(c)
 
     def handleDuplicate(self, obj: Documentable) -> None:
         '''This is called when we see two objects with the same
@@ -1040,12 +1050,7 @@ class System:
             i += 1
         prev = self.allobjects[fullName]
         self._warning(obj.parent, "duplicate", str(prev))
-        def remove(o: Documentable) -> None:
-            del self.allobjects[o.fullName()]
-            oc = list(o.contents.values())
-            for c in oc:
-                remove(c)
-        remove(prev)
+        self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
             self.allobjects[o.fullName()] = o
@@ -1065,14 +1070,16 @@ class System:
         if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
-        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
+        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED), mod.state
         return mod
 
     def processModule(self, mod: _ModuleT) -> None:
         assert mod.state is ProcessingState.UNPROCESSED
+        assert mod in self.unprocessed_modules
         mod.state = ProcessingState.PROCESSING
+        self.unprocessed_modules.remove(mod)
         if mod.source_path is None:
-            return
+            assert mod._py_string is not None
         if mod._is_c_module:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
@@ -1082,15 +1089,19 @@ class System:
             assert head == mod.fullName()
         else:
             builder = self.defaultBuilder(self)
-            ast = builder.parseFile(mod.source_path)
+            if mod._py_string is not None:
+                ast = builder.parseString(mod._py_string)
+            else:
+                assert mod.source_path is not None
+                ast = builder.parseFile(mod.source_path)
             if ast:
                 self.processing_modules.append(mod.fullName())
-                self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+                if mod._py_string is None:
+                    self.msg("processModule", "processing %s"%(self.processing_modules), 1)
                 builder.processModuleAST(ast, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
                 assert head == mod.fullName()
-        del self.unprocessed_modules[id(mod)]
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
@@ -1100,7 +1111,7 @@ class System:
 
     def process(self) -> None:
         while self.unprocessed_modules:
-            mod = next(iter(self.unprocessed_modules.values()))
+            mod = next(iter(self.unprocessed_modules))
             self.processModule(mod)
         self.postProcess()
 
@@ -1123,24 +1134,24 @@ class System:
             self.intersphinx.update(cache, url)
 
 class ISystemBuilder(abc.ABC):
-
+    @abc.abstractmethod
+    def __init__(self, system: 'System') -> None:...
     @abc.abstractmethod
     def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:...
     @abc.abstractmethod
     def addModuleString(self, text: str, modname: str,
                             parent_name: Optional[str] = None,
-                            path: str = '<fromtext>',
                             is_package: bool = False, ) -> None: ...
     @abc.abstractmethod
-    def buildModules(self): ...
+    def buildModules(self) -> None: ...
 
-class SystemBuilder(abc.ABC):
+class SystemBuilder(ISystemBuilder):
     """
-    This class is only an adapter for some System methods. 
+    This class is only an adapter for some System methods related to module building. 
     """
     def __init__(self, system: 'System') -> None:
         self.system = system
-        self._added = set()
+        self._added: Set[Path] = set()
 
     def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
         if path in self._added:
@@ -1155,8 +1166,9 @@ class SystemBuilder(abc.ABC):
                 error(f"Source path lies outside base directory: {ex}")
         parent: Optional[Package] = None
         if parent_name:
-            parent = self.system.allobjects[parent_name]
-            assert isinstance(parent, Package)
+            _p = self.system.allobjects[parent_name]
+            assert isinstance(_p, Package)
+            parent = _p
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
             if not (path / '__init__.py').is_file():
@@ -1173,9 +1185,22 @@ class SystemBuilder(abc.ABC):
 
     def addModuleString(self, text: str, modname: str,
                             parent_name: Optional[str] = None,
-                            path: str = '<fromtext>',
                             is_package: bool = False, ) -> None:
-            raise NotImplementedError()
+        if parent_name is None:
+            parent = None
+        else:
+            # Set containing package as parent.
+            parent = self.system.allobjects[parent_name]
+            assert isinstance(parent, Package), f"{parent.fullName()} is not a Package, it's a {parent.kind}"
+        
+        factory = self.system.Package if is_package else self.system.Module
+        mod = factory(self.system, name=modname, parent=parent, source_path=None)
+        mod._py_string = textwrap.dedent(text)
+        count = len(self.system.allobjects)
+        self.system._addUnprocessedModule(mod)
+        assert len(self.system.allobjects) == count+1
 
     def buildModules(self) -> None:
         self.system.process()
+
+System.systemBuilder = SystemBuilder

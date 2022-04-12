@@ -510,8 +510,8 @@ def test_compact_module_summary() -> None:
     assert ul.tagName == 'ul'       # type: ignore
     assert len(ul.children) == 50   # type: ignore
 
-    # the 51th module triggers the compact summary
-    fromText('', parent_name='top', modname='_yet_another_sub', system=system)
+    # the 51th module triggers the compact summary, no matter if it's a package or module
+    fromText('', parent_name='top', modname='_yet_another_sub', system=system, is_package=True)
 
     ul = moduleSummary(top, '').children[-1]
     assert ul.tagName == 'ul'       # type: ignore
@@ -520,8 +520,8 @@ def test_compact_module_summary() -> None:
     # test that the last module is private
     assert 'private' in ul.children[0].children[-1].attributes['class'] # type: ignore
 
-    # for the compact summary no submodule may have further submodules
-    fromText('', parent_name='top.sub33', modname='subsubmodule', system=system)
+    # for the compact summary no submodule (packages) may have further submodules
+    fromText('', parent_name='top._yet_another_sub', modname='subsubmodule', system=system)
 
     ul = moduleSummary(top, '').children[-1]
     assert ul.tagName == 'ul'       # type: ignore

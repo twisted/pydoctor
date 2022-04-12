@@ -124,7 +124,10 @@ def _handle_implemented(
 
         if isinstance(iface, ZopeInterfaceClass):
             if iface.isinterface:
-                iface.implementedby_directly.append(implementer)
+                # System might be post processed mutilple times during tests, 
+                # so we check if implementer is already there.
+                if implementer not in iface.implementedby_directly:
+                    iface.implementedby_directly.append(implementer)
             else:
                 implementer.report(
                     'Class "%s" is not an interface' % iface_name,

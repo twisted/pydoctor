@@ -455,8 +455,12 @@ def test_implementer_reparented() -> None:
     impl = mod_impl.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == ['_private.IMyInterface']
-    assert iface.implementedby_directly == []
 
+    # The system is already post-processed at this time
+    assert iface.implementedby_directly == [impl]
+
+    # But since we've manually reparent 'IMyInterface' to 'public',
+    # we need to post-process it again.
     system.postProcess()
     assert impl.implements_directly == ['public.IMyInterface']
     assert iface.implementedby_directly == [impl]
