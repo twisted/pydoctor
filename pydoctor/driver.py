@@ -63,8 +63,11 @@ def get_system(options: model.Options) -> model.System:
             system.addObject(initmodule)
     
     builder = model.SystemBuilder(system)
-    for path in options.sourcepath:
-        builder.addModule(path)
+    try:
+        for path in options.sourcepath:
+            builder.addModule(path)
+    except model.SystemBuildingError as e:
+        error(str(e))
 
     # step 3: move the system to the desired state
 
