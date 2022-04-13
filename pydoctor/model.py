@@ -1030,7 +1030,8 @@ class System:
             self._remove(c)
 
     def handleDuplicate(self, obj: Documentable) -> None:
-        '''This is called when we see two objects with the same
+        """
+        This is called when we see two objects with the same
         .fullName(), for example::
 
             class C:
@@ -1042,7 +1043,7 @@ class System:
                         implementation 2
 
         The default is that the second definition "wins".
-        '''
+        """
         i = 0
         fullName = obj.fullName()
         while (fullName + ' ' + str(i)) in self.allobjects:
