@@ -1150,7 +1150,7 @@ class ISystemBuilder(abc.ABC):
     @abc.abstractmethod
     def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
         """
-        Add a module from file system path to the system. 
+        Add a module or package from file system path to the pydoctor system. 
         If the path points to a directory, adds all submodules recursively.
 
         @raises SystemBuildingError: If there is an error while adding the module/package.

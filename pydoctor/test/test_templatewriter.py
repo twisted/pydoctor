@@ -549,9 +549,10 @@ def test_index_contains_infos(tmp_path: Path) -> None:
               '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
 
     system = model.System()
-    system.addPackage(testpackages / "allgames")
-    system.addPackage(testpackages / "basic")
-    system.process()
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
     w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
     w.writeSummaryPages(system)
 
