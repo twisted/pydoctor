@@ -62,7 +62,7 @@ def get_system(options: model.Options) -> model.System:
             initmodule = system.Module(system, '__init__', prependedpackage)
             system.addObject(initmodule)
     
-    builder = model.SystemBuilder(system)
+    builder = system.systemBuilder(system)
     try:
         for path in options.sourcepath:
             builder.addModule(path)
