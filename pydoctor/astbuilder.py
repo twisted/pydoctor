@@ -1114,7 +1114,6 @@ class ASTBuilder:
         self.currentMod: Optional[model.Module] = None
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
-        self.ast_cache_str: Dict[str, Optional[ast.Module]] = {}
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
         obj = cls(self.system, name, self.current)
@@ -1197,15 +1196,11 @@ class ASTBuilder:
             return mod
     
     def parseString(self, py_string:str) -> Optional[ast.Module]:
+        mod = None
         try:
-            mod: Optional[ast.Module] = self.ast_cache_str[py_string]
-        except KeyError:
-            mod = None
-            try:
-                mod = _parse(py_string)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse string: ", py_string)
-            self.ast_cache_str[py_string] = mod
+            mod = _parse(py_string)
+        except (SyntaxError, ValueError):
+            self.warning("cannot parse string: ", py_string)
         return mod
 
 model.System.defaultBuilder = ASTBuilder
