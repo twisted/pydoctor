@@ -1,6 +1,5 @@
-
-Customize Output
-================
+Theming and other customizations
+================================
 
 Configure sidebar expanding/collapsing
 --------------------------------------
@@ -18,16 +17,28 @@ This value describe how many nested modules and classes should be expandable.
 
   To disable completely the sidebar, use option ``--no-sidebar``
 
+Theming
+-------
+
+Currently, there are 2 main themes packaged with pydoctor: ``classic`` and ``readthedocs``.
+
+Choose your theme with option:: 
+
+  --theme
+
+.. note::
+  Additionnaly, the ``base`` theme can be used as a base for customizations.
+
 Tweak HTML templates
 --------------------
 
-They are 3 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
+They are 3 special files designed to be included in specific places of each pages. 
 
 - ``header.html``: at the very beginning of the body
 - ``subheader.html``: after the main header, before the page title
 - ``extra.css``: extra CSS sheet for layout customization
 
-To override a placeholder, write your custom HTML or CSS files to a directory
+To include a file, write your custom HTML or CSS files to a directory
 and use the following option::
 
   --template-dir=./pydoctor_templates
@@ -45,8 +56,7 @@ HTML templates have their own versioning system and warnings will be triggered w
 
   .. note:: 
 
-    This example is using new ``pydoctor`` option, ``--theme=base``. 
-    This means that bootstrap CSS will not be copied to build directory.
+    This example is using the ``base`` theme. 
 
 .. _customize-privacy:
 
