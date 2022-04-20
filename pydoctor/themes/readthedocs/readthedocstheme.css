@@ -52,7 +52,6 @@ body > footer > hr {
 }
 
 /* top navagation bar */
-/* TODO: Make it more like RTD's */
 
 .page-header {
     border-bottom: 1px solid rgb(210, 220, 216);
@@ -343,12 +342,12 @@ pre {
     margin: 0 0 10px;
     word-break: break-word;
     word-wrap: break-word;
+    white-space: pre-wrap;
 }
 pre code {
     padding: 0;
     font-size: inherit;
     color: inherit;
-    white-space: pre-wrap;
     background-color: transparent;
     border-radius: 0;
 }
