@@ -670,7 +670,7 @@ class System:
         # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
         # this way, we are sure the objects' privacy stay true even if we reparent them manually.
-        self._privacyClassCache: Dict[int, PrivacyClass] = {}
+        self._privacyClassCache: Dict[str, PrivacyClass] = {}
 
 
     @property
