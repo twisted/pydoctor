@@ -667,9 +667,9 @@ class System:
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
 
-        # since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
-        # it's ok to cache privacy class results since the potential renames (with reparenting) happends before we begin to
-        # generate HTML, which is when we call Documentable.PrivacyClass.
+        # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
+        # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
+        # this way, we are sure the objects' privacy stay true even if we reparent them manually.
         self._privacyClassCache: Dict[int, PrivacyClass] = {}
 
 
@@ -790,8 +790,8 @@ class System:
                 yield o
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
-        ob_id = id(ob)
-        cached_privacy = self._privacyClassCache.get(ob_id)
+        ob_fullName = ob.fullName()
+        cached_privacy = self._privacyClassCache.get(ob_fullName)
         if cached_privacy is not None:
             return cached_privacy
         
@@ -807,21 +807,20 @@ class System:
         
         # Precedence order: CLI arguments order
         # Check exact matches first, then qnmatch
-        fullName = ob.fullName()
         _found_exact_match = False
         for priv, match in reversed(self.options.privacy):
-            if fullName == match:
+            if ob_fullName == match:
                 privacy = priv
                 _found_exact_match = True
                 break
         if not _found_exact_match:
             for priv, match in reversed(self.options.privacy):
-                if qnmatch.qnmatch(fullName, match):
+                if qnmatch.qnmatch(ob_fullName, match):
                     privacy = priv
                     break
 
         # Store in cache
-        self._privacyClassCache[ob_id] = privacy
+        self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
     def addObject(self, obj: Documentable) -> None:

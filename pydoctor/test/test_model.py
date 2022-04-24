@@ -443,3 +443,31 @@ def test_privacy_switch(privacy:object) -> None:
     assert allobjs['m.tests.test1'].privacyClass == model.PrivacyClass.HIDDEN
     assert allobjs['m.tests.test2'].privacyClass == model.PrivacyClass.HIDDEN
     assert allobjs['m.tests.test3'].privacyClass == model.PrivacyClass.HIDDEN
+
+def test_privacy_reparented() -> None:
+    """
+    Test that the privacy of an object changes if 
+    the name of the object changes (with reparenting).
+    """
+
+    system = model.System()
+
+    mod_private = fromText('''
+    class _MyClass:
+        pass
+    ''', modname='private', system=system)
+
+    mod_export = fromText(
+        'from private import _MyClass # not needed for the test to pass', 
+        modname='public', system=system)
+
+    base = mod_private.contents['_MyClass']
+    assert base.privacyClass == model.PrivacyClass.PRIVATE
+
+    # Maually reparent MyClass
+    base.reparent(mod_export, 'MyClass')
+    assert base.fullName() == 'public.MyClass'
+    assert '_MyClass' not in mod_private.contents
+    assert mod_export.resolveName("MyClass") == base
+
+    assert base.privacyClass == model.PrivacyClass.PUBLIC
