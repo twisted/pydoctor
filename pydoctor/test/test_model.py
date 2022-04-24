@@ -464,7 +464,7 @@ def test_privacy_reparented() -> None:
     base = mod_private.contents['_MyClass']
     assert base.privacyClass == model.PrivacyClass.PRIVATE
 
-    # Maually reparent MyClass
+    # Manually reparent MyClass
     base.reparent(mod_export, 'MyClass')
     assert base.fullName() == 'public.MyClass'
     assert '_MyClass' not in mod_private.contents
