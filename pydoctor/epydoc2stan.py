@@ -593,7 +593,7 @@ class Field:
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return self.body.to_stan(self.source.docstringlinker)
+        return self.body.to_stan(self.source.docstring_linker)
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -639,7 +639,7 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
-        self._linker = self.obj.docstringlinker
+        self._linker = self.obj.docstring_linker
 
         self.types: Dict[str, Optional[Tag]] = {}
 
@@ -1026,14 +1026,14 @@ def format_docstring(obj: model.Documentable) -> Tag:
     else:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = obj.parsed_docstring.to_stan(source.docstringlinker, compact=False)
+            stan = obj.parsed_docstring.to_stan(source.docstring_linker, compact=False)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
             if source.docstring is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
                 parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(source.docstring, errs)
-                stan = parsed_doc_plain.to_stan(source.docstringlinker)
+                stan = parsed_doc_plain.to_stan(source.docstring_linker)
             reportErrors(source, errs)
         if stan.tagName:
             ret(stan)
@@ -1063,10 +1063,10 @@ def format_summary(obj: model.Documentable) -> Tag:
     try:
         # Disallow same_page_optimization in order to make sure we're not
         # breaking links when including the summaries on other pages.
-        assert isinstance(source.docstringlinker, _CachedEpydocLinker)
-        source.docstringlinker.same_page_optimization = False
-        stan = parsed_doc.to_stan(source.docstringlinker)
-        source.docstringlinker.same_page_optimization = True
+        assert isinstance(source.docstring_linker, _CachedEpydocLinker)
+        source.docstring_linker.same_page_optimization = False
+        stan = parsed_doc.to_stan(source.docstring_linker)
+        source.docstring_linker.same_page_optimization = True
     
     except Exception:
         # This problem will likely be reported by the full docstring as well,
@@ -1114,7 +1114,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(obj.docstringlinker)
+        return parsed_type.to_stan(obj.docstring_linker)
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type = obj.parsed_type
@@ -1135,7 +1135,7 @@ def format_toc(obj: model.Documentable) -> Optional[Tag]:
         if obj.system.options.sidebartocdepth > 0:
             toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
             if toc:
-                return toc.to_stan(obj.docstringlinker)
+                return toc.to_stan(obj.docstring_linker)
     return None
 
 
@@ -1219,7 +1219,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         linelen=obj.system.options.pyvalreprlinelen,
         maxlines=obj.system.options.pyvalreprmaxlines)
     
-    value_repr = doc.to_stan(obj.docstringlinker)
+    value_repr = doc.to_stan(obj.docstring_linker)
 
     # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
     for message in doc.warnings:

@@ -387,7 +387,7 @@ class Documentable:
             thresh=-1)
 
     @property
-    def docstringlinker(self) -> 'epydoc2stan.DocstringLinker':
+    def docstring_linker(self) -> 'epydoc2stan.DocstringLinker':
         """
         Returns an instance of L{epydoc2stan.DocstringLinker} suitable for resolving names
         in the context of the object scope. 

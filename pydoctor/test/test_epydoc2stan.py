@@ -781,7 +781,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     """
     system = model.System()
     target = model.Module(system, 'ignore-name')
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module')
@@ -798,7 +798,7 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module.other')
@@ -814,7 +814,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
@@ -835,7 +835,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     inventory._links['base.module.other'] = ('http://tm.tld', 'some.html')
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     url = sut.resolve_identifier('base.module.other')
@@ -861,7 +861,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
 
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
@@ -886,7 +886,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     ext_package = model.Module(system, 'ext_package')
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
 
     # This is called for the L{ext_module} markup.
@@ -926,7 +926,7 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
         socket = None
     ''')
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
-    linker = mod.docstringlinker
+    linker = mod.docstring_linker
     assert isinstance(linker, epydoc2stan._CachedEpydocLinker)
 
     url = linker.resolve_identifier('socket.socket')
@@ -949,7 +949,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
 
     # Dummy module that we want to link from.
     target = model.Module(system, 'ignore-name')
-    sut = target.docstringlinker
+    sut = target.docstring_linker
     assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
     url = sut.resolve_identifier('internal_module.C')
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
@@ -1099,8 +1099,8 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         '''
 
         mod = fromText(src, modname='module')
-        assert isinstance(mod.docstringlinker, _TestCachedEpydocLinker)
-        assert mod.docstringlinker.max_lookups==2
+        assert isinstance(mod.docstring_linker, _TestCachedEpydocLinker)
+        assert mod.docstring_linker.max_lookups==2
         assert 'href="#base"' in docstring2html(mod)
         captured = capsys.readouterr().out
 
@@ -1122,8 +1122,8 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         assert captured == ''
 
         mod = fromText(src, modname='module')
-        assert isinstance(mod.docstringlinker, _TestCachedEpydocLinker)
-        assert mod.docstringlinker.max_lookups==2
+        assert isinstance(mod.docstring_linker, _TestCachedEpydocLinker)
+        assert mod.docstring_linker.max_lookups==2
         assert 'href="index.html#base"' in summary2html(mod)
         captured = capsys.readouterr().out
 
