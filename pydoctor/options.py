@@ -279,9 +279,15 @@ def _convert_projectbasedirectory(s: Optional[str]) -> Optional[Path]:
     if s: return parse_path(s, opt='--project-base-dir')
     else: return None
 def _convert_systemclass(s: str) -> Type['model.System']:
-    return findClassFromDottedName(s, '--system-class', base_class='pydoctor.model.System')
+    try:
+        return findClassFromDottedName(s, '--system-class', base_class='pydoctor.model.System')
+    except ValueError as e:
+        error(str(e))
 def _convert_htmlwriter(s: str) -> Type['IWriter']:
-    return findClassFromDottedName(s, '--html-writer', base_class='pydoctor.templatewriter.IWriter')
+    try:
+        return findClassFromDottedName(s, '--html-writer', base_class='pydoctor.templatewriter.IWriter')
+    except ValueError as e:
+        error(str(e))
 def _convert_privacy(l: List[str]) -> List[Tuple['model.PrivacyClass', str]]:
     return list(map(functools.partial(parse_privacy_tuple, opt='--privacy'), l))
 

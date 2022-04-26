@@ -5,7 +5,7 @@ from pytest import mark, raises
 import pytest
 from twisted.web.template import Tag, tags
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, model, linker
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
@@ -782,7 +782,7 @@ def test_EpydocLinker_look_for_intersphinx_no_link() -> None:
     system = model.System()
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module')
 
@@ -799,7 +799,7 @@ def test_EpydocLinker_look_for_intersphinx_hit() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     result = sut.look_for_intersphinx('base.module.other')
 
@@ -815,7 +815,7 @@ def test_EpydocLinker_adds_intersphinx_link_css_class() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     result1 = sut.link_xref('base.module.other', 'base.module.other', 0).children[0] # wrapped in a code tag
     result2 = sut.link_to('base.module.other', 'base.module.other')
@@ -836,7 +836,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_absolute_id() -> None:
     system.intersphinx = inventory
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     url = sut.resolve_identifier('base.module.other')
     url_xref = sut._resolve_identifier_xref('base.module.other', 0)
@@ -862,7 +862,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_relative_id() -> None:
         system, 'ext_module', parent=ext_package)
 
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     # This is called for the L{ext_module<Pretty Text>} markup.
     url = sut.resolve_identifier('ext_module')
@@ -887,7 +887,7 @@ def test_EpydocLinker_resolve_identifier_xref_intersphinx_link_not_found(capsys:
     target.contents['ext_module'] = model.Module(
         system, 'ext_module', parent=ext_package)
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
 
     # This is called for the L{ext_module} markup.
     assert sut.resolve_identifier('ext_module') is None
@@ -926,11 +926,11 @@ def test_EpydocLinker_resolve_identifier_xref_order(capsys: CapSys) -> None:
         socket = None
     ''')
     mod.system.intersphinx = cast(SphinxInventory, InMemoryInventory())
-    linker = mod.docstring_linker
-    assert isinstance(linker, epydoc2stan._CachedEpydocLinker)
+    _linker = mod.docstring_linker
+    assert isinstance(_linker, linker._CachedEpydocLinker)
 
-    url = linker.resolve_identifier('socket.socket')
-    url_xref = linker._resolve_identifier_xref('socket.socket', 0)
+    url = _linker.resolve_identifier('socket.socket')
+    url_xref = _linker._resolve_identifier_xref('socket.socket', 0)
 
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url
     assert 'https://docs.python.org/3/library/socket.html#socket.socket' == url_xref
@@ -950,7 +950,7 @@ def test_EpydocLinker_resolve_identifier_xref_internal_full_name() -> None:
     # Dummy module that we want to link from.
     target = model.Module(system, 'ignore-name')
     sut = target.docstring_linker
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
     url = sut.resolve_identifier('internal_module.C')
     xref = sut._resolve_identifier_xref('internal_module.C', 0)
 
@@ -985,7 +985,7 @@ def test_CachedEpydocLinker() -> None:
     assert flatten(result1) == res == '<a href="http://tm.tld/some.html" class="intersphinx-link">base.module.other</a>'
     assert flatten(result3) == flatten(result4) == '<a href="http://tm.tld/some.html" class="intersphinx-link">other</a>'
 
-class _TestCachedEpydocLinker(epydoc2stan._CachedEpydocLinker):
+class _TestCachedEpydocLinker(linker._CachedEpydocLinker):
     """
     Docstring linker for testing the caching of results.
     """
@@ -1052,7 +1052,7 @@ def test_CachedEpydocLinker_same_page_optimization() -> None:
     class someclass: ...
     ''', modname='module')
     sut = _TestCachedEpydocLinker(mod, 3) # Raise if it makes more than 3 lookups.
-    assert isinstance(sut, epydoc2stan._CachedEpydocLinker)
+    assert isinstance(sut, linker._CachedEpydocLinker)
     
     sut.same_page_optimization=False
     assert sut.link_to('base','module.base').attributes['href']=='index.html#base'
@@ -1086,9 +1086,9 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
     Warnings should be reported only once per invalid name per line, 
     no matter the number of times we call summary2html() or docstring2html() or the order we call these functions.
     """
-    _default_class = epydoc2stan._CachedEpydocLinker
+    _default_class = linker._CachedEpydocLinker
     try:
-        epydoc2stan._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2) # type:ignore
+        linker._CachedEpydocLinker = partialclass(_TestCachedEpydocLinker, max_lookups=2) # type:ignore
         src = '''
         """
         L{base} L{regular text <notfound>} L{notfound} 
@@ -1139,7 +1139,7 @@ def test_CachedEpydocLinker_warnings(capsys: CapSys) -> None:
         assert captured == ''
     
     finally:
-        epydoc2stan._CachedEpydocLinker = _default_class # type:ignore
+        linker._CachedEpydocLinker = _default_class # type:ignore
 
 def test_xref_not_found_epytext(capsys: CapSys) -> None:
     """
