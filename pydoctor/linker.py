@@ -311,7 +311,7 @@ class _CachedEpydocLinker(_EpydocLinker):
                           cache_kind: 'Literal["link_to", "link_xref"]' = "link_to") -> Optional['_CachedEpydocLinker.CacheEntry']:
         # Lookup an entry in the cache, raise NewDerivedEntry if the exact entry could not be found
         # but we could extrapolate the correct link from the link we already had in the cache.
-        # Rerturns None if no corecponding entry has been found in the cache.
+        # Returns None if no coresponding entry has been found in the cache.
         
         # For xrefs, we first look into the link_to cache.
         if cache_kind == "link_xref":
