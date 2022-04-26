@@ -73,6 +73,9 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+in development
+^^^^^^^^^^^^^^
+
 pydoctor 22.5.0
 ^^^^^^^^^^^^^^^
 * Add Read The Docs theme, enable it with option ``--theme=readthedocs``.
