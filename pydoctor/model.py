@@ -1219,9 +1219,7 @@ class SystemBuilder(ISystemBuilder):
         factory = self.system.Package if is_package else self.system.Module
         mod = factory(self.system, name=modname, parent=parent, source_path=None)
         mod._py_string = textwrap.dedent(text)
-        count = len(self.system.allobjects)
         self.system._addUnprocessedModule(mod)
-        assert len(self.system.allobjects) == count+1
 
     def buildModules(self) -> None:
         self.system.process()

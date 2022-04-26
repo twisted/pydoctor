@@ -1994,3 +1994,23 @@ def test_variable_named_like_current_module(systemcls: Type[model.System]) -> No
     example = True
     ''', systemcls=systemcls, modname="example")
     assert 'example' in mod.contents
+
+@systemcls_param
+def test_package_name_clash(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+
+    builder.addModuleString('', 'mod', is_package=True)
+    builder.addModuleString('', 'sub', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub'], model.Module)
+
+    # The following statement completely overrides module 'mod' and all it's submodules.
+    builder.addModuleString('', 'mod', is_package=True)
+
+    with pytest.raises(KeyError):
+        system.allobjects['mod.sub']
+
+    builder.addModuleString('', 'sub2', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub2'], model.Module)
