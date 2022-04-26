@@ -75,6 +75,9 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+pydoctor 22.5.0
+^^^^^^^^^^^^^^^
 * Add Read The Docs theme, enable it with option ``--theme=readthedocs``.
 * Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
 * Highlight the active function or attribute.
