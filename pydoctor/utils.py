@@ -72,7 +72,7 @@ def parse_path(value: str, opt: str) -> Path:
     try:
         return resolve_path(value)
     except Exception as ex:
-        raise error(f"{opt}: invalid path, {ex}.")
+        error(f"{opt}: invalid path, {ex}.")
 
 def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]:
     """
