@@ -1,0 +1,768 @@
+body {
+    background-color: rgba(0,0,0,0.05);
+    box-sizing: border-box;
+    color: rgb(64, 64, 64);
+    font-family: Lato, proxima-nova, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    word-break: break-word;
+}
+
+.container-fluid {
+    max-width: 960px;
+}
+
+body > nav {
+    background-color: rgb(52, 49, 49);
+    color: rgb(155, 155, 155);
+    left: 0px;
+    height: 100%;
+    position: fixed;
+    top: 0px;
+    width: 300px!important;
+
+    overflow-y: scroll;
+    scrollbar-width: none;
+}
+
+body > nav::-webkit-scrollbar{
+    width: 0;
+}
+
+body > div, body > footer {
+    margin-left: 300px!important;
+    padding: 0 40px 0 40px;
+    background-color: rgb(252, 252, 252)!important;
+    width: calc(100% - 380px)!important;
+}
+
+body > footer {
+    /* border-top: 1px solid rgb(210, 220, 216); */
+    margin-top: 0px!important;
+    max-width: 960px;
+    margin-left: 300px!important;
+}
+
+body > footer > hr {
+    border: 0;
+    border-bottom: 1px solid rgb(210, 220, 216);
+    margin-bottom: 15px;
+}
+
+/* top navagation bar */
+
+.page-header {
+    border-bottom: 1px solid rgb(210, 220, 216);
+    background-color: rgb(252, 252, 252);
+    box-shadow: none;
+    margin-top: 0;
+    padding: 5px 0 5px 0;
+    position: relative;
+}
+
+/* xref stlyles */
+
+code > a {
+    background: rgb(255, 255, 255);
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    border: 1px solid rgb(225, 228, 229);
+    padding: 1px 2px;
+    font-size: 14px;
+}
+
+.sourceLink {
+    font-size: 14px;
+    border: 0;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+code, .pre, #childList > div .functionHeader,
+#splitTables > table tr td:nth-child(2), .fieldArg {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+code {
+    background: transparent;
+}
+
+/* Header */ 
+
+.page-header > h1 {
+    margin-top: 15px;
+    font-size: 28px;
+}
+
+.page-header > h1 code {
+    padding: 0;
+    font-size: 16px;
+}
+
+.page-header > h1 > code {
+    display: block;
+    line-height: 1.6;
+}
+
+.page-header > h1 code > a {
+    font-size: 18px;
+}
+
+/* Titles */
+
+p.caption, h1, h2, h3, h4, h5, h6, legend, .categoryHeader, #search-status{
+
+    font-weight: bold;
+    font-family: "Roboto Slab",Georgia,Arial,sans-serif;
+}
+
+.categoryHeader{
+    font-size: 20px;
+    margin: 15px 0 20px 0;
+}
+
+/* Top-left navigation links */
+.navlinks {
+    background-color: rgb(41, 128, 185);
+    color: rgb(252, 252, 252)!important;
+    display: block;
+    padding: 20px 0 14px 0;
+    text-align: center;
+    width: 300px;
+}
+
+.navbar-brand {
+    display: block;
+}
+
+.navbar-brand >  a {
+    color: rgb(252, 252, 252)!important;
+    padding: 3px 5px!important;
+}
+
+.navbar-brand >  a.projecthome::before {
+    background-image: url(fonts/home.svg);
+}
+
+.navbar-brand >  a:last-child::before {
+    background-image: url(fonts/book.svg);
+}
+
+.navbar-brand >  a.projecthome::before, 
+.navbar-brand >  a:last-child::before {
+    background-size: 18px 15px;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: inline-block;
+    width: 20px; 
+    height: 15px;
+    content:"";
+    -webkit-filter: invert(100%);
+    filter: invert(100%);
+    margin-bottom: -2px;
+}
+
+.navbar-brand > a:hover, .navlinks > a:hover {
+    background-color:rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+}
+
+.navlinks > a {
+    color: #D2EFFF;
+    display: inline-block;
+    height: 32px;
+    line-height: 32px;
+    white-space: nowrap;
+    padding: 5px!important;
+    margin-left: 5px;
+    margin-top: 5px
+}
+
+
+/* Generics for links */
+a, a:visited {
+    text-decoration:none;
+}
+a:hover{
+    text-decoration: underline;
+}
+
+/* Part of bootstrap CSS: buttons */
+.btn {
+    cursor: pointer;
+}
+
+.btn-link, a {
+    font-weight: 400;
+    color: #337ab7;
+    border-radius:0;
+}
+
+.btn-link, .btn-link.active, .btn-link:active {
+    background-color: transparent;
+    -webkit-box-shadow: none;
+    box-shadow:none
+}
+
+.btn-link, .btn-link:active, .btn-link:focus, .btn-link:hover {
+    border-color:transparent
+}
+
+.btn-link:focus, .btn-link:hover {
+    color: #23527c;
+    background-color:transparent
+}
+
+/* Summary tables */
+
+#splitTables > table {
+    -webkit-border-horizontal-spacing: 0px;
+    -webkit-border-vertical-spacing: 0px;
+    border: 1px solid rgb(210, 220, 216);
+    border-bottom: 0;
+    vertical-align: middle;
+}
+
+#splitTables > table td {
+    border-bottom: 1px solid rgb(210, 220, 216);
+}
+
+@media only screen and (max-width: 1000px){
+    #splitTables > table tr td:nth-child(2) {
+        width: 35%;
+    }
+}
+
+/* Child list */
+
+#childList > div {
+    margin: 0;
+    border: 0;
+    padding-left: 0;
+}
+
+#childList > div .functionHeader {
+    background: rgb(240, 240, 240);
+    border-left: 3px solid rgb(204, 204, 204);
+    border-width: 0px 0px 0px 3px;
+    margin: 0px 0px 6px;
+    padding: 6px;
+}
+
+.functionBody{
+    margin-left: 30px;
+}
+
+/* Class definition block */ 
+
+.extrasDocstring > p:first-child{
+    background: rgb(231, 242, 250);
+    border-top: 3px solid rgb(106, 176, 222);
+    display: table;
+    margin: 0px 0px 6px;
+    padding: 6px;
+}
+
+/* Admonitions */
+
+div.rst-admonition p.rst-admonition-title:after {
+    content: ":";
+}
+
+div.rst-admonition p.rst-admonition-title {
+    -webkit-font-smoothing: antialiased;
+    background: rgb(106, 176, 222);
+    box-sizing: border-box;
+    color: rgb(255, 255, 255)!important;
+    margin: -12px -12px 12px;
+    margin-block-end: 12px;
+    margin-block-start: -12px;
+    margin-inline-end: -12px;
+    margin-inline-start: -12px;
+    padding: 6px 12px;
+    text-rendering: auto;
+}
+
+div.rst-admonition p.rst-admonition-title {
+    color: #333333;
+}
+
+div.rst-admonition {
+    color: rgb(64, 64, 64);
+    margin: 0px 0px 24px;
+    padding: 12px;
+    border: 0;
+    border-radius:0;
+    
+}
+
+div.danger, div.error, div.caution {
+    background-color: #fdf3f2;
+}
+
+div.warning, div.attention{
+    background-color: #ffedcc;
+}
+
+div.danger p.rst-admonition-title, div.error p.rst-admonition-title, div.caution p.rst-admonition-title {
+    /* color: #b94a48; */
+    background-color: #f29f97;
+}
+
+div.attention p.rst-admonition-title, div.warning p.rst-admonition-title {
+/* color: #b94a48; */
+background-color: #f0b37e;
+}
+
+div.tip p.rst-admonition-title, div.hint p.rst-admonition-title, div.important p.rst-admonition-title{
+    color: #3a87ad;
+}
+
+div.tip, div.hint, div.important {
+    background-color: #d9edf7;
+}
+
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+/* Code blocks */
+
+pre {
+    box-sizing: border-box;
+    font-size: 13px;
+    line-height: 1.42857143;
+    color: #333;
+    padding: 9.5px;
+    border: 1px solid rgb(225, 228, 229);
+    white-space: pre;
+    background: rgb(248, 248, 248);
+    display: block;
+    margin: 0 0 10px;
+    word-break: break-word;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+pre code {
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+    background-color: transparent;
+    border-radius: 0;
+}
+
+
+/* Sidebar containers */
+
+#main {
+    margin-left:0!important;
+}
+
+.sidebarcontainer {
+    width: 100%;
+    border-radius: 0;border: 0;
+    /* height: auto; */
+    height: auto;
+    position: relative;
+    display: block;
+    margin-right: 0;
+    margin-top: 0;
+    margin-bottom: 10px;
+    margin-left: 0px;
+    background-color: transparent;
+    padding-left: 0;
+    padding-top: 0;
+    overflow-y: visible;
+    scrollbar-width: 0;
+}
+
+.sidebar > div{
+    padding-top: 10px;
+}
+
+.sidebar > div > hr {
+    display: none;
+}
+
+.sidebarcontainer::-webkit-scrollbar {
+    width: 0;
+}
+
+/* Sidebar links */
+
+.sidebarcontainer code > a {
+    border: 0;
+}
+
+.sidebar li a{
+    padding-top:5px;
+    padding-bottom: 5px;
+}
+
+/* default: light */
+.sidebar a { 
+    color: #d9d9d9;
+    width: 100%;
+}
+
+/* parent section: darker */
+.sidebar > div:nth-child(1) a {
+    color: #333;
+    width: 100%;
+}
+
+.sidebar a:hover {
+    text-decoration: none;
+}
+
+/* Sectionn title */
+.sidebar .thingTitle {
+    padding-left: 10px;
+    box-shadow: none;
+}
+
+/* Setting margins to 0, 
+   indentation is controled with the padding in this theme */
+
+.sidebar ul {
+    margin-left: 0;
+}
+.expandableItem > code {
+    margin-left: 0;
+}
+.sidebar ul {
+    padding-left: 0!important;
+    padding-right: 0!important;
+}
+
+/* Sidebar indentations */
+
+.sidebar li a, .sidebar .childrenKindTitle {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-left: 0;
+    box-shadow: none;
+    color: #d9d9d9;
+}
+
+.sidebar > div:nth-child(2) li a:hover{
+    color: #d9d9d9;
+}
+
+.sidebar li li a, .sidebar li .childrenKindTitle {
+    padding-left: 25px;
+    padding-right: 15px;
+}
+
+.sidebar li li li a, .sidebar li li .childrenKindTitle{
+    padding-left: 45px;
+    padding-right: 25px;
+}
+.sidebar li li li li a, .sidebar li li li .childrenKindTitle{
+    padding-left: 65px;
+    padding-right: 35px;
+}
+.sidebar li li li li li a, .sidebar li li li li .childrenKindTitle{
+    padding-left: 85px;
+    padding-right: 45px;
+}
+.sidebar li li li li li li a, .sidebar li li li li li .childrenKindTitle{
+    padding-left: 95px;
+    padding-right: 55px;
+}
+
+/* Items name */
+
+.sidebar > div ul > li > .itemName > code{
+    display: flex;
+}
+
+/* Plus/Minus toggles */
+
+.lbl-toggle{
+    border: 0;
+    content: url(fonts/plus-square-o.svg);
+    padding: 7px 0 0 15px;
+    width: 14px;
+    height: 14px;
+}
+
+.tocChildrenToggle:checked + .lbl-toggle{
+    content: url(fonts/minus-square-o.svg);
+}
+
+/* Plus/Minus toggles in parent's section */
+
+.sidebar > div:not(:first-child) .lbl-toggle  {
+    -webkit-filter: invert(85%);
+    filter: invert(85%);
+}
+
+.sidebar > div:not(:first-child) .tocChildrenToggle:checked + .lbl-toggle {
+    -webkit-filter: invert(65%);
+    filter: invert(65%);
+}
+
+.sidebar > div:not(:first-child) .lbl-toggle:hover {
+    -webkit-filter: invert(75%);
+    filter: invert(75%);
+}
+
+/* Plus/Minus toggles in current section */
+
+.sidebar > div:first-child .lbl-toggle  {
+    -webkit-filter: invert(15%);
+    filter: invert(15%);
+}
+
+.sidebar > div:first-child .tocChildrenToggle:checked + .lbl-toggle {
+    -webkit-filter: invert(25%);
+    filter: invert(25%);
+}
+.sidebar > div:first-child .lbl-toggle:hover {
+    -webkit-filter: invert(30%);
+    filter: invert(30%);
+}
+
+/* Plus/Minus toggles indentations */
+
+.sidebar li li .lbl-toggle {
+    padding-left: 25px;
+}
+
+.sidebar li li li .lbl-toggle {
+    padding-left: 45px;
+}
+.sidebar li li li li .lbl-toggle {
+    padding-left: 65px;
+}
+.sidebar li li li li li .lbl-toggle {
+    padding-left: 85px;
+}
+.sidebar li li li li li li .lbl-toggle {
+    padding-left: 105px;
+}
+
+/* Style of the nested contents background in the current object section (light) */ 
+
+.sidebar > div:first-child{
+    /* background-color: rgb(60, 60, 60);
+    border-bottom: 2px solid rgb(210, 220, 216); */
+    padding-top: 0;
+    padding-bottom: 10px;
+    background-color: rgb(227, 227, 227);
+    /* margin-top: 5px; */
+}
+
+nav.sidebar > div:nth-child(1) > div.thingTitle {
+    background-color: rgb(252, 252, 252);
+    border-bottom: 1px solid rgb(201, 201, 201);
+    border-top: 1px solid rgb(201, 201, 201);
+}
+
+.sidebar > div:nth-child(1) li  > .itemName:hover, 
+nav.sidebar > div:nth-child(1) li .tocChildrenToggle:checked ~ .expandableContent,
+.sidebar a.rst-reference:hover {
+    background-color: rgb(201, 201, 201);
+}
+
+.sidebar > div:nth-child(1) li li > .itemName:hover, 
+nav.sidebar > div:nth-child(1) li li .tocChildrenToggle:checked ~ .expandableContent {
+    background-color: rgb(190, 190, 190);
+}
+
+/* Style of the nested contents in the parent object section (darker) */ 
+
+.sidebar > div:not(:first-child) li > .itemName:hover, 
+.sidebar > div:not(:first-child) li .tocChildrenToggle:checked ~ .expandableContent{
+    background-color: rgb(60, 60, 60)!important;
+}
+.sidebar > div:not(:first-child) li li  > .itemName:hover, 
+.sidebar > div:not(:first-child) li li .tocChildrenToggle:checked ~ .expandableContent{
+    background-color: rgb(65, 65, 65)!important;
+}
+.sidebar > div:not(:first-child) li li li > .itemName:hover, 
+.sidebar > div:not(:first-child) li li li .tocChildrenToggle:checked ~ .expandableContent{
+    background-color: rgb(70, 70, 70)!important;
+}
+.sidebar > div:not(:first-child) li li li li > .itemName:hover, 
+.sidebar > div:not(:first-child) li li li li .tocChildrenToggle:checked ~ .expandableContent{
+    background-color: rgb(80, 80, 80)!important;
+}
+
+.lbl-toggle + code > a:hover{
+    background-color: transparent!important;
+}
+
+/* Sidebar titles */
+
+.sidebar .thingTitle > code a:hover{
+    background-color: rgba(255, 255, 255, 0.05)!important;
+}
+
+.sidebar .thingTitle > code a{
+    padding: 3px 7px 3px 7px;
+}
+
+.sidebar .thingTitle > span {
+    color: rgb(85, 165, 217);
+    display: inline;
+    font-family: Lato, proxima-nova, "Helvetica Neue", Arial, sans-serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 16px;
+    padding-top: 5px;
+}
+.sidebar .childrenKindTitle {
+    border-bottom: 0;
+    margin-bottom: 5px;
+    display: block;
+    font-weight: bold;
+    color: rgb(85, 165, 217);
+}
+.sidebar > div:first-child .childrenKindTitle, .sidebar > div:first-child .thingTitle > span {
+    color:rgb(69, 130, 170);
+}
+.sidebar .childrenKindTitle:not(:first-child){
+    margin-top: 5px;
+}
+
+.tocChildrenToggle ~ code {
+    padding-left: 20px!important;
+}
+
+/* Sidebar Expandable content */
+
+.expandableItem > code {
+    width: 100%;
+}
+
+.expandableContent {
+    border: 0;
+    padding-left: 0;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+/* Search results */
+#search-results-container {
+    position: fixed;
+    top: 9px;
+    left: 300px;
+    width: calc(100% - 323px);
+}
+
+/* Simply hide the sidebar on smaller screens */
+
+@media screen and (max-width: 768px) {
+    body {
+        display: flex;
+        flex-direction: column 
+    }
+    body > nav {
+        position: relative;
+        display: block;
+        width: auto!important;
+    }
+    
+    body > div, body > footer {
+        margin-left: 0!important;
+        width: auto!important;
+        padding: 5px 15px 5px 15px;
+    }
+    
+    .navlinks {
+        width: auto!important;
+    }
+    .page-header {
+        margin-left: -15px;
+        margin-top: -5px;
+        width: 100%;
+        padding-left: 15px;
+    }
+    .navbar-header{
+        width: 100%!important;
+    }
+    .sidebarcontainer{
+        display: none;
+    }
+    #search-results-container {
+        position: relative;
+        top: 9px;
+        left: -10px;
+        width: 100%;
+    }
+    
+}
+
+#search-help-button{
+    background-color: transparent!important;
+}
+
+#search-box-container img {
+    /* Fom back image to color #D2EFFF, check https://codepen.io/sosuke/pen/Pjoqqp */
+    filter: invert(86%) sepia(18%) saturate(760%) hue-rotate(183deg) brightness(104%) contrast(106%);
+}
+
+input[type="search"] {
+    display: inline-block;
+    border: 1px solid #ccc;
+    font-family: Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;
+    box-shadow: inset 0 1px 3px #ddd;
+    width: 70%;
+    border-radius: 50px;
+    padding: 6px 12px;
+    border-color: #2472a4;
+}
+
+.input-group-addon, .input-group-btn {
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Active highlight */
+
+/* highlight the targeted item with "#" */
+#childList a:target ~ .functionHeader{
+    background-color: unset;
+    border-left: 3px solid rgb(80, 80, 90);
+}
+#childList a:target ~ .functionBody{
+    background-color: transparent;
+    box-shadow: none;
+}
+
+@font-face {
+    font-family: Lato;
+    src: url(fonts/lato-normal.woff2) format("woff2"), url(fonts/lato-normal.woff) format("woff");
+    font-weight: 400;
+    font-style: normal;
+    font-display:block
+}
+
+@font-face {
+    font-family: Lato;
+    src: url(fonts/lato-bold.woff2) format("woff2"), url(fonts/lato-bold.woff) format("woff");
+    font-weight: 700;
+    font-style: normal;
+    font-display:block
+}
+
+@font-face {
+    font-family: Roboto Slab;
+    font-style: normal;
+    font-weight: 400;
+    src: url(fonts/Roboto-Slab-Regular.woff2) format("woff2"), url(fonts/Roboto-Slab-Regular.woff) format("woff");
+    font-display:block
+}
+
+@font-face {
+    font-family: Roboto Slab;
+    font-style: normal;
+    font-weight: 700;
+    src: url(fonts/Roboto-Slab-Bold.woff2) format("woff2"), url(fonts/Roboto-Slab-Bold.woff) format("woff");
+    font-display: block
+}
+
