@@ -23,6 +23,12 @@ def taglink(o: 'model.Documentable', page_url: str,
             same_page_optimization:bool=True) -> Tag:
     """
     Create a link to an object that exists in the system.
+
+    @param o: The object to link to
+    @param page_url: The URL of the current page
+    @param label: The label to use for the link
+    @param same_page_optimization: Whether to create a link with the anchor only when 
+        page_url matches the object's URL.
     """
     if not o.isVisible:
         o.system.msg("html", "don't link to %s"%o.fullName())
