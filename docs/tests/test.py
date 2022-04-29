@@ -180,7 +180,7 @@ def test_lunr_index() -> None:
         test_search('+qname:pydoctor', ['pydoctor'])
         test_search('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan'])
         test_search('_colorize_re_pattern', ['pydoctor.epydoc.markup._pyval_repr.PyvalColorizer._colorize_re_pattern'])
-        test_search('+name:Class', ['pydoctor.model.Class', 'pydoctor.model.DocumentableKind.CLASS'])
+        test_search('+name:Class', ['pydoctor.model.Class', 'pydoctor.imodel.DocumentableKind.CLASS', 'pydoctor.imodel.ISystem.Class'])
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',

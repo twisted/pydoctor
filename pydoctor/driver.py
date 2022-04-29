@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydoctor.options import Options, BUILDTIME_FORMAT
 from pydoctor.utils import error
-from pydoctor import model
+from pydoctor import imodel
 from pydoctor.templatewriter import IWriter, TemplateLookup, TemplateError
 from pydoctor.sphinx import SphinxInventoryWriter, prepareCache
 
@@ -19,7 +19,7 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-def get_system(options: model.Options) -> model.System:
+def get_system(options: Options) -> imodel.ISystem:
     """
     Get a system with the defined options. Load packages and modules.
     """
@@ -33,7 +33,7 @@ def get_system(options: model.Options) -> model.System:
     system.fetchIntersphinxInventories(cache)
     cache.close() # Fixes ResourceWarning: unclosed <ssl.SSLSocket>
 
-    # TODO: load buildtime with default factory and converter in model.Options
+    # TODO: load buildtime with default factory and converter in Options
     # Support source date epoch:
     # https://reproducible-builds.org/specs/source-date-epoch/
     try:
@@ -66,7 +66,7 @@ def get_system(options: model.Options) -> model.System:
     try:
         for path in options.sourcepath:
             builder.addModule(path)
-    except model.SystemBuildingError as e:
+    except imodel.SystemBuildingError as e:
         error(str(e))
 
     # step 3: move the system to the desired state
@@ -82,7 +82,7 @@ def get_system(options: model.Options) -> model.System:
 
     return system
 
-def make(system: model.System) -> None:
+def make(system: imodel.ISystem) -> None:
     """
     Produce the html/intersphinx output, as configured in the system's options. 
     """
@@ -121,7 +121,7 @@ def make(system: model.System) -> None:
 
         writer.prepOutputDirectory()
 
-        subjects: Sequence[model.Documentable] = ()
+        subjects: Sequence[imodel.IDocumentable] = ()
         if options.htmlsubjects:
             subjects = [system.allobjects[fn] for fn in options.htmlsubjects]
         else:

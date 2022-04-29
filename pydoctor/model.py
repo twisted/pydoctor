@@ -6,7 +6,6 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
-import abc
 import ast
 import datetime
 import importlib
@@ -15,7 +14,7 @@ import platform
 import sys
 import textwrap
 import types
-from enum import Enum
+from enum import Enum, auto
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
@@ -25,7 +24,7 @@ from typing import (
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import qnmatch, utils, linker
+from pydoctor import qnmatch, utils, linker, imodel
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -58,65 +57,16 @@ _string_lineno_is_end = sys.version_info < (3,8) \
 line in the string, rather than the first line.
 """
 
-
-class DocLocation(Enum):
-    OWN_PAGE = 1
-    PARENT_PAGE = 2
-    # Nothing uses this yet.  Parameters will one day.
-    #UNDER_PARENT_DOCSTRING = 3
-
+DocLocation = imodel.DocLocation
+PrivacyClass = imodel.PrivacyClass
+DocumentableKind = imodel.DocumentableKind
 
 class ProcessingState(Enum):
-    UNPROCESSED = 0
-    PROCESSING = 1
-    PROCESSED = 2
+    UNPROCESSED: int = auto()
+    PROCESSING: int = auto()
+    PROCESSED: int = auto()
 
-
-class PrivacyClass(Enum):
-    """L{Enum} containing values indicating how private an object should be.
-
-    @cvar HIDDEN: Don't show the object at all.
-    @cvar PRIVATE: Show, but de-emphasize the object.
-    @cvar PUBLIC: Show the object as normal.
-    """
-
-    HIDDEN = 0
-    PRIVATE = 1
-    PUBLIC = 2
-    # For compatibility
-    VISIBLE = PUBLIC
-
-class DocumentableKind(Enum):
-    """
-    L{Enum} containing values indicating the possible object types.
-
-    @note: Presentation order is derived from the enum values
-    """
-    PACKAGE             = 1000
-    MODULE              = 900
-    CLASS               = 800
-    INTERFACE           = 850
-    CLASS_METHOD        = 700
-    STATIC_METHOD       = 600
-    METHOD              = 500
-    FUNCTION            = 400
-    CONSTANT            = 310
-    CLASS_VARIABLE      = 300
-    SCHEMA_FIELD        = 220
-    ATTRIBUTE           = 210
-    INSTANCE_VARIABLE   = 200
-    PROPERTY            = 150
-    VARIABLE            = 100
-
-class Documentable:
-    """An object that can be documented.
-
-    The interface is a bit ridiculously wide.
-
-    @ivar docstring: The object's docstring.  But also see docsources.
-    @ivar system: The system the object is part of.
-
-    """
+class Documentable(imodel.IDocumentable):
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
     parsed_summary: Optional[ParsedDocstring] = None
@@ -127,7 +77,6 @@ class Documentable:
     kind: Optional[DocumentableKind] = None
 
     documentation_location = DocLocation.OWN_PAGE
-    """Page location where we are documented."""
 
     def __init__(
             self, system: 'System', name: str,
@@ -149,7 +98,7 @@ class Documentable:
         return self
 
     def setup(self) -> None:
-        self.contents: Dict[str, Documentable] = {}
+        self.contents: Dict[str, imodel.IDocumentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
@@ -187,21 +136,11 @@ class Documentable:
 
     @property
     def description(self) -> str:
-        """A string describing our source location to the user.
-
-        If this module's code was read from a file, this returns
-        its file path. In other cases, such as during unit testing,
-        the full module name is returned.
-        """
         source_path = self.source_path
         return self.module.fullName() if source_path is None else str(source_path)
 
     @property
     def page_object(self) -> 'Documentable':
-        """The documentable to which the page we're documented on belongs.
-        For example methods are documented on the page of their class,
-        functions are documented in their module's page etc.
-        """
         location = self.documentation_location
         if location is DocLocation.OWN_PAGE:
             return self
@@ -214,13 +153,6 @@ class Documentable:
 
     @property
     def url(self) -> str:
-        """Relative URL at which the documentation for this Documentable
-        can be found.
-
-        For page objects this method MUST return an C{.html} filename without a
-        URI fragment (because L{pydoctor.templatewriter.writer.TemplateWriter}
-        uses it directly to determine the output filename).
-        """
         page_obj = self.page_object
         if list(self.system.root_names) == [page_obj.fullName()]:
             page_url = 'index.html'
@@ -242,16 +174,9 @@ class Documentable:
         return f"{self.__class__.__name__} {self.fullName()!r}"
 
     def docsources(self) -> Iterator['Documentable']:
-        """Objects that can be considered as a source of documentation.
-
-        The motivating example for having multiple sources is looking at a
-        superclass' implementation of a method for documentation for a
-        subclass'.
-        """
         yield self
 
-
-    def reparent(self, new_parent: 'Module', new_name: str) -> None:
+    def reparent(self, new_parent: 'imodel.IModule', new_name: str) -> None:
         # this code attempts to preserve "rather a lot" of
         # invariants assumed by various bits of pydoctor
         # and that are of course not written down anywhere
@@ -282,26 +207,6 @@ class Documentable:
         raise NotImplementedError(self._localNameToFullName)
 
     def expandName(self, name: str) -> str:
-        """Return a fully qualified name for the possibly-dotted `name`.
-
-        To explain what this means, consider the following modules:
-
-        mod1.py::
-
-            from external_location import External
-            class Local:
-                pass
-
-        mod2.py::
-
-            from mod1 import External as RenamedExternal
-            import mod1 as renamed_mod
-            class E:
-                pass
-
-        In the context of mod2.E, expandName("RenamedExternal") should be
-        "external_location.External" and expandName("renamed_mod.Local")
-        should be "mod1.Local". """
         parts = name.split('.')
         obj: Documentable = self
         for i, p in enumerate(parts):
@@ -326,21 +231,14 @@ class Documentable:
         return '.'.join([full_name] + parts[i + 1:])
 
     def resolveName(self, name: str) -> Optional['Documentable']:
-        """Return the object named by "name" (using Python's lookup rules) in
-        this context, if any is known to pydoctor."""
         return self.system.objForFullName(self.expandName(name))
 
     @property
     def privacyClass(self) -> PrivacyClass:
-        """How visible this object should be."""
         return self.system.privacyClass(self)
 
     @property
     def isVisible(self) -> bool:
-        """Is this object so private as to be not shown at all?
-
-        This is just a simple helper which defers to self.privacyClass.
-        """
         isVisible = self.privacyClass is not PrivacyClass.HIDDEN
         # If a module/package/class is hidden, all it's members are hidden as well.
         if isVisible and self.parent:
@@ -349,19 +247,10 @@ class Documentable:
 
     @property
     def isPrivate(self) -> bool:
-        """Is this object considered private API?
-
-        This is just a simple helper which defers to self.privacyClass.
-        """
         return self.privacyClass is not PrivacyClass.PUBLIC
 
     @property
     def module(self) -> 'Module':
-        """This object's L{Module}.
-
-        For modules, this returns the object itself, otherwise
-        the module containing the object is returned.
-        """
         parentMod = self.parentMod
         assert parentMod is not None
         return parentMod
@@ -388,23 +277,19 @@ class Documentable:
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
-        """
-        Returns an instance of L{DocstringLinker} suitable for resolving names
-        in the context of the object scope. 
-        """
         if self._linker is not None:
             return self._linker
         self._linker = linker._CachedEpydocLinker(self)
         return self._linker
 
 
-class CanContainImportsDocumentable(Documentable):
+class CanContainImportsDocumentable(imodel.ICanContainImportsDocumentable, Documentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
 
 
-class Module(CanContainImportsDocumentable):
+class Module(imodel.IModule, CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
 
@@ -425,17 +310,7 @@ class Module(CanContainImportsDocumentable):
         self._py_string: Optional[str] = None
         """The module string if the module was built from text."""
 
-        self.all: Optional[Collection[str]] = None
-        """Names listed in the C{__all__} variable of this module.
-
-        These names are considered to be exported by the module,
-        both for the purpose of C{from <module> import *} and
-        for the purpose of publishing names from private modules.
-
-        If no C{__all__} variable was found in the module, or its
-        contents could not be parsed, this is L{None}.
-        """
-
+        self.all: Optional[List[str]] = None
         self._docformat: Optional[str] = None
 
     def _localNameToFullName(self, name: str) -> str:
@@ -476,15 +351,15 @@ class Module(CanContainImportsDocumentable):
         return (m for m in self.contents.values()
                 if isinstance(m, Module) and m.isVisible)
 
-class Package(Module):
+class Package(imodel.IPackage, Module):
     kind = DocumentableKind.PACKAGE
 
 
-class Class(CanContainImportsDocumentable):
+class Class(imodel.IClass, CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
-    baseobjects: List[Optional['Class']]
+    baseobjects: List[Optional['imodel.IClass']]
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
     # Note: While unused in pydoctor itself, raw_decorators is still in use
     #       by Twisted's custom System class, to find deprecations.
@@ -498,20 +373,16 @@ class Class(CanContainImportsDocumentable):
     def setup(self) -> None:
         super().setup()
         self.rawbases: List[str] = []
-        self.subclasses: List[Class] = []
+        self.subclasses: List[imodel.IClass] = []
 
-    def allbases(self, include_self: bool = False) -> Iterator['Class']:
+    def allbases(self, include_self: bool = False) -> Iterator['imodel.IClass']:
         if include_self:
             yield self
         for b in self.baseobjects:
             if b is not None:
                 yield from b.allbases(True)
 
-    def find(self, name: str) -> Optional[Documentable]:
-        """Look up a name in this class and its base classes.
-
-        @return: the object with the given name, or L{None} if there isn't one
-        """
+    def find(self, name: str) -> Optional[imodel.IDocumentable]:
         for base in self.allbases(include_self=True):
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
@@ -520,7 +391,7 @@ class Class(CanContainImportsDocumentable):
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
-            o: Documentable = self.contents[name]
+            o: imodel.IDocumentable = self.contents[name]
             return o.fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
@@ -529,9 +400,6 @@ class Class(CanContainImportsDocumentable):
 
     @property
     def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
-        """A mapping of constructor parameter names to their type annotation.
-        If a parameter is not annotated, its value is L{None}.
-        """
 
         # We assume that the constructor parameters are the same as the
         # __init__() parameters. This is incorrect if __new__() or the class
@@ -543,7 +411,7 @@ class Class(CanContainImportsDocumentable):
             return {}
 
 
-class Inheritable(Documentable):
+class Inheritable(imodel.IInheritable, Documentable):
     documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
@@ -559,7 +427,7 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
-class Function(Inheritable):
+class Function(imodel.IFunction, Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
@@ -571,16 +439,11 @@ class Function(Inheritable):
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
 
-class Attribute(Inheritable):
+class Attribute(imodel.IAttribute, Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
     value: Optional[ast.expr] = None
-    """
-    The value of the assignment expression. 
-
-    None value means the value is not initialized at the current point of the the process. 
-    """
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -614,12 +477,7 @@ else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
 
-class System:
-    """A collection of related documentable objects.
-
-    PyDoctor documents collections of objects, often the contents of a
-    package.
-    """
+class System(imodel.ISystem):
 
     Class = Class
     Module = Module
@@ -629,7 +487,7 @@ class System:
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    systemBuilder: Type['ISystemBuilder']
+    systemBuilder: Type['imodel.ISystemBuilder']
     options: 'Options'
 
 
@@ -638,11 +496,6 @@ class System:
         self.rootobjects: List[_ModuleT] = []
 
         self.violations = 0
-        """The number of docstring problems found.
-        This is used to determine whether to fail the build when using
-        the --warnings-as-errors option, so it should only be increased
-        for problems that the user can fix.
-        """
 
         if options:
             self.options = options
@@ -653,9 +506,8 @@ class System:
         self.projectname = 'my project'
 
         self.docstring_syntax_errors: Set[str] = set()
-        """FullNames of objects for which the docstring failed to parse."""
 
-        self.verboselevel = 0
+        self.verboselevel = 0 #TODO: remove because Unused
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
 
@@ -794,7 +646,7 @@ class System:
             if isinstance(o, cls):
                 yield o
 
-    def privacyClass(self, ob: Documentable) -> PrivacyClass:
+    def privacyClass(self, ob: imodel.IDocumentable) -> PrivacyClass:
         ob_fullName = ob.fullName()
         cached_privacy = self._privacyClassCache.get(ob_fullName)
         if cached_privacy is not None:
@@ -861,7 +713,7 @@ class System:
     #  http://divmod.org/trac/browser/trunk
     #                          ~/src/Divmod/Nevow/nevow/flat/ten.py
 
-    def setSourceHref(self, mod: _ModuleT, source_path: Path) -> None:
+    def setSourceHref(self, mod: imodel.IModule, source_path: Path) -> None:
         if self.sourcebase is None:
             mod.sourceHref = None
         else:
@@ -1133,42 +985,7 @@ class System:
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
 
-class SystemBuildingError(Exception):
-    """
-    Raised when there is a (handled) fatal error while adding modules to the builder.
-    """
-
-class ISystemBuilder(abc.ABC):
-    """
-    Interface class for building a system.
-    """
-    @abc.abstractmethod
-    def __init__(self, system: 'System') -> None:
-        """
-        Create the builder.
-        """
-    @abc.abstractmethod
-    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
-        """
-        Add a module or package from file system path to the pydoctor system. 
-        If the path points to a directory, adds all submodules recursively.
-
-        @raises SystemBuildingError: If there is an error while adding the module/package.
-        """
-    @abc.abstractmethod
-    def addModuleString(self, text: str, modname: str,
-                        parent_name: Optional[str] = None,
-                        is_package: bool = False, ) -> None:
-        """
-        Add a module from text to the system.
-        """
-    @abc.abstractmethod
-    def buildModules(self) -> None:
-        """
-        Build the modules.
-        """
-
-class SystemBuilder(ISystemBuilder):
+class SystemBuilder(imodel.ISystemBuilder):
     """
     This class is only an adapter for some System methods related to module building. 
     """
@@ -1186,7 +1003,7 @@ class SystemBuilder(ISystemBuilder):
             try:
                 path.relative_to(self.system.options.projectbasedirectory)
             except ValueError as ex:
-                raise SystemBuildingError(f"Source path lies outside base directory: {ex}")
+                raise imodel.SystemBuildingError(f"Source path lies outside base directory: {ex}")
         parent: Optional[Package] = None
         if parent_name:
             _p = self.system.allobjects[parent_name]
@@ -1195,15 +1012,15 @@ class SystemBuilder(ISystemBuilder):
         if path.is_dir():
             self.system.msg('addPackage', f"adding directory {path}")
             if not (path / '__init__.py').is_file():
-                raise SystemBuildingError(f"Source directory lacks __init__.py: {path}")
+                raise imodel.SystemBuildingError(f"Source directory lacks __init__.py: {path}")
             self.system.addPackage(path, parent)
         elif path.is_file():
             self.system.msg('addModuleFromPath', f"adding module {path}")
             self.system.addModuleFromPath(path, parent)
         elif path.exists():
-            raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
+            raise imodel.SystemBuildingError(f"Source path is neither file nor directory: {path}")
         else:
-            raise SystemBuildingError(f"Source path does not exist: {path}")
+            raise imodel.SystemBuildingError(f"Source path does not exist: {path}")
         self._added.add(path)
 
     def addModuleString(self, text: str, modname: str,

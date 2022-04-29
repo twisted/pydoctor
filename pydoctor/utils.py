@@ -4,8 +4,9 @@ import sys
 import functools
 from typing import Any, Type, TypeVar, Tuple, Union, cast, TYPE_CHECKING
 
+from pydoctor import imodel
+
 if TYPE_CHECKING:
-    from pydoctor import model
     from typing_extensions import NoReturn
 else:
     NoReturn = None
@@ -74,7 +75,7 @@ def parse_path(value: str, opt: str) -> Path:
     except Exception as ex:
         error(f"{opt}: invalid path, {ex}.")
 
-def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]:
+def parse_privacy_tuple(value:str, opt: str) -> Tuple['imodel.PrivacyClass', str]:
     """
     Parse string like 'public:match*' to a tuple (PrivacyClass.PUBLIC, 'match*').
 
@@ -83,12 +84,11 @@ def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]
     parts = value.split(':')
     if len(parts)!=2:
         error(f"{opt}: malformatted value {value!r} should be like '<privacy>:<PATTERN>'.")
-    # Late import to avoid cyclic import error
-    from pydoctor import model
     try:
-        priv = model.PrivacyClass[parts[0].strip().upper()]
+        priv = imodel.PrivacyClass[parts[0].strip().upper()]
     except:
-        error(f"{opt}: unknown privacy value {parts[0]!r} should be one of {', '.join(repr(m.name) for m in model.PrivacyClass)}")
+        error(f"{opt}: unknown privacy value {parts[0]!r} should be one of "
+              f"{', '.join(repr(m.name) for m in imodel.PrivacyClass)}")
     else:
         return (priv, parts[1].strip())
 
