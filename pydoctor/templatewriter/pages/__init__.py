@@ -56,7 +56,7 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstringlinker)
+        stan = doc.to_stan(obj.docstring_linker)
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         for message in doc.warnings:
             obj.report(message)
@@ -410,7 +410,7 @@ class ClassPage(CommonPage):
 
     def classSignature(self) -> "Flattenable":
         r: List["Flattenable"] = []
-        _linker = self.ob.docstringlinker
+        _linker = self.ob.docstring_linker
         zipped = list(zip(self.ob.rawbases, self.ob.bases))
         if zipped:
             r.append('(')

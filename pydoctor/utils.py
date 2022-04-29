@@ -25,32 +25,36 @@ def findClassFromDottedName(
         ) -> Type[T]:
     """
     Looks up a class by full name.
-    Watch out, prints a message and SystemExits on error!
+    
+    @raises ValueError: If can't find the class.
     """
     if '.' not in dottedname:
-        error("%stakes a dotted name", optionname)
+        raise ValueError(f"{optionname} takes a dotted name")
     parts = dottedname.rsplit('.', 1)
     try:
         mod = __import__(parts[0], globals(), locals(), parts[1])
     except ImportError:
-        error("could not import module %s", parts[0])
+        raise ValueError(f"could not import module {parts[0]}")
     try:
         cls = getattr(mod, parts[1])
     except AttributeError:
-        error("did not find %s in module %s", parts[1], parts[0])
+        raise ValueError(f"did not find {parts[1]} in module {parts[0]}")
     if isinstance(base_class, str):
         base_class = findClassFromDottedName(base_class, optionname, object) # type:ignore[arg-type]
     assert isinstance(base_class, type)
     if not issubclass(cls, base_class):
-        error("%s is not a subclass of %s", cls, base_class)
+        raise ValueError(f"{cls} is not a subclass of {base_class}")
     return cast(Type[T], cls)
 
 def resolve_path(path: str) -> Path:
-    """Parse a given path string to a L{Path} object.
+    """
+    Parse a given path string to a L{Path} object.
 
     The path is converted to an absolute path, as required by
     L{System.setSourceHref()}.
     The path does not need to exist.
+
+    Watch out, prints a message and SystemExits on error!
     """
 
     # We explicitly make the path relative to the current working dir
@@ -59,17 +63,22 @@ def resolve_path(path: str) -> Path:
     return Path(Path.cwd(), path).resolve()
 
 def parse_path(value: str, opt: str) -> Path:
-    """Parse a str path to a L{Path} object
+    """
+    Parse a str path to a L{Path} object
     using L{resolve_path()}.
+
+    Watch out, prints a message and SystemExits on error!
     """
     try:
         return resolve_path(value)
     except Exception as ex:
-        raise error(f"{opt}: invalid path, {ex}.")
+        error(f"{opt}: invalid path, {ex}.")
 
 def parse_privacy_tuple(value:str, opt: str) -> Tuple['model.PrivacyClass', str]:
     """
     Parse string like 'public:match*' to a tuple (PrivacyClass.PUBLIC, 'match*').
+
+    Watch out, prints a message and SystemExits on error!
     """
     parts = value.split(':')
     if len(parts)!=2:

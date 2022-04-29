@@ -18,21 +18,20 @@ from inspect import signature, Signature
 from pathlib import Path
 from typing import (
     TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, overload
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from collections import OrderedDict
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import qnmatch
+from pydoctor import qnmatch, utils, linker
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from twisted.web.template import Flattenable
-    from pydoctor.astbuilder import ASTBuilder
-    from pydoctor import epydoc2stan
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -150,7 +149,7 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
-        self._linker: Optional['epydoc2stan.DocstringLinker'] = None
+        self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
         doc = node.s
@@ -387,16 +386,14 @@ class Documentable:
             thresh=-1)
 
     @property
-    def docstringlinker(self) -> 'epydoc2stan.DocstringLinker':
+    def docstring_linker(self) -> 'linker.DocstringLinker':
         """
-        Returns an instance of L{epydoc2stan.DocstringLinker} suitable for resolving names
+        Returns an instance of L{DocstringLinker} suitable for resolving names
         in the context of the object scope. 
         """
         if self._linker is not None:
             return self._linker
-        # FIXME: avoid cyclic import https://github.com/twisted/pydoctor/issues/507
-        from pydoctor.epydoc2stan import _CachedEpydocLinker
-        self._linker = _CachedEpydocLinker(self)
+        self._linker = linker._CachedEpydocLinker(self)
         return self._linker
 
 
@@ -783,8 +780,12 @@ class System:
         if self.options.verbosity > 0:
             print(fn, message, detail)
 
-    def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
+    def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
+        if isinstance(cls, str):
+            cls = utils.findClassFromDottedName(cls, 'objectsOfType', 
+                base_class=cast(Type['DocumentableT'], Documentable))
+        assert isinstance(cls, type)
         for o in self.allobjects.values():
             if isinstance(o, cls):
                 yield o
