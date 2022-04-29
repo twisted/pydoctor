@@ -986,7 +986,7 @@ class _ValueFormatter:
         The colorized value as L{ParsedDocstring}.
         """
 
-        self._linker = ctx.docstringlinker
+        self._linker = ctx.docstring_linker
         """
         Linker.
         """
