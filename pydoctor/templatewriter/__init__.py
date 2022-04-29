@@ -25,7 +25,7 @@ from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import TagLoader, XMLString, Element, tags
 
 from pydoctor.templatewriter.util import CaseInsensitiveDict
-from pydoctor.model import System, Documentable
+from pydoctor.imodel import System, Documentable
 
 DOCTYPE = b'''\
 <?xml version="1.0" encoding="utf-8"?>

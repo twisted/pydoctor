@@ -2,7 +2,7 @@ from typing import List
 from pydoctor.epydoc.markup import ParseError
 from unittest import TestCase
 from pydoctor.test import NotFoundLinker
-from pydoctor.model import Attribute, System, Function
+from pydoctor.model import Attribute, System, Function, Module
 from pydoctor.stanutils import flatten
 from pydoctor.epydoc.markup.google import get_parser as get_google_parser
 from pydoctor.epydoc.markup.numpy import get_parser as get_numpy_parser
@@ -12,7 +12,10 @@ class TestGetParser(TestCase):
 
     def test_get_google_parser_attribute(self) -> None:
 
-        obj = Attribute(system = System(), name='attr1')
+        system = System()
+        _mod = Module(system, name='_mod')
+        obj = Attribute(system, name='attr1', parent=_mod)
+        obj.parentMod = _mod
 
         parse_docstring = get_google_parser(obj)
 
@@ -29,8 +32,10 @@ numpy.ndarray: super-dooper attribute"""
         self.assertEqual(errors, [])
 
     def test_get_google_parser_not_attribute(self) -> None:
-
-        obj = Function(system = System(), name='whatever')
+        system = System()
+        _mod = Module(system, name='_mod')
+        obj = Function(system, name='whatever', parent=_mod)
+        obj.parentMod = _mod
 
         parse_docstring = get_google_parser(obj)
 
@@ -45,7 +50,10 @@ numpy.ndarray: super-dooper attribute"""
     # as shown in the example_numpy.py from Sphinx docs
     def test_get_numpy_parser_attribute(self) -> None:
 
-        obj = Attribute(system = System(), name='attr1')
+        system = System()
+        _mod = Module(system, name='_mod')
+        obj = Attribute(system, name='attr1', parent=_mod)
+        obj.parentMod = _mod
 
         parse_docstring = get_numpy_parser(obj)
 
@@ -63,7 +71,10 @@ numpy.ndarray: super-dooper attribute"""
 
     def test_get_numpy_parser_not_attribute(self) -> None:
 
-        obj = Function(system = System(), name='whatever')
+        system = System()
+        _mod = Module(system, name='_mod')
+        obj = Function(system, name='whatever', parent=_mod)
+        obj.parentMod = _mod
 
         parse_docstring = get_numpy_parser(obj)
 
@@ -79,8 +90,11 @@ class TestWarnings(TestCase):
 
     def test_warnings(self) -> None:
         
-        obj = Function(system = System(), name='func')
-
+        system = System()
+        _mod = Module(system, name='_mod')
+        obj = Function(system, name='func', parent=_mod)
+        obj.parentMod = _mod
+        
         parse_docstring = get_numpy_parser(obj)
 
         docstring = """

@@ -56,7 +56,7 @@ else:
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from pydoctor.model import Documentable
+    from pydoctor.imodel import Documentable
 
 ##################################################
 ## Contents

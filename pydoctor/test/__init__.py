@@ -8,7 +8,7 @@ from pathlib import Path
 
 from twisted.web.template import Tag, tags
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, imodel as model
 from pydoctor.templatewriter import IWriter, TemplateLookup
 from pydoctor.epydoc.markup import DocstringLinker
 

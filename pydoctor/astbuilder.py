@@ -13,7 +13,7 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan
+from pydoctor import epydoc2stan, model, imodel, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__
 
@@ -29,14 +29,14 @@ else:
     _parse = ast.parse
 
 
-def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
+def node2fullname(expr: Optional[ast.expr], ctx: imodel.Documentable) -> Optional[str]:
     dottedname = node2dottedname(expr)
     if dottedname is None:
         return None
     return ctx.expandName('.'.join(dottedname))
 
 
-def _maybeAttribute(cls: model.Class, name: str) -> bool:
+def _maybeAttribute(cls: imodel.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
     This is used to prevent an assignment that wraps a method from
     creating an attribute that would overwrite or shadow that method.
@@ -68,7 +68,7 @@ def _handleAliasing(
 _attrs_decorator_signature = signature(attrs)
 """Signature of the L{attr.s} class decorator."""
 
-def _uses_auto_attribs(call: ast.Call, module: model.Module) -> bool:
+def _uses_auto_attribs(call: ast.Call, module: imodel.Module) -> bool:
     """Does the given L{attr.s()} decoration contain C{auto_attribs=True}?
     @param call: AST of the call to L{attr.s()}.
         This function will assume that L{attr.s()} is called without
@@ -247,7 +247,7 @@ class ModuleVistor(ast.NodeVisitor):
 
         rawbases = []
         bases = []
-        baseobjects = []
+        baseobjects: List[Optional[imodel.Class]] = []
 
         for n in node.bases:
             if isinstance(n, ast.Name):
@@ -315,7 +315,7 @@ class ModuleVistor(ast.NodeVisitor):
         level = node.level
         if level:
             # Relative import.
-            parent: Optional[model.Documentable] = ctx.parentMod
+            parent: Optional[imodel.Documentable] = ctx.parentMod
             if isinstance(ctx.module, model.Package):
                 level -= 1
             for _ in range(level):

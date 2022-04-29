@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing_extensions import Literal
     
     # This import must be kept in the TYPE_CHECKING block for circular references issues.
-    from pydoctor import model
+    from pydoctor import imodel as model
 
 def taglink(o: 'model.Documentable', page_url: str, 
             label: Optional["Flattenable"] = None, 
@@ -224,7 +224,7 @@ class _EpydocLinker(DocstringLinker):
         # found, complain.
         target = self.look_for_name(
             # System.objectsOfType now supports passing the type as string.
-            identifier, self.obj.system.objectsOfType('pydoctor.model.Module'), lineno)
+            identifier, self.obj.system.objectsOfType(self.obj.system.Module), lineno)
         if target is not None:
             return target
 

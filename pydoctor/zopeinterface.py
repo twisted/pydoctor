@@ -5,7 +5,7 @@ import ast
 import re
 
 from pydoctor import astbuilder
-from pydoctor import model
+from pydoctor import model, imodel
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
 class ZopeInterfaceModule(model.Module):
@@ -54,7 +54,7 @@ class ZopeInterfaceClass(model.Class):
                     r.append(interface)
         return r
 
-def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable]:
+def _inheritedDocsources(obj: imodel.Documentable) -> Iterator[imodel.Documentable]:
     if not isinstance(obj.parent, (ZopeInterfaceClass, ZopeInterfaceModule)):
         return
     name = obj.name
@@ -67,12 +67,12 @@ def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable
                     yield io2.contents[name]
 
 class ZopeInterfaceFunction(model.Function):
-    def docsources(self) -> Iterator[model.Documentable]:
+    def docsources(self) -> Iterator[imodel.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
 
 class ZopeInterfaceAttribute(model.Attribute):
-    def docsources(self) -> Iterator[model.Documentable]:
+    def docsources(self) -> Iterator[imodel.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
 
@@ -206,7 +206,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr: Optional[model.Documentable] = self.builder.current.contents.get(target)
+        attr: Optional[imodel.Documentable] = self.builder.current.contents.get(target)
         if attr is None:
             return
         funcName = astbuilder.node2fullname(expr.func, self.builder.current)

@@ -5,7 +5,7 @@ import itertools
 from pathlib import Path
 from typing import IO, Iterable, Type, TYPE_CHECKING
 
-from pydoctor import model
+from pydoctor import imodel as model
 from pydoctor.templatewriter import (
     DOCTYPE, pages, summary, search, TemplateLookup, IWriter, StaticTemplate
 )

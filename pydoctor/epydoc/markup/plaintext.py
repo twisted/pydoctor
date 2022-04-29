@@ -17,7 +17,7 @@ from docutils import nodes, utils
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
-from pydoctor.model import Documentable
+from pydoctor.imodel import Documentable
 from pydoctor.epydoc.docutils import set_node_attributes
 
 def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from io import StringIO
 
-from pydoctor import model
+from pydoctor import imodel
 from pydoctor.options import PydoctorConfigParser, Options
 
 from pydoctor.test import FixtureRequest, TempPathFactory
@@ -166,7 +166,7 @@ def test_config_parsers(project_conf:str, pydoctor_conf:str, tempDir:Path) -> No
     options = Options.from_args([f"--config={conf_file}"])
     assert options.verbosity == -1
     assert options.warnings_as_errors == True
-    assert options.privacy == [(model.PrivacyClass.HIDDEN, 'pydoctor.test')]
+    assert options.privacy == [(imodel.PrivacyClass.HIDDEN, 'pydoctor.test')]
     assert options.intersphinx[0] == "https://docs.python.org/3/objects.inv"
     assert options.intersphinx[-1] == "https://tristanlatr.github.io/apidocs/docutils/objects.inv"
 

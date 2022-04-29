@@ -7,7 +7,7 @@ from typing import List, Optional, Type
 from pydoctor.epydoc.markup import ParsedDocstring, ParseError
 from pydoctor.epydoc.markup import restructuredtext
 from pydoctor.napoleon.docstring import GoogleDocstring, NumpyDocstring
-from pydoctor.model import Attribute, Documentable
+from pydoctor.imodel import Attribute, Documentable
 
 
 class NapoelonDocstringParser:

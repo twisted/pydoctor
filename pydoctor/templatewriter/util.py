@@ -5,7 +5,7 @@ from typing import (Any, Dict, Generic, Iterable, Iterator, Mapping,
                     Optional, MutableMapping, Tuple, TypeVar, Union, Sequence)
 from pydoctor import epydoc2stan
 import collections.abc
-from pydoctor import model
+from pydoctor import imodel as model
 
 from twisted.web.template import Tag
 

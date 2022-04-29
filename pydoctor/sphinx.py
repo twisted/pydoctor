@@ -20,7 +20,7 @@ from cachecontrol.caches import FileCache
 from cachecontrol.heuristics import ExpiresAfter
 
 if TYPE_CHECKING:
-    from pydoctor.model import Documentable
+    from pydoctor.imodel import Documentable
     from typing_extensions import Protocol
 
     class CacheT(Protocol):

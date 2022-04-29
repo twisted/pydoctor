@@ -4,7 +4,7 @@ from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Documentable, Function
+from pydoctor.imodel import Documentable, Function
 from pydoctor.templatewriter import TemplateElement, util
 
 if TYPE_CHECKING:

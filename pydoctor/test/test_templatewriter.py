@@ -7,7 +7,7 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 
-from pydoctor import model, templatewriter, stanutils, __version__
+from pydoctor import imodel as model, model as oldmodel, options, templatewriter, stanutils, __version__
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
@@ -53,6 +53,7 @@ def getHTMLOf(ob: model.Documentable) -> str:
     wr._writeDocsForOne(ob, f)
     return f.getvalue().decode()
 
+# TODO: Parameterize all these tests with systemcls
 
 def test_sidebar() -> None:
     src = '''
@@ -65,7 +66,7 @@ def test_sidebar() -> None:
             def l(): ...
 
     '''
-    system = model.System(model.Options.from_args(
+    system = oldmodel.System(options.Options.from_args(
         ['--sidebar-expand-depth=3']))
 
     mod = fromText(src, modname='mod', system=system)
@@ -106,7 +107,7 @@ def test_nonempty_table() -> None:
     assert 'The renderer named' not in flattened
 
 def test_rest_support() -> None:
-    system = model.System()
+    system = oldmodel.System()
     system.options.docformat = 'restructuredtext'
     system.options.verbosity = 4
     src = '''
@@ -513,7 +514,7 @@ def test_format_decorators() -> None:
 
 
 def test_compact_module_summary() -> None:
-    system = model.System()
+    system = oldmodel.System()
 
     top = fromText('', modname='top', is_package=True, system=system)
     for x in range(50):
@@ -561,7 +562,7 @@ def test_index_contains_infos(tmp_path: Path) -> None:
               '<code><a href="basic.html" class="internal-link">basic</a></code>',
               '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
 
-    system = model.System()
+    system = oldmodel.System()
     builder = system.systemBuilder(system)
     builder.addModule(testpackages / "allgames")
     builder.addModule(testpackages / "basic")
@@ -578,7 +579,7 @@ def test_objects_order_mixed_modules_and_packages() -> None:
     """
     Packages and modules are mixed when sorting with objects_order.
     """
-    system = model.System()
+    system = oldmodel.System()
 
     top = fromText('', modname='top', is_package=True, system=system)
     fromText('', parent_name='top', modname='aaa', system=system)

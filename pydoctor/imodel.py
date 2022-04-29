@@ -6,6 +6,7 @@ Interface classes for core pydoctor objetcs.
 
 import abc
 import ast
+import sys
 from datetime import datetime
 from enum import Enum, auto
 from inspect import Signature
@@ -13,16 +14,18 @@ from pathlib import Path
 
 from typing import (Collection, Iterator, List, Mapping, 
                     MutableMapping, Optional, Sequence, 
-                    Set, Tuple, Type, TypeVar, Union, TYPE_CHECKING)
+                    Set, Tuple, Type, TypeVar, Union, 
+                    runtime_checkable, TYPE_CHECKING)
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Protocol
+else:
+    from typing import Protocol
 
 if TYPE_CHECKING:
     from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
-    from pydoctor.options import Options
     from pydoctor.sphinx import CacheT, SphinxInventory
-
-    from typing_extensions import Protocol
-else:
-    Protocol = object
+    from pydoctor.options import Options
 
 class DocLocation(Enum):
     OWN_PAGE: int = auto()
@@ -60,6 +63,7 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+@runtime_checkable
 class IDocumentable(Protocol):
     """
     An object that can be documented.
@@ -183,11 +187,13 @@ class IDocumentable(Protocol):
 
 IDocumentableT = TypeVar('IDocumentableT', bound=IDocumentable)
 
+@runtime_checkable
 class ICanContainImportsDocumentable(IDocumentable, Protocol):
     ...
 
+@runtime_checkable
 class IModule(ICanContainImportsDocumentable, Protocol):
-    all:List[str]
+    all:Optional[List[str]]
     """Names listed in the C{__all__} variable of this module.
 
     These names are considered to be exported by the module,
@@ -204,9 +210,11 @@ class IModule(ICanContainImportsDocumentable, Protocol):
     def docformat(self, value: str) -> None: ...
     def submodules(self) -> Iterator['IModule']: ...
 
+@runtime_checkable
 class IPackage(IModule, Protocol):
     ...
 
+@runtime_checkable
 class IClass(ICanContainImportsDocumentable, Protocol):
     parent: ICanContainImportsDocumentable
     bases: List[str]
@@ -229,15 +237,18 @@ class IClass(ICanContainImportsDocumentable, Protocol):
         If a parameter is not annotated, its value is L{None}.
         """
 
+@runtime_checkable
 class IInheritable(IDocumentable, Protocol):
     ...
 
+@runtime_checkable
 class IFunction(IInheritable, Protocol):
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
 
+@runtime_checkable
 class IAttribute(IInheritable, Protocol):
     kind: Optional[DocumentableKind]
     annotation: Optional[ast.expr]
@@ -257,6 +268,7 @@ _ClassT = IClass
 _FunctionT = IFunction
 _AttributeT = IAttribute
 
+@runtime_checkable
 class ISystem(Protocol):
     """A collection of related documentable objects.
 
@@ -272,7 +284,7 @@ class ISystem(Protocol):
     systemBuilder: Type['ISystemBuilder']
 
     options: 'Options'
-    allobjects: Mapping[str, 'IDocumentable']
+    allobjects: MutableMapping[str, 'IDocumentable']
     rootobjects: List[_ModuleT]
     violations: int
     """The number of docstring problems found.
@@ -334,3 +346,14 @@ class ISystemBuilder(abc.ABC):
         """
         Build the modules.
         """
+
+# Aliases to ease the transition
+Documentable = IDocumentable
+System = ISystem
+CanContainImportsDocumentable = ICanContainImportsDocumentable
+Module = IModule
+Package = IPackage
+Class = IClass
+Inheritable = IInheritable
+Attribute = IAttribute
+Function = IFunction

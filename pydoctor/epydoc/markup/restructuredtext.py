@@ -56,7 +56,7 @@ from docutils.transforms import Transform, frontmatter
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
-from pydoctor.model import Documentable
+from pydoctor.imodel import Documentable
 
 #: A dictionary whose keys are the "consolidated fields" that are
 #: recognized by epydoc; and whose values are the corresponding epydoc

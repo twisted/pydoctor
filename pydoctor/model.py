@@ -66,7 +66,7 @@ class ProcessingState(Enum):
     PROCESSING: int = auto()
     PROCESSED: int = auto()
 
-class Documentable(imodel.IDocumentable):
+class Documentable(imodel.Documentable):
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
     parsed_summary: Optional[ParsedDocstring] = None
@@ -79,8 +79,8 @@ class Documentable(imodel.IDocumentable):
     documentation_location = DocLocation.OWN_PAGE
 
     def __init__(
-            self, system: 'System', name: str,
-            parent: Optional['Documentable'] = None,
+            self, system: 'imodel.System', name: str,
+            parent: Optional['imodel.Documentable'] = None,
             source_path: Optional[Path] = None
             ):
         if source_path is None and parent is not None:
@@ -88,7 +88,7 @@ class Documentable(imodel.IDocumentable):
         self.system = system
         self.name = name
         self.parent = parent
-        self.parentMod: Optional[Module] = None
+        self.parentMod: Optional[imodel.Module] = None
         self.source_path: Optional[Path] = source_path
         self._deprecated_info: Optional["Flattenable"] = None
         self.setup()
@@ -140,7 +140,7 @@ class Documentable(imodel.IDocumentable):
         return self.module.fullName() if source_path is None else str(source_path)
 
     @property
-    def page_object(self) -> 'Documentable':
+    def page_object(self) -> 'imodel.Documentable':
         location = self.documentation_location
         if location is DocLocation.OWN_PAGE:
             return self
@@ -173,7 +173,7 @@ class Documentable(imodel.IDocumentable):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__} {self.fullName()!r}"
 
-    def docsources(self) -> Iterator['Documentable']:
+    def docsources(self) -> Iterator['imodel.Documentable']:
         yield self
 
     def reparent(self, new_parent: 'imodel.IModule', new_name: str) -> None:
@@ -196,12 +196,12 @@ class Documentable(imodel.IDocumentable):
     def _handle_reparenting_pre(self) -> None:
         del self.system.allobjects[self.fullName()]
         for o in self.contents.values():
-            o._handle_reparenting_pre()
+            cast(Documentable,o)._handle_reparenting_pre()
 
     def _handle_reparenting_post(self) -> None:
         self.system.allobjects[self.fullName()] = self
         for o in self.contents.values():
-            o._handle_reparenting_post()
+            cast(Documentable,o)._handle_reparenting_post()
 
     def _localNameToFullName(self, name: str) -> str:
         raise NotImplementedError(self._localNameToFullName)
@@ -227,10 +227,10 @@ class Documentable(imodel.IDocumentable):
             nxt = self.system.objForFullName(full_name)
             if nxt is None:
                 break
-            obj = nxt
+            obj = cast(Documentable,nxt)
         return '.'.join([full_name] + parts[i + 1:])
 
-    def resolveName(self, name: str) -> Optional['Documentable']:
+    def resolveName(self, name: str) -> Optional['imodel.Documentable']:
         return self.system.objForFullName(self.expandName(name))
 
     @property
@@ -250,7 +250,7 @@ class Documentable(imodel.IDocumentable):
         return self.privacyClass is not PrivacyClass.PUBLIC
 
     @property
-    def module(self) -> 'Module':
+    def module(self) -> 'imodel.Module':
         parentMod = self.parentMod
         assert parentMod is not None
         return parentMod
@@ -283,13 +283,13 @@ class Documentable(imodel.IDocumentable):
         return self._linker
 
 
-class CanContainImportsDocumentable(imodel.ICanContainImportsDocumentable, Documentable):
+class CanContainImportsDocumentable(Documentable, imodel.CanContainImportsDocumentable):
     def setup(self) -> None:
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
 
 
-class Module(imodel.IModule, CanContainImportsDocumentable):
+class Module(CanContainImportsDocumentable, imodel.Module):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
 
@@ -315,8 +315,7 @@ class Module(imodel.IModule, CanContainImportsDocumentable):
 
     def _localNameToFullName(self, name: str) -> str:
         if name in self.contents:
-            o: Documentable = self.contents[name]
-            return o.fullName()
+            return self.contents[name].fullName()
         elif name in self._localNameToFullName_map:
             return self._localNameToFullName_map[name]
         else:
@@ -351,11 +350,11 @@ class Module(imodel.IModule, CanContainImportsDocumentable):
         return (m for m in self.contents.values()
                 if isinstance(m, Module) and m.isVisible)
 
-class Package(imodel.IPackage, Module):
+class Package(Module, imodel.Package):
     kind = DocumentableKind.PACKAGE
 
 
-class Class(imodel.IClass, CanContainImportsDocumentable):
+class Class(CanContainImportsDocumentable, imodel.Class):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     bases: List[str]
@@ -384,7 +383,7 @@ class Class(imodel.IClass, CanContainImportsDocumentable):
 
     def find(self, name: str) -> Optional[imodel.IDocumentable]:
         for base in self.allbases(include_self=True):
-            obj: Optional[Documentable] = base.contents.get(name)
+            obj = base.contents.get(name)
             if obj is not None:
                 return obj
         return None
@@ -411,23 +410,23 @@ class Class(imodel.IClass, CanContainImportsDocumentable):
             return {}
 
 
-class Inheritable(imodel.IInheritable, Documentable):
+class Inheritable(Documentable, imodel.Inheritable):
     documentation_location = DocLocation.PARENT_PAGE
 
     parent: CanContainImportsDocumentable
 
-    def docsources(self) -> Iterator[Documentable]:
+    def docsources(self) -> Iterator[imodel.Documentable]:
         yield self
-        if not isinstance(self.parent, Class):
+        if not isinstance(self.parent, self.system.Class):
             return
-        for b in self.parent.allbases(include_self=False):
+        for b in self.parent.allbases(include_self=False): #type:ignore[unreachable]
             if self.name in b.contents:
                 yield b.contents[self.name]
 
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
-class Function(imodel.IFunction, Inheritable):
+class Function(Inheritable, imodel.Function):
     kind = DocumentableKind.FUNCTION
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
@@ -439,7 +438,7 @@ class Function(imodel.IFunction, Inheritable):
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
 
-class Attribute(imodel.IAttribute, Inheritable):
+class Attribute(Inheritable, imodel.Attribute):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
     decorators: Optional[Sequence[ast.expr]] = None
@@ -477,7 +476,7 @@ else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
 
-class System(imodel.ISystem):
+class System(imodel.System):
 
     Class = Class
     Module = Module
@@ -492,8 +491,8 @@ class System(imodel.ISystem):
 
 
     def __init__(self, options: Optional['Options'] = None):
-        self.allobjects: Dict[str, Documentable] = {}
-        self.rootobjects: List[_ModuleT] = []
+        self.allobjects: Dict[str, imodel.Documentable] = {}
+        self.rootobjects: List[imodel.Module] = []
 
         self.violations = 0
 
@@ -591,10 +590,10 @@ class System(imodel.ISystem):
                 self.needsnl = False
                 print('')
 
-    def objForFullName(self, fullName: str) -> Optional[Documentable]:
+    def objForFullName(self, fullName: str) -> Optional[imodel.Documentable]:
         return self.allobjects.get(fullName)
 
-    def find_object(self, full_name: str) -> Optional[Documentable]:
+    def find_object(self, full_name: str) -> Optional[imodel.Documentable]:
         """Look up an object using a potentially outdated full name.
 
         A name can become outdated if the object is reparented:
@@ -625,7 +624,7 @@ class System(imodel.ISystem):
 
 
     def _warning(self,
-            current: Optional[Documentable],
+            current: Optional[imodel.Documentable],
             message: str,
             detail: str
             ) -> None:
@@ -636,11 +635,11 @@ class System(imodel.ISystem):
         if self.options.verbosity > 0:
             print(fn, message, detail)
 
-    def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
+    def objectsOfType(self, cls: Union[Type['imodel.IDocumentableT'], str]) -> Iterator['imodel.IDocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
         if isinstance(cls, str):
             cls = utils.findClassFromDottedName(cls, 'objectsOfType', 
-                base_class=cast(Type['DocumentableT'], Documentable))
+                base_class=cast(Type['imodel.IDocumentableT'], Documentable))
         assert isinstance(cls, type)
         for o in self.allobjects.values():
             if isinstance(o, cls):
@@ -680,7 +679,7 @@ class System(imodel.ISystem):
         self._privacyClassCache[ob_fullName] = privacy
         return privacy
 
-    def addObject(self, obj: Documentable) -> None:
+    def addObject(self, obj: imodel.Documentable) -> None:
         """Add C{object} to the system."""
 
         if obj.parent:
@@ -875,13 +874,13 @@ class System(imodel.ISystem):
                 self.analyzeModule(path, module_name, package)
             break
     
-    def _remove(self, o: Documentable) -> None:
+    def _remove(self, o: imodel.Documentable) -> None:
         del self.allobjects[o.fullName()]
         oc = list(o.contents.values())
         for c in oc:
             self._remove(c)
 
-    def handleDuplicate(self, obj: Documentable) -> None:
+    def handleDuplicate(self, obj: imodel.Documentable) -> None:
         """
         This is called when we see two objects with the same
         .fullName(), for example::
@@ -904,7 +903,7 @@ class System(imodel.ISystem):
         self._warning(obj.parent, "duplicate", str(prev))
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
-        def readd(o: Documentable) -> None:
+        def readd(o: imodel.Documentable) -> None:
             self.allobjects[o.fullName()] = o
             for c in o.contents.values():
                 readd(c)

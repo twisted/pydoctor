@@ -6,7 +6,7 @@ from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.model import Attribute, Class, Function, Documentable, Module
+from pydoctor.imodel import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 class SideBar(TemplateElement):
@@ -125,13 +125,13 @@ class ObjContent(Element):
         self._depth = depth
         self._level = level + 1
 
-        self.classList = self._getListOf(Class)
-        self.functionList = self._getListOf(Function)
-        self.variableList = self._getListOf(Attribute)
-        self.subModuleList = self._getListOf(Module)
+        self.classList = self._getListOf(ob.system.Class)
+        self.functionList = self._getListOf(ob.system.Function)
+        self.variableList = self._getListOf(ob.system.Attribute)
+        self.subModuleList = self._getListOf(ob.system.Module)
 
-        self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
-        self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
+        self.inheritedFunctionList = self._getListOf(ob.system.Function, inherited=True) if isinstance(self.ob, Class) else None
+        self.inheritedVariableList = self._getListOf(ob.system.Attribute, inherited=True) if isinstance(self.ob, Class) else None
     
     def _getListOf(self, type_: Type[Documentable],
                          inherited: bool = False) -> Optional['ContentList']:
@@ -186,7 +186,7 @@ class ObjContent(Element):
         can_be_expanded = False
 
         # Classes, modules and packages can be expanded in the sidebar. 
-        if issubclass(list_type, (Class, Module)):
+        if issubclass(list_type, (self.ob.system.Class, self.ob.system.Module)):
             can_be_expanded = True
         
         return self._level < self._depth and can_be_expanded

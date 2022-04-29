@@ -5,7 +5,7 @@ import astor
 
 from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, model as oldmodel, imodel as model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -17,7 +17,7 @@ import pytest
 
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem)
+    'systemcls', (oldmodel.System, ZopeInterfaceSystem, TwistedSystem)
     )
 
 def fromText(
@@ -27,7 +27,7 @@ def fromText(
         is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
-        systemcls: Type[model.System] = model.System
+        systemcls: Type[model.System] = oldmodel.System
         ) -> model.Module:
     
     if system is None:

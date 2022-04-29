@@ -5,7 +5,7 @@ from pytest import mark, raises
 import pytest
 from twisted.web.template import Tag, tags
 
-from pydoctor import epydoc2stan, model, linker
+from pydoctor import epydoc2stan, model, linker, imodel
 from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.stanutils import flatten, flatten_text
 from pydoctor.epydoc.markup.epytext import ParsedEpytextDocstring
@@ -18,6 +18,7 @@ from pydoctor.utils import partialclass
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
+# TODO: Parameterize all these tests to use systemcls.
 
 def test_multiple_types() -> None:
     mod = fromText('''
@@ -52,7 +53,7 @@ def test_multiple_types() -> None:
     epydoc2stan.format_docstring(mod.contents['E'])
 
 
-def docstring2html(obj: model.Documentable, docformat: Optional[str] = None) -> str:
+def docstring2html(obj: imodel.Documentable, docformat: Optional[str] = None) -> str:
     if docformat:
         obj.module.docformat = docformat
     stan = epydoc2stan.format_docstring(obj)
@@ -60,7 +61,7 @@ def docstring2html(obj: model.Documentable, docformat: Optional[str] = None) -> 
     # We strip off break lines for the sake of simplicity.
     return flatten(stan).replace('><', '>\n<').replace('<wbr></wbr>', '').replace('<wbr>\n</wbr>', '')
 
-def summary2html(obj: model.Documentable) -> str:
+def summary2html(obj: imodel.Documentable) -> str:
     stan = epydoc2stan.format_summary(obj)
     if stan.attributes.get('class') == 'undocumented':
         assert stan.tagName == 'span', stan
@@ -690,21 +691,21 @@ def test_ivar_overriding_attribute() -> None:
 
     base = mod.contents['Base']
     base_a = base.contents['a']
-    assert isinstance(base_a, model.Attribute)
+    assert isinstance(base_a, imodel.Attribute)
     assert summary2html(base_a) == "base doc"
     assert docstring2html(base_a) == "<div>\n<p>base doc</p>\n<p>details</p>\n</div>"
     base_b = base.contents['b']
-    assert isinstance(base_b, model.Attribute)
+    assert isinstance(base_b, imodel.Attribute)
     assert summary2html(base_b) == "not overridden"
     assert docstring2html(base_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
     sub = mod.contents['Sub']
     sub_a = sub.contents['a']
-    assert isinstance(sub_a, model.Attribute)
+    assert isinstance(sub_a, imodel.Attribute)
     assert summary2html(sub_a) == 'sub doc'
     assert docstring2html(sub_a) == "<div>\n<p>sub doc</p>\n</div>"
     sub_b = sub.contents['b']
-    assert isinstance(sub_b, model.Attribute)
+    assert isinstance(sub_b, imodel.Attribute)
     assert summary2html(sub_b) == 'not overridden'
     assert docstring2html(sub_b) == "<div>\n<p>not overridden</p>\n<p>details</p>\n</div>"
 
@@ -749,7 +750,7 @@ def test_inline_field_type(capsys: CapSys) -> None:
     """
     ''', modname='test')
     a = mod.contents['a']
-    assert isinstance(a, model.Attribute)
+    assert isinstance(a, imodel.Attribute)
     epydoc2stan.format_docstring(a)
     assert isinstance(a.parsed_type, ParsedEpytextDocstring)
     assert str(unwrap(a.parsed_type)) == 'number'
@@ -769,7 +770,7 @@ def test_inline_field_name(capsys: CapSys) -> None:
     """
     ''', modname='test')
     a = mod.contents['a']
-    assert isinstance(a, model.Attribute)
+    assert isinstance(a, imodel.Attribute)
     epydoc2stan.format_docstring(a)
     captured = capsys.readouterr().out
     assert captured == "test:5: Field in variable docstring should not include a name\n"
@@ -990,7 +991,7 @@ class _TestCachedEpydocLinker(linker._CachedEpydocLinker):
     Docstring linker for testing the caching of results.
     """
     
-    def __init__(self, obj: model.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
+    def __init__(self, obj: imodel.Documentable, max_lookups:int, same_page_optimization:bool=True) -> None:
         super().__init__(obj, same_page_optimization)
         self.lookups = 0
         self.max_lookups = max_lookups
@@ -1411,7 +1412,7 @@ def test_constant_values_rst(capsys: CapSys) -> None:
                 '<a href="pack.mod1.html#f" class="internal-link" title="pack.mod1.f">f</a>)</code></pre></td></tr></table>')
     
     attr = mod.contents['CONST']
-    assert isinstance(attr, model.Attribute)
+    assert isinstance(attr, imodel.Attribute)
 
     docstring2html(attr)
 

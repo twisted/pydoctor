@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
-from pydoctor.model import Function
+from pydoctor.imodel import Function
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators, format_signature
 

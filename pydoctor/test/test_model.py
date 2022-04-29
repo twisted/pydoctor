@@ -86,7 +86,7 @@ def test_htmlsourcetemplate_auto_detect() -> None:
          "https://bitbucket.org/user/scripts/src/master/pydoctor/test/testpackages/basic/mod.py#lines-7"),
     ]
     for base, var_href in cases:
-        options = model.Options.from_args([f'--html-viewsource-base={base}', '--project-base-dir=.'])
+        options = Options.from_args([f'--html-viewsource-base={base}', '--project-base-dir=.'])
         system = model.System(options)
 
         processPackage('basic', systemcls=lambda:system)
@@ -96,7 +96,7 @@ def test_htmlsourcetemplate_custom() -> None:
     """
     The links to source code web pages can be customized via an CLI argument.
     """
-    options = model.Options.from_args([
+    options = Options.from_args([
         '--html-viewsource-base=http://example.org/trac/browser/trunk', 
         '--project-base-dir=.', 
         '--html-viewsource-template={mod_source_href}#n{lineno}'])

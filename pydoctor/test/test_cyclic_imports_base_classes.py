@@ -19,7 +19,7 @@ def test_cyclic_imports_base_classes() -> None:
         env={'PYTHONHASHSEED': '0'},
         cwd=os.path.dirname(__file__),
     )
-    assert process.wait() == 0
+    assert process.wait() == 0, process.stderr.read() if process.stderr else '<No stderr>'
 
 
 if __name__ == '__main__':

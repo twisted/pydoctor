@@ -12,7 +12,7 @@ import re
 
 import attr
 
-from pydoctor import model, linker
+from pydoctor import imodel as model, linker
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring

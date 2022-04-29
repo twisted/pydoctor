@@ -8,7 +8,7 @@ from typing import (
 
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
-from pydoctor import epydoc2stan, model
+from pydoctor import epydoc2stan, imodel as model
 from pydoctor.templatewriter import TemplateLookup
 from pydoctor.templatewriter.pages import Page, objects_order
 
@@ -24,7 +24,7 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
     if module.isPrivate:
         r(class_='private')
     if not isinstance(module, model.Package):
-        return r
+        return r # type:ignore[unreachable]
     contents = list(module.submodules())
     if not contents:
         return r
@@ -84,7 +84,7 @@ def findRootClasses(
         system: model.System
         ) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
     roots: Dict[str, Union[model.Class, List[model.Class]]] = {}
-    for cls in system.objectsOfType(model.Class):
+    for cls in system.objectsOfType(system.Class):
         if ' ' in cls.name or not cls.isVisible:
             continue
         if cls.bases:
@@ -301,7 +301,7 @@ class IndexPage(Page):
 
     @renderer
     def rootkind(self, request: object, tag: Tag) -> Tag:
-        rootkinds = sorted(set([o.kind for o in self.system.rootobjects]), key=lambda k:k.name)
+        rootkinds = sorted(set([o.kind for o in self.system.rootobjects if o.kind]), key=lambda k:k.name)
         return tag.clear()('/'.join(
              epydoc2stan.format_kind(o, plural=True).lower()
              for o in rootkinds ))

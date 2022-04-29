@@ -142,7 +142,7 @@ from twisted.web.template import Tag
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.epydoc.docutils import set_node_attributes
-from pydoctor.model import Documentable
+from pydoctor.imodel import Documentable
 
 ##################################################
 ## Helper functions
