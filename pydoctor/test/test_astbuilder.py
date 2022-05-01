@@ -2023,7 +2023,10 @@ def test_variable_named_like_current_module(systemcls: Type[model.System]) -> No
     assert 'example' in mod.contents
 
 def test_twisted_python_deprecate(capsys: CapSys) -> None:
-
+    """
+    It recognizes Twisted deprecation decorators and add the
+    deprecation info as part of the documentation.
+    """
     from . import test_templatewriter
 
     # Adjusted from Twisted's tests at
