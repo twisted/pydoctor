@@ -1,3 +1,4 @@
+
 from typing import Optional, Tuple, Type, overload, cast
 import ast
 
@@ -5,7 +6,7 @@ import astor
 
 from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model as oldmodel, imodel as model
+from pydoctor import astbuilder, model as oldmodel, imodel as model, deprecate
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -17,7 +18,7 @@ import pytest
 
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (oldmodel.System, ZopeInterfaceSystem, TwistedSystem)
+    'systemcls', (oldmodel.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
     )
 
 def fromText(

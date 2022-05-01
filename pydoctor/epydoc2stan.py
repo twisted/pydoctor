@@ -37,7 +37,7 @@ def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool
     # of this behavior. 
     if obj.system.options.docformat == 'plaintext':
         return pydoctor.epydoc.markup.plaintext.parse_docstring
-
+    # the docstring should be parsed using the format of the module it was inherited from
     docformat = obj.module.docformat or obj.system.options.docformat
     
     try:
@@ -501,14 +501,14 @@ def _is_none_literal(node: ast.expr) -> bool:
     return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
 
-def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
+def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
         for err in errs:
             obj.report(
-                'bad docstring: ' + err.descr(),
+                f'bad {section}: ' + err.descr(),
                 lineno_offset=(err.linenum() or 1) - 1,
-                section='docstring'
+                section=section
                 )
 
 
@@ -516,16 +516,20 @@ def parse_docstring(
         obj: model.Documentable,
         doc: str,
         source: model.Documentable,
+        markup: Optional[str]=None,
+        section: str='docstring',
         ) -> ParsedDocstring:
     """Parse a docstring.
     @param obj: The object we're parsing the documentation for.
     @param doc: The docstring.
     @param source: The object on which the docstring is defined.
         This can differ from C{obj} if the docstring is inherited.
+    @param markup: Parse the docstring with the given markup, ignoring system's options.
+        Useful for creating L{ParsedDocstring}s from restructuredtext for instance.
+    @param section: A custom section to use.
     """
 
-    # the docstring should be parsed using the format of the module it was inherited from
-    parser = get_parser(source)
+    parser = get_parser(source) if not markup else get_parser_by_name(markup, obj)
     errs: List[ParseError] = []
     try:
         parsed_doc = parser(doc, errs, obj.system.options.processtypes)
@@ -533,7 +537,7 @@ def parse_docstring(
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
     if errs:
-        reportErrors(source, errs)
+        reportErrors(source, errs, section=section)
     return parsed_doc
 
 def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
@@ -574,11 +578,11 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
         return None
 
 
-class _ParsedStanOnly(ParsedDocstring):
+class ParsedStanOnly(ParsedDocstring):
     """
     A L{ParsedDocstring} directly constructed from stan, for caching purposes.
     
-    L{to_stan} method simply returns back what's given to L{_ParsedStanOnly.__init__}. 
+    L{to_stan} method simply returns back what's given to L{ParsedStanOnly.__init__}. 
     """
     def __init__(self, stan: Tag):
         super().__init__(fields=[])
@@ -603,7 +607,7 @@ def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documen
         return (source, obj.parsed_summary)
 
     if source is None:
-        summary_parsed_doc: ParsedDocstring = _ParsedStanOnly(format_undocumented(obj))
+        summary_parsed_doc: ParsedDocstring = ParsedStanOnly(format_undocumented(obj))
     else:
         # Tell mypy that if we found a docstring, we also have its source.
         assert obj.parsed_docstring is not None
@@ -671,7 +675,7 @@ def format_summary(obj: model.Documentable) -> Tag:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
         stan = tags.span(class_='undocumented')("Broken description")
-        obj.parsed_summary = _ParsedStanOnly(stan)
+        obj.parsed_summary = ParsedStanOnly(stan)
 
     return stan
 

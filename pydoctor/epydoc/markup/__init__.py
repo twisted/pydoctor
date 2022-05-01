@@ -200,9 +200,9 @@ class ParsedDocstring(abc.ABC):
             visitor = SummaryExtractor(_document)
             _document.walk(visitor)
         except Exception: 
-            self._summary = epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+            self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
         else:
-            self._summary = visitor.summary or epydoc2stan._ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
+            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
         return self._summary
 
       

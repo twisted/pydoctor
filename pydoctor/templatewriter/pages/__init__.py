@@ -195,15 +195,11 @@ class CommonPage(Page):
             ob = ob.parent
         parts.reverse()
         return parts
-
     @renderer
     def deprecated(self, request: object, tag: Tag) -> "Flattenable":
-        msg = self.ob._deprecated_info
-        if msg is None:
-            return ()
-        else:
-            return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")
-
+        import warnings
+        warnings.warn("Renderer 'CommonPage.deprecated' is deprecated, the twisted's deprecation system is now supported by default.")
+        return ''
     @renderer
     def source(self, request: object, tag: Tag) -> "Flattenable":
         sourceHref = util.srclink(self.ob)
@@ -215,8 +211,8 @@ class CommonPage(Page):
     def inhierarchy(self, request: object, tag: Tag) -> "Flattenable":
         return ()
 
-    def extras(self) -> List["Flattenable"]:
-        return []
+    def extras(self) -> List[Tag]:
+        return self.objectExtras(self.ob)
 
     def docstring(self) -> "Flattenable":
         return self.docgetter.get(self.ob)
@@ -257,15 +253,22 @@ class CommonPage(Page):
 
         for c in self.methods():
             if isinstance(c, model.Function):
-                r.append(FunctionChild(self.docgetter, c, self.functionExtras(c), func_loader))
+                r.append(FunctionChild(self.docgetter, c, self.objectExtras(c), func_loader))
             elif isinstance(c, model.Attribute):
-                r.append(AttributeChild(self.docgetter, c, self.functionExtras(c), attr_loader))
+                r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader))
             else:
                 assert False, type(c)
         return r
 
-    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
-        return []
+    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
+        """
+        Flatten each L{model.Documentable.extra_info} list item.
+        """
+        r: List[Tag] = []
+        for extra in ob.extra_info:
+            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+        return r
+
 
     def functionBody(self, ob: model.Documentable) -> "Flattenable":
         return self.docgetter.get(ob)
@@ -299,13 +302,14 @@ class CommonPage(Page):
 class ModulePage(CommonPage):
     ob: model.Module
 
-    def extras(self) -> List["Flattenable"]:
-        r = super().extras()
+    def extras(self) -> List[Tag]:
+        r: List[Tag] = []
 
         sourceHref = util.srclink(self.ob)
         if sourceHref:
             r.append(tags.a("(source)", href=sourceHref, class_="sourceLink"))
 
+        r.extend(super().extras())
         return r
 
 
@@ -384,8 +388,8 @@ class ClassPage(CommonPage):
                 self.baselists.append((baselist, attrs))
         self.overridenInCount = 0
 
-    def extras(self) -> List["Flattenable"]:
-        r = super().extras()
+    def extras(self) -> List[Tag]:
+        r: List[Tag] = []
 
         sourceHref = util.srclink(self.ob)
         source: "Flattenable"
@@ -399,13 +403,14 @@ class ClassPage(CommonPage):
             self.classSignature(), ":", source
             )))
 
-        scs = sorted(self.ob.subclasses, key=util.objects_order)
-        if not scs:
-            return r
-        p = assembleList(self.ob.system, "Known subclasses: ",
-                         [o.fullName() for o in scs], "moreSubclasses", self.page_url)
-        if p is not None:
-            r.append(tags.p(p))
+        subclasses = sorted(self.ob.subclasses, key=util.objects_order)
+        if subclasses:
+            p = assembleList(self.ob.system, "Known subclasses: ",
+                            [o.fullName() for o in subclasses], "moreSubclasses", self.page_url)
+            if p is not None:
+                r.append(tags.p(p))
+
+        r.extend(super().extras())
         return r
 
     def classSignature(self) -> "Flattenable":
@@ -459,10 +464,10 @@ class ClassPage(CommonPage):
             r.extend([' (via ', tail, ')'])
         return r
 
-    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
         page_url = self.page_url
         name = ob.name
-        r: List["Flattenable"] = []
+        r: List[Tag] = []
         for b in self.ob.allbases(include_self=False):
             if name not in b.contents:
                 continue
@@ -478,13 +483,14 @@ class ClassPage(CommonPage):
                              [o.fullName() for o in ocs], idbase, self.page_url)
             if l is not None:
                 r.append(tags.div(class_="interfaceinfo")(l))
+        r.extend(super().objectExtras(ob))
         return r
 
 
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
 
-    def extras(self) -> List["Flattenable"]:
+    def extras(self) -> List[Tag]:
         r = super().extras()
         if self.ob.isinterface:
             namelist = [o.fullName() for o in 
@@ -512,16 +518,16 @@ class ZopeInterfaceClassPage(ClassPage):
                         return method
         return None
 
-    def functionExtras(self, ob: model.Documentable) -> List["Flattenable"]:
+    def objectExtras(self, ob: model.Documentable) -> List[Tag]:
         imeth = self.interfaceMeth(ob.name)
-        r: List["Flattenable"] = []
+        r: List[Tag] = []
         if imeth:
             iface = imeth.parent
             assert iface is not None
             r.append(tags.div(class_="interfaceinfo")('from ', tags.code(
                 epydoc2stan.taglink(imeth, self.page_url, iface.fullName())
                 )))
-        r.extend(super().functionExtras(ob))
+        r.extend(super().objectExtras(ob))
         return r
 
 commonpages: 'Final[Mapping[str, Type[CommonPage]]]' = {

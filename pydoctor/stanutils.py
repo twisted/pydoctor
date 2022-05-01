@@ -27,9 +27,14 @@ def html2stan(html: Union[bytes, str]) -> Tag:
         html = html.encode('utf8')
 
     html = _RE_CONTROL.sub(lambda m:b'\\x%02x' % ord(m.group()), html)
-    stan = XMLString(b'<div>%s</div>' % html).load()[0]
-    assert isinstance(stan, Tag)
-    assert stan.tagName == 'div'
+    if not html.startswith(b'<?xml'):
+        stan = XMLString(b'<div>%s</div>' % html).load()[0]
+        assert isinstance(stan, Tag)
+        assert stan.tagName == 'div'
+    else:
+        stan = XMLString(b'%s' % html).load()[0]
+        assert isinstance(stan, Tag)
+        assert stan.tagName == 'html'
     stan.tagName = ''
     return stan
 
