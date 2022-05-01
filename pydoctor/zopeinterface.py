@@ -206,9 +206,10 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
 
         if not isinstance(expr, ast.Call):
             return
-        attr: Optional[imodel.Documentable] = self.builder.current.contents.get(target)
+        attr = self.builder.current.contents.get(target)
         if attr is None:
             return
+        assert isinstance(attr, model.Documentable)
         funcName = astbuilder.node2fullname(expr.func, self.builder.current)
         if funcName is None:
             return

@@ -90,13 +90,13 @@ class IDocumentable(Protocol):
     parent: Optional['IDocumentable']
     source_path: Optional[Path]
     contents: MutableMapping[str, 'IDocumentable']
+    extra_info: List['ParsedDocstring']
     
     def __init__(self, system: 'ISystem', name: str, 
                  parent: Optional['IDocumentable'] = ..., 
                  source_path: Optional[Path] = ...) -> None: ...
     
     def setup(self) -> None: ...
-    def setDocstring(self, node: ast.Str) -> None: ...
     def setLineNumber(self, lineno: int) -> None: ...
     @property
     def description(self) -> str:

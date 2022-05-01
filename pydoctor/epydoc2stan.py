@@ -772,7 +772,9 @@ def extract_fields(obj: model.Documentable) -> None:
             if attrobj is None:
                 attrobj = obj.system.Attribute(obj.system, arg, obj)
                 attrobj.kind = None
-                attrobj.parentMod = obj.parentMod
+                if hasattr(attrobj, 'parentMod'):
+                    # TODO: remove this when we're moving away from legacy ast builder.
+                    attrobj.parentMod = obj.parentMod # type:ignore[attr-defined]
                 obj.system.addObject(attrobj)
             attrobj.setLineNumber(obj.docstring_lineno + field.lineno)
             if tag == 'type':
