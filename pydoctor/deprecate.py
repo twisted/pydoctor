@@ -9,7 +9,7 @@ Support for L{twisted.python.deprecate}.
 import ast
 import inspect
 from numbers import Number
-from typing import Optional, Sequence, Union, TYPE_CHECKING, cast
+from typing import Optional, Sequence, Union, TYPE_CHECKING
 
 from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
 
