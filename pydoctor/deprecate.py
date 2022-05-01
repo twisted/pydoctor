@@ -127,17 +127,30 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
         else:
             replacement = astutils.get_str_value(replvalue)
     _version = version.public()
+    _package = version.package
+
+    # Avoids html injections
+    def validate_identifier(_text:str) -> bool:
+        if not all(p.isidentifier() for p in _text.split('.')):
+            return False
+        return True
+
+    if not validate_identifier(_package):
+        raise ValueError(f"Invalid package name: {_package!r}")
+    if replacement is not None and not validate_identifier(replacement):
+        raise ValueError(f"Invalid replacement name: {replacement!r}")
+    
     if replacement is not None:
         text = _deprecation_text_with_replacement_template.format(
             name=name, 
-            package=version.package,
+            package=_package,
             version=_version,
             replacement=replacement
         )
     else:
         text = _deprecation_text_without_replacement_template.format(
             name=name, 
-            package=version.package,
+            package=_package,
             version=_version,
         )
     return _version, text

@@ -74,6 +74,27 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
         name='foom', package='Twisted', version=r'NEXT', replacement='faam'
     ), class_html_text, re.DOTALL), class_html_text
 
+def test_twisted_python_deprecate_security(capsys: CapSys) -> None:
+    system = deprecate.System()
+    system.options.verbosity = -1
+    
+    mod = fromText(
+    """
+    from twisted.python.deprecate import deprecated
+    from incremental import Version
+    @deprecated(Version('Twisted\\n.. raw:: html\\n\\n   <script>alert(1)</script>', 15, 0, 0), 'Baz')
+    def foo(): ...
+    @deprecated(Version('Twisted', 16, 0, 0), replacement='\\n.. raw:: html\\n\\n   <script>alert(1)</script>')
+    def _bar(): ...
+    """, system=system, modname='mod')
+
+    mod_html = test_templatewriter.getHTMLOf(mod)
+
+    assert capsys.readouterr().out == '''mod:4: Invalid package name: 'Twisted\\n.. raw:: html\\n\\n   <script>alert(1)</script>'
+mod:6: Invalid replacement name: '\\n.. raw:: html\\n\\n   <script>alert(1)</script>'
+''', capsys.readouterr().out
+    assert '<script>alert(1)</script>' not in mod_html
+
 def test_twisted_python_deprecate_corner_cases(capsys: CapSys) -> None:
     """
     It does not crash and report appropriate warnings while handling Twisted deprecation decorators.
