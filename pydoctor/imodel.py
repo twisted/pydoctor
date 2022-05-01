@@ -15,12 +15,12 @@ from pathlib import Path
 from typing import (Collection, Iterator, List, Mapping, 
                     MutableMapping, Optional, Sequence, 
                     Set, Tuple, Type, TypeVar, Union, 
-                    runtime_checkable, TYPE_CHECKING)
+                    TYPE_CHECKING)
 
 if sys.version_info < (3, 8):
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol, runtime_checkable
 else:
-    from typing import Protocol
+    from typing import Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from pydoctor.epydoc.markup import ParsedDocstring, DocstringLinker
