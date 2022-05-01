@@ -13,7 +13,7 @@ from typing import Optional, Sequence, Union, TYPE_CHECKING, cast
 
 from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
 
-from twisted.python.deprecate import deprecated, _getDeprecationWarningString
+from twisted.python.deprecate import deprecated
 from incremental import Version
 
 if TYPE_CHECKING:
@@ -77,19 +77,26 @@ class ModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
         if func.decorators:
             getDeprecated(func, func.decorators)
 
-
+_incremental_Version_signature = inspect.signature(Version)
 def versionToUsefulObject(version:ast.Call) -> 'incremental.Version':
     """
     Change an AST C{Version()} to a real one.
 
+    @note: Only use required arguments, ignores arguments release_candidate, prerelease, post, dev.
     @raises ValueError: If the incremental.Version call is invalid.
     """
-
-    package = astutils.get_str_value(version.args[0])
-    major: Union[Number, str, None] = astutils.get_num_value(version.args[1]) or astutils.get_str_value(version.args[1])
+    bound_args = astutils.bind_args(_incremental_Version_signature, version)
+    package = astutils.get_str_value(bound_args.arguments['package'])
+    major: Union[Number, str, None] = astutils.get_num_value(bound_args.arguments['major']) or \
+        astutils.get_str_value(bound_args.arguments['major'])
     if isinstance(major, str) and major != "NEXT": 
         raise ValueError("Invalid call to incremental.Version(), first argument should be an int or 'NEXT'.")
-    return Version(package, major, *(astutils.get_num_value(x) for x in version.args[2:] if x))
+    return Version(package, major, 
+        minor=astutils.get_num_value(bound_args.arguments['minor']),
+        micro=astutils.get_num_value(bound_args.arguments['micro']),)
+
+_deprecation_text_with_replacement_template = "``{name}`` was deprecated in {package} {version}; please use `{replacement}` instead."
+_deprecation_text_without_replacement_template = "``{name}`` was deprecated in {package} {version}."
 
 _deprecated_signature = inspect.signature(deprecated)
 def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call) -> str:
@@ -119,7 +126,19 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
         else:
             replacement = astutils.get_str_value(replvalue)
 
-    return cast(str, _getDeprecationWarningString(name, version, replacement=replacement)) + "."
+    if replacement is not None:
+        return _deprecation_text_with_replacement_template.format(
+            name=name, 
+            package=version.package,
+            version=version.public(),
+            replacement=replacement
+        )
+    else:
+        return _deprecation_text_without_replacement_template.format(
+            name=name, 
+            package=version.package,
+            version=version.public(),
+        )
 
 
 class ASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
@@ -129,7 +148,7 @@ class ASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
 
 class System(zopeinterface.ZopeInterfaceSystem):
     """
-    A system aware of {twisted.python.deprecate.deprecated} and cie.
+    A system with support for {twisted.python.deprecate}.
     """
 
     defaultBuilder = ASTBuilder

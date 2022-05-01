@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Tuple, Type, overload, cast
 import ast
 import textwrap
@@ -2044,8 +2045,9 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
             "    '{}'\n"
             "@deprecated(Version('Twisted', 14, 2, 3), replacement='stuff')\n"
             "class Baz:\n"
-            "    pass"
-            "".format(docstring, privateDocstring), systemcls=deprecate.System)
+            "    pass\n"
+            "class stuff: ..."
+            "".format(docstring, privateDocstring), systemcls=deprecate.System, modname='mod')
 
     mod_html = test_templatewriter.getHTMLOf(mod)
     class_html = test_templatewriter.getHTMLOf(mod.contents['Baz'])
@@ -2053,19 +2055,25 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
     # assert not capsys.readouterr().out
     assert not capsys.readouterr().err
 
+    _html_template_with_replacement = r'(.+){name}(.+) was deprecated in {package} {version}; please use (.+){replacement}(.+) instead\.(.+)'
+    _html_template_without_replacement = r'(.+){name}(.+) was deprecated in {package} {version}\.(.+)'
+    
     assert docstring in mod_html
     assert privateDocstring in mod_html
-    assert "foo was deprecated in Twisted 15.0.0; please use Baz instead." in mod_html
-    assert "_bar was deprecated in Twisted 16.0.0." in mod_html
 
+    assert re.match(_html_template_with_replacement.format(
+        name='foo', package='Twisted', version=r'15\.0\.0', replacement='Baz'
+    ), mod_html, re.DOTALL), mod_html
+    assert re.match(_html_template_without_replacement.format(
+        name='_bar', package='Twisted', version=r'16\.0\.0'
+    ), mod_html, re.DOTALL), mod_html
 
     _class = mod.contents['Baz']
     assert len(_class.extra_info)==1
-    assert flatten(_class.extra_info[0].to_stan(NotFoundLinker(), False)).strip() == """<div class="rst-admonition warning">
-<p class="rst-first rst-admonition-title">Warning</p>
-<p class="rst-last">Baz was deprecated in Twisted 14.2.3; please use stuff instead.</p>
-</div>"""
+    assert re.match(_html_template_with_replacement.format(
+        name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'
+    ), flatten(_class.extra_info[0].to_stan(mod.docstring_linker, False)).strip(), re.DOTALL)
 
-    assert "Baz was deprecated in Twisted 14.2.3; please use stuff instead." in class_html
-
-    
+    assert re.match(_html_template_with_replacement.format(
+        name='Baz', package='Twisted', version=r'14\.2\.3', replacement='stuff'
+    ), class_html, re.DOTALL), class_html
