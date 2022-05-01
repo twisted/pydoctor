@@ -3,6 +3,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 """
 
 import sys
+from numbers import Number
 from typing import Optional, List
 from inspect import BoundArguments, Signature
 import ast
@@ -37,12 +38,29 @@ def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     return sig.bind(*call.args, **kwargs)
 
 
+
 if sys.version_info[:2] >= (3, 8):
     # Since Python 3.8 "foo" is parsed as ast.Constant.
+    def get_str_value(expr:ast.expr) -> Optional[str]:
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+        return None
+    def get_num_value(expr:ast.expr) -> Optional[Number]:
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, Number):
+            return expr.value
+        return None
     def _is_str_constant(expr: ast.expr, s: str) -> bool:
         return isinstance(expr, ast.Constant) and expr.value == s
 else:
     # Before Python 3.8 "foo" was parsed as ast.Str.
+    def get_str_value(expr:ast.expr) -> Optional[str]:
+        if isinstance(expr, ast.Str):
+            return expr.s
+        return None
+    def get_num_value(expr:ast.expr) -> Optional[Number]:
+        if isinstance(expr, ast.Num):
+            return expr.n
+        return None
     def _is_str_constant(expr: ast.expr, s: str) -> bool:
         return isinstance(expr, ast.Str) and expr.s == s
 

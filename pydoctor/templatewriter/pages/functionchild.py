@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
@@ -18,7 +18,7 @@ class FunctionChild(TemplateElement):
     def __init__(self,
             docgetter: util.DocGetter,
             ob: Function,
-            extras: "Flattenable",
+            extras: List[Tag],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -65,17 +65,10 @@ class FunctionChild(TemplateElement):
             return ()
 
     @renderer
-    def functionExtras(self, request: object, tag: Tag) -> "Flattenable":
+    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
         return self._functionExtras
 
     @renderer
     def functionBody(self, request: object, tag: Tag) -> "Flattenable":
         return self.docgetter.get(self.ob)
 
-    @renderer
-    def functionDeprecated(self, request: object, tag: Tag) -> "Flattenable":
-        msg = self.ob._deprecated_info
-        if msg is None:
-            return ()
-        else:
-            return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")

@@ -230,7 +230,7 @@ def get_parser() -> ArgumentParser:
         help=("Do not generate the sidebar at all."))
     
     parser.add_argument(
-        '--system-class', dest='systemclass', default='pydoctor.zopeinterface.ZopeInterfaceSystem',
+        '--system-class', dest='systemclass', default='pydoctor.deprecate.System',
         help=("A dotted name of the class to use to make a system."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')

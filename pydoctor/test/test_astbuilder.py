@@ -6,7 +6,7 @@ import astor
 
 from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, model, deprecate
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -18,7 +18,7 @@ import pytest
 
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem)
+    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
     )
 
 def fromAST(
@@ -2020,3 +2020,52 @@ def test_variable_named_like_current_module(systemcls: Type[model.System]) -> No
     example = True
     ''', systemcls=systemcls, modname="example")
     assert 'example' in mod.contents
+
+def test_twisted_python_deprecate(capsys: CapSys) -> None:
+
+    from . import test_templatewriter
+
+    # Adjusted from Twisted's tests at
+    # https://github.com/twisted/twisted/blob/3bbe558df65181ed455b0c5cc609c0131d68d265/src/twisted/python/test/test_release.py#L516
+
+    docstring = "text in docstring"
+    privateDocstring = "should also appear in output"
+
+    mod = fromText("from twisted.python.deprecate import deprecated\n"
+            "from incremental import Version\n"
+            "@deprecated(Version('Twisted', 15, 0, 0), "
+            "'Baz')\n"
+            "def foo():\n"
+            "    '{}'\n"
+            "from twisted.python import deprecate\n"
+            "import incremental\n"
+            "@deprecate.deprecated(incremental.Version('Twisted', 16, 0, 0))\n"
+            "def _bar():\n"
+            "    '{}'\n"
+            "@deprecated(Version('Twisted', 14, 2, 3), replacement='stuff')\n"
+            "class Baz:\n"
+            "    pass"
+            "".format(docstring, privateDocstring), systemcls=deprecate.System)
+
+    mod_html = test_templatewriter.getHTMLOf(mod)
+    class_html = test_templatewriter.getHTMLOf(mod.contents['Baz'])
+
+    # assert not capsys.readouterr().out
+    assert not capsys.readouterr().err
+
+    assert docstring in mod_html
+    assert privateDocstring in mod_html
+    assert "foo was deprecated in Twisted 15.0.0; please use Baz instead." in mod_html
+    assert "_bar was deprecated in Twisted 16.0.0." in mod_html
+
+
+    _class = mod.contents['Baz']
+    assert len(_class.extra_info)==1
+    assert flatten(_class.extra_info[0].to_stan(NotFoundLinker(), False)).strip() == """<div class="rst-admonition warning">
+<p class="rst-first rst-admonition-title">Warning</p>
+<p class="rst-last">Baz was deprecated in Twisted 14.2.3; please use stuff instead.</p>
+</div>"""
+
+    assert "Baz was deprecated in Twisted 14.2.3; please use stuff instead." in class_html
+
+    
