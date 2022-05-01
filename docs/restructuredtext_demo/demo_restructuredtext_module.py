@@ -9,7 +9,7 @@ import zope.interface
 import zope.schema
 from typing import Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
 from incremental import Version
-from twisted.python.deprecate import deprecated
+from twisted.python.deprecate import deprecated, deprecatedProperty
 
 if TYPE_CHECKING:
     from typing_extensions import Final
@@ -133,6 +133,14 @@ class DemoClass(ABC, _PrivateClass):
     def read_only(self) -> int:
         """
         This is a read-only property.
+        """
+        return 1
+
+    @deprecatedProperty(Version("demo", 1, 3, 0), replacement=read_only)
+    @property
+    def read_only_deprecated(self) -> int:
+        """
+        This is a deprecated read-only property.
         """
         return 1
 
