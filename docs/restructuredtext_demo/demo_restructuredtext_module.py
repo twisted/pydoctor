@@ -25,8 +25,8 @@ This is also a constant, but annotated with typing.Final.
 """
 
 @deprecated(Version("demo", "NEXT", 0, 0), replacement=math.prod)
-def demo_product_deprecated(x, y) -> float:
-    return x * y
+def demo_product_deprecated(x, y) -> float: # type: ignore
+    return float(x * y)
 
 def demo_fields_docstring_arguments(m, b = 0):  # type: ignore
     """
