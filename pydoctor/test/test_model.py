@@ -339,8 +339,9 @@ def test_c_module_text_signature(capsys:CapSys) -> None:
         system = model.System()
         system.options.introspect_c_modules = True
 
-        system.addPackage(package_path, None)
-        system.process()
+        builder = system.systemBuilder(system)
+        builder.addModule(package_path)
+        builder.buildModules()
         
         assert "Cannot parse signature of mymod.base.invalid_text_signature" in capsys.readouterr().out
         
