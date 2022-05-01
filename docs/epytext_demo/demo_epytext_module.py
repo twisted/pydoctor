@@ -5,11 +5,14 @@ Most part of this documentation is using Python type hinting.
 """
 
 from abc import ABC
+import math
 from typing import AnyStr, Dict, Generator, List, Union, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
 from typing import Sequence, Optional
+from incremental import Version
+from twisted.python.deprecate import deprecated
 
 if TYPE_CHECKING:
     from typing_extensions import Final
@@ -23,6 +26,10 @@ lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 """
 This is also a constant, but annotated with typing.Final.
 """
+
+@deprecated(Version("demo", "NEXT", 0, 0), replacement=math.prod)
+def demo_product_deprecated(x, y) -> float:
+    return x * y
 
 def demo_fields_docstring_arguments(m, b):  # type: ignore
     """

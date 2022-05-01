@@ -4,9 +4,12 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 from abc import ABC
+import math
 import zope.interface
 import zope.schema
-from typing import Sequence, Optional, TYPE_CHECKING
+from typing import Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
+from incremental import Version
+from twisted.python.deprecate import deprecated
 
 if TYPE_CHECKING:
     from typing_extensions import Final
@@ -21,9 +24,9 @@ lang: 'Final[Sequence[str]]' = ['Fr', 'En']
 This is also a constant, but annotated with typing.Final.
 """
 
-
-from typing import AnyStr, Generator, Union, List, Dict
-
+@deprecated(Version("demo", "NEXT", 0, 0), replacement=math.prod)
+def demo_product_deprecated(x, y) -> float:
+    return x * y
 
 def demo_fields_docstring_arguments(m, b = 0):  # type: ignore
     """
