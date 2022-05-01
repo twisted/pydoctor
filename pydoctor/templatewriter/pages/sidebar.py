@@ -6,7 +6,7 @@ from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
 from pydoctor import epydoc2stan
-from pydoctor.imodel import Attribute, Class, Function, Documentable, Module
+from pydoctor.imodel import Class, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 
 class SideBar(TemplateElement):
