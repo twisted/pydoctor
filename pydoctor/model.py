@@ -372,7 +372,7 @@ class Documentable:
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
-            linenumber = self.docstring_lineno
+            linenumber = self.docstring_lineno or self.linenumber
         else:
             linenumber = self.linenumber
         if linenumber:

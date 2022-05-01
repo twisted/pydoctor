@@ -41,10 +41,12 @@ def getDeprecated(self:model.Documentable, decorators:Sequence[ast.expr]) -> Non
                     self.report(str(e), section='deprecation text')
                 else:
                     # Add a deprecation info with reStructuredText .. deprecated:: directive.
-                    parsed_info = epydoc2stan.parse_docstring(self,
-                        f".. deprecated:: {version}\n   {text}", self, 
+                    parsed_info = epydoc2stan.parse_docstring(
+                        obj=self,
+                        doc=f".. deprecated:: {version}\n   {text}", 
+                        source=self, 
                         markup='restructuredtext', 
-                        section='deprecation text')
+                        section='deprecation text',)
                     self.extra_info.append(parsed_info)
 
 
@@ -89,7 +91,7 @@ def versionToUsefulObject(version:ast.Call) -> 'incremental.Version':
     major: Union[Number, str, None] = astutils.get_num_value(bound_args.arguments['major']) or \
         astutils.get_str_value(bound_args.arguments['major'])
     if isinstance(major, str) and major != "NEXT": 
-        raise ValueError("Invalid call to incremental.Version(), first argument should be an int or 'NEXT'.")
+        raise ValueError("Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.")
     return Version(package, major, 
         minor=astutils.get_num_value(bound_args.arguments['minor']),
         micro=astutils.get_num_value(bound_args.arguments['micro']),)
