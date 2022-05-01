@@ -19,7 +19,7 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from . import CapLog, FixtureRequest, MonkeyPatch, TempPathFactory
-from pydoctor import model, sphinx
+from pydoctor import model, sphinx, imodel
 
 
 
@@ -90,8 +90,13 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
 
 class IgnoreSystem:
     root_names = ()
+    Class = imodel.Class
+    Attribute = imodel.Attribute
+    Module = imodel.Module
+    Package = imodel.Package
+    Function = imodel.Function
 
-IGNORE_SYSTEM = cast(model.System, IgnoreSystem())
+IGNORE_SYSTEM = cast(imodel.System, IgnoreSystem())
 """Passed as a System when we don't want the system to be accessed."""
 
 
@@ -233,6 +238,9 @@ class UnknownType(model.Documentable):
     """
     Documentable type to help with testing.
     """
+    def setup(self) -> None:
+        super().setup()
+        self.parentMod = model.Module(self.system, name='UnknownTypeParent', parent=self.parent)
 
 
 def test_generateLine_unknown() -> None:

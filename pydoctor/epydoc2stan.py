@@ -313,9 +313,9 @@ class FieldHandler:
         
         name = name.lstrip('*')
         annotations = None
-        if isinstance(field.source, model.Function):
+        if isinstance(field.source, self.obj.system.Function):
             annotations = field.source.annotations
-        elif isinstance(field.source, model.Class):
+        elif isinstance(field.source, self.obj.system.Class):
             # Constructor parameters can be documented on the class.
             annotations = field.source.constructor_params
         # This might look useless, but it's needed in order to keep the 
@@ -334,7 +334,7 @@ class FieldHandler:
         if source is not self.obj:
             # Docstring is inherited, so it may not represent this exact method.
             return
-        if isinstance(source, model.Class):
+        if isinstance(source, self.obj.system.Class):
             if None in source.baseobjects:
                 # Class has a computed base class, which could define parameters
                 # we can't discover.
@@ -347,12 +347,12 @@ class FieldHandler:
         field.report('Documented parameter "%s" does not exist' % (name,))
 
     def handle_type(self, field: Field) -> None:
-        if isinstance(self.obj, model.Attribute):
+        if isinstance(self.obj, self.obj.system.Attribute):
             if field.arg is not None:
                 field.report('Field in variable docstring should not include a name')
             self.obj.parsed_type = field.body
             return
-        elif isinstance(self.obj, model.Function):
+        elif isinstance(self.obj, self.obj.system.Function):
             name = self._handle_param_name(field)
             if name is not None and name not in self.types and not any(
                     # Don't warn about keywords or about parameters we already
@@ -644,13 +644,13 @@ def format_docstring(obj: model.Documentable) -> Tag:
             ret(*stan.children)
 
     fh = FieldHandler(obj)
-    if isinstance(obj, model.Function):
+    if isinstance(obj, obj.system.Function):
         fh.set_param_types_from_annotations(obj.annotations)
     if source is not None:
         assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         for field in obj.parsed_docstring.fields:
             fh.handle(Field.from_epydoc(field, source))
-    if isinstance(obj, model.Function):
+    if isinstance(obj, obj.system.Function):
         fh.resolve_types()
     ret(fh.format())
     return ret

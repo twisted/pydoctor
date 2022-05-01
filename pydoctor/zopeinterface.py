@@ -209,7 +209,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         attr = self.builder.current.contents.get(target)
         if attr is None:
             return
-        assert isinstance(attr, model.Documentable)
+        
         funcName = astbuilder.node2fullname(expr.func, self.builder.current)
         if funcName is None:
             return
@@ -218,6 +218,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             attr.kind = model.DocumentableKind.ATTRIBUTE
             args = expr.args
             if len(args) == 1 and isinstance(args[0], ast.Str):
+                assert isinstance(attr, model.Documentable)
                 attr.setDocstring(args[0])
             else:
                 attr.report(
@@ -240,6 +241,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             keywords = {arg.arg: arg.value for arg in expr.keywords}
             descrNode = keywords.get('description')
             if isinstance(descrNode, ast.Str):
+                assert isinstance(attr, model.Documentable)
                 attr.setDocstring(descrNode)
             elif descrNode is not None:
                 attr.report(

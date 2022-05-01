@@ -11,7 +11,7 @@ import inspect
 from numbers import Number
 from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
+from pydoctor import astbuilder, imodel as model, zopeinterface, epydoc2stan, astutils
 
 from twisted.python.deprecate import deprecated
 from incremental import Version
@@ -61,7 +61,7 @@ class ModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
         except KeyError:
             # Classes inside functions are ignored.
             return
-        assert isinstance(cls, model.Class)
+        assert isinstance(cls, cls.system.Class)
         getDeprecated(cls, cls.raw_decorators)
 
     def visit_FunctionDef(self, node:ast.FunctionDef) -> None:
@@ -74,7 +74,7 @@ class ModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
         except KeyError:
             # Inner functions are ignored.
             return
-        assert isinstance(func, (model.Function, model.Attribute))
+        assert isinstance(func, (func.system.Function, func.system.Attribute))
         if func.decorators:
             getDeprecated(func, func.decorators)
 

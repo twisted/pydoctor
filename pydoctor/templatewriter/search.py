@@ -67,7 +67,7 @@ class LunrIndexWriter:
     @staticmethod
     def get_ob_boost(ob: model.Documentable) -> int:
         # Advantage container types because they hold more informations.
-        if isinstance(ob, (model.Class, model.Module)):
+        if isinstance(ob, (ob.system.Class, ob.system.Module)):
             return 2
         else:
             return 1
