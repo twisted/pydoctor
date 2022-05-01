@@ -195,7 +195,10 @@ class CommonPage(Page):
             ob = ob.parent
         parts.reverse()
         return parts
-
+    @renderer
+    def deprecated(self, request: object, tag: Tag) -> "Flattenable":
+        import warnings
+        warnings.warn("Renderer 'CommonPage.deprecated' is deprecated, the twisted's deprecation system is now supported by default.")
     @renderer
     def source(self, request: object, tag: Tag) -> "Flattenable":
         sourceHref = util.srclink(self.ob)
