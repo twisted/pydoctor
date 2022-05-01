@@ -9,7 +9,7 @@ Support for L{twisted.python.deprecate}.
 import ast
 import inspect
 from numbers import Number
-from typing import Optional, Sequence, Union, TYPE_CHECKING
+from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
 
@@ -34,18 +34,17 @@ def getDeprecated(self:model.Documentable, decorators:Sequence[ast.expr]) -> Non
                 "twisted.python.deprecate.deprecatedProperty",
             ):
                 try:
-                    text = deprecatedToUsefulText(self, self.name, a)
+                    version, text = deprecatedToUsefulText(self, self.name, a)
                 except Exception as e:
                     # It's a reference or something that we can't figure out
                     # from the AST.
                     self.report(str(e), section='deprecation text')
                 else:
-                    # Add a warning with reStructuredText .. warning:: directive.
+                    # Add a deprecation info with reStructuredText .. deprecated:: directive.
                     parsed_info = epydoc2stan.parse_docstring(self,
-                        ".. warning:: {}".format(text), self, 
+                        f".. deprecated:: {version}\n   {text}", self, 
                         markup='restructuredtext', 
                         section='deprecation text')
-
                     self.extra_info.append(parsed_info)
 
 
@@ -99,19 +98,19 @@ _deprecation_text_with_replacement_template = "``{name}`` was deprecated in {pac
 _deprecation_text_without_replacement_template = "``{name}`` was deprecated in {package} {version}."
 
 _deprecated_signature = inspect.signature(deprecated)
-def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call) -> str:
+def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call) -> Tuple[str, str]:
     """
     Change a C{@deprecated} to a display string.
 
     @param ctx: The context in which the deprecation is evaluated.
     @param name: The name of the thing we're deprecating.
     @param deprecated: AST call to L{twisted.python.deprecate.deprecated} or L{twisted.python.deprecate.deprecatedProperty}.
-    @returns: The text tu use in the deprecation warning.
+    @returns: The version and text to use in the deprecation warning.
     @raises ValueError or TypeError: If something is wrong.
     """
 
     bound_args = astutils.bind_args(_deprecated_signature, deprecated)
-    _version_call = bound_args.arguments.get('version')
+    _version_call = bound_args.arguments['version']
     if not isinstance(_version_call, ast.Call) or \
        astbuilder.node2fullname(_version_call.func, ctx) != "incremental.Version":
         raise ValueError("Invalid call to twisted.python.deprecate.deprecated(), first argument should be a call to incremental.Version()")
@@ -125,20 +124,21 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
             replacement = astbuilder.node2fullname(replvalue, ctx)
         else:
             replacement = astutils.get_str_value(replvalue)
-
+    _version = version.public()
     if replacement is not None:
-        return _deprecation_text_with_replacement_template.format(
+        text = _deprecation_text_with_replacement_template.format(
             name=name, 
             package=version.package,
-            version=version.public(),
+            version=_version,
             replacement=replacement
         )
     else:
-        return _deprecation_text_without_replacement_template.format(
+        text = _deprecation_text_without_replacement_template.format(
             name=name, 
             package=version.package,
-            version=version.public(),
+            version=_version,
         )
+    return _version, text
 
 
 class ASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
