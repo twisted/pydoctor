@@ -1,4 +1,4 @@
-"""The command-line parsing and entry point."""
+"""The entry point."""
 
 from typing import  Sequence
 import datetime

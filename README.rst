@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
 
 pydoctor 22.5.0
 ^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 """
-Provides L{Options} container with high level factory methods.
+The command-line parsing.
 """
 
 import re
@@ -28,6 +28,8 @@ BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 
 DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.ini']
 CONFIG_SECTIONS = ['tool.pydoctor', 'tool:pydoctor', 'pydoctor']
+
+DEFAULT_SYSTEM = 'pydoctor.deprecate.System'
 
 __all__ = ("Options", )
 
@@ -230,7 +232,7 @@ def get_parser() -> ArgumentParser:
         help=("Do not generate the sidebar at all."))
     
     parser.add_argument(
-        '--system-class', dest='systemclass', default='pydoctor.zopeinterface.ZopeInterfaceSystem',
+        '--system-class', dest='systemclass', default=DEFAULT_SYSTEM,
         help=("A dotted name of the class to use to make a system."))
     
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
