@@ -137,7 +137,6 @@ class DemoClass(ABC, _PrivateClass):
         return 1
 
     @deprecatedProperty(Version("demo", 1, 3, 0), replacement=read_only)
-    @property
     def read_only_deprecated(self) -> int:
         """
         This is a deprecated read-only property.
