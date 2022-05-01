@@ -8,8 +8,9 @@ testpackages = Path(__file__).parent / 'testpackages'
 
 def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
     system = systemcls()
-    system.addPackage(testpackages / packname)
-    system.process()
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / packname)
+    builder.buildModules()
     return system
 
 def test_relative_import() -> None:

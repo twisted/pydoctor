@@ -1,7 +1,6 @@
 
 from typing import Optional, Tuple, Type, overload, cast
 import ast
-import textwrap
 
 import astor
 
@@ -22,46 +21,6 @@ systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
     )
 
-def fromAST(
-        ast: ast.Module,
-        modname: str = '<test>',
-        is_package: bool = False,
-        parent_name: Optional[str] = None,
-        system: Optional[model.System] = None,
-        buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
-        systemcls: Type[model.System] = model.System
-        ) -> model.Module:
-
-    if system is None:
-        _system = systemcls()
-    else:
-        _system = system
-
-    if buildercls is None:
-        buildercls = _system.defaultBuilder
-    builder = buildercls(_system)
-
-    if parent_name is None:
-        full_name = modname
-    else:
-        full_name = f'{parent_name}.{modname}'
-        # Set containing package as parent.
-        builder.current = _system.allobjects[parent_name]
-
-    factory = _system.Package if is_package else _system.Module
-    mod: model.Module = builder._push(factory, modname, 0)
-    builder._pop(factory)
-    builder.processModuleAST(ast, mod)
-    assert mod is _system.allobjects[full_name]
-    mod.state = model.ProcessingState.PROCESSED
-
-    if system is None:
-        # Assume that an implicit system will only contain one module,
-        # so post-process it as a convenience.
-        _system.postProcess()
-
-    return mod
-
 def fromText(
         text: str,
         *,
@@ -69,11 +28,26 @@ def fromText(
         is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
-        buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
-    ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
+    
+    if system is None:
+        _system = systemcls()
+    else:
+        _system = system
+    assert _system is not None
+
+    if parent_name is None:
+        full_name = modname
+    else:
+        full_name = f'{parent_name}.{modname}'
+
+    builder = _system.systemBuilder(_system)
+    builder.addModuleString(text, modname, parent_name, is_package=is_package)
+    builder.buildModules()
+    mod = _system.allobjects[full_name]
+    assert isinstance(mod, model.Module)
+    return mod
 
 def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
     
@@ -916,7 +890,7 @@ def test_import_module_from_package(systemcls: Type[model.System]) -> None:
     system = systemcls()
     fromText('''
     # This module intentionally left blank.
-    ''', modname='a', system=system)
+    ''', modname='a', system=system, is_package=True)
     mod_b = fromText('''
     def f(): pass
     ''', modname='b', parent_name='a', system=system)
@@ -2021,3 +1995,23 @@ def test_variable_named_like_current_module(systemcls: Type[model.System]) -> No
     example = True
     ''', systemcls=systemcls, modname="example")
     assert 'example' in mod.contents
+
+@systemcls_param
+def test_package_name_clash(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+
+    builder.addModuleString('', 'mod', is_package=True)
+    builder.addModuleString('', 'sub', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub'], model.Module)
+
+    # The following statement completely overrides module 'mod' and all it's submodules.
+    builder.addModuleString('', 'mod', is_package=True)
+
+    with pytest.raises(KeyError):
+        system.allobjects['mod.sub']
+
+    builder.addModuleString('', 'sub2', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub2'], model.Module)

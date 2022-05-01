@@ -62,30 +62,12 @@ def get_system(options: model.Options) -> model.System:
             initmodule = system.Module(system, '__init__', prependedpackage)
             system.addObject(initmodule)
     
-    added_paths = set()
-    for path in options.sourcepath:
-        if path in added_paths:
-            continue
-        if options.projectbasedirectory is not None:
-            # Note: Path.is_relative_to() was only added in Python 3.9,
-            #       so we have to use this workaround for now.
-            try:
-                path.relative_to(options.projectbasedirectory)
-            except ValueError as ex:
-                error(f"Source path lies outside base directory: {ex}")
-        if path.is_dir():
-            system.msg('addPackage', f"adding directory {path}")
-            if not (path / '__init__.py').is_file():
-                error(f"Source directory lacks __init__.py: {path}")
-            system.addPackage(path, prependedpackage)
-        elif path.is_file():
-            system.msg('addModuleFromPath', f"adding module {path}")
-            system.addModuleFromPath(path, prependedpackage)
-        elif path.exists():
-            error(f"Source path is neither file nor directory: {path}")
-        else:
-            error(f"Source path does not exist: {path}")
-        added_paths.add(path)
+    builder = system.systemBuilder(system)
+    try:
+        for path in options.sourcepath:
+            builder.addModule(path)
+    except model.SystemBuildingError as e:
+        error(str(e))
 
     # step 3: move the system to the desired state
 
@@ -96,7 +78,7 @@ def get_system(options: model.Options) -> model.System:
     else:
         system.projectname = system.options.projectname
 
-    system.process()
+    builder.buildModules()
 
     return system
 

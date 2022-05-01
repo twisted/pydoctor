@@ -1194,6 +1194,14 @@ class ASTBuilder:
                 self.warning("cannot parse", str(path))
             self.ast_cache[path] = mod
             return mod
+    
+    def parseString(self, py_string:str) -> Optional[ast.Module]:
+        mod = None
+        try:
+            mod = _parse(py_string)
+        except (SyntaxError, ValueError):
+            self.warning("cannot parse string: ", py_string)
+        return mod
 
 model.System.defaultBuilder = ASTBuilder
 
