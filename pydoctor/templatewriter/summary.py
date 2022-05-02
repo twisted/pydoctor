@@ -23,8 +23,8 @@ def moduleSummary(module: model.Module, page_url: str) -> Tag:
         )
     if module.isPrivate:
         r(class_='private')
-    if not isinstance(module, model.Package):
-        return r # type:ignore[unreachable]
+    if not isinstance(module, module.system.Package):
+        return r
     contents = list(module.submodules())
     if not contents:
         return r
@@ -82,7 +82,7 @@ class ModuleIndexPage(Page):
 
 def findRootClasses(
         system: model.System
-        ) -> Sequence[Tuple[str, Union[model.Class, Sequence[model.Class]]]]:
+        ) -> List[Tuple[str, Union[model.Class, List[model.Class]]]]:
     roots: Dict[str, Union[model.Class, List[model.Class]]] = {}
     for cls in system.objectsOfType(system.Class):
         if ' ' in cls.name or not cls.isVisible:
@@ -92,7 +92,7 @@ def findRootClasses(
                 if base is None or not base.isVisible:
                     # The base object is in an external library or filtered out (not visible)
                     # Take special care to avoid AttributeError: 'ZopeInterfaceClass' object has no attribute 'append'.
-                    if isinstance(roots.get(name), model.Class):
+                    if isinstance(roots.get(name), system.Class):
                         roots[name] = [cast(model.Class, roots[name])]
                     cast(List[model.Class], roots.setdefault(name, [])).append(cls)
                 elif base.system is not system:
@@ -169,17 +169,17 @@ class ClassIndexPage(Page):
         t = tag
         anchors: MutableSet[str] = set()
         for b, o in findRootClasses(self.system):
-            if isinstance(o, model.Class):
+            if isinstance(o, self.system.Class):
                 t(subclassesFrom(self.system, o, anchors, self.filename))
             else:
                 item = tags.li(tags.code(b))
-                if all(isClassNodePrivate(sc) for sc in o):
+                if all(isClassNodePrivate(sc) for sc in (o if isinstance(o, list) else [o])):
                     # This is an external class used only by private API;
                     # mark the whole node private.
                     item(class_='private')
                 if o:
                     ul = tags.ul()
-                    for sc in sorted(o, key=_lckey):
+                    for sc in sorted((o if isinstance(o, list) else [o]), key=_lckey):
                         ul(subclassesFrom(self.system, sc, anchors, self.filename))
                     item(ul)
                 t(item)

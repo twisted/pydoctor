@@ -252,9 +252,9 @@ class CommonPage(Page):
         attr_loader = AttributeChild.lookup_loader(self.template_lookup)
 
         for c in self.methods():
-            if isinstance(c, model.Function):
+            if isinstance(c, self.system.Function):
                 r.append(FunctionChild(self.docgetter, c, self.objectExtras(c), func_loader))
-            elif isinstance(c, model.Attribute):
+            elif isinstance(c, self.system.Attribute):
                 r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader))
             else:
                 assert False, type(c)
@@ -320,7 +320,7 @@ class PackagePage(ModulePage):
     def packageInitTable(self) -> "Flattenable":
         children = sorted(
             (o for o in self.ob.contents.values()
-             if not isinstance(o, model.Module) and o.isVisible),
+             if not isinstance(o, self.system.Module) and o.isVisible),
             key=util.objects_order)
         if children:
             loader = ChildTable.lookup_loader(self.template_lookup)
