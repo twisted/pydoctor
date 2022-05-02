@@ -482,13 +482,35 @@ class PythonCodeDirective(Directive):
     """
 
     has_content = True
-
+    
     def run(self) -> List[nodes.Node]:
         text = '\n'.join(self.content)
         node = nodes.doctest_block(text, text, codeblock=True)
         return [ node ]
 
+class DocutilsAndSphinxCodeBlockAdapter(PythonCodeDirective):
+    # Docutils and Sphinx code blocks have both one optional argument, 
+    # so we accept it here as well but do nothing with it.
+    required_arguments = 0
+    optional_arguments = 1
+
+    # Listing all options that docutils.parsers.rst.directives.body.CodeBlock provides
+    # And also sphinx.directives.code.CodeBlock. We don't care about their values, 
+    # we just don't want to see them in self.content.
+    option_spec = {'class': directives.class_option,
+                'name': directives.unchanged,
+                'number-lines': directives.unchanged, # integer or None
+                'force': directives.flag,
+                'linenos': directives.flag,
+                'dedent': directives.unchanged, # integer or None
+                'lineno-start': int,
+                'emphasize-lines': directives.unchanged_required,
+                'caption': directives.unchanged_required,
+    }
+
 directives.register_directive('python', PythonCodeDirective)
+directives.register_directive('code', DocutilsAndSphinxCodeBlockAdapter)
+directives.register_directive('code-block', DocutilsAndSphinxCodeBlockAdapter)
 directives.register_directive('versionadded', VersionChange)
 directives.register_directive('versionchanged', VersionChange)
 directives.register_directive('deprecated', VersionChange)
