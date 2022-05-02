@@ -1,14 +1,15 @@
 from typing import List
 from textwrap import dedent
 
-from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
 from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
-from pydoctor.stanutils import flatten
+from pydoctor.stanutils import flatten, flatten_text
 
 from docutils import nodes
 from bs4 import BeautifulSoup
+import pytest
 
 def prettify(html: str) -> str:
     return BeautifulSoup(html, features="html.parser").prettify()  # type: ignore[no-any-return]
@@ -213,3 +214,133 @@ def test_rst_directive_seealso() -> None:
         <p class="rst-last">Hey</p>
         </div>"""
     assert prettify(html).strip() == prettify(expected_html).strip(), html
+
+@pytest.mark.parametrize(
+    'markup', ('epytext', 'plaintext', 'restructuredtext', 'numpy', 'google')
+    )
+def test_summary(markup:str) -> None:
+    """
+    Summaries are generated from the inline text inside the first paragraph. 
+    The text is trimmed as soon as we reach a break point (or another docutils element) after 200 characters.
+    """
+    cases = [
+        ("Single line", "Single line"), 
+        ("Single line.", "Single line."), 
+        ("Single line with period.", "Single line with period."),
+        ("""
+        Single line with period.
+        
+        @type: Also with a tag.
+        """, "Single line with period."), 
+        ("Other lines with period.\nThis is attached", "Other lines with period. This is attached"),
+        ("Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. ", 
+         "Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line. Single line..."),
+        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line. Single line Single line Single line ", 
+         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line..."),
+        ("Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line.",
+         "Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line Single line."),
+        ("""
+        Return a fully qualified name for the possibly-dotted name.
+
+        To explain what this means, consider the following modules... blabla""",
+        "Return a fully qualified name for the possibly-dotted name.")
+    ]
+    for src, summary_text in cases:
+        errors: List[ParseError] = []
+        pdoc = get_parser_by_name(markup)(dedent(src), errors, False)
+        assert not errors
+        assert pdoc.get_summary() == pdoc.get_summary() # summary is cached inside ParsedDocstring as well.
+        assert flatten_text(pdoc.get_summary().to_stan(NotFoundLinker())) == summary_text
+
+        
+def test_get_toc() -> None:
+
+    docstring = """
+Titles
+======
+
+Level 2
+-------
+
+Level 3
+~~~~~~~
+
+Level 4
+^^^^^^^
+
+Level 5
+!!!!!!!
+
+Level 2.2
+---------
+
+Level 22
+--------
+
+Lists
+=====
+
+Other
+=====
+"""
+
+    errors: List[ParseError] = []
+    parsed = parse_docstring(docstring, errors)
+    assert not errors, [str(e.descr) for e in errors]
+    
+    toc = parsed.get_toc(4)
+    assert toc is not None
+    html = flatten(toc.to_stan(NotFoundLinker()))
+    
+    expected_html="""
+<li>
+ <p class="rst-first">
+  <a class="rst-reference internal" href="#rst-titles" id="rst-id1">
+   Titles
+  </a>
+ </p>
+ <ul class="rst-simple">
+  <li>
+   <a class="rst-reference internal" href="#rst-level-2" id="rst-id2">
+    Level 2
+   </a>
+   <ul>
+    <li>
+     <a class="rst-reference internal" href="#rst-level-3" id="rst-id3">
+      Level 3
+     </a>
+     <ul>
+      <li>
+       <a class="rst-reference internal" href="#rst-level-4" id="rst-id4">
+        Level 4
+       </a>
+      </li>
+     </ul>
+    </li>
+   </ul>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-2-2" id="rst-id5">
+    Level 2.2
+   </a>
+  </li>
+  <li>
+   <a class="rst-reference internal" href="#rst-level-22" id="rst-id6">
+    Level 22
+   </a>
+  </li>
+ </ul>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-lists" id="rst-id7">
+  Lists
+ </a>
+</li>
+<li>
+ <a class="rst-reference internal" href="#rst-other" id="rst-id8">
+  Other
+ </a>
+</li>
+"""
+    assert prettify(html) == prettify(expected_html)
+

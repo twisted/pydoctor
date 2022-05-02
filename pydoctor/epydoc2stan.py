@@ -4,30 +4,40 @@ Convert L{pydoctor.epydoc} parsed markup into renderable content.
 
 from collections import defaultdict
 from typing import (
-    TYPE_CHECKING, Callable, ClassVar, DefaultDict, Dict, Generator, Iterable,
-    Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+    TYPE_CHECKING, Any, Callable, ClassVar, DefaultDict, Dict, Generator, 
+    Iterator, List, Mapping, Optional, Sequence, Tuple, 
 )
 import ast
-import itertools
 import re
 
 import attr
 
-from pydoctor import model
+from pydoctor import model, linker
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
-from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.epydoc.markup import ParsedDocstring
 import pydoctor.epydoc.markup.plaintext
 from pydoctor.epydoc.markup._pyval_repr import colorize_pyval, colorize_inline_pyval
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
 
+taglink = linker.taglink
+"""
+Alias to L{pydoctor.linker.taglink()}.
+"""
+
 def get_parser(obj: model.Documentable) -> Callable[[str, List[ParseError], bool], ParsedDocstring]:
     """
     Get the C{parse_docstring(str, List[ParseError], bool) -> ParsedDocstring} function. 
     """    
-    # Use module's __docformat__ if specified, else use system's.
+    # Use module's __docformat__ if specified, else use system's. 
+    # Except if system's docformat is plaintext, in this case, use plaintext.
+    # See https://github.com/twisted/pydoctor/issues/503 for the reason
+    # of this behavior. 
+    if obj.system.options.docformat == 'plaintext':
+        return pydoctor.epydoc.markup.plaintext.parse_docstring
+    # the docstring should be parsed using the format of the module it was inherited from
     docformat = obj.module.docformat or obj.system.options.docformat
     
     try:
@@ -50,188 +60,6 @@ def get_docstring(
             # Treat empty docstring as undocumented.
             return None, source
     return None, None
-
-
-def taglink(o: model.Documentable, page_url: str, label: Optional["Flattenable"] = None) -> Tag:
-    """
-    Create a link to an object that exists in the system.
-    """
-    if not o.isVisible:
-        o.system.msg("html", "don't link to %s"%o.fullName())
-
-    if label is None:
-        label = o.fullName()
-
-    url = o.url
-    if url.startswith(page_url + '#'):
-        # When linking to an item on the same page, omit the path.
-        # Besides shortening the HTML, this also avoids the page being reloaded
-        # if the query string is non-empty.
-        url = url[len(page_url):]
-
-    ret: Tag = tags.a(label, href=url, class_='internal-link')
-    if label != o.fullName():
-        ret(title=o.fullName())
-    return ret
-
-
-class _EpydocLinker(DocstringLinker):
-
-    def __init__(self, obj: model.Documentable):
-        self.obj = obj
-
-    @staticmethod
-    def _create_intersphinx_link(label:"Flattenable", url:str) -> Tag:
-        """
-        Create a link with the special 'intersphinx-link' CSS class.
-        """
-        return tags.a(label, href=url, class_='intersphinx-link')
-
-    def look_for_name(self,
-            name: str,
-            candidates: Iterable[model.Documentable],
-            lineno: int
-            ) -> Optional[model.Documentable]:
-        part0 = name.split('.')[0]
-        potential_targets = []
-        for src in candidates:
-            if part0 not in src.contents:
-                continue
-            target = src.resolveName(name)
-            if target is not None and target not in potential_targets:
-                potential_targets.append(target)
-        if len(potential_targets) == 1:
-            return potential_targets[0]
-        elif len(potential_targets) > 1:
-            self.obj.report(
-                "ambiguous ref to %s, could be %s" % (
-                    name,
-                    ', '.join(ob.fullName() for ob in potential_targets)),
-                'resolve_identifier_xref', lineno)
-        return None
-
-    def look_for_intersphinx(self, name: str) -> Optional[str]:
-        """
-        Return link for `name` based on intersphinx inventory.
-
-        Return None if link is not found.
-        """
-        return self.obj.system.intersphinx.getLink(name)
-
-    def link_to(self, identifier: str, label: "Flattenable") -> Tag:
-        fullID = self.obj.expandName(identifier)
-
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return taglink(target, self.obj.page_object.url, label)
-
-        url = self.look_for_intersphinx(fullID)
-        if url is not None:
-            return self._create_intersphinx_link(label, url=url)
-
-        return tags.transparent(label)
-
-    def link_xref(self, target: str, label: "Flattenable", lineno: int) -> Tag:
-        xref: "Flattenable"
-        try:
-            resolved = self._resolve_identifier_xref(target, lineno)
-        except LookupError:
-            xref = label
-        else:
-            if isinstance(resolved, model.Documentable):
-                xref = taglink(resolved, self.obj.page_object.url, label)
-            else:
-                xref = self._create_intersphinx_link(label, url=resolved)
-        ret: Tag = tags.code(xref)
-        return ret
-
-    def resolve_identifier(self, identifier: str) -> Optional[str]:
-        fullID = self.obj.expandName(identifier)
-
-        target = self.obj.system.objForFullName(fullID)
-        if target is not None:
-            return target.url
-
-        return self.look_for_intersphinx(fullID)
-
-    def _resolve_identifier_xref(self,
-            identifier: str,
-            lineno: int
-            ) -> Union[str, model.Documentable]:
-        """
-        Resolve a crossreference link to a Python identifier.
-        This will resolve the identifier to any reasonable target,
-        even if it has to look in places where Python itself would not.
-
-        @param identifier: The name of the Python identifier that
-            should be linked to.
-        @param lineno: The line number within the docstring at which the
-            crossreference is located.
-        @return: The referenced object within our system, or the URL of
-            an external target (found via Intersphinx).
-        @raise LookupError: If C{identifier} could not be resolved.
-        """
-
-        # There is a lot of DWIM here. Look for a global match first,
-        # to reduce the chance of a false positive.
-
-        # Check if 'identifier' is the fullName of an object.
-        target = self.obj.system.objForFullName(identifier)
-        if target is not None:
-            return target
-
-        # Check if the fullID exists in an intersphinx inventory.
-        fullID = self.obj.expandName(identifier)
-        target_url = self.look_for_intersphinx(fullID)
-        if not target_url:
-            # FIXME: https://github.com/twisted/pydoctor/issues/125
-            # expandName is unreliable so in the case fullID fails, we
-            # try our luck with 'identifier'.
-            target_url = self.look_for_intersphinx(identifier)
-        if target_url:
-            return target_url
-
-        # Since there was no global match, go look for the name in the
-        # context where it was used.
-
-        # Check if 'identifier' refers to an object by Python name resolution
-        # in our context. Walk up the object tree and see if 'identifier' refers
-        # to an object by Python name resolution in each context.
-        src: Optional[model.Documentable] = self.obj
-        while src is not None:
-            target = src.resolveName(identifier)
-            if target is not None:
-                return target
-            src = src.parent
-
-        # Walk up the object tree again and see if 'identifier' refers to an
-        # object in an "uncle" object.  (So if p.m1 has a class C, the
-        # docstring for p.m2 can say L{C} to refer to the class in m1).
-        # If at any level 'identifier' refers to more than one object, complain.
-        src = self.obj
-        while src is not None:
-            target = self.look_for_name(identifier, src.contents.values(), lineno)
-            if target is not None:
-                return target
-            src = src.parent
-
-        # Examine every module and package in the system and see if 'identifier'
-        # names an object in each one.  Again, if more than one object is
-        # found, complain.
-        target = self.look_for_name(
-            identifier, self.obj.system.objectsOfType(model.Module), lineno)
-        if target is not None:
-            return target
-
-        message = f'Cannot find link target for "{fullID}"'
-        if identifier != fullID:
-            message = f'{message}, resolved from "{identifier}"'
-        root_idx = fullID.find('.')
-        if root_idx != -1 and fullID[:root_idx] not in self.obj.system.root_names:
-            message += ' (you can link to external docs with --intersphinx)'
-        self.obj.report(message, 'resolve_identifier_xref', lineno)
-        raise LookupError(identifier)
-
 
 @attr.s(auto_attribs=True)
 class FieldDesc:
@@ -269,7 +97,7 @@ class FieldDesc:
             else:
                 prefix = ""
 
-            name = prefix + insert_break_points(self.name)
+            name = tags.transparent(prefix, insert_break_points(self.name))
 
             stan_name = tags.span(class_="fieldArg")(name)
             if self.type:
@@ -293,7 +121,6 @@ class RaisesDesc(FieldDesc):
         assert self.type is not None  # TODO: Why can't it be None?
         yield tags.td(tags.code(self.type), class_="fieldArgContainer")
         yield tags.td(self.body or self._UNDOCUMENTED)
-
 
 def format_desc_list(label: str, descs: Sequence[FieldDesc]) -> Iterator[Tag]:
     """
@@ -365,7 +192,7 @@ class Field:
 
     def format(self) -> Tag:
         """Present this field's body as HTML."""
-        return self.body.to_stan(_EpydocLinker(self.source))
+        return self.body.to_stan(self.source.docstring_linker)
 
     def report(self, message: str) -> None:
         self.source.report(message, lineno_offset=self.lineno, section='docstring')
@@ -411,7 +238,7 @@ class FieldHandler:
 
     def __init__(self, obj: model.Documentable):
         self.obj = obj
-        self._linker = _EpydocLinker(self.obj)
+        self._linker = self.obj.docstring_linker
 
         self.types: Dict[str, Optional[Tag]] = {}
 
@@ -674,14 +501,14 @@ def _is_none_literal(node: ast.expr) -> bool:
     return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
 
-def reportErrors(obj: model.Documentable, errs: Sequence[ParseError]) -> None:
+def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:
     if errs and obj.fullName() not in obj.system.docstring_syntax_errors:
         obj.system.docstring_syntax_errors.add(obj.fullName())
         for err in errs:
             obj.report(
-                'bad docstring: ' + err.descr(),
+                f'bad {section}: ' + err.descr(),
                 lineno_offset=(err.linenum() or 1) - 1,
-                section='docstring'
+                section=section
                 )
 
 
@@ -689,16 +516,20 @@ def parse_docstring(
         obj: model.Documentable,
         doc: str,
         source: model.Documentable,
+        markup: Optional[str]=None,
+        section: str='docstring',
         ) -> ParsedDocstring:
     """Parse a docstring.
     @param obj: The object we're parsing the documentation for.
     @param doc: The docstring.
     @param source: The object on which the docstring is defined.
         This can differ from C{obj} if the docstring is inherited.
+    @param markup: Parse the docstring with the given markup, ignoring system's options.
+        Useful for creating L{ParsedDocstring}s from restructuredtext for instance.
+    @param section: A custom section to use.
     """
 
-    # the docstring should be parsed using the format of the module it was inherited from
-    parser = get_parser(source)
+    parser = get_parser(source) if not markup else get_parser_by_name(markup, obj)
     errs: List[ParseError] = []
     try:
         parsed_doc = parser(doc, errs, obj.system.options.processtypes)
@@ -706,13 +537,22 @@ def parse_docstring(
         errs.append(ParseError(f'{e.__class__.__name__}: {e}', 1))
         parsed_doc = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
     if errs:
-        reportErrors(source, errs)
+        reportErrors(source, errs, section=section)
     return parsed_doc
 
+def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documentable]:
+    """
+    Currently, it's not 100% clear at what point the L{Documentable.parsed_docstring} attribute is set.
+    It can be set from the ast builder or later processing step.
+    
+    This function ensures that the C{parsed_docstring} attribute of a documentable is set to it's final value. 
 
-def format_docstring(obj: model.Documentable) -> Tag:
-    """Generate an HTML representation of a docstring"""
-
+    @returns: 
+        - If the C{obj.parsed_docstring} is set to a L{ParsedDocstring} instance: 
+          The source object of the docstring (might be different 
+          from C{obj} if the documentation is inherited).
+        - If the object is undocumented: C{None}.
+    """
     doc, source = get_docstring(obj)
 
     # Use cached or split version if possible.
@@ -731,20 +571,72 @@ def format_docstring(obj: model.Documentable) -> Tag:
     if parsed_doc is None and doc is not None:
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
+    
+    if obj.parsed_docstring is not None:
+        return source
+    else:
+        return None
+
+
+class ParsedStanOnly(ParsedDocstring):
+    """
+    A L{ParsedDocstring} directly constructed from stan, for caching purposes.
+    
+    L{to_stan} method simply returns back what's given to L{ParsedStanOnly.__init__}. 
+    """
+    def __init__(self, stan: Tag):
+        super().__init__(fields=[])
+        self._fromstan = stan
+    def has_body(self) -> bool:
+        return True
+    def to_stan(self, docstring_linker: Any, compact:bool=False) -> Tag:
+        return self._fromstan
+    def to_node(self) -> Any:
+        raise NotImplementedError()
+
+def _get_parsed_summary(obj: model.Documentable) -> Tuple[Optional[model.Documentable], ParsedDocstring]:
+    """
+    Ensures that the L{model.Documentable.parsed_summary} attribute of a documentable is set to it's final value. 
+    Do not generate summary twice.
+    
+    @returns: Tuple: C{source}, C{parsed docstring}
+    """
+    source = ensure_parsed_docstring(obj)
+    
+    if obj.parsed_summary is not None:
+        return (source, obj.parsed_summary)
+
+    if source is None:
+        summary_parsed_doc: ParsedDocstring = ParsedStanOnly(format_undocumented(obj))
+    else:
+        # Tell mypy that if we found a docstring, we also have its source.
+        assert obj.parsed_docstring is not None
+        summary_parsed_doc = obj.parsed_docstring.get_summary()
+    
+    assert summary_parsed_doc is not None
+    obj.parsed_summary = summary_parsed_doc
+
+    return (source, summary_parsed_doc)
+
+def format_docstring(obj: model.Documentable) -> Tag:
+    """Generate an HTML representation of a docstring"""
+
+    source = ensure_parsed_docstring(obj)
 
     ret: Tag = tags.div
-    if parsed_doc is None:
+    if source is None:
         ret(tags.p(class_='undocumented')("Undocumented"))
     else:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
         try:
-            stan = parsed_doc.to_stan(_EpydocLinker(source))
+            stan = obj.parsed_docstring.to_stan(source.docstring_linker, compact=False)
         except Exception as e:
             errs = [ParseError(f'{e.__class__.__name__}: {e}', 1)]
-            if doc is None:
+            if source.docstring is None:
                 stan = tags.p(class_="undocumented")('Broken description')
             else:
-                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(doc, errs)
-                stan = parsed_doc_plain.to_stan(_EpydocLinker(source))
+                parsed_doc_plain = pydoctor.epydoc.markup.plaintext.parse_docstring(source.docstring, errs)
+                stan = parsed_doc_plain.to_stan(source.docstring_linker)
             reportErrors(source, errs)
         if stan.tagName:
             ret(stan)
@@ -754,8 +646,9 @@ def format_docstring(obj: model.Documentable) -> Tag:
     fh = FieldHandler(obj)
     if isinstance(obj, model.Function):
         fh.set_param_types_from_annotations(obj.annotations)
-    if parsed_doc is not None:
-        for field in parsed_doc.fields:
+    if source is not None:
+        assert obj.parsed_docstring is not None, "ensure_parsed_docstring() did not do it's job"
+        for field in obj.parsed_docstring.fields:
             fh.handle(Field.from_epydoc(field, source))
     if isinstance(obj, model.Function):
         fh.resolve_types()
@@ -767,46 +660,24 @@ def format_docstring(obj: model.Documentable) -> Tag:
 def format_summary(obj: model.Documentable) -> Tag:
     """Generate an shortened HTML representation of a docstring."""
 
-    doc, source = get_docstring(obj)
-
-    if (doc is None or source is not obj) and isinstance(obj, model.Attribute):
-        # Attributes can be documented as fields in their parent's docstring.
-        parsed_doc = obj.parsed_docstring
-    else:
-        parsed_doc = None
-
-    if parsed_doc is not None:
-        # The docstring was split off from the Attribute's parent docstring.
-        source = obj.parent
-        assert source is not None
-    elif doc is None:
-        return format_undocumented(obj)
-    else:
-        # Tell mypy that if we found a docstring, we also have its source.
-        assert source is not None
-        # Use up to three first non-empty lines of doc string as summary.
-        lines = [
-            line.strip()
-            for line in itertools.takewhile(
-                lambda line: line.strip(),
-                itertools.dropwhile(lambda line: not line.strip(), doc.split('\n'))
-                )
-            ]
-        if len(lines) > 3:
-            return tags.span(class_='undocumented')("No summary")
-        parsed_doc = parse_docstring(obj, ' '.join(lines), source)
-
+    source, parsed_doc = _get_parsed_summary(obj)
+    if not source:
+        source = obj
     try:
-        stan = parsed_doc.to_stan(_EpydocLinker(source))
+        # Disallow same_page_optimization in order to make sure we're not
+        # breaking links when including the summaries on other pages.
+        assert isinstance(source.docstring_linker, linker._CachedEpydocLinker)
+        source.docstring_linker.same_page_optimization = False
+        stan = parsed_doc.to_stan(source.docstring_linker)
+        source.docstring_linker.same_page_optimization = True
+    
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
-        return tags.span(class_='undocumented')("Broken description")
+        stan = tags.span(class_='undocumented')("Broken description")
+        obj.parsed_summary = ParsedStanOnly(stan)
 
-    content: Sequence["Flattenable"] = [stan] if stan.tagName else stan.children
-    if content and isinstance(content[0], Tag) and content[0].tagName == 'p':
-        content = content[0].children
-    return Tag('')(*content)
+    return stan
 
 
 def format_undocumented(obj: model.Documentable) -> Tag:
@@ -846,7 +717,7 @@ def type2stan(obj: model.Documentable) -> Optional[Tag]:
     if parsed_type is None:
         return None
     else:
-        return parsed_type.to_stan(_EpydocLinker(obj))
+        return parsed_type.to_stan(obj.docstring_linker)
 
 def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     parsed_type = obj.parsed_type
@@ -857,6 +728,17 @@ def get_parsed_type(obj: model.Documentable) -> Optional[ParsedDocstring]:
     if annotation is not None:
         return colorize_inline_pyval(annotation)
 
+    return None
+
+def format_toc(obj: model.Documentable) -> Optional[Tag]:
+    # Load the parsed_docstring if it's not already done. 
+    ensure_parsed_docstring(obj)
+
+    if obj.parsed_docstring:
+        if obj.system.options.sidebartocdepth > 0:
+            toc = obj.parsed_docstring.get_toc(depth=obj.system.options.sidebartocdepth)
+            if toc:
+                return toc.to_stan(obj.docstring_linker)
     return None
 
 
@@ -940,7 +822,7 @@ def _format_constant_value(obj: model.Attribute) -> Iterator["Flattenable"]:
         linelen=obj.system.options.pyvalreprlinelen,
         maxlines=obj.system.options.pyvalreprmaxlines)
     
-    value_repr = doc.to_stan(_EpydocLinker(obj))
+    value_repr = doc.to_stan(obj.docstring_linker)
 
     # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
     for message in doc.warnings:
@@ -958,29 +840,69 @@ def format_constant_value(obj: model.Attribute) -> "Flattenable":
     rows = list(_format_constant_value(obj))
     return tags.table(class_='valueTable')(*rows)
 
-def insert_break_points(text: str) -> str:
-    """
-    Browsers aren't smart enough to recognize word breaking opportunities in
-    snake_case or camelCase, so this function helps them out by inserting
-    zero-width spaces.
-    """
-    match = re.match('(__)?(.*?)(__)?$', text)
+def _split_indentifier_parts_on_case(indentifier:str) -> List[str]:
+
+    def split(text:str, sep:str) -> List[str]:
+        # We use \u200b as temp token to hack a split that passes the tests.
+        return text.replace(sep, '\u200b'+sep).split('\u200b')
+
+    match = re.match('(_{1,2})?(.*?)(_{1,2})?$', indentifier)
     assert match is not None # the regex always matches
     prefix, text, suffix = match.groups(default='')
-
+    text_parts = []
+    
     if text.islower() or text.isupper():
         # We assume snake_case or SCREAMING_SNAKE_CASE.
-        text_with_breaks = text.replace('_', '\u200b_')
+        text_parts = split(text, '_')
     else:
         # We assume camelCase.  We're not using a regex because we also want it
         # to work with non-ASCII characters (and the Python re module does not
         # support checking for Unicode properties using something like \p{Lu}).
-        text_with_breaks = ''
+        current_part = ''
         previous_was_upper = False
         for c in text:
-            if c.isupper() and not previous_was_upper:
-                text_with_breaks += '\u200b'
-            text_with_breaks += c
-            previous_was_upper = c.isupper()
 
-    return prefix + text_with_breaks + suffix
+            if c.isupper() and not previous_was_upper:
+                text_parts.append(current_part)
+                current_part = ''
+            
+            current_part += c
+            previous_was_upper = c.isupper()
+        
+        if current_part:
+            text_parts.append(current_part)
+
+    if not text_parts: # the name is composed only by underscores
+        text_parts = ['']
+    
+    if prefix:
+        text_parts[0] = prefix + text_parts[0]
+    if suffix:
+        text_parts[-1] = text_parts[-1] + suffix
+
+    return text_parts
+
+def insert_break_points(text: str) -> 'Flattenable':
+    """
+    Browsers aren't smart enough to recognize word breaking opportunities in
+    snake_case or camelCase, so this function helps them out by inserting
+    word break opportunities.
+
+    :note: It support full dotted names and will add a wbr tag after each dot.
+    """
+
+    # We use tags.wbr instead of zero-width spaces because
+    # zero-width spaces can interfer in subtle ways when copy/pasting a name.
+    
+    r: List['Flattenable'] = []
+    parts = text.split('.')
+    for i,t in enumerate(parts):
+        _parts = _split_indentifier_parts_on_case(t)
+        for i_,p in enumerate(_parts):
+            r += [p]
+            if i_ != len(_parts)-1:
+                r += [tags.wbr()]
+        if i != len(parts)-1:
+            r += [tags.wbr(), '.']
+    return tags.transparent(*r)
+

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
-  <meta name="pydoctor-template-version" content="1" />
+  <meta name="pydoctor-template-version" content="3" />
 
   <t:transparent t:render="head">Head</t:transparent>
 
@@ -8,11 +8,13 @@
 
     <div t:render="header" />
     
-    <t:transparent t:render="nav">Nav</t:transparent>
+    <nav class="navbar navbar-default mainnavbar">
+      <t:transparent t:render="nav" /></nav>
 
-    <div class="container" t:render="subheader" />
+    <div class="container-fluid">
 
-    <div class="container">
+      <div t:render="subheader" />
+
       <h2>
         Get Started
       </h2>
@@ -29,24 +31,19 @@
           A listing of <a href="nameIndex.html">all functions, classes,
           modules and packages</a>, ordered by name.
         </li>
-        <li t:render="onlyIfOneRoot">
-          Start at <a href="root.html">root</a>, the root package.
+        <li>
+          Or start at one of the root <t:transparent t:render="rootkind">
+          packages</t:transparent>:
+          <ul>
+            <li t:render="roots">
+              <t:slot name="root"/>
+            </li>
+          </ul>
         </li>
-        <t:transparent t:render="onlyIfMultipleRoots">
-          <li>
-            Or start at one of the root <t:transparent t:render="rootkind">
-            packages</t:transparent>:
-            <ul>
-              <li t:render="roots">
-                <t:slot name="root"/>
-              </li>
-            </ul>
-          </li>
-        </t:transparent>
       </ul>
     </div>
 
-    <footer t:render="footer" />
+    <footer class="container-fluid" t:render="footer" />
 
   </body>
 </html>

@@ -13,11 +13,12 @@ __docformat__ = 'epytext en'
 
 from typing import List, Callable, Optional
 
-from docutils import nodes
+from docutils import nodes, utils
 from twisted.web.template import Tag, tags
 
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring, ParseError
 from pydoctor.model import Documentable
+from pydoctor.epydoc.docutils import set_node_attributes
 
 def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
     """
@@ -42,7 +43,7 @@ class ParsedPlaintextDocstring(ParsedDocstring):
         ParsedDocstring.__init__(self, ())
         self._text = text
         # Caching:
-        # self._document: Optional[nodes.document] = None
+        self._document: Optional[nodes.document] = None
 
     @property
     def has_body(self) -> bool:
@@ -52,17 +53,28 @@ class ParsedPlaintextDocstring(ParsedDocstring):
     # We don't want to use docutils to process the plaintext format because we won't 
     # actually use the document tree ,it does not contains any additionnalt information compared to the raw docstring. 
     # Also, the consolidated fields handling in restructuredtext.py relies on this "pre" class.
-    def to_stan(self, docstring_linker: DocstringLinker) -> Tag:
+    def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
         return tags.p(self._text, class_='pre')
     
     def to_node(self) -> nodes.document:
-        raise NotImplementedError()
+        # This code is mainly used to generate summary of plaintext docstrings.
 
-        # TODO: Delete this code when we're sure this is the right thing to do.
-        # if self._document is not None:
-        #     return self._document
-        # else:
-        #     self._document = utils.new_document('plaintext')
-        #     self._document = set_node_attributes(self._document, 
-        #         children=set_nodes_parent((nodes.literal_block(rawsource=self._text, text=self._text)), self._document))
-        #     return self._document
+        if self._document is not None:
+            return self._document
+        else:
+            # create document
+            _document = utils.new_document('plaintext')
+
+            # split text into paragraphs
+            paragraphs = [set_node_attributes(nodes.paragraph('',''), children=[
+                            set_node_attributes(nodes.Text(p.strip('\n')), document=_document, lineno=0)], 
+                            document=_document, lineno=0)
+                                for p in self._text.split('\n\n')] 
+            
+            # assemble document
+            _document = set_node_attributes(_document, 
+                                            children=paragraphs,
+                                            document=_document, lineno=0)
+
+            self._document = _document
+            return self._document

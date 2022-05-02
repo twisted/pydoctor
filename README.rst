@@ -1,6 +1,9 @@
 pydoctor
 --------
 
+.. image:: https://img.shields.io/pypi/pyversions/pydoctor.svg
+  :target: https://pypi.python.org/pypi/pydoctor
+
 .. image:: https://travis-ci.org/twisted/pydoctor.svg?branch=tox-travis-2
   :target: https://travis-ci.org/twisted/pydoctor
 
@@ -72,6 +75,52 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
+
+pydoctor 22.5.0
+^^^^^^^^^^^^^^^
+* Add Read The Docs theme, enable it with option ``--theme=readthedocs``.
+* Add a sidebar. Configure it with options ``--sidebar-expand-depth`` and ``--sidebar-toc-depth``. Disable with ``--no-sidebar``. 
+* Highlight the active function or attribute.
+* Packages and modules are now listed together.
+* Docstring summaries are now generated from docutils nodes:
+
+  - fixes a bug in restructuredtext references in summary.
+  - still display summary when the first paragraph is long instead of "No summary".
+
+* The module index now uses a more compact presentation for modules with more than 50 submodules and no subsubmodules.
+* Fix source links for code hosted on Bitbucket or SourceForge.
+* The ``--html-viewsource-template`` option was added to allow for custom URL scheme when linking to the source code pages and lines. 
+
+pydoctor 22.4.0
+^^^^^^^^^^^^^^^
+* Add option ``--privacy`` to set the privacy of specific objects when default rules doesn't fit the use case.
+* Option ``--docformat=plaintext`` overrides any assignments to ``__docformat__`` 
+  module variable in order to focus on potential python code parsing errors.
+* Switch to ``configargparse`` to handle argument and configuration file parsing (`more infos <https://pydoctor.readthedocs.io/en/latest/help.html>`_).
+* Improved performances with caching of docstring summaries.
+
+pydoctor 22.3.0
+^^^^^^^^^^^^^^^
+* Add client side search system based on lunr.js.
+* Fix broken links in docstring summaries.
+* Add cache for the xref linker, reduces the number of identical warnings.
+* Fix crash when reparenting objects with duplicate names.
+
+pydoctor 22.2.2
+^^^^^^^^^^^^^^^
+* Fix resolving names re-exported in ``__all__`` variable.
+
+pydoctor 22.2.1
+^^^^^^^^^^^^^^^
+* Fix crash of pydoctor when processing a reparented module.
+
+pydoctor 22.2.0
+^^^^^^^^^^^^^^^
+* Improve the name resolving algo such that it checks in super classes for inherited attributes.
+* C-modules wins over regular modules when there is a name clash.
+* Packages wins over modules when there is a name clash.
+* Fixed that modules were processed in a random order leading to several hard to reproduce bugs.
 * Intersphinx links have now dedicated markup.
   With the default theme,
   this allows to have the external intershinx links blue while the internal links are red.
@@ -79,7 +128,9 @@ in development
 * Any code inside of ``if __name__ == '__main__'`` is now excluded from the documentation.
 * Fix variables named like the current module not being documented.
 * The Module Index now only shows module names instead of their full name. You can hover over a module link to see the full name.
+* If there is only a single root module, `index.html` now documents that module (previously it only linked the module page).
 * Fix introspection of functions comming from C-extensions.
+* Fix that the colorizer might make Twisted's flatten function crash with surrogates unicode strings.
 
 pydoctor 21.12.1
 ^^^^^^^^^^^^^^^^
