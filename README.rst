@@ -76,6 +76,10 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 
+pydoctor 22.5.1
+^^^^^^^^^^^^^^^
+* Pin ``docutils>=0.17`` to avoid crashing with ``AttributeError`` when processing type fields.
+
 pydoctor 22.5.0
 ^^^^^^^^^^^^^^^
 * Add Read The Docs theme, enable it with option ``--theme=readthedocs``.
