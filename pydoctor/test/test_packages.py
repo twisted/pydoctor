@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Callable
 import pytest
 
-from pydoctor import model
+from pydoctor import model as oldmodel, imodel as model
 
 testpackages = Path(__file__).parent / 'testpackages'
 
-def processPackage(packname: str, systemcls: Callable[[], model.System] = model.System) -> model.System:
+def processPackage(packname: str, systemcls: Callable[[], model.System] = oldmodel.System) -> model.System:
     system = systemcls()
     builder = system.systemBuilder(system)
     builder.addModule(testpackages / packname)

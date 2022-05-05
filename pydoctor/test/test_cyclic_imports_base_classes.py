@@ -23,7 +23,8 @@ def test_cyclic_imports_base_classes() -> None:
 
 
 if __name__ == '__main__':
-    from test_packages import processPackage, model # type: ignore
+    from test_packages import processPackage # type:ignore
+    from pydoctor import model
 
     assert os.environ['PYTHONHASHSEED'] == '0'
 
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     if model.Module.__hash__ == object.__hash__:
         model.Module.__hash__ = consistent_hash
 
-    system = processPackage('cyclic_imports_base_classes')
+    system = processPackage('cyclic_imports_base_classes', systemcls=model.System)
     b_cls = system.allobjects['cyclic_imports_base_classes.b.B']
     assert isinstance(b_cls, model.Class)
     assert b_cls.baseobjects == [system.allobjects['cyclic_imports_base_classes.a.A']]
