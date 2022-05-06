@@ -77,6 +77,10 @@ in development
 ^^^^^^^^^^^^^^
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
 
+pydoctor 22.5.1
+^^^^^^^^^^^^^^^
+* ``docutils>=0.17`` is now the minimum supported version. This was done to fix crashing with ``AttributeError`` when processing type fields.
+
 pydoctor 22.5.0
 ^^^^^^^^^^^^^^^
 * Add Read The Docs theme, enable it with option ``--theme=readthedocs``.
