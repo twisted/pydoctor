@@ -78,7 +78,7 @@ in development
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^
-* Pin ``docutils>=0.17`` to avoid crashing with ``AttributeError`` when processing type fields.
+* ``docutils>=0.17`` is now the minimum supported version. This was done to fix crashing with ``AttributeError`` when processing type fields.
 
 pydoctor 22.5.0
 ^^^^^^^^^^^^^^^
