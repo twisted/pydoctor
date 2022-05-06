@@ -45,6 +45,11 @@ jobs:
       run: |
         tox -e test
 
+    - name: Run unit tests with latest Twisted version
+      if: matrix.python-version != '3.6' && matrix.python-version != 'pypy-3.6'
+      run: |
+        tox -e test-latest-twisted
+
     - name: Publish code coverage
       continue-on-error: true
       run: |
