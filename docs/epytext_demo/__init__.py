@@ -167,9 +167,10 @@ Escaping is used to write text that would otherwise be interpreted as epytext ma
 Escaped text has the form EE{lb}codeE{rb},
 where code is an escape code that specifies what character should be produced.
 
-If the escape code is a single character (other than '{' or '}'), then that character is produced.
-For example, to begin a paragraph with a dash (which would normally signal a list item), write 'E{-}'.
-In addition, two special escape codes are defined: 'E{lb}' produces a left curly brace ('{'); and 'E{rb}' produces a right curly brace ('}').
+If the escape code is a single character (other than `{` or `}`), then that character is produced.
+For example, to begin a paragraph with a dash (which would normally signal a list item), write `E{-}`.
+In addition, two special escape codes are defined: `E{lb}` produces a left curly brace (`{`); and `E{rb}`
+produces a right curly brace (`}`).
 
 This paragraph ends with two
 colons, but does not introduce
