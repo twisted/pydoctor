@@ -115,15 +115,15 @@ ReStructuredText fields are written with colons, like ``:field:`` or ``:field ar
 
 Here are the supported fields (written with ReStructuredText format, but same fields are supported with Epytext): 
 
-    - ``:cvar foo:``, document a class variable. Applicable in the context of the docstring of a class.
-    - ``:ivar foo:``, document a instance variable. Applicable in the context of the docstring of a class.
-    - ``:var foo:``, document a variable. Applicable in the context of the docstring of a module or class. 
+    - ``:cvar foo:``, document a class variable named ``foo``. Applicable in the context of the docstring of a class.
+    - ``:ivar foo:``, document a instance variable named ``foo``. Applicable in the context of the docstring of a class.
+    - ``:var foo:``, document a variable named ``foo``. Applicable in the context of the docstring of a module or class. 
       If used in the context of a class, behaves just like ``@ivar:``.
     - ``:note:``, add a note section.
-    - ``:param bar:`` (synonym: ``@arg bar:``), document a function's (or method's) parameter. 
+    - ``:param bar:`` (synonym: ``@arg bar:``), document a function's (or method's) parameter named ``bar``. 
       Applicable in the context of the docstring of a function of method. 
     - ``:keyword:``, document a function's (or method's) keyword parameter (``**kwargs``).
-    - ``:type bar: C{list}``, document the type of an argument/keyword or variable, depending on the context.
+    - ``:type bar: C{list}``, document the type of an argument/keyword or variable (``bar`` in this example), depending on the context.
     - ``:return:`` (synonym: ``@returns:``), document the return type of a function (or method).
     - ``:rtype:`` (synonym: ``@returntype:``), document the type of the return value of a function (or method).
     - ``:yield:`` (synonym: ``@yields:``), document the values yielded by a generator function (or method).
