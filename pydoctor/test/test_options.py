@@ -209,17 +209,49 @@ project-name = "Hello World!"
 
         options = Options.from_args(['-vv'])
 
-        assert options.verbosity == 3 # I would have expected 2
+        assert options.verbosity == 3 
         assert options.intersphinx == ["https://docs.python.org/3/objects.inv",]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
         options = Options.from_args(['-vv', '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv', '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv'])
 
-        assert options.verbosity == 3 # I would have expected 2
+        assert options.verbosity == 3
         assert options.intersphinx == ["https://twistedmatrix.com/documents/current/api/objects.inv", "https://urllib3.readthedocs.io/en/latest/objects.inv"]
         assert options.projectname == "Hello World!"
         assert options.projectversion == "2050.4C"
 
     finally:
         os.chdir(cwd)
+
+def test_validations(tempDir:Path) -> None:
+    config = """
+[tool:pydoctor]
+# should be a string
+docformat = 1
+# should be a string
+project-name = true
+# should be a list
+privacy = HIDDEN:pydoctor.test
+# should be an int positive
+quiet = -5
+# should a boolean
+warnings-as-errors = 5
+# no such option
+not-found = 423
+"""
+
+    conf_file = (tempDir / "pydoctor_temp_conf")
+    with conf_file.open('w') as f:
+        f.write(config)
+
+    with pytest.warns(UserWarning) as catch_warnings:
+        options = Options.from_args([f"--config={conf_file}"])
+        
+    assert len(catch_warnings) == 0, [str(w.message) for w in catch_warnings]
+    
+    assert options.docformat == 'epytext'
+    assert options.projectname == 'true'
+    assert options.privacy == []
+    assert options.quietness == 0
+    assert options.warnings_as_errors == False
