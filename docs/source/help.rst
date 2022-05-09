@@ -16,7 +16,7 @@ All arguments can also be set in a config file.
 
 Repeatable arguments must be defined as list.
 
-Positional arguments can be set with repeatable option ``add-package``.
+Positional arguments can be set with option ``add-package``.
 
 By convention, the config file resides on the root of your repository. 
 
