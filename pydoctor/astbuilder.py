@@ -365,11 +365,18 @@ class ModuleVistor(ast.NodeVisitor):
                 if not name.startswith('_')
                 ]
 
+        # Fetch names to export.
+        exports = self._getCurrentModuleExports()
+
         # Add imported names to our module namespace.
         assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
         _localNameToFullName = self.builder.current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
+
+            if self._handleReExport(exports, name, name, mod) is True:
+                continue
+
             _localNameToFullName[name] = expandName(name)
 
     def _getCurrentModuleExports(self) -> Collection[str]:
