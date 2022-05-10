@@ -1182,6 +1182,28 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'test:5: Cannot find link target for "NoSuchName"\n'
 
+def test_xref_not_found_restructured_in_para(capsys: CapSys) -> None:
+    """
+    When an invalid link is in a paragraph, the fist line of the paragraph is reported in the warning.
+    This could be improved.
+    """
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    mod = fromText('''
+    """
+    A test module.
+
+    blabla bla blabla bla blabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla
+    Link to limbo: `NoSuchName`.
+    """
+    ''', modname='test', system=system)
+
+    epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    # TODO: We should read the warning at line 8
+    assert captured == 'test:5: Cannot find link target for "NoSuchName"\n'
 
 class RecordingAnnotationLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links,
