@@ -88,14 +88,33 @@ def get_lineno(node: nodes.Node) -> int:
     """
     # Try fixing https://github.com/twisted/pydoctor/issues/237
 
-    def get_first_parent_lineno(node: Optional[nodes.Node]) -> int:
-        if node is None:
+    def get_first_parent_lineno(_node: Optional[nodes.Node]) -> int:
+        if _node is None:
             return 0
         # Here we are removing 1 to the result because for some 
         # reason the parent's line seems off by one in many cases.
-        return node.line-1 if node.line else get_first_parent_lineno(node.parent) # type:ignore[no-any-return]
+        if _node.line:
+            # This line points to the start of the containing node
+            line:int = _node.line-1
+            # Let's figure out how many newlines we need to add to this number 
+            # to get the right line number.
+            parent_rawsource: Optional[str] = _node.rawsource or None
+            node_rawsource: Optional[str] = node.rawsource or None
 
-    return node.line or get_first_parent_lineno(node.parent)
+            if parent_rawsource is not None and \
+               node_rawsource is not None:
+                if node_rawsource in parent_rawsource:
+                    node_index = parent_rawsource.index(node_rawsource)
+                    # Add the required number of newlines to the result
+                    line += parent_rawsource[:node_index].count('\n')
+        else:
+            line = get_first_parent_lineno(_node.parent)
+        return line    
+
+    if node.line:
+        return node.line
+
+    return get_first_parent_lineno(node.parent)
 
 class wbr(nodes.inline):
     """
