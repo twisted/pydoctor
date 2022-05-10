@@ -147,7 +147,7 @@ Type fields, namely ``type``, ``rtype`` and ``ytype``, can be interpreted, such 
 types can be linked automatically.
 For reStructuredText and Epytext documentation format, enable this behaviour with the option:: 
     
-    --process-fields
+    --process-types
 
 The type auto-linking is always enabled for Numpy and Google style documentation formats.
 

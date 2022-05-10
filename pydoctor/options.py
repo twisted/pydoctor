@@ -85,12 +85,10 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
+    # Used to pass sourcepath from config file
     parser.add_argument(
-        '--add-package', action='append', dest='packages',
-        metavar='PACKAGEDIR', default=[], help=SUPPRESS)
-    parser.add_argument(
-        '--add-module', action='append', dest='modules',
-        metavar='MODULE', default=[], help=SUPPRESS)
+        '--add-package', '--add-module', action='append', dest='packages',
+        metavar='MODPATH', default=[], help=SUPPRESS)
     parser.add_argument(
         '--prepend-package', action='store', dest='prependedpackage', 
         help=("Pretend that all packages are within this one.  "
@@ -262,14 +260,6 @@ def _warn_deprecated_options(options: Namespace) -> None:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.",
               file=sys.stderr, flush=True)
-    if options.modules:
-        print("The --add-module option is deprecated; "
-              "pass modules as positional arguments instead.",
-              file=sys.stderr, flush=True)
-    if options.packages:
-        print("The --add-package option is deprecated; "
-              "pass packages as positional arguments instead.",
-              file=sys.stderr, flush=True)
 
 # CONVERTERS
 
@@ -409,7 +399,6 @@ class Options:
 
         # handle deprecated arguments
         argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--add-package'), argsdict.pop('packages'))))
-        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--add-module'), argsdict.pop('modules'))))
 
         # remove deprecated arguments
         argsdict.pop('enable_intersphinx_cache_deprecated')
