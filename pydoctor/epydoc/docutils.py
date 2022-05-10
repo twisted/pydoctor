@@ -112,7 +112,7 @@ def get_lineno(node: nodes.Node) -> int:
         return line    
 
     if node.line:
-        return node.line
+        return node.line # type:ignore[no-any-return]
 
     return get_first_parent_lineno(node.parent)
 
