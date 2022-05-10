@@ -8,7 +8,7 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
@@ -365,12 +365,61 @@ class ModuleVistor(ast.NodeVisitor):
                 if not name.startswith('_')
                 ]
 
+        # Fetch names to export.
+        exports = self._getCurrentModuleExports()
+
         # Add imported names to our module namespace.
         assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
         _localNameToFullName = self.builder.current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
+
+            if self._handleReExport(exports, name, name, mod) is True:
+                continue
+
             _localNameToFullName[name] = expandName(name)
+
+    def _getCurrentModuleExports(self) -> Collection[str]:
+        # Fetch names to export.
+        current = self.builder.current
+        if isinstance(current, model.Module):
+            exports = current.all
+            if exports is None:
+                exports = []
+        else:
+            # Don't export names imported inside classes or functions.
+            exports = []
+        return exports
+
+    def _handleReExport(self, curr_mod_exports:Collection[str], 
+                        origin_name:str, as_name:str,
+                        origin_module:model.Module) -> bool:
+        """
+        Move re-exported objects into current module.
+
+        @returns: True if the imported name has been sucessfully re-exported.
+        """
+        # Move re-exported objects into current module.
+        current = self.builder.current
+        modname = origin_module.fullName()
+        if as_name in curr_mod_exports:
+            # In case of duplicates names, we can't rely on resolveName,
+            # So we use content.get first to resolve non-alias names. 
+            ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+            if ob is None:
+                self.builder.warning("cannot resolve re-exported name",
+                                        f'{modname}.{origin_name}')
+            else:
+                if origin_module.all is None or origin_name not in origin_module.all:
+                    self.system.msg(
+                        "astbuilder",
+                        "moving %r into %r" % (ob.fullName(), current.fullName())
+                        )
+                    # Must be a Module since the exports is set to an empty list if it's not.
+                    assert isinstance(current, model.Module)
+                    ob.reparent(current, as_name)
+                    return True
+        return False
 
     def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
         """Handle a C{from <modname> import <names>} statement."""
@@ -379,40 +428,18 @@ class ModuleVistor(ast.NodeVisitor):
         mod = self.system.getProcessedModule(modname)
 
         # Fetch names to export.
-        current = self.builder.current
-        if isinstance(current, model.Module):
-            exports = current.all
-            if exports is None:
-                exports = []
-        else:
-            assert isinstance(current, model.CanContainImportsDocumentable)
-            # Don't export names imported inside classes or functions.
-            exports = []
+        exports = self._getCurrentModuleExports()
 
+        current = self.builder.current
+        assert isinstance(current, model.CanContainImportsDocumentable)
         _localNameToFullName = current._localNameToFullName_map
         for al in names:
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
 
-            # Move re-exported objects into current module.
-            if asname in exports and mod is not None:
-                # In case of duplicates names, we can't rely on resolveName,
-                # So we use content.get first to resolve non-alias names. 
-                ob = mod.contents.get(orgname) or mod.resolveName(orgname)
-                if ob is None:
-                    self.builder.warning("cannot resolve re-exported name",
-                                         f'{modname}.{orgname}')
-                else:
-                    if mod.all is None or orgname not in mod.all:
-                        self.system.msg(
-                            "astbuilder",
-                            "moving %r into %r" % (ob.fullName(), current.fullName())
-                            )
-                        # Must be a Module since the exports is set to an empty list if it's not.
-                        assert isinstance(current, model.Module)
-                        ob.reparent(current, asname)
-                        continue
+            if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
+                continue
 
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
