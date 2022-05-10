@@ -84,17 +84,21 @@ def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Opti
 
 def get_lineno(node: nodes.Node) -> int:
     """
-    Walk up the tree hierarchy until we find an element with a line number.
-    """
-    # Try fixing https://github.com/twisted/pydoctor/issues/237
+    Get the 0-based line number for a docutils `nodes.title_reference`.
 
+    Walk up the tree hierarchy until we find an element with a line number, then
+    counts the number of newlines until the reference element is found.
+    """
+    # Fixes https://github.com/twisted/pydoctor/issues/237
+        
     def get_first_parent_lineno(_node: Optional[nodes.Node]) -> int:
         if _node is None:
             return 0
-        # Here we are removing 1 to the result because for some 
-        # reason the parent's line seems off by one in many cases.
+        
         if _node.line:
             # This line points to the start of the containing node
+            # Here we are removing 1 to the result because ParseError class is zero-based
+            # while docutils line attribute is 1-based.
             line:int = _node.line-1
             # Let's figure out how many newlines we need to add to this number 
             # to get the right line number.
@@ -109,12 +113,14 @@ def get_lineno(node: nodes.Node) -> int:
                     line += parent_rawsource[:node_index].count('\n')
         else:
             line = get_first_parent_lineno(_node.parent)
-        return line    
+        return line
 
     if node.line:
-        return node.line # type:ignore[no-any-return]
-
-    return get_first_parent_lineno(node.parent)
+        line = node.line
+    else:
+        line = get_first_parent_lineno(node.parent)
+    
+    return line # type:ignore[no-any-return]
 
 class wbr(nodes.inline):
     """
