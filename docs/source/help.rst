@@ -12,8 +12,11 @@ Command line options
 Configuration file
 ------------------
 
-Arguments that start with ``--`` (eg. ``--project-name``) can also be set in a config file. 
-Currently, positional arguments cannot be configured with a file.  
+All arguments can also be set in a config file. 
+
+Repeatable arguments must be defined as list.
+
+Positional arguments can be set with option ``add-package``.
 
 By convention, the config file resides on the root of your repository. 
 
@@ -31,6 +34,8 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [pydoctor]
+    add-package =
+        src/mylib
     intersphinx = 
         https://docs.python.org/3/objects.inv
         https://twistedmatrix.com/documents/current/api/objects.inv
@@ -49,6 +54,7 @@ Declaring section ``[pydoctor]`` is required.
 :: 
 
     [tool.pydoctor]
+    add-package = ["src/mylib"]
     intersphinx = ["https://docs.python.org/3/objects.inv", 
                    "https://twistedmatrix.com/documents/current/api/objects.inv"]
     docformat = "restructuredtext"
@@ -62,11 +68,13 @@ Note that the config file fragment above is also valid INI format and could be p
 ``setup.cfg``
 ^^^^^^^^^^^^^
 
-``setup.cfg`` can also be used to hold pydoctor configuration if they have a ``[tool:pydoctor]`` section. It must use INI format.
+``setup.cfg`` can also be used to hold pydoctor configuration if they have a ``[tool:pydoctor]`` section. It must use ``INI`` format.
 
 :: 
 
     [tool:pydoctor]
+    add-package =
+        src/mylib
     intersphinx = 
         https://docs.python.org/3/objects.inv
         https://twistedmatrix.com/documents/current/api/objects.inv
@@ -76,8 +84,6 @@ Note that the config file fragment above is also valid INI format and could be p
     privacy = 
         HIDDEN:pydoctor.test
         PUBLIC:pydoctor._configparser
-
-.. Note:: Repeatable arguments must be defined as list. 
 
 .. Note:: If an argument is specified in more than one place, 
     then command line values override config file values which override defaults.
@@ -98,4 +104,3 @@ Note that the config file fragment above is also valid INI format and could be p
     
     - Options names are now the same as argument without the leading ``--`` (e.g ``project-name`` and not ``projectname``).
     - Define repeatable options with multiline strings or list literals instead of commas separated string.
-    - Currently, positional arguments cannot be configured with a file.
