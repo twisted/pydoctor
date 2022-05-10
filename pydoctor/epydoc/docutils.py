@@ -93,7 +93,7 @@ def get_lineno(node: nodes.Node) -> int:
             return 0
         # Here we are removing 1 to the result because for some 
         # reason the parent's line seems off by one in many cases.
-        return node.line-1 if node.line else get_first_parent_lineno(node.parent)
+        return node.line-1 if node.line else get_first_parent_lineno(node.parent) # type:ignore[no-any-return]
 
     return node.line or get_first_parent_lineno(node.parent)
 
