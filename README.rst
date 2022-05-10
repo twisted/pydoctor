@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
 
 pydoctor 22.5.1
