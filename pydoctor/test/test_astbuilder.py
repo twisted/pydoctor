@@ -2019,6 +2019,10 @@ def test_package_name_clash(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     """
+    If a target module,
+    explicitly re-export via C{__all__} a set of names
+    that were initially imported from a sub-module via a wildcard,
+    those names are documented as part of the target module.
     """
     system = systemcls()
     builder = system.systemBuilder(system)
