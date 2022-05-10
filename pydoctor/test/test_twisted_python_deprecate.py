@@ -143,7 +143,7 @@ def test_twisted_python_deprecate_corner_cases(capsys: CapSys) -> None:
     assert capsys.readouterr().out=="""mod:5: missing a required argument: 'micro'
 mod:10: Invalid call to incremental.Version(), 'major' should be an int or 'NEXT'.
 mod:15: Invalid call to twisted.python.deprecate.deprecated(), first argument should be a call to incremental.Version()
-mod:19: Cannot find link target for "notfound"
+mod:20: Cannot find link target for "notfound"
 """, capsys.readouterr().out
 
     assert re.match(_html_template_with_replacement.format(

@@ -82,6 +82,21 @@ def build_table_of_content(node: nodes.Node, depth: int, level: int = 0) -> Opti
     else:
         return None
 
+def get_lineno(node: nodes.Node) -> int:
+    """
+    Walk up the tree hierarchy until we find an element with a line number.
+    """
+    # Try fixing https://github.com/twisted/pydoctor/issues/237
+
+    def get_first_parent_lineno(node: Optional[nodes.Node]) -> int:
+        if node is None:
+            return 0
+        # Here we are removing 1 to the result because for some 
+        # reason the parent's line seems off by one in many cases.
+        return node.line-1 if node.line else get_first_parent_lineno(node.parent)
+
+    return node.line or get_first_parent_lineno(node.parent)
+
 class wbr(nodes.inline):
     """
     Word break opportunity.
