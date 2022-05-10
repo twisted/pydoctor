@@ -76,6 +76,7 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
+* Add support for re-exporting names imported from a wildcard import.
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^

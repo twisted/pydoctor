@@ -2015,3 +2015,39 @@ def test_package_name_clash(systemcls: Type[model.System]) -> None:
     builder.addModuleString('', 'sub2', parent_name='mod', is_package=True)
 
     assert isinstance(system.allobjects['mod.sub2'], model.Module)
+
+@systemcls_param
+def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
+    """
+    If a target module,
+    explicitly re-export via C{__all__} a set of names
+    that were initially imported from a sub-module via a wildcard,
+    those names are documented as part of the target module.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    from ._impl import *
+    from _impl2 import *
+    __all__ = ['f', 'g', 'h', 'i', 'j']
+    ''', modname='top', is_package=True)
+
+    builder.addModuleString('''
+    def f(): 
+        pass
+    def g():
+        pass
+    def h():
+        pass
+    ''', modname='_impl', parent_name='top')
+    
+    builder.addModuleString('''
+    class i: pass
+    class j: pass
+    ''', modname='_impl2')
+
+    builder.buildModules()
+
+    assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
+    assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
+    assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
