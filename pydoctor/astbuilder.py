@@ -15,7 +15,8 @@ from typing import (
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__
+from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__, NodeVisitor
+from pydoctor.visitor import VisitorExt
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -201,18 +202,14 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
-class ModuleVistor(ast.NodeVisitor):
+class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
+        super().__init__()
         self.builder = builder
         self.system = builder.system
         self.module = module
 
-    def default(self, node: ast.AST) -> None:
-        body: Optional[Sequence[ast.stmt]] = getattr(node, 'body', None)
-        if body is not None:
-            for child in body:
-                self.visit(child)
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -220,8 +217,7 @@ class ModuleVistor(ast.NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                return
-        self.default(node)
+                raise self.SkipNode()
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -230,14 +226,15 @@ class ModuleVistor(ast.NodeVisitor):
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(self.module)
-        self.default(node)
+
+    def depart_Module(self, node: ast.Module) -> None:
         self.builder.pop(self.module)
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> Optional[model.Class]:
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return None
+            raise self.SkipNode()
 
         rawbases = []
         bases = []
@@ -294,10 +291,10 @@ class ModuleVistor(ast.NodeVisitor):
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
-        self.default(node)
+
+    def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()
 
-        return cls
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         ctx = self.builder.current
@@ -770,8 +767,8 @@ class ModuleVistor(ast.NodeVisitor):
             if attr is not None:
                 attr.setDocstring(value)
                 self.builder.currentAttr = None
-
         self.generic_visit(node)
+
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._handleFunctionDef(node, is_async=True)
@@ -786,7 +783,7 @@ class ModuleVistor(ast.NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return
+            raise self.SkipNode()
 
         lineno = node.lineno
         if node.decorator_list:
@@ -826,7 +823,7 @@ class ModuleVistor(ast.NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
-            return
+            raise self.SkipNode()
 
         func = self.builder.pushFunction(func_name, lineno)
         func.is_async = is_async
@@ -883,7 +880,11 @@ class ModuleVistor(ast.NodeVisitor):
 
         func.signature = signature
         func.annotations = self._annotations_from_function(node)
-        self.default(node)
+    
+    def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.builder.popFunction()
+
+    def depart_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.builder.popFunction()
 
     def _handlePropertyDef(self,
@@ -1138,6 +1139,7 @@ class ASTBuilder:
         self.currentAttr: Optional[model.Documentable] = None
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
+        self.extensions: List[Type[VisitorExt[ast.AST]]] = []
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
         obj = cls(self.system, name, self.current)
@@ -1207,8 +1209,14 @@ class ASTBuilder:
                 continue
             else:
                 module_var_parser(node, mod)
-
-        self.ModuleVistor(self, mod).visit(mod_ast)
+        try:
+            vis = self.ModuleVistor(self, mod)
+        except TypeError as e:
+            raise TypeError(f"Please use the new visitor extension system instead of overriding 'ASTBuilder.ModuleVistor' with {self.ModuleVistor.__name__!r}.") from e
+        
+        vis.extensions.add(*self.extensions)
+        vis.extensions.attach_visitor(vis)
+        vis.walkabout(mod_ast)
 
     def parseFile(self, path: Path) -> Optional[ast.Module]:
         try:

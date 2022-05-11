@@ -4,7 +4,7 @@ import ast
 
 import astor
 
-from twisted.python._pydoctor import TwistedSystem
+# from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model, deprecate
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
@@ -18,7 +18,7 @@ import pytest
 
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
+    'systemcls', (model.System, ZopeInterfaceSystem, deprecate.System)
     )
 
 def fromText(

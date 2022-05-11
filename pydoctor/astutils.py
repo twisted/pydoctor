@@ -4,9 +4,42 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Optional, List
+from typing import Iterator, Optional, List, Iterable, Sequence
 from inspect import BoundArguments, Signature
 import ast
+
+from pydoctor import visitor
+
+# AST visitors
+
+def iter_values(node: ast.AST) -> Iterator[ast.AST]:
+    for _, value in ast.iter_fields(node):
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, ast.AST):
+                    yield item
+        elif isinstance(value, ast.AST):
+            yield value
+
+class NodeVisitor(visitor.PartialVisitor[ast.AST], visitor.CustomizableVisitor[ast.AST]):
+    # @classmethod
+    # def get_children(cls, node: ast.AST) -> Iterable[ast.AST]:
+    #     return iter_values(node)
+    def generic_visit(self, node: ast.AST) -> None:
+        for v in iter_values(node):
+            self.visit(v)
+    @classmethod
+    def get_children(cls, node: ast.AST) -> Iterable[ast.AST]:
+        """
+        Visit the nested nodes in the body of a node.
+        """
+        body: Optional[Sequence[ast.AST]] = getattr(node, 'body', None)
+        if body is not None:
+            for child in body:
+                yield child
+
+class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
+    ...
 
 def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
     """

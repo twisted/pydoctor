@@ -46,10 +46,8 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
     mod_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod)))
     class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'])))
 
-    assert not capsys.readouterr().out
+    assert capsys.readouterr().out == ''
 
-    
-    
     assert 'docstring' in mod_html_text
     assert 'should appear' in mod_html_text
 
