@@ -187,6 +187,8 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
         ob = self.system.objForFullName(funcName)
         if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
             # TODO: Process 'bases' and '__doc__' arguments.
+            # TODO: Currently, this implementation will create a duplicate class 
+            # with the same name as the attribute, overriding it.
             interface = self.builder.pushClass(target, lineno)
             assert isinstance(interface, ZopeInterfaceClass)
             interface.isinterface = True
@@ -194,7 +196,7 @@ class ZopeInterfaceModuleVisitor(astbuilder.ModuleVistor):
             interface.bases = []
             interface.baseobjects = []
             self.builder.popClass()
-            self.newAttr = interface
+            self.builder.currentAttr = interface
 
     def _handleAssignmentInClass(self,
             target: str,
