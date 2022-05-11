@@ -202,8 +202,6 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         return ann_slice
 
 class ModuleVistor(ast.NodeVisitor):
-    currAttr: Optional[model.Documentable]
-    newAttr: Optional[model.Documentable]
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
         self.builder = builder
@@ -213,12 +211,8 @@ class ModuleVistor(ast.NodeVisitor):
     def default(self, node: ast.AST) -> None:
         body: Optional[Sequence[ast.stmt]] = getattr(node, 'body', None)
         if body is not None:
-            self.currAttr = None
             for child in body:
-                self.newAttr = None
                 self.visit(child)
-                self.currAttr = self.newAttr
-            self.newAttr = None
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -574,7 +568,7 @@ class ModuleVistor(ast.NodeVisitor):
                 # check if they have been initialized or not.
                 obj.value = expr
 
-            self.newAttr = obj
+            self.builder.currentAttr = obj
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -627,7 +621,7 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             obj.value = expr
 
-        self.newAttr = obj
+        self.builder.currentAttr = obj
 
     def _handleInstanceVar(self,
             name: str,
@@ -663,7 +657,8 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
             obj.value = expr
-        self.newAttr = obj
+        
+        self.builder.currentAttr = obj
 
     def _handleAssignmentInClass(self,
             target: str,
@@ -771,9 +766,10 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
         if isinstance(value, ast.Str):
-            attr = self.currAttr
+            attr = self.builder.currentAttr
             if attr is not None:
                 attr.setDocstring(value)
+                self.builder.currentAttr = None
 
         self.generic_visit(node)
 
@@ -1139,6 +1135,7 @@ class ASTBuilder:
         self.system = system
         self.current = cast(model.Documentable, None)
         self.currentMod: Optional[model.Module] = None
+        self.currentAttr: Optional[model.Documentable] = None
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
@@ -1146,11 +1143,13 @@ class ASTBuilder:
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
+        self.currentAttr = None
         return obj
 
     def _pop(self, cls: Type[model.Documentable]) -> None:
         assert isinstance(self.current, cls)
         self.pop(self.current)
+        self.currentAttr = None
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
         self._stack.append(self.current)
@@ -1193,6 +1192,7 @@ class ASTBuilder:
         attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
+        self.currentAttr = attr
         return attr
 
     def warning(self, message: str, detail: str) -> None:
