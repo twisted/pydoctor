@@ -260,8 +260,7 @@ class ZopeInterfaceModuleVisitor(astutils.NodeVisitorExt):
         
     def visit_Assign(self, node: ast.Assign) -> None:
         self._handleZopeInterfaceAssignment(node)
-    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        self._handleZopeInterfaceAssignment(node)
+    visit_AnnAssign = visit_Assign
 
     def visit_Call(self, node: ast.Call) -> None:
         base = astbuilder.node2fullname(node.func, self.visitor.builder.current)
@@ -313,10 +312,10 @@ class ZopeInterfaceModuleVisitor(astutils.NodeVisitorExt):
                                 funcName == 'zope.interface.classImplementsOnly')
     visit_Call_zope_interface_classImplementsOnly = visit_Call_zope_interface_classImplements
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        cls = self.visitor.builder.current
+    def depart_ClassDef(self, node: ast.ClassDef) -> None:
+        cls = self.visitor.builder.current.contents.get(node.name)
         
-        if not isinstance(cls, ZopeInterfaceClass) or cls.name != node.name:
+        if not isinstance(cls, ZopeInterfaceClass):
             return
 
         bases = [self.visitor.builder.current.expandName(base) for base in cls.bases]
