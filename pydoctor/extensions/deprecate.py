@@ -160,12 +160,6 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
         )
     return _version, text
 
-class System(model.System):
-    """
-    A system with only the twisted deprecated extension enabled.
-    """
-    extensions = ['pydoctor.extensions.deprecate']
-
 # setup extension
 from pydoctor import extensions
 

@@ -8,23 +8,36 @@ import astor
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
-from pydoctor.extensions import deprecate
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
-from pydoctor.extensions.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
-class _SimpleSystem(model.System):
+class SimpleSystem(model.System):
+    """
+    A system with no extensions.
+    """
     extensions:List[str] = []
+
+class ZopeInterfaceSystem(model.System):
+    """
+    A system with only the zope interface extension enabled.
+    """
+    extensions = ['pydoctor.extensions.zopeinterface']
+
+class DeprecateSystem(model.System):
+    """
+    A system with only the twisted deprecated extension enabled.
+    """
+    extensions = ['pydoctor.extensions.deprecate']
 
 systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, # system with all extensions enalbed
                   ZopeInterfaceSystem, # system with zopeinterface extension only
-                  deprecate.System, # system with deprecated extension only
-                  _SimpleSystem # system with no extensions
+                  DeprecateSystem, # system with deprecated extension only
+                  SimpleSystem # system with no extensions
                  )
     )
 

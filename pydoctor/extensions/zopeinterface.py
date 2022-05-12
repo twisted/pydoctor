@@ -348,12 +348,6 @@ def postProcess(self:model.System) -> None:
     for cls in self.objectsOfType(ZopeInterfaceClass):
         _handle_implemented(cls)
 
-class ZopeInterfaceSystem(model.System):
-    """
-    A system with only the zope interface extension enabled.
-    """
-    extensions = ['pydoctor.extensions.zopeinterface']
-
 # Register extension
 from pydoctor import extensions
 

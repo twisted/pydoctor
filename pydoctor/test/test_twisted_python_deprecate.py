@@ -1,11 +1,11 @@
 
 import re
 from typing import Type
+
 from pydoctor import model
-from pydoctor.extensions import deprecate
 from pydoctor.stanutils import flatten_text, html2stan
 from pydoctor.test import CapSys, test_templatewriter
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, DeprecateSystem
 
 import pytest
 
@@ -14,7 +14,7 @@ _html_template_without_replacement = r'(.*){name} was deprecated in {package} {v
 
 twisted_deprecated_systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, # system with all extensions enalbed
-                  deprecate.System, # system with deprecated extension only
+                  DeprecateSystem, # system with deprecated extension only
                  )
     )
 @twisted_deprecated_systemcls_param
