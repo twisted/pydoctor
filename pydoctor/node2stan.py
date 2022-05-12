@@ -12,7 +12,8 @@ from twisted.web.template import Tag
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.epydoc.markup import DocstringLinker
-    
+
+from pydoctor.epydoc.docutils import get_lineno
 from pydoctor.epydoc.doctest import colorize_codeblock, colorize_doctest
 from pydoctor.stanutils import flatten, html2stan
 
@@ -90,9 +91,7 @@ class HTMLTranslator(html4css1.HTMLTranslator):
 
     # Handle interpreted text (crossreferences)
     def visit_title_reference(self, node: nodes.Node) -> None:
-        # TODO: 'node.line' is None for reStructuredText based docstring for some reason.
-        #       https://github.com/twisted/pydoctor/issues/237
-        lineno = node.line or 0
+        lineno = get_lineno(node)
         self._handle_reference(node, link_func=lambda target, label: self._linker.link_xref(target, label, lineno))
     
     # Handle internal references

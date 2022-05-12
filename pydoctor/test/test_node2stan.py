@@ -4,11 +4,13 @@ Tests for the L{node2stan} module.
 :See: {test.epydoc.test_epytext2html}, {test.epydoc.test_restructuredtext}
 """
 
+from pydoctor.epydoc.docutils import get_lineno
+from pydoctor.test import CapSys
 from pydoctor.test.epydoc.test_epytext2html import epytext2node
-from pydoctor.test.epydoc.test_restructuredtext import rst2node
+from pydoctor.test.epydoc.test_restructuredtext import rst2node, parse_rst
 
 from pydoctor.node2stan import gettext
-
+from docutils import nodes
 
 def test_gettext() -> None:
     doc = '''
@@ -85,3 +87,70 @@ def test_gettext() -> None:
 
     assert gettext(rst2node(doc)) == ['This paragraph is not in any section.', 
     'mailto:postmaster@example.net', 'This is just a note with nested contents']
+
+def count_parents(node:nodes.Node) -> int:
+          count = 0
+          ctx = node
+
+          while not isinstance(ctx, nodes.document):
+              count += 1
+              ctx = ctx.parent
+          return count
+
+class TitleReferenceDump(nodes.GenericNodeVisitor):
+  def default_visit(self, node: nodes.Node) -> None:
+    if not isinstance(node, nodes.title_reference):
+      return
+    print('{}{:<15} line: {}, get_lineno: {}, rawsource: {}'.format(
+      '|'*count_parents(node),
+      type(node).__name__, 
+      node.line,
+      get_lineno(node), 
+      node.rawsource.replace('\n', '\\n')))  
+
+def test_docutils_get_lineno_title_reference(capsys:CapSys) -> None:
+    """
+    We can get the exact line numbers for all `nodes.title_reference` nodes in a docutils document.
+    """
+
+
+    parsed_doc = parse_rst('''
+Fizz
+====
+
+Lorem ipsum `notfound`.
+
+Buzz
+****
+
+Lorem ``ipsum``
+
+.. code-block:: python
+
+   x = 0
+
+.. note::
+
+   Dolor sit amet
+   `notfound`.
+
+   .. code-block:: python
+
+      y = 1
+
+Dolor sit amet `another link <notfound>`.
+Dolor sit amet `link <notfound>`.
+bla blab balba.
+
+:var foo: Dolor sit amet `link <notfound>`.
+''')
+    doc = parsed_doc.to_node()
+    doc.walk(TitleReferenceDump(doc))
+    assert capsys.readouterr().out == r'''||title_reference line: None, get_lineno: 4, rawsource: `notfound`
+||||title_reference line: None, get_lineno: 18, rawsource: `notfound`
+|||title_reference line: None, get_lineno: 24, rawsource: `another link <notfound>`
+|||title_reference line: None, get_lineno: 25, rawsource: `link <notfound>`
+'''
+    parsed_doc.fields[0].body().to_node().walk(TitleReferenceDump(doc))
+    assert capsys.readouterr().out == r'''||title_reference line: None, get_lineno: 28, rawsource: `link <notfound>`
+'''
