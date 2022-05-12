@@ -5,7 +5,7 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 """
 import importlib
 import sys
-from typing import Any, Callable, Dict, Iterable, Iterator, Type, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -82,7 +82,7 @@ _mixin_to_class_name: Dict[Any, str] = {
         AttributeMixin: 'Attribute',
     }
 
-def _get_mixins(*mixins: Type[Any]) -> Dict[str, Type[Any]]:
+def _get_mixins(*mixins: Type[Any]) -> Dict[str, List[Type[Any]]]:
     """
     Transform a list of mixins classes to a dict from the 
     concrete class name to the mixins that must be applied to it.
@@ -92,12 +92,13 @@ def _get_mixins(*mixins: Type[Any]) -> Dict[str, Type[Any]]:
     @raises AssertionError: If a mixin does not extends any of the 
         provided base mixin classes.
     """
-    mixins_by_name = {}
+    mixins_by_name: Dict[str, List[Type[Any]]] = {}
     for mixin in mixins:
         added = False
         for k,v in _mixin_to_class_name.items():
             if isinstance(mixin, type) and issubclass(mixin, k):
-                mixins_by_name[v] = mixin
+                mixins_by_name.setdefault(v, [])
+                mixins_by_name[v].append(mixin)
                 added = True
                 # do not break, such that one class can be added to several class
                 # bases if it extends the right types.
