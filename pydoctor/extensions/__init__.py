@@ -18,38 +18,37 @@ import attr
 from pydoctor import model, astutils, astbuilder
 
 class ClassMixin:
-    """Base class for mixins applied to `model.Class` objects."""
+    """Base class for mixins applied to L{model.Class} objects."""
 class ModuleMixin:
-    """Base class for mixins applied to `model.Module` objects."""
+    """Base class for mixins applied to L{model.Module} objects."""
 class PackageMixin:
-    """Base class for mixins applied to `model.Package` objects."""
+    """Base class for mixins applied to L{model.Package} objects."""
 class FunctionMixin:
-    """Base class for mixins applied to `model.Function` objects."""
+    """Base class for mixins applied to L{model.Function} objects."""
 class AttributeMixin:
-    """Base class for mixins applied to `model.Attribute` objects."""
+    """Base class for mixins applied to L{model.Attribute} objects."""
 class DocumentableMixin(ModuleMixin, ClassMixin, FunctionMixin, AttributeMixin):
-    """Base class for mixins applied to all `model.Documentable` objects."""
+    """Base class for mixins applied to all L{model.Documentable} objects."""
 class CanContainImportsDocumentableMixin(PackageMixin, ModuleMixin, ClassMixin):
-    """Base class for mixins applied to `model.Class`, `model.Module` and `model.Package` objects."""
+    """Base class for mixins applied to L{model.Class}, L{model.Module} and L{model.Package} objects."""
 class InheritableMixin(FunctionMixin, AttributeMixin):
-    """Base class for mixins applied to `model.Function` and `model.Attribute` objects."""
+    """Base class for mixins applied to L{model.Function} and L{model.Attribute} objects."""
 
 MixinT = Union[ClassMixin, ModuleMixin, PackageMixin, FunctionMixin, AttributeMixin]
 
 def _importlib_resources_contents(package: str) -> Iterable[str]:
-    """Return an iterable of entries in `package`.
+    """Return an iterable of entries in C{package}.
 
     Note that not all entries are resources.  Specifically, directories are
-    not considered resources.  Use `is_resource()` on each entry returned here
-    to check if it is a resource or not.
+    not considered resources. 
     """
     return [path.name for path in importlib_resources.files(package).iterdir()]
 
 
 def _importlib_resources_is_resource(package: str, name: str) -> bool:
-    """True if `name` is a resource inside `package`.
+    """True if C{name} is a resource inside C{package}.
 
-    Directories are *not* resources.
+    Directories are B{not} resources.
     """
     resource = name
     return any(
@@ -65,7 +64,7 @@ def _get_submodules(pkg: str) -> Iterator[str]:
 
 def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistrar'], None]:
     """
-    Will look for the special function ``setup_pydoctor_extension`` in the provided module.
+    Will look for the special function C{setup_pydoctor_extension} in the provided module.
     
     @Raises AssertionError: if module do not provide a valid setup_pydoctor_extension() function.
     @Raises ModuleNotFoundError: if module is not found.
@@ -89,7 +88,7 @@ def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
     Transform a list of mixins classes to a dict from the 
     concrete class name to the mixins that must be applied to it.
     This relies on the fact that mixins shoud extend one of the 
-    base mixin classes in `pydoctor.extensions` module.
+    base mixin classes in L{pydoctor.extensions} module.
     
     @raises AssertionError: If a mixin does not extends any of the 
         provided base mixin classes.
@@ -118,21 +117,23 @@ class ExtRegistrar:
     def register_mixins(self, *mixins: Type[MixinT]) -> None:
         """
         Register mixin classes for model objects. Mixins shoud extend one of the 
-        base mixin classes in `pydoctor.extensions` module, i.e. `ClassMixin` or `ApiObjectMixin`, etc.
+        base mixin classes in L{pydoctor.extensions} module, i.e. L{ClassMixin} or L{DocumentableMixin}, etc.
         """
         self.system.factory.add_mixins(**_get_mixins(*mixins))
 
     def register_astbuilder_visitors(self, 
             *visitors: Type[astutils.NodeVisitorExt]) -> None:
         """
-        Register AST visitor extensions.
+        Register AST visitor extensions. Typically visitor extensions inherits from L{ModuleVisitorExt}.
         """
         self.system.astbuilder_visitors.add(*visitors)
     
     def register_post_processor(self, 
             *post_processor: Callable[[model.System], None]) -> None:
         """
-        Register post processors.
+        Register post processors. 
+        A post-processor is simply a one-argument callable receiving 
+        the processed L{model.System} and doing stuff on the L{model.Documentable} tree.
         """
         self.system.post_processors.add(*post_processor)
 
