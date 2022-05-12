@@ -1,5 +1,5 @@
 import ast
-from typing import Any, List, Type
+from typing import List, Type
 from pydoctor import astutils, extensions,  model
 
 class ModVisitor(extensions.ModuleVisitorExt):
