@@ -37,17 +37,17 @@ class ModVisitor(extensions.ModuleVisitorExt):
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitors(ModVisitor)
 
-class PydanticSystem(model.System):
+class PydanticSystem2(model.System):
     # Add our custom extension
-    extensions = ['pydoctor.test.test_pydantic_fields']
-
+    extensions = []
+    custom_extensions = ['pydoctor.test.test_pydantic_fields']
 
 ## Testing code
 
 import pytest
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, PydanticSystem
 
-pydantic_systemcls_param = pytest.mark.parametrize('systemcls', (PydanticSystem,))
+pydantic_systemcls_param = pytest.mark.parametrize('systemcls', (PydanticSystem, PydanticSystem2))
 
 @pydantic_systemcls_param
 def test_pydantic_fields(systemcls: Type[model.System]) -> None:

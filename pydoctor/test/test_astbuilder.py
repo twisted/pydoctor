@@ -33,11 +33,16 @@ class DeprecateSystem(model.System):
     """
     extensions = ['pydoctor.extensions.deprecate']
 
+class PydanticSystem(model.System):
+    # Add our custom extension as extra
+    custom_extensions = ['pydoctor.test.test_pydantic_fields']
+
 systemcls_param = pytest.mark.parametrize(
     'systemcls', (model.System, # system with all extensions enalbed
                   ZopeInterfaceSystem, # system with zopeinterface extension only
                   DeprecateSystem, # system with deprecated extension only
-                  SimpleSystem # system with no extensions
+                  SimpleSystem, # system with no extensions
+                  PydanticSystem,
                  )
     )
 

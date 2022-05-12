@@ -615,9 +615,7 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
-class default_extensions(list):
-    ...
-
+_default_extensions = object()
 class System:
     """A collection of related documentable objects.
 
@@ -630,10 +628,15 @@ class System:
     defaultBuilder: Type[ASTBuilder]
     systemBuilder: Type['ISystemBuilder']
     options: 'Options'
-    extensions: List[str] = default_extensions()
+    extensions: List[str] = cast('List[str]', _default_extensions)
     """
-    Default values mean all pydoctor extensions will be loaded.
+    Default value means all built-in pydoctor extensions will be loaded.
     Override this value to cherry-pick extensions. 
+    """
+
+    custom_extensions: List[str] = []
+    """
+    Additional list of extensions to load alongside default extensions.
     """
 
     def __init__(self, options: Optional['Options'] = None):
@@ -675,18 +678,20 @@ class System:
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
         # this way, we are sure the objects' privacy stay true even if we reparent them manually.
         self._privacyClassCache: Dict[str, PrivacyClass] = {}
+        
+        # workaround cyclic import issue
+        from pydoctor import extensions
 
         # Initialize the extension system
         self.factory = factory.Factory()
         self.astbuilder_visitors: Set[Type['astutils.NodeVisitorExt']] = set()
         self.post_processors: Set[Callable[['System'], None]] = set()
-        
-        # workaround cyclic import issue
-        from pydoctor import extensions
-        if isinstance(self.extensions, default_extensions):
-            self.extensions = self.extensions + list(extensions.get_extensions())
+        if self.extensions == _default_extensions:
+            self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
-        for ext in self.extensions:
+        assert isinstance(self.custom_extensions, list)
+        for ext in self.extensions + self.custom_extensions:
+            # Load extensions
             extensions.load_extension_module(self, ext)
 
     @property
