@@ -1,5 +1,5 @@
 import ast
-from typing import Any, Type
+from typing import Any, List, Type
 from pydoctor import astutils, extensions,  model
 
 class ModVisitor(extensions.ModuleVisitorExt):
@@ -39,7 +39,7 @@ def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
 
 class PydanticSystem2(model.System):
     # Add our custom extension
-    extensions = []
+    extensions: List[str] = []
     custom_extensions = ['pydoctor.test.test_pydantic_fields']
 
 ## Testing code
