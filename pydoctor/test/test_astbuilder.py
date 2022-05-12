@@ -6,12 +6,13 @@ import astor
 
 # from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model, deprecate
+from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.extensions import deprecate
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
-from pydoctor.zopeinterface import ZopeInterfaceSystem
+from pydoctor.extensions.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest

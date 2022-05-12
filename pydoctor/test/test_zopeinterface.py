@@ -2,7 +2,7 @@
 from typing import Type, cast
 from pydoctor.test.test_astbuilder import fromText, type2html
 from pydoctor.test.test_packages import processPackage
-from pydoctor.zopeinterface import ZopeInterfaceClass, ZopeInterfaceSystem
+from pydoctor.extensions.zopeinterface import ZopeInterfaceClass, ZopeInterfaceSystem
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
 from pydoctor.stanutils import flatten

@@ -349,4 +349,24 @@ def postProcess(self:model.System) -> None:
         _handle_implemented(cls)
 
 class ZopeInterfaceSystem(model.System):
-    extensions = ['pydoctor.extensions.zope_interface']
+    """
+    A system with only the zope interface extension enabled.
+    """
+    extensions = ['pydoctor.extensions.zopeinterface']
+
+# Register extension
+from pydoctor import extensions
+
+class ModuleMixin(extensions.ModuleMixin, ZopeInterfaceModule):
+    ...
+class ClassMixin(extensions.ClassMixin, ZopeInterfaceClass):
+    ...
+class FunctionMixin(extensions.FunctionMixin, ZopeInterfaceFunction):
+    ...
+class AttributeMixin(extensions.AttributeMixin, ZopeInterfaceAttribute):
+    ...
+
+def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+    r.register_mixins(ModuleMixin, ClassMixin, FunctionMixin, AttributeMixin)
+    r.register_astbuilder_visitors(ZopeInterfaceModuleVisitor)
+    r.register_post_processor(postProcess)

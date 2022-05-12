@@ -1,7 +1,8 @@
 
 import re
 from typing import Type
-from pydoctor import deprecate, model
+from pydoctor import model
+from pydoctor.extensions import deprecate
 from pydoctor.stanutils import flatten_text, html2stan
 from pydoctor.test import CapSys, test_templatewriter
 from pydoctor.test.test_astbuilder import fromText

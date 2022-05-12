@@ -29,7 +29,7 @@ BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.ini']
 CONFIG_SECTIONS = ['tool.pydoctor', 'tool:pydoctor', 'pydoctor']
 
-DEFAULT_SYSTEM = 'pydoctor.deprecate.System'
+DEFAULT_SYSTEM = 'pydoctor.model.System'
 
 __all__ = ("Options", )
 
