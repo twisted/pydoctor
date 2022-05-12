@@ -12,7 +12,7 @@ def dump(node: nodes.Node, text:str='') -> None:
         node.line,
         node.rawsource.replace('\n', '\\n')))  
 
-class DocutilsNodeVisitor(visitor.CustomizableVisitor[nodes.Node]):
+class DocutilsNodeVisitor(visitor.Visitor[nodes.Node]):
     def unknown_visit(self, ob: nodes.Node) -> None:
         pass
     

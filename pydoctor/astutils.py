@@ -21,7 +21,7 @@ def iter_values(node: ast.AST) -> Iterator[ast.AST]:
         elif isinstance(value, ast.AST):
             yield value
 
-class NodeVisitor(visitor.PartialVisitor[ast.AST], visitor.CustomizableVisitor[ast.AST]):
+class NodeVisitor(visitor.PartialVisitor[ast.AST]):
     # @classmethod
     # def get_children(cls, node: ast.AST) -> Iterable[ast.AST]:
     #     return iter_values(node)
