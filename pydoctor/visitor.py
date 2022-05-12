@@ -298,6 +298,7 @@ class VisitorExt(_BaseVisitor[T]):
       - If your extension visitor is set to run ``BEFORE`` the main visitor and it raises `SkipNode`, the main visitor will not visit this node.
       - If a L{SkipNode} or L{SkipDeparture} exception is raised inside the main visitor C{visit()} method,
         the C{depart_*} method on the extensions will still be called.
+    
     See: `When` 
     """
     
