@@ -615,7 +615,9 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
-_DEFAULT_EXT = object()
+class default_extensions(list):
+    ...
+
 class System:
     """A collection of related documentable objects.
 
@@ -628,7 +630,7 @@ class System:
     defaultBuilder: Type[ASTBuilder]
     systemBuilder: Type['ISystemBuilder']
     options: 'Options'
-    extensions: List[str] = cast('List[str]', _DEFAULT_EXT)
+    extensions: List[str] = default_extensions()
     """
     Default values mean all pydoctor extensions will be loaded.
     Override this value to cherry-pick extensions. 
@@ -681,8 +683,8 @@ class System:
         
         # workaround cyclic import issue
         from pydoctor import extensions
-        if self.extensions == _DEFAULT_EXT:
-            self.extensions = list(extensions.get_extensions())
+        if isinstance(self.extensions, default_extensions):
+            self.extensions = self.extensions + list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
         for ext in self.extensions:
             extensions.load_extension_module(self, ext)

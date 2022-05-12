@@ -4,11 +4,14 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
 from inspect import BoundArguments, Signature
 import ast
 
 from pydoctor import visitor
+
+if TYPE_CHECKING:
+    from pydoctor import model
 
 # AST visitors
 
@@ -41,7 +44,7 @@ class NodeVisitor(visitor.PartialVisitor[ast.AST]):
 class NodeVisitorExt(visitor.VisitorExt[ast.AST]):
     ...
 
-def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
+def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
     """
     Resove expression composed by L{ast.Attribute} and L{ast.Name} nodes to a list of names. 
     """
@@ -55,6 +58,12 @@ def node2dottedname(node: Optional[ast.expr]) -> Optional[List[str]]:
         return None
     parts.reverse()
     return parts
+
+def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optional[str]:
+    dottedname = node2dottedname(expr)
+    if dottedname is None:
+        return None
+    return ctx.expandName('.'.join(dottedname))
 
 def bind_args(sig: Signature, call: ast.Call) -> BoundArguments:
     """
@@ -107,3 +116,29 @@ def is__name__equals__main__(cmp: ast.Compare) -> bool:
     and isinstance(cmp.ops[0], ast.Eq) \
     and len(cmp.comparators) == 1 \
     and _is_str_constant(cmp.comparators[0], '__main__')
+
+def is_using_typing_final(expr: Optional[ast.AST], 
+                    ctx:'model.Documentable') -> bool:
+    return is_using_annotations(expr, ("typing.Final", "typing_extensions.Final"), ctx)
+
+def is_using_typing_classvar(expr: Optional[ast.AST], 
+                    ctx:'model.Documentable') -> bool:
+    return is_using_annotations(expr, ('typing.ClassVar', "typing_extensions.ClassVar"), ctx)
+
+def is_using_annotations(expr: Optional[ast.AST], 
+                            annotations:Sequence[str], 
+                            ctx:'model.Documentable') -> bool:
+    """
+    Detect if this expr is firstly composed by one of the specified annotation(s)' full name.
+    """
+    full_name = node2fullname(expr, ctx)
+    if full_name in annotations:
+        return True
+    if isinstance(expr, ast.Subscript):
+        # Final[...] or typing.Final[...] expressions
+        if isinstance(expr.value, (ast.Name, ast.Attribute)):
+            value = expr.value
+            full_name = node2fullname(value, ctx)
+            if full_name in annotations:
+                return True
+    return False

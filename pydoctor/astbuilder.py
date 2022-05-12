@@ -15,7 +15,7 @@ from typing import (
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__, NodeVisitor
+from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -27,13 +27,6 @@ if sys.version_info >= (3,8):
     _parse = partial(ast.parse, type_comments=True)
 else:
     _parse = ast.parse
-
-
-def node2fullname(expr: Optional[ast.expr], ctx: model.Documentable) -> Optional[str]:
-    dottedname = node2dottedname(expr)
-    if dottedname is None:
-        return None
-    return ctx.expandName('.'.join(dottedname))
 
 
 def _maybeAttribute(cls: model.Class, name: str) -> bool:

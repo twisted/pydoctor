@@ -11,7 +11,7 @@ import inspect
 from numbers import Number
 from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-from pydoctor import astbuilder, model, epydoc2stan, astutils
+from pydoctor import astbuilder, model, epydoc2stan, astutils, extensions
 
 from twisted.python.deprecate import deprecated
 from incremental import Version
@@ -50,9 +50,7 @@ def getDeprecated(self:model.Documentable, decorators:Sequence[ast.expr]) -> Non
                         section='deprecation text',)
                     self.extra_info.append(parsed_info)
 
-class ModuleVisitor(astutils.NodeVisitorExt):
-    visitor: astbuilder.ModuleVistor
-    when = astutils.NodeVisitorExt.When.AFTER
+class ModuleVisitor(extensions.ModuleVisitorExt):
     
     def depart_ClassDef(self, node:ast.ClassDef) -> None:
         """
@@ -155,9 +153,6 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
             version=_version,
         )
     return _version, text
-
-# setup extension
-from pydoctor import extensions
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
     r.register_astbuilder_visitors(ModuleVisitor)

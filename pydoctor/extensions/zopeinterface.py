@@ -168,9 +168,7 @@ def namesInterface(system: model.System, name: str) -> bool:
         return False
     return obj.isinterface
 
-class ZopeInterfaceModuleVisitor(astutils.NodeVisitorExt):
-    visitor: astbuilder.ModuleVistor
-    when = astutils.NodeVisitorExt.When.AFTER
+class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
 
     def _handleZopeInterfaceAssignmentInModule(self,
             target: str,

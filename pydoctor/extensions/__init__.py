@@ -5,7 +5,7 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 """
 import importlib
 import sys
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, Union, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -15,7 +15,7 @@ else:
     import importlib.resources as importlib_resources
 
 import attr
-from pydoctor import model, astutils
+from pydoctor import model, astutils, astbuilder
 
 class ClassMixin:
     """Base class for mixins applied to `model.Class` objects."""
@@ -33,6 +33,8 @@ class CanContainImportsDocumentableMixin(PackageMixin, ModuleMixin, ClassMixin):
     """Base class for mixins applied to `model.Class`, `model.Module` and `model.Package` objects."""
 class InheritableMixin(FunctionMixin, AttributeMixin):
     """Base class for mixins applied to `model.Function` and `model.Attribute` objects."""
+
+MixinT = Union[ClassMixin, ModuleMixin, PackageMixin, FunctionMixin, AttributeMixin]
 
 def _importlib_resources_contents(package: str) -> Iterable[str]:
     """Return an iterable of entries in `package`.
@@ -82,7 +84,7 @@ _mixin_to_class_name: Dict[Any, str] = {
         AttributeMixin: 'Attribute',
     }
 
-def _get_mixins(*mixins: Type[Any]) -> Dict[str, List[Type[Any]]]:
+def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
     """
     Transform a list of mixins classes to a dict from the 
     concrete class name to the mixins that must be applied to it.
@@ -92,7 +94,7 @@ def _get_mixins(*mixins: Type[Any]) -> Dict[str, List[Type[Any]]]:
     @raises AssertionError: If a mixin does not extends any of the 
         provided base mixin classes.
     """
-    mixins_by_name: Dict[str, List[Type[Any]]] = {}
+    mixins_by_name: Dict[str, List[Type[MixinT]]] = {}
     for mixin in mixins:
         added = False
         for k,v in _mixin_to_class_name.items():
@@ -113,7 +115,7 @@ class ExtRegistrar:
     """
     system: model.System
 
-    def register_mixins(self, *mixins: Type[Any]) -> None:
+    def register_mixins(self, *mixins: Type[MixinT]) -> None:
         """
         Register mixin classes for model objects. Mixins shoud extend one of the 
         base mixin classes in `pydoctor.extensions` module, i.e. `ClassMixin` or `ApiObjectMixin`, etc.
@@ -146,3 +148,10 @@ def get_extensions() -> Iterator[str]:
     Get the full names of all the pydoctor extension modules.
     """
     return _get_submodules('pydoctor.extensions')
+
+class ModuleVisitorExt(astutils.NodeVisitorExt):
+    """
+    Base class to extend the L{astbuilder.ModuleVistor}.
+    """
+    when = astutils.NodeVisitorExt.When.AFTER
+    visitor: astbuilder.ModuleVistor
