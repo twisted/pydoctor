@@ -16,7 +16,6 @@ import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 from pydoctor.astutils import bind_args, node2dottedname, is__name__equals__main__, NodeVisitor
-from pydoctor.visitor import VisitorExt
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -1209,7 +1208,7 @@ class ASTBuilder:
                 continue
             else:
                 module_var_parser(node, mod)
-                
+
         vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system.astbuilder_visitors)
         vis.extensions.attach_visitor(vis)

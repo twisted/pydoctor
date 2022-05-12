@@ -5,7 +5,7 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 """
 import importlib
 import sys
-from typing import Any, Callable, Dict, Iterable, Iterator, Type, Union, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, Type, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
