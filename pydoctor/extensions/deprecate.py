@@ -120,7 +120,7 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     replvalue = bound_args.arguments.get('replacement')
     if replvalue is not None:
-        if isinstance(replvalue, (ast.Name, ast.Attribute)) and astutils.node2dottedname(replvalue) is not None:
+        if astutils.node2dottedname(replvalue) is not None:
             replacement = astbuilder.node2fullname(replvalue, ctx)
         else:
             replacement = astutils.get_str_value(replvalue)

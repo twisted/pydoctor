@@ -16,7 +16,7 @@ class GenericFactory:
 
     def add_mixin(self, for_class: str, mixin:Type[Any]) -> None:
         """
-        Add a mixin class to the specied object in the factory. 
+        Add a mixin class to the specified object in the factory. 
         """
         try:
             mixins = self.mixins[for_class]
