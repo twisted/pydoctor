@@ -65,9 +65,9 @@ def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistra
     """
     Will look for the special function ``setup_pydoctor_extension`` in the provided module.
     
-    Raises AssertionError if module do not provide a valid setup_pydoctor_extension() function.
-    Raises ModuleNotFoundError if module is not found.
-    Returns a tuple(str, callable): extension module name, setup_pydoctor_extension() function.
+    @Raises AssertionError: if module do not provide a valid setup_pydoctor_extension() function.
+    @Raises ModuleNotFoundError: if module is not found.
+    @Returns: a tuple(str, callable): extension module name, setup_pydoctor_extension() function.
     """
     mod = importlib.import_module(module)
     
@@ -89,7 +89,7 @@ def _get_mixins(*mixins: Type[Any]) -> Dict[str, Type[Any]]:
     This relies on the fact that mixins shoud extend one of the 
     base mixin classes in `pydoctor.extensions` module.
     
-    :raises AssertionError: If a mixin does not extends any of the 
+    @raises AssertionError: If a mixin does not extends any of the 
         provided base mixin classes.
     """
     mixins_by_name = {}
