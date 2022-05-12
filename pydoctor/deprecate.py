@@ -11,7 +11,7 @@ import inspect
 from numbers import Number
 from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
+from pydoctor import astbuilder, model, epydoc2stan, astutils
 
 from twisted.python.deprecate import deprecated
 from incremental import Version
@@ -160,17 +160,5 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
         )
     return _version, text
 
-
-class ASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
-     def __init__(self, system: model.System):
-        super().__init__(system)
-        self.extensions.append(ModuleVisitor)
-        assert len(self.extensions) == 2
-
-
-class System(zopeinterface.ZopeInterfaceSystem):
-    """
-    A system with support for L{twisted.python.deprecate}.
-    """
-
-    defaultBuilder = ASTBuilder
+class System(model.System):
+    extensions = ['pydoctor.extensions.twisted_deprecated']

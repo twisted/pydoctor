@@ -1,5 +1,5 @@
 
-from typing import Optional, Tuple, Type, overload, cast
+from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
@@ -16,9 +16,15 @@ from pydoctor.zopeinterface import ZopeInterfaceSystem
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
+class _SimpleSystem(model.System):
+    extensions:List[str] = []
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, deprecate.System)
+    'systemcls', (model.System, # system with all extensions enalbed
+                  ZopeInterfaceSystem, # system with zopeinterface extension only
+                  deprecate.System, # system with deprecated extension only
+                  _SimpleSystem # system with no extensions
+                 )
     )
 
 def fromText(

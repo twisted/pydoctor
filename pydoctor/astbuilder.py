@@ -1139,7 +1139,7 @@ class ASTBuilder:
         self.currentAttr: Optional[model.Documentable] = None
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
-        self.extensions: List[Type[VisitorExt[ast.AST]]] = []
+
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
         obj = cls(self.system, name, self.current)
@@ -1214,7 +1214,7 @@ class ASTBuilder:
         except TypeError as e:
             raise TypeError(f"Please use the new visitor extension system instead of overriding 'ASTBuilder.ModuleVistor' with {self.ModuleVistor.__name__!r}.") from e
         
-        vis.extensions.add(*self.extensions)
+        vis.extensions.add(*self.system.astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 

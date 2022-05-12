@@ -340,27 +340,13 @@ class ZopeInterfaceModuleVisitor(astutils.NodeVisitorExt):
                     continue
                 addInterfaceInfoToClass(cls, args, cls.parent, False)
 
+def postProcess(self:model.System) -> None:
 
-class ZopeInterfaceASTBuilder(astbuilder.ASTBuilder):
+    for mod in self.objectsOfType(ZopeInterfaceModule):
+        _handle_implemented(mod)
 
-    def __init__(self, system: model.System):
-        super().__init__(system)
-        self.extensions.append(ZopeInterfaceModuleVisitor)
-        assert len(self.extensions) == 1
-
+    for cls in self.objectsOfType(ZopeInterfaceClass):
+        _handle_implemented(cls)
 
 class ZopeInterfaceSystem(model.System):
-    Module = ZopeInterfaceModule
-    Class = ZopeInterfaceClass
-    Function = ZopeInterfaceFunction
-    Attribute = ZopeInterfaceAttribute
-    defaultBuilder = ZopeInterfaceASTBuilder
-
-    def postProcess(self) -> None:
-        super().postProcess()
-
-        for mod in self.objectsOfType(ZopeInterfaceModule):
-            _handle_implemented(mod)
-
-        for cls in self.objectsOfType(ZopeInterfaceClass):
-            _handle_implemented(cls)
+    extensions = ['pydoctor.extensions.zope_interface']
