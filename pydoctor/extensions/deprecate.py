@@ -33,7 +33,6 @@ def getDeprecated(self:model.Documentable, decorators:Sequence[ast.expr]) -> Non
                 "twisted.python.deprecate.deprecated",
                 "twisted.python.deprecate.deprecatedProperty",
             ):
-                # self.report(f'Adding deprecation text to {self.fullName()}', section='deprecation text')
                 try:
                     version, text = deprecatedToUsefulText(self, self.name, a)
                 except Exception as e:
