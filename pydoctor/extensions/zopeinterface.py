@@ -4,11 +4,11 @@ from typing import Iterable, Iterator, List, Optional, Union
 import ast
 import re
 
-from pydoctor import astbuilder, astutils
+from pydoctor import astbuilder, astutils, extensions
 from pydoctor import model
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 
-class ZopeInterfaceModule(model.Module):
+class ZopeInterfaceModule(model.Module, extensions.ModuleMixin):
 
     def setup(self) -> None:
         super().setup()
@@ -21,7 +21,7 @@ class ZopeInterfaceModule(model.Module):
         return self.implements_directly
 
 
-class ZopeInterfaceClass(model.Class):
+class ZopeInterfaceClass(model.Class, extensions.ClassMixin):
     isinterface = False
     isschemafield = False
     isinterfaceclass = False
@@ -66,12 +66,12 @@ def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable
                 if name in io2.contents:
                     yield io2.contents[name]
 
-class ZopeInterfaceFunction(model.Function):
+class ZopeInterfaceFunction(model.Function, extensions.FunctionMixin):
     def docsources(self) -> Iterator[model.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
 
-class ZopeInterfaceAttribute(model.Attribute):
+class ZopeInterfaceAttribute(model.Attribute, extensions.AttributeMixin):
     def docsources(self) -> Iterator[model.Documentable]:
         yield from super().docsources()
         yield from _inheritedDocsources(self)
@@ -348,19 +348,10 @@ def postProcess(self:model.System) -> None:
     for cls in self.objectsOfType(ZopeInterfaceClass):
         _handle_implemented(cls)
 
-# Register extension
-from pydoctor import extensions
-
-class ModuleMixin(extensions.ModuleMixin, ZopeInterfaceModule):
-    ...
-class ClassMixin(extensions.ClassMixin, ZopeInterfaceClass):
-    ...
-class FunctionMixin(extensions.FunctionMixin, ZopeInterfaceFunction):
-    ...
-class AttributeMixin(extensions.AttributeMixin, ZopeInterfaceAttribute):
-    ...
-
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_mixins(ModuleMixin, ClassMixin, FunctionMixin, AttributeMixin)
+    r.register_mixins(ZopeInterfaceModule, 
+                      ZopeInterfaceFunction, 
+                      ZopeInterfaceClass, 
+                      ZopeInterfaceAttribute)
     r.register_astbuilder_visitors(ZopeInterfaceModuleVisitor)
     r.register_post_processor(postProcess)
