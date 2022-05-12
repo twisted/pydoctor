@@ -18,9 +18,6 @@ class GenericFactory:
         """
         Add a mixin class to the specied object in the factory. 
         """
-        if for_class not in list(self.bases):
-            raise ValueError("Invalid class name")
-        
         try:
             mixins = self.mixins[for_class]
         except KeyError:
@@ -48,18 +45,14 @@ class GenericFactory:
                 self.add_mixin(key, value)
 
     def get_class(self, name:str) -> Type[Any]:
-        try:
-            class_id = name, tuple(self.mixins.get(name, [])+[self.bases[name]])
-        except KeyError as e:
-            raise ValueError(f"Invalid class name: '{name}'") from e
+        class_id = name, tuple(self.mixins.get(name, [])+[self.bases[name]])
+        cached = self._class_cache.get(class_id)
+        if cached is not None:
+            cls = cached
         else:
-            cached = self._class_cache.get(class_id)
-            if cached is not None:
-                cls = cached
-            else:
-                cls = type(*class_id, {})
-                self._class_cache[class_id] = cls
-            return cls
+            cls = type(*class_id, {})
+            self._class_cache[class_id] = cls
+        return cls
 
 class Factory(GenericFactory):
     """

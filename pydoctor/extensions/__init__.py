@@ -64,17 +64,16 @@ def _get_submodules(pkg: str) -> Iterator[str]:
 def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistrar'], None]:
     """
     Will look for the special function ``setup_pydoctor_extension`` in the provided module.
-    Raises ValueError if module do not provide a valid setup_pydoctor_extension() function.
-    Raise ModuleNotFoundError if module is not found.
+    
+    Raises AssertionError if module do not provide a valid setup_pydoctor_extension() function.
+    Raises ModuleNotFoundError if module is not found.
     Returns a tuple(str, callable): extension module name, setup_pydoctor_extension() function.
     """
     mod = importlib.import_module(module)
     
-    if hasattr(mod, 'setup_pydoctor_extension'):
-        if callable(mod.setup_pydoctor_extension):
-            return cast('Callable[[ExtRegistrar], None]', mod.setup_pydoctor_extension)
-        raise ValueError(f"{mod}.setup_pydoctor_extension should be a callable, got {mod.setup_pydoctor_extension}.")
-    raise ValueError(f"{mod}.setup_pydoctor_extension() function not found.")
+    assert hasattr(mod, 'setup_pydoctor_extension'), f"{mod}.setup_pydoctor_extension() function not found."
+    assert callable(mod.setup_pydoctor_extension), f"{mod}.setup_pydoctor_extension should be a callable."
+    return cast('Callable[[ExtRegistrar], None]', mod.setup_pydoctor_extension)
 
 _mixin_to_class_name: Dict[Any, str] = {
         ClassMixin: 'Class',
@@ -90,7 +89,7 @@ def _get_mixins(*mixins: Type[Any]) -> Dict[str, Type[Any]]:
     This relies on the fact that mixins shoud extend one of the 
     base mixin classes in `pydoctor.extensions` module.
     
-    :raises TypeError: If a mixin does not extends any of the 
+    :raises AssertionError: If a mixin does not extends any of the 
         provided base mixin classes.
     """
     mixins_by_name = {}
@@ -103,7 +102,7 @@ def _get_mixins(*mixins: Type[Any]) -> Dict[str, Type[Any]]:
                 # do not break, such that one class can be added to several class
                 # bases if it extends the right types.
         if not added:
-            raise TypeError(f"Mixin classes must subclass one of the base *Mixin class, got {mixin!r} ")
+            assert False, f"Invalid mixin {mixin.__name__!r}. Mixins must subclass one of the base class."
     return mixins_by_name
 
 @attr.s(auto_attribs=True)
@@ -121,7 +120,7 @@ class ExtRegistrar:
         self.system.factory.add_mixins(**_get_mixins(*mixins))
 
     def register_astbuilder_visitors(self, 
-            *visitors: Union[astutils.NodeVisitorExt, Type[astutils.NodeVisitorExt]]) -> None:
+            *visitors: Type[astutils.NodeVisitorExt]) -> None:
         """
         Register AST visitor extensions.
         """

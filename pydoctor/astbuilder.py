@@ -1209,11 +1209,8 @@ class ASTBuilder:
                 continue
             else:
                 module_var_parser(node, mod)
-        try:
-            vis = self.ModuleVistor(self, mod)
-        except TypeError as e:
-            raise TypeError(f"Please use the new visitor extension system instead of overriding 'ASTBuilder.ModuleVistor' with {self.ModuleVistor.__name__!r}.") from e
-        
+                
+        vis = self.ModuleVistor(self, mod)
         vis.extensions.add(*self.system.astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)

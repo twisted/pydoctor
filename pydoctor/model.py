@@ -676,7 +676,7 @@ class System:
 
         # Initialize the extension system
         self.factory = factory.Factory()
-        self.astbuilder_visitors: Set[Union['astutils.NodeVisitorExt', Type['astutils.NodeVisitorExt']]] = set()
+        self.astbuilder_visitors: Set[Type['astutils.NodeVisitorExt']] = set()
         self.post_processors: Set[Callable[['System'], None]] = set()
         
         # workaround cyclic import issue

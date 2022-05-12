@@ -4,7 +4,7 @@ General purpose visitor pattern implementation, with extensions.
 from collections import defaultdict
 import enum
 import abc
-from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar
 
 T = TypeVar("T")
 
@@ -188,7 +188,7 @@ class ExtList(Generic[T]):
     This class helps iterating on visitor extensions that should run at different times.
     """
 
-    def __init__(self, *extensions: Union['VisitorExt[T]', Type['VisitorExt[T]']]) -> None:
+    def __init__(self, *extensions: Type['VisitorExt[T]']) -> None:
         """
         Initialize the extensions container.
 
@@ -197,22 +197,17 @@ class ExtList(Generic[T]):
         self._visitors: Dict[When, List['VisitorExt[T]']] = defaultdict(list)
         self.add(*extensions)
 
-    def add(self, *extensions: Union['VisitorExt[T]', Type['VisitorExt[T]']]) -> None:
+    def add(self, *extensions: Type['VisitorExt[T]']) -> None:
         """
         Add extensions to this container.
 
         :param extensions: The extensions to add.
         """
         for extension in extensions:
-            if isinstance(extension, type) and issubclass(extension, VisitorExt):
-              extension = extension()
-            if isinstance(extension, VisitorExt):
-              if extension.when == NotImplemented:
-                raise AttributeError(f'Class variable "when" must be set on visitor extension {type(extension)}')
-              self._visitors[extension.when].append(extension)
-            else:
-              raise TypeError(f"Visitor extensions must be an instance or a subclass of 'VisitorExtension', got '{extension!r}'")
-
+            assert isinstance(extension, type) and issubclass(extension, VisitorExt), f"Visitor extension must be a subclass of 'VisitorExt', got '{extension!r}'"
+            assert extension.when != NotImplemented, f'Class variable "when" must be set on visitor extension {type(extension)}'
+            self._visitors[extension.when].append(extension())
+            
     def attach_visitor(self, parent_visitor: 'CustomizableVisitor[T]') -> None:
         """
         Attach a parent visitor to the visitor extensions.

@@ -80,7 +80,7 @@ def test_implementer(systemcls: Type[model.System]) -> None:
     '''
     implements_test(src, systemcls)
 
-def implements_test(src: str, systemcls) -> None:
+def implements_test(src: str, systemcls: Type[model.System]) -> None:
     mod = fromText(src, modname='zi', systemcls=systemcls)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
