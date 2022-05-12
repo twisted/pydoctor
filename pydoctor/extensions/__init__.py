@@ -110,7 +110,7 @@ def _get_mixins(*mixins: Type[MixinT]) -> Dict[str, List[Type[MixinT]]]:
 @attr.s(auto_attribs=True)
 class ExtRegistrar:
     """
-    The extension registrar class provides utilites to register an extenion's components.
+    The extension registrar class provides utilites to register an extension's components.
     """
     system: model.System
 
