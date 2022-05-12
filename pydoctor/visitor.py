@@ -244,12 +244,13 @@ class VisitorExt(PartialVisitor[T]):
     Subclasses must define the `when` class variable, and any custom ``visit_*`` methods.
   
     All `_TreePruningException` raised in the main `Visitor.visit()` method will be 
-    delayed until extensions visitor ``visit()`` methods are run as well.
+    delayed until extensions visitor ``visit()`` and ``depart()`` methods are run as well.
 
     Meaning:
       - If the main module visitor raises `SkipNode`, the extension visitor set to run ``AFTER`` will still visit this node, but not it's children.
       - If your extension visitor is set to run ``BEFORE`` the main visitor and it raises `SkipNode`, the main visitor will not visit this node.
-
+      - If a L{SkipNode} or L{SkipDeparture} exception is raised inside the main visitor C{visit()} method,
+        the C{depart_*} method on the extensions will still be called.
     See: `When` 
     """
     
@@ -315,16 +316,45 @@ class CustomizableVisitor(Visitor[T]):
     if pruning:
       raise pruning
   
-  def depart(self, ob: T) -> None:
+  def depart(self, ob: T, extensions_only:bool=False) -> None:
     """Extend the base depart with extensions."""
     
     for v in self.extensions.before_visit + self.extensions.inner_visit:
       v.depart(ob)
     
-    super().depart(ob)
+    if not extensions_only:
+      super().depart(ob)
 
     for v in self.extensions.after_visit + self.extensions.outter_visit:
       v.depart(ob)
 
-    
-    
+  
+  def walkabout(self, ob: T) -> None:
+    """
+    Takes special care to handle  L{_TreePruningException} the following way:
+
+    - If a L{SkipNode} or L{SkipDeparture} exception is raised inside the main visitor C{visit()} method,
+      the C{depart_*} method on the extensions will still be called. 
+
+    :param ob: An object to walk.
+    """
+    call_depart = True
+    skip_node = False
+    try:
+      try:
+        self.visit(ob)
+      except self.SkipNode:
+        skip_node = True
+        call_depart = False
+      except self.SkipDeparture:           
+        call_depart = False
+      if not skip_node:
+        try:
+          for child in self.get_children(ob):
+              self.walkabout(child)
+        except self.SkipSiblings:
+          pass
+    except self.SkipChildren:
+      pass
+    self.depart(ob, extensions_only=not call_depart)
+  

@@ -66,20 +66,16 @@ class ModuleVisitor(astutils.NodeVisitorExt):
         assert isinstance(cls, model.Class)
         getDeprecated(cls, node.decorator_list)
 
-    def visit_FunctionDef(self, node:ast.FunctionDef) -> None:
+    def depart_FunctionDef(self, node:ast.FunctionDef) -> None:
         """
         Called after a function definition is visited.
         """
         try:
-            # Property
+            # Property or Function
             func = self.visitor.builder.current.contents[node.name]
         except KeyError:
-            if self.visitor.builder.current.name == node.name:
-                # Function
-                func = self.visitor.builder.current
-            else:
-                # Inner functions are ignored.
-                return
+            # Inner functions are ignored.
+            return
         assert isinstance(func, (model.Function, model.Attribute))
         getDeprecated(func, node.decorator_list)
 
