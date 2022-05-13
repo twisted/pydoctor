@@ -521,17 +521,23 @@ class Class(CanContainImportsDocumentable):
         self.subclasses: List[Class] = []
         self._mro: Optional[List[Union['Class', str]]] = None
     
+    def init_mro(self) -> None:
+        """
+        Compute the correct value of the method resolution order returned by L{mro()}.
+        """
+        try:
+            self._mro = compute_mro(self)
+        except ValueError as e:
+            self.report(str(e), 'mro')
+            self._mro = list(self.allbases(True))
+
     @overload
     def mro(self, include_external:'Literal[True]'=True) -> List[Union['Class', str]]:...
     @overload
     def mro(self, include_external:'Literal[False]') -> List['Class']:...
     def mro(self, include_external:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
         if self._mro is None:
-            try:
-                self._mro = compute_mro(self)
-            except ValueError as e:
-                self.report(str(e), 'mro')
-                self._mro = list(self.allbases(True))
+            return list(self.allbases(True))
         if include_external is False:
             return [o for o in self._mro if isinstance(o, Class)]
         else:
@@ -543,7 +549,8 @@ class Class(CanContainImportsDocumentable):
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
-        # Try the best as possible to avoid recursion error by checking 'is not self' and using _initialbaseobjects as a fallback.
+        # Try the best as possible to avoid recursion error by checking 'is not self' 
+        # and using _initialbaseobjects as a fallback.
         return [ob if isinstance(ob, Class) and ob is not self else self._initialbaseobjects[i] for i,ob in 
             enumerate([self.parent.resolveName(str_base) for str_base in self.rawbases])]
     
@@ -559,13 +566,7 @@ class Class(CanContainImportsDocumentable):
 
         @return: the object with the given name, or L{None} if there isn't one
         """
-        # Do not initialite the _mro attribute in find() if it's unset yet.
-        # Because find is used in resolveName() which is used anywhere basically.
-        # Here, we must wait for all the system to be processed before calling mro() on the classes.
-        # So we take special care to check if self._mro is None.
-        # TODO: To be really sure about MRO initialization, we should create a init_mro() method
-        # that would be called in post-process. Before that, the mro() attribute can return self.allbases(True).
-        for base in self.mro(False) if self._mro is not None else self.allbases(True):
+        for base in self.mro(False):
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
                 return obj
@@ -1208,8 +1209,9 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-        # default post-processing includes processing of subclasses
+        # default post-processing includes processing of subclasses and MRO computing.
         for cls in self.objectsOfType(Class):
+            cls.init_mro()
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
