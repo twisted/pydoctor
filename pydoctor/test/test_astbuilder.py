@@ -6,7 +6,7 @@ import astor
 
 # from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, astutils, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -1407,7 +1407,7 @@ def test_literal_string_annotation(annotation: str, expected: str) -> None:
     """Strings inside Literal annotations must not be recursively parsed."""
     stmt, = ast.parse(annotation).body
     assert isinstance(stmt, ast.Expr)
-    unstringed = astbuilder._AnnotationStringParser().visit(stmt.value)
+    unstringed = astutils._AnnotationStringParser().visit(stmt.value)
     assert astor.to_source(unstringed).strip() == expected
 
 @systemcls_param
@@ -2076,3 +2076,39 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_type_alias(systemcls: Type[model.System]) -> None:
+    """
+    """
+
+    mod = fromText(
+        '''
+        from typing import Callable, Tuple, TypeAlias, TypeVar
+        
+        T = TypeVar('T')
+        Parser = Callable[[str], Tuple[int, bytes, bytes]]
+        mylst = yourlst = list[str]
+        alist: TypeAlias = 'list[str]'
+        
+        notanalias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+
+        class F:
+            from ext import what
+            L = _j = what.some = list[str]
+            def __init__(self):
+                self.P: TypeAlias = 'Callable[[str], Tuple[int, bytes, bytes]]'
+                self.Q = q = list[str]
+        
+        ''', systemcls=systemcls)
+
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['F'].contents['P'].kind == model.DocumentableKind.TYPING_VAR

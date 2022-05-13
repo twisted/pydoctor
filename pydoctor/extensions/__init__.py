@@ -5,7 +5,7 @@ An extension can be composed by mixin classes, AST builder visitor extensions an
 """
 import importlib
 import sys
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, Union, cast
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Type, Union, TYPE_CHECKING, cast
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -14,8 +14,11 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
+if TYPE_CHECKING:
+    from pydoctor import astbuilder, model
+
 import attr
-from pydoctor import model, astutils, astbuilder
+from pydoctor import astutils
 
 class ClassMixin:
     """Base class for mixins applied to L{model.Class} objects."""
@@ -112,7 +115,7 @@ class ExtRegistrar:
     """
     The extension registrar class provides utilites to register an extension's components.
     """
-    system: model.System
+    system: 'model.System'
 
     def register_mixins(self, *mixins: Type[MixinT]) -> None:
         """
@@ -129,7 +132,7 @@ class ExtRegistrar:
         self.system.astbuilder_visitors.add(*visitors)
     
     def register_post_processor(self, 
-            *post_processor: Callable[[model.System], None]) -> None:
+            *post_processor: Callable[['model.System'], None]) -> None:
         """
         Register post processors. 
         A post-processor is simply a one-argument callable receiving 
@@ -155,4 +158,4 @@ class ModuleVisitorExt(astutils.NodeVisitorExt):
     Base class to extend the L{astbuilder.ModuleVistor}.
     """
     when = astutils.NodeVisitorExt.When.AFTER
-    visitor: astbuilder.ModuleVistor
+    visitor: 'astbuilder.ModuleVistor'
