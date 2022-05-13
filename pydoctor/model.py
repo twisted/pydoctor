@@ -492,11 +492,6 @@ class Class(CanContainImportsDocumentable):
     #       by Twisted's custom System class, to find deprecations.
     raw_decorators: Sequence[ast.expr]
 
-    auto_attribs: bool = False
-    """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
-    library to automatically convert annotated fields into attributes.
-    """
-
     def setup(self) -> None:
         super().setup()
         self.rawbases: List[str] = []
