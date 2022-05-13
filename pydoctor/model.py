@@ -536,6 +536,12 @@ class Class(CanContainImportsDocumentable):
     @overload
     def mro(self, include_external:'Literal[False]') -> List['Class']:...
     def mro(self, include_external:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
+        """
+        Get the method resution order of this class. 
+
+        @note: The actual correct value is only set in post-processing, if L{mro()} is called
+            in the AST visitors, it will return the same as C{list(self.allbases(True))}.
+        """
         if self._mro is None:
             return list(self.allbases(True))
         if include_external is False:
