@@ -158,11 +158,13 @@ def test_missing_variable() -> None:
 
 @pytest.mark.parametrize(
     'className',
-    ['NewClassThatMultiplyInherits', 'OldClassThatMultiplyInherits'],
+    ['NewClassThatMultiplyInherits', 
+     'OldClassThatMultiplyInherits',
+     'Diamond'],
 )
 def test_multipleInheritanceNewClass(className: str) -> None:
     """
-    A class that has multiple bases has all methods in its MRO
+    A getob(that has multiple bases has all methods in its MRO
     rendered.
     """
     system = processPackage("multipleinheritance")
@@ -173,10 +175,44 @@ def test_multipleInheritanceNewClass(className: str) -> None:
         if cls.name == className
     )
 
+    assert isinstance(cls, model.Class)
     html = getHTMLOf(cls)
 
     assert "methodA" in html
     assert "methodB" in html
+
+    getob = system.allobjects.get
+
+    if className == 'Diamond':
+        assert util.inherited_members(cls) == [
+            (
+                (getob('multipleinheritance.mod.Diamond'),),
+                [getob('multipleinheritance.mod.Diamond.newMethod')]
+            ),
+            (
+                (getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                 getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldClassThatMultiplyInherits.methodC')]
+            ),
+            (
+                (getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldBaseClassA.methodA')]),
+                ((getob('multipleinheritance.mod.OldBaseClassB'),
+                getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.OldBaseClassB.methodB')]),
+                ((getob('multipleinheritance.mod.CommonBase'),
+                getob('multipleinheritance.mod.NewBaseClassB'),
+                getob('multipleinheritance.mod.NewBaseClassA'),
+                getob('multipleinheritance.mod.NewClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.OldBaseClassB'),
+                getob('multipleinheritance.mod.OldBaseClassA'),
+                getob('multipleinheritance.mod.OldClassThatMultiplyInherits'),
+                getob('multipleinheritance.mod.Diamond')),
+                [getob('multipleinheritance.mod.CommonBase.fullName')]) ]
 
 def test_html_template_version() -> None:
     lookup = TemplateLookup(template_dir)

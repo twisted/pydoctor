@@ -20,6 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+"""
+C3 linearization algorithm.
+"""
+
 from collections import deque
 from itertools import islice
 from typing import Callable, List, Tuple, Optional, TypeVar

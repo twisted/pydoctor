@@ -482,11 +482,22 @@ class Package(Module):
     kind = DocumentableKind.PACKAGE
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
+    """Compute the method resolution order for this class."""
+    
+    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+        """
+        Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        """
+        for s,b in zip(o.bases, o.baseobjects):
+            if isinstance(b, Class):
+                yield b
+            else:
+                yield s
 
     def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
         if isinstance(o, str):
             return []
-        return list(o.localbases())
+        return list(localbases(o))
 
     return mro.mro(cls, getbases)
 
@@ -520,7 +531,7 @@ class Class(CanContainImportsDocumentable):
                 self._mro = compute_mro(self)
             except ValueError as e:
                 self.report(str(e), 'mro')
-                self._mro = list(self.recurselocalbases(True))
+                self._mro = list(self.allbases(True))
         if include_external is False:
             return [o for o in self._mro if isinstance(o, Class)]
         else:
@@ -542,27 +553,6 @@ class Class(CanContainImportsDocumentable):
         for b in self.baseobjects:
             if b is not None:
                 yield from b.allbases(True)
-    
-    def localbases(self, include_self: bool = False) -> Iterator[Union['Class', str]]:
-        """
-        Like L{baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
-        """
-        if include_self:
-            yield self
-        for i, b in enumerate(self.baseobjects):
-            if isinstance(b, Class):
-                yield b
-            else:
-                yield self.bases[i]
-
-    def recurselocalbases(self, include_self: bool = False) -> Iterator[Union['Class', str]]:
-        if include_self:
-            yield self
-        for b in self.localbases():
-            if isinstance(b, Class):
-                yield from b.localbases(include_self=True)
-            else:
-                yield b
 
     def find(self, name: str) -> Optional[Documentable]:
         """Look up a name in this class and its base classes.
@@ -573,6 +563,8 @@ class Class(CanContainImportsDocumentable):
         # Because find is used in resolveName() which is used anywhere basically.
         # Here, we must wait for all the system to be processed before calling mro() on the classes.
         # So we take special care to check if self._mro is None.
+        # TODO: To be really sure about MRO initialization, we should create a init_mro() method
+        # that would be called in post-process. Before that, the mro() attribute can return self.allbases(True).
         for base in self.mro(False) if self._mro is not None else self.allbases(True):
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:

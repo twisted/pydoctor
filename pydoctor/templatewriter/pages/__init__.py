@@ -382,11 +382,7 @@ class ClassPage(CommonPage):
             docgetter: Optional[util.DocGetter] = None
             ):
         super().__init__(ob, template_lookup, docgetter)
-        self.baselists = []
-        for baselist in util.nested_bases(self.ob):
-            attrs = util.unmasked_attrs(baselist)
-            if attrs:
-                self.baselists.append((baselist, attrs))
+        self.baselists = util.inherited_members(self.ob)
         self.overridenInCount = 0
 
     def extras(self) -> List[Tag]:

@@ -1,7 +1,7 @@
 """Miscellaneous utilities for the HTML writer."""
 
 import warnings
-from typing import (Any, Dict, Generic, Iterable, Iterator, Mapping, 
+from typing import (Any, Dict, Generic, Iterable, Iterator, List, Mapping, 
                     Optional, MutableMapping, Tuple, TypeVar, Union, Sequence)
 from pydoctor import epydoc2stan
 import collections.abc
@@ -65,7 +65,7 @@ def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
         - the next yielded chain contains the super class and the class itself, 
         - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
     """
-    _mro = classobj.mro(include_external=False)
+    _mro = classobj.mro(False)
     for i, _ in enumerate(_mro):
         yield tuple(reversed(_mro[:(i+1)]))
 
@@ -94,6 +94,29 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
                       key=objects_order)
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
+
+def inherited_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
+    """
+    Compute the inherited members of a class.
+
+    @returns: Tuples of tuple: C{inherited_via:Tuple[model.Class, ...], attributes:Sequence[model.Documentable]}.
+    """
+    baselists = []
+    for baselist in nested_bases(cls):
+        attrs = unmasked_attrs(baselist)
+        if attrs:
+            baselists.append((baselist, attrs))
+    return baselists
+
+def list_inherited_members(cls: model.Class) -> List[model.Documentable]:
+    """
+    Like L{inherited_members}, but returns a plain list.
+    """
+    
+    children : List[model.Documentable] = []
+    for _,attrs in inherited_members(cls):
+        children.extend(attrs)
+    return children
 
 def templatefile(filename: str) -> None:
     """Deprecated: can be removed once Twisted stops patching this."""

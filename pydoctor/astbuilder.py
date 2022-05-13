@@ -234,7 +234,11 @@ class ModuleVistor(NodeVisitor):
         for n in node.bases:
             str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
             rawbases.append(str_base)
-            initialbaseobjects.append(parent.resolveName(str_base))
+            baseobj = parent.resolveName(str_base)
+            if baseobj and not isinstance(baseobj, model.Class):
+                baseobj = None
+            initialbaseobjects.append(cast('Optional[model.Class]',baseobj))
+            
 
         lineno = node.lineno
         if node.decorator_list:

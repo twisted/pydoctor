@@ -189,7 +189,8 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
             assert isinstance(interface, ZopeInterfaceClass)
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.rawbases = interface._initialbaseobjects = []
+            interface.rawbases = []
+            interface._initialbaseobjects = []
             self.visitor.builder.popClass()
             self.visitor.builder.currentAttr = interface
 
