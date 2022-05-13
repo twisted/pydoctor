@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Improve the extensibility of pydoctor (`more infos <https://pydoctor.readthedocs.io/en/latest/customize.html#use-a-custom-system-class>`_)
 * Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
 * Add support for re-exporting names imported from a wildcard import.
