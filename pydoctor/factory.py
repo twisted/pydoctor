@@ -72,6 +72,17 @@ class Factory(GenericFactory):
         }
         super().__init__(bases=_bases)
 
+    def add_mixin(self, for_class: str, mixin: Type[Any]) -> None:
+        super().add_mixin(for_class, mixin)
+
+        # Take care to avoid inconsistent MRO by removing extra model.* classes from the Mixin bases.
+        try:
+            b = list(mixin.__bases__)
+            b.remove(getattr(self.model, for_class))
+            mixin.__bases__ = tuple(b)
+        except ValueError:
+            pass
+
     @property
     def Class(self) -> Type['model.Class']:
         klass = self.get_class('Class')
