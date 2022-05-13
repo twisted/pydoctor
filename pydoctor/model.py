@@ -493,8 +493,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    bases: List[str]
-    baseobjects: List[Optional['Class']]
+    _initialbaseobjects: List[Optional['Class']]
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
     # Note: While unused in pydoctor itself, raw_decorators is still in use
     #       by Twisted's custom System class, to find deprecations.
@@ -527,6 +526,15 @@ class Class(CanContainImportsDocumentable):
         else:
             return self._mro
 
+    @property
+    def bases(self) -> List[str]:
+        return [self.parent.expandName(str_base)for str_base in self.rawbases]
+    
+    @property
+    def baseobjects(self) -> List[Optional['Class']]:
+        # Try the best as possible to avoid recursion error by checking 'is not self' and using _initialbaseobjects as a fallback.
+        return [ob if isinstance(ob, Class) and ob is not self else self._initialbaseobjects[i] for i,ob in 
+            enumerate([self.parent.resolveName(str_base) for str_base in self.rawbases])]
     
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         if include_self:
@@ -561,7 +569,11 @@ class Class(CanContainImportsDocumentable):
 
         @return: the object with the given name, or L{None} if there isn't one
         """
-        for base in self.mro(False):
+        # Do not initialite the _mro attribute in find() if it's unset yet.
+        # Because find is used in resolveName() which is used anywhere basically.
+        # Here, we must wait for all the system to be processed before calling mro() on the classes.
+        # So we take special care to check if self._mro is None.
+        for base in self.mro(False) if self._mro is not None else self.allbases(True):
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
                 return obj
@@ -1050,8 +1062,6 @@ class System:
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)
-                c.bases = []
-                c.baseobjects = []
                 c.rawbases = []
                 c.parentMod = parentMod
                 c.docstring = v.__doc__
@@ -1206,6 +1216,12 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
+        # default post-processing includes processing of subclasses
+        for cls in self.objectsOfType(Class):
+            for b in cls.baseobjects:
+                if b is not None:
+                    b.subclasses.append(cls)
+
         for post_processor in self.post_processors:
             post_processor(self)
 

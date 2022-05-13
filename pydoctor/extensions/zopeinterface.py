@@ -182,15 +182,14 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
             return
         ob = self.visitor.system.objForFullName(funcName)
         if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
-            # TODO: Process 'bases' and '__doc__' arguments.
+            # TODO: Process 'rawbases' and '__doc__' arguments.
             # TODO: Currently, this implementation will create a duplicate class 
             # with the same name as the attribute, overriding it.
             interface = self.visitor.builder.pushClass(target, lineno)
             assert isinstance(interface, ZopeInterfaceClass)
             interface.isinterface = True
             interface.implementedby_directly = []
-            interface.bases = []
-            interface.baseobjects = []
+            interface.rawbases = interface._initialbaseobjects = []
             self.visitor.builder.popClass()
             self.visitor.builder.currentAttr = interface
 
