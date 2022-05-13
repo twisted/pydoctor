@@ -65,12 +65,10 @@ def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
         - the next yielded chain contains the super class and the class itself, 
         - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
     """
-    yield (classobj,)
-    for base in classobj.baseobjects:
-        if base is None:
-            continue
-        for nested_base in nested_bases(base):
-            yield (nested_base + (classobj,))
+    _mro = classobj.mro(include_external=False)
+    for i, _ in enumerate(_mro):
+        yield tuple(reversed(_mro[:(i+1)]))
+
 
 def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentable]:
     """

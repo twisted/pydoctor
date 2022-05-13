@@ -25,7 +25,7 @@ from typing import (
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import factory, qnmatch, utils, linker, astutils
+from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -481,6 +481,14 @@ class Module(CanContainImportsDocumentable):
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+def compute_mro(cls:'Class') -> List[Union['Class', str]]:
+
+    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
+        if isinstance(o, str):
+            return []
+        return list(o.localbases())
+
+    return mro.mro(cls, getbases)
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
@@ -501,20 +509,59 @@ class Class(CanContainImportsDocumentable):
         super().setup()
         self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
+        self._mro: Optional[List[Union['Class', str]]] = None
+    
+    @overload
+    def mro(self, include_external:'Literal[True]'=True) -> List[Union['Class', str]]:...
+    @overload
+    def mro(self, include_external:'Literal[False]') -> List['Class']:...
+    def mro(self, include_external:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
+        if self._mro is None:
+            try:
+                self._mro = compute_mro(self)
+            except ValueError as e:
+                self.report(str(e), 'mro')
+                self._mro = list(self.recurselocalbases(True))
+        if include_external is False:
+            return [o for o in self._mro if isinstance(o, Class)]
+        else:
+            return self._mro
 
+    
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         if include_self:
             yield self
         for b in self.baseobjects:
             if b is not None:
                 yield from b.allbases(True)
+    
+    def localbases(self, include_self: bool = False) -> Iterator[Union['Class', str]]:
+        """
+        Like L{baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        """
+        if include_self:
+            yield self
+        for i, b in enumerate(self.baseobjects):
+            if isinstance(b, Class):
+                yield b
+            else:
+                yield self.bases[i]
+
+    def recurselocalbases(self, include_self: bool = False) -> Iterator[Union['Class', str]]:
+        if include_self:
+            yield self
+        for b in self.localbases():
+            if isinstance(b, Class):
+                yield from b.localbases(include_self=True)
+            else:
+                yield b
 
     def find(self, name: str) -> Optional[Documentable]:
         """Look up a name in this class and its base classes.
 
         @return: the object with the given name, or L{None} if there isn't one
         """
-        for base in self.allbases(include_self=True):
+        for base in self.mro(False):
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
                 return obj
@@ -554,7 +601,7 @@ class Inheritable(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.allbases(include_self=False):
+        for b in self.parent.mro(False):
             if self.name in b.contents:
                 yield b.contents[self.name]
 

@@ -469,7 +469,7 @@ class ClassPage(CommonPage):
         page_url = self.page_url
         name = ob.name
         r: List[Tag] = []
-        for b in self.ob.allbases(include_self=False):
+        for b in self.ob.mro(False):
             if name not in b.contents:
                 continue
             overridden = b.contents[name]
@@ -513,7 +513,7 @@ class ZopeInterfaceClassPage(ClassPage):
             if interface in system.allobjects:
                 io = system.allobjects[interface]
                 assert isinstance(io, zopeinterface.ZopeInterfaceClass)
-                for io2 in io.allbases(include_self=True):
+                for io2 in io.mro(False):
                     method: Optional[model.Documentable] = io2.contents.get(methname)
                     if method is not None:
                         return method
