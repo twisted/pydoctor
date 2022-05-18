@@ -1203,7 +1203,7 @@ class ASTBuilder:
                 module_var_parser(node, mod)
 
         vis = self.ModuleVistor(self, mod)
-        vis.extensions.add(*self.system.astbuilder_visitors)
+        vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 

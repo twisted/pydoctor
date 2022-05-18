@@ -120,14 +120,14 @@ class ExtRegistrar:
         Register mixin for model objects. Mixins shoud extend one of the 
         base mixin classes in L{pydoctor.extensions} module, i.e. L{ClassMixin} or L{DocumentableMixin}, etc.
         """
-        self.system.factory.add_mixins(**_get_mixins(*mixin))
+        self.system._factory.add_mixins(**_get_mixins(*mixin))
 
     def register_astbuilder_visitor(self, 
             *visitor: Type[astutils.NodeVisitorExt]) -> None:
         """
         Register AST visitor(s). Typically visitor extensions inherits from L{ModuleVisitorExt}.
         """
-        self.system.astbuilder_visitors.add(*visitor)
+        self.system._astbuilder_visitors.extend(visitor)
     
     def register_post_processor(self, 
             *post_processor: Callable[[model.System], None]) -> None:
@@ -137,7 +137,7 @@ class ExtRegistrar:
         A post-processor is simply a one-argument callable receiving 
         the processed L{model.System} and doing stuff on the L{model.Documentable} tree.
         """
-        self.system.post_processors.add(*post_processor)
+        self.system._post_processors.extend(post_processor)
 
 def load_extension_module(system:'model.System', mod: str) -> None:
     """
