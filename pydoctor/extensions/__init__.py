@@ -79,6 +79,7 @@ def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistra
 _mixin_to_class_name: Dict[Any, str] = {
         ClassMixin: 'Class',
         ModuleMixin: 'Module',
+        PackageMixin: 'Package',
         FunctionMixin: 'Function',
         AttributeMixin: 'Attribute',
     }
