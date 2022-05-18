@@ -346,9 +346,9 @@ def postProcess(self:model.System) -> None:
         _handle_implemented(cls)
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_mixins(ZopeInterfaceModule, 
+    r.register_mixin(ZopeInterfaceModule, 
                       ZopeInterfaceFunction, 
                       ZopeInterfaceClass, 
                       ZopeInterfaceAttribute)
-    r.register_astbuilder_visitors(ZopeInterfaceModuleVisitor)
+    r.register_astbuilder_visitor(ZopeInterfaceModuleVisitor)
     r.register_post_processor(postProcess)

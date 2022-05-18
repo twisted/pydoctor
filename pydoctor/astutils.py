@@ -26,7 +26,7 @@ def iter_values(node: ast.AST) -> Iterator[ast.AST]:
 
 class NodeVisitor(visitor.PartialVisitor[ast.AST]):
     """
-    Generic AST node visitor. This class does not work like L{ast.NoseVisitor}, 
+    Generic AST node visitor. This class does not work like L{ast.NodeVisitor}, 
     it only visits statements directly within a C{B{body}}. Also, visitor methods can't return anything.
 
     :See: L{visitor} for more informations.
