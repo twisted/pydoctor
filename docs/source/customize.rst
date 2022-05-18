@@ -210,7 +210,7 @@ Then, we would pass our custom class dotted name with the argument ``--system-cl
 Et voilà.
 
 If this extension mechanism doesn't support the tweak you want, you can consider overriding some
-:py:class`pydoctor.model.System` methods. For instance, overriding :py:meth`pydoctor.model.System.__init__` method could be useful, 
+:py:class:`pydoctor.model.System` methods. For instance, overriding :py:meth:`pydoctor.model.System.__init__` method could be useful, 
 if some want to write a custom :py:class:`pydoctor.sphinx.SphinxInventory`.
 
 
