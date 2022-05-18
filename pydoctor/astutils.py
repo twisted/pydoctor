@@ -25,16 +25,29 @@ def iter_values(node: ast.AST) -> Iterator[ast.AST]:
             yield value
 
 class NodeVisitor(visitor.PartialVisitor[ast.AST]):
-    # @classmethod
-    # def get_children(cls, node: ast.AST) -> Iterable[ast.AST]:
-    #     return iter_values(node)
+    """
+    Generic AST node visitor. This class does not work like L{ast.NoseVisitor}, 
+    it only visits statements directly within a C{B{body}}. Also, visitor methods can't return anything.
+
+    :See: L{visitor} for more informations.
+    """
     def generic_visit(self, node: ast.AST) -> None:
+        """
+        Helper method to visit a node by calling C{visit()} on each child of the node. 
+        This is useful because this vistitor only visits statements inside C{.body} attribute. 
+        
+        So if one wants to visit L{ast.Expr} children with their visitor, they should include::
+
+            def visit_Expr(self, node:ast.Expr):
+                self.generic_visit(node)
+        """
         for v in iter_values(node):
             self.visit(v)
+    
     @classmethod
     def get_children(cls, node: ast.AST) -> Iterable[ast.AST]:
         """
-        Visit the nested nodes in the body of a node.
+        Returns the nested nodes in the body of a node.
         """
         body: Optional[Sequence[ast.AST]] = getattr(node, 'body', None)
         if body is not None:
