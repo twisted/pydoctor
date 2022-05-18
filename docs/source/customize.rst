@@ -114,6 +114,9 @@ and pass your custom class dotted name with the following argument::
   --system-class=mylib._pydoctor.CustomSystem
 
 System class allows you to customize certain aspect of the system and configure the enabled extensions. 
+If what you want to acheive has something to to with the state of some objects in the Documentable tree, 
+it's vert likely that you can do it without the need to override any system method, 
+by using the extension mechanism described below.
 
 Brief on pydoctor extensions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -125,10 +128,10 @@ Each pydocotor extension is a Python module with at least a ``setup_pydoctor_ext
 This function is called at initialization of the system with one argument, 
 the :py:class:`pydoctor.extensions.ExtRegistrar` object representing the system.
 
-An extension module can be composed by:
- - AST visitors (see :py:meth:`pydoctor.extensions.ExtRegistrar.register_astbuilder_visitors`)
- - Mixin classes to be applied to :py:class:`pydoctor.model.Documentable` subclasses (see :py:meth:`pydoctor.extensions.ExtRegistrar.register_mixins`)
- - Post processors (see :py:meth:`pydoctor.extensions.ExtRegistrar.register_post_processor`)
+An extension can register multiple kinds of components:
+ - AST builder visitors
+ - Mixin classes for :py:class:`pydoctor.model.Documentable`
+ - Post processors
 
 Take a look at built-in extensions :py:mod:`pydoctor.extensions.zopeinterface` and  :py:mod:`pydoctor.extensions.deprecate`. 
 Navigate to the source code for a better overview.
@@ -197,6 +200,7 @@ transform each class variable into instance variables accordingly.
         r.register_astbuilder_visitors(PydanticModVisitor)
 
     class PydanticSystem(model.System):
+        # Declare that this system should load this additional extension
         custom_extensions = ['mylib._pydoctor']
 
 Then, we would pass our custom class dotted name with the argument ``--system-class``::
@@ -205,6 +209,11 @@ Then, we would pass our custom class dotted name with the argument ``--system-cl
 
 Et voilà.
 
+If this extension mechanism doesn't support the tweak you want, you can consider overriding some
+:py:class`pydoctor.model.System` methods. For instance, overriding :py:meth`pydoctor.model.System.__init__` method could be useful, 
+if some want to write a custom :py:class:`pydoctor.sphinx.SphinxInventory`.
+
+
 .. important:: 
     If you feel like other users of the community might benefit from your extension as well, please 
     don't hesitate to open a pull request adding your extension module to the package :py:mod:`pydoctor.extensions`.
@@ -212,11 +221,14 @@ Et voilà.
 Use a custom writer class
 -------------------------
 
-You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter`
+You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter` (or the abstract super class :py:class:`pydoctor.templatewriter.IWriter`)
 and pass your custom class dotted name with the following argument::
 
+  --html-writer=mylib._pydoctor.CustomTemplateWriter
 
-  --html-class=mylib._pydoctor.CustomTemplateWriter
+The option is actually badly named because, theorically one could write a subclass 
+of :py:class:`pydoctor.templatewriter.IWriter` (to be used alongside option ``--template-dir``) 
+that would output Markdown, reStructuredText or JSON.
 
 .. warning:: Pydoctor does not have a stable API yet. Code customization is prone
     to break in future versions.
