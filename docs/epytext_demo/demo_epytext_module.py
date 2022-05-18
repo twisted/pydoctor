@@ -6,7 +6,7 @@ Most part of this documentation is using Python type hinting.
 
 from abc import ABC
 import math
-from typing import AnyStr, Dict, Generator, List, Union, TYPE_CHECKING
+from typing import AnyStr, Dict, Generator, List, Union, Callable, Tuple, TYPE_CHECKING
 from somelib import SomeInterface
 import zope.interface
 import zope.schema
@@ -16,6 +16,11 @@ from twisted.python.deprecate import deprecated, deprecatedProperty
 
 if TYPE_CHECKING:
     from typing_extensions import Final
+
+Parser = Callable[[str], Tuple[int, bytes, bytes]]
+"""
+Type aliases are documented with the 'Type' kind and their value is shown just like constants.
+"""
 
 LANG = 'Fr'
 """

@@ -4,15 +4,21 @@ This is a module demonstrating reST code documentation features.
 Most part of this documentation is using Python type hinting.
 """
 from abc import ABC
+from ast import Tuple
 import math
 import zope.interface
 import zope.schema
-from typing import Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
+from typing import Callable, Sequence, Optional, AnyStr, Generator, Union, List, Dict, TYPE_CHECKING
 from incremental import Version
 from twisted.python.deprecate import deprecated, deprecatedProperty
 
 if TYPE_CHECKING:
     from typing_extensions import Final
+
+Parser = Callable[[str], Tuple[int, bytes, bytes]]
+"""
+Type aliases are documented with the 'Type' kind and their value is shown just like constants.
+"""
 
 LANG = 'Fr'
 """
