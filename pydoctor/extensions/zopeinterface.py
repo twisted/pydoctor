@@ -256,7 +256,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
                         dottedname[0], node.value, node.lineno
                     )
         
-    def visit_Assign(self, node: ast.Assign) -> None:
+    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
         self._handleZopeInterfaceAssignment(node)
     visit_AnnAssign = visit_Assign
 
