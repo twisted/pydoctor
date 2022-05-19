@@ -1,24 +1,48 @@
 
-from typing import Optional, Tuple, Type, overload, cast
+from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
 
-from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model, deprecate
+from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
-from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
+class SimpleSystem(model.System):
+    """
+    A system with no extensions.
+    """
+    extensions:List[str] = []
+
+class ZopeInterfaceSystem(model.System):
+    """
+    A system with only the zope interface extension enabled.
+    """
+    extensions = ['pydoctor.extensions.zopeinterface']
+
+class DeprecateSystem(model.System):
+    """
+    A system with only the twisted deprecated extension enabled.
+    """
+    extensions = ['pydoctor.extensions.deprecate']
+
+class PydanticSystem(model.System):
+    # Add our custom extension as extra
+    custom_extensions = ['pydoctor.test.test_pydantic_fields']
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
+    'systemcls', (model.System, # system with all extensions enalbed
+                  ZopeInterfaceSystem, # system with zopeinterface extension only
+                  DeprecateSystem, # system with deprecated extension only
+                  SimpleSystem, # system with no extensions
+                  PydanticSystem,
+                 )
     )
 
 def fromText(

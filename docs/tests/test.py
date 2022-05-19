@@ -180,7 +180,13 @@ def test_lunr_index() -> None:
         test_search('+qname:pydoctor', ['pydoctor'])
         test_search('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan'])
         test_search('_colorize_re_pattern', ['pydoctor.epydoc.markup._pyval_repr.PyvalColorizer._colorize_re_pattern'])
-        test_search('+name:Class', ['pydoctor.model.Class', 'pydoctor.model.DocumentableKind.CLASS'])
+        
+        test_search('+name:Class', 
+            ['pydoctor.model.Class', 
+             'pydoctor.factory.Factory.Class',
+             'pydoctor.model.DocumentableKind.CLASS',
+             'pydoctor.model.System.Class'])
+        
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
@@ -213,7 +219,7 @@ def test_pydoctor_test_is_hidden():
     """
 
     def getText(node: ET.Element) -> str:
-        return ''.join(node.itertext()).strip().replace('\u200b', '')
+        return ''.join(node.itertext()).strip()
 
     with open(BASE_DIR / 'api' / 'all-documents.html', 'r', encoding='utf-8') as stream:
         document = ET.fromstring(stream.read())

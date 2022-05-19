@@ -108,25 +108,127 @@ Privacy tweak examples
 Use a custom system class
 -------------------------
 
-You can subclass the :py:class:`pydoctor.zopeinterface.ZopeInterfaceSystem`
+You can subclass the :py:class:`pydoctor.model.System`
 and pass your custom class dotted name with the following argument::
 
   --system-class=mylib._pydoctor.CustomSystem
 
-System class allows you to dynamically show/hide classes or methods.
-This is also used by the Twisted project to handle deprecation.
+System class allows you to customize certain aspect of the system and configure the enabled extensions. 
+If what you want to achieve has something to do with the state of some objects in the Documentable tree, 
+it's very likely that you can do it without the need to override any system method, 
+by using the extension mechanism described below.
 
-See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation.
+Brief on pydoctor extensions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The AST builder can now be customized with extension modules.
+This is how we handle Zope Interfaces declarations and :py:mod:`twisted.python.deprecate` warnings.
+
+Each pydocotor extension is a Python module with at least a ``setup_pydoctor_extension()`` function. 
+This function is called at initialization of the system with one argument, 
+the :py:class:`pydoctor.extensions.ExtRegistrar` object representing the system.
+
+An extension can register multiple kind of components:
+ - AST builder visitors
+ - Mixin classes for :py:class:`pydoctor.model.Documentable`
+ - Post processors
+
+Take a look at built-in extensions :py:mod:`pydoctor.extensions.zopeinterface` and  :py:mod:`pydoctor.extensions.deprecate`. 
 Navigate to the source code for a better overview.
+
+A concrete example
+^^^^^^^^^^^^^^^^^^
+
+Let's say you want to write a extension for simple pydantic classes like this one:
+
+.. code:: python
+
+    from typing import ClassVar
+    from pydantic import BaseModel
+    class Model(BaseModel):
+        a: int
+        b: int = Field(...)
+        name:str = 'Jane Doe'
+        kind:ClassVar = 'person'
+        
+
+First, we need to create a new module that will hold our extension code: ``mylib._pydoctor``. 
+This module will contain visitor code that visits ``ast.AnnAssign`` nodes after the main visitor. 
+It will check if the current context object is a class derived from ``pydantic.BaseModel`` and 
+transform each class variable into instance variables accordingly.
+
+.. code:: python
+
+    # Module mylib._pydoctor
+
+    import ast
+    from pydoctor import astutils, extensions, model
+
+    class PydanticModVisitor(extensions.ModuleVisitorExt):
+
+        def depart_AnnAssign(self, node: ast.AnnAssign) -> None:
+            """
+            Called after an annotated assignment definition is visited.
+            """
+            ctx = self.visitor.builder.current
+            if not isinstance(ctx, model.Class):
+                # check if the current context object is a class
+                return
+
+            if not any(ctx.expandName(b) == 'pydantic.BaseModel' for b in ctx.bases):
+                # check if the current context object if a class derived from ``pydantic.BaseModel``
+                return
+
+            dottedname = astutils.node2dottedname(node.target)
+            if not dottedname or len(dottedname)!=1:
+                # check if the assignment is a simple name, otherwise ignore it
+                return
+            
+            # Get the attribute from current context
+            attr = ctx.contents[dottedname[0]]
+
+            assert isinstance(attr, model.Attribute)
+
+            # All class variables that are not annotated with ClassVar will be transformed to instance variables.
+            if astutils.is_using_typing_classvar(attr.annotation, attr):
+                return
+
+            if attr.kind == model.DocumentableKind.CLASS_VARIABLE:
+                attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+
+    def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+        r.register_astbuilder_visitors(PydanticModVisitor)
+
+    class PydanticSystem(model.System):
+        # Declare that this system should load this additional extension
+        custom_extensions = ['mylib._pydoctor']
+
+Then, we would pass our custom class dotted name with the argument ``--system-class``::
+
+  --system-class=mylib._pydoctor.PydanticSystem
+
+Et voilà.
+
+If this extension mechanism doesn't support the tweak you want, you can consider overriding some
+:py:class:`pydoctor.model.System` methods. For instance, overriding :py:meth:`pydoctor.model.System.__init__` method could be useful, 
+if some want to write a custom :py:class:`pydoctor.sphinx.SphinxInventory`.
+
+
+.. important:: 
+    If you feel like other users of the community might benefit from your extension as well, please 
+    don't hesitate to open a pull request adding your extension module to the package :py:mod:`pydoctor.extensions`.
 
 Use a custom writer class
 -------------------------
 
-You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter`
+You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter` (or the abstract super class :py:class:`pydoctor.templatewriter.IWriter`)
 and pass your custom class dotted name with the following argument::
 
+  --html-writer=mylib._pydoctor.CustomTemplateWriter
 
-  --html-class=mylib._pydoctor.CustomTemplateWriter
+The option is actually badly named because, theorically one could write a subclass 
+of :py:class:`pydoctor.templatewriter.IWriter` (to be used alongside option ``--template-dir``) 
+that would output Markdown, reStructuredText or JSON.
 
 .. warning:: Pydoctor does not have a stable API yet. Code customization is prone
     to break in future versions.

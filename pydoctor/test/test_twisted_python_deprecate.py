@@ -1,14 +1,24 @@
 
 import re
-from pydoctor import deprecate
+from typing import Type
+
+from pydoctor import model
 from pydoctor.stanutils import flatten_text, html2stan
 from pydoctor.test import CapSys, test_templatewriter
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, DeprecateSystem
+
+import pytest
 
 _html_template_with_replacement = r'(.*){name} was deprecated in {package} {version}; please use {replacement} instead\.(.*)'
 _html_template_without_replacement = r'(.*){name} was deprecated in {package} {version}\.(.*)'
 
-def test_twisted_python_deprecate(capsys: CapSys) -> None:
+twisted_deprecated_systemcls_param = pytest.mark.parametrize(
+    'systemcls', (model.System, # system with all extensions enabled
+                  DeprecateSystem, # system with deprecated extension only
+                 )
+    )
+@twisted_deprecated_systemcls_param
+def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     It recognizes Twisted deprecation decorators and add the
     deprecation info as part of the documentation.
@@ -16,7 +26,7 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
 
     # Adjusted from Twisted's tests at
     # https://github.com/twisted/twisted/blob/3bbe558df65181ed455b0c5cc609c0131d68d265/src/twisted/python/test/test_release.py#L516
-    system = deprecate.System()
+    system = systemcls()
     system.options.verbosity = -1
     
     mod = fromText(
@@ -46,10 +56,8 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
     mod_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod)))
     class_html_text = flatten_text(html2stan(test_templatewriter.getHTMLOf(mod.contents['Baz'])))
 
-    assert not capsys.readouterr().out
+    assert capsys.readouterr().out == ''
 
-    
-    
     assert 'docstring' in mod_html_text
     assert 'should appear' in mod_html_text
 
@@ -74,8 +82,9 @@ def test_twisted_python_deprecate(capsys: CapSys) -> None:
         name='foom', package='Twisted', version=r'NEXT', replacement='faam'
     ), class_html_text, re.DOTALL), class_html_text
 
-def test_twisted_python_deprecate_security(capsys: CapSys) -> None:
-    system = deprecate.System()
+@twisted_deprecated_systemcls_param
+def test_twisted_python_deprecate_security(capsys: CapSys, systemcls: Type[model.System]) -> None:
+    system = systemcls()
     system.options.verbosity = -1
     
     mod = fromText(
@@ -95,11 +104,12 @@ mod:6: Invalid replacement name: '\\n.. raw:: html\\n\\n   <script>alert(1)</scr
 ''', capsys.readouterr().out
     assert '<script>alert(1)</script>' not in mod_html
 
-def test_twisted_python_deprecate_corner_cases(capsys: CapSys) -> None:
+@twisted_deprecated_systemcls_param
+def test_twisted_python_deprecate_corner_cases(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     It does not crash and report appropriate warnings while handling Twisted deprecation decorators.
     """
-    system = deprecate.System()
+    system = systemcls()
     system.options.verbosity = -1
     
     mod = fromText(

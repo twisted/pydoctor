@@ -19,13 +19,13 @@ from enum import Enum
 from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterator, List, Mapping,
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterator, List, Mapping,
     Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import qnmatch, utils, linker
+from pydoctor import factory, qnmatch, utils, linker, astutils
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -615,7 +615,7 @@ if hasattr(types, "ClassMethodDescriptorType"):
 else:
     func_types += (type(dict.__dict__["fromkeys"]), )
 
-
+_default_extensions = object()
 class System:
     """A collection of related documentable objects.
 
@@ -623,17 +623,23 @@ class System:
     package.
     """
 
-    Class = Class
-    Module = Module
-    Package = Package
-    Function = Function
-    Attribute = Attribute
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
     systemBuilder: Type['ISystemBuilder']
     options: 'Options'
+    extensions: List[str] = cast('List[str]', _default_extensions)
+    """
+    List of extensions.
 
+    By default, all built-in pydoctor extensions will be loaded.
+    Override this value to cherry-pick extensions. 
+    """
+
+    custom_extensions: List[str] = []
+    """
+    Additional list of extensions to load alongside default extensions.
+    """
 
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
@@ -674,7 +680,38 @@ class System:
         # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
         # this way, we are sure the objects' privacy stay true even if we reparent them manually.
         self._privacyClassCache: Dict[str, PrivacyClass] = {}
+        
+        # workaround cyclic import issue
+        from pydoctor import extensions
 
+        # Initialize the extension system
+        self._factory = factory.Factory()
+        self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
+        self._post_processors: List[Callable[['System'], None]] = []
+        
+        if self.extensions == _default_extensions:
+            self.extensions = list(extensions.get_extensions())
+        assert isinstance(self.extensions, list)
+        assert isinstance(self.custom_extensions, list)
+        for ext in self.extensions + self.custom_extensions:
+            # Load extensions
+            extensions.load_extension_module(self, ext)
+
+    @property
+    def Class(self) -> Type['Class']:
+        return self._factory.Class
+    @property
+    def Function(self) -> Type['Function']:
+        return self._factory.Function
+    @property
+    def Module(self) -> Type['Module']:
+        return self._factory.Module
+    @property
+    def Package(self) -> Type['Package']:
+        return self._factory.Package
+    @property
+    def Attribute(self) -> Type['Attribute']:
+        return self._factory.Attribute
 
     @property
     def sourcebase(self) -> Optional[str]:
@@ -1125,7 +1162,8 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-        pass
+        for post_processor in self._post_processors:
+            post_processor(self)
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
