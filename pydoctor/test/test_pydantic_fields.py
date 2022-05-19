@@ -35,7 +35,7 @@ class ModVisitor(extensions.ModuleVisitorExt):
             attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_astbuilder_visitors(ModVisitor)
+    r.register_astbuilder_visitor(ModVisitor)
 
 class PydanticSystem2(model.System):
     # Add our custom extension

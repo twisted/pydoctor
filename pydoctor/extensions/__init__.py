@@ -79,6 +79,7 @@ def _get_setup_extension_func_from_module(module: str) -> Callable[['ExtRegistra
 _mixin_to_class_name: Dict[Any, str] = {
         ClassMixin: 'Class',
         ModuleMixin: 'Module',
+        PackageMixin: 'Package',
         FunctionMixin: 'Function',
         AttributeMixin: 'Attribute',
     }
@@ -114,28 +115,29 @@ class ExtRegistrar:
     """
     system: model.System
 
-    def register_mixins(self, *mixins: Type[MixinT]) -> None:
+    def register_mixin(self, *mixin: Type[MixinT]) -> None:
         """
-        Register mixin classes for model objects. Mixins shoud extend one of the 
+        Register mixin for model objects. Mixins shoud extend one of the 
         base mixin classes in L{pydoctor.extensions} module, i.e. L{ClassMixin} or L{DocumentableMixin}, etc.
         """
-        self.system.factory.add_mixins(**_get_mixins(*mixins))
+        self.system._factory.add_mixins(**_get_mixins(*mixin))
 
-    def register_astbuilder_visitors(self, 
-            *visitors: Type[astutils.NodeVisitorExt]) -> None:
+    def register_astbuilder_visitor(self, 
+            *visitor: Type[astutils.NodeVisitorExt]) -> None:
         """
-        Register AST visitor extensions. Typically visitor extensions inherits from L{ModuleVisitorExt}.
+        Register AST visitor(s). Typically visitor extensions inherits from L{ModuleVisitorExt}.
         """
-        self.system.astbuilder_visitors.add(*visitors)
+        self.system._astbuilder_visitors.extend(visitor)
     
     def register_post_processor(self, 
             *post_processor: Callable[[model.System], None]) -> None:
         """
-        Register post processors. 
+        Register post processor(s).
+         
         A post-processor is simply a one-argument callable receiving 
         the processed L{model.System} and doing stuff on the L{model.Documentable} tree.
         """
-        self.system.post_processors.add(*post_processor)
+        self.system._post_processors.extend(post_processor)
 
 def load_extension_module(system:'model.System', mod: str) -> None:
     """

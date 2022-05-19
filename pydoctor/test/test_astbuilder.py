@@ -4,7 +4,6 @@ import ast
 
 import astor
 
-# from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring

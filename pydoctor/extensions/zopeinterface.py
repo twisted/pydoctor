@@ -256,7 +256,7 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
                         dottedname[0], node.value, node.lineno
                     )
         
-    def visit_Assign(self, node: ast.Assign) -> None:
+    def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
         self._handleZopeInterfaceAssignment(node)
     visit_AnnAssign = visit_Assign
 
@@ -346,9 +346,9 @@ def postProcess(self:model.System) -> None:
         _handle_implemented(cls)
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_mixins(ZopeInterfaceModule, 
+    r.register_mixin(ZopeInterfaceModule, 
                       ZopeInterfaceFunction, 
                       ZopeInterfaceClass, 
                       ZopeInterfaceAttribute)
-    r.register_astbuilder_visitors(ZopeInterfaceModuleVisitor)
+    r.register_astbuilder_visitor(ZopeInterfaceModuleVisitor)
     r.register_post_processor(postProcess)
