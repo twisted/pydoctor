@@ -13,7 +13,7 @@ _html_template_with_replacement = r'(.*){name} was deprecated in {package} {vers
 _html_template_without_replacement = r'(.*){name} was deprecated in {package} {version}\.(.*)'
 
 twisted_deprecated_systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, # system with all extensions enalbed
+    'systemcls', (model.System, # system with all extensions enabled
                   DeprecateSystem, # system with deprecated extension only
                  )
     )

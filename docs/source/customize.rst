@@ -114,8 +114,8 @@ and pass your custom class dotted name with the following argument::
   --system-class=mylib._pydoctor.CustomSystem
 
 System class allows you to customize certain aspect of the system and configure the enabled extensions. 
-If what you want to acheive has something to to with the state of some objects in the Documentable tree, 
-it's vert likely that you can do it without the need to override any system method, 
+If what you want to achieve has something to do with the state of some objects in the Documentable tree, 
+it's very likely that you can do it without the need to override any system method, 
 by using the extension mechanism described below.
 
 Brief on pydoctor extensions
@@ -128,7 +128,7 @@ Each pydocotor extension is a Python module with at least a ``setup_pydoctor_ext
 This function is called at initialization of the system with one argument, 
 the :py:class:`pydoctor.extensions.ExtRegistrar` object representing the system.
 
-An extension can register multiple kinds of components:
+An extension can register multiple kind of components:
  - AST builder visitors
  - Mixin classes for :py:class:`pydoctor.model.Documentable`
  - Post processors
