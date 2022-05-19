@@ -778,15 +778,20 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
 
         lineno = node.lineno
+
+        # setting linenumber from the start of the decorations
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        # extracting docstring
         docstring: Optional[ast.Str] = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
                               and isinstance(node.body[0].value, ast.Str):
             docstring = node.body[0].value
 
         func_name = node.name
+
+        # determine the function's kind
         is_property = False
         is_classmethod = False
         is_staticmethod = False
@@ -810,6 +815,7 @@ class ModuleVistor(NodeVisitor):
                     func_name = '.'.join(deco_name[-2:])
 
         if is_property:
+            # handle property and skip child nodes.
             attr = self._handlePropertyDef(node, docstring, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
@@ -1122,6 +1128,9 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
 class ASTBuilder:
+    """
+    Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+    """
     ModuleVistor = ModuleVistor
 
     def __init__(self, system: model.System):
@@ -1134,6 +1143,9 @@ class ASTBuilder:
 
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
+        """
+        Create and enter a new object of the given type and add it to the system.
+        """
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
@@ -1146,6 +1158,9 @@ class ASTBuilder:
         self.currentAttr = None
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
+        """
+        Enter a documentable.
+        """
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -1162,24 +1177,44 @@ class ASTBuilder:
             obj.setLineNumber(lineno)
 
     def pop(self, obj: model.Documentable) -> None:
+        """
+        Leave a documentable.
+        """
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
     def pushClass(self, name: str, lineno: int) -> model.Class:
+        """
+        Create and a new class in the system.
+        """
         return self._push(self.system.Class, name, lineno)
+
     def popClass(self) -> None:
+        """
+        Leave a class.
+        """
         self._pop(self.system.Class)
 
     def pushFunction(self, name: str, lineno: int) -> model.Function:
+        """
+        Create and enter a new function in the system.
+        """
         return self._push(self.system.Function, name, lineno)
+
     def popFunction(self) -> None:
+        """
+        Leave a function.
+        """
         self._pop(self.system.Function)
 
     def addAttribute(self,
             name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
             ) -> model.Attribute:
+        """
+        Add a new attribute to the system, attributes cannot be "entered".
+        """
         system = self.system
         parentMod = self.currentMod
         attr = system.Attribute(system, name, parent)
