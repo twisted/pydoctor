@@ -171,5 +171,5 @@ class AttrsClass(extensions.ClassMixin, model.Class):
         """
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_astbuilder_visitors(ModuleVisitor)
-    r.register_mixins(AttrsClass)
+    r.register_astbuilder_visitor(ModuleVisitor)
+    r.register_mixin(AttrsClass)
