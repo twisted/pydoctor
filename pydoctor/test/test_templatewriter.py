@@ -164,7 +164,7 @@ def test_missing_variable() -> None:
 )
 def test_multipleInheritanceNewClass(className: str) -> None:
     """
-    A getob(that has multiple bases has all methods in its MRO
+    A class that has multiple bases has all methods in its MRO
     rendered.
     """
     system = processPackage("multipleinheritance")

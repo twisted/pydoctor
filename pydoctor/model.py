@@ -587,14 +587,28 @@ class Class(CanContainImportsDocumentable):
 
     @property
     def bases(self) -> List[str]:
+        """
+        Fully qualified names of the bases of this class.
+        """
         return [self.parent.expandName(str_base) for str_base in self.rawbases]
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
+        """
+        Base objects, L{None} value is inserted when the base class could not be found in the system.
+        
+        @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object. 
+            It's computed another time in post-processing to try to resolve the names that could not be resolved the first place. This is needed when there are import cycles. 
+            
+            Meaning depending on the state of the system, this property can return either the initial objects or the final objects
+        """
         return self._finalbaseobjects if \
             self._finalbaseobjects is not None else self._initialbaseobjects
     
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
+       """
+       Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
+       """
         if include_self:
             yield self
         for b in self.baseobjects:
