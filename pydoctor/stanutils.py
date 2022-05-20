@@ -54,10 +54,11 @@ def flatten(stan: "Flattenable") -> str:
     else:
         return ret[0].decode()
 
-def flatten_text(stan: Union[Tag, str, List[Tag]]) -> str:
-    """Return the text inside a stan tree.
+def flatten_text(stan: 'Flattenable') -> str:
+    """
+    Return the text inside a stan tree.
     
-    @note: Only compatible with L{Tag} objects.
+    @note: Only compatible with L{Tag}, generators, and lists.
     """
     text = ''
     if isinstance(stan, (str)):
