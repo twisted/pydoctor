@@ -284,7 +284,6 @@ TYPING_ALIAS = (
         "typing.Pattern",
         "typing.Match",
         # Special forms
-        "typing.Final",
         "typing.Union",
         "typing.Literal",
         "typing.Optional",
