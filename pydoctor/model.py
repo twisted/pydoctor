@@ -688,7 +688,9 @@ class System:
     options: 'Options'
     extensions: List[str] = cast('List[str]', _default_extensions)
     """
-    Default value means all built-in pydoctor extensions will be loaded.
+    List of extensions.
+
+    By default, all built-in pydoctor extensions will be loaded.
     Override this value to cherry-pick extensions. 
     """
 
@@ -741,9 +743,10 @@ class System:
         from pydoctor import extensions
 
         # Initialize the extension system
-        self.factory = factory.Factory()
-        self.astbuilder_visitors: Set[Type['astutils.NodeVisitorExt']] = set()
-        self.post_processors: Set[Callable[['System'], None]] = set()
+        self._factory = factory.Factory()
+        self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
+        self._post_processors: List[Callable[['System'], None]] = []
+        
         if self.extensions == _default_extensions:
             self.extensions = list(extensions.get_extensions())
         assert isinstance(self.extensions, list)
@@ -754,19 +757,19 @@ class System:
 
     @property
     def Class(self) -> Type['Class']:
-        return self.factory.Class
+        return self._factory.Class
     @property
     def Function(self) -> Type['Function']:
-        return self.factory.Function
+        return self._factory.Function
     @property
     def Module(self) -> Type['Module']:
-        return self.factory.Module
+        return self._factory.Module
     @property
     def Package(self) -> Type['Package']:
-        return self.factory.Package
+        return self._factory.Package
     @property
     def Attribute(self) -> Type['Attribute']:
-        return self.factory.Attribute
+        return self._factory.Attribute
 
     @property
     def sourcebase(self) -> Optional[str]:
@@ -1215,6 +1218,7 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
+
         # default post-processing includes processing of subclasses and MRO computing.
         for cls in self.objectsOfType(Class):
             cls.init_mro()
@@ -1222,7 +1226,8 @@ class System:
                 if b is not None:
                     b.subclasses.append(cls)
 
-        for post_processor in self.post_processors:
+
+        for post_processor in self._post_processors:
             post_processor(self)
 
 

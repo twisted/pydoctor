@@ -35,7 +35,7 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
     creating an attribute that would overwrite or shadow that method.
 
     @return: L{True} if the name does not exist or is an existing (possibly
-        inherited) attribute, L{False} otherwise
+        inherited) attribute, L{False} if this name defines something else than an L{Attribute}. 
     """
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)
@@ -530,23 +530,35 @@ class ModuleVistor(NodeVisitor):
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
         
-        if isinstance(obj, model.Attribute):
-            
-            if annotation is None and expr is not None:
-                annotation = _infer_type(expr)
-            
-            obj.annotation = annotation
-            obj.setLineNumber(lineno)
-            
-            if is_constant(obj):
-                self._handleConstant(obj=obj, value=expr, lineno=lineno)
-            else:
-                obj.kind = model.DocumentableKind.VARIABLE
-                # We store the expr value for all Attribute in order to be able to 
-                # check if they have been initialized or not.
-                obj.value = expr
+        # If it's not an attribute it means that the name is already denifed as function/class 
+        # probably meaning that this attribute is a bound callable. 
+        #
+        #   def func(value, stock) -> int:...
+        #   var = 2
+        #   func = partial(func, value=var)
+        #
+        # We don't know how to handle this,
+        # so we ignore it to document the original object. This means that we might document arguments 
+        # that are in reality not existing because they have values in a partial() call for instance.
 
-            self.builder.currentAttr = obj
+        if not isinstance(obj, model.Attribute):
+            return
+            
+        if annotation is None and expr is not None:
+            annotation = _infer_type(expr)
+        
+        obj.annotation = annotation
+        obj.setLineNumber(lineno)
+        
+        if is_constant(obj):
+            self._handleConstant(obj=obj, value=expr, lineno=lineno)
+        else:
+            obj.kind = model.DocumentableKind.VARIABLE
+            # We store the expr value for all Attribute in order to be able to 
+            # check if they have been initialized or not.
+            obj.value = expr
+
+        self.builder.currentAttr = obj
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -616,7 +628,7 @@ class ModuleVistor(NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
 
-        # Class variables can only be Attribute, so it's OK to cast
+        # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
 
@@ -767,15 +779,20 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
 
         lineno = node.lineno
+
+        # setting linenumber from the start of the decorations
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        # extracting docstring
         docstring: Optional[ast.Str] = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
                               and isinstance(node.body[0].value, ast.Str):
             docstring = node.body[0].value
 
         func_name = node.name
+
+        # determine the function's kind
         is_property = False
         is_classmethod = False
         is_staticmethod = False
@@ -799,6 +816,7 @@ class ModuleVistor(NodeVisitor):
                     func_name = '.'.join(deco_name[-2:])
 
         if is_property:
+            # handle property and skip child nodes.
             attr = self._handlePropertyDef(node, docstring, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
@@ -1111,18 +1129,26 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
 class ASTBuilder:
+    """
+    Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+    """
     ModuleVistor = ModuleVistor
 
     def __init__(self, system: model.System):
         self.system = system
-        self.current = cast(model.Documentable, None)
-        self.currentMod: Optional[model.Module] = None
-        self.currentAttr: Optional[model.Documentable] = None
+        
+        self.current = cast(model.Documentable, None) # current visited object
+        self.currentMod: Optional[model.Module] = None # module, set when visiting ast.Module
+        self.currentAttr: Optional[model.Documentable] = None # recently visited attribute object
+        
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
 
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
+        """
+        Create and enter a new object of the given type and add it to the system.
+        """
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
@@ -1135,6 +1161,9 @@ class ASTBuilder:
         self.currentAttr = None
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
+        """
+        Enter a documentable.
+        """
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -1151,24 +1180,44 @@ class ASTBuilder:
             obj.setLineNumber(lineno)
 
     def pop(self, obj: model.Documentable) -> None:
+        """
+        Leave a documentable.
+        """
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
     def pushClass(self, name: str, lineno: int) -> model.Class:
+        """
+        Create and a new class in the system.
+        """
         return self._push(self.system.Class, name, lineno)
+
     def popClass(self) -> None:
+        """
+        Leave a class.
+        """
         self._pop(self.system.Class)
 
     def pushFunction(self, name: str, lineno: int) -> model.Function:
+        """
+        Create and enter a new function in the system.
+        """
         return self._push(self.system.Function, name, lineno)
+
     def popFunction(self) -> None:
+        """
+        Leave a function.
+        """
         self._pop(self.system.Function)
 
     def addAttribute(self,
             name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
             ) -> model.Attribute:
+        """
+        Add a new attribute to the system, attributes cannot be "entered".
+        """
         system = self.system
         parentMod = self.currentMod
         attr = system.Attribute(system, name, parent)
@@ -1192,7 +1241,7 @@ class ASTBuilder:
                 module_var_parser(node, mod)
 
         vis = self.ModuleVistor(self, mod)
-        vis.extensions.add(*self.system.astbuilder_visitors)
+        vis.extensions.add(*self.system._astbuilder_visitors)
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
