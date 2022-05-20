@@ -183,16 +183,26 @@ class ZopeInterfaceModuleVisitor(extensions.ModuleVisitorExt):
         ob = self.visitor.system.objForFullName(funcName)
         if isinstance(ob, ZopeInterfaceClass) and ob.isinterfaceclass:
             # TODO: Process 'bases' and '__doc__' arguments.
-            # TODO: Currently, this implementation will create a duplicate class 
-            # with the same name as the attribute, overriding it.
+
+            # Fetch older attr documentable
+            old_attr = self.visitor.builder.current.contents.get(target)
+            if old_attr:
+                self.visitor.builder.system._remove(old_attr) # avoid duplicate warning by simply removing the old item
+
             interface = self.visitor.builder.pushClass(target, lineno)
             assert isinstance(interface, ZopeInterfaceClass)
+            
+            # the docstring node has already been attached to the documentable 
+            # by the time the zopeinterface extension is run, so we fetch the right docstring info from old documentable.
+            if old_attr:
+                interface.docstring = old_attr.docstring
+                interface.docstring_lineno = old_attr.docstring_lineno
+
             interface.isinterface = True
             interface.implementedby_directly = []
             interface.bases = []
             interface.baseobjects = []
             self.visitor.builder.popClass()
-            self.visitor.builder.currentAttr = interface
 
     def _handleZopeInterfaceAssignmentInClass(self,
             target: str,

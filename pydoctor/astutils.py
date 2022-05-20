@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, TypeVar, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -155,3 +155,47 @@ def is_using_annotations(expr: Optional[ast.AST],
             if full_name in annotations:
                 return True
     return False
+
+def get_assign_docstring_node(assign:Union[ast.Assign, ast.AnnAssign]) -> Optional[ast.Str]:
+    """
+    Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
+
+    This helper function relies on the non-standard C{.parent} attribute on AST nodes
+    to navigate upward in the tree and determine this node direct siblings.
+    """
+    parent_node = getattr(assign, 'parent', None)
+    
+    if not parent_node:
+        assert False, "The 'parent' attribute is not correctly set up on ast nodes."
+
+    body = getattr(parent_node, 'body', None)
+    
+    if body:
+        assert isinstance(body, list)
+        assign_index = body.index(assign)
+        try:
+            right_sibling = body[assign_index+1]
+        except IndexError:
+            return None
+        if isinstance(right_sibling, ast.Expr) and \
+           get_str_value(right_sibling.value) is not None:
+            return right_sibling.value
+    return None
+
+_AST = TypeVar('_AST', bound=ast.AST)
+def parentage_ast_tree(node:_AST) ->_AST:
+    """
+    Add C{parent} attribute to all ast nodes starting at C{node}.
+    """
+    class _Parentage(ast.NodeTransformer):
+        # stolen from https://stackoverflow.com/a/68845448
+        parent: Optional[ast.AST] = None
+
+        def visit(self, node: _AST) -> _AST:
+            setattr(node, 'parent', self.parent)
+            self.parent = node
+            node = super().visit(node)
+            if isinstance(node, ast.AST):
+                self.parent = getattr(node, 'parent')
+            return node
+    return _Parentage().visit(node)

@@ -158,7 +158,7 @@ def test_attribute(capsys: CapSys, systemcls: Type[model.System]) -> None:
     assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
 @zope_interface_systemcls_param
-def test_interfaceclass(systemcls: Type[model.System]) -> None:
+def test_interfaceclass(systemcls: Type[model.System], capsys: CapSys) -> None:
     system = processPackage('interfaceclass', systemcls=systemcls)
     mod = system.allobjects['interfaceclass.mod']
     I = mod.contents['MyInterface']
@@ -169,6 +169,8 @@ def test_interfaceclass(systemcls: Type[model.System]) -> None:
     J = mod.contents['AnInterface']
     assert isinstance(J, ZopeInterfaceClass)
     assert J.isinterface
+
+    assert 'interfaceclass.mod duplicate' not in capsys.readouterr().out
 
 @zope_interface_systemcls_param
 def test_warnerproofing(systemcls: Type[model.System]) -> None:
