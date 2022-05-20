@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, TypeVar, Union
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, TypeVar, Union, cast
 from inspect import BoundArguments, Signature
 import ast
 
@@ -156,7 +156,7 @@ def is_using_annotations(expr: Optional[ast.AST],
                 return True
     return False
 
-def get_assign_docstring_node(assign:Union[ast.Assign, ast.AnnAssign]) -> Optional[ast.Str]:
+def get_assign_docstring_node(assign:Union[ast.Assign, ast.AnnAssign]) -> Optional[Union[ast.Str, ast.Constant]]:
     """
     Get the docstring for a L{ast.Assign} or L{ast.AnnAssign} node.
 
@@ -179,7 +179,7 @@ def get_assign_docstring_node(assign:Union[ast.Assign, ast.AnnAssign]) -> Option
             return None
         if isinstance(right_sibling, ast.Expr) and \
            get_str_value(right_sibling.value) is not None:
-            return right_sibling.value
+            return cast('Union[ast.Str, ast.Constant]', right_sibling.value)
     return None
 
 _AST = TypeVar('_AST', bound=ast.AST)
@@ -191,11 +191,11 @@ def parentage_ast_tree(node:_AST) ->_AST:
         # stolen from https://stackoverflow.com/a/68845448
         parent: Optional[ast.AST] = None
 
-        def visit(self, node: _AST) -> _AST:
+        def visit(self, node: ast.AST) -> ast.AST:
             setattr(node, 'parent', self.parent)
             self.parent = node
             node = super().visit(node)
             if isinstance(node, ast.AST):
                 self.parent = getattr(node, 'parent')
             return node
-    return _Parentage().visit(node)
+    return cast('_AST', _Parentage().visit(node))

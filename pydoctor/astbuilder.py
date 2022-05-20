@@ -49,6 +49,10 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
 
 class SkipInlineDocstring(Exception):
     ...
+class InvalidName(Exception):
+    ...
+class UsingSelfInUnknownContext(Exception):
+    ...
 
 def _handleAliasing(
         ctx: model.CanContainImportsDocumentable,
@@ -596,6 +600,7 @@ class ModuleVistor(NodeVisitor):
             expr: Optional[ast.expr],
             lineno: int
             ) -> None:
+        
         cls = self.builder.current
         assert isinstance(cls, model.Class)
         if not _maybeAttribute(cls, name):
@@ -669,7 +674,6 @@ class ModuleVistor(NodeVisitor):
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
             obj.value = expr
         
-
     def _handleAssignmentInClass(self,
             target: str,
             annotation: Optional[ast.expr],
@@ -783,18 +787,33 @@ class ModuleVistor(NodeVisitor):
         else:
             self._handleInlineDocstrings(node, node.target)
 
-    def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
-        # Process the inline docstrings
+    def _reduceNameInContext(self, target:ast.expr) -> Tuple[List[str], model.Documentable]:
+        """
+        If the current context is a method, strip the C{'self.'} part of assignment names and return 
+            the right L{Class} context in which to use the new name. The new name maybe dotted.
+
+        @returns: Tuple C{(dottedname, context)} or just the parsed target with the current 
+            context if the target is not using C{self.}.
+        @raises: L{InvalidName} or L{UsingSelfInUnknownContext}.
+        """
         dottedname = node2dottedname(target)
         if not dottedname:
-            return
-
+            raise InvalidName()
         parent = self.builder.current
         if dottedname[0] == 'self':
             dottedname = dottedname[1:]
-            parent = self._getClassFromMethodContext()
-            if not parent:
-                return
+            maybe_parent = self._getClassFromMethodContext()
+            if not maybe_parent:
+                raise UsingSelfInUnknownContext()
+            parent = maybe_parent
+        return dottedname, parent
+
+    def _handleInlineDocstrings(self, assign:Union[ast.Assign, ast.AnnAssign], target:ast.expr) -> None:
+        # Process the inline docstrings
+        try:
+            dottedname, parent = self._reduceNameInContext(target)
+        except (InvalidName, UsingSelfInUnknownContext):
+            return
         
         if len(dottedname) != 1:
             return 

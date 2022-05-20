@@ -154,7 +154,7 @@ class Documentable:
         self.contents: Dict[str, Documentable] = {}
         self._linker: Optional['linker.DocstringLinker'] = None
 
-    def setDocstring(self, node: ast.Str) -> None:
+    def setDocstring(self, node: Union[ast.Str, ast.Constant]) -> None:
         doc = node.s
         lineno = node.lineno
         if _string_lineno_is_end:
