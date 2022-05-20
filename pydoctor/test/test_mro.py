@@ -3,6 +3,7 @@ import pytest
 
 from pydoctor import model
 from pydoctor.test.test_astbuilder import fromText, systemcls_param
+from pydoctor.test import CapSys
 
 def assert_mro_equals(klass: Optional[model.Documentable], expected_mro: List[str]) -> None:
     assert isinstance(klass, model.Class)
@@ -91,3 +92,15 @@ def test_mro(systemcls: Type[model.System],) -> None:
         model.compute_mro(mod.contents["G1"]) # type:ignore
     with pytest.raises(ValueError, match="Cannot compute linearization"):
         model.compute_mro(mod.contents["Duplicates"]) # type:ignore
+
+def test_mro_cycle(capsys:CapSys) -> None:
+    mod = fromText("""\
+    class A(D):...
+    class B:...
+    class C(A,B):...
+    class D(C):...
+    """, modname='cycle')
+    assert capsys.readouterr().out == '''cycle:1: Cycle found while computing inheritance hierarchy: cycle.A -> cycle.D -> cycle.C -> cycle.A
+cycle:3: Cycle found while computing inheritance hierarchy: cycle.C -> cycle.A -> cycle.D -> cycle.C
+cycle:4: Cycle found while computing inheritance hierarchy: cycle.D -> cycle.C -> cycle.A -> cycle.D
+'''

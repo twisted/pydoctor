@@ -483,6 +483,29 @@ class Package(Module):
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
     """Compute the method resolution order for this class."""
+
+    # This function will also set the _finalbaseobjects attribute on this class and all it's superclasses
+
+    def init_all_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+        if not path:
+            path = []
+        if o in path:
+            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
+            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+        path.append(o)
+        if o._finalbaseobjects is not None:
+            return
+        if o.rawbases:
+            finalbaseobjects = []
+            for str_base, base in zip(o.rawbases, o._initialbaseobjects):
+                if base:
+                    finalbaseobjects.append(base)
+                else:
+                    base = o.parent.resolveName(str_base)
+                    finalbaseobjects.append(base)
+                if base:
+                    init_all_finalbaseobjects(base, path.copy())
+            o._finalbaseobjects = finalbaseobjects
     
     def localbases(o:'Class') -> Iterator[Union['Class', str]]:
         """
@@ -499,12 +522,14 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
             return []
         return list(localbases(o))
 
+    init_all_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
     _initialbaseobjects: List[Optional['Class']]
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
     # Note: While unused in pydoctor itself, raw_decorators is still in use
     #       by Twisted's custom System class, to find deprecations.
@@ -519,6 +544,7 @@ class Class(CanContainImportsDocumentable):
         super().setup()
         self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
+        self._initialbaseobjects = []
         self._mro: Optional[List[Union['Class', str]]] = None
     
     def init_mro(self) -> None:
@@ -551,14 +577,12 @@ class Class(CanContainImportsDocumentable):
 
     @property
     def bases(self) -> List[str]:
-        return [self.parent.expandName(str_base)for str_base in self.rawbases]
+        return [self.parent.expandName(str_base) for str_base in self.rawbases]
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
-        # Try the best as possible to avoid recursion error by checking 'is not self' 
-        # and using _initialbaseobjects as a fallback.
-        return [ob if isinstance(ob, Class) and ob is not self else self._initialbaseobjects[i] for i,ob in 
-            enumerate([self.parent.resolveName(str_base) for str_base in self.rawbases])]
+        return self._finalbaseobjects if \
+            self._finalbaseobjects is not None else self._initialbaseobjects
     
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
         if include_self:

@@ -232,12 +232,13 @@ class ModuleVistor(NodeVisitor):
         initialbaseobjects = []
 
         for n in node.bases:
+            # TODO: Handle generics in MRO
             str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
             rawbases.append(str_base)
             baseobj = parent.resolveName(str_base)
             if baseobj and not isinstance(baseobj, model.Class):
                 baseobj = None
-            initialbaseobjects.append(cast('Optional[model.Class]',baseobj))
+            initialbaseobjects.append(cast('Optional[model.Class]', baseobj))
             
 
         lineno = node.lineno
