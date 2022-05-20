@@ -154,4 +154,4 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
     return _version, text
 
 def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-    r.register_astbuilder_visitors(ModuleVisitor)
+    r.register_astbuilder_visitor(ModuleVisitor)
