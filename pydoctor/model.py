@@ -606,9 +606,9 @@ class Class(CanContainImportsDocumentable):
             self._finalbaseobjects is not None else self._initialbaseobjects
     
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
-       """
-       Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
-       """
+        """
+        Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
+        """
         if include_self:
             yield self
         for b in self.baseobjects:
