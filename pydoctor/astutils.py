@@ -192,7 +192,7 @@ def unstring_annotation(node: ast.expr, ctx:'model.Documentable') -> ast.expr:
         return expr
 
 class _AnnotationStringParser(ast.NodeTransformer):
-    """Implementation of L{ModuleVistor._unstring_annotation()}.
+    """Implementation of L{unstring_annotation()}.
 
     When given an expression, the node returned by L{ast.NodeVisitor.visit()}
     will also be an expression.
