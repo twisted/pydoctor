@@ -65,7 +65,7 @@ def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
         - the next yielded chain contains the super class and the class itself, 
         - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
     """
-    _mro = classobj.mro(False)
+    _mro = classobj.mro()
     for i, _ in enumerate(_mro):
         yield tuple(reversed(_mro[:(i+1)]))
 

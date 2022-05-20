@@ -62,7 +62,7 @@ def _inheritedDocsources(obj: model.Documentable) -> Iterator[model.Documentable
         io = obj.system.objForFullName(interface)
         if io is not None:
             assert isinstance(io, ZopeInterfaceClass)
-            for io2 in io.mro(False):
+            for io2 in io.mro():
                 if name in io2.contents:
                     yield io2.contents[name]
 

@@ -558,10 +558,10 @@ class Class(CanContainImportsDocumentable):
             self._mro = list(self.allbases(True))
 
     @overload
-    def mro(self, include_external:'Literal[True]'=True) -> List[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]') -> List[Union['Class', str]]:...
     @overload
     def mro(self, include_external:'Literal[False]') -> List['Class']:...
-    def mro(self, include_external:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
+    def mro(self, include_external:bool=False) -> List[Union['Class', str]]: # type:ignore[misc]
         """
         Get the method resution order of this class. 
 
@@ -596,7 +596,7 @@ class Class(CanContainImportsDocumentable):
 
         @return: the object with the given name, or L{None} if there isn't one
         """
-        for base in self.mro(False):
+        for base in self.mro():
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
                 return obj
@@ -636,7 +636,7 @@ class Inheritable(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.mro(False):
+        for b in self.parent.mro():
             if self.name in b.contents:
                 yield b.contents[self.name]
 

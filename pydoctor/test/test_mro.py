@@ -7,7 +7,7 @@ from pydoctor.test import CapSys
 
 def assert_mro_equals(klass: Optional[model.Documentable], expected_mro: List[str]) -> None:
     assert isinstance(klass, model.Class)
-    assert [member.fullName() if isinstance(member, model.Documentable) else member for member in klass.mro()] == expected_mro
+    assert [member.fullName() if isinstance(member, model.Documentable) else member for member in klass.mro(True)] == expected_mro
 
 @systemcls_param
 def test_mro(systemcls: Type[model.System],) -> None:
