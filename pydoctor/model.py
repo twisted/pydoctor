@@ -486,7 +486,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 
     # This function will also set the _finalbaseobjects attribute on this class and all it's superclasses
 
-    def init_all_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
         if not path:
             path = []
         if o in path:
@@ -496,15 +496,20 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
         if o._finalbaseobjects is not None:
             return
         if o.rawbases:
-            finalbaseobjects = []
+            finalbaseobjects: List[Optional[Class]] = []
             for str_base, base in zip(o.rawbases, o._initialbaseobjects):
                 if base:
                     finalbaseobjects.append(base)
                 else:
-                    base = o.parent.resolveName(str_base)
-                    finalbaseobjects.append(base)
+                    resolved_base = o.parent.resolveName(str_base)
+                    if isinstance(resolved_base, Class):
+                        base = resolved_base
+                        finalbaseobjects.append(base)
+                    else:
+                        # the base object could not be resolved
+                        finalbaseobjects.append(None)
                 if base:
-                    init_all_finalbaseobjects(base, path.copy())
+                    init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
     
     def localbases(o:'Class') -> Iterator[Union['Class', str]]:
@@ -522,7 +527,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
             return []
         return list(localbases(o))
 
-    init_all_finalbaseobjects(cls)
+    init_finalbaseobjects(cls)
     return mro.mro(cls, getbases)
 
 class Class(CanContainImportsDocumentable):
@@ -547,7 +552,7 @@ class Class(CanContainImportsDocumentable):
         self._initialbaseobjects = []
         self._mro: Optional[List[Union['Class', str]]] = None
     
-    def init_mro(self) -> None:
+    def _init_mro(self) -> None:
         """
         Compute the correct value of the method resolution order returned by L{mro()}.
         """
@@ -558,10 +563,10 @@ class Class(CanContainImportsDocumentable):
             self._mro = list(self.allbases(True))
 
     @overload
-    def mro(self, include_external:'Literal[True]') -> List[Union['Class', str]]:...
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
     @overload
-    def mro(self, include_external:'Literal[False]') -> List['Class']:...
-    def mro(self, include_external:bool=False) -> List[Union['Class', str]]: # type:ignore[misc]
+    def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> List['Class']:...
+    def mro(self, include_external:bool=False, include_self:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
         """
         Get the method resution order of this class. 
 
@@ -569,11 +574,16 @@ class Class(CanContainImportsDocumentable):
             in the AST visitors, it will return the same as C{list(self.allbases(True))}.
         """
         if self._mro is None:
-            return list(self.allbases(True))
+            return list(self.allbases(include_self))
+        
+        _mro: List[Union[str, Class]]
         if include_external is False:
-            return [o for o in self._mro if isinstance(o, Class)]
+            _mro = [o for o in self._mro if not isinstance(o, str)]
         else:
-            return self._mro
+            _mro = self._mro
+        if include_self is False:
+            _mro = _mro[1:]
+        return _mro
 
     @property
     def bases(self) -> List[str]:
@@ -636,7 +646,7 @@ class Inheritable(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.mro():
+        for b in self.parent.mro(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
@@ -1245,7 +1255,7 @@ class System:
 
         # default post-processing includes processing of subclasses and MRO computing.
         for cls in self.objectsOfType(Class):
-            cls.init_mro()
+            cls._init_mro()
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
