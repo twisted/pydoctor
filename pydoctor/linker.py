@@ -272,6 +272,7 @@ class CacheEntry:
                  attributes: Dict[Union[str, bytes], "Flattenable"], 
                  lookup_failed: bool, 
                  warned_linenos: Optional[Set[int]]=None, ) -> None:
+        # Core fields of cache entry
         self.name: str = name
         self.label: "Flattenable" = label
         self.attributes: Dict[Union[str, bytes], "Flattenable"] = attributes
@@ -282,17 +283,11 @@ class CacheEntry:
 
         # Not to compute it several times
         self._stan = Tag('a', attributes=self.attributes)(self.label)
+        self._href = str(self.attributes.get('href',''))
+    
     @property
     def href(self) -> str:
-        # We can only reason about links if we're working with unicode strings.
-        try:
-            href = self.attributes['href']
-        except KeyError:
-            pass
-        else:
-            if isinstance(href, str):
-                return href
-        return ''
+        return self._href
 
     def __repr__(self) -> str:
         return f"<CacheEntry name={self.name!r} label={self.label!r} attributes={self.attributes!r}>"
@@ -424,21 +419,22 @@ class _CachedEpydocLinker(_EpydocLinker):
         # Here we iterate, but we could transform this into a dict access for more speed.
         # But at the same time, usually there are not a lot of different labels applied 
         # to the same link in the same docstring, so the current behaviour is good enough.
-        def new_entry(e:CacheEntry) -> Optional[CacheEntry]:
+        def new_entry(e:CacheEntry) -> CacheEntry:
             return self._new_deducted_entry(e, label, cache_kind)
         
         _initial_page_url = self.obj.page_object.url
         _current_page_url = self.page_url
         _exact_matches = [v for v in values if v.matches(
                                 target, label, _initial_page_url, _current_page_url)]
-        _target_matches_only = [v for v in values if v not in _exact_matches]
+        
         for entry in _exact_matches:
             return entry, False
         else:
             # Automatically deduce what would 
             # be the link with a different label and/or relative or full link.
             # This will add a new entry in the cache.
-            return new_entry(_target_matches_only[0]), True
+            _first_match = next(v for v in values if v not in _exact_matches)
+            return new_entry(_first_match), True
 
     
     def _store_in_cache(self, 
