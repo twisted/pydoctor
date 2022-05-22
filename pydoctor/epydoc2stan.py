@@ -664,18 +664,17 @@ def format_summary(obj: model.Documentable) -> Tag:
     if not source:
         source = obj
     try:
-        # Disallow same_page_optimization in order to make sure we're not
+        # Make sure we're not
         # breaking links when including the summaries on other pages.
-        assert isinstance(source.docstring_linker, linker._CachedEpydocLinker)
-        source.docstring_linker.same_page_optimization = False
-        stan = parsed_doc.to_stan(source.docstring_linker)
-        source.docstring_linker.same_page_optimization = True
+        with source.docstring_linker.switch_page_context(None):
+            stan = parsed_doc.to_stan(source.docstring_linker)
     
     except Exception:
         # This problem will likely be reported by the full docstring as well,
         # so don't spam the log.
         stan = tags.span(class_='undocumented')("Broken description")
         obj.parsed_summary = ParsedStanOnly(stan)
+        raise # Remove me after deugging
 
     return stan
 
