@@ -46,6 +46,11 @@ def test_mro(systemcls: Type[model.System],) -> None:
     class Duplicates(C, C): pass
     class Extension(External): pass
     class MycustomString(str): pass
+    from typing import Generic
+    class MyGeneric(Generic[T]):...
+    class Visitor(MyGeneric[T]):...
+    import ast
+    class GenericPedalo(MyGeneric[ast.AST], Pedalo):...
     """, 
     modname='mro', systemcls=systemcls
     )
@@ -86,6 +91,25 @@ def test_mro(systemcls: Type[model.System],) -> None:
         'mro.OuterB.Inner', 
         'mro.OuterA.Inner']
     )
+
+    assert_mro_equals(
+        mod.contents["Visitor"],
+        ['mro.Visitor', 'mro.MyGeneric', 'typing.Generic']
+    )
+
+    assert_mro_equals(
+        mod.contents["GenericPedalo"],
+        ['mro.GenericPedalo',
+        'mro.MyGeneric',
+        'typing.Generic',
+        'mro.Pedalo',
+        'mro.PedalWheelBoat',
+        'mro.EngineLess',
+        'mro.SmallCatamaran',
+        'mro.SmallMultihull',
+        'mro.DayBoat',
+        'mro.WheelBoat',
+        'mro.Boat'])
 
     with pytest.raises(ValueError, match="Cannot compute linearization"):
         model.compute_mro(mod.contents["F1"]) # type:ignore

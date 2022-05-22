@@ -497,10 +497,11 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
-            for str_base, base in zip(o.rawbases, o._initialbaseobjects):
+            for (str_base, _), base in zip(o.rawbases, o._initialbaseobjects):
                 if base:
                     finalbaseobjects.append(base)
                 else:
+                    # Only re-resolve the base object if the base was None.
                     resolved_base = o.parent.resolveName(str_base)
                     if isinstance(resolved_base, Class):
                         base = resolved_base
@@ -509,6 +510,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
                         # the base object could not be resolved
                         finalbaseobjects.append(None)
                 if base:
+                    # Recurse on super classes
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
     
@@ -533,12 +535,8 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    _initialbaseobjects: List[Optional['Class']]
     _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    # Note: While unused in pydoctor itself, raw_decorators is still in use
-    #       by Twisted's custom System class, to find deprecations.
-    raw_decorators: Sequence[ast.expr]
 
     auto_attribs: bool = False
     """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
@@ -547,9 +545,9 @@ class Class(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[str] = []
+        self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.subclasses: List[Class] = []
-        self._initialbaseobjects = []
+        self._initialbaseobjects: List[Optional['Class']] = []
         self._mro: Optional[List[Union['Class', str]]] = None
     
     def _init_mro(self) -> None:
@@ -590,7 +588,7 @@ class Class(CanContainImportsDocumentable):
         """
         Fully qualified names of the bases of this class.
         """
-        return [self.parent.expandName(str_base) for str_base in self.rawbases]
+        return [self.parent.expandName(str_base) for (str_base, _) in self.rawbases]
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
