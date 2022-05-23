@@ -9,14 +9,13 @@ from pydoctor.templatewriter import TemplateElement, util
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from pydoctor.templatewriter.pages import DocGetter
 
 
 class TableRow(Element):
 
     def __init__(self,
             loader: ITemplateLoader,
-            docgetter: "DocGetter",
+            docgetter: util.DocGetter,
             ob: Documentable,
             child: Documentable,
             ):
@@ -42,12 +41,13 @@ class TableRow(Element):
             # The official name is "coroutine function", but that is both
             # a bit long and not as widely recognized.
             kind_name = f'Async {kind_name}'
+
         return tag.clear()(kind_name)
 
     @renderer
     def name(self, request: object, tag: Tag) -> Tag:
         return tag.clear()(tags.code(
-            epydoc2stan.taglink(self.child, self.ob.url, self.child.name)
+            epydoc2stan.taglink(self.child, self.ob.url, epydoc2stan.insert_break_points(self.child.name))
             ))
 
     @renderer
@@ -56,22 +56,23 @@ class TableRow(Element):
 
 
 class ChildTable(TemplateElement):
+
     last_id = 0
 
     filename = 'table.html'
 
     def __init__(self,
-            docgetter: "DocGetter",
+            docgetter: util.DocGetter,
             ob: Documentable,
             children: Collection[Documentable],
             loader: ITemplateLoader,
             ):
         super().__init__(loader)
-        self.docgetter = docgetter
         self.children = children
         ChildTable.last_id += 1
         self._id = ChildTable.last_id
         self.ob = ob
+        self.docgetter = docgetter
 
     @renderer
     def id(self, request: object, tag: Tag) -> str:

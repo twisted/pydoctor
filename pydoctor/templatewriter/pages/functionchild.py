@@ -1,11 +1,11 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import DocGetter, format_decorators, format_signature
+from pydoctor.templatewriter.pages import format_decorators, format_signature
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -16,9 +16,9 @@ class FunctionChild(TemplateElement):
     filename = 'function-child.html'
 
     def __init__(self,
-            docgetter: DocGetter,
+            docgetter: util.DocGetter,
             ob: Function,
-            extras: "Flattenable",
+            extras: List[Tag],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -65,17 +65,10 @@ class FunctionChild(TemplateElement):
             return ()
 
     @renderer
-    def functionExtras(self, request: object, tag: Tag) -> "Flattenable":
+    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
         return self._functionExtras
 
     @renderer
     def functionBody(self, request: object, tag: Tag) -> "Flattenable":
         return self.docgetter.get(self.ob)
 
-    @renderer
-    def functionDeprecated(self, request: object, tag: Tag) -> "Flattenable":
-        msg = self.ob._deprecated_info
-        if msg is None:
-            return ()
-        else:
-            return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")

@@ -13,7 +13,7 @@ returns a L{ParsedRstDocstring}, which supports all of the methods
 defined by L{ParsedDocstring}.
 
 L{ParsedRstDocstring} is basically just a L{ParsedDocstring} wrapper
-for the C{docutils.nodes.document} class.
+for the C{nodes.document} class.
 
 B{Creating C{ParsedRstDocstring}s}:
 
@@ -50,7 +50,7 @@ from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.parsers.rst import Directive, directives #type: ignore[attr-defined]
+from docutils.parsers.rst import Directive, directives # type:ignore[attr-defined]
 from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
@@ -147,7 +147,7 @@ class ParsedRstDocstring(ParsedDocstring):
             isinstance(child, nodes.Text) or child.children
             for child in self._document.children
             )
-    
+
     def to_node(self) -> nodes.document:
         return self._document
 
@@ -482,13 +482,35 @@ class PythonCodeDirective(Directive):
     """
 
     has_content = True
-
+    
     def run(self) -> List[nodes.Node]:
         text = '\n'.join(self.content)
         node = nodes.doctest_block(text, text, codeblock=True)
         return [ node ]
 
+class DocutilsAndSphinxCodeBlockAdapter(PythonCodeDirective):
+    # Docutils and Sphinx code blocks have both one optional argument, 
+    # so we accept it here as well but do nothing with it.
+    required_arguments = 0
+    optional_arguments = 1
+
+    # Listing all options that docutils.parsers.rst.directives.body.CodeBlock provides
+    # And also sphinx.directives.code.CodeBlock. We don't care about their values, 
+    # we just don't want to see them in self.content.
+    option_spec = {'class': directives.class_option,
+                'name': directives.unchanged,
+                'number-lines': directives.unchanged, # integer or None
+                'force': directives.flag,
+                'linenos': directives.flag,
+                'dedent': directives.unchanged, # integer or None
+                'lineno-start': int,
+                'emphasize-lines': directives.unchanged_required,
+                'caption': directives.unchanged_required,
+    }
+
 directives.register_directive('python', PythonCodeDirective)
+directives.register_directive('code', DocutilsAndSphinxCodeBlockAdapter)
+directives.register_directive('code-block', DocutilsAndSphinxCodeBlockAdapter)
 directives.register_directive('versionadded', VersionChange)
 directives.register_directive('versionchanged', VersionChange)
 directives.register_directive('deprecated', VersionChange)

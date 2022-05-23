@@ -1,0 +1,38 @@
+<ul xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+    <meta name="pydoctor-template-version" content="1" />
+    <li t:render="items">
+        <t:attr name="class" t:render="class_" />
+        
+        <t:transparent t:render="expandableItem">
+            <div class="itemName expandableItem">
+                <input class="tocChildrenToggle" type="checkbox"> 
+                    <t:attr name="id" t:render="expandableItemId" />
+                </input>
+
+                <label>
+                    <t:attr name="class" t:render="labelClass">lbl-toggle</t:attr>
+                    <t:attr name="for" t:render="labelForExpandableItemId" />
+                </label>
+
+                <t:transparent t:render="name">
+                    Name
+                </t:transparent>
+
+                <div class="expandableContent">
+                    <t:transparent t:render="contents">
+                        Nested contents
+                    </t:transparent>
+                </div>
+            </div>
+            
+        </t:transparent>
+
+        <t:transparent t:render="linkOnlyItem">
+            <div class="itemName"><t:transparent t:render="name">
+                Name
+            </t:transparent>
+            </div>
+        </t:transparent>
+
+    </li>
+</ul>

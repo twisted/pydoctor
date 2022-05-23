@@ -1,65 +1,49 @@
-from typing import Optional, Tuple, Type, overload, cast
+
+from typing import Optional, Tuple, Type, List, overload, cast
 import ast
-import textwrap
 
 import astor
 
-from twisted.python._pydoctor import TwistedSystem
 
 from pydoctor import astbuilder, model, astutils
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
-from pydoctor.epydoc2stan import format_summary, get_parsed_type
-from pydoctor.zopeinterface import ZopeInterfaceSystem
+from pydoctor.epydoc2stan import ensure_parsed_docstring, format_summary, get_parsed_type
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
+class SimpleSystem(model.System):
+    """
+    A system with no extensions.
+    """
+    extensions:List[str] = []
+
+class ZopeInterfaceSystem(model.System):
+    """
+    A system with only the zope interface extension enabled.
+    """
+    extensions = ['pydoctor.extensions.zopeinterface']
+
+class DeprecateSystem(model.System):
+    """
+    A system with only the twisted deprecated extension enabled.
+    """
+    extensions = ['pydoctor.extensions.deprecate']
+
+class PydanticSystem(model.System):
+    # Add our custom extension as extra
+    custom_extensions = ['pydoctor.test.test_pydantic_fields']
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem)
+    'systemcls', (model.System, # system with all extensions enalbed
+                  ZopeInterfaceSystem, # system with zopeinterface extension only
+                  DeprecateSystem, # system with deprecated extension only
+                  SimpleSystem, # system with no extensions
+                  PydanticSystem,
+                 )
     )
-
-def fromAST(
-        ast: ast.Module,
-        modname: str = '<test>',
-        is_package: bool = False,
-        parent_name: Optional[str] = None,
-        system: Optional[model.System] = None,
-        buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
-        systemcls: Type[model.System] = model.System
-        ) -> model.Module:
-
-    if system is None:
-        _system = systemcls()
-    else:
-        _system = system
-
-    if buildercls is None:
-        buildercls = _system.defaultBuilder
-    builder = buildercls(_system)
-
-    if parent_name is None:
-        full_name = modname
-    else:
-        full_name = f'{parent_name}.{modname}'
-        # Set containing package as parent.
-        builder.current = _system.allobjects[parent_name]
-
-    factory = _system.Package if is_package else _system.Module
-    mod: model.Module = builder._push(factory, modname, 0)
-    builder._pop(factory)
-    builder.processModuleAST(ast, mod)
-    assert mod is _system.allobjects[full_name]
-    mod.state = model.ProcessingState.PROCESSED
-
-    if system is None:
-        # Assume that an implicit system will only contain one module,
-        # so post-process it as a convenience.
-        _system.postProcess()
-
-    return mod
 
 def fromText(
         text: str,
@@ -68,11 +52,26 @@ def fromText(
         is_package: bool = False,
         parent_name: Optional[str] = None,
         system: Optional[model.System] = None,
-        buildercls: Optional[Type[astbuilder.ASTBuilder]] = None,
         systemcls: Type[model.System] = model.System
         ) -> model.Module:
-    ast = astbuilder._parse(textwrap.dedent(text))
-    return fromAST(ast, modname, is_package, parent_name, system, buildercls, systemcls)
+    
+    if system is None:
+        _system = systemcls()
+    else:
+        _system = system
+    assert _system is not None
+
+    if parent_name is None:
+        full_name = modname
+    else:
+        full_name = f'{parent_name}.{modname}'
+
+    builder = _system.systemBuilder(_system)
+    builder.addModuleString(text, modname, parent_name, is_package=is_package)
+    builder.buildModules()
+    mod = _system.allobjects[full_name]
+    assert isinstance(mod, model.Module)
+    return mod
 
 def unwrap(parsed_docstring: Optional[ParsedDocstring]) -> str:
     
@@ -517,31 +516,33 @@ def test_documented_alias(systemcls: Type[model.System]) -> None:
     P = mod.contents['Processor']
     f = P.contents['clientFactory']
     assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     # we now mark aliases with the ALIAS kind!
     assert f.kind is model.DocumentableKind.ALIAS
     assert f.linenumber
 
-    # TODO: We should also verify this for inline docstrings, but the code
+    # Verify this is working with inline docstrings as well.,
+    #  but the code
     #       currently doesn't support that. We should perhaps store aliases
     #       as Documentables as well, so we can change their 'kind' when
     #       an inline docstring follows the assignment.
-    # mod = fromText('''
-    # class SimpleClient:
-    #     pass
-    # class Processor:
-    #     clientFactory = SimpleClient
-    #     """
-    #     Callable that returns a client.
-    #     """
-    # ''', systemcls=systemcls, modname='mod')
-    # P = mod.contents['Processor']
-    # f = P.contents['clientFactory']
-    # assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
-    # assert f.privacyClass is model.PrivacyClass.VISIBLE
-    # # we now mark aliases with the ALIAS kind!
-    # assert f.kind is model.DocumentableKind.ALIAS
-    # assert f.linenumber
+    mod = fromText('''
+    class SimpleClient:
+        pass
+    class Processor:
+        clientFactory = SimpleClient
+        """
+        Callable that returns a client.
+        """
+    ''', systemcls=systemcls, modname='mod')
+    P = mod.contents['Processor']
+    f = P.contents['clientFactory']
+    ensure_parsed_docstring(f)
+    assert unwrap(f.parsed_docstring) == """Callable that returns a client."""
+    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    # we now mark aliases with the ALIAS kind!
+    assert f.kind is model.DocumentableKind.ALIAS
+    assert f.linenumber
 
 
 @systemcls_param
@@ -815,12 +816,12 @@ def test_aliases_re_export(systemcls: Type[model.System]) -> None:
 
     from constantly import NamedConstant, ValueConstant, FlagConstant, Names, Values, Flags
     from mylib import core
-    from mylib.core import Observalbe
+    from mylib.core import Observable
     from mylib.core._impl import Processor
     Patator = core.Patator
 
     __all__ = ["NamedConstant", "ValueConstant", "FlagConstant", "Names", "Values", "Flags",
-               "Processor","Patator","Observalbe"]
+               "Processor","Patator","Observable"]
     '''
     system = systemcls()
     fromText(src, system=system)
@@ -835,10 +836,10 @@ def test_aliases_re_export(systemcls: Type[model.System]) -> None:
     assert astor.to_source(n.value).strip() == 'mylib.core._impl.Processor' == astutils.node2fullname(n.value, n.parent)
 
     assert system.allobjects['<test>.ValueConstant'].kind is model.DocumentableKind.ALIAS
-    n = system.allobjects['<test>.Observalbe']
+    n = system.allobjects['<test>.Observable']
     assert isinstance(n, model.Attribute)
     assert n.kind is model.DocumentableKind.ALIAS
-    assert astor.to_source(n.value).strip() == 'mylib.core.Observalbe' == astutils.node2fullname(n.value, n.parent)
+    assert astor.to_source(n.value).strip() == 'mylib.core.Observable' == astutils.node2fullname(n.value, n.parent)
 
     n = system.allobjects['<test>.Patator']
     assert isinstance(n, model.Attribute)
@@ -1295,7 +1296,7 @@ def test_import_module_from_package(systemcls: Type[model.System]) -> None:
     system = systemcls()
     fromText('''
     # This module intentionally left blank.
-    ''', modname='a', system=system)
+    ''', modname='a', system=system, is_package=True)
     mod_b = fromText('''
     def f(): pass
     ''', modname='b', parent_name='a', system=system)
@@ -1360,7 +1361,7 @@ def test_inline_docstring_classvar(systemcls: Type[model.System]) -> None:
     assert not f.docstring
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1381,7 +1382,7 @@ def test_inline_docstring_annotated_classvar(systemcls: Type[model.System]) -> N
     assert sorted(C.contents.keys()) == ['_b', 'a']
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
     assert b.privacyClass is model.PrivacyClass.PRIVATE
@@ -1427,7 +1428,7 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
         ]
     a = C.contents['a']
     assert a.docstring == """inline doc for a"""
-    assert a.privacyClass is model.PrivacyClass.VISIBLE
+    assert a.privacyClass is model.PrivacyClass.PUBLIC
     assert a.kind is model.DocumentableKind.INSTANCE_VARIABLE
     b = C.contents['_b']
     assert b.docstring == """inline doc for _b"""
@@ -1435,17 +1436,17 @@ def test_inline_docstring_instancevar(systemcls: Type[model.System]) -> None:
     assert b.kind is model.DocumentableKind.INSTANCE_VARIABLE
     c = C.contents['c']
     assert c.docstring == """inline doc for c"""
-    assert c.privacyClass is model.PrivacyClass.VISIBLE
+    assert c.privacyClass is model.PrivacyClass.PUBLIC
     assert c.kind is model.DocumentableKind.INSTANCE_VARIABLE
     d = C.contents['d']
     assert d.docstring == """inline doc for d"""
-    assert d.privacyClass is model.PrivacyClass.VISIBLE
+    assert d.privacyClass is model.PrivacyClass.PUBLIC
     assert d.kind is model.DocumentableKind.INSTANCE_VARIABLE
     e = C.contents['e']
     assert not e.docstring
     f = C.contents['f']
     assert f.docstring == """inline doc for f"""
-    assert f.privacyClass is model.PrivacyClass.VISIBLE
+    assert f.privacyClass is model.PrivacyClass.PUBLIC
     assert f.kind is model.DocumentableKind.INSTANCE_VARIABLE
 
 @systemcls_param
@@ -2368,3 +2369,91 @@ def test_constant_override_do_not_warns_when_defined_in_module_docstring(systemc
     assert ast.literal_eval(attr.value) == 99
     captured = capsys.readouterr().out
     assert not captured
+
+@systemcls_param
+def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
+    """
+    Code inside of C{if __name__ == '__main__'} should be skipped.
+    """
+    mod = fromText('''
+    foo = True
+
+    if __name__ == '__main__':
+        var = True
+
+        def fun():
+            pass
+
+        class Class:
+            pass
+
+    def bar():
+        pass
+    ''', modname='test', systemcls=systemcls)
+    assert tuple(mod.contents) == ('foo', 'bar')
+
+@systemcls_param
+def test_variable_named_like_current_module(systemcls: Type[model.System]) -> None:
+    """
+    Test for U{issue #474<https://github.com/twisted/pydoctor/issues/474>}.
+    """
+    mod = fromText('''
+    example = True
+    ''', systemcls=systemcls, modname="example")
+    assert 'example' in mod.contents
+
+@systemcls_param
+def test_package_name_clash(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+
+    builder.addModuleString('', 'mod', is_package=True)
+    builder.addModuleString('', 'sub', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub'], model.Module)
+
+    # The following statement completely overrides module 'mod' and all it's submodules.
+    builder.addModuleString('', 'mod', is_package=True)
+
+    with pytest.raises(KeyError):
+        system.allobjects['mod.sub']
+
+    builder.addModuleString('', 'sub2', parent_name='mod', is_package=True)
+
+    assert isinstance(system.allobjects['mod.sub2'], model.Module)
+
+@systemcls_param
+def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
+    """
+    If a target module,
+    explicitly re-export via C{__all__} a set of names
+    that were initially imported from a sub-module via a wildcard,
+    those names are documented as part of the target module.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    from ._impl import *
+    from _impl2 import *
+    __all__ = ['f', 'g', 'h', 'i', 'j']
+    ''', modname='top', is_package=True)
+
+    builder.addModuleString('''
+    def f(): 
+        pass
+    def g():
+        pass
+    def h():
+        pass
+    ''', modname='_impl', parent_name='top')
+    
+    builder.addModuleString('''
+    class i: pass
+    class j: pass
+    ''', modname='_impl2')
+
+    builder.buildModules()
+
+    assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
+    assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
+    assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])

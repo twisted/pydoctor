@@ -6,30 +6,32 @@ system being documented.  An instance of L{System} represents the whole system
 being documented -- a System is a bad of Documentables, in some sense.
 """
 
+import abc
 import ast
 import datetime
 import importlib
 import inspect
 import platform
 import sys
+import textwrap
 import types
 from enum import Enum
-from inspect import Signature
-from optparse import Values
+from inspect import signature, Signature
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING, Any, Collection, Dict, Iterable, Iterator, List, Mapping,
-    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, overload
+    TYPE_CHECKING, Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast, overload
 )
 from urllib.parse import quote
 
+from pydoctor.options import Options
+from pydoctor import factory, qnmatch, utils, linker, astutils
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
-    from twisted.web.template import Flattenable
-    from pydoctor.astbuilder import ASTBuilder
+    from pydoctor.astbuilder import ASTBuilder, DocumentableT
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
@@ -74,13 +76,15 @@ class PrivacyClass(Enum):
 
     @cvar HIDDEN: Don't show the object at all.
     @cvar PRIVATE: Show, but de-emphasize the object.
-    @cvar VISIBLE: Show the object as normal.
+    @cvar PUBLIC: Show the object as normal.
     """
 
     HIDDEN = 0
     PRIVATE = 1
-    VISIBLE = 2
-    
+    PUBLIC = 2
+    # For compatibility
+    VISIBLE = PUBLIC
+
 class DocumentableKind(Enum):
     """
     L{Enum} containing values indicating the possible object types.
@@ -115,6 +119,7 @@ class Documentable:
     """
     docstring: Optional[str] = None
     parsed_docstring: Optional[ParsedDocstring] = None
+    parsed_summary: Optional[ParsedDocstring] = None
     parsed_type: Optional[ParsedDocstring] = None
     docstring_lineno = 0
     linenumber = 0
@@ -138,7 +143,10 @@ class Documentable:
         self.parent = parent
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
-        self._deprecated_info: Optional["Flattenable"] = None
+        self.extra_info: List[ParsedDocstring] = []
+        """
+        A list to store extra informations about this documentable, as L{ParsedDocstring}.
+        """
         self.setup()
 
     @property
@@ -147,6 +155,7 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
+        self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
         doc = node.s
@@ -176,7 +185,10 @@ class Documentable:
             if parentMod is not None:
                 parentSourceHref = parentMod.sourceHref
                 if parentSourceHref:
-                    self.sourceHref = f'{parentSourceHref}#L{lineno:d}'
+                    self.sourceHref = self.system.options.htmlsourcetemplate.format(
+                        mod_source_href=parentSourceHref,
+                        lineno=str(lineno)
+                    )
 
     @property
     def description(self) -> str:
@@ -209,9 +221,16 @@ class Documentable:
     def url(self) -> str:
         """Relative URL at which the documentation for this Documentable
         can be found.
+
+        For page objects this method MUST return an C{.html} filename without a
+        URI fragment (because L{pydoctor.templatewriter.writer.TemplateWriter}
+        uses it directly to determine the output filename).
         """
         page_obj = self.page_object
-        page_url = f'{quote(page_obj.fullName())}.html'
+        if list(self.system.root_names) == [page_obj.fullName()]:
+            page_url = 'index.html'
+        else:
+            page_url = f'{quote(page_obj.fullName())}.html'
         if page_obj is self:
             return page_url
         else:
@@ -244,7 +263,7 @@ class Documentable:
         # :/
         self._handle_reparenting_pre()
         old_parent = self.parent
-        assert isinstance(old_parent, Module)
+        assert isinstance(old_parent, CanContainImportsDocumentable)
         old_name = self.name
         self.parent = self.parentMod = new_parent
         self.name = new_name
@@ -333,15 +352,15 @@ class Documentable:
                 # The local name was not found.
                 # If we're looking at a class, we try our luck with the inherited members
                 if isinstance(ctx, Class):
-                    ctx.find(part)
-                    f = ctx.find(part)
-                    full_name = f.fullName() if f else full_name
-                # We don't have a full name
+                    inherited = ctx.find(part)
+                    if inherited: 
+                        full_name = inherited.fullName()
                 if full_name == part:
+                    # We don't have a full name
                     # TODO: Instead of returning the input, _localNameToFullName()
                     #       should probably either return None or raise LookupError.
                     # Or maybe we should find a way to indicate if the expanded name is "guessed" or if we have the the correct fullName. 
-                    # With the current implementation, this would mean checking if "parts[i + 1:]" contains anything. 
+                    # With the current implementation, this would mean checking if "parts[i + 1:]" contains anything.
                     full_name = f'{ctx.fullName()}.{part}'
                     break
             nxt = self.system.objForFullName(full_name)
@@ -416,7 +435,11 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.HIDDEN
+        isVisible = self.privacyClass is not PrivacyClass.HIDDEN
+        # If a module/package/class is hidden, all it's members are hidden as well.
+        if isVisible and self.parent:
+            isVisible = self.parent.isVisible
+        return isVisible
 
     @property
     def isPrivate(self) -> bool:
@@ -424,7 +447,7 @@ class Documentable:
 
         This is just a simple helper which defers to self.privacyClass.
         """
-        return self.privacyClass is not PrivacyClass.VISIBLE
+        return self.privacyClass is not PrivacyClass.PUBLIC
 
     @property
     def module(self) -> 'Module':
@@ -442,7 +465,7 @@ class Documentable:
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
-            linenumber = self.docstring_lineno
+            linenumber = self.docstring_lineno or self.linenumber
         else:
             linenumber = self.linenumber
         if linenumber:
@@ -472,6 +495,18 @@ class Documentable:
             if alias.parent._resolveDocumentable(alias) == self.fullName():
                 aliases.append(alias)
         return aliases
+    
+    @property
+    def docstring_linker(self) -> 'linker.DocstringLinker':
+        """
+        Returns an instance of L{DocstringLinker} suitable for resolving names
+        in the context of the object scope. 
+        """
+        if self._linker is not None:
+            return self._linker
+        self._linker = linker._CachedEpydocLinker(self)
+        return self._linker
+
 
 class CanContainImportsDocumentable(Documentable):
     def setup(self) -> None:
@@ -492,6 +527,13 @@ class Module(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
+
+        self._is_c_module = False
+        """Whether this module is a C-extension."""
+        self._py_mod: Optional[types.ModuleType] = None
+        """The live module if the module was built from introspection."""
+        self._py_string: Optional[str] = None
+        """The module string if the module was built from text."""
 
         self.all: Optional[Collection[str]] = None
         """Names listed in the C{__all__} variable of this module.
@@ -521,6 +563,8 @@ class Module(CanContainImportsDocumentable):
                     indirections)
                 if resolved:
                     return resolved
+            else:
+                return self._localNameToFullName_map[name]
         return name
 
     @property
@@ -546,6 +590,11 @@ class Module(CanContainImportsDocumentable):
     @docformat.setter
     def docformat(self, value: str) -> None:
         self._docformat = value
+
+    def submodules(self) -> Iterator['Module']:
+        """Returns an iterator over the visible submodules."""
+        return (m for m in self.contents.values()
+                if isinstance(m, Module) and m.isVisible)
 
 class Package(Module):
     kind = DocumentableKind.PACKAGE
@@ -643,7 +692,7 @@ class Function(Inheritable):
     is_async: bool
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
-    signature: Signature
+    signature: Optional[Signature]
 
     def setup(self) -> None:
         super().setup()
@@ -677,6 +726,32 @@ _PackageT = Package
 
 T = TypeVar('T')
 
+def import_mod_from_file_location(module_full_name:str, path: Path) -> types.ModuleType:
+    spec = importlib.util.spec_from_file_location(module_full_name, path)
+    if spec is None: 
+        raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
+    py_mod = importlib.util.module_from_spec(spec)
+    loader = spec.loader
+    assert isinstance(loader, importlib.abc.Loader), loader
+    loader.exec_module(py_mod)
+    return py_mod
+
+
+# Declare the types that we consider as functions (also when they are coming
+# from a C extension)
+func_types: Tuple[Type[Any], ...] = (types.BuiltinFunctionType, types.FunctionType)
+if hasattr(types, "MethodDescriptorType"):
+    # This is Python >= 3.7 only
+    func_types += (types.MethodDescriptorType, )
+else:
+    func_types += (type(str.join), )
+if hasattr(types, "ClassMethodDescriptorType"):
+    # This is Python >= 3.7 only
+    func_types += (types.ClassMethodDescriptorType, )
+else:
+    func_types += (type(dict.__dict__["fromkeys"]), )
+
+_default_extensions = object()
 class System:
     """A collection of related documentable objects.
 
@@ -684,17 +759,25 @@ class System:
     package.
     """
 
-    Class = Class
-    Module = Module
-    Package = Package
-    Function = Function
-    Attribute = Attribute
     # Not assigned here for circularity reasons:
     #defaultBuilder = astbuilder.ASTBuilder
     defaultBuilder: Type[ASTBuilder]
-    sourcebase: Optional[str] = None
+    systemBuilder: Type['ISystemBuilder']
+    options: 'Options'
+    extensions: List[str] = cast('List[str]', _default_extensions)
+    """
+    List of extensions.
 
-    def __init__(self, options: Optional[Values] = None):
+    By default, all built-in pydoctor extensions will be loaded.
+    Override this value to cherry-pick extensions. 
+    """
+
+    custom_extensions: List[str] = []
+    """
+    Additional list of extensions to load alongside default extensions.
+    """
+
+    def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []
 
@@ -708,8 +791,7 @@ class System:
         if options:
             self.options = options
         else:
-            from pydoctor.driver import parse_args
-            self.options, _ = parse_args([])
+            self.options = Options.defaults()
             self.options.verbosity = 3
 
         self.projectname = 'my project'
@@ -720,31 +802,68 @@ class System:
         self.verboselevel = 0
         self.needsnl = False
         self.once_msgs: Set[Tuple[str, str]] = set()
-        self.unprocessed_modules: Set[Module] = set()
+
+        # We're using the id() of the modules as key, and not the fullName becaue modules can
+        # be reparented, generating KeyError.
+        self.unprocessed_modules: List[_ModuleT] = []
+
         self.module_count = 0
         self.processing_modules: List[str] = []
         self.buildtime = datetime.datetime.now()
         self.intersphinx = SphinxInventory(logger=self.msg)
+
+        # Since privacy handling now uses fnmatch, we cache results so we don't re-run matches all the time.
+        # We use the fullName of the objets as the dict key in order to bind a full name to a privacy, not an object to a privacy.
+        # this way, we are sure the objects' privacy stay true even if we reparent them manually.
+        self._privacyClassCache: Dict[str, PrivacyClass] = {}
+        
+        # workaround cyclic import issue
+        from pydoctor import extensions
+
+        # Initialize the extension system
+        self._factory = factory.Factory()
+        self._astbuilder_visitors: List[Type['astutils.NodeVisitorExt']] = []
+        self._post_processors: List[Callable[['System'], None]] = []
+        
+        if self.extensions == _default_extensions:
+            self.extensions = list(extensions.get_extensions())
+        assert isinstance(self.extensions, list)
+        assert isinstance(self.custom_extensions, list)
+        for ext in self.extensions + self.custom_extensions:
+            # Load extensions
+            extensions.load_extension_module(self, ext)
+
+    @property
+    def Class(self) -> Type['Class']:
+        return self._factory.Class
+    @property
+    def Function(self) -> Type['Function']:
+        return self._factory.Function
+    @property
+    def Module(self) -> Type['Module']:
+        return self._factory.Module
+    @property
+    def Package(self) -> Type['Package']:
+        return self._factory.Package
+    @property
+    def Attribute(self) -> Type['Attribute']:
+        return self._factory.Attribute
+
+    @property
+    def sourcebase(self) -> Optional[str]:
+        return self.options.htmlsourcebase
 
     @property
     def root_names(self) -> Collection[str]:
         """The top-level package/module names in this system."""
         return {obj.name for obj in self.rootobjects}
 
-    def verbosity(self, section: Union[str, Iterable[str]]) -> int:
-        if isinstance(section, str):
-            section = (section,)
-        delta: int = max(self.options.verbosity_details.get(sect, 0)
-                         for sect in section)
-        base: int = self.options.verbosity
-        return base + delta
-
     def progress(self, section: str, i: int, n: Optional[int], msg: str) -> None:
         if n is None:
             d = str(i)
         else:
             d = f'{i}/{n}'
-        if self.verbosity(section) == 0 and sys.stdout.isatty():
+        if self.options.verbosity == 0 and sys.stdout.isatty():
             print('\r'+d, msg, end='')
             sys.stdout.flush()
             if d == n:
@@ -762,6 +881,16 @@ class System:
             wantsnl: bool = True,
             once: bool = False
             ) -> None:
+        """
+        Log a message. pydoctor's logging system is bit messy.
+        
+        @param section: API doc generation step this message belongs to.
+        @param msg: The message.
+        @param thresh: The minimum verbosity level of the system for this message to actually be printed.
+            Meaning passing thresh=-1 will make message still display if C{-q} is passed but not if C{-qq}. 
+            Similarly, passing thresh=1 will make the message only apprear if the verbosity level is at least increased once with C{-v}.
+        @param topthresh: The maximum verbosity level of the system for this message to actually be printed.
+        """
         if once:
             if (section, msg) in self.once_msgs:
                 return
@@ -774,7 +903,7 @@ class System:
             # on top of the logging system.
             self.violations += 1
 
-        if thresh <= self.verbosity(section) <= topthresh:
+        if thresh <= self.options.verbosity <= topthresh:
             if self.needsnl and wantsnl:
                 print()
             print(msg, end='')
@@ -830,19 +959,49 @@ class System:
         if self.options.verbosity > 0:
             print(fn, message, detail)
 
-    def objectsOfType(self, cls: Type[T]) -> Iterator[T]:
+    def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
+        if isinstance(cls, str):
+            cls = utils.findClassFromDottedName(cls, 'objectsOfType', 
+                base_class=cast(Type['DocumentableT'], Documentable))
+        assert isinstance(cls, type)
         for o in self.allobjects.values():
             if isinstance(o, cls):
                 yield o
 
     def privacyClass(self, ob: Documentable) -> PrivacyClass:
+        ob_fullName = ob.fullName()
+        cached_privacy = self._privacyClassCache.get(ob_fullName)
+        if cached_privacy is not None:
+            return cached_privacy
+        
+        # kind should not be None, this is probably a relica of a past age of pydoctor.
+        # but keep it just in case.
         if ob.kind is None:
             return PrivacyClass.HIDDEN
+        
+        privacy = PrivacyClass.PUBLIC
         if ob.name.startswith('_') and \
                not (ob.name.startswith('__') and ob.name.endswith('__')):
-            return PrivacyClass.PRIVATE
-        return PrivacyClass.VISIBLE
+            privacy = PrivacyClass.PRIVATE
+        
+        # Precedence order: CLI arguments order
+        # Check exact matches first, then qnmatch
+        _found_exact_match = False
+        for priv, match in reversed(self.options.privacy):
+            if ob_fullName == match:
+                privacy = priv
+                _found_exact_match = True
+                break
+        if not _found_exact_match:
+            for priv, match in reversed(self.options.privacy):
+                if qnmatch.qnmatch(ob_fullName, match):
+                    privacy = priv
+                    break
+
+        # Store in cache
+        self._privacyClassCache[ob_fullName] = privacy
+        return privacy
 
     def addObject(self, obj: Documentable) -> None:
         """Add C{object} to the system."""
@@ -882,6 +1041,7 @@ class System:
             mod.sourceHref = None
         else:
             projBaseDir = mod.system.options.projectbasedirectory
+            assert projBaseDir is not None
             relative = source_path.relative_to(projBaseDir).as_posix()
             mod.sourceHref = f'{self.sourcebase}/{relative}'
 
@@ -909,26 +1069,76 @@ class System:
             ) -> _ModuleT:
         factory = self.Package if is_package else self.Module
         mod = factory(self, modname, parentPackage, modpath)
-        self.addObject(mod)
-        self.progress(
-            "analyzeModule", len(self.allobjects),
-            None, "modules and packages discovered")
-        self.unprocessed_modules.add(mod)
-        self.module_count += 1
+        self._addUnprocessedModule(mod)
         self.setSourceHref(mod, modpath)
         return mod
 
+    def _addUnprocessedModule(self, mod: _ModuleT) -> None:
+        """
+        First add the new module into the unprocessed_modules list. 
+        Handle eventual duplication of module names, and finally add the 
+        module to the system.
+        """
+        assert mod.state is ProcessingState.UNPROCESSED
+        first = self.allobjects.get(mod.fullName())
+        if first is not None:
+            # At this step of processing only modules exists
+            assert isinstance(first, Module)
+            self._handleDuplicateModule(first, mod)
+        else:
+            self.unprocessed_modules.append(mod)
+            self.addObject(mod)
+            self.progress(
+                "analyzeModule", len(self.allobjects),
+                None, "modules and packages discovered")        
+            self.module_count += 1
+
+    def _handleDuplicateModule(self, first: _ModuleT, dup: _ModuleT) -> None:
+        """
+        This is called when two modules have the same name. 
+
+        Current rules are the following: 
+            - C-modules wins over regular python modules
+            - Packages wins over modules
+            - Else, the last added module wins
+        """
+        self._warning(dup.parent, "duplicate", str(first))
+
+        if first._is_c_module and not isinstance(dup, Package):
+            # C-modules wins
+            return
+        elif isinstance(first, Package) and not isinstance(dup, Package):
+            # Packages wins
+            return
+        else:
+            # Else, the last added module wins
+            self._remove(first)
+            self.unprocessed_modules.remove(first)
+            self._addUnprocessedModule(dup)
+
     def _introspectThing(self, thing: object, parent: Documentable, parentMod: _ModuleT) -> None:
         for k, v in thing.__dict__.items():
-            if (isinstance(v, (types.BuiltinFunctionType, types.FunctionType))
+            if (isinstance(v, func_types)
                     # In PyPy 7.3.1, functions from extensions are not
-                    # instances of the above abstract types.
-                    or v.__class__.__name__ == 'builtin_function_or_method'):
+                    # instances of the abstract types in func_types
+                    or (hasattr(v, "__class__") and v.__class__.__name__ == 'builtin_function_or_method')):
                 f = self.Function(self, k, parent)
                 f.parentMod = parentMod
                 f.docstring = v.__doc__
                 f.decorators = None
-                f.signature = Signature()
+                try:
+                    f.signature = signature(v)
+                except ValueError:
+                    # function has an invalid signature.
+                    parent.report(f"Cannot parse signature of {parent.fullName()}.{k}")
+                    f.signature = None
+                except TypeError:
+                    # in pypy we get a TypeError calling signature() on classmethods, 
+                    # because apparently, they are not callable :/
+                    f.signature = None
+                        
+                f.is_async = False
+                f.annotations = {name: None for name in f.signature.parameters} if f.signature else {}
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)
@@ -951,22 +1161,17 @@ class System:
         else:
             module_full_name = f'{package.fullName()}.{module_name}'
 
-        spec = importlib.util.spec_from_file_location(module_full_name, path)
-        if spec is None: 
-            raise RuntimeError(f"Cannot find spec for module {module_full_name} at {path}")
-        py_mod = importlib.util.module_from_spec(spec)
-        loader = spec.loader
-        assert isinstance(loader, importlib.abc.Loader), loader
-        loader.exec_module(py_mod)
+        py_mod = import_mod_from_file_location(module_full_name, path)
         is_package = py_mod.__package__ == py_mod.__name__
 
         factory = self.Package if is_package else self.Module
         module = factory(self, module_name, package, path)
-        self.addObject(module)
-
+        
         module.docstring = py_mod.__doc__
-        self._introspectThing(py_mod, module, module)
-
+        module._is_c_module = True
+        module._py_mod = py_mod
+        
+        self._addUnprocessedModule(module)
         return module
 
     def addPackage(self, package_path: Path, parentPackage: Optional[_PackageT] = None) -> None:
@@ -992,9 +1197,16 @@ class System:
             elif suffix in importlib.machinery.SOURCE_SUFFIXES:
                 self.analyzeModule(path, module_name, package)
             break
+    
+    def _remove(self, o: Documentable) -> None:
+        del self.allobjects[o.fullName()]
+        oc = list(o.contents.values())
+        for c in oc:
+            self._remove(c)
 
     def handleDuplicate(self, obj: Documentable) -> None:
-        '''This is called when we see two objects with the same
+        """
+        This is called when we see two objects with the same
         .fullName(), for example::
 
             class C:
@@ -1006,19 +1218,14 @@ class System:
                         implementation 2
 
         The default is that the second definition "wins".
-        '''
+        """
         i = 0
         fullName = obj.fullName()
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
         self._warning(obj.parent, "duplicate", str(prev))
-        def remove(o: Documentable) -> None:
-            del self.allobjects[o.fullName()]
-            oc = list(o.contents.values())
-            for c in oc:
-                remove(c)
-        remove(prev)
+        self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
             self.allobjects[o.fullName()] = o
@@ -1038,25 +1245,38 @@ class System:
         if mod.state is ProcessingState.UNPROCESSED:
             self.processModule(mod)
 
-        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED)
+        assert mod.state in (ProcessingState.PROCESSING, ProcessingState.PROCESSED), mod.state
         return mod
-
 
     def processModule(self, mod: _ModuleT) -> None:
         assert mod.state is ProcessingState.UNPROCESSED
+        assert mod in self.unprocessed_modules
         mod.state = ProcessingState.PROCESSING
+        self.unprocessed_modules.remove(mod)
         if mod.source_path is None:
-            return
-        builder = self.defaultBuilder(self)
-        ast = builder.parseFile(mod.source_path)
-        if ast:
+            assert mod._py_string is not None
+        if mod._is_c_module:
             self.processing_modules.append(mod.fullName())
             self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-            builder.processModuleAST(ast, mod)
+            self._introspectThing(mod._py_mod, mod, mod)
             mod.state = ProcessingState.PROCESSED
             head = self.processing_modules.pop()
             assert head == mod.fullName()
-        self.unprocessed_modules.remove(mod)
+        else:
+            builder = self.defaultBuilder(self)
+            if mod._py_string is not None:
+                ast = builder.parseString(mod._py_string)
+            else:
+                assert mod.source_path is not None
+                ast = builder.parseFile(mod.source_path)
+            if ast:
+                self.processing_modules.append(mod.fullName())
+                if mod._py_string is None:
+                    self.msg("processModule", "processing %s"%(self.processing_modules), 1)
+                builder.processModuleAST(ast, mod)
+                mod.state = ProcessingState.PROCESSED
+                head = self.processing_modules.pop()
+                assert head == mod.fullName()
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
@@ -1078,7 +1298,8 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
-        pass
+        for post_processor in self._post_processors:
+            post_processor(self)
 
 
     def fetchIntersphinxInventories(self, cache: CacheT) -> None:
@@ -1087,3 +1308,96 @@ class System:
         """
         for url in self.options.intersphinx:
             self.intersphinx.update(cache, url)
+
+class SystemBuildingError(Exception):
+    """
+    Raised when there is a (handled) fatal error while adding modules to the builder.
+    """
+
+class ISystemBuilder(abc.ABC):
+    """
+    Interface class for building a system.
+    """
+    @abc.abstractmethod
+    def __init__(self, system: 'System') -> None:
+        """
+        Create the builder.
+        """
+    @abc.abstractmethod
+    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+        """
+        Add a module or package from file system path to the pydoctor system. 
+        If the path points to a directory, adds all submodules recursively.
+
+        @raises SystemBuildingError: If there is an error while adding the module/package.
+        """
+    @abc.abstractmethod
+    def addModuleString(self, text: str, modname: str,
+                        parent_name: Optional[str] = None,
+                        is_package: bool = False, ) -> None:
+        """
+        Add a module from text to the system.
+        """
+    @abc.abstractmethod
+    def buildModules(self) -> None:
+        """
+        Build the modules.
+        """
+
+class SystemBuilder(ISystemBuilder):
+    """
+    This class is only an adapter for some System methods related to module building. 
+    """
+    def __init__(self, system: 'System') -> None:
+        self.system = system
+        self._added: Set[Path] = set()
+
+    def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+        if path in self._added:
+            return
+        # Path validity check
+        if self.system.options.projectbasedirectory is not None:
+            # Note: Path.is_relative_to() was only added in Python 3.9,
+            #       so we have to use this workaround for now.
+            try:
+                path.relative_to(self.system.options.projectbasedirectory)
+            except ValueError as ex:
+                raise SystemBuildingError(f"Source path lies outside base directory: {ex}")
+        parent: Optional[Package] = None
+        if parent_name:
+            _p = self.system.allobjects[parent_name]
+            assert isinstance(_p, Package)
+            parent = _p
+        if path.is_dir():
+            self.system.msg('addPackage', f"adding directory {path}")
+            if not (path / '__init__.py').is_file():
+                raise SystemBuildingError(f"Source directory lacks __init__.py: {path}")
+            self.system.addPackage(path, parent)
+        elif path.is_file():
+            self.system.msg('addModuleFromPath', f"adding module {path}")
+            self.system.addModuleFromPath(path, parent)
+        elif path.exists():
+            raise SystemBuildingError(f"Source path is neither file nor directory: {path}")
+        else:
+            raise SystemBuildingError(f"Source path does not exist: {path}")
+        self._added.add(path)
+
+    def addModuleString(self, text: str, modname: str,
+                        parent_name: Optional[str] = None,
+                        is_package: bool = False, ) -> None:
+        if parent_name is None:
+            parent = None
+        else:
+            # Set containing package as parent.
+            parent = self.system.allobjects[parent_name]
+            assert isinstance(parent, Package), f"{parent.fullName()} is not a Package, it's a {parent.kind}"
+        
+        factory = self.system.Package if is_package else self.system.Module
+        mod = factory(self.system, name=modname, parent=parent, source_path=None)
+        mod._py_string = textwrap.dedent(text)
+        self.system._addUnprocessedModule(mod)
+
+    def buildModules(self) -> None:
+        self.system.process()
+
+System.systemBuilder = SystemBuilder

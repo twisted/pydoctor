@@ -8,14 +8,14 @@ from inspect import BoundArguments, Parameter, Signature, signature
 from itertools import chain
 from pathlib import Path
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
+    Any, Callable, Collection, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple,
     Type, TypeVar, Union, cast
 )
 
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, node2fullname
+from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -28,13 +28,14 @@ if sys.version_info >= (3,8):
 else:
     _parse = ast.parse
 
+
 def _maybeAttribute(cls: model.Class, name: str) -> bool:
     """Check whether a name is a potential attribute of the given class.
     This is used to prevent an assignment that wraps a method from
     creating an attribute that would overwrite or shadow that method.
 
     @return: L{True} if the name does not exist or is an existing (possibly
-        inherited) attribute, L{False} otherwise
+        inherited) attribute, L{False} if this name defines something else than an L{Attribute}. 
     """
     obj = cls.find(name)
     return obj is None or isinstance(obj, model.Attribute)    
@@ -178,25 +179,24 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
 def is_alias(value: Optional[ast.expr]) -> bool:
     return node2dottedname(value) is not None
 
-class ModuleVistor(ast.NodeVisitor):
-    currAttr: Optional[model.Documentable]
-    newAttr: Optional[model.Documentable]
+
+class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
+        super().__init__()
         self.builder = builder
         self.system = builder.system
         self.module = module
         self._moduleLevelAssigns: List[str] = []
 
-    def default(self, node: ast.AST) -> None:
-        body: Optional[Sequence[ast.stmt]] = getattr(node, 'body', None)
-        if body is not None:
-            self.currAttr = None
-            for child in body:
-                self.newAttr = None
-                self.visit(child)
-                self.currAttr = self.newAttr
-            self.newAttr = None
+
+    def visit_If(self, node: ast.If) -> None:
+        if isinstance(node.test, ast.Compare):
+            if is__name__equals__main__(node.test):
+                # skip if __name__ == '__main__': blocks since
+                # whatever is declared in them cannot be imported
+                # and thus is not part of the API
+                raise self.SkipNode()
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -205,14 +205,15 @@ class ModuleVistor(ast.NodeVisitor):
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             self.module.setDocstring(node.body[0].value)
             epydoc2stan.extract_fields(self.module)
-        self.default(node)
+
+    def depart_Module(self, node: ast.Module) -> None:
         self.builder.pop(self.module)
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> Optional[model.Class]:
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return None
+            raise self.SkipNode()
 
         rawbases = []
         bases = []
@@ -269,10 +270,10 @@ class ModuleVistor(ast.NodeVisitor):
         for b in cls.baseobjects:
             if b is not None:
                 b.subclasses.append(cls)
-        self.default(node)
+
+    def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()
 
-        return cls
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         ctx = self.builder.current
@@ -334,12 +335,105 @@ class ModuleVistor(ast.NodeVisitor):
                 if not name.startswith('_')
                 ]
 
+        # Fetch names to export.
+        exports = self._getCurrentModuleExports()
+
         # Add imported names to our module namespace.
         assert isinstance(self.builder.current, model.CanContainImportsDocumentable)
         _localNameToFullName = self.builder.current._localNameToFullName_map
         expandName = mod.expandName
         for name in names:
+
+            if self._handleReExport(exports, name, name, mod) is True:
+                continue
+
             _localNameToFullName[name] = expandName(name)
+
+    def _getCurrentModuleExports(self) -> Collection[str]:
+        # Fetch names to export.
+        current = self.builder.current
+        if isinstance(current, model.Module):
+            exports = current.all
+            if exports is None:
+                exports = []
+        else:
+            # Don't export names imported inside classes or functions.
+            exports = []
+        return exports
+
+    def _handleReExport(self, curr_mod_exports:Collection[str], 
+                        origin_name:str, as_name:str,
+                        origin_module:Union[model.Module, str]) -> bool:
+        """
+        Move re-exported objects into current module.
+
+        @param origin_module: None if the module is unknown to this system.
+        @returns: True if the imported name has been sucessfully re-exported.
+        """
+        # Move re-exported objects into current module.
+        current = self.builder.current
+        if isinstance(origin_module, model.Module):
+            modname = origin_module.fullName()
+            known_module = True
+        else:
+            modname = origin_module
+            known_module = False
+        if as_name in curr_mod_exports:
+            # In case of duplicates names, we can't rely on resolveName,
+            # So we use content.get first to resolve non-alias names. 
+            if known_module:
+                ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
+                if ob is None:
+                    self.builder.warning("cannot resolve re-exported name",
+                                            f'{modname}.{origin_name}')
+                else:
+                    if origin_module.all is None or origin_name not in origin_module.all:
+                        self.system.msg(
+                            "astbuilder",
+                            "moving %r into %r" % (ob.fullName(), current.fullName())
+                            )
+                        # Must be a Module since the exports is set to an empty list if it's not.
+                        assert isinstance(current, model.Module)
+                        ob.reparent(current, as_name)
+                        return True
+            else:
+                # re-export names that are not part of the current system with an alias
+                attr = current.contents.get(as_name)
+                if not attr:
+                    attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
+                assert isinstance(attr, model.Attribute)
+                attr._alias_to = f'{modname}.{origin_name}'
+                # This is only for the HTML repr
+                attr.value=ast.Name(attr._alias_to)
+                return True
+            
+            # if mod is None: 
+            #         # re-export names that are not part of the current system with an alias
+            #         attr = current.contents.get(asname)
+            #         if not attr:
+            #             attr = self.builder.addAttribute(name=asname, kind=model.DocumentableKind.ALIAS, parent=current)
+            #         assert isinstance(attr, model.Attribute)
+            #         attr._alias_to = f'{modname}.{orgname}'
+            #         # This is only for the HTML repr
+            #         attr.value=ast.Name(attr._alias_to)
+            #         continue
+            #     else:
+            #         try:
+            #             ob = mod.contents[orgname]
+            #         except KeyError:
+            #             self.builder.warning("cannot find re-exported name",
+            #                                 f'{modname}.{orgname}')
+            #         else:
+            #             if mod.all is None or orgname not in mod.all:
+            #                 self.system.msg(
+            #                     "astbuilder",
+            #                     "moving %r into %r" % (ob.fullName(), current.fullName())
+            #                     )
+            #                 # Must be a Module since the exports is set to an empty list if it's not.
+            #                 assert isinstance(current, model.Module)
+            #                 ob.reparent(current, asname)
+            #                 continue
+        return False
 
     def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
         """Handle a C{from <modname> import <names>} statement."""
@@ -348,50 +442,18 @@ class ModuleVistor(ast.NodeVisitor):
         mod = self.system.getProcessedModule(modname)
 
         # Fetch names to export.
-        current = self.builder.current
-        if isinstance(current, model.Module):
-            exports = current.all
-            if exports is None:
-                exports = []
-        else:
-            assert isinstance(current, model.CanContainImportsDocumentable)
-            # Don't export names imported inside classes or functions.
-            exports = []
+        exports = self._getCurrentModuleExports()
 
+        current = self.builder.current
+        assert isinstance(current, model.CanContainImportsDocumentable)
         _localNameToFullName = current._localNameToFullName_map
         for al in names:
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
 
-            # Move re-exported objects into current module.
-            if asname in exports:
-                if mod is None: 
-                    # re-export names that are not part of the current system with an alias
-                    attr = current.contents.get(asname)
-                    if not attr:
-                        attr = self.builder.addAttribute(name=asname, kind=model.DocumentableKind.ALIAS, parent=current)
-                    assert isinstance(attr, model.Attribute)
-                    attr._alias_to = f'{modname}.{orgname}'
-                    # This is only for the HTML repr
-                    attr.value=ast.Name(attr._alias_to)
-                    continue
-                else:
-                    try:
-                        ob = mod.contents[orgname]
-                    except KeyError:
-                        self.builder.warning("cannot find re-exported name",
-                                            f'{modname}.{orgname}')
-                    else:
-                        if mod.all is None or orgname not in mod.all:
-                            self.system.msg(
-                                "astbuilder",
-                                "moving %r into %r" % (ob.fullName(), current.fullName())
-                                )
-                            # Must be a Module since the exports is set to an empty list if it's not.
-                            assert isinstance(current, model.Module)
-                            ob.reparent(current, asname)
-                            continue
+            if self._handleReExport(exports, orgname, asname, mod or modname) is True:
+                continue
 
             # If we're importing from a package, make sure imported modules
             # are processed (getProcessedModule() ignores non-modules).
@@ -528,29 +590,42 @@ class ModuleVistor(ast.NodeVisitor):
             # and therefore doesn't need an Attribute instance.
             return
         parent = self.builder.current
-        obj = parent.resolveName(target)
+        obj = parent.contents.get(target)
         
         if obj is None:
             obj = self.builder.addAttribute(name=target, kind=None, parent=parent)
         
-        if isinstance(obj, model.Attribute):
-            
-            if annotation is None and expr is not None:
-                annotation = _infer_type(expr)
-            
-            obj.annotation = annotation
-            obj.setLineNumber(lineno)
-            if is_alias(expr):
-                self._handleAlias(obj=obj, value=expr, lineno=lineno)
-            elif is_constant(obj):
-                self._handleConstant(obj=obj, value=expr, lineno=lineno)
-            else:
-                obj.kind = model.DocumentableKind.VARIABLE
-                # We store the expr value for all Attribute in order to be able to 
-                # check if they have been initialized or not.
-                obj.value = expr
+        # If it's not an attribute it means that the name is already denifed as function/class 
+        # probably meaning that this attribute is a bound callable. 
+        #
+        #   def func(value, stock) -> int:...
+        #   var = 2
+        #   func = partial(func, value=var)
+        #
+        # We don't know how to handle this,
+        # so we ignore it to document the original object. This means that we might document arguments 
+        # that are in reality not existing because they have values in a partial() call for instance.
 
-            self.newAttr = obj
+        if not isinstance(obj, model.Attribute):
+            return
+            
+        if annotation is None and expr is not None:
+            annotation = _infer_type(expr)
+        
+        obj.annotation = annotation
+        obj.setLineNumber(lineno)
+        
+        if is_alias(expr):
+            self._handleAlias(obj=obj, value=expr, lineno=lineno)
+        elif is_constant(obj):
+            self._handleConstant(obj=obj, value=expr, lineno=lineno)
+        else:
+            obj.kind = model.DocumentableKind.VARIABLE
+            # We store the expr value for all Attribute in order to be able to 
+            # check if they have been initialized or not.
+            obj.value = expr
+
+        self.builder.currentAttr = obj
 
     def _handleAssignmentInModule(self,
             target: str,
@@ -604,7 +679,7 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             obj.value = expr
 
-        self.newAttr = obj
+        self.builder.currentAttr = obj
 
     def _handleInstanceVar(self,
             name: str,
@@ -621,7 +696,7 @@ class ModuleVistor(ast.NodeVisitor):
         if not _maybeAttribute(cls, name):
             return
 
-        # Class variables can only be Attribute, so it's OK to cast
+        # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
         if obj is None:
 
@@ -640,7 +715,8 @@ class ModuleVistor(ast.NodeVisitor):
         else:
             obj.kind = model.DocumentableKind.INSTANCE_VARIABLE
             obj.value = expr
-        self.newAttr = obj
+        
+        self.builder.currentAttr = obj
 
     def _handleAssignmentInClass(self,
             target: str,
@@ -748,11 +824,12 @@ class ModuleVistor(ast.NodeVisitor):
     def visit_Expr(self, node: ast.Expr) -> None:
         value = node.value
         if isinstance(value, ast.Str):
-            attr = self.currAttr
+            attr = self.builder.currentAttr
             if attr is not None:
                 attr.setDocstring(value)
-
+                self.builder.currentAttr = None
         self.generic_visit(node)
+
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._handleFunctionDef(node, is_async=True)
@@ -767,18 +844,23 @@ class ModuleVistor(ast.NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
-            return
+            raise self.SkipNode()
 
         lineno = node.lineno
+
+        # setting linenumber from the start of the decorations
         if node.decorator_list:
             lineno = node.decorator_list[0].lineno
 
+        # extracting docstring
         docstring: Optional[ast.Str] = None
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) \
                               and isinstance(node.body[0].value, ast.Str):
             docstring = node.body[0].value
 
         func_name = node.name
+
+        # determine the function's kind
         is_property = False
         is_classmethod = False
         is_staticmethod = False
@@ -802,12 +884,13 @@ class ModuleVistor(ast.NodeVisitor):
                     func_name = '.'.join(deco_name[-2:])
 
         if is_property:
+            # handle property and skip child nodes.
             attr = self._handlePropertyDef(node, docstring, lineno)
             if is_classmethod:
                 attr.report(f'{attr.fullName()} is both property and classmethod')
             if is_staticmethod:
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
-            return
+            raise self.SkipNode()
 
         func = self.builder.pushFunction(func_name, lineno)
         func.is_async = is_async
@@ -864,7 +947,11 @@ class ModuleVistor(ast.NodeVisitor):
 
         func.signature = signature
         func.annotations = self._annotations_from_function(node)
-        self.default(node)
+    
+    def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.builder.popFunction()
+
+    def depart_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.builder.popFunction()
 
     def _handlePropertyDef(self,
@@ -990,7 +1077,7 @@ class _ValueFormatter:
         The colorized value as L{ParsedDocstring}.
         """
 
-        self._linker = epydoc2stan._EpydocLinker(ctx)
+        self._linker = ctx.docstring_linker
         """
         Linker.
         """
@@ -1110,26 +1197,41 @@ def _annotation_for_elements(sequence: Iterable[object]) -> Optional[ast.expr]:
 DocumentableT = TypeVar('DocumentableT', bound=model.Documentable)
 
 class ASTBuilder:
+    """
+    Keeps tracks of the state of the AST build, creates documentable and adds objects to the system.
+    """
     ModuleVistor = ModuleVistor
 
     def __init__(self, system: model.System):
         self.system = system
-        self.current = cast(model.Documentable, None)
-        self.currentMod: Optional[model.Module] = None
+        
+        self.current = cast(model.Documentable, None) # current visited object
+        self.currentMod: Optional[model.Module] = None # module, set when visiting ast.Module
+        self.currentAttr: Optional[model.Documentable] = None # recently visited attribute object
+        
         self._stack: List[model.Documentable] = []
         self.ast_cache: Dict[Path, Optional[ast.Module]] = {}
 
+
     def _push(self, cls: Type[DocumentableT], name: str, lineno: int) -> DocumentableT:
+        """
+        Create and enter a new object of the given type and add it to the system.
+        """
         obj = cls(self.system, name, self.current)
         self.system.addObject(obj)
         self.push(obj, lineno)
+        self.currentAttr = None
         return obj
 
     def _pop(self, cls: Type[model.Documentable]) -> None:
         assert isinstance(self.current, cls)
         self.pop(self.current)
+        self.currentAttr = None
 
     def push(self, obj: model.Documentable, lineno: int) -> None:
+        """
+        Enter a documentable.
+        """
         self._stack.append(self.current)
         self.current = obj
         if isinstance(obj, model.Module):
@@ -1146,30 +1248,51 @@ class ASTBuilder:
             obj.setLineNumber(lineno)
 
     def pop(self, obj: model.Documentable) -> None:
+        """
+        Leave a documentable.
+        """
         assert self.current is obj, f"{self.current!r} is not {obj!r}"
         self.current = self._stack.pop()
         if isinstance(obj, model.Module):
             self.currentMod = None
 
     def pushClass(self, name: str, lineno: int) -> model.Class:
+        """
+        Create and a new class in the system.
+        """
         return self._push(self.system.Class, name, lineno)
+
     def popClass(self) -> None:
+        """
+        Leave a class.
+        """
         self._pop(self.system.Class)
 
     def pushFunction(self, name: str, lineno: int) -> model.Function:
+        """
+        Create and enter a new function in the system.
+        """
         return self._push(self.system.Function, name, lineno)
+
     def popFunction(self) -> None:
+        """
+        Leave a function.
+        """
         self._pop(self.system.Function)
 
     def addAttribute(self,
             name: str, kind: Optional[model.DocumentableKind], parent: model.Documentable
             ) -> model.Attribute:
+        """
+        Add a new attribute to the system, attributes cannot be "entered".
+        """
         system = self.system
         parentMod = self.currentMod
         attr = system.Attribute(system, name, parent)
         attr.kind = kind
         attr.parentMod = parentMod
         system.addObject(attr)
+        self.currentAttr = attr
         return attr
 
     def warning(self, message: str, detail: str) -> None:
@@ -1185,7 +1308,10 @@ class ASTBuilder:
             else:
                 module_var_parser(node, mod)
 
-        self.ModuleVistor(self, mod).visit(mod_ast)
+        vis = self.ModuleVistor(self, mod)
+        vis.extensions.add(*self.system._astbuilder_visitors)
+        vis.extensions.attach_visitor(vis)
+        vis.walkabout(mod_ast)
 
     def parseFile(self, path: Path) -> Optional[ast.Module]:
         try:
@@ -1198,6 +1324,14 @@ class ASTBuilder:
                 self.warning("cannot parse", str(path))
             self.ast_cache[path] = mod
             return mod
+    
+    def parseString(self, py_string:str) -> Optional[ast.Module]:
+        mod = None
+        try:
+            mod = _parse(py_string)
+        except (SyntaxError, ValueError):
+            self.warning("cannot parse string: ", py_string)
+        return mod
 
 model.System.defaultBuilder = ASTBuilder
 

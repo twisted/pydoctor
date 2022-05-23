@@ -6,7 +6,7 @@ from twisted.web.template import Tag, renderer, tags
 from pydoctor.model import Attribute, DocumentableKind
 from pydoctor import epydoc2stan
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import DocGetter, format_decorators
+from pydoctor.templatewriter.pages import format_decorators
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -17,9 +17,9 @@ class AttributeChild(TemplateElement):
     filename = 'attribute-child.html'
 
     def __init__(self,
-            docgetter: DocGetter,
+            docgetter: util.DocGetter,
             ob: Attribute,
-            extras: "Flattenable",
+            extras: List[Tag],
             loader: ITemplateLoader
             ):
         super().__init__(loader)
@@ -62,7 +62,7 @@ class AttributeChild(TemplateElement):
             return ()
 
     @renderer
-    def functionExtras(self, request: object, tag: Tag) -> "Flattenable":
+    def objectExtras(self, request: object, tag: Tag) -> List[Tag]:
         return self._functionExtras
 
     @renderer
@@ -70,15 +70,7 @@ class AttributeChild(TemplateElement):
         return self.docgetter.get(self.ob)
 
     @renderer
-    def functionDeprecated(self, request: object, tag: Tag) -> "Flattenable":
-        msg = self.ob._deprecated_info
-        if msg is None:
-            return ()
-        else:
-            return tags.div(msg, role="alert", class_="deprecationNotice alert alert-warning")
-
-    @renderer
-    def value(self, request: object, tag: Tag) -> "Flattenable":
+    def constantValue(self, request: object, tag: Tag) -> "Flattenable":
         if self.ob.value is not None:
             if self.ob.kind is DocumentableKind.CONSTANT:
                 # Attribute is a constant (with a value), then display it's value

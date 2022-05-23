@@ -12,31 +12,44 @@ from twisted.web.template import Element, Tag, TagLoader, renderer, tags
 
 from pydoctor import epydoc2stan, model
 from pydoctor.templatewriter import TemplateLookup
-from pydoctor.templatewriter.pages import Page
+from pydoctor.templatewriter.pages import Page, objects_order
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
-    from typing_extensions import Final
 
 
 def moduleSummary(module: model.Module, page_url: str) -> Tag:
     r: Tag = tags.li(
-        tags.code(epydoc2stan.taglink(module, page_url)), ' - ',
+        tags.code(epydoc2stan.taglink(module, page_url, label=module.name)), ' - ',
         epydoc2stan.format_summary(module)
         )
     if module.isPrivate:
         r(class_='private')
     if not isinstance(module, model.Package):
         return r
-    contents = [m for m in module.contents.values()
-                if isinstance(m, model.Module) and m.isVisible]
+    contents = list(module.submodules())
     if not contents:
         return r
+
     ul = tags.ul()
-    def fullName(obj: model.Documentable) -> str:
-        return obj.fullName()
-    for m in sorted(contents, key=fullName):
-        ul(moduleSummary(m, page_url))
+
+    if len(contents) > 50 and not any(any(s.submodules()) for s in contents):
+        # If there are more than 50 modules and no submodule has
+        # further submodules we use a more compact presentation.
+        li = tags.li(class_='compact-modules')
+        for m in sorted(contents, key=objects_order):
+            span = tags.span()
+            span(tags.code(epydoc2stan.taglink(m, m.url, label=m.name)))
+            span(', ')
+            if m.isPrivate:
+                span(class_='private')
+            li(span)
+        # remove the last trailing comma
+        li.children[-1].children.pop() # type: ignore
+        ul(li)
+    else:
+        for m in sorted(contents, key=objects_order):
+            ul(moduleSummary(m, page_url))
     r(ul)
     return r
 
@@ -280,23 +293,6 @@ class IndexPage(Page):
         return f"API Documentation for {self.system.projectname}"
 
     @renderer
-    def onlyIfOneRoot(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) != 1:
-            return []
-        else:
-            root, = self.system.rootobjects
-            return tag.clear()(
-                "Start at ", tags.code(epydoc2stan.taglink(root, self.filename)),
-                ", the root ", epydoc2stan.format_kind(root.kind).lower(), ".")
-
-    @renderer
-    def onlyIfMultipleRoots(self, request: object, tag: Tag) -> "Flattenable":
-        if len(self.system.rootobjects) == 1:
-            return []
-        else:
-            return tag
-
-    @renderer
     def roots(self, request: object, tag: Tag) -> "Flattenable":
         r = []
         for o in self.system.rootobjects:
@@ -307,10 +303,10 @@ class IndexPage(Page):
 
     @renderer
     def rootkind(self, request: object, tag: Tag) -> Tag:
-        return tag.clear()('/'.join(sorted(
-             epydoc2stan.format_kind(o.kind, plural=True).lower()
-             for o in self.system.rootobjects
-             )))
+        rootkinds = sorted(set([o.kind for o in self.system.rootobjects]), key=lambda k:k.name)
+        return tag.clear()('/'.join(
+             epydoc2stan.format_kind(o, plural=True).lower()
+             for o in rootkinds ))
 
 
 def hasdocstring(ob: model.Documentable) -> bool:
@@ -350,10 +346,13 @@ class UndocumentedSummaryPage(Page):
                 ))
         return tag
 
-summarypages: 'Final[Iterable[Type[Page]]]' = [
-    ModuleIndexPage,
-    ClassIndexPage,
-    IndexPage,
-    NameIndexPage,
-    UndocumentedSummaryPage,
+def summaryPages(system: model.System) -> Iterable[Type[Page]]:
+    pages = [
+        ModuleIndexPage,
+        ClassIndexPage,
+        NameIndexPage,
+        UndocumentedSummaryPage,
     ]
+    if len(system.root_names) > 1:
+        pages.append(IndexPage)
+    return pages

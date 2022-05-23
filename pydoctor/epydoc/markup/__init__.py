@@ -33,11 +33,19 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from importlib import import_module
 from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
+import re
+from importlib import import_module
 from inspect import getmodulename
+
+from docutils import nodes, utils
+from twisted.web.template import Tag, tags
+
+from pydoctor import node2stan
+from pydoctor.epydoc.docutils import set_node_attributes, build_table_of_content
+
 
 # In newer Python versions, use importlib.resources from the standard library.
 # On older versions, a compatibility package must be installed from PyPI.
@@ -46,14 +54,9 @@ if sys.version_info < (3, 9):
 else:
     import importlib.resources as importlib_resources
 
-from docutils import nodes
-from twisted.web.template import Tag
-
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
     from pydoctor.model import Documentable
-
-from pydoctor import node2stan
 
 ##################################################
 ## Contents
@@ -98,6 +101,11 @@ class ParsedDocstring(abc.ABC):
     or L{pydoctor.epydoc.markup.restructuredtext.parse_docstring()}.
 
     Subclasses must implement L{has_body()} and L{to_node()}.
+    
+    A default implementation for L{to_stan()} method, relying on L{to_node()} is provided.
+    But some subclasses override this behaviour.
+    
+    Implementation of L{get_toc()} also relies on L{to_node()}.
     """
 
     def __init__(self, fields: Sequence['Field']):
@@ -108,17 +116,36 @@ class ParsedDocstring(abc.ABC):
         """
 
         self._stan: Optional[Tag] = None
+        self._summary: Optional['ParsedDocstring'] = None
+        self._compact = True
 
     @abc.abstractproperty
     def has_body(self) -> bool:
-        """Does this docstring have a non-empty body?
+        """
+        Does this docstring have a non-empty body?
 
         The body is the part of the docstring that remains after the fields
         have been split off.
         """
-        raise NotImplementedError()
+    
+    def get_toc(self, depth: int) -> Optional['ParsedDocstring']:
+        """
+        The table of contents of the docstring if titles are defined or C{None}.
+        """
+        try:
+            document = self.to_node()
+        except NotImplementedError:
+            return None
+        contents = build_table_of_content(document, depth=depth)
+        docstring_toc = utils.new_document('toc')
+        if contents:
+            docstring_toc.extend(contents)
+            from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+            return ParsedRstDocstring(docstring_toc, ())
+        else:
+            return None
 
-    def to_stan(self, docstring_linker: 'DocstringLinker') -> Tag:
+    def to_stan(self, docstring_linker: 'DocstringLinker', compact:bool=True) -> Tag:
         """
         Translate this docstring to a Stan tree.
 
@@ -129,20 +156,56 @@ class ParsedDocstring(abc.ABC):
             links into and out of the docstring.
         @return: The docstring presented as a stan tree.
         """
+        # The following three lines is a hack in order to still show p tags 
+        # around docstrings content when there is only a single line text
+        # and arguement compact=False is passed. We clear cached stan if required.
+        if compact != self._compact and self._stan is not None:
+            self._stan = None
+        self._compact = compact
+
         if self._stan is not None:
-            return self._stan
-        self._stan = Tag('', children=node2stan.node2stan(self.to_node(), docstring_linker).children)
+            return self._stan      
+
+        docstring_stan = node2stan.node2stan(self.to_node(), 
+                                        docstring_linker, 
+                                        compact=compact)
+
+        self._stan = Tag('', children=docstring_stan.children)
         return self._stan
     
     @abc.abstractmethod
     def to_node(self) -> nodes.document:
         """
-        Translate this docstring to a L{docutils.nodes.document}.
+        Translate this docstring to a L{nodes.document}.
 
-        @return: The docstring presented as a L{docutils.nodes.document}.
+        @return: The docstring presented as a L{nodes.document}.
+
+        @note: Some L{ParsedDocstring} subclasses do not support docutils nodes.
+            This method might raise L{NotImplementedError} in such cases. (i.e. L{pydoctor.epydoc.markup._types.ParsedTypeDocstring})
         """
         raise NotImplementedError()
+    
+    def get_summary(self) -> 'ParsedDocstring':
+        """
+        Returns the summary of this docstring.
+        
+        @note: The summary is cached.
+        """
+        # Avoid rare cyclic import error, see https://github.com/twisted/pydoctor/pull/538#discussion_r845668735
+        from pydoctor import epydoc2stan
+        if self._summary is not None:
+            return self._summary
+        try: 
+            _document = self.to_node()
+            visitor = SummaryExtractor(_document)
+            _document.walk(visitor)
+        except Exception: 
+            self._summary = epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("Broken summary"))
+        else:
+            self._summary = visitor.summary or epydoc2stan.ParsedStanOnly(tags.span(class_='undocumented')("No summary"))
+        return self._summary
 
+      
 ##################################################
 ## Fields
 ##################################################
@@ -314,3 +377,79 @@ class ParseError(Exception):
             return '<ParseError on unknown line>'
         else:
             return f'<ParseError on line {self._linenum + 1:d}>'
+
+class SummaryExtractor(nodes.NodeVisitor):
+    """
+    A docutils node visitor that extracts first sentences from
+    the first paragraph in a document.
+    """
+    def __init__(self, document: nodes.document, maxchars:int=200) -> None:
+        """
+        @param document: The docutils document to extract a summary from.
+        @param maxchars: Maximum of characters the summary can span. 
+            Sentences are not cut in the middle, so the actual length
+            might be longer if your have a large first paragraph.
+        """
+        super().__init__(document)
+        self.summary: Optional['ParsedDocstring'] = None
+        self.other_docs: bool = False
+        self.maxchars = maxchars
+
+    def visit_document(self, node: nodes.Node) -> None:
+        self.summary = None
+
+    _SENTENCE_RE_SPLIT = re.compile(r'( *[\.\?!][\'"\)\]]* *)')
+
+    def visit_paragraph(self, node: nodes.Node) -> None:
+        if self.summary is not None:
+            # found a paragraph after the first one
+            self.other_docs = True
+            raise nodes.StopTraversal()
+
+        summary_doc = utils.new_document('summary')
+        summary_pieces = []
+
+        # Extract the first sentences from the first paragraph until maximum number 
+        # of characters is reach or until the end of the paragraph.
+        char_count = 0
+
+        for child in node:
+
+            if char_count > self.maxchars:
+                break
+            
+            if isinstance(child, nodes.Text):
+                text = child.astext().replace('\n', ' ')
+                sentences = [item for item in self._SENTENCE_RE_SPLIT.split(text) if item] # Not empty values only
+                
+                for i,s in enumerate(sentences):
+                    
+                    if char_count > self.maxchars:
+                        # Leave final point alone.
+                        if not (i == len(sentences)-1 and len(s)==1):
+                            break
+
+                    summary_pieces.append(set_node_attributes(nodes.Text(s), document=summary_doc))
+                    char_count += len(s)
+
+            else:
+                summary_pieces.append(set_node_attributes(child.deepcopy(), document=summary_doc))
+                char_count += len(''.join(node2stan.gettext(child)))
+            
+        if char_count > self.maxchars:
+            if not summary_pieces[-1].astext().endswith('.'):
+                summary_pieces.append(set_node_attributes(nodes.Text('...'), document=summary_doc))
+            self.other_docs = True
+
+        set_node_attributes(summary_doc, children=[
+            set_node_attributes(nodes.paragraph('', ''), document=summary_doc, lineno=1, 
+            children=summary_pieces)])
+
+        from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
+        self.summary = ParsedRstDocstring(summary_doc, fields=[])
+
+    def visit_field(self, node: nodes.Node) -> None:
+        raise nodes.SkipNode()
+
+    def unknown_visit(self, node: nodes.Node) -> None:
+        '''Ignore all unknown nodes'''

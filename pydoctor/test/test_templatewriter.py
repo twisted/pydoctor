@@ -1,20 +1,22 @@
 from io import BytesIO
-from typing import Callable, Union, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, TYPE_CHECKING
 import pytest
 import warnings
 import sys
 import tempfile
 import os
 from pathlib import Path, PurePath
-from pydoctor import model, templatewriter, stanutils
-from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, 
+
+from pydoctor import model, templatewriter, stanutils, __version__
+from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
-from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate
+from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
-from pydoctor.test.test_packages import processPackage
+from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -23,7 +25,7 @@ if TYPE_CHECKING:
     if sys.version_info >= (3, 9):
         from importlib.abc import Traversable
     else:
-        Traversable = Path
+        Traversable = Any
 else:
     Traversable = object
 
@@ -52,6 +54,36 @@ def getHTMLOf(ob: model.Documentable) -> str:
     return f.getvalue().decode()
 
 
+def test_sidebar() -> None:
+    src = '''
+    class C:
+
+        def f(): ...
+        def h(): ...
+        
+        class D:
+            def l(): ...
+
+    '''
+    system = model.System(model.Options.from_args(
+        ['--sidebar-expand-depth=3']))
+
+    mod = fromText(src, modname='mod', system=system)
+    
+    mod_html = getHTMLOf(mod)
+
+    mod_parts = [
+        '<a href="mod.C.html"',
+        '<a href="mod.C.html#f"',
+        '<a href="mod.C.html#h"',
+        '<a href="mod.C.D.html"',
+        '<a href="mod.C.D.html#l"',
+    ]
+
+    for p in mod_parts:
+        assert p in mod_html, f"{p!r} not found in HTML: {mod_html}"
+   
+
 def test_simple() -> None:
     src = '''
     def f():
@@ -63,13 +95,13 @@ def test_simple() -> None:
 
 def test_empty_table() -> None:
     mod = fromText('')
-    t = ChildTable(pages.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, [], ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
 def test_nonempty_table() -> None:
     mod = fromText('def f(): pass')
-    t = ChildTable(pages.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
+    t = ChildTable(util.DocGetter(), mod, mod.contents.values(), ChildTable.lookup_loader(TemplateLookup(template_dir)))
     flattened = flatten(t)
     assert 'The renderer named' not in flattened
 
@@ -93,8 +125,6 @@ def test_document_code_in_init_module() -> None:
 def test_basic_package(tmp_path: Path) -> None:
     system = processPackage("basic")
     w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
-    system.options.htmlusesplitlinks = True
-    system.options.htmlusesorttable = True
     w.prepOutputDirectory()
     root, = system.rootobjects
     w._writeDocsFor(root)
@@ -404,6 +434,17 @@ def test_template_subfolders_write_casing(tmp_path: Path) -> None:
     assert not test_build_dir.joinpath('Static/Fonts').is_dir()
     assert test_build_dir.joinpath('static/fonts/bar.svg').is_file()
 
+def test_themes_template_versions() -> None:
+    """
+    All our templates should be up to date.
+    """
+
+    for theme in get_themes():
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            lookup = TemplateLookup(importlib_resources.files('pydoctor.themes') / 'base')
+            lookup.add_templatedir(importlib_resources.files('pydoctor.themes') / theme)
+            assert len(w) == 0, [str(_w) for _w in w]
 
 @pytest.mark.parametrize('func', [isPrivate, isClassNodePrivate])
 def test_isPrivate(func: Callable[[model.Class], bool]) -> None:
@@ -469,3 +510,83 @@ def test_format_decorators() -> None:
                     r"""<span class="rst-variable-string">\\/:*?"&lt;&gt;|\f\v\t\r\n</span>"""
                     """<span class="rst-variable-quote">'</span>))<br />@simple_decorator"""
                     """(<wbr></wbr>max_examples=700, <wbr></wbr>deadline=None, <wbr></wbr>option=range(<wbr></wbr>10))<br />""")
+
+
+def test_compact_module_summary() -> None:
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    for x in range(50):
+        fromText('', parent_name='top', modname='sub' + str(x), system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 50   # type: ignore
+
+    # the 51th module triggers the compact summary, no matter if it's a package or module
+    fromText('', parent_name='top', modname='_yet_another_sub', system=system, is_package=True)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 1    # type: ignore
+    
+    # test that the last module is private
+    assert 'private' in ul.children[0].children[-1].attributes['class'] # type: ignore
+
+    # for the compact summary no submodule (packages) may have further submodules
+    fromText('', parent_name='top._yet_another_sub', modname='subsubmodule', system=system)
+
+    ul = moduleSummary(top, '').children[-1]
+    assert ul.tagName == 'ul'       # type: ignore
+    assert len(ul.children) == 51   # type: ignore
+
+    
+def test_index_contains_infos(tmp_path: Path) -> None:
+    """
+    Test if index.html contains the following informations:
+
+        - meta generator tag
+        - nav and links to modules, classes, names
+        - link to the root packages
+        - pydoctor github link in the footer
+    """
+
+    infos = (f'<meta name="generator" content="pydoctor {__version__}"',
+              '<nav class="navbar',
+              '<a href="moduleIndex.html"',
+              '<a href="classIndex.html"',
+              '<a href="nameIndex.html"',
+              'Or start at one of the root packages:',
+              '<code><a href="allgames.html" class="internal-link">allgames</a></code>',
+              '<code><a href="basic.html" class="internal-link">basic</a></code>',
+              '<a href="https://github.com/twisted/pydoctor/">pydoctor</a>',)
+
+    system = model.System()
+    builder = system.systemBuilder(system)
+    builder.addModule(testpackages / "allgames")
+    builder.addModule(testpackages / "basic")
+    builder.buildModules()
+    w = writer.TemplateWriter(tmp_path, TemplateLookup(template_dir))
+    w.writeSummaryPages(system)
+
+    with open(tmp_path / 'index.html', encoding='utf-8') as f:
+        page = f.read()
+        for i in infos:
+            assert i in page, page
+
+def test_objects_order_mixed_modules_and_packages() -> None:
+    """
+    Packages and modules are mixed when sorting with objects_order.
+    """
+    system = model.System()
+
+    top = fromText('', modname='top', is_package=True, system=system)
+    fromText('', parent_name='top', modname='aaa', system=system)
+    fromText('', parent_name='top', modname='bbb', system=system)
+    fromText('', parent_name='top', modname='aba', system=system, is_package=True)
+    
+    _sorted = sorted(top.contents.values(), key=pages.objects_order)
+    names = [s.name for s in _sorted]
+
+    assert names == ['aaa', 'aba', 'bbb']
+

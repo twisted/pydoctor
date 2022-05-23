@@ -1,19 +1,27 @@
 
-from typing import cast
-from pydoctor.test.test_astbuilder import fromText, type2html
+from typing import Type, cast
+from pydoctor.test.test_astbuilder import fromText, type2html, ZopeInterfaceSystem
 from pydoctor.test.test_packages import processPackage
-from pydoctor.zopeinterface import ZopeInterfaceClass, ZopeInterfaceSystem
+from pydoctor.extensions.zopeinterface import ZopeInterfaceClass
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor import model
 from pydoctor.stanutils import flatten
 
+import pytest
+
 from . import CapSys, NotFoundLinker
 
+zope_interface_systemcls_param = pytest.mark.parametrize(
+    'systemcls', (model.System, # system with all extensions enalbed
+                  ZopeInterfaceSystem, # system with zopeinterface extension only
+                 )
+    )
 
 # we set up the same situation using both implements and
 # classImplements and run the same tests.
 
-def test_implements() -> None:
+@zope_interface_systemcls_param
+def test_implements(systemcls: Type[model.System]) -> None:
     src = '''
     import zope.interface
 
@@ -29,9 +37,10 @@ def test_implements() -> None:
     class OnlyBar(Foo):
         zope.interface.implementsOnly(IBar)
     '''
-    implements_test(src)
+    implements_test(src, systemcls)
 
-def test_classImplements() -> None:
+@zope_interface_systemcls_param
+def test_classImplements(systemcls: Type[model.System]) -> None:
     src = '''
     import zope.interface
     class IFoo(zope.interface.Interface):
@@ -48,9 +57,10 @@ def test_classImplements() -> None:
     zope.interface.classImplements(FooBar, IBar)
     zope.interface.classImplementsOnly(OnlyBar, IBar)
     '''
-    implements_test(src)
+    implements_test(src, systemcls)
 
-def test_implementer() -> None:
+@zope_interface_systemcls_param
+def test_implementer(systemcls: Type[model.System]) -> None:
     src = '''
     import zope.interface
 
@@ -68,10 +78,10 @@ def test_implementer() -> None:
     class OnlyBar(Foo):
         zope.interface.implementsOnly(IBar)
     '''
-    implements_test(src)
+    implements_test(src, systemcls)
 
-def implements_test(src: str) -> None:
-    mod = fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
+def implements_test(src: str, systemcls: Type[model.System]) -> None:
+    mod = fromText(src, modname='zi', systemcls=systemcls)
     ifoo = mod.contents['IFoo']
     ibar = mod.contents['IBar']
     foo = mod.contents['Foo']
@@ -100,17 +110,18 @@ def implements_test(src: str) -> None:
     assert ifoo.implementedby_directly == [foo]
     assert ibar.implementedby_directly == [foobar, onlybar]
 
-
-def test_subclass_with_same_name() -> None:
+@zope_interface_systemcls_param
+def test_subclass_with_same_name(systemcls: Type[model.System]) -> None:
     src = '''
     class A:
         pass
     class A(A):
         pass
     '''
-    fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
+    fromText(src, modname='zi', systemcls=systemcls)
 
-def test_multiply_inheriting_interfaces() -> None:
+@zope_interface_systemcls_param
+def test_multiply_inheriting_interfaces(systemcls: Type[model.System]) -> None:
     src = '''
     from zope.interface import Interface, implements
 
@@ -120,19 +131,20 @@ def test_multiply_inheriting_interfaces() -> None:
     class Two: implements(ITwo)
     class Both(One, Two): pass
     '''
-    mod = fromText(src, modname='zi', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='zi', systemcls=systemcls)
     B = mod.contents['Both']
     assert isinstance(B, ZopeInterfaceClass)
     assert len(list(B.allImplementedInterfaces)) == 2
 
-def test_attribute(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_attribute(capsys: CapSys, systemcls: Type[model.System]) -> None:
     src = '''
     import zope.interface as zi
     class C(zi.Interface):
         attr = zi.Attribute("documented attribute")
         bad_attr = zi.Attribute(0)
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     assert len(mod.contents['C'].contents) == 2
     attr = mod.contents['C'].contents['attr']
     assert attr.kind is model.DocumentableKind.ATTRIBUTE
@@ -145,8 +157,9 @@ def test_attribute(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'mod:5: definition of attribute "bad_attr" should have docstring as its sole argument\n'
 
-def test_interfaceclass() -> None:
-    system = processPackage('interfaceclass', systemcls=ZopeInterfaceSystem)
+@zope_interface_systemcls_param
+def test_interfaceclass(systemcls: Type[model.System]) -> None:
+    system = processPackage('interfaceclass', systemcls=systemcls)
     mod = system.allobjects['interfaceclass.mod']
     I = mod.contents['MyInterface']
     assert isinstance(I, ZopeInterfaceClass)
@@ -157,19 +170,21 @@ def test_interfaceclass() -> None:
     assert isinstance(J, ZopeInterfaceClass)
     assert J.isinterface
 
-def test_warnerproofing() -> None:
+@zope_interface_systemcls_param
+def test_warnerproofing(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
     Interface = interface.Interface
     class IMyInterface(Interface):
         pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     I = mod.contents['IMyInterface']
     assert isinstance(I, ZopeInterfaceClass)
     assert I.isinterface
 
-def test_zopeschema(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_zopeschema(capsys: CapSys, systemcls: Type[model.System]) -> None:
     src = '''
     from zope import schema, interface
     class IMyInterface(interface.Interface):
@@ -177,7 +192,7 @@ def test_zopeschema(capsys: CapSys) -> None:
         undoc = schema.Bool()
         bad = schema.ASCII(description=False)
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     text = mod.contents['IMyInterface'].contents['text']
     assert text.docstring == 'fun in a bun'
     assert type2html(text)==  "<code>schema.TextLine</code>"
@@ -193,20 +208,22 @@ def test_zopeschema(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'mod:6: description of field "bad" is not a string literal\n'
 
-def test_aliasing_in_class() -> None:
+@zope_interface_systemcls_param
+def test_aliasing_in_class(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
     class IMyInterface(interface.Interface):
         Attrib = interface.Attribute
         attribute = Attrib("fun in a bun")
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     attr = mod.contents['IMyInterface'].contents['attribute']
     assert mod.contents['IMyInterface'].contents['Attrib'].kind is model.DocumentableKind.ALIAS
     assert attr.docstring == 'fun in a bun'
     assert attr.kind is model.DocumentableKind.ATTRIBUTE
 
-def test_zopeschema_inheritance() -> None:
+@zope_interface_systemcls_param
+def test_zopeschema_inheritance(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import schema, interface
     from zope.schema import Int as INTEGERSCHMEMAFIELD
@@ -219,7 +236,7 @@ def test_zopeschema_inheritance() -> None:
         myothertext = MyOtherTextLine(description="fun in another bun")
         myint = INTEGERSCHMEMAFIELD(description="not as much fun")
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     mytext = mod.contents['IMyInterface'].contents['mytext']
     assert mytext.docstring == 'fun in a bun'
     assert flatten(cast(ParsedDocstring, mytext.parsed_type).to_stan(NotFoundLinker())) == "<code>MyTextLine</code>"
@@ -232,7 +249,8 @@ def test_zopeschema_inheritance() -> None:
     assert flatten(cast(ParsedDocstring, myint.parsed_type).to_stan(NotFoundLinker())) == "<code>INTEGERSCHMEMAFIELD</code>"
     assert myint.kind is model.DocumentableKind.SCHEMA_FIELD
 
-def test_docsources_includes_interface() -> None:
+@zope_interface_systemcls_param
+def test_docsources_includes_interface(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
     class IInterface(interface.Interface):
@@ -243,12 +261,13 @@ def test_docsources_includes_interface() -> None:
         def method(self):
             pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     imethod = mod.contents['IInterface'].contents['method']
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
-def test_docsources_includes_baseinterface() -> None:
+@zope_interface_systemcls_param
+def test_docsources_includes_baseinterface(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
     class IBase(interface.Interface):
@@ -261,12 +280,13 @@ def test_docsources_includes_baseinterface() -> None:
         def method(self):
             pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     imethod = mod.contents['IBase'].contents['method']
     method = mod.contents['Implementation'].contents['method']
     assert imethod in method.docsources(), list(method.docsources())
 
-def test_docsources_interface_attribute() -> None:
+@zope_interface_systemcls_param
+def test_docsources_interface_attribute(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
     class IInterface(interface.Interface):
@@ -275,12 +295,13 @@ def test_docsources_interface_attribute() -> None:
     class Implementation:
         attr = True
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     iattr = mod.contents['IInterface'].contents['attr']
     attr = mod.contents['Implementation'].contents['attr']
     assert iattr in list(attr.docsources())
 
-def test_implementer_decoration() -> None:
+@zope_interface_systemcls_param
+def test_implementer_decoration(systemcls: Type[model.System]) -> None:
     src = '''
     from zope.interface import Interface, implementer
     class IMyInterface(Interface):
@@ -291,13 +312,14 @@ def test_implementer_decoration() -> None:
         def method(self):
             pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == [iface.fullName()]
 
-def test_docsources_from_moduleprovides() -> None:
+@zope_interface_systemcls_param
+def test_docsources_from_moduleprovides(systemcls: Type[model.System]) -> None:
     src = '''
     from zope import interface
 
@@ -310,13 +332,14 @@ def test_docsources_from_moduleprovides() -> None:
     def bar():
         pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     imethod = mod.contents['IBase'].contents['bar']
     function = mod.contents['bar']
     assert imethod in function.docsources(), list(function.docsources())
 
-def test_interfaceallgames() -> None:
-    system = processPackage('interfaceallgames', systemcls=ZopeInterfaceSystem)
+@zope_interface_systemcls_param
+def test_interfaceallgames(systemcls: Type[model.System]) -> None:
+    system = processPackage('interfaceallgames', systemcls=systemcls)
     mod = system.allobjects['interfaceallgames.interface']
     iface = mod.contents['IAnInterface']
     assert isinstance(iface, ZopeInterfaceClass)
@@ -324,7 +347,8 @@ def test_interfaceallgames() -> None:
         'interfaceallgames.implementation.Implementation'
         ]
 
-def test_implementer_with_star() -> None:
+@zope_interface_systemcls_param
+def test_implementer_with_star(systemcls: Type[model.System]) -> None:
     """
     If the implementer call contains a split out empty list, don't fail on
     attempting to process it.
@@ -340,14 +364,15 @@ def test_implementer_with_star() -> None:
         def method(self):
             pass
     '''
-    mod = fromText(src, systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, systemcls=systemcls)
     iface = mod.contents['IMyInterface']
     impl = mod.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert isinstance(iface, ZopeInterfaceClass)
     assert impl.implements_directly == [iface.fullName()]
 
-def test_implementer_nonname(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_implementer_nonname(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     Non-name arguments passed to @implementer are warned about and then ignored.
     """
@@ -357,14 +382,15 @@ def test_implementer_nonname(capsys: CapSys) -> None:
     class Implementation:
         pass
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     impl = mod.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == []
     captured = capsys.readouterr().out
     assert captured == 'mod:3: Interface argument 1 does not look like a name\n'
 
-def test_implementer_nonclass(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_implementer_nonclass(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     Non-class arguments passed to @implementer are warned about but are stored
     as implemented interfaces.
@@ -376,14 +402,15 @@ def test_implementer_nonclass(capsys: CapSys) -> None:
     class Implementation:
         pass
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     impl = mod.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == ['mod.var']
     captured = capsys.readouterr().out
     assert captured == 'mod:4: Supposed interface "mod.var" not detected as a class\n'
 
-def test_implementer_plainclass(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_implementer_plainclass(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     A non-interface class passed to @implementer will be warned about but
     will be stored as an implemented interface.
@@ -396,7 +423,7 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     class Implementation:
         pass
     '''
-    mod = fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    mod = fromText(src, modname='mod', systemcls=systemcls)
     C = mod.contents['C']
     impl = mod.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
@@ -407,7 +434,8 @@ def test_implementer_plainclass(capsys: CapSys) -> None:
     captured = capsys.readouterr().out
     assert captured == 'mod:5: Class "mod.C" is not an interface\n'
 
-def test_implementer_not_found(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_implementer_not_found(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     An unknown class passed to @implementer is warned about if its full name
     is part of our system.
@@ -419,17 +447,18 @@ def test_implementer_not_found(capsys: CapSys) -> None:
     class Implementation:
         pass
     '''
-    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    fromText(src, modname='mod', systemcls=systemcls)
     captured = capsys.readouterr().out
     assert captured == 'mod:4: Interface "mod.INoSuchInterface" not found\n'
 
-def test_implementer_reparented() -> None:
+@zope_interface_systemcls_param
+def test_implementer_reparented(systemcls: Type[model.System]) -> None:
     """
     A class passed to @implementer can be found even when it is moved
     to a different module.
     """
 
-    system = ZopeInterfaceSystem()
+    system = systemcls()
 
     mod_iface = fromText('''
     from zope.interface import Interface
@@ -456,13 +485,18 @@ def test_implementer_reparented() -> None:
     impl = mod_impl.contents['Implementation']
     assert isinstance(impl, ZopeInterfaceClass)
     assert impl.implements_directly == ['_private.IMyInterface']
-    assert iface.implementedby_directly == []
 
+    # The system is already post-processed at this time
+    assert iface.implementedby_directly == [impl]
+
+    # But since we've manually reparent 'IMyInterface' to 'public',
+    # we need to post-process it again.
     system.postProcess()
     assert impl.implements_directly == ['public.IMyInterface']
     assert iface.implementedby_directly == [impl]
 
-def test_implementer_nocall(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_implementer_nocall(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     Report a warning when @implementer is used without calling it.
     """
@@ -472,11 +506,12 @@ def test_implementer_nocall(capsys: CapSys) -> None:
     class C:
         pass
     '''
-    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    fromText(src, modname='mod', systemcls=systemcls)
     captured = capsys.readouterr().out
     assert captured == "mod:3: @implementer requires arguments\n"
 
-def test_classimplements_badarg(capsys: CapSys) -> None:
+@zope_interface_systemcls_param
+def test_classimplements_badarg(capsys: CapSys, systemcls: Type[model.System]) -> None:
     """
     Report a warning when the arguments to classImplements() don't make sense.
     """
@@ -491,7 +526,7 @@ def test_classimplements_badarg(capsys: CapSys) -> None:
     classImplements(f, IBar)
     classImplements(g, IBar)
     '''
-    fromText(src, modname='mod', systemcls=ZopeInterfaceSystem)
+    fromText(src, modname='mod', systemcls=systemcls)
     captured = capsys.readouterr().out
     assert captured == (
         'mod:7: required argument to classImplements() missing\n'

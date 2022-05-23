@@ -88,8 +88,10 @@ def inv_writer_nolog() -> sphinx.SphinxInventoryWriter:
         project_version='2.3.0',
         )
 
+class IgnoreSystem:
+    root_names = ()
 
-IGNORE_SYSTEM = cast(model.System, 'ignore-system')
+IGNORE_SYSTEM = cast(model.System, IgnoreSystem())
 """Passed as a System when we don't want the system to be accessed."""
 
 
@@ -365,7 +367,7 @@ def test_update_functional(inv_reader_nolog: sphinx.SphinxInventory) -> None:
 
     url = 'http://some.url/api/objects.inv'
 
-    inv_reader_nolog.update({url: content}, url)
+    inv_reader_nolog.update(cast('sphinx.CacheT', {url: content}), url)
 
     assert 'http://some.url/api/module1.html' == inv_reader_nolog.getLink('some.module1')
     assert 'http://some.url/api/module2.html' == inv_reader_nolog.getLink('other.module2')
@@ -376,7 +378,7 @@ def test_update_bad_url(inv_reader: InvReader) -> None:
     Log an error when failing to get base url from url.
     """
 
-    inv_reader.update({}, 'really.bad.url')
+    inv_reader.update(cast('sphinx.CacheT', {}), 'really.bad.url')
 
     assert inv_reader._links == {}
     expected_log = [(
@@ -390,7 +392,7 @@ def test_update_fail(inv_reader: InvReader) -> None:
     Log an error when failing to get content from url.
     """
 
-    inv_reader.update({}, 'http://some.tld/o.inv')
+    inv_reader.update(cast('sphinx.CacheT', {}), 'http://some.tld/o.inv')
 
     assert inv_reader._links == {}
     expected_log = [(
@@ -574,7 +576,7 @@ def test_ClosingBytesIO() -> None:
 
     assert cbio.closed
 
-    assert b''.join(buffer) == data
+    assert b''.join(buffer) == data # type:ignore[unreachable]
 
 
 class TestIntersphinxCache:
@@ -728,7 +730,7 @@ def test_prepareCache(
     cacheDirectory.mkdir(exist_ok=True)
     for child in cacheDirectory.iterdir():
         child.unlink()
-    with open(cacheDirectory / cacheDirectoryName, 'w'):
+    with open(cacheDirectory / cacheDirectoryName, 'w', encoding='utf-8'):
         pass
 
     try:
