@@ -707,7 +707,7 @@ def test_expandName_alias_documentable_module_level(systemcls: Type[model.System
     assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
 
 @systemcls_param
-def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.System]) -> None:
+def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
     We ignore assignments that are not defined at least once at the module level.
     Meaning that we ignore variables defines in "if" or "try/catch" blocks.
@@ -725,10 +725,12 @@ def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.Sys
         a = 3
         b = 4
     ''', system=system, modname='mod')
-
+    
+    A = mod.contents['A']
+    assert capsys.readouterr().out == '', A.contents['alias']
     s = mod.resolveName('A.alias')
     assert isinstance(s, model.Attribute)
-    assert s.fullName()=="mod.B.b"
+    assert s.fullName()=="mod.B.b", (A._localNameToFullName('alias'), A.contents['alias'])
     assert s.value is not None
     assert ast.literal_eval(s.value)==4
     assert mod.contents['A'].contents['alias'].kind is model.DocumentableKind.ALIAS

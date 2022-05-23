@@ -38,7 +38,7 @@ def _maybeAttribute(cls: model.Class, name: str) -> bool:
         inherited) attribute, L{False} if this name defines something else than an L{Attribute}. 
     """
     obj = cls.find(name)
-    return obj is None or isinstance(obj, model.Attribute)    
+    return obj is None or isinstance(obj, model.Attribute)
 
 _attrs_decorator_signature = signature(attrs)
 """Signature of the L{attr.s} class decorator."""
@@ -567,6 +567,9 @@ class ModuleVistor(NodeVisitor):
             obj.report(f'Assignment to alias "{obj.name}" overrides previous alias '
                     f'at line {obj.linenumber}.', 
                             section='ast', lineno_offset=lineno-obj.linenumber)
+        obj.system.msg(msg=f'Processing alias {obj.name!r} at {obj.module.name}:{obj.linenumber}.', 
+                    section='ast', 
+                    thresh=2)
 
         obj.kind = model.DocumentableKind.ALIAS
         # This will be used for HTML repr of the alias.
