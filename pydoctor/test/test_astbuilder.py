@@ -2080,7 +2080,7 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> None:
     """
     Currently, the first analyzed assigment wins, basically. I believe further logic should be added
-    such that definitions in the orelse clause of the Try node is processed before the 
+    such that definitions in the orelse clause (that we currently doesn't visit at all) of the Try node is processed before the 
     except handlers. This way could define our aliases both there and in the body of the
     Try node and fall back to what's defnied in the handlers if the names doesn't exist yet.
     """
