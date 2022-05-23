@@ -653,10 +653,9 @@ def test_expandName_alias_same_name_recursion(systemcls: Type[model.System]) -> 
     assert [o.fullName() for o in base_mod.contents['Foo'].contents['_3'].aliases] == ['mod.SuperSystem.foo', 'mod.SuperSystem.Attribute.foo']
 
 @systemcls_param
-def test_expandName_alias_not_documentable_module_level(systemcls: Type[model.System]) -> None:
+def test_expandName_import_alias_wins_over_module_level_alias(systemcls: Type[model.System]) -> None:
     """
-    We ignore assignments that are not defined at least once at the module level.
-    Meaning that we ignore variables defines in "if" or "try/catch" blocks.
+    
     """
     system = systemcls()
     fromText('''
@@ -666,18 +665,15 @@ def test_expandName_alias_not_documentable_module_level(systemcls: Type[model.Sy
     try:
         from twisted.internet import ssl as _ssl
     except ImportError:
-        ssl = None
-    else:
-        ssl = _ssl
+        # this code is currently simply signored
+        _ssl = None
     ''', system=system, modname='mod')
 
-    assert mod.expandName('ssl')=="twisted.internet.ssl"
     assert mod.expandName('_ssl')=="twisted.internet.ssl"
-    s = mod.resolveName('ssl')
+    s = mod.resolveName('_ssl')
     assert isinstance(s, model.Attribute)
     assert s.value is not None
     assert ast.literal_eval(s.value)==1
-    assert mod.contents['ssl'].kind is model.DocumentableKind.ALIAS
 
 @systemcls_param
 def test_expandName_alias_documentable_module_level(systemcls: Type[model.System]) -> None:
@@ -687,15 +683,13 @@ def test_expandName_alias_documentable_module_level(systemcls: Type[model.System
     ssl = 1
     ''', system=system, modname='twisted.internet')
     mod = fromText('''
-    # We definied the alias at the module level such that it will be included in the docs
-    ssl = None
     try:
         from twisted.internet import ssl as _ssl
-    except ImportError:
-        ssl = None
-    else:
-        # The last analyzed assignment "wins"
+        # This will create a Documentable entry
         ssl = _ssl
+    except ImportError:
+        ssl = None 
+        # this code is currently simply ignored
     ''', system=system, modname='mod')
 
     assert mod.expandName('ssl')=="twisted.internet.ssl"
@@ -709,25 +703,24 @@ def test_expandName_alias_documentable_module_level(systemcls: Type[model.System
 @systemcls_param
 def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.System], capsys: CapSys) -> None:
     """
-    We ignore assignments that are not defined at least once at the module level.
-    Meaning that we ignore variables defines in "if" or "try/catch" blocks.
     """
     system = systemcls()
     mod = fromText('''
     import sys
     class A:
-        if sys.version_info[0] < 3:
-            alias = B.a
-        else:
-            # The last analyzed assignment "wins"
+        if sys.version_info[0] > 3:
             alias = B.b
+        else:
+            # this code is currently simply signored
+            # because it's not in a 'body'.
+            alias = B.a
     class B:
         a = 3
         b = 4
     ''', system=system, modname='mod')
     
     A = mod.contents['A']
-    assert capsys.readouterr().out == '', A.contents['alias']
+    # assert capsys.readouterr().out == '', A.contents['alias']
     s = mod.resolveName('A.alias')
     assert isinstance(s, model.Attribute)
     assert s.fullName()=="mod.B.b", (A._localNameToFullName('alias'), A.contents['alias'])
@@ -739,14 +732,15 @@ def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.Sys
 def test_expandName_alias_documentale_class_level(systemcls: Type[model.System]) -> None:
     system = systemcls()
     mod = fromText('''
-    # We definied the alias at the module level such that it will be included in the docs
     import sys
     class A:
         alias = None
-        if sys.version_info[0] < 3:
-            alias = B.a
-        else:
+        if sys.version_info[0] > 3:
             alias = B.b
+        else:
+            # this code is currently simply signored
+            # because it's not in a 'body'.
+            alias = B.a
     class B:
         a = 3
         b = 4
@@ -772,7 +766,7 @@ def test_aliases_property(systemcls: Type[model.System]) -> None:
         _1=1
         _2=2
         _3=3
-        class_ = B # this is funcky
+        class_ = B # this is a forward reference
     
     class B(A):
         _1=a_1

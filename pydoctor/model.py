@@ -513,6 +513,14 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
 
+    def _resolve_localNameToFullName(self, name:str, indirections:Any=None) -> str:
+        if self._localNameToFullName_map[name] in self.system.allobjects:
+            resolved = self._resolveDocumentable(
+                self.system.allobjects[self._localNameToFullName_map[name]], 
+                indirections)
+            if resolved:
+                return resolved
+        return self._localNameToFullName_map[name]
 
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
@@ -557,14 +565,7 @@ class Module(CanContainImportsDocumentable):
             if resolved: 
                 return resolved
         if name in self._localNameToFullName_map:
-            if self._localNameToFullName_map[name] in self.system.allobjects:
-                resolved = self._resolveDocumentable(
-                    self.system.allobjects[self._localNameToFullName_map[name]], 
-                    indirections)
-                if resolved:
-                    return resolved
-            else:
-                return self._localNameToFullName_map[name]
+            return self._resolve_localNameToFullName(name, indirections)
         return name
 
     @property
@@ -646,13 +647,9 @@ class Class(CanContainImportsDocumentable):
                     indirections)
             if resolved:
                 return resolved
+        # Follows imports
         if name in self._localNameToFullName_map:
-            if self._localNameToFullName_map[name] in self.system.allobjects:
-                resolved = self._resolveDocumentable(
-                    self.system.allobjects[self._localNameToFullName_map[name]], 
-                    indirections)
-                if resolved:
-                    return resolved
+            return self._resolve_localNameToFullName(name, indirections)
         return self.parent._localNameToFullName(name)
 
     @property
