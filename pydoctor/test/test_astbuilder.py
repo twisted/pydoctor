@@ -2075,3 +2075,70 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> None:
+    """
+    Currently, the first analyzed assigment wins, basically. I believe further logic should be added
+    such that definitions in the orelse clause of the Try node is processed before the 
+    except handlers. This way could define our aliases both there and in the body of the
+    Try node and fall back to what's defnied in the handlers if the names doesn't exist yet.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    ssl = 1
+    ''', modname='twisted.internet')
+    builder.addModuleString('''
+    try:
+        from twisted.internet import ssl as _ssl
+        # The first analyzed assigment to an alias wins.
+        ssl = _ssl
+        # For classic variables, the rules are the same.
+        var = 1
+        # For constants, the rules are still the same.
+        VAR = 1
+        # Looks like a constant, but should be treated like an alias
+        ALIAS = _ssl
+    except ImportError:
+        ssl = None
+        var = 2
+        VAR = 2
+        ALIAS = None
+    ''', modname='mod')
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    
+    # Test alias
+    assert mod.expandName('ssl')=="twisted.internet.ssl"
+    assert mod.expandName('_ssl')=="twisted.internet.ssl"
+    s = mod.resolveName('ssl')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
+    assert s.kind == model.DocumentableKind.VARIABLE
+    
+    # Test variable
+    assert mod.expandName('var')=="mod.var"
+    v = mod.resolveName('var')
+    assert isinstance(v, model.Attribute)
+    assert v.value is not None
+    assert ast.literal_eval(v.value)==1
+    assert v.kind == model.DocumentableKind.VARIABLE
+
+    # Test constant
+    assert mod.expandName('VAR')=="mod.VAR"
+    V = mod.resolveName('VAR')
+    assert isinstance(V, model.Attribute)
+    assert V.value is not None
+    assert ast.literal_eval(V.value)==1
+    assert V.kind == model.DocumentableKind.CONSTANT
+
+    # Test looks like constant but actually an alias.
+    assert mod.expandName('ALIAS')=="twisted.internet.ssl"
+    s = mod.resolveName('ALIAS')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
+    assert s.kind == model.DocumentableKind.VARIABLE
+
