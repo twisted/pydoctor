@@ -35,9 +35,9 @@ from pydoctor import __version__ as version
 extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.intersphinx",
-    "pydoctor.sphinx_ext._help_output",
     "pydoctor.sphinx_ext.build_apidocs",
     "sphinxcontrib.spelling",
+    "sphinxarg.ext",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -59,6 +59,8 @@ spelling_word_list_filename = 'spelling_wordlist.txt'
 # Configure intersphinx magic
 intersphinx_mapping = {
     'twisted': ('https://twistedmatrix.com/documents/current/api/', None),
+    'configargparse': ('https://bw2.github.io/ConfigArgParse/', None),
+    'std': ('https://docs.python.org/3/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -90,42 +92,35 @@ if os.environ.get('READTHEDOCS', '') == 'True':
 _pydoctor_root = pathlib.Path(__file__).parent.parent.parent
 _common_args = [
     f'--html-viewsource-base=https://github.com/twisted/pydoctor/tree/{_git_reference}',
-    f'--project-base-dir={_pydoctor_root}',
-    '--intersphinx=https://docs.python.org/3/objects.inv',
-    '--intersphinx=https://twistedmatrix.com/documents/current/api/objects.inv',
-    '--intersphinx=https://urllib3.readthedocs.io/en/latest/objects.inv',
-    '--intersphinx=https://requests.readthedocs.io/en/latest/objects.inv',
-    '--intersphinx=https://www.attrs.org/en/stable/objects.inv',
-    '--intersphinx=https://www.sphinx-doc.org/en/stable/objects.inv',
-    '--intersphinx=https://tristanlatr.github.io/apidocs/docutils/objects.inv',
+    f'--project-base-dir={_pydoctor_root}', 
+    f'--config={_pydoctor_root}/setup.cfg',
 ]
 pydoctor_args = {
     'main': [
         '--html-output={outdir}/api/',  # Make sure to have a trailing delimiter for better usage coverage.
         '--project-name=pydoctor',
         f'--project-version={version}',
-        '--docformat=epytext',
+        '--docformat=epytext', 
+        '--privacy=HIDDEN:pydoctor.test',
         '--project-url=../index.html',
         f'{_pydoctor_root}/pydoctor',
         ] + _common_args,
     'custom_template_demo': [
         '--html-output={outdir}/custom_template_demo/',
-        '--project-name=pydoctor with a twisted theme',
         f'--project-version={version}',
-        '--docformat=epytext',
-        '--project-url=../customize.html',
-        '--theme=base',
         f'--template-dir={_pydoctor_root}/docs/sample_template',
         f'{_pydoctor_root}/pydoctor',
-        ] + _common_args,
+        ] + _common_args + 
+            [f'--config={_pydoctor_root}/docs/source/custom_template_demo/pyproject.toml',
+              '-qqq' ], # we don't want to hear any warnings from this custom template demo.
     'epydoc_demo': [
         '--html-output={outdir}/docformat/epytext',
         '--project-name=pydoctor-epytext-demo',
         '--project-version=1.3.0',
-        '--docformat=epytext', 
-        '--intersphinx=https://zopeschema.readthedocs.io/en/latest/objects.inv',
-        '--intersphinx=https://zopeinterface.readthedocs.io/en/latest/objects.inv',
+        '--docformat=epytext',
+        '--sidebar-toc-depth=3',
         '--project-url=../epytext.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/epytext_demo',
         ] + _common_args,
     'restructuredtext_demo': [
@@ -133,16 +128,17 @@ pydoctor_args = {
         '--project-name=pydoctor-restructuredtext-demo',
         '--project-version=1.0.0',
         '--docformat=restructuredtext',
+        '--sidebar-toc-depth=3',
         '--project-url=../restructuredtext.html',
         '--process-types',
         f'{_pydoctor_root}/docs/restructuredtext_demo',
         ] + _common_args,
-    'numpy_demo': [
+    'numpy_demo': [ # no need to pass --docformat here, we use __docformat__
         '--html-output={outdir}/docformat/numpy',
         '--project-name=pydoctor-numpy-style-demo',
         '--project-version=1.0.0',
-        '--docformat=numpy',
         '--project-url=../google-numpy.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/numpy_demo',
         f'{_pydoctor_root}/pydoctor/napoleon'
         ] + _common_args,
@@ -152,6 +148,7 @@ pydoctor_args = {
         '--project-version=1.0.0',
         '--docformat=google',
         '--project-url=../google-numpy.html',
+        '--theme=readthedocs',
         f'{_pydoctor_root}/docs/google_demo',
         ] + _common_args,
     }

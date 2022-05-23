@@ -88,10 +88,10 @@ Here is a list of the supported ReST directives by package of origin:
 
 - `docutils`: ``.. include::``, ``.. contents::``, ``.. image::``,
   ``.. figure::``, ``.. unicode::``, ``.. raw::``, ``.. math::``,
-  ``.. role::``, ``.. table::``, ``.. warning::``, ``.. note::``
+  ``.. role::``, ``.. table::``, ``.. code::``, ``.. warning::``, ``.. note::``
   and other admonitions, and a few others.
-- `epydoc`: None
-- `Sphinx`: ``.. deprecated::``, ``.. versionchanged::``, ``.. versionadded::``
+- `epydoc`: None yet.
+- `Sphinx`: ``.. deprecated::``, ``.. versionchanged::``, ``.. versionadded::``, ``.. code-block::``
 - `pydoctor`: ``.. python::``
 
 `Full list of supported and unsupported directives <list-restructuredtext-support.html>`_
@@ -102,8 +102,12 @@ Colorized snippets directive
 Using reStructuredText markup it is possible to specify Python snippets in a
 `doctest block <https://docutils.sourceforge.io/docs/user/rst/quickref.html#doctest-blocks>`_.
 
+
 If the Python prompt gets in your way when you try to copy and paste and you are not interested
-in self-testing docstrings, the python directive will let you obtain a simple block of colorized text::
+in self-testing docstrings, the python directive will let you obtain a simple block of colorized text. 
+Directives ``.. code::`` and ``.. code-block::`` acts exactly the same.
+
+::
 
     .. python::
 

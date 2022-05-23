@@ -8,6 +8,10 @@ Pydoctor can be installed from PyPI::
 
    $ pip install -U pydoctor
 
+For Debian and derivatives, pydoctor can be installed with ``apt``::
+   
+   $ sudo apt install pydoctor
+
 Example
 -------
 

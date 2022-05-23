@@ -50,6 +50,8 @@ module_level_variable1 : int
 """
 from typing import List, Union
 
+__docformat__ = 'numpy'
+
 module_level_variable1 = 12345
 
 module_level_variable2 = 98765

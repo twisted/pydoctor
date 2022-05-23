@@ -60,7 +60,7 @@ List of ReST directives
 
    * - ``.. code::``
      - `docutils <https://docutils.sourceforge.io/docs/ref/rst/directives.html#code>`__
-     - Yes
+     - Yes (No options supported)
 
    * - ``.. python::``
      - pydoctor
@@ -144,7 +144,7 @@ List of ReST directives
 
    * - ``.. code-block::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block>`__
-     - No
+     - Yes (No options supported)
 
    * - ``.. literalinclude::``
      - `Sphinx <https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-literalinclude>`__

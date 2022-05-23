@@ -1,17 +1,44 @@
+Theming and other customizations
+================================
 
-Customize Output
-================
+Configure sidebar expanding/collapsing
+--------------------------------------
+
+By default, the sidebar only lists one level of objects (always expanded), 
+to allow objects to expand/collapse and show first nested content, use the following option::
+
+  --sidebar-expand-depth=2
+
+This value describe how many nested modules and classes should be expandable.
+
+.. note:: 
+  Careful, a value higher than ``1`` (which is the default) can make your HTML files 
+  significantly larger if you have many modules or classes.
+
+  To disable completely the sidebar, use option ``--no-sidebar``
+
+Theming
+-------
+
+Currently, there are 2 main themes packaged with pydoctor: ``classic`` and ``readthedocs``.
+
+Choose your theme with option:: 
+
+  --theme
+
+.. note::
+  Additionnaly, the ``base`` theme can be used as a base for customizations.
 
 Tweak HTML templates
 --------------------
 
-They are 3 placeholders designed to be overwritten to include custom HTML and CSS into the pages.
+They are 3 special files designed to be included in specific places of each pages. 
 
 - ``header.html``: at the very beginning of the body
 - ``subheader.html``: after the main header, before the page title
 - ``extra.css``: extra CSS sheet for layout customization
 
-To override a placeholder, write your custom HTML or CSS files to a directory
+To include a file, write your custom HTML or CSS files to a directory
 and use the following option::
 
   --template-dir=./pydoctor_templates
@@ -29,31 +56,179 @@ HTML templates have their own versioning system and warnings will be triggered w
 
   .. note:: 
 
-    This example is using new ``pydoctor`` option, ``--theme=base``. 
-    This means that bootstrap CSS will not be copied to build directory.
+    This example is using the ``base`` theme. 
+
+.. _customize-privacy:
+
+Override objects privacy (show/hide)
+------------------------------------
+
+Pydoctor supports 3 types of privacy.
+Below is the description of each type and the default association:
+
+- ``PRIVATE``: By default for objects whose name starts with an underscore and are not a dunder method. 
+  Rendered in HTML, but hidden via CSS by default.
+
+- ``PUBLIC``: By default everything else that is not private.
+  Always rendered and visible in HTML.
+
+- ``HIDDEN``: Nothing is hidden by default.
+  Not rendered at all and no links can be created to hidden objects. 
+  Not present in the search index nor the intersphinx inventory.
+  Basically excluded from API documentation. If a module/package/class is hidden, then all it's members are hidden as well.
+
+When the default rules regarding privacy doesn't fit your use case,
+use the ``--privacy`` command line option.
+It can be used multiple times to define multiple privacy rules::
+
+  --privacy=<PRIVACY>:<PATTERN>
+
+where ``<PRIVACY>`` can be one of ``PUBLIC``, ``PRIVATE`` or ``HIDDEN`` (case insensitive), and ``<PATTERN>`` is fnmatch-like 
+pattern matching objects fullName.
+
+Privacy tweak examples
+^^^^^^^^^^^^^^^^^^^^^^
+- ``--privacy="PUBLIC:**"``
+  Makes everything public.
+
+- ``--privacy="HIDDEN:twisted.test.*" --privacy="PUBLIC:twisted.test.proto_helpers"``
+  Makes everything under ``twisted.test`` hidden except ``twisted.test.proto_helpers``, which will be public.
+  
+- ``--privacy="PRIVATE:**.__*__" --privacy="PUBLIC:**.__init__"``
+  Makes all dunder methods private except ``__init__``.
+
+.. important:: The order of arguments matters. Pattern added last have priority over a pattern added before,
+  but an exact match wins over a fnmatch.
+
+.. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax.
+
+.. note:: Quotation marks should be added around each rule to avoid shell expansions.
+    Unless the arguments are passed directly to pydoctor, like in Sphinx's ``conf.py``, in this case you must not quote the privacy rules.
 
 Use a custom system class
 -------------------------
 
-You can subclass the :py:class:`pydoctor.zopeinterface.ZopeInterfaceSystem`
+You can subclass the :py:class:`pydoctor.model.System`
 and pass your custom class dotted name with the following argument::
 
   --system-class=mylib._pydoctor.CustomSystem
 
-System class allows you to dynamically show/hide classes or methods.
-This is also used by the Twisted project to handle deprecation.
+System class allows you to customize certain aspect of the system and configure the enabled extensions. 
+If what you want to achieve has something to do with the state of some objects in the Documentable tree, 
+it's very likely that you can do it without the need to override any system method, 
+by using the extension mechanism described below.
 
-See the :py:class:`twisted:twisted.python._pydoctor.TwistedSystem` custom class documentation.
+Brief on pydoctor extensions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The AST builder can now be customized with extension modules.
+This is how we handle Zope Interfaces declarations and :py:mod:`twisted.python.deprecate` warnings.
+
+Each pydocotor extension is a Python module with at least a ``setup_pydoctor_extension()`` function. 
+This function is called at initialization of the system with one argument, 
+the :py:class:`pydoctor.extensions.ExtRegistrar` object representing the system.
+
+An extension can register multiple kind of components:
+ - AST builder visitors
+ - Mixin classes for :py:class:`pydoctor.model.Documentable`
+ - Post processors
+
+Take a look at built-in extensions :py:mod:`pydoctor.extensions.zopeinterface` and  :py:mod:`pydoctor.extensions.deprecate`. 
 Navigate to the source code for a better overview.
+
+A concrete example
+^^^^^^^^^^^^^^^^^^
+
+Let's say you want to write a extension for simple pydantic classes like this one:
+
+.. code:: python
+
+    from typing import ClassVar
+    from pydantic import BaseModel
+    class Model(BaseModel):
+        a: int
+        b: int = Field(...)
+        name:str = 'Jane Doe'
+        kind:ClassVar = 'person'
+        
+
+First, we need to create a new module that will hold our extension code: ``mylib._pydoctor``. 
+This module will contain visitor code that visits ``ast.AnnAssign`` nodes after the main visitor. 
+It will check if the current context object is a class derived from ``pydantic.BaseModel`` and 
+transform each class variable into instance variables accordingly.
+
+.. code:: python
+
+    # Module mylib._pydoctor
+
+    import ast
+    from pydoctor import astutils, extensions, model
+
+    class PydanticModVisitor(extensions.ModuleVisitorExt):
+
+        def depart_AnnAssign(self, node: ast.AnnAssign) -> None:
+            """
+            Called after an annotated assignment definition is visited.
+            """
+            ctx = self.visitor.builder.current
+            if not isinstance(ctx, model.Class):
+                # check if the current context object is a class
+                return
+
+            if not any(ctx.expandName(b) == 'pydantic.BaseModel' for b in ctx.bases):
+                # check if the current context object if a class derived from ``pydantic.BaseModel``
+                return
+
+            dottedname = astutils.node2dottedname(node.target)
+            if not dottedname or len(dottedname)!=1:
+                # check if the assignment is a simple name, otherwise ignore it
+                return
+            
+            # Get the attribute from current context
+            attr = ctx.contents[dottedname[0]]
+
+            assert isinstance(attr, model.Attribute)
+
+            # All class variables that are not annotated with ClassVar will be transformed to instance variables.
+            if astutils.is_using_typing_classvar(attr.annotation, attr):
+                return
+
+            if attr.kind == model.DocumentableKind.CLASS_VARIABLE:
+                attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
+
+    def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+        r.register_astbuilder_visitor(PydanticModVisitor)
+
+    class PydanticSystem(model.System):
+        # Declare that this system should load this additional extension
+        custom_extensions = ['mylib._pydoctor']
+
+Then, we would pass our custom class dotted name with the argument ``--system-class``::
+
+  --system-class=mylib._pydoctor.PydanticSystem
+
+Et voilà.
+
+If this extension mechanism doesn't support the tweak you want, you can consider overriding some
+:py:class:`pydoctor.model.System` methods. For instance, overriding :py:meth:`pydoctor.model.System.__init__` method could be useful, 
+if some want to write a custom :py:class:`pydoctor.sphinx.SphinxInventory`.
+
+
+.. important:: 
+    If you feel like other users of the community might benefit from your extension as well, please 
+    don't hesitate to open a pull request adding your extension module to the package :py:mod:`pydoctor.extensions`.
 
 Use a custom writer class
 -------------------------
 
-You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter`
+You can subclass the :py:class:`pydoctor.templatewriter.TemplateWriter` (or the abstract super class :py:class:`pydoctor.templatewriter.IWriter`)
 and pass your custom class dotted name with the following argument::
 
+  --html-writer=mylib._pydoctor.CustomTemplateWriter
 
-  --html-class=mylib._pydoctor.CustomTemplateWriter
+The option is actually badly named because, theorically one could write a subclass 
+of :py:class:`pydoctor.templatewriter.IWriter` (to be used alongside option ``--template-dir``) 
+that would output Markdown, reStructuredText or JSON.
 
 .. warning:: Pydoctor does not have a stable API yet. Code customization is prone
     to break in future versions.
