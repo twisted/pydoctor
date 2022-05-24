@@ -195,6 +195,17 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
+def getframe(ob:'model.Documentable') -> model.CanContainImportsDocumentable:
+    """
+    Returns the first L{model.Class} or L{model.Module} starting 
+    at C{ob} and going upward in the tree.
+    """
+    if isinstance(ob, model.Inheritable):
+        return getframe(ob.parent)
+    else:
+        assert isinstance(ob, model.CanContainImportsDocumentable)
+        return ob
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -214,11 +225,11 @@ class ModuleVistor(NodeVisitor):
         @note: The list of existing names is generated at the moment of
             calling the function.
         """
-        current = self.builder.current
+        ctx = getframe(self.builder.current)
         ignore_override_init = self._override_guard_state
         # we list names only once to ignore new names added inside the block,
         # they should be overriden as usual.
-        self._override_guard_state = (True, current, self._list_names(current))
+        self._override_guard_state = (True, ctx, self._list_names(ctx))
         yield
         self._override_guard_state = ignore_override_init
     
@@ -246,12 +257,6 @@ class ModuleVistor(NodeVisitor):
     
     def depart_If(self, node: ast.If) -> None:
         # At this point the body of the Try node has already been visited
-        
-        # Visit the orelse with override guard only if the current context is a module or a class. 
-        # If.orelse blocks in functions are currently ignored. 
-        if not isinstance(self.builder.current, (model.Module, model.Class)):
-            return
-
         # Visit the 'orelse' block of the If node, with override guard
         with self.override_guard():
             for n in node.orelse:
@@ -266,11 +271,7 @@ class ModuleVistor(NodeVisitor):
         for n in node.finalbody:
             self.walkabout(n)
         
-        # Visit the handlers with override guard only if the current context is a module or a class. 
-        # Try.handlers blocks in functions are currently ignored. 
-        if not isinstance(self.builder.current, (model.Module, model.Class)):
-            return
-        
+        # Visit the handlers with override guard 
         with self.override_guard():
             for h in node.handlers:
                 for n in h.body:
@@ -719,6 +720,8 @@ class ModuleVistor(NodeVisitor):
         if not isinstance(cls, model.Class):
             return
         if not _maybeAttribute(cls, name):
+            return
+        if self._name_in_override_guard(cls, name):
             return
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.

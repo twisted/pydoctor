@@ -2234,7 +2234,7 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert var2.docstring == 'var2 doc'
 
 @systemcls_param
-def test_method_level_orelse_handlers_ignored(systemcls: Type[model.System]) -> None:
+def test_method_level_orelse_handlers_use_case1(systemcls: Type[model.System]) -> None:
     system = systemcls()
     builder = system.systemBuilder(system)
     builder.addModuleString('''
@@ -2244,26 +2244,66 @@ def test_method_level_orelse_handlers_ignored(systemcls: Type[model.System]) -> 
             try:
                 self.test()
             except:
-                # Since error is only defined in the except block in a function/method
-                # it will not be included in the documentation. 
-                # It will be documented if one adds a '@var error:' field to the class docstring though.
+                # Even if this attribute is only defined in the except block in a function/method
+                # it will be included in the documentation. 
                 self.error = True
             finally:
                 self.name = text
                 if sys.version_info > (3,0):
                     pass
-                else:
-                    # Idem for this instance attribute
+                elif sys.version_info > (2,6):
+                    # Idem for these instance attributes
                     self.legacy = True
+                    self.still_supported = True
+                else:
+                    # This attribute is ignored, the same rules that applies
+                    # at the module level applies here too.
+                    # since it's already defined in the upper block If.body
+                    # this assigment is ignored.
+                    self.still_supported = False
     ''', modname='mod')
     builder.buildModules()
     mod = system.allobjects['mod']
     assert isinstance(mod, model.Module)
     K = mod.contents['K']
     assert isinstance(K, model.Class)
-    assert K.resolveName('legacy') == None
-    assert K.resolveName('error') == None
+    assert K.resolveName('legacy') == K.contents['legacy']
+    assert K.resolveName('error') == K.contents['error']
     assert K.resolveName('name') == K.contents['name']
+    s = K.contents['still_supported']
+    assert K.resolveName('still_supported') == s
+    assert isinstance(s, model.Attribute)
+    assert ast.literal_eval(s.value) == True
+
+@systemcls_param
+def test_method_level_orelse_handlers_use_case2(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    class K:
+        def __init__(self, d:dict, g:Iterator):
+            try:
+                next(g)
+            except StopIteration:
+                # this should be documented
+                self.data = d
+            else:
+                raise RuntimeError("the generator wasn't exhausted!")
+            finally:
+                if sys.version_info < (3,7):
+                    raise RuntimeError("please upadate your python version to 3.7 al least!")
+                else:
+                    # Idem for this instance attribute
+                    self.ok = True
+    ''', modname='mod')
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    assert isinstance(mod, model.Module)
+    K = mod.contents['K']
+    assert isinstance(K, model.Class)
+    assert K.resolveName('data') == K.contents['data']
+    assert K.resolveName('ok') == K.contents['ok']
+
 
 @systemcls_param
 def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
