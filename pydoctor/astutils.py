@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
+from typing import Any, Dict, Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
 from inspect import BoundArguments, Signature
 import ast
 
@@ -155,3 +155,30 @@ def is_using_annotations(expr: Optional[ast.AST],
             if full_name in annotations:
                 return True
     return False
+
+def evaluate_If_test(node:ast.If, eval_if:Dict[str, Any], ctx:'model.Documentable') -> Optional[bool]:
+    """
+    Currently supports Ifs with dotted names only.
+    
+    Like::
+
+        if TYPE_CHECKING:
+            ...
+        if typing.TYPE_CHECKING:
+            ...
+    
+    Does not recognize stuff like::
+
+        if TYPE_CHECKING==True:
+            ...
+        if TYPE_CHECKING is not False:
+            ...
+    """
+    _test = node.test
+    # Supports simple dotted names only for now.
+    # But if we were to add more support for comparators,
+    # this is where it should happend.
+    full_name = node2fullname(_test, ctx)
+    if full_name and full_name in eval_if:
+        return bool(eval_if[full_name])
+    return None

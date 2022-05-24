@@ -2374,3 +2374,32 @@ def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]
     assert mod.expandName('seven') == 'six.seven'
     assert 'klass' not in mod._localNameToFullName_map
     assert 'crazy_var' not in mod._localNameToFullName_map
+
+
+@systemcls_param
+def test_if_TYPE_CHECKING_False(systemcls: Type[model.System]) -> None:
+
+    src = '''
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        # Inform mypy of import shenanigans.
+        from klein.resource import _SpecialModuleObject
+        resource = _SpecialModuleObject()
+    else:
+        from klein import resource
+    
+    class NotInTheTYPE_CHECKING_False_Context:
+        if TYPE_CHECKING:
+            var = 2
+    '''
+
+    class MySystem(systemcls): # type:ignore[valid-type, misc]
+        eval_if = {'complex_mod': {'typing.TYPE_CHECKING':False}}
+    
+    system = MySystem()
+    mod = fromText(src, system=system, modname='complex_mod')
+    assert '_SpecialModuleObject' not in mod._localNameToFullName_map
+    assert 'resource' in mod._localNameToFullName_map
+    assert mod.expandName('resource') == 'klein.resource'
+    assert 'var' in mod.contents['NotInTheTYPE_CHECKING_False_Context'].contents

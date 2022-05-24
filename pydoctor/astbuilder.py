@@ -14,9 +14,9 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan
+from pydoctor import epydoc2stan, model, node2stan, qnmatch
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
+from pydoctor.astutils import evaluate_If_test, bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -206,6 +206,18 @@ def getframe(ob:'model.Documentable') -> model.CanContainImportsDocumentable:
         assert isinstance(ob, model.CanContainImportsDocumentable)
         return ob
 
+def get_eval_if(ob: 'model.Documentable') -> Dict[str, Any]:
+    """
+    Returns the If evaluation rules applicable in the context of the received object.
+    """
+    global_eval_if = ob.system.eval_if
+    ob_eval_if: Dict[str, Any] = {}
+    for p in global_eval_if.keys():
+        if qnmatch.qnmatch(ob.fullName(), p):
+            ob_eval_if.update(global_eval_if[p])
+    return ob_eval_if
+
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -253,7 +265,25 @@ class ModuleVistor(NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                raise self.SkipNode()
+                raise self.SkipChildren() # we use SkipChildren() here to still call depart().
+        
+        # 'ast.If' evaluation feature, do not visit one of the branches based
+        # on user customizations, else visit both branches as ususal.
+        if not self.system.eval_if:
+            return
+        current = self.builder.current
+        if_eval_in_this_context = get_eval_if(current)
+        if not if_eval_in_this_context:
+            return
+        
+        evaluated = evaluate_If_test(node, if_eval_in_this_context, current)
+        
+        if evaluated == False:
+            # this will only call depart(), and thus visit only on the else branch of the If.
+            raise self.SkipChildren()
+        if evaluated == True:
+            # this will skip the call to depart(), so the else branch will not be visited at all.
+            raise self.SkipDeparture()
     
     def depart_If(self, node: ast.If) -> None:
         # At this point the body of the Try node has already been visited
