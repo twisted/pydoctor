@@ -2273,7 +2273,7 @@ def test_method_level_orelse_handlers_use_case1(systemcls: Type[model.System]) -
     s = K.contents['still_supported']
     assert K.resolveName('still_supported') == s
     assert isinstance(s, model.Attribute)
-    assert ast.literal_eval(s.value) == True
+    assert ast.literal_eval(s.value or '') == True
 
 @systemcls_param
 def test_method_level_orelse_handlers_use_case2(systemcls: Type[model.System]) -> None:
