@@ -519,10 +519,11 @@ class ModuleVistor(NodeVisitor):
         current = self.builder.current
         for al in node.names:
             fullname, asname = al.name, al.asname
+            # Ignore in override guard
+            if self._name_in_override_guard(current, asname or fullname):
+                continue
             if asname is not None:
-                # Ignore in override guard
-                if self._name_in_override_guard(current, asname):
-                    continue
+                # Do not create an alias with the same name as value
                 _localNameToFullName[asname] = fullname
 
 
