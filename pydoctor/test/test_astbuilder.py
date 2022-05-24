@@ -2079,10 +2079,7 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> None:
     """
-    Currently, the first analyzed assigment wins, basically. I believe further logic should be added
-    such that definitions in the orelse clause of the Try node is processed before the 
-    except handlers. This way could define our aliases both there and in the body of the
-    Try node and fall back to what's defnied in the handlers if the names doesn't exist yet.
+    Variables and aliases defined in the main body of a Try node will have priority over the names defined in the except handlers.
     """
     system = systemcls()
     builder = system.systemBuilder(system)

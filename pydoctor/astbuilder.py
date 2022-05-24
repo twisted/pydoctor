@@ -232,10 +232,10 @@ class ModuleVistor(NodeVisitor):
     def override_guard(self) -> Iterator[None]:
         """
         Returns a context manager that will make the builder ignore any extraneous 
-        assigments to existing names within the same context.  
+        assigments to existing names within the same context.  Currently used to visit C{If.orelse} and C{Try.handlers}.
         
         @note: The list of existing names is generated at the moment of
-            calling the function.
+            calling the function, such that new names defined inside these blocks follows the usual override rules.
         """
         ctx = getframe(self.builder.current)
         ignore_override_init = self._override_guard_state
@@ -255,6 +255,7 @@ class ModuleVistor(NodeVisitor):
         return names
 
     def _name_in_override_guard(self, ob: model.Documentable, name:str) -> bool:
+        """Should this name be ignored because it matches the override guard in the context of C{ob}?"""
         return self._override_guard_state[0] is True \
             and self._override_guard_state[1] is ob \
                 and name in self._override_guard_state[2]
@@ -429,7 +430,7 @@ class ModuleVistor(NodeVisitor):
 
         # Always ignore import * in override guard
         if self._override_guard_state[0]:
-            self.builder.warning("ignored import * from", modname)
+            self.builder.warning("ignored import *", modname)
             return
 
         mod = self.system.getProcessedModule(modname)
