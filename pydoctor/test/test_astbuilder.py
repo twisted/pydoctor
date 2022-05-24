@@ -2174,7 +2174,7 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
         class klass:
             'klass doc'
         var2 = 1
-        'var doc'
+        'var2 doc'
     else:
         # these definition will be ignored since they are
         # alreade definied in the body of the If block.
