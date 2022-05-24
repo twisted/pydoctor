@@ -246,6 +246,12 @@ class ModuleVistor(NodeVisitor):
     
     def depart_If(self, node: ast.If) -> None:
         # At this point the body of the Try node has already been visited
+        
+        # Visit the orelse with override guard only if the current context is a module or a class. 
+        # If.orelse blocks in functions are currently ignored. 
+        if not isinstance(self.builder.current, (model.Module, model.Class)):
+            return
+
         # Visit the 'orelse' block of the If node, with override guard
         with self.override_guard():
             for n in node.orelse:
@@ -260,7 +266,11 @@ class ModuleVistor(NodeVisitor):
         for n in node.finalbody:
             self.walkabout(n)
         
-        # Visit the handlers with override guard
+        # Visit the handlers with override guard only if the current context is a module or a class. 
+        # Try.handlers blocks in functions are currently ignored. 
+        if not isinstance(self.builder.current, (model.Module, model.Class)):
+            return
+        
         with self.override_guard():
             for h in node.handlers:
                 for n in h.body:

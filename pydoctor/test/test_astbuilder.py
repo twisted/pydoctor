@@ -2232,7 +2232,39 @@ def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System
     assert klass.docstring == 'klass doc'
     assert isinstance(var2, model.Attribute)
     assert var2.docstring == 'var2 doc'
-   
+
+@systemcls_param
+def test_method_level_orelse_handlers_ignored(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    class K:
+        def test(self, ):...
+        def __init__(self, text):
+            try:
+                self.test()
+            except:
+                # Since error is only defined in the except block in a function/method
+                # it will not be included in the documentation. 
+                # It will be documented if one adds a '@var error:' field to the class docstring though.
+                self.error = True
+            finally:
+                self.name = text
+                if sys.version_info > (3,0):
+                    pass
+                else:
+                    # Idem for this instance attribute
+                    self.legacy = True
+    ''', modname='mod')
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    assert isinstance(mod, model.Module)
+    K = mod.contents['K']
+    assert isinstance(K, model.Class)
+    assert K.resolveName('legacy') == None
+    assert K.resolveName('error') == None
+    assert K.resolveName('name') == K.contents['name']
+
 @systemcls_param
 def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
     system = systemcls()
