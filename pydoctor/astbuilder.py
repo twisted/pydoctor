@@ -1,6 +1,7 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
 import ast
+import contextlib
 import sys
 from attr import attrs, attrib
 from functools import partial
@@ -201,7 +202,39 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._override_guard_state: Tuple[bool, model.Documentable, Sequence[str]] = \
+                                    (False, cast(model.Documentable, None), [])
+    
+    @contextlib.contextmanager
+    def override_guard(self) -> Iterator[None]:
+        """
+        Returns a context manager that will make the builder ignore any extraneous 
+        assigments to existing names within the same context.  
+        
+        @note: The list of existing names is genrated at the moment of
+            calling the function.
+        """
+        current = self.builder.current
+        ignore_override_init = self._override_guard_state
+        # we list names only once to ignore new names added inside the block,
+        # they should be overriden as usual.
+        self._override_guard_state = (True, current, self._list_names(current))
+        yield
+        self._override_guard_state = ignore_override_init
+    
+    def _list_names(self, ob: model.Documentable) -> List[str]:
+        """
+        List the names currently defined in a class/module.
+        """
+        names = list(ob.contents)
+        if isinstance(ob, model.CanContainImportsDocumentable):
+            names.extend(ob._localNameToFullName_map)
+        return names
 
+    def _name_in_override_guard(self, ob: model.Documentable, name:str) -> bool:
+        return self._override_guard_state[0] is True \
+            and self._override_guard_state[1] is ob \
+                and name in self._override_guard_state[2]
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -210,6 +243,28 @@ class ModuleVistor(NodeVisitor):
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
                 raise self.SkipNode()
+    
+    def depart_If(self, node: ast.If) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' block of the If node, with override guard
+        with self.override_guard():
+            for n in node.orelse:
+                self.walkabout(n)
+    
+    def depart_Try(self, node: ast.Try) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' and 'finalbody' blocks of the Try node.
+        
+        for n in node.orelse:
+            self.walkabout(n)
+        for n in node.finalbody:
+            self.walkabout(n)
+        
+        # Visit the handlers with override guard
+        with self.override_guard():
+            for h in node.handlers:
+                for n in h.body:
+                    self.walkabout(n)
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -226,6 +281,9 @@ class ModuleVistor(NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
+            raise self.SkipNode()
+        # Ignore in override guard
+        if self._name_in_override_guard(parent, node.name):
             raise self.SkipNode()
 
         rawbases = []
@@ -328,6 +386,11 @@ class ModuleVistor(NodeVisitor):
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
 
+        # Always ignore import * in override guard
+        if self._override_guard_state[0]:
+            self.builder.warning("ignored import * from", modname)
+            return
+
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
@@ -420,7 +483,11 @@ class ModuleVistor(NodeVisitor):
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
-
+            
+            # Ignore in override guard
+            if self._name_in_override_guard(current, asname):
+                continue
+            
             if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
                 continue
 
@@ -449,9 +516,13 @@ class ModuleVistor(NodeVisitor):
                                  str(self.builder.current))
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
+        current = self.builder.current
         for al in node.names:
             fullname, asname = al.name, al.asname
             if asname is not None:
+                # Ignore in override guard
+                if self._name_in_override_guard(current, asname):
+                    continue
                 _localNameToFullName[asname] = fullname
 
 
@@ -729,6 +800,8 @@ class ModuleVistor(NodeVisitor):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
+            if self._name_in_override_guard(scope, target):
+                return
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno)
             elif isinstance(scope, model.Class):
@@ -787,6 +860,9 @@ class ModuleVistor(NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
+            raise self.SkipNode()
+        # Ignore in override guard
+        if self._name_in_override_guard(parent, node.name):
             raise self.SkipNode()
 
         lineno = node.lineno

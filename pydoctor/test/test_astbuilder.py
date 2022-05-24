@@ -2092,13 +2092,11 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     builder.addModuleString('''
     try:
         from twisted.internet import ssl as _ssl
-        # The first analyzed assigment to an alias wins.
+        # The names defined in the body of the if block wins over the
+        # names defined in the except handler
         ssl = _ssl
-        # For classic variables, the rules are the same.
         var = 1
-        # For constants, the rules are still the same.
         VAR = 1
-        # Looks like a constant, but should be treated like an alias
         ALIAS = _ssl
     except ImportError:
         ssl = None
@@ -2142,3 +2140,165 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert ast.literal_eval(s.value)==1
     assert s.kind == model.DocumentableKind.VARIABLE
 
+@systemcls_param
+def test_module_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
+    """
+    We visit the orelse body and these names have priority over the names in the except handlers.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    ssl = 1
+    ''', modname='twisted.internet')
+    builder.addModuleString('''
+    try:
+        from twisted.internet import ssl as _ssl
+    except ImportError:
+        ssl = None
+        var = 2
+        VAR = 2
+        ALIAS = None
+        newname = 2
+    else:
+        # The names defined in the orelse or finally block wins over the
+        # names defined in the except handler
+        ssl = _ssl
+        var = 1
+    finally:
+        VAR = 1
+        ALIAS = _ssl
+    
+    if sys.version_info > (3,7):
+        def func():
+            'func doc'
+        class klass:
+            'klass doc'
+        var2 = 1
+        'var doc'
+    else:
+        # these definition will be ignored since they are
+        # alreade definied in the body of the If block.
+        func = None
+        'not this one'
+        def klass():
+            'not this one'
+        class var2:
+            'not this one'
+    ''', modname='mod')
+    builder.buildModules()
+    mod = system.allobjects['mod']
+
+    # Tes newname survives the override guard
+    assert 'newname' in mod.contents
+    
+    # Test alias
+    assert mod.expandName('ssl')=="twisted.internet.ssl"
+    assert mod.expandName('_ssl')=="twisted.internet.ssl"
+    s = mod.resolveName('ssl')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
+    assert s.kind == model.DocumentableKind.VARIABLE
+    
+    # Test variable
+    assert mod.expandName('var')=="mod.var"
+    v = mod.resolveName('var')
+    assert isinstance(v, model.Attribute)
+    assert v.value is not None
+    assert ast.literal_eval(v.value)==1
+    assert v.kind == model.DocumentableKind.VARIABLE
+
+    # Test constant
+    assert mod.expandName('VAR')=="mod.VAR"
+    V = mod.resolveName('VAR')
+    assert isinstance(V, model.Attribute)
+    assert V.value is not None
+    assert ast.literal_eval(V.value)==1
+    assert V.kind == model.DocumentableKind.CONSTANT
+
+    # Test looks like constant but actually an alias.
+    assert mod.expandName('ALIAS')=="twisted.internet.ssl"
+    s = mod.resolveName('ALIAS')
+    assert isinstance(s, model.Attribute)
+    assert s.value is not None
+    assert ast.literal_eval(s.value)==1
+    assert s.kind == model.DocumentableKind.VARIABLE
+
+    # Test if override guard
+    func, klass, var2 = mod.resolveName('func'), mod.resolveName('klass'), mod.resolveName('var2')
+    assert isinstance(func, model.Function) 
+    assert func.docstring == 'func doc'
+    assert isinstance(klass, model.Class)
+    assert klass.docstring == 'klass doc'
+    assert isinstance(var2, model.Attribute)
+    assert var2.docstring == 'var2 doc'
+   
+@systemcls_param
+def test_class_level_attributes_and_aliases_orelse(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('crazy_var=2', modname='crazy')
+    builder.addModuleString('''
+    if sys.version_info > (3,0):
+        thing = object
+        class klass(thing):
+            'klass doc'
+            var2 = 3
+        
+        # regular import
+        from crazy import crazy_var as cv
+    else:
+        # these imports will be ignored because the names
+        # have been defined in the body of the If block.
+        from six import t as thing 
+        import klass
+        from crazy27 import crazy_var as cv
+
+        # Wildcard imports are not processed 
+        # in name override guard context
+        from crazy import * 
+
+        # this import is not ignored
+        from six import seven
+
+        # this class is not ignored and will be part of the public docs.
+        class klassfallback(thing): 
+            'klassfallback doc'
+            var2 = 1
+            # this overrides var2
+            var2 = 2 
+        
+        # this is ignored because the name 'klass' 
+        # has been defined in the body of the If block.
+        klass = klassfallback                 
+        'ignored'
+
+        var3 = 1
+        # this overrides var3
+        var3 = 2 
+    ''', modname='mod')
+    builder.buildModules()
+    mod = system.allobjects['mod']
+    assert isinstance(mod, model.Module)
+
+    klass, klassfallback, var2, var3 = \
+        mod.resolveName('klass'), \
+        mod.resolveName('klassfallback'), \
+        mod.resolveName('klassfallback.var2'), \
+        mod.resolveName('var3')
+
+    assert isinstance(klass, model.Class)
+    assert isinstance(klassfallback, model.Class)
+    assert isinstance(var2, model.Attribute)
+    assert isinstance(var3, model.Attribute)
+
+    assert klassfallback.docstring == 'klassfallback doc'
+    assert klass.docstring == 'klass doc'
+    assert ast.literal_eval(var2.value or '') == 2
+    assert ast.literal_eval(var3.value or '') == 2
+    
+    assert mod.expandName('cv') == 'crazy.crazy_var'
+    assert mod.expandName('thing') == 'object'
+    assert mod.expandName('seven') == 'six.seven'
+    assert 'klass' not in mod._localNameToFullName_map
+    assert 'crazy_var' not in mod._localNameToFullName_map
