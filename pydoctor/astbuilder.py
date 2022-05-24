@@ -211,7 +211,7 @@ class ModuleVistor(NodeVisitor):
         Returns a context manager that will make the builder ignore any extraneous 
         assigments to existing names within the same context.  
         
-        @note: The list of existing names is genrated at the moment of
+        @note: The list of existing names is generated at the moment of
             calling the function.
         """
         current = self.builder.current
