@@ -229,17 +229,19 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
 
         rawbases = []
+        initialbases = []
         initialbaseobjects = []
 
         for n in node.bases:
             # TODO: Handle generics in MRO
             str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
             rawbases.append(str_base)
-            baseobj = parent.resolveName(str_base)
+            expandbase = parent.expandName(str_base)
+            baseobj = self.system.objForFullName(expandbase)
             if baseobj and not isinstance(baseobj, model.Class):
                 baseobj = None
+            initialbases.append(expandbase)
             initialbaseobjects.append(cast('Optional[model.Class]', baseobj))
-            
 
         lineno = node.lineno
         if node.decorator_list:
@@ -249,6 +251,7 @@ class ModuleVistor(NodeVisitor):
         cls.decorators = []
         cls.rawbases = rawbases
         cls._initialbaseobjects = initialbaseobjects
+        cls._initialbases = initialbases
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             cls.setDocstring(node.body[0].value)

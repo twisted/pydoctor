@@ -482,10 +482,12 @@ class Package(Module):
     kind = DocumentableKind.PACKAGE
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
-    """Compute the method resolution order for this class."""
-
-    # This function will also set the _finalbaseobjects attribute on this class and all it's superclasses
-
+    """
+    Compute the method resolution order for this class.
+    This function will also set the 
+    C{_finalbaseobjects} and C{_finalbases} attributes on 
+    this class and all it's superclasses.
+    """
     def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
         if not path:
             path = []
@@ -497,20 +499,25 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
-            for str_base, base in zip(o.rawbases, o._initialbaseobjects):
+            finalbases: List[str] = []
+            for i,(str_base, base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
+                    finalbases.append(base.fullName())
                 else:
                     resolved_base = o.parent.resolveName(str_base)
                     if isinstance(resolved_base, Class):
                         base = resolved_base
                         finalbaseobjects.append(base)
+                        finalbases.append(base.fullName())
                     else:
                         # the base object could not be resolved
                         finalbaseobjects.append(None)
+                        finalbases.append(o._initialbases[i])
                 if base:
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
+            o._finalbases = finalbases
     
     def localbases(o:'Class') -> Iterator[Union['Class', str]]:
         """
@@ -535,6 +542,8 @@ class Class(CanContainImportsDocumentable):
     parent: CanContainImportsDocumentable
     _initialbaseobjects: List[Optional['Class']]
     _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
+    _initialbases: List[str]
+    _finalbases: Optional[List[str]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
     # Note: While unused in pydoctor itself, raw_decorators is still in use
     #       by Twisted's custom System class, to find deprecations.
@@ -549,6 +558,7 @@ class Class(CanContainImportsDocumentable):
         super().setup()
         self.rawbases: List[str] = []
         self.subclasses: List[Class] = []
+        self._initialbases = []
         self._initialbaseobjects = []
         self._mro: Optional[List[Union['Class', str]]] = None
     
@@ -590,7 +600,8 @@ class Class(CanContainImportsDocumentable):
         """
         Fully qualified names of the bases of this class.
         """
-        return [self.parent.expandName(str_base) for str_base in self.rawbases]
+        return self._finalbases if \
+            self._finalbases is not None else self._initialbases
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
