@@ -571,7 +571,7 @@ class Class(CanContainImportsDocumentable):
         Get the method resution order of this class. 
 
         @note: The actual correct value is only set in post-processing, if L{mro()} is called
-            in the AST visitors, it will return the same as C{list(self.allbases(True))}.
+            in the AST visitors, it will return the same as C{list(self.allbases(include_self))}.
         """
         if self._mro is None:
             return list(self.allbases(include_self))
@@ -598,7 +598,7 @@ class Class(CanContainImportsDocumentable):
         Base objects, L{None} value is inserted when the base class could not be found in the system.
         
         @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object. 
-            It's computed another time in post-processing to try to resolve the names that could not be resolved the first place. This is needed when there are import cycles. 
+            It's computed another time in post-processing to try to resolve the names that could not be resolved the first time. This is needed when there are import cycles. 
             
             Meaning depending on the state of the system, this property can return either the initial objects or the final objects
         """
