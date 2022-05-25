@@ -319,6 +319,8 @@ The content of ``my_project/__init__.py`` includes::
 
     __all__ = ("MyClass",)
 
+.. _branch-priorities:
+
 Branch priorities
 -----------------
 
@@ -351,12 +353,7 @@ documented and the second one will be ignored.
         class CapSys(object): # ignored
             ...
 
-.. But sometimes pydoctor can be better off analysing the ``TYPE_CHECKING`` blocks and should 
-.. stick to the runtime version of the code instead. 
-
-.. You can instrut pydoctor do to such things with a custom system class. 
-
-.. .. code:: python
-
-..     class MySystem(model.System):
-..         eval_if = {'my_mod':{'TYPE_CHECKING':False}}
+But sometimes pydoctor can be better off analysing the ``TYPE_CHECKING`` blocks and should 
+stick to the runtime version of the code instead. 
+See the :ref:`Tweak ifs branch priorities <tweak-ifs-branch-priority>` section for more 
+informatons about how to handle this kind of corner cases.
