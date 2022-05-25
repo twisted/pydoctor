@@ -404,7 +404,7 @@ class ModuleVistor(NodeVisitor):
                 assert isinstance(attr, model.Attribute)
                 attr._alias_to = f'{modname}.{origin_name}'
                 # This is only for the HTML repr
-                attr.value=ast.Name(attr._alias_to)
+                attr.value=ast.Name(attr._alias_to, ast.Load) # passing ctx is required for python 3.6
                 return True
             
             # if mod is None: 
