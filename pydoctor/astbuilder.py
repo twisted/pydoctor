@@ -790,7 +790,7 @@ class ModuleVistor(NodeVisitor):
     def _reduceNameInContext(self, target:ast.expr) -> Tuple[List[str], model.Documentable]:
         """
         If the current context is a method, strip the C{'self.'} part of assignment names and return 
-            the right L{Class} context in which to use the new name. The new name maybe dotted.
+        the right L{Class} context in which to use the new name. The new name maybe dotted.
 
         @returns: Tuple C{(dottedname, context)} or just the parsed target with the current 
             context if the target is not using C{self.}.
