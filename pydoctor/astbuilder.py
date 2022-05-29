@@ -238,7 +238,7 @@ class ModuleVistor(NodeVisitor):
             rawbases.append(str_base)
             expandbase = parent.expandName(str_base)
             baseobj = self.system.objForFullName(expandbase)
-            if baseobj and not isinstance(baseobj, model.Class):
+            if not isinstance(baseobj, model.Class):
                 baseobj = None
             initialbases.append(expandbase)
             initialbaseobjects.append(cast('Optional[model.Class]', baseobj))
