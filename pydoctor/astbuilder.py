@@ -241,7 +241,7 @@ class ModuleVistor(NodeVisitor):
             if not isinstance(baseobj, model.Class):
                 baseobj = None
             initialbases.append(expandbase)
-            initialbaseobjects.append(cast('Optional[model.Class]', baseobj))
+            initialbaseobjects.append(baseobj)
 
         lineno = node.lineno
         if node.decorator_list:
