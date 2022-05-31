@@ -349,13 +349,9 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
                 isinstance(fbody[0][0], nodes.Text)):
                 text = fbody[0][0].astext()
                 if text[:1] in ':-':
-                    fbody[0][0] = nodes.Text(
-                        text[1:].lstrip(), fbody[0][0].astext()
-                        )
+                    fbody[0][0] = nodes.Text(text[1:].lstrip())
                 elif text[:2] in (' -', ' :'):
-                    fbody[0][0] = nodes.Text(
-                        text[2:].lstrip(), fbody[0][0].astext()
-                        )
+                    fbody[0][0] = nodes.Text(text[2:].lstrip())
 
             # Wrap the field body, and add a new field
             self._add_field(tagname, arg, fbody, fbody[0].line)
