@@ -286,7 +286,6 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
 
     # HTML ids for problematic elements changed in docutils 0.18.0
-    # HTML ids for problematic elements changed in docutils 0.18.0
     if _get_docutils_version() >= (0,18,0):
         assert process('Union[`hello <>`_[str]]')               == """<code>Union[</code><a href="#system-message-1"><span class="rst-problematic" id="rst-problematic-1">`hello &lt;&gt;`_</span></a>[<code>str]]</code>"""
  
