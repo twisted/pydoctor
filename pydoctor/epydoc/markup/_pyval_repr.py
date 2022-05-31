@@ -273,7 +273,7 @@ class PyvalColorizer:
     LINEWRAP = nodes.inline('', chr(8629), classes=[LINEWRAP_TAG])
     UNKNOWN_REPR = nodes.inline('??', '??', classes=[UNKNOWN_TAG])
     WORD_BREAK_OPPORTUNITY = wbr()
-    NEWLINE = nodes.Text('\n', '\n')
+    NEWLINE = nodes.Text('\n')
 
     GENERIC_OBJECT_RE = re.compile(r'^<(?P<descr>.*) at (?P<addr>0x[0-9a-f]+)>$', re.IGNORECASE)
 

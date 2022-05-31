@@ -197,7 +197,7 @@ transform each class variable into instance variables accordingly.
                 attr.kind = model.DocumentableKind.INSTANCE_VARIABLE
 
     def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
-        r.register_astbuilder_visitors(PydanticModVisitor)
+        r.register_astbuilder_visitor(PydanticModVisitor)
 
     class PydanticSystem(model.System):
         # Declare that this system should load this additional extension
