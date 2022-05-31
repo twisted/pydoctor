@@ -276,6 +276,10 @@ class ModuleVistor(NodeVisitor):
                 else:
                     cls.decorators.append((base, args))
         cls.raw_decorators = node.decorator_list if node.decorator_list else []
+        
+        # We're not resolving the subclasses at this point yet because all 
+        # modules might not have been processed, and since subclasses are only used in the presentation,
+        # it's better to resolve them in the post-processing instead.
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()
