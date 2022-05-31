@@ -152,4 +152,4 @@ def _get_docutils_version() -> Tuple[int, int,int]:
         version += [0]
     
     assert len(version)==3, version
-    return tuple(version)
+    return (version[0], version[1], version[2])

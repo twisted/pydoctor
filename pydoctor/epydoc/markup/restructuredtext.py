@@ -50,7 +50,7 @@ from docutils.writers import Writer
 from docutils.parsers.rst.directives.admonitions import BaseAdmonition # type: ignore[import]
 from docutils.readers.standalone import Reader as StandaloneReader
 from docutils.utils import Reporter, new_document
-from docutils.parsers.rst import Directive, directives # type:ignore[attr-defined]
+from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
 from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
