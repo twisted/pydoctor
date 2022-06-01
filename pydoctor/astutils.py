@@ -155,3 +155,7 @@ def is_using_annotations(expr: Optional[ast.AST],
             if full_name in annotations:
                 return True
     return False
+
+def is_none_literal(node: ast.expr) -> bool:
+    """Does this AST node represent the literal constant None?"""
+    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None

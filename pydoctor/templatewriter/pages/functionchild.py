@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING, List
 
 from twisted.web.iweb import ITemplateLoader
-from twisted.web.template import Tag, renderer, tags
+from twisted.web.template import Tag, renderer
 
 from pydoctor.model import Function
 from pydoctor.templatewriter import TemplateElement, util
-from pydoctor.templatewriter.pages import format_decorators, format_signature
+from pydoctor.templatewriter.pages import format_decorators, format_function_def, format_overloads
 
 if TYPE_CHECKING:
     from twisted.web.template import Flattenable
@@ -42,20 +42,19 @@ class FunctionChild(TemplateElement):
         return self.ob.name
 
     @renderer
+    def overloads(self, request: object, tag: Tag) -> "Flattenable":
+        return list(format_overloads(self.ob))
+
+    @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
         return list(format_decorators(self.ob))
 
     @renderer
     def functionDef(self, request: object, tag: Tag) -> "Flattenable":
-        def_stmt = 'async def' if self.ob.is_async else 'def'
-        name = self.ob.name
-        if name.endswith('.setter') or name.endswith('.deleter'):
-            name = name[:name.rindex('.')]
-        return [
-            tags.span(def_stmt, class_='py-keyword'), ' ',
-            tags.span(name, class_='py-defname'), 
-            format_signature(self.ob), ':'
-            ]
+        # Exclude function definition if there are overloads
+        if self.ob.overloads:
+            return ()
+        return format_function_def(self.ob.name, self.ob.is_async, self.ob)
 
     @renderer
     def sourceLink(self, request: object, tag: Tag) -> "Flattenable":

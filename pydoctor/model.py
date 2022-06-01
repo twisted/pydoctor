@@ -8,6 +8,7 @@ being documented -- a System is a bad of Documentables, in some sense.
 
 import abc
 import ast
+import attr
 import datetime
 import importlib
 import inspect
@@ -567,11 +568,20 @@ class Function(Inheritable):
     annotations: Mapping[str, Optional[ast.expr]]
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
+    overloads: List['FunctionOverload']
 
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.overloads = []
+
+@attr.s(auto_attribs=True)
+class FunctionOverload:
+    """
+    @note: This is not an actual documentable type. 
+    """
+    signature: Signature
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -712,6 +722,9 @@ class System:
     @property
     def Attribute(self) -> Type['Attribute']:
         return self._factory.Attribute
+    @property
+    def FunctionOverload(self) -> Type['FunctionOverload']:
+        return self._factory.FunctionOverload
 
     @property
     def sourcebase(self) -> Optional[str]:

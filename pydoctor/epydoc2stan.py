@@ -13,6 +13,7 @@ import re
 import attr
 
 from pydoctor import model, linker
+from pydoctor.astutils import is_none_literal
 from pydoctor.epydoc.markup import Field as EpydocField, ParseError, get_parser_by_name
 from twisted.web.template import Tag, tags
 from pydoctor.epydoc.markup import ParsedDocstring
@@ -269,7 +270,7 @@ class FieldHandler:
             # it from being presented.
             ann_ret = annotations['return']
             assert ann_ret is not None  # ret_type would be None otherwise
-            if not _is_none_literal(ann_ret):
+            if not is_none_literal(ann_ret):
                 self.return_desc = FieldDesc(type=ret_type)
 
     @staticmethod
@@ -494,11 +495,6 @@ class FieldHandler:
             return tags.table(class_='fieldTable')(r)
         else:
             return tags.transparent
-
-
-def _is_none_literal(node: ast.expr) -> bool:
-    """Does this AST node represent the literal constant None?"""
-    return isinstance(node, (ast.Constant, ast.NameConstant)) and node.value is None
 
 
 def reportErrors(obj: model.Documentable, errs: Sequence[ParseError], section:str='docstring') -> None:

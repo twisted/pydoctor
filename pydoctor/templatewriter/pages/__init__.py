@@ -64,12 +64,35 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         yield '@', stan.children, tags.br()
 
-def format_signature(function: model.Function) -> "Flattenable":
+def format_signature(func: Union[model.Function, model.FunctionOverload]) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature)) if function.signature else "(...)"
+    return html2stan(str(func.signature)) if func.signature else "(...)"
+
+def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
+    """
+    Format a function overloads definitions as nice HTML signatures.
+    """
+    for overload in func.overloads:
+        yield '@overload', tags.br(), tags.div(format_function_def(func.name, func.is_async, overload))
+
+def format_function_def(func_name: str, is_async: bool, 
+                        func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
+    """
+    Format a function definition.
+    """
+    r:List["Flattenable"] = []
+    def_stmt = 'async def' if is_async else 'def'
+    if func_name.endswith('.setter') or func_name.endswith('.deleter'):
+        func_name = func_name[:func_name.rindex('.')]
+    r.extend([
+        tags.span(def_stmt, class_='py-keyword'), ' ',
+        tags.span(func_name, class_='py-defname'), 
+        format_signature(func), ':',
+    ])
+    return r
 
 class Nav(TemplateElement):
     """

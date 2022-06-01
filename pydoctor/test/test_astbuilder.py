@@ -1720,6 +1720,29 @@ def test_ignore_function_contents(systemcls: Type[model.System]) -> None:
     assert not outer.contents
 
 @systemcls_param
+def test_overload(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s:str)->str:
+            ...
+        @overload
+        def parse(s:bytes)->bytes:
+            ...
+        def parse(s:Union[str, bytes])->Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    # Work around different space arrangements in Signature.__str__ between python versions
+    assert flatten_text(html2stan(str(func.signature).replace(' ', ''))) == "(s:Union[str,bytes])->Union[str,bytes]"
+    assert [astbuilder.node2dottedname(d) for d in (func.decorators or ())] == []
+    overloads = func.overloads
+    assert len(overloads) == 2
+    assert flatten_text(html2stan(str(overloads[0].signature).replace(' ', ''))) == "(s:str)->str"
+    assert flatten_text(html2stan(str(overloads[1].signature).replace(' ', ''))) == "(s:bytes)->bytes"
+
+@systemcls_param
 def test_constant_module(systemcls: Type[model.System]) -> None:
     """
     Module variables with all-uppercase names are recognized as constants.

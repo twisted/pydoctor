@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Callable, Union, Any, cast, TYPE_CHECKING
+from typing import Callable, Union, Any, cast, Type, TYPE_CHECKING
 import pytest
 import warnings
 import sys
@@ -14,7 +14,7 @@ from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pag
                                      OverrideTemplateNotAllowed)
 from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
-from pydoctor.test.test_astbuilder import fromText
+from pydoctor.test.test_astbuilder import fromText, systemcls_param
 from pydoctor.test.test_packages import processPackage, testpackages
 from pydoctor.themes import get_themes
 
@@ -484,6 +484,27 @@ def test_isClassNodePrivate() -> None:
     assert not isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPublic']))
     assert isClassNodePrivate(cast(model.Class, mod.contents['_BaseForPrivate']))
 
+@systemcls_param
+def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
+    mod = fromText("""
+        from typing import overload, Union
+        @overload
+        def parse(s: str) -> str:
+            ...
+        @overload
+        def parse(s: bytes) -> bytes:
+            ...
+        def parse(s: Union[str, bytes]) -> Union[str, bytes]:
+            pass
+        """, systemcls=systemcls)
+    func = mod.contents['parse']
+    assert isinstance(func, model.Function)
+    overloads_html = stanutils.flatten(list(pages.format_overloads(func)))
+    function_def_html = stanutils.flatten(list(pages.format_function_def(func.name, func.is_async, func)))
+    assert '''(s: str) -&gt; str:''' in overloads_html
+    assert '''(s: bytes) -&gt; bytes:''' in overloads_html
+    assert stanutils.flatten_text(stanutils.html2stan(function_def_html)) == 'def parse(s: Union[str, bytes]) -> Union[str, bytes]:'
+
 def test_format_signature() -> None:
     """Test C{pages.format_signature}. 
     
@@ -493,9 +514,8 @@ def test_format_signature() -> None:
     def func(a:Union[bytes, str]=_get_func_default(str), b:Any=re.compile(r'foo|bar'), *args:str, **kwargs:Any) -> Iterator[Union[str, bytes]]:
         ...
     ''')
-    assert ("""(a=_get_func_default(<wbr></wbr>str), b=re.compile("""
-            """r<span class="rst-variable-quote">'</span>foo<span class="rst-re-op">|</span>"""
-            """bar<span class="rst-variable-quote">'</span>), *args, **kwargs)""") in flatten(pages.format_signature(cast(model.Function, mod.contents['func'])))
+    assert ("""(a:Union[bytes,str]=_get_func_default(str),b:Any=re.compile(r'foo|bar'),*args:str,**kwargs:Any)->Iterator[Union[str,bytes]]""") in \
+        stanutils.flatten_text(pages.format_signature(cast(model.Function, mod.contents['func']))).replace(' ','') # type:ignore[arg-type]
 
 def test_format_decorators() -> None:
     """Test C{pages.format_decorators}"""

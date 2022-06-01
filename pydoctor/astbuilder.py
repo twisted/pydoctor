@@ -15,7 +15,7 @@ from typing import (
 import astor
 from pydoctor import epydoc2stan, model, node2stan
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
+from pydoctor.astutils import bind_args, is_none_literal, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -807,7 +807,8 @@ class ModuleVistor(NodeVisitor):
         is_property = False
         is_classmethod = False
         is_staticmethod = False
-        if isinstance(parent, model.Class) and node.decorator_list:
+        is_overload_func = False
+        if node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Call):
                     deco_name = node2dottedname(d.func)
@@ -815,16 +816,20 @@ class ModuleVistor(NodeVisitor):
                     deco_name = node2dottedname(d)
                 if deco_name is None:
                     continue
-                if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
-                    is_property = True
-                elif deco_name == ['classmethod']:
-                    is_classmethod = True
-                elif deco_name == ['staticmethod']:
-                    is_staticmethod = True
-                elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
-                    # Rename the setter/deleter, so it doesn't replace
-                    # the property object.
-                    func_name = '.'.join(deco_name[-2:])
+                if isinstance(parent, model.Class):
+                    if deco_name[-1].endswith('property') or deco_name[-1].endswith('Property'):
+                        is_property = True
+                    elif deco_name == ['classmethod']:
+                        is_classmethod = True
+                    elif deco_name == ['staticmethod']:
+                        is_staticmethod = True
+                    elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
+                        # Rename the setter/deleter, so it doesn't replace
+                        # the property object.
+                        func_name = '.'.join(deco_name[-2:])
+                if deco_name[-1] == 'overload':
+                    # determine if the function is decorated with overload
+                    is_overload_func = True
 
         if is_property:
             # handle property and skip child nodes.
@@ -835,7 +840,16 @@ class ModuleVistor(NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
             raise self.SkipNode()
 
-        func = self.builder.pushFunction(func_name, lineno)
+        # Check if it's a new func or exists with an overload decorator
+        existing_func = parent.contents.get(func_name)
+        if isinstance(existing_func, model.Function) and any(
+            (node2fullname(deco, existing_func) == 'typing.overload') for deco in (existing_func.decorators or ())):
+            # Do not recreate function object, just re-push it
+            self.builder.push(existing_func, lineno)
+            func = existing_func
+        else:
+            func = self.builder.pushFunction(func_name, lineno)
+
         func.is_async = is_async
         if docstring is not None:
             func.setDocstring(docstring)
@@ -854,6 +868,8 @@ class ModuleVistor(NodeVisitor):
         num_pos_args = len(posonlyargs) + len(node.args.args)
         defaults = node.args.defaults
         default_offset = num_pos_args - len(defaults)
+        annotations = self._annotations_from_function(node)
+
         def get_default(index: int) -> Optional[ast.expr]:
             assert 0 <= index < num_pos_args, index
             index -= default_offset
@@ -862,7 +878,8 @@ class ModuleVistor(NodeVisitor):
         parameters: List[Parameter] = []
         def add_arg(name: str, kind: Any, default: Optional[ast.expr]) -> None:
             default_val = Parameter.empty if default is None else _ValueFormatter(default, ctx=func)
-            parameters.append(Parameter(name, kind, default=default_val))
+            annotation = Parameter.empty if annotations.get(name) is None else _ValueFormatter(annotations[name], ctx=func)
+            parameters.append(Parameter(name, kind, default=default_val, annotation=annotation))
 
         for index, arg in enumerate(posonlyargs):
             add_arg(arg.arg, Parameter.POSITIONAL_ONLY, get_default(index))
@@ -882,15 +899,20 @@ class ModuleVistor(NodeVisitor):
         if kwarg is not None:
             add_arg(kwarg.arg, Parameter.VAR_KEYWORD, None)
 
+        return_type = annotations.get('return')
+        return_annotation = Parameter.empty if return_type is None or is_none_literal(return_type) else _ValueFormatter(return_type, ctx=func)
         try:
-            signature = Signature(parameters)
+            signature = Signature(parameters, return_annotation=return_annotation)
         except ValueError as ex:
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
         func.signature = signature
-        func.annotations = self._annotations_from_function(node)
-    
+        func.annotations = annotations
+
+        if is_overload_func:
+            func.overloads.append(self.system.FunctionOverload(signature=func.signature))
+
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
 
