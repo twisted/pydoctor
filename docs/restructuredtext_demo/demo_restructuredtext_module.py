@@ -98,6 +98,10 @@ def demo_overload(s: Union[str, bytes]) -> Union[str, bytes]:
     :param s: Some string or bytes param.
     :return: Some string or bytes result.
     """
+    raise NotImplementedError
+
+def demo_undocumented(s: str) -> str:
+    raise NotImplementedError
 
 
 class _PrivateClass:

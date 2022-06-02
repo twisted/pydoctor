@@ -475,9 +475,11 @@ class FieldHandler:
     def format(self) -> Tag:
         r: List[Tag] = []
 
-        r += format_desc_list('Parameters', self.parameter_descs)
-        if self.return_desc:
-            r += format_desc_list('Returns', [self.return_desc])
+        # Only include parameters and returns if any are documented
+        if any(p.body for p in self.parameter_descs) or (self.return_desc and self.return_desc.body):
+            r += format_desc_list('Parameters', self.parameter_descs)
+            if self.return_desc:
+                r += format_desc_list('Returns', [self.return_desc])
         if self.yields_desc:
             r += format_desc_list('Yields', [self.yields_desc])
 

@@ -69,7 +69,6 @@ class Factory(GenericFactory):
             'Module': model.Module,
             'Package': model.Package,
             'Attribute': model.Attribute,
-            'FunctionOverload': model.FunctionOverload,
         }
         super().__init__(bases=_bases)
 
@@ -112,10 +111,4 @@ class Factory(GenericFactory):
     def Attribute(self) -> Type['model.Attribute']:
         data = self.get_class('Attribute')
         assert issubclass(data, self.model.Attribute)
-        return data
-
-    @property
-    def FunctionOverload(self) -> Type['model.FunctionOverload']:
-        data = self.get_class('FunctionOverload')
-        assert issubclass(data, self.model.FunctionOverload)
         return data

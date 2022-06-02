@@ -164,7 +164,7 @@ def test_func_undocumented_return_nothing() -> None:
 
 def test_func_undocumented_return_something() -> None:
     """When the returned value is undocumented (no 'return' field) and its type
-    annotation is not None, include the "Returns" entry in the output.
+    annotation is not None, do not include the "Returns" entry in the output.
     """
     mod = fromText('''
     def get_answer() -> int:
@@ -173,17 +173,67 @@ def test_func_undocumented_return_something() -> None:
     func = mod.contents['get_answer']
     lines = docstring2html(func).splitlines()
     expected_html = [
-        '<div>', '<p class="undocumented">Undocumented</p>',
-        '<table class="fieldTable">',
+        '<div>',
+        '<p class="undocumented">Undocumented</p>',
+        '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_single_param_doc() -> None:
+    """When only a single parameter is documented, all parameters show with
+    undocumented parameters marked as such.
+    """
+    mod = fromText('''
+    def f(x, y):
+        """
+        @param x: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
         '<tr class="fieldStart">',
-        '<td class="fieldName" colspan="2">Returns</td>',
-        '</tr>',
-        '<tr>', '<td class="fieldArgContainer">', '<code>int</code>',
-        '</td>',
-        '<td class="fieldArgDesc">',
+        '<td class="fieldName" colspan="2">Parameters</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">x</span>',
+        '</td>', '<td class="fieldArgDesc">Actual documentation.</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">y</span>',
+        '</td>', '<td class="fieldArgDesc">',
         '<span class="undocumented">Undocumented</span>',
-        '</td>', '</tr>', '</table>', '</div>'
-        ]
+        '</td>', '</tr>', '</table>', '</div>',
+    ]
+    assert lines == expected_html, str(lines)
+
+def test_func_only_return_doc() -> None:
+    """When only return is documented, all annotated parameters and return show
+    with undocumented parameters marked as such.
+    """
+    mod = fromText('''
+    def f(x: str):
+        """
+        @return: Actual documentation.
+        """
+    ''')
+    lines = docstring2html(mod.contents['f']).splitlines()
+    expected_html = [
+        '<div>', '<table class="fieldTable">',
+        '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Parameters</td>',
+        '</tr>', '<tr>',
+        '<td class="fieldArgContainer">',
+        '<span class="fieldArg">x:</span>',
+        '<code>str</code>',
+        '</td>', '<td class="fieldArgDesc">',
+        '<span class="undocumented">Undocumented</span>', '</td>',
+        '</tr>', '<tr class="fieldStart">',
+        '<td class="fieldName" colspan="2">Returns</td>',
+        '</tr>', '<tr>',
+        '<td colspan="2">Actual documentation.</td>',
+        '</tr>', '</table>', '</div>',
+    ]
     assert lines == expected_html, str(lines)
 
 # These 3 tests fails because AnnotationDocstring is not using node2stan() yet.
@@ -239,8 +289,8 @@ def test_func_arg_and_ret_annotation_with_override() -> None:
     classic_fmt = docstring2html(classic_mod.contents['f'])
     assert annotation_fmt == classic_fmt
 
-@pytest.mark.xfail
 def test_func_arg_when_doc_missing() -> None:
+    # Output with annotated args left undocumented are the same as undocumented
     annotation_mod = fromText('''
     def f(a: List[str], b: int) -> bool:
         """
@@ -589,33 +639,6 @@ def test_func_starargs_more(capsys: CapSys) -> None:
     
     for part in expected_parts:
         assert part in epy_with_asterixes_fmt
-    
-    captured = capsys.readouterr().out
-    assert not captured
-
-def test_func_starargs_no_docstring(capsys: CapSys) -> None:
-    """
-    Star arguments, even if there are not docstring attached, will be rendered with stars.
-
-    @note: This test might not pass anymore when we include the annotations inside the signatures.
-    """
-
-    mod = fromText('''
-    def f(args:str, kwargs:str, *a:Any, **kwa:Any) -> None:
-        """
-        Do something with var-positional and var-keyword arguments.
-        """
-    ''', modname='<great>')
-
-    mod_fmt = docstring2html(mod.contents['f'])
-    
-    expected_parts = ['<span class="fieldArg">args:</span>', 
-                      '<span class="fieldArg">kwargs:</span>',
-                      '<span class="fieldArg">*a:</span>',
-                      '<span class="fieldArg">**kwa:</span>',]
-    
-    for part in expected_parts:
-        assert part in mod_fmt, mod_fmt
     
     captured = capsys.readouterr().out
     assert not captured

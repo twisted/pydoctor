@@ -499,11 +499,15 @@ def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
         """, systemcls=systemcls)
     func = mod.contents['parse']
     assert isinstance(func, model.Function)
-    overloads_html = stanutils.flatten(list(pages.format_overloads(func)))
+    
+    # We intentionally remove spaces before comparing
+    overloads_html = stanutils.flatten(list(pages.format_overloads(func))).replace(' ','')
+    assert '''(s:str)-&gt;str:''' in overloads_html
+    assert '''(s:bytes)-&gt;bytes:''' in overloads_html
+
+    # We intentionally remove spaces before comparing
     function_def_html = stanutils.flatten(list(pages.format_function_def(func.name, func.is_async, func)))
-    assert '''(s: str) -&gt; str:''' in overloads_html
-    assert '''(s: bytes) -&gt; bytes:''' in overloads_html
-    assert stanutils.flatten_text(stanutils.html2stan(function_def_html)) == 'def parse(s: Union[str, bytes]) -> Union[str, bytes]:'
+    assert stanutils.flatten_text(stanutils.html2stan(function_def_html)).replace(' ','') == 'def parse(s: Union[str, bytes]) -> Union[str, bytes]:'.replace(' ','')
 
 def test_format_signature() -> None:
     """Test C{pages.format_signature}. 

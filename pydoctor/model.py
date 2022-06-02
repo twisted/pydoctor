@@ -724,7 +724,7 @@ class System:
         return self._factory.Attribute
     @property
     def FunctionOverload(self) -> Type['FunctionOverload']:
-        return self._factory.FunctionOverload
+        return FunctionOverload
 
     @property
     def sourcebase(self) -> Optional[str]:
