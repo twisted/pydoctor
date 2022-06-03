@@ -51,9 +51,6 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def functionDef(self, request: object, tag: Tag) -> "Flattenable":
-        # Exclude function definition if there are overloads
-        if self.ob.overloads:
-            return ()
         return format_function_def(self.ob.name, self.ob.is_async, self.ob)
 
     @renderer

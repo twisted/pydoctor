@@ -574,6 +574,7 @@ class Function(Inheritable):
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+        self.signature = None
         self.overloads = []
 
 @attr.s(auto_attribs=True)
@@ -581,7 +582,9 @@ class FunctionOverload:
     """
     @note: This is not an actual documentable type. 
     """
+    primary: Function
     signature: Signature
+    decorators: Sequence[ast.expr]
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -722,9 +725,6 @@ class System:
     @property
     def Attribute(self) -> Type['Attribute']:
         return self._factory.Attribute
-    @property
-    def FunctionOverload(self) -> Type['FunctionOverload']:
-        return FunctionOverload
 
     @property
     def sourcebase(self) -> Optional[str]:

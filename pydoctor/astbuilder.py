@@ -827,8 +827,8 @@ class ModuleVistor(NodeVisitor):
                         # Rename the setter/deleter, so it doesn't replace
                         # the property object.
                         func_name = '.'.join(deco_name[-2:])
-                if deco_name[-1] == 'overload':
-                    # determine if the function is decorated with overload
+                # Determine if the function is decorated with overload
+                if parent.expandName('.'.join(deco_name)) == 'typing.overload':
                     is_overload_func = True
 
         if is_property:
@@ -840,10 +840,16 @@ class ModuleVistor(NodeVisitor):
                 attr.report(f'{attr.fullName()} is both property and staticmethod')
             raise self.SkipNode()
 
-        # Check if it's a new func or exists with an overload decorator
+        # Check if it's a new func or exists with an overload
         existing_func = parent.contents.get(func_name)
-        if isinstance(existing_func, model.Function) and any(
-            (node2fullname(deco, existing_func) == 'typing.overload') for deco in (existing_func.decorators or ())):
+        if isinstance(existing_func, model.Function) and existing_func.overloads:
+            # If the existing function has a signature and this function is an
+            # overload, then the overload came _after_ the primary function
+            # which we do not allow. This also ensures that func will have
+            # properties set for the primary function and not overloads.
+            if existing_func.signature and is_overload_func:
+                existing_func.report(f'{existing_func.fullName()} overload appeared after primary function')
+                raise self.SkipNode()
             # Do not recreate function object, just re-push it
             self.builder.push(existing_func, lineno)
             func = existing_func
@@ -852,7 +858,11 @@ class ModuleVistor(NodeVisitor):
 
         func.is_async = is_async
         if docstring is not None:
-            func.setDocstring(docstring)
+            # Docstring not allowed on overload
+            if is_overload_func:
+                func.report(f'{func.fullName()} overload has docstring')
+            else:
+                func.setDocstring(docstring)
         func.decorators = node.decorator_list
         if is_staticmethod:
             if is_classmethod:
@@ -907,11 +917,13 @@ class ModuleVistor(NodeVisitor):
             func.report(f'{func.fullName()} has invalid parameters: {ex}')
             signature = Signature()
 
-        func.signature = signature
         func.annotations = annotations
 
+        # Only set main function signature if it is a non-overload
         if is_overload_func:
-            func.overloads.append(self.system.FunctionOverload(signature=func.signature))
+            func.overloads.append(model.FunctionOverload(primary=func, signature=signature, decorators=node.decorator_list))
+        else:
+            func.signature = signature
 
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()

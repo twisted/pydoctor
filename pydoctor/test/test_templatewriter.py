@@ -505,9 +505,9 @@ def test_format_function_def_overloads(systemcls: Type[model.System]) -> None:
     assert '''(s:str)-&gt;str:''' in overloads_html
     assert '''(s:bytes)-&gt;bytes:''' in overloads_html
 
-    # We intentionally remove spaces before comparing
+    # Confirm the actual function definition is not rendered
     function_def_html = stanutils.flatten(list(pages.format_function_def(func.name, func.is_async, func)))
-    assert stanutils.flatten_text(stanutils.html2stan(function_def_html)).replace(' ','') == 'def parse(s: Union[str, bytes]) -> Union[str, bytes]:'.replace(' ','')
+    assert function_def_html == ''
 
 def test_format_signature() -> None:
     """Test C{pages.format_signature}. 

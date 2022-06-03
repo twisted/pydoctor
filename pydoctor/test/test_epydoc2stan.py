@@ -164,7 +164,8 @@ def test_func_undocumented_return_nothing() -> None:
 
 def test_func_undocumented_return_something() -> None:
     """When the returned value is undocumented (no 'return' field) and its type
-    annotation is not None, do not include the "Returns" entry in the output.
+    annotation is not None, do not include the "Returns" entry in the field
+    table. It will be shown in the signature.
     """
     mod = fromText('''
     def get_answer() -> int:
@@ -208,8 +209,8 @@ def test_func_only_single_param_doc() -> None:
     assert lines == expected_html, str(lines)
 
 def test_func_only_return_doc() -> None:
-    """When only return is documented, all annotated parameters and return show
-    with undocumented parameters marked as such.
+    """When only return is documented but not parameters, only the return
+    section is visible.
     """
     mod = fromText('''
     def f(x: str):
@@ -221,14 +222,6 @@ def test_func_only_return_doc() -> None:
     expected_html = [
         '<div>', '<table class="fieldTable">',
         '<tr class="fieldStart">',
-        '<td class="fieldName" colspan="2">Parameters</td>',
-        '</tr>', '<tr>',
-        '<td class="fieldArgContainer">',
-        '<span class="fieldArg">x:</span>',
-        '<code>str</code>',
-        '</td>', '<td class="fieldArgDesc">',
-        '<span class="undocumented">Undocumented</span>', '</td>',
-        '</tr>', '<tr class="fieldStart">',
         '<td class="fieldName" colspan="2">Returns</td>',
         '</tr>', '<tr>',
         '<td colspan="2">Actual documentation.</td>',

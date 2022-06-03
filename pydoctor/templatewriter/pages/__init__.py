@@ -45,10 +45,13 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
-def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
+def format_decorators(obj: Union[model.Function, model.Attribute, model.FunctionOverload]) -> Iterator["Flattenable"]:
+    # Use the overload's primary function for some parts here
+    documentable_obj = obj if not isinstance(obj, model.FunctionOverload) else obj.primary
+
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
-            fn = node2fullname(dec.func, obj)
+            fn = node2fullname(dec.func, documentable_obj)
             # We don't want to show the deprecated decorator;
             # it shows up as an infobox.
             if fn in ("twisted.python.deprecate.deprecated",
@@ -57,10 +60,10 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstring_linker)
+        stan = doc.to_stan(documentable_obj.docstring_linker)
         # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
         for message in doc.warnings:
-            obj.report(message)
+            documentable_obj.report(message)
 
         yield '@', stan.children, tags.br()
 
@@ -76,7 +79,8 @@ def format_overloads(func: model.Function) -> Iterator["Flattenable"]:
     Format a function overloads definitions as nice HTML signatures.
     """
     for overload in func.overloads:
-        yield '@overload', tags.br(), tags.div(format_function_def(func.name, func.is_async, overload))
+        yield from format_decorators(overload)
+        yield tags.div(format_function_def(func.name, func.is_async, overload))
 
 def format_function_def(func_name: str, is_async: bool, 
                         func: Union[model.Function, model.FunctionOverload]) -> List["Flattenable"]:
@@ -84,6 +88,9 @@ def format_function_def(func_name: str, is_async: bool,
     Format a function definition.
     """
     r:List["Flattenable"] = []
+    # If this is a function with overloads, we do not render a definition
+    if isinstance(func, model.Function) and func.overloads:
+        return r
     def_stmt = 'async def' if is_async else 'def'
     if func_name.endswith('.setter') or func_name.endswith('.deleter'):
         func_name = func_name[:func_name.rindex('.')]
