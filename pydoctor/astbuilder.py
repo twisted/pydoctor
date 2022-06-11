@@ -229,6 +229,7 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
 
         rawbases = []
+        initialbases = []
         initialbaseobjects = []
 
         for base_node in node.bases:
@@ -253,10 +254,12 @@ class ModuleVistor(NodeVisitor):
             # import cycles (maybe in TYPE_CHECKING blocks). 
             # None bases will be re-resolved in post-processing.
             baseobj = parent.resolveName(str_base)
-            if baseobj and not isinstance(baseobj, model.Class):
-                baseobj = None
-            initialbaseobjects.append(cast('Optional[model.Class]', baseobj))
             
+            if not isinstance(baseobj, model.Class):
+                baseobj = None
+                
+            initialbases.append(expandbase)
+            initialbaseobjects.append(baseobj)
 
         lineno = node.lineno
         if node.decorator_list:
@@ -266,6 +269,7 @@ class ModuleVistor(NodeVisitor):
         cls.decorators = []
         cls.rawbases = rawbases
         cls._initialbaseobjects = initialbaseobjects
+        cls._initialbases = initialbases
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             cls.setDocstring(node.body[0].value)
@@ -289,6 +293,12 @@ class ModuleVistor(NodeVisitor):
                     cls.report("cannot make sense of class decorator")
                 else:
                     cls.decorators.append((base, args))
+
+        cls.raw_decorators = node.decorator_list if node.decorator_list else []
+        
+        # We're not resolving the subclasses at this point yet because all 
+        # modules might not have been processed, and since subclasses are only used in the presentation,
+        # it's better to resolve them in the post-processing instead.
 
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:

@@ -482,10 +482,12 @@ class Package(Module):
     kind = DocumentableKind.PACKAGE
 
 def compute_mro(cls:'Class') -> List[Union['Class', str]]:
-    """Compute the method resolution order for this class."""
-
-    # This function will also set the _finalbaseobjects attribute on this class and all it's superclasses
-
+    """
+    Compute the method resolution order for this class.
+    This function will also set the 
+    C{_finalbaseobjects} and C{_finalbases} attributes on 
+    this class and all it's superclasses.
+    """
     def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
         if not path:
             path = []
@@ -497,22 +499,27 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
             return
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
-            for (str_base, _), base in zip(o.rawbases, o._initialbaseobjects):
+            finalbases: List[str] = []
+            for i,(str_base, base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
+                    finalbases.append(base.fullName())
                 else:
                     # Only re-resolve the base object if the base was None.
                     resolved_base = o.parent.resolveName(str_base)
                     if isinstance(resolved_base, Class):
                         base = resolved_base
                         finalbaseobjects.append(base)
+                        finalbases.append(base.fullName())
                     else:
                         # the base object could not be resolved
                         finalbaseobjects.append(None)
+                        finalbases.append(o._initialbases[i])
                 if base:
                     # Recurse on super classes
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
+            o._finalbases = finalbases
     
     def localbases(o:'Class') -> Iterator[Union['Class', str]]:
         """
@@ -535,9 +542,13 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-
+    
+    # set in post-processing:
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None 
+    _finalbases: Optional[List[str]] = None
+    _mro: Optional[List[Union['Class', str]]] = None
+    
     auto_attribs: bool = False
     """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
     library to automatically convert annotated fields into attributes.
@@ -547,8 +558,8 @@ class Class(CanContainImportsDocumentable):
         super().setup()
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.subclasses: List[Class] = []
-        self._initialbaseobjects: List[Optional['Class']] = []
-        self._mro: Optional[List[Union['Class', str]]] = None
+        self._initialbases: List[str] = []
+        self._initialbaseobjects: List[Optional['Class']] = [
     
     def _init_mro(self) -> None:
         """
@@ -569,7 +580,7 @@ class Class(CanContainImportsDocumentable):
         Get the method resution order of this class. 
 
         @note: The actual correct value is only set in post-processing, if L{mro()} is called
-            in the AST visitors, it will return the same as C{list(self.allbases(True))}.
+            in the AST visitors, it will return the same as C{list(self.allbases(include_self))}.
         """
         if self._mro is None:
             return list(self.allbases(include_self))
@@ -588,7 +599,9 @@ class Class(CanContainImportsDocumentable):
         """
         Fully qualified names of the bases of this class.
         """
-        return [self.parent.expandName(str_base) for (str_base, _) in self.rawbases]
+        return self._finalbases if \
+            self._finalbases is not None else self._initialbases
+
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
@@ -596,7 +609,7 @@ class Class(CanContainImportsDocumentable):
         Base objects, L{None} value is inserted when the base class could not be found in the system.
         
         @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object. 
-            It's computed another time in post-processing to try to resolve the names that could not be resolved the first place. This is needed when there are import cycles. 
+            It's computed another time in post-processing to try to resolve the names that could not be resolved the first time. This is needed when there are import cycles. 
             
             Meaning depending on the state of the system, this property can return either the initial objects or the final objects
         """
