@@ -229,22 +229,19 @@ class ModuleVistor(NodeVisitor):
             raise self.SkipNode()
 
         rawbases = []
-        bases = []
-        baseobjects = []
+        initialbases = []
+        initialbaseobjects = []
 
         for n in node.bases:
-            if isinstance(n, ast.Name):
-                str_base = n.id
-            else:
-                str_base = astor.to_source(n).strip()
-
+            # TODO: Handle generics in MRO
+            str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
             rawbases.append(str_base)
-            full_name = parent.expandName(str_base)
-            bases.append(full_name)
-            baseobj = self.system.objForFullName(full_name)
+            expandbase = parent.expandName(str_base)
+            baseobj = self.system.objForFullName(expandbase)
             if not isinstance(baseobj, model.Class):
                 baseobj = None
-            baseobjects.append(baseobj)
+            initialbases.append(expandbase)
+            initialbaseobjects.append(baseobj)
 
         lineno = node.lineno
         if node.decorator_list:
@@ -253,8 +250,8 @@ class ModuleVistor(NodeVisitor):
         cls: model.Class = self.builder.pushClass(node.name, lineno)
         cls.decorators = []
         cls.rawbases = rawbases
-        cls.bases = bases
-        cls.baseobjects = baseobjects
+        cls._initialbaseobjects = initialbaseobjects
+        cls._initialbases = initialbases
 
         if len(node.body) > 0 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Str):
             cls.setDocstring(node.body[0].value)
@@ -279,10 +276,10 @@ class ModuleVistor(NodeVisitor):
                 else:
                     cls.decorators.append((base, args))
         cls.raw_decorators = node.decorator_list if node.decorator_list else []
-
-        for b in cls.baseobjects:
-            if b is not None:
-                b.subclasses.append(cls)
+        
+        # We're not resolving the subclasses at this point yet because all 
+        # modules might not have been processed, and since subclasses are only used in the presentation,
+        # it's better to resolve them in the post-processing instead.
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()
