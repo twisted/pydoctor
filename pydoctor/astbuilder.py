@@ -253,7 +253,8 @@ class ModuleVistor(NodeVisitor):
             # if we can't resolve it now, it most likely mean that there are
             # import cycles (maybe in TYPE_CHECKING blocks). 
             # None bases will be re-resolved in post-processing.
-            baseobj = parent.resolveName(str_base)
+            expandbase = parent.expandName(str_base)
+            baseobj = self.system.objForFullName(expandbase)
             
             if not isinstance(baseobj, model.Class):
                 baseobj = None
@@ -276,6 +277,9 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(cls)
 
         if node.decorator_list:
+            
+            cls.raw_decorators = node.decorator_list
+        
             for decnode in node.decorator_list:
                 args: Optional[Sequence[ast.expr]]
                 if isinstance(decnode, ast.Call):
@@ -294,8 +298,7 @@ class ModuleVistor(NodeVisitor):
                 else:
                     cls.decorators.append((base, args))
 
-        cls.raw_decorators = node.decorator_list if node.decorator_list else []
-        
+            
         # We're not resolving the subclasses at this point yet because all 
         # modules might not have been processed, and since subclasses are only used in the presentation,
         # it's better to resolve them in the post-processing instead.

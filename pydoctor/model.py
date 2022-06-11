@@ -500,7 +500,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
             finalbases: List[str] = []
-            for i,(str_base, base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+            for i,((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
                     finalbases.append(base.fullName())
@@ -557,6 +557,7 @@ class Class(CanContainImportsDocumentable):
     def setup(self) -> None:
         super().setup()
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
+        self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
         self._initialbases: List[str] = []
         self._initialbaseobjects: List[Optional['Class']] = []
