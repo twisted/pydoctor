@@ -899,6 +899,72 @@ def test_expandName_aliasloops(systemcls: Type[model.System]) -> None:
     assert C.expandName('_1') == '<test>.C._1'
 
 @systemcls_param
+def test_re_export_alias_already_defined(systemcls: Type[model.System]) -> None:
+    # from cpython asyncio/__init__.py
+    mod1 = """
+
+    __all__ = (
+        '_set_running_loop', 
+        '_get_running_loop',
+    )
+
+    def _get_running_loop():
+        \"\"\"Return the running event loop or None.
+
+        This is a low-level function intended to be used by event loops.
+        This function is thread-specific.
+        \"\"\"
+        # NOTE: this function is implemented in C (see _asynciomodule.c)
+        running_loop, pid = _running_loop.loop_pid
+        if running_loop is not None and pid == os.getpid():
+            return running_loop
+
+
+    def _set_running_loop(loop):
+        \"\"\"Set the running event loop.
+
+        This is a low-level function intended to be used by event loops.
+        This function is thread-specific.
+        \"\"\"
+        # NOTE: this function is implemented in C (see _asynciomodule.c)
+        _running_loop.loop_pid = (loop, os.getpid())
+        
+    # Alias pure-Python implementations for testing purposes.
+    _py__get_running_loop = _get_running_loop
+    _py__set_running_loop = _set_running_loop
+
+
+    try:
+        # get_event_loop() is one of the most frequently called
+        # functions in asyncio.  Pure Python implementation is
+        # about 4 times slower than C-accelerated.
+
+        # Pydoctor does not create aliases for these imports because they already exist
+        from _asyncio import (_get_running_loop, _set_running_loop,)
+    except ImportError:
+        pass
+    else:
+        # Alias C implementations for testing purposes.
+        _c__get_running_loop = _get_running_loop
+        _c__set_running_loop = _set_running_loop
+    """
+    mod2 = """
+    from mod1 import *
+    """
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(mod1, 'mod1', is_package=True)
+    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.buildModules()
+    mod1 = system.allobjects['mod1']
+    mod2 = system.allobjects['mod2']
+    assert list(mod2.contents) == ['_get_running_loop', '_set_running_loop']
+    assert isinstance(mod1.contents['_get_running_loop'], model.Function)
+    assert mod2.resolveName('_get_running_loop') == mod1.contents['_get_running_loop']
+
+
+@systemcls_param
 def test_subclasses(systemcls: Type[model.System]) -> None:
     src = '''
     class A:
