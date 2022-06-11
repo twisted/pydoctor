@@ -163,14 +163,7 @@ class ObjContent(Element):
         """
         if inherited:
             if isinstance(self.ob, Class):
-                children : List[Documentable] = []
-                for baselist in util.nested_bases(self.ob):
-                    #  If the class has super class
-                    if len(baselist) >= 2:
-                        attrs = util.unmasked_attrs(baselist)
-                        if attrs:
-                            children.extend(attrs)
-                return sorted((o for o in children if o.isVisible),
+                return sorted((o for o in util.list_inherited_members(self.ob) if o.isVisible),
                               key=util.objects_order)
             else:
                 return None
