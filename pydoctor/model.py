@@ -559,7 +559,7 @@ class Class(CanContainImportsDocumentable):
         self.rawbases: Sequence[Tuple[str, ast.expr]] = []
         self.subclasses: List[Class] = []
         self._initialbases: List[str] = []
-        self._initialbaseobjects: List[Optional['Class']] = [
+        self._initialbaseobjects: List[Optional['Class']] = []
     
     def _init_mro(self) -> None:
         """
