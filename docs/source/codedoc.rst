@@ -354,7 +354,7 @@ documented and the second one will be ignored.
 .. But sometimes pydoctor can be better off analysing the ``TYPE_CHECKING`` blocks and should 
 .. stick to the runtime version of the code instead. 
 
-.. You can instrut pydoctor do to such things with a custom system class. 
+.. You can instruct pydoctor do to such things with a custom system class. 
 
 .. .. code:: python
 
