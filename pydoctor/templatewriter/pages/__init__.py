@@ -392,11 +392,8 @@ class ClassPage(CommonPage):
             docgetter: Optional[util.DocGetter] = None
             ):
         super().__init__(ob, template_lookup, docgetter)
-        self.baselists = []
-        for baselist in util.nested_bases(self.ob):
-            attrs = util.unmasked_attrs(baselist)
-            if attrs:
-                self.baselists.append((baselist, attrs))
+        self.baselists = util.inherited_members(self.ob)
+
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
@@ -484,25 +481,27 @@ class ClassPage(CommonPage):
         return r
 
     def objectExtras(self, ob: model.Documentable) -> List[Tag]:
-        page_url = self.page_url
-        name = ob.name
-        r: List[Tag] = []
-        for b in self.ob.allbases(include_self=False):
-            if name not in b.contents:
-                continue
-            overridden = b.contents[name]
-            r.append(tags.div(class_="interfaceinfo")(
-                'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url))))
-            break
-        ocs = sorted(util.overriding_subclasses(self.ob, name), key=util.objects_order)
-        if ocs:
-            l = assembleList(self.ob.system, 'overridden in ',
-                             [o.fullName() for o in ocs], self.page_url)
-            if l is not None:
-                r.append(tags.div(class_="interfaceinfo")(l))
+        r = list(get_override_info(self.ob, ob.name, self.page_url))
         r.extend(super().objectExtras(ob))
         return r
 
+def get_override_info(cls:model.Class, member_name:str, page_url:Optional[str]=None) -> Iterator[Tag]:
+    page_url = page_url or cls.page_object.url
+    for b in cls.mro(include_self=False):
+        if member_name not in b.contents:
+            continue
+        overridden = b.contents[member_name]
+        yield tags.div(class_="interfaceinfo")(
+            'overrides ', tags.code(epydoc2stan.taglink(overridden, page_url)))
+        break
+    
+    ocs = sorted(util.overriding_subclasses(cls, member_name), key=util.objects_order)
+    if ocs:
+        l = assembleList(cls.system, 'overridden in ',
+                            [o.fullName() for o in ocs], page_url)
+        if l is not None:
+            yield tags.div(class_="interfaceinfo")(l)
+    
 
 class ZopeInterfaceClassPage(ClassPage):
     ob: zopeinterface.ZopeInterfaceClass
@@ -528,7 +527,7 @@ class ZopeInterfaceClassPage(ClassPage):
             if interface in system.allobjects:
                 io = system.allobjects[interface]
                 assert isinstance(io, zopeinterface.ZopeInterfaceClass)
-                for io2 in io.allbases(include_self=True):
+                for io2 in io.mro():
                     method: Optional[model.Documentable] = io2.contents.get(methname)
                     if method is not None:
                         return method
