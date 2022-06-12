@@ -901,7 +901,7 @@ def test_expandName_aliasloops(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
     # from cpython asyncio/__init__.py
-    mod1 = """
+    mod1src = """
     def get_running_loop():
         ...
 
@@ -914,7 +914,7 @@ def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
         pass
     """
 
-    mod2 = """
+    mod2src = """
     # For pydoctor, this will import the mod1 version if the names, 
     # This is probably an implementation limitation.
     # We don't handle duplicates and ambiguity in the best manner.
@@ -928,8 +928,8 @@ def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
 
     system = systemcls()
     builder = system.systemBuilder(system)
-    builder.addModuleString(mod1, 'mod1', is_package=True)
-    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.addModuleString(mod1src, 'mod1', is_package=True)
+    builder.addModuleString(mod2src, 'mod2', is_package=True)
     builder.buildModules()
 
     mod1 = system.allobjects['mod1']
@@ -944,7 +944,7 @@ def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
 @systemcls_param
 def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -> None:
     # from cpython asyncio/__init__.py
-    mod1 = """
+    mod1src = """
     
     # this will export the _asyncio version if the names instead!
     __all__ = (
@@ -964,15 +964,15 @@ def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -
         pass
     """
 
-    mod2 = """
+    mod2src = """
     # for pydoctor, this will import the _asyncio version if the names instead!
     from mod1 import *
     """
 
     system = systemcls()
     builder = system.systemBuilder(system)
-    builder.addModuleString(mod1, 'mod1', is_package=True)
-    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.addModuleString(mod1src, 'mod1', is_package=True)
+    builder.addModuleString(mod2src, 'mod2', is_package=True)
     builder.buildModules()
 
     mod1 = system.allobjects['mod1']
@@ -989,7 +989,7 @@ def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -
 @systemcls_param
 def test_re_export_name_defined_alt(systemcls: Type[model.System], capsys: CapSys) -> None:
     # from cpython asyncio/__init__.py
-    mod1 = """
+    mod1src= """
     
     # this will export the local version if the names,
     # because they are defined after the imports of the same names.
@@ -1012,7 +1012,7 @@ def test_re_export_name_defined_alt(systemcls: Type[model.System], capsys: CapSy
             ...
     """
 
-    mod2 = """
+    mod2src = """
     # for pydoctor, this will import the mod1 version if the names. 
     # Even if in the test code, the most correct thing to do would be 
     # to export the _asyncio. 
@@ -1025,8 +1025,8 @@ def test_re_export_name_defined_alt(systemcls: Type[model.System], capsys: CapSy
 
     system = systemcls()
     builder = system.systemBuilder(system)
-    builder.addModuleString(mod1, 'mod1', is_package=True)
-    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.addModuleString(mod1src, 'mod1', is_package=True)
+    builder.addModuleString(mod2src, 'mod2', is_package=True)
     builder.buildModules()
 
     mod1 = system.allobjects['mod1']

@@ -379,6 +379,7 @@ class ModuleVistor(NodeVisitor):
             # In case of duplicates names, we can't rely on resolveName,
             # So we use content.get first to resolve non-alias names. 
             if known_module:
+                assert isinstance(origin_module, model.Module)
                 ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
                 if ob is None:
                     self.builder.warning("cannot resolve re-exported name",
