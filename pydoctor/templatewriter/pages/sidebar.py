@@ -1,13 +1,15 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
+
+from pydoctor.napoleon.iterators import peek_iter
 
 class SideBar(TemplateElement):
     """
@@ -125,52 +127,35 @@ class ObjContent(Element):
         self._depth = depth
         self._level = level + 1
 
-        _classList: List[Documentable] = [] # rha, mypy...
-        _functionList: List[Documentable] = []
-        _variableList: List[Documentable] = []
-        _subModuleList: List[Documentable] = []
-
         _direct_children = self._children(inherited=False)
-        for child in _direct_children:
-            if isinstance(child, Class):
-                _classList.append(child)
-            elif isinstance(child, Function):
-                _functionList.append(child)
-            elif isinstance(child, Attribute):
-                _variableList.append(child)
-            elif isinstance(child, Module):
-                _subModuleList.append(child)
 
-        self.classList = self._getListFrom(_classList, expand=self._isExpandable(Class))
-        self.functionList = self._getListFrom(_functionList, expand=self._isExpandable(Function))
-        self.variableList = self._getListFrom(_variableList, expand=self._isExpandable(Attribute))
-        self.subModuleList = self._getListFrom(_subModuleList, expand=self._isExpandable(Module))
+        self.classList = self._getContentList(_direct_children, Class)
+        self.functionList = self._getContentList(_direct_children, Function)
+        self.variableList = self._getContentList(_direct_children, Attribute)
+        self.subModuleList = self._getContentList(_direct_children, Module)
+        
         self.inheritedFunctionList: Optional[ContentList] = None
         self.inheritedVariableList: Optional[ContentList] = None
 
         if isinstance(self.ob, Class):
             _inherited_children = self._children(inherited=True)
 
-            _inherited_functionList: List[Documentable] = []
-            _inherited_variableList: List[Documentable] = []
-
-            for child in _inherited_children:
-                if isinstance(child, Function):
-                    _inherited_functionList.append(child)
-                elif isinstance(child, Attribute):
-                    _inherited_variableList.append(child)
-
-            self.inheritedFunctionList = self._getListFrom(_inherited_functionList, expand=self._isExpandable(Function))
-            self.inheritedVariableList = self._getListFrom(_inherited_variableList, expand=self._isExpandable(Attribute))
+            self.inheritedFunctionList = self._getContentList(_inherited_children, Function)
+            self.inheritedVariableList = self._getContentList(_inherited_children, Attribute)
     
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
-    def _getListFrom(self, things: List[Documentable], expand: bool) -> Optional['ContentList']:
-        if things:
+    def _getContentList(self, children: Sequence[Documentable], type_: Type[Documentable]) -> Optional['ContentList']:
+        # We use the filter and iterators (instead of lists) for performance reasons.
+        
+        things = peek_iter(filter(lambda o: isinstance(o, type_,), children))
+
+        if things.has_next():
+            
             assert self.loader is not None
             return ContentList(ob=self.ob, children=things, 
                     documented_ob=self.documented_ob,
-                    expand=expand,
+                    expand=self._isExpandable(type_),
                     nested_content_loader=self.loader, 
                     template_lookup=self.template_lookup,
                     level_depth=(self._level, self._depth))
@@ -288,7 +273,7 @@ class ContentList(TemplateElement):
     filename = 'sidebar-list.html'
 
     def __init__(self, ob: Documentable, 
-                 children: Iterable[Documentable], documented_ob: Documentable, 
+                 children: Iterator[Documentable], documented_ob: Documentable, 
                  expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
         super().__init__(loader=self.lookup_loader(template_lookup))
@@ -303,7 +288,7 @@ class ContentList(TemplateElement):
         self.template_lookup = template_lookup
     
     @renderer
-    def items(self, request: IRequest, tag: Tag) -> Iterable['ContentItem']:
+    def items(self, request: IRequest, tag: Tag) -> Iterator['ContentItem']:
 
         for child in self.children:
 
