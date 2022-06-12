@@ -197,3 +197,22 @@ def test_overriden_in()-> None:
     assert isinstance(klass, model.Class)
     assert klass.subclasses == [dimond.contents['A'], dimond.contents['B']]
     assert list(util.overriding_subclasses(klass, 'z')) == [dimond.contents['A'], dimond.contents['C']]
+
+def test_list_inherited_members() -> None:
+
+    dimond = fromText("""\
+    class _MyBase:
+        def z():...
+    class A(_MyBase):
+        def a():...
+        def z():...
+    class B(_MyBase):
+        def b():...
+    class C(A,B): 
+        ...
+    """, modname='diamond')
+
+    assert len(util.list_inherited_members(dimond.contents['B']))==1
+    assert len(util.list_inherited_members(dimond.contents['C']))==3
+    assert len(util.list_inherited_members(dimond.contents['A']))==0
+    assert len(util.list_inherited_members(dimond.contents['_MyBase']))==0
