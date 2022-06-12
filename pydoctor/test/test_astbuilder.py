@@ -899,28 +899,30 @@ def test_expandName_aliasloops(systemcls: Type[model.System]) -> None:
     assert C.expandName('_1') == '<test>.C._1'
 
 @systemcls_param
-def test_re_export_alias_already_defined(systemcls: Type[model.System]) -> None:
+def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
     # from cpython asyncio/__init__.py
     mod1 = """
-
-    __all__ = (
-        '_set_running_loop', 
-        '_get_running_loop',
-    )
-
-    def _get_running_loop():
+    def get_running_loop():
         ...
 
-    def _set_running_loop(loop):
+    def set_running_loop(loop):
         ...
         
     try:
-        from _asyncio import (_get_running_loop, _set_running_loop,)
+        from _asyncio import (get_running_loop, set_running_loop,)
     except ImportError:
         pass
     """
 
     mod2 = """
+    # For pydoctor, this will import the mod1 version if the names, 
+    # This is probably an implementation limitation.
+    # We don't handle duplicates and ambiguity in the best manner.
+    # The imports are stored in a different dict than the documentable,
+    # It's checked after the contents entries, which could be overriden by 
+    # a name in the _localNameToFullName_map, but we don't check that currently.
+    # It only works when explicitely re-exported with __all__.
+
     from mod1 import *
     """
 
@@ -929,16 +931,110 @@ def test_re_export_alias_already_defined(systemcls: Type[model.System]) -> None:
     builder.addModuleString(mod1, 'mod1', is_package=True)
     builder.addModuleString(mod2, 'mod2', is_package=True)
     builder.buildModules()
+
     mod1 = system.allobjects['mod1']
     mod2 = system.allobjects['mod2']
-    assert mod2.expandName('_get_running_loop') == '_asyncio._get_running_loop'
-    assert mod2.expandName('_set_running_loop') == '_asyncio._set_running_loop'
+
+    assert mod2.expandName('get_running_loop') == 'mod1.get_running_loop'
+    assert mod2.expandName('set_running_loop') == 'mod1.set_running_loop'
     
-    # assert list(mod2.contents) == ['_get_running_loop', '_set_running_loop']
+    assert list(mod1.contents) == ['get_running_loop', 'set_running_loop']
 
-    # assert isinstance(mod1.contents['_get_running_loop'], model.Function)
-    # assert mod2.resolveName('_get_running_loop') == mod1.contents['_get_running_loop']
 
+@systemcls_param
+def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # from cpython asyncio/__init__.py
+    mod1 = """
+    
+    # this will export the _asyncio version if the names instead!
+    __all__ = (
+        'set_running_loop', 
+        'get_running_loop',
+    )
+
+    def get_running_loop():
+        ...
+
+    def set_running_loop(loop):
+        ...
+        
+    try:
+        from _asyncio import (get_running_loop, set_running_loop,)
+    except ImportError:
+        pass
+    """
+
+    mod2 = """
+    # for pydoctor, this will import the _asyncio version if the names instead!
+    from mod1 import *
+    """
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(mod1, 'mod1', is_package=True)
+    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.buildModules()
+
+    mod1 = system.allobjects['mod1']
+    mod2 = system.allobjects['mod2']
+
+    assert mod2.expandName('get_running_loop') == '_asyncio.get_running_loop'
+    assert mod2.expandName('set_running_loop') == '_asyncio.set_running_loop'
+    
+    assert list(mod1.contents) == ['get_running_loop', 'set_running_loop']
+    
+    out = capsys.readouterr().out
+    assert all(s in out for s in ["duplicate Function 'mod1.get_running_loop'", "duplicate Function 'mod1.set_running_loop'"]), out
+
+@systemcls_param
+def test_re_export_name_defined_alt(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # from cpython asyncio/__init__.py
+    mod1 = """
+    
+    # this will export the local version if the names,
+    # because they are defined after the imports of the same names.
+    __all__ = (
+        'set_running_loop', 
+        'get_running_loop',
+    )
+
+    err = False
+    try:
+        from _asyncio import (get_running_loop, set_running_loop,)
+    except ImportError:
+        err = True
+
+    if err:
+        def get_running_loop():
+            ...
+
+        def set_running_loop(loop):
+            ...
+    """
+
+    mod2 = """
+    # for pydoctor, this will import the mod1 version if the names. 
+    # Even if in the test code, the most correct thing to do would be 
+    # to export the _asyncio. 
+    # Since pydoctor does not proceed with a path-sentive AST analysis,
+    # the names defined in the "if err:" overrides the imports, even if 
+    # in therory we could determine their exclusivity and choose the best one.
+
+    from mod1 import *
+    """
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString(mod1, 'mod1', is_package=True)
+    builder.addModuleString(mod2, 'mod2', is_package=True)
+    builder.buildModules()
+
+    mod1 = system.allobjects['mod1']
+    mod2 = system.allobjects['mod2']
+
+    assert mod2.expandName('get_running_loop') == 'mod1.get_running_loop'
+    assert mod2.expandName('set_running_loop') == 'mod1.set_running_loop'
+    
 
 @systemcls_param
 def test_subclasses(systemcls: Type[model.System]) -> None:

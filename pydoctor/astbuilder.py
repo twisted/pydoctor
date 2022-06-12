@@ -398,7 +398,7 @@ class ModuleVistor(NodeVisitor):
                 attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
                 attr._alias_to = f'{modname}.{origin_name}'
                 # This is only for the HTML repr
-                attr.value=ast.Name(attr._alias_to, ast.Load) # passing ctx is required for python 3.6
+                attr.value=ast.Name(attr._alias_to, ast.Load()) # passing ctx is required for python 3.6
                 return True
             
             # if mod is None: 
