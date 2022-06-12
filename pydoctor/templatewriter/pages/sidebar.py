@@ -112,7 +112,7 @@ class ObjContent(Element):
     Composed by L{ContentList} elements. 
     """
 
-    #TODO: Hide the childrenKindTitle if they are all private and show private is off -> need JS
+    #FIXME: https://github.com/twisted/pydoctor/issues/600
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
                  template_lookup: TemplateLookup, depth: int, level: int = 0):
@@ -125,23 +125,44 @@ class ObjContent(Element):
         self._depth = depth
         self._level = level + 1
 
-        self.classList = self._getListOf(Class)
-        self.functionList = self._getListOf(Function)
-        self.variableList = self._getListOf(Attribute)
-        self.subModuleList = self._getListOf(Module)
+        _classList = []
+        _functionList = []
+        _variableList = []
+        _subModuleList = []
 
-        self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
-        self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
+        _direct_children = self._children(inherited=False)
+        for child in _direct_children:
+            if isinstance(child, Class):
+                _classList.append(child)
+            elif isinstance(child, Function):
+                _functionList.append(child)
+            elif isinstance(child, Attribute):
+                _variableList.append(child)
+            elif isinstance(child, Module):
+                _subModuleList.append(child)
+
+        self.classList = self._getListFrom(_classList, expand=self._isExpandable(Class))
+        self.functionList = self._getListFrom(_functionList, expand=self._isExpandable(Function))
+        self.variableList = self._getListFrom(_variableList, expand=self._isExpandable(Attribute))
+        self.subModuleList = self._getListFrom(_subModuleList, expand=self._isExpandable(Module))
+        self.inheritedFunctionList = []
+        self.inheritedVariableList = []
+
+        if isinstance(self.ob, Class):
+            _inherited_children = self._children(inherited=True)
+
+            _inherited_functionList = []
+            _inherited_variableList = []
+
+            for child in _inherited_children:
+                if isinstance(child, Function):
+                    _inherited_functionList.append(child)
+                elif isinstance(child, Attribute):
+                    _inherited_variableList.append(child)
+
+            self.inheritedFunctionList = self._getListFrom(_inherited_functionList, expand=self._isExpandable(Function))
+            self.inheritedVariableList = self._getListFrom(_inherited_variableList, expand=self._isExpandable(Attribute))
     
-    def _getListOf(self, type_: Type[Documentable],
-                         inherited: bool = False) -> Optional['ContentList']:
-        children = self._children(inherited=inherited)
-        if children:
-            things = [ child for child in children if isinstance(child, type_) ]
-            return self._getListFrom(things, expand=self._isExpandable(type_))
-        else:
-            return None
-
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
     def _getListFrom(self, things: List[Documentable], expand: bool) -> Optional['ContentList']:
