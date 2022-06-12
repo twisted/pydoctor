@@ -398,10 +398,7 @@ class ModuleVistor(NodeVisitor):
                         return True
             else:
                 # re-export names that are not part of the current system with an alias
-                attr = current.contents.get(as_name)
-                if not attr:
-                    attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
-                assert isinstance(attr, model.Attribute)
+                attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
                 attr._alias_to = f'{modname}.{origin_name}'
                 # This is only for the HTML repr
                 attr.value=ast.Name(attr._alias_to, ast.Load) # passing ctx is required for python 3.6
