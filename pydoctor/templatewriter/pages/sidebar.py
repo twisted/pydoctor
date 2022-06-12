@@ -125,10 +125,10 @@ class ObjContent(Element):
         self._depth = depth
         self._level = level + 1
 
-        _classList = []
-        _functionList = []
-        _variableList = []
-        _subModuleList = []
+        _classList: List[Documentable] = [] # rha, mypy...
+        _functionList: List[Documentable] = []
+        _variableList: List[Documentable] = []
+        _subModuleList: List[Documentable] = []
 
         _direct_children = self._children(inherited=False)
         for child in _direct_children:
@@ -145,14 +145,14 @@ class ObjContent(Element):
         self.functionList = self._getListFrom(_functionList, expand=self._isExpandable(Function))
         self.variableList = self._getListFrom(_variableList, expand=self._isExpandable(Attribute))
         self.subModuleList = self._getListFrom(_subModuleList, expand=self._isExpandable(Module))
-        self.inheritedFunctionList = []
-        self.inheritedVariableList = []
+        self.inheritedFunctionList: Optional[ContentList] = None
+        self.inheritedVariableList: Optional[ContentList] = None
 
         if isinstance(self.ob, Class):
             _inherited_children = self._children(inherited=True)
 
-            _inherited_functionList = []
-            _inherited_variableList = []
+            _inherited_functionList: List[Documentable] = []
+            _inherited_variableList: List[Documentable] = []
 
             for child in _inherited_children:
                 if isinstance(child, Function):
@@ -178,7 +178,7 @@ class ObjContent(Element):
             return None
     
 
-    def _children(self, inherited: bool = False) -> Optional[List[Documentable]]:
+    def _children(self, inherited: bool = False) -> List[Documentable]:
         """
         Compute the children of this object.
         """
@@ -187,7 +187,7 @@ class ObjContent(Element):
                 return sorted((o for o in util.list_inherited_members(self.ob) if o.isVisible),
                               key=util.objects_order)
             else:
-                return None
+                assert False, "Use inherited=True only with Class instances"
         else:
             return sorted((o for o in self.ob.contents.values() if o.isVisible),
                               key=util.objects_order)

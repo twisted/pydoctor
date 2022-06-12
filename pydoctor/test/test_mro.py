@@ -212,7 +212,7 @@ def test_list_inherited_members() -> None:
         ...
     """, modname='diamond')
 
-    assert len(util.list_inherited_members(dimond.contents['B']))==1
-    assert len(util.list_inherited_members(dimond.contents['C']))==3
-    assert len(util.list_inherited_members(dimond.contents['A']))==0
-    assert len(util.list_inherited_members(dimond.contents['_MyBase']))==0
+    assert len(util.list_inherited_members(dimond.contents['B']))==1 # type:ignore
+    assert len(util.list_inherited_members(dimond.contents['C']))==3 # type:ignore
+    assert len(util.list_inherited_members(dimond.contents['A']))==0 # type:ignore
+    assert len(util.list_inherited_members(dimond.contents['_MyBase']))==0 # type:ignore
