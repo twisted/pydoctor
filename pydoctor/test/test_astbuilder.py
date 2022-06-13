@@ -940,7 +940,6 @@ def test_import_name_already_defined(systemcls: Type[model.System]) -> None:
     
     assert list(mod1.contents) == ['get_running_loop', 'set_running_loop']
 
-
 @systemcls_param
 def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -> None:
     # from cpython asyncio/__init__.py
@@ -980,6 +979,9 @@ def test_re_export_name_defined(systemcls: Type[model.System], capsys: CapSys) -
 
     assert mod2.expandName('get_running_loop') == '_asyncio.get_running_loop'
     assert mod2.expandName('set_running_loop') == '_asyncio.set_running_loop'
+
+    assert mod1.contents['get_running_loop'].kind == model.DocumentableKind.ALIAS
+    assert mod1.contents['set_running_loop'].kind == model.DocumentableKind.ALIAS
     
     assert list(mod1.contents) == ['get_running_loop', 'set_running_loop']
     
@@ -1029,7 +1031,6 @@ def test_re_export_name_defined_alt(systemcls: Type[model.System], capsys: CapSy
     builder.addModuleString(mod2src, 'mod2', is_package=True)
     builder.buildModules()
 
-    mod1 = system.allobjects['mod1']
     mod2 = system.allobjects['mod2']
 
     assert mod2.expandName('get_running_loop') == 'mod1.get_running_loop'

@@ -4,8 +4,6 @@ from typing import (
     TYPE_CHECKING, DefaultDict, Dict, Iterable, List, Mapping, MutableSet,
     Sequence, Tuple, Type, Union, cast
 )
-if TYPE_CHECKING:
-    from typing_extensions import Final
 
 from collections import defaultdict
 from twisted.web.template import Element, Tag, TagLoader, renderer, tags

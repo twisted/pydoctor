@@ -76,7 +76,8 @@ def node2dottedname(node: Optional[ast.AST]) -> Optional[List[str]]:
 
 def node2fullname(expr: Optional[ast.AST], ctx: 'model.Documentable') -> Optional[str]:
     """
-    Returns L{ctx.expandName(name)} if C{expr} is a valid name, or C{None}.
+    Returns the expanded name of this AST expression if C{expr} is a name, or C{None}.
+    A name is an expression only composed by `ast.Name` and `ast.Attribute` nodes.
     """
     dottedname = node2dottedname(expr)
     if dottedname is None:

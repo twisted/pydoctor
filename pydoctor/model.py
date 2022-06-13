@@ -25,7 +25,7 @@ from typing import (
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import factory, qnmatch, utils, linker, astutils, mro
+from pydoctor import factory, qnmatch, utils, linker, astutils, mro, visitor
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -143,10 +143,12 @@ class Documentable:
         self.parent = parent
         self.parentMod: Optional[Module] = None
         self.source_path: Optional[Path] = source_path
+        
         self.extra_info: List[ParsedDocstring] = []
         """
         A list to store extra informations about this documentable, as L{ParsedDocstring}.
         """
+        
         self.setup()
 
     @property
@@ -155,6 +157,11 @@ class Documentable:
 
     def setup(self) -> None:
         self.contents: Dict[str, Documentable] = {}
+        self.aliases: List[Documentable] = []
+        """
+        Aliases to this object. 
+        Computed at the time of post-procesing.
+        """
         self._linker: Optional['linker.DocstringLinker'] = None
 
     def setDocstring(self, node: ast.Str) -> None:
@@ -379,7 +386,10 @@ class Documentable:
         @param indirections: Chain of alias objects followed. 
             This variable is used to prevent infinite loops when doing the lookup.
         """
-        if indirections and len(indirections or ()) > self._RESOLVE_ALIAS_MAX_RECURSE:
+        indirections = indirections if isinstance(indirections, list) else []
+
+        if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
+            self.report("Too many aliases: can't resolve")
             return indirections[0].fullName() 
         
         # the _alias_to attribute should never be none for ALIAS objects
@@ -393,14 +403,15 @@ class Documentable:
         # This checks avoids infinite recursion error when a alias has the same name as it's value
         if indirections and indirections[-1] != alias or not indirections:
             # We redirect to the original object instead!
-            return ctx.expandName(name, indirections=(indirections or [])+[alias])
+            return ctx.expandName(name, indirections=indirections+[alias])
         else:
             # Issue tracing the alias back to it's original location, found the same alias again.
-            if ctx.parent:
+            if ctx.parent and not isinstance(ctx, Module):
                 # We try with the parent scope and redirect to the original object!
-                # This is used in situations like right here in the System class and it's aliases, 
+                # This is used in situations like right here in the System class and it's aliases (before version > 22.5.1), 
                 # because they have the same name as the name they are aliasing, it's causing trouble.
-                return ctx.parent.expandName(name, indirections=(indirections or [])+[alias])
+                # We could use astuce here to be more precise.
+                return ctx.parent.expandName(name, indirections=indirections+[alias])
         return None
 
     def _resolveDocumentable(self, o: 'Documentable', 
@@ -479,23 +490,7 @@ class Documentable:
             section,
             f'{self.description}:{linenumber}: {descr}',
             thresh=-1)
-    
-    @property
-    def aliases(self) -> List['Attribute']:
-        """
-        Return the known aliases of an object. 
 
-        @note: It seems that the list is not always complete, though.
-        """
-        aliases: List['Attribute'] = []
-        for alias in filter(lambda ob: ob.kind is DocumentableKind.ALIAS and isinstance(ob, Attribute), 
-                         self.system.allobjects.values()):
-            assert isinstance(alias, Attribute)
-            assert alias.parent is not None
-            if alias.parent._resolveDocumentable(alias) == self.fullName():
-                aliases.append(alias)
-        return aliases
-    
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
         """
@@ -1377,18 +1372,19 @@ class System:
         else:
             builder = self.defaultBuilder(self)
             if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string)
+                astmod = builder.parseString(mod._py_string)
             else:
                 assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path)
-            if ast:
-                self.processing_modules.append(mod.fullName())
+                astmod = builder.parseFile(mod.source_path)
+            if astmod:
+                mod_fullName = mod.fullName()
+                self.processing_modules.append(mod_fullName)
                 if mod._py_string is None:
                     self.msg("processModule", "processing %s"%(self.processing_modules), 1)
-                builder.processModuleAST(ast, mod)
+                builder.processModuleAST(astmod, mod)
                 mod.state = ProcessingState.PROCESSED
                 head = self.processing_modules.pop()
-                assert head == mod.fullName()
+                assert head == mod_fullName
         self.progress(
             'process',
             self.module_count - len(self.unprocessed_modules),
@@ -1411,13 +1407,31 @@ class System:
         were not fully processed yet.
         """
 
-        # default post-processing includes processing of subclasses and MRO computing.
-        for cls in self.objectsOfType(Class):
-            cls._init_mro()
-            for b in cls.baseobjects:
-                if b is not None:
-                    b.subclasses.append(cls)
+        class PostProcessVisitor(visitor.PartialVisitor[Documentable]):
+            # this post-processing includes :
+            # - processing of subclasses and MRO computing.
+            # - processing of aliases.
 
+            @classmethod
+            def get_children(cls, ob: Documentable) -> Iterable[Documentable]:
+                return ob.contents.values()
+
+            def visit_Class(self, cls: 'Class') -> None:
+                cls._init_mro()
+                for b in cls.baseobjects:
+                    if b is not None:
+                        b.subclasses.append(cls)
+
+            def visit_Attribute(self, attr: 'Attribute') -> None:
+                if attr.kind is DocumentableKind.ALIAS:
+                    resolved = attr.parent._resolveAlias(attr)
+                    if resolved:
+                        resolved_ob = attr.system.objForFullName(resolved)
+                        if resolved_ob and attr not in resolved_ob.aliases:
+                            resolved_ob.aliases.append(attr)
+        
+        for ob in self.rootobjects:
+            PostProcessVisitor().walk(ob)
 
         for post_processor in self._post_processors:
             post_processor(self)
