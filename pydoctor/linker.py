@@ -3,10 +3,11 @@ This module provides implementations of epydoc's L{DocstringLinker} class.
 """
 
 from collections import defaultdict
+import contextlib
 import attr
 from twisted.web.template import Tag, tags
 from typing import (
-    TYPE_CHECKING, Dict,Iterable, List, Optional, Set, Union, cast
+    TYPE_CHECKING, Dict,Iterable, Iterator, List, Optional, Set, Union, cast
 )
 
 from pydoctor.epydoc.markup import DocstringLinker
@@ -236,6 +237,13 @@ class _EpydocLinker(DocstringLinker):
             message += ' (you can link to external docs with --intersphinx)'
         self.obj.report(message, 'resolve_identifier_xref', lineno)
         raise LookupError(identifier)
+    
+    @contextlib.contextmanager
+    def disable_same_page_optimazation(self) -> Iterator[None]:
+        old_same_page_optimazation = self.same_page_optimization
+        self.same_page_optimization = False
+        yield
+        self.same_page_optimization = old_same_page_optimazation
 
 
 class _CachedEpydocLinker(_EpydocLinker):

@@ -500,11 +500,12 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
         if o.rawbases:
             finalbaseobjects: List[Optional[Class]] = []
             finalbases: List[str] = []
-            for i,(str_base, base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+            for i,((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
                 if base:
                     finalbaseobjects.append(base)
                     finalbases.append(base.fullName())
                 else:
+                    # Only re-resolve the base object if the base was None.
                     resolved_base = o.parent.resolveName(str_base)
                     if isinstance(resolved_base, Class):
                         base = resolved_base
@@ -515,6 +516,7 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
                         finalbaseobjects.append(None)
                         finalbases.append(o._initialbases[i])
                 if base:
+                    # Recurse on super classes
                     init_finalbaseobjects(base, path.copy())
             o._finalbaseobjects = finalbaseobjects
             o._finalbases = finalbases
@@ -540,15 +542,13 @@ def compute_mro(cls:'Class') -> List[Union['Class', str]]:
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    _initialbaseobjects: List[Optional['Class']]
-    _finalbaseobjects: Optional[List[Optional['Class']]] = None # set in post-processing
-    _initialbases: List[str]
-    _finalbases: Optional[List[str]] = None # set in post-processing
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    # Note: While unused in pydoctor itself, raw_decorators is still in use
-    #       by Twisted's custom System class, to find deprecations.
-    raw_decorators: Sequence[ast.expr]
-
+    
+    # set in post-processing:
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None 
+    _finalbases: Optional[List[str]] = None
+    _mro: Optional[List[Union['Class', str]]] = None
+    
     auto_attribs: bool = False
     """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
     library to automatically convert annotated fields into attributes.
@@ -556,11 +556,11 @@ class Class(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[str] = []
+        self.rawbases: Sequence[Tuple[str, ast.expr]] = []
+        self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
-        self._initialbases = []
-        self._initialbaseobjects = []
-        self._mro: Optional[List[Union['Class', str]]] = None
+        self._initialbases: List[str] = []
+        self._initialbaseobjects: List[Optional['Class']] = []
     
     def _init_mro(self) -> None:
         """
@@ -602,6 +602,7 @@ class Class(CanContainImportsDocumentable):
         """
         return self._finalbases if \
             self._finalbases is not None else self._initialbases
+
     
     @property
     def baseobjects(self) -> List[Optional['Class']]:
