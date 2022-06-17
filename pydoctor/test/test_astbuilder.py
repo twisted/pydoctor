@@ -576,8 +576,8 @@ def test_expandName_alias(systemcls: Type[model.System]) -> None:
 
     from pydoctor import names
 
-    assert names._resolveAlias(mod, cast(model.Attribute, mod.contents['P']))=="mod.Processor"
-    assert names._localNameToFullName(mod, 'P')=="mod.Processor"
+    assert names._resolveAlias(mod, cast(model.Attribute, mod.contents['P']), None)=="mod.Processor"
+    assert names._localNameToFullName(mod, 'P', None)=="mod.Processor"
 
     assert mod.expandName('P')=="mod.Processor"
     assert mod.expandName('P.var')=="mod.Processor.var"
@@ -726,7 +726,7 @@ def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.Sys
     # assert capsys.readouterr().out == '', A.contents['alias']
     s = mod.resolveName('A.alias')
     assert isinstance(s, model.Attribute)
-    assert s.fullName() == "mod.B.b", (names._localNameToFullName(A, 'alias'), A.contents['alias'])
+    assert s.fullName() == "mod.B.b", (names._localNameToFullName(A, 'alias', None), A.contents['alias'])
     assert s.value is not None
     assert ast.literal_eval(s.value)==4
     assert mod.contents['A'].contents['alias'].kind is model.DocumentableKind.ALIAS
@@ -2678,4 +2678,58 @@ def test_module_level_attributes_and_aliases(systemcls: Type[model.System]) -> N
     assert s.value is not None
     assert ast.literal_eval(s.value)==1
     assert s.kind == model.DocumentableKind.VARIABLE
+
+@systemcls_param
+def test_alias_instance_method_same_name(systemcls: Type[model.System], capsys: CapSys) -> None:
+    code = '''
+    class Log:
+        def fatal(self, msg, *args):
+            ...
+    
+    _global_log = Log()
+    fatal = _global_log.fatal
+    '''
+    mod = fromText(code, systemcls=systemcls)
+    # assert not capsys.readouterr().out
+    capsys.readouterr()
+
+    fatal = mod.contents['fatal']
+    global_log = mod.contents['_global_log']
+
+    assert names._resolveAlias(mod, fatal) == '<test>._global_log.fatal'
+    assert names.expandName(fatal, '_global_log.fatal') == '<test>._global_log.fatal'
+    # assert not capsys.readouterr().out
+
+    # this is NOT an issue:
+    assert global_log.expandName('fatal') ==  '<test>._global_log.fatal'
+
+@pytest.mark.xfail
+@systemcls_param
+def test_links_function_docstring_imports_in_body(systemcls: Type[model.System]) -> None:
+    
+    mod = '''
+    def expandName(name: str) -> str:
+        """
+        See L{names.expandName}
+        """
+        from pydoctor import names
+        return names.expandName(name)
+    '''
+    
+    _impl = '''
+    def expandName(name: str) -> str:
+        """Docs"""
+        ...
+    '''
+    
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('', modname='pydoctor', is_package=True)
+    builder.addModuleString(mod, modname='pydoctor.model')
+    builder.addModuleString(_impl, modname='pydoctor.names')
+    builder.buildModules()
+
+    fn = system.allobjects['pydoctor.model.expandName']
+
+    assert fn.expandName('names.expandName') == 'pydoctor.names.expandName'
 

@@ -8,8 +8,7 @@ from pydoctor import model
 # _IndirectionT = Union[model.Attribute, model.Import]
 _IndirectionT = model.Attribute
 
-def _localDocumentableToFullName(ctx: model.Documentable, o: 'model.Documentable', 
-                            indirections:Optional[List['_IndirectionT']]=None) -> Optional[str]:
+def _localDocumentableToFullName(ctx: model.CanContainImportsDocumentable, o: 'model.Documentable', indirections:Optional[List['_IndirectionT']]) -> Optional[str]:
     """
     If the documentable is an alias, then follow it and return the supposed full name fo the documentable object,
     or return the passed object's - C{o} - full name.
@@ -21,7 +20,7 @@ def _localDocumentableToFullName(ctx: model.Documentable, o: 'model.Documentable
         return _resolveAlias(ctx, o, indirections)
     return o.fullName()
 
-def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Optional[List['_IndirectionT']]=None) -> str:
+def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Optional[List['_IndirectionT']]) -> str:
     if isinstance(ctx, model.CanContainImportsDocumentable):
         # Local names and aliases
         if name in ctx.contents:
@@ -36,14 +35,14 @@ def _localNameToFullName(ctx: model.Documentable, name: str, indirections:Option
         # Not found
         if isinstance(ctx, model.Class):
             # for classes, we try the upper scope.
-            return _localNameToFullName(ctx.parent, name)
+            return _localNameToFullName(ctx.parent, name, indirections)
         else:
             return name
     else:
         assert ctx.parent is not None
-        return _localNameToFullName(ctx.parent, name)
+        return _localNameToFullName(ctx.parent, name, indirections)
 
-def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, indirections:Optional[List['_IndirectionT']]=None) -> str:
+def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, indirections:Optional[List['_IndirectionT']]) -> str:
     fullName = ctx._localNameToFullName_map[name]
     allobjects = ctx.system.allobjects
 
@@ -68,7 +67,7 @@ def _localImportToFullName(ctx: model.CanContainImportsDocumentable, name:str, i
     return fullName
 
 # TODO: This same function should be applicable for imports sa well.
-def _resolveAlias(self: model.Documentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> Optional[str]:
+def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _IndirectionT, indirections:Optional[List[_IndirectionT]]=None) -> Optional[str]:
     """
     Resolve the indirection value to it's target full name.
     Or fall back to original name if we've exhausted the max recursions.
@@ -76,18 +75,19 @@ def _resolveAlias(self: model.Documentable, alias: _IndirectionT, indirections:O
     @param alias: an indirection (alias or import)
     @param indirections: Chain of indirection objects followed. 
         This variable is used to prevent infinite loops when doing the lookup.
+    @returns: The potential full name of the 
     """
     
     indirections = indirections if isinstance(indirections, list) else []
 
     if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
-        self.report("Too many aliases: can't resolve")
+        self.module.report("Too many aliases", lineno_offset=alias.linenumber, section='aliases')
         return indirections[0].fullName() 
 
     # the alias attribute should never be None for indirections objects
     name = alias.alias
     if name is None:
-        self.report("Error resolving alias")
+        self.module.report("Error resolving alias", lineno_offset=alias.linenumber, section='aliases')
         return indirections[0].fullName() 
     
     # the context is important
@@ -97,10 +97,10 @@ def _resolveAlias(self: model.Documentable, alias: _IndirectionT, indirections:O
         # We redirect to the original object
         return ctx.expandName(name, indirections=indirections+[alias])
     
-    # Prevent recursion errors, we try the upper scope only if we detect a dicrect cycle.
+    # Prevent recursion errors, we try the upper scope only if we detect a direct cycle.
     # Otherwise just fail.
     if alias is not indirections[-1]:
-        self.report("Recursive aliases: can't resolve")
+        self.module.report("Can't resolve cyclic aliases", lineno_offset=alias.linenumber, section='aliases')
         return indirections[0].fullName()
 
     # Issue tracing the alias back to it's original location, found the same alias again.
@@ -112,6 +112,11 @@ def _resolveAlias(self: model.Documentable, alias: _IndirectionT, indirections:O
         # We could use astuce here to be more precise.
         return parent.expandName(name, indirections=indirections+[alias])
 
+    self.system.msg('aliases',
+        f"{alias.description}:{alias.linenumber}: Failed to resolve alias (found same alias again). self={self.fullName()}, alias={alias.fullName()}, indirections={[i.fullName() for i in indirections]}",
+        thresh=1)
+    # We don't understand aliases made to a instance method yet, 
+    # so we simply return None if we don't understand the alias value
     return None
 
 def expandName(self:model.Documentable, name: str, indirections:Optional[List[_IndirectionT]]=None) -> str:
@@ -172,6 +177,9 @@ def expandName(self:model.Documentable, name: str, indirections:Optional[List[_I
     parts = name.split('.')
     ctx: model.Documentable = self # The context for the currently processed part of the name. 
     for i, part in enumerate(parts):
+        # if i != 0 and not isinstance(ctx, model.CanContainImportsDocumentable):
+        #     # Stop now
+        #     break
         full_name = _localNameToFullName(ctx, part, indirections)
         if full_name == part and i != 0:
             # The local name was not found.

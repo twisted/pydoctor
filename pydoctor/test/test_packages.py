@@ -138,8 +138,8 @@ def test_reparenting_follows_aliases() -> None:
     assert isinstance(mything, model.Module)
     assert isinstance(myotherthing, model.Module)
 
-    assert names._localNameToFullName(mything, 'MyClass') == 'reparenting_follows_aliases.main.MyClass'
-    assert names._localNameToFullName(myotherthing, 'MyClass') == 'reparenting_follows_aliases._mything.MyClass'
+    assert names._localNameToFullName(mything, 'MyClass', None) == 'reparenting_follows_aliases.main.MyClass'
+    assert names._localNameToFullName(myotherthing, 'MyClass', None) == 'reparenting_follows_aliases._mything.MyClass'
 
     system.find_object('reparenting_follows_aliases._mything.MyClass') == klass
 

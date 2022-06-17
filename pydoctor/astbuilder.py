@@ -529,16 +529,16 @@ class ModuleVistor(NodeVisitor):
         """
         Must be called after obj.setLineNumber() to have the right line number in the warning.
 
-        Create an alias or update an alias.
+        Create or update an alias.
         """
         
         if is_attribute_overridden(obj, value) and is_alias(obj.value):
             obj.report(f'Assignment to alias "{obj.name}" overrides previous alias '
                     f'at line {obj.linenumber}.', 
                             section='ast', lineno_offset=lineno-obj.linenumber)
-        obj.system.msg(msg=f'Processing alias {obj.name!r} at {obj.module.name}:{obj.linenumber}.', 
-                    section='ast', 
-                    thresh=2)
+        # obj.system.msg(msg=f'Processing alias {obj.name!r} at {obj.module.name}:{obj.linenumber}.', 
+        #             section='ast', 
+        #             thresh=2)
 
         obj.kind = model.DocumentableKind.ALIAS
         # This will be used for HTML repr of the alias.
