@@ -2695,10 +2695,11 @@ def test_alias_instance_method_same_name(systemcls: Type[model.System], capsys: 
 
     fatal = mod.contents['fatal']
     global_log = mod.contents['_global_log']
+    assert isinstance(fatal, model.Attribute)
 
     assert names._resolveAlias(mod, fatal) == '<test>._global_log.fatal'
     assert names.expandName(fatal, '_global_log.fatal') == '<test>._global_log.fatal'
-    # assert not capsys.readouterr().out
+    assert not capsys.readouterr().out
 
     # this is NOT an issue:
     assert global_log.expandName('fatal') ==  '<test>._global_log.fatal'
