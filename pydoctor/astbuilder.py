@@ -397,37 +397,11 @@ class ModuleVistor(NodeVisitor):
             else:
                 # re-export names that are not part of the current system with an alias
                 attr = self.builder.addAttribute(name=as_name, kind=model.DocumentableKind.ALIAS, parent=current)
-                attr._alias_to = f'{modname}.{origin_name}'
+                attr.alias = f'{modname}.{origin_name}'
                 # This is only for the HTML repr
-                attr.value=ast.Name(attr._alias_to, ast.Load()) # passing ctx is required for python 3.6
+                attr.value=ast.Name(attr.alias, ast.Load()) # passing ctx is required for python 3.6
                 return True
-            
-            # if mod is None: 
-            #         # re-export names that are not part of the current system with an alias
-            #         attr = current.contents.get(asname)
-            #         if not attr:
-            #             attr = self.builder.addAttribute(name=asname, kind=model.DocumentableKind.ALIAS, parent=current)
-            #         assert isinstance(attr, model.Attribute)
-            #         attr._alias_to = f'{modname}.{orgname}'
-            #         # This is only for the HTML repr
-            #         attr.value=ast.Name(attr._alias_to)
-            #         continue
-            #     else:
-            #         try:
-            #             ob = mod.contents[orgname]
-            #         except KeyError:
-            #             self.builder.warning("cannot find re-exported name",
-            #                                 f'{modname}.{orgname}')
-            #         else:
-            #             if mod.all is None or orgname not in mod.all:
-            #                 self.system.msg(
-            #                     "astbuilder",
-            #                     "moving %r into %r" % (ob.fullName(), current.fullName())
-            #                     )
-            #                 # Must be a Module since the exports is set to an empty list if it's not.
-            #                 assert isinstance(current, model.Module)
-            #                 ob.reparent(current, asname)
-            #                 continue
+ 
         return False
 
     def _importNames(self, modname: str, names: Iterable[ast.alias]) -> None:
@@ -574,7 +548,7 @@ class ModuleVistor(NodeVisitor):
         assert dottedname is not None
         name = '.'.join(dottedname)
         # Store the alias value as string now, this avoids doing it in _resolveAlias().
-        obj._alias_to = name
+        obj.alias = name
 
 
     def _handleModuleVar(self,

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Callable
 import pytest
 
-from pydoctor import model
+from pydoctor import model, names
 
 testpackages = Path(__file__).parent / 'testpackages'
 
@@ -138,8 +138,8 @@ def test_reparenting_follows_aliases() -> None:
     assert isinstance(mything, model.Module)
     assert isinstance(myotherthing, model.Module)
 
-    assert mything._localNameToFullName('MyClass') == 'reparenting_follows_aliases.main.MyClass'
-    assert myotherthing._localNameToFullName('MyClass') == 'reparenting_follows_aliases._mything.MyClass'
+    assert names._localNameToFullName(mything, 'MyClass') == 'reparenting_follows_aliases.main.MyClass'
+    assert names._localNameToFullName(myotherthing, 'MyClass') == 'reparenting_follows_aliases._mything.MyClass'
 
     system.find_object('reparenting_follows_aliases._mything.MyClass') == klass
 

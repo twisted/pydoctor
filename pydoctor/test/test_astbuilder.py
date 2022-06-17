@@ -5,7 +5,7 @@ import ast
 import astor
 
 
-from pydoctor import astbuilder, model, astutils
+from pydoctor import astbuilder, model, astutils, names
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -573,8 +573,12 @@ def test_expandName_alias(systemcls: Type[model.System]) -> None:
     assert mod.system.allobjects.get("mod.SimpleClient") is not None
     assert mod.system.allobjects.get("mod.SimpleClient.FOO") is  None
     assert mod.contents['P'].kind is model.DocumentableKind.ALIAS
-    assert mod._resolveAlias(cast(model.Attribute, mod.contents['P']))=="mod.Processor"
-    assert mod._localNameToFullName('P')=="mod.Processor"
+
+    from pydoctor import names
+
+    assert names._resolveAlias(mod, cast(model.Attribute, mod.contents['P']))=="mod.Processor"
+    assert names._localNameToFullName(mod, 'P')=="mod.Processor"
+
     assert mod.expandName('P')=="mod.Processor"
     assert mod.expandName('P.var')=="mod.Processor.var"
     assert mod.expandName('P.clientFactory')=="mod.SimpleClient"
@@ -688,8 +692,8 @@ def test_expandName_alias_documentable_module_level(systemcls: Type[model.System
         # This will create a Documentable entry
         ssl = _ssl
     except ImportError:
+        # this code is ignored
         ssl = None 
-        # this code is currently simply ignored
     ''', system=system, modname='mod')
 
     assert mod.expandName('ssl')=="twisted.internet.ssl"
@@ -711,8 +715,7 @@ def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.Sys
         if sys.version_info[0] > 3:
             alias = B.b
         else:
-            # this code is currently simply signored
-            # because it's not in a 'body'.
+            # this code is ignored
             alias = B.a
     class B:
         a = 3
@@ -723,7 +726,7 @@ def test_expandName_alias_not_documentable_class_level(systemcls: Type[model.Sys
     # assert capsys.readouterr().out == '', A.contents['alias']
     s = mod.resolveName('A.alias')
     assert isinstance(s, model.Attribute)
-    assert s.fullName()=="mod.B.b", (A._localNameToFullName('alias'), A.contents['alias'])
+    assert s.fullName() == "mod.B.b", (names._localNameToFullName(A, 'alias'), A.contents['alias'])
     assert s.value is not None
     assert ast.literal_eval(s.value)==4
     assert mod.contents['A'].contents['alias'].kind is model.DocumentableKind.ALIAS
@@ -845,7 +848,11 @@ def test_aliases_re_export(systemcls: Type[model.System]) -> None:
 
 @systemcls_param
 def test_exportName_re_exported_aliases(systemcls: Type[model.System]) -> None:
-    # TODO: fix this test. This is probably related to https://github.com/twisted/pydoctor/issues/295.
+    """
+    What if we re-export an alias?
+    """
+
+    # TODO: fix this test.
     base_mod = '''
     class Zoo:
         _1=1
@@ -859,15 +866,28 @@ def test_exportName_re_exported_aliases(systemcls: Type[model.System]) -> None:
     __all__ = ["Z", "H"]
     '''
     system = systemcls()
-    fromText(base_mod, system=system, modname='base_mod')
-    fromText(src, system=system, modname='mod')
+
+    builder = system.systemBuilder(system)
+    builder.addModuleString(base_mod, modname='base_mod')
+    builder.addModuleString(src, modname='mod')
+    builder.buildModules()
 
     mod = system.allobjects['mod']
     bmod = system.allobjects['base_mod']
-    assert mod.expandName('Z._1')=="Zoo._1" # Should be "base_mod.Zoo._1"
-    assert bmod.expandName('Z._1')=="Zoo._1" # Should be "base_mod.Zoo._1"
-    assert bmod.expandName('Zoo._1')=="base_mod.Zoo._1"
-    assert system.allobjects['mod.Z'].kind is model.DocumentableKind.ALIAS
+    alias = system.allobjects['mod.Z']
+
+    assert mod.expandName('Z') == "Zoo" # Should be "base_mod.Zoo"
+    assert mod.expandName('Z._1') == "Zoo._1" # Should be "base_mod.Zoo._1", linked to https://github.com/twisted/pydoctor/issues/295
+
+    assert bmod.expandName('Z._1') == "base_mod.Zoo._1"
+    assert bmod.expandName('Zoo._1') == "base_mod.Zoo._1"
+    
+    assert isinstance(alias, model.Attribute)
+    assert alias.kind is model.DocumentableKind.ALIAS
+    assert alias.alias == 'Zoo'
+
+    assert alias.resolved_alias is None # This should not be None!
+
 
 @systemcls_param
 def test_expandName_aliasloops(systemcls: Type[model.System]) -> None:

@@ -108,6 +108,25 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
+# Nor used yet
+# class Import:
+#     """
+#     Imports are not documentable, but share bits of the interface.
+#     """
+#     def __init__(self, system: 'System', 
+#                  name: str, alias:str, 
+#                  parent: 'Documentable', linenumber:int):
+        
+#         self.system = system
+#         self.name = name
+#         self.parent = parent
+#         self.linenumber = linenumber
+#         self.alias = alias
+
+#     def fullName(self) -> str:
+#         return f'{self.parent.fullName()}.{self.name}'
+
+
 class Documentable:
     """An object that can be documented.
 
@@ -292,140 +311,12 @@ class Documentable:
         for o in self.contents.values():
             o._handle_reparenting_post()
 
-    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
-        raise NotImplementedError(self._localNameToFullName)
-
-    def expandName(self, name: str, 
-                   indirections:Optional[List['Attribute']]=None) -> str:
+    def expandName(self, name: str, indirections:Any=None) -> str:
         """
-        Return a fully qualified name for the possibly-dotted `name`.
-
-        To explain what this means, consider the following modules:
-
-        mod1.py::
-
-            from external_location import External
-            class Local:
-                pass
-
-        mod2.py::
-
-            from mod1 import External as RenamedExternal
-            import mod1 as renamed_mod
-            class E:
-                pass
-
-        In the context of mod2.E, C{expandName("RenamedExternal")} should be
-        C{"external_location.External"} and C{expandName("renamed_mod.Local")}
-        should be C{"mod1.Local"}. 
-        
-        This method is in charge to follow the aliases when possible!
-        It will reccursively follow any L{DocumentableKind.ALIAS} entry found 
-        up to certain level of complexity. 
-
-        Example:
-
-        mod1.py::
-
-            import external
-            class Processor:
-                spec = external.Processor.more_spec
-            P = Processor
-
-        mod2.py::
-
-            from mod1 import P
-            class Runner:
-                processor = P
-
-        In the context of mod2, C{expandName("Runner.processor.spec")} should be
-        C{"external.Processor.more_spec"}.
-        
-        @param name: The name to expand.
-        @param indirections: See L{_resolveAlias}
-        @note: The implementation replies on iterating through the each part of the dotted name, 
-            calling L{_localNameToFullName} for each name in their associated context and incrementally building 
-            the fullName from that. 
-
-            Lookup members in superclasses when possible and follows L{DocumentableKind.ALIAS}. This mean that L{expandName} will never return the name of an alias,
-            it will always follow it's indirection to the origin.
+        See L{names.expandName}
         """
-
-        parts = name.split('.')
-        ctx: Documentable = self # The context for the currently processed part of the name. 
-        for i, part in enumerate(parts):
-            full_name = ctx._localNameToFullName(part, indirections)
-            if full_name == part and i != 0:
-                # The local name was not found.
-                # If we're looking at a class, we try our luck with the inherited members
-                if isinstance(ctx, Class):
-                    inherited = ctx.find(part)
-                    if inherited: 
-                        full_name = inherited.fullName()
-                if full_name == part:
-                    # We don't have a full name
-                    # TODO: Instead of returning the input, _localNameToFullName()
-                    #       should probably either return None or raise LookupError.
-                    # Or maybe we should find a way to indicate if the expanded name is "guessed" or if we have the the correct fullName. 
-                    # With the current implementation, this would mean checking if "parts[i + 1:]" contains anything.
-                    full_name = f'{ctx.fullName()}.{part}'
-                    break
-            nxt = self.system.objForFullName(full_name)
-            if nxt is None:
-                break
-            ctx = nxt
-
-        return '.'.join([full_name] + parts[i + 1:])
-
-    def _resolveAlias(self, alias: 'Attribute', 
-                      indirections:Optional[List['Attribute']]=None) -> Optional[str]:
-        """
-        Resolve the alias value to it's target full name.
-        Or fall back to original alias full name if we know we've exhausted the max recursions.
-        @param alias: an ALIAS object.
-        @param indirections: Chain of alias objects followed. 
-            This variable is used to prevent infinite loops when doing the lookup.
-        """
-        indirections = indirections if isinstance(indirections, list) else []
-
-        if indirections and len(indirections) > self._RESOLVE_ALIAS_MAX_RECURSE:
-            self.report("Too many aliases: can't resolve")
-            return indirections[0].fullName() 
-        
-        # the _alias_to attribute should never be none for ALIAS objects
-        assert alias.kind is DocumentableKind.ALIAS
-        name = alias._alias_to
-        assert name is not None
-        
-        # the context is important
-        ctx = alias.parent
-
-        # This checks avoids infinite recursion error when a alias has the same name as it's value
-        if indirections and indirections[-1] != alias or not indirections:
-            # We redirect to the original object instead!
-            return ctx.expandName(name, indirections=indirections+[alias])
-        else:
-            # Issue tracing the alias back to it's original location, found the same alias again.
-            if ctx.parent and not isinstance(ctx, Module):
-                # We try with the parent scope and redirect to the original object!
-                # This is used in situations like right here in the System class and it's aliases (before version > 22.5.1), 
-                # because they have the same name as the name they are aliasing, it's causing trouble.
-                # We could use astuce here to be more precise.
-                return ctx.parent.expandName(name, indirections=indirections+[alias])
-        return None
-
-    def _resolveDocumentable(self, o: 'Documentable', 
-                             indirections:Optional[List['Attribute']]=None) -> Optional[str]:
-        """
-        Wrapper for L{_resolveAlias}. 
-
-        If the documentable is an alias, then follow it and return the supposed full name fo the documentable object,
-        or return the passed object's - C{o} - full name.
-        """
-        if o.kind is DocumentableKind.ALIAS:
-            assert isinstance(o, Attribute)
-            return self._resolveAlias(o, indirections)
-        return o.fullName()
+        from pydoctor import names
+        return names.expandName(self, name, indirections)
 
     def resolveName(self, name: str) -> Optional['Documentable']:
         """
@@ -508,15 +399,6 @@ class CanContainImportsDocumentable(Documentable):
         super().setup()
         self._localNameToFullName_map: Dict[str, str] = {}
 
-    def _resolve_localNameToFullName(self, name:str, indirections:Any=None) -> str:
-        if self._localNameToFullName_map[name] in self.system.allobjects:
-            resolved = self._resolveDocumentable(
-                self.system.allobjects[self._localNameToFullName_map[name]], 
-                indirections)
-            if resolved:
-                return resolved
-        return self._localNameToFullName_map[name]
-
 class Module(CanContainImportsDocumentable):
     kind = DocumentableKind.MODULE
     state = ProcessingState.UNPROCESSED
@@ -550,18 +432,6 @@ class Module(CanContainImportsDocumentable):
         """
 
         self._docformat: Optional[str] = None
-
-    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
-        # Follows aliases
-        if name in self.contents:
-            resolved = self._resolveDocumentable(
-                    self.contents[name], 
-                    indirections)
-            if resolved: 
-                return resolved
-        if name in self._localNameToFullName_map:
-            return self._resolve_localNameToFullName(name, indirections)
-        return name
 
     @property
     def module(self) -> 'Module':
@@ -751,19 +621,6 @@ class Class(CanContainImportsDocumentable):
                 return obj
         return None
 
-    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
-        # Follows aliases
-        if name in self.contents:
-            resolved = self._resolveDocumentable(
-                    self.contents[name], 
-                    indirections)
-            if resolved:
-                return resolved
-        # Follows imports
-        if name in self._localNameToFullName_map:
-            return self._resolve_localNameToFullName(name, indirections)
-        return self.parent._localNameToFullName(name)
-
     @property
     def constructor_params(self) -> Mapping[str, Optional[ast.expr]]:
         """A mapping of constructor parameter names to their type annotation.
@@ -793,9 +650,6 @@ class Inheritable(Documentable):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
-    def _localNameToFullName(self, name: str, indirections:Any=None) -> str:
-        return self.parent._localNameToFullName(name, indirections)
-
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
@@ -808,6 +662,16 @@ class Function(Inheritable):
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
 
+@object.__new__
+class _NotYetResolved:
+    def __bool__(self) -> bool:
+        return False
+
+if TYPE_CHECKING:
+    _NotYetResolvedT = Type[_NotYetResolved]
+else:
+    _NotYetResolvedT = Type[object]
+
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
@@ -819,14 +683,22 @@ class Attribute(Inheritable):
     None value means the value is not initialized at the current point of the the process. 
     """
 
-    _alias_to: Optional[str] = None
+    alias: Optional[str] = None
     """"
     We store the alias value here so we don't have to process it all the time. 
+
     For aliases, this is the same as::
 
         '.'.join(node2dottedname(self.value))
+
+    For other attributes, it's C{None}.
+    """
     
-    For other attributes, this is None.
+    resolved_alias: Union[_NotYetResolvedT, 'Documentable', None] = _NotYetResolved
+    """
+    Once we have resolved the alias to a Documentable object in post-processing, it's value is stored in this attribute. 
+
+    If it's None, it means that the alias could not be resolved to an object in the system.
     """
 
 # Work around the attributes of the same name within the System class.
@@ -1407,6 +1279,8 @@ class System:
         were not fully processed yet.
         """
 
+        from pydoctor import names
+
         class PostProcessVisitor(visitor.PartialVisitor[Documentable]):
             # this post-processing includes :
             # - processing of subclasses and MRO computing.
@@ -1424,11 +1298,21 @@ class System:
 
             def visit_Attribute(self, attr: 'Attribute') -> None:
                 if attr.kind is DocumentableKind.ALIAS:
-                    resolved = attr.parent._resolveAlias(attr)
+                    # Since we try to resolve all aliases once in post-processing,
+                    # we use some caching
+                    resolved = names._resolveAlias(attr.parent, attr)
                     if resolved:
                         resolved_ob = attr.system.objForFullName(resolved)
-                        if resolved_ob and attr not in resolved_ob.aliases:
-                            resolved_ob.aliases.append(attr)
+                        if resolved_ob: 
+                            attr.resolved_alias = resolved_ob
+                            if attr not in resolved_ob.aliases:
+                                resolved_ob.aliases.append(attr)
+                        else:
+                            # Not in the system
+                            attr.resolved_alias = None
+                else:
+                    # Can't resolve
+                    attr.resolved_alias = None
         
         for ob in self.rootobjects:
             PostProcessVisitor().walk(ob)
