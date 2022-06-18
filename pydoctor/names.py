@@ -1,12 +1,25 @@
 """
 Module containing the logic to resolve names, aliases and imports.
 """
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing_extensions import Protocol
+else:
+    Protocol = object
 
 from pydoctor import model
 
 # _IndirectionT = Union[model.Attribute, model.Import]
-_IndirectionT = model.Attribute
+# _IndirectionT = model.Attribute
+
+class _IndirectionT(Protocol):
+    system: model.System
+    name: str
+    parent: model.CanContainImportsDocumentable
+    linenumber : int
+    alias: Optional[str]
+    def fullName(self) -> str:...
 
 def _localDocumentableToFullName(ctx: model.CanContainImportsDocumentable, o: 'model.Documentable', indirections:Optional[List['_IndirectionT']]) -> str:
     """
@@ -84,9 +97,7 @@ def _resolveAlias(self: model.CanContainImportsDocumentable, alias: _Indirection
 
     # the alias attribute should never be None for indirections objects
     name = alias.alias
-    if name is None:
-        self.module.report("Error resolving alias", lineno_offset=alias.linenumber, section='aliases')
-        return indirections[0].fullName() 
+    assert name, f"Bad alias: {self.module.description}:{alias.linenumber}"
     
     # the context is important
     ctx = self
