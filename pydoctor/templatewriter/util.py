@@ -95,7 +95,7 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
 
-def inherited_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
+def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
     """
     Returns the members as well as the inherited members of a class.
 
@@ -108,13 +108,13 @@ def inherited_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], S
             baselists.append((baselist, attrs))
     return baselists
 
-def list_inherited_members(cls: model.Class) -> List[model.Documentable]:
+def inherited_members(cls: model.Class) -> List[model.Documentable]:
     """
     Returns only the inherited members of a class, as a plain list.
     """
     
     children : List[model.Documentable] = []
-    for inherited_via,attrs in inherited_members(cls):
+    for inherited_via,attrs in class_members(cls):
         if len(inherited_via)>1:
             children.extend(attrs)
     return children

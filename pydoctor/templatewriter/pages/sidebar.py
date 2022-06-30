@@ -168,11 +168,9 @@ class ObjContent(Element):
         Compute the children of this object.
         """
         if inherited:
-            if isinstance(self.ob, Class):
-                return sorted((o for o in util.list_inherited_members(self.ob) if o.isVisible),
+            assert isinstance(self.ob, Class), "Use inherited=True only with Class instances"
+            return sorted((o for o in util.inherited_members(self.ob) if o.isVisible),
                               key=util.objects_order)
-            else:
-                assert False, "Use inherited=True only with Class instances"
         else:
             return sorted((o for o in self.ob.contents.values() if o.isVisible),
                               key=util.objects_order)
