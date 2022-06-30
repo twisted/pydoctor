@@ -1,13 +1,15 @@
 """
 Classes for the sidebar generation. 
 """
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Type, Union
 from twisted.web.iweb import IRequest, ITemplateLoader
 from twisted.web.template import TagLoader, renderer, Tag, Element, tags
 
 from pydoctor import epydoc2stan
 from pydoctor.model import Attribute, Class, Function, Documentable, Module
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
+
+from pydoctor.napoleon.iterators import peek_iter
 
 class SideBar(TemplateElement):
     """
@@ -112,7 +114,7 @@ class ObjContent(Element):
     Composed by L{ContentList} elements. 
     """
 
-    #TODO: Hide the childrenKindTitle if they are all private and show private is off -> need JS
+    #FIXME: https://github.com/twisted/pydoctor/issues/600
 
     def __init__(self, loader: ITemplateLoader, ob: Documentable, documented_ob: Documentable, 
                  template_lookup: TemplateLookup, depth: int, level: int = 0):
@@ -125,31 +127,35 @@ class ObjContent(Element):
         self._depth = depth
         self._level = level + 1
 
-        self.classList = self._getListOf(Class)
-        self.functionList = self._getListOf(Function)
-        self.variableList = self._getListOf(Attribute)
-        self.subModuleList = self._getListOf(Module)
+        _direct_children = self._children(inherited=False)
 
-        self.inheritedFunctionList = self._getListOf(Function, inherited=True) if isinstance(self.ob, Class) else None
-        self.inheritedVariableList = self._getListOf(Attribute, inherited=True) if isinstance(self.ob, Class) else None
+        self.classList = self._getContentList(_direct_children, Class)
+        self.functionList = self._getContentList(_direct_children, Function)
+        self.variableList = self._getContentList(_direct_children, Attribute)
+        self.subModuleList = self._getContentList(_direct_children, Module)
+        
+        self.inheritedFunctionList: Optional[ContentList] = None
+        self.inheritedVariableList: Optional[ContentList] = None
+
+        if isinstance(self.ob, Class):
+            _inherited_children = self._children(inherited=True)
+
+            self.inheritedFunctionList = self._getContentList(_inherited_children, Function)
+            self.inheritedVariableList = self._getContentList(_inherited_children, Attribute)
     
-    def _getListOf(self, type_: Type[Documentable],
-                         inherited: bool = False) -> Optional['ContentList']:
-        children = self._children(inherited=inherited)
-        if children:
-            things = [ child for child in children if isinstance(child, type_) ]
-            return self._getListFrom(things, expand=self._isExpandable(type_))
-        else:
-            return None
-
     #TODO: ensure not to crash if heterogeneous Documentable types are passed
 
-    def _getListFrom(self, things: List[Documentable], expand: bool) -> Optional['ContentList']:
-        if things:
+    def _getContentList(self, children: Sequence[Documentable], type_: Type[Documentable]) -> Optional['ContentList']:
+        # We use the filter and iterators (instead of lists) for performance reasons.
+        
+        things = peek_iter(filter(lambda o: isinstance(o, type_,), children))
+
+        if things.has_next():
+            
             assert self.loader is not None
             return ContentList(ob=self.ob, children=things, 
                     documented_ob=self.documented_ob,
-                    expand=expand,
+                    expand=self._isExpandable(type_),
                     nested_content_loader=self.loader, 
                     template_lookup=self.template_lookup,
                     level_depth=(self._level, self._depth))
@@ -157,16 +163,14 @@ class ObjContent(Element):
             return None
     
 
-    def _children(self, inherited: bool = False) -> Optional[List[Documentable]]:
+    def _children(self, inherited: bool = False) -> List[Documentable]:
         """
         Compute the children of this object.
         """
         if inherited:
-            if isinstance(self.ob, Class):
-                return sorted((o for o in util.list_inherited_members(self.ob) if o.isVisible),
+            assert isinstance(self.ob, Class), "Use inherited=True only with Class instances"
+            return sorted((o for o in util.inherited_members(self.ob) if o.isVisible),
                               key=util.objects_order)
-            else:
-                return None
         else:
             return sorted((o for o in self.ob.contents.values() if o.isVisible),
                               key=util.objects_order)
@@ -267,7 +271,7 @@ class ContentList(TemplateElement):
     filename = 'sidebar-list.html'
 
     def __init__(self, ob: Documentable, 
-                 children: Iterable[Documentable], documented_ob: Documentable, 
+                 children: Iterator[Documentable], documented_ob: Documentable, 
                  expand: bool, nested_content_loader: ITemplateLoader, template_lookup: TemplateLookup,
                  level_depth: Tuple[int, int]):
         super().__init__(loader=self.lookup_loader(template_lookup))
@@ -282,7 +286,7 @@ class ContentList(TemplateElement):
         self.template_lookup = template_lookup
     
     @renderer
-    def items(self, request: IRequest, tag: Tag) -> Iterable['ContentItem']:
+    def items(self, request: IRequest, tag: Tag) -> Iterator['ContentItem']:
 
         for child in self.children:
 
