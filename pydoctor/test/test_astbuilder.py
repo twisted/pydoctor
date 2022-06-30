@@ -2734,3 +2734,42 @@ def test_links_function_docstring_imports_in_body(systemcls: Type[model.System])
 
     assert fn.expandName('names.expandName') == 'pydoctor.names.expandName'
 
+@systemcls_param
+def test_import_aliases_across_modules(systemcls: Type[model.System]) -> None:
+    """
+    We should be able to follow import aliases across several modules.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    
+    builder.addModuleString('''
+    from ._impl import i as _i, j
+    from _impl2 import f as _f
+    # __all__ not defined, so nothing get re-exported here
+    # but we should be able to follow the aliases anyhow.
+    ''', modname='top', is_package=True)
+
+    builder.addModuleString('''
+    def f(): 
+        pass
+    ''', modname='_impl', parent_name='top')
+    
+    builder.addModuleString('''
+    class i: pass
+    class j: pass
+    ''', modname='_impl2')
+
+    builder.addModuleString('''
+    from top import j,_i,_f
+    ''', modname='client')
+
+    builder.buildModules()
+
+    assert system.allobjects['client'].expandName('_f') == 'top._impl.f'
+    assert system.allobjects['client'].expandName('_i') == 'top._impl2.i'
+    assert system.allobjects['client'].expandName('j') == 'top._impl2.j'
+
+    assert system.allobjects['client'].resolveName('_f') == system.allobjects['top._impl'].contents['f']
+    assert system.allobjects['client'].resolveName('_i') == system.allobjects['top._impl2'].contents['i']
+    assert system.allobjects['client'].resolveName('j') == system.allobjects['top._impl2'].contents['j']
+

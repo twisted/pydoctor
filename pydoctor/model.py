@@ -32,9 +32,11 @@ from pydoctor.sphinx import CacheT, SphinxInventory
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
+    from pydoctor.names import _IndirectionT
 else:
     Literal = {True: bool, False: bool}
     ASTBuilder = object
+    _IndirectionT = object
 
 
 # originally when I started to write pydoctor I had this idea of a big
@@ -108,23 +110,28 @@ class DocumentableKind(Enum):
     PROPERTY            = 150
     VARIABLE            = 100
 
-# Nor used yet
-# class Import:
-#     """
-#     Imports are not documentable, but share bits of the interface.
-#     """
-#     def __init__(self, system: 'System', 
-#                  name: str, alias:str, 
-#                  parent: 'Documentable', linenumber:int):
-        
-#         self.system = system
-#         self.name = name
-#         self.parent = parent
-#         self.linenumber = linenumber
-#         self.alias = alias
 
-#     def fullName(self) -> str:
-#         return f'{self.parent.fullName()}.{self.name}'
+class Alias:
+    """
+    Aliases are not documentable, but share bits of the interface.
+
+    @note: This object is used to represent both import aliases and 
+        undocumented aliases (which are not documented at all - 
+        not even hidden, there are only there to keep track of indirections).
+    """
+    def __init__(self, system: 'System', 
+                 name: str, alias:str, 
+                 parent: 'CanContainImportsDocumentable', 
+                 linenumber:int):
+        
+        self.system = system
+        self.name = name
+        self.parent = parent
+        self.linenumber = linenumber
+        self.alias = alias
+
+    def fullName(self) -> str:
+        return f'{self.parent.fullName()}.{self.name}'
 
 
 class Documentable:
