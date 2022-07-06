@@ -138,14 +138,33 @@ class ModuleVistor(NodeVisitor):
         initialbases = []
         initialbaseobjects = []
 
-        for n in node.bases:
-            # TODO: Handle generics in MRO
-            str_base = '.'.join(node2dottedname(n) or [astor.to_source(n).strip()])
-            rawbases.append(str_base)
+        for base_node in node.bases:
+            # This handles generics in MRO, by extracting the first
+            # subscript value::
+            #   class Visitor(MyGeneric[T]):...
+            # 'MyGeneric' will be added to rawbases instead 
+            # of 'MyGeneric[T]' which cannot resolve to anything.
+            name_node = base_node
+            if isinstance(base_node, ast.Subscript):
+                name_node = base_node.value
+            
+            str_base = '.'.join(node2dottedname(name_node) or \
+                # Fallback on astor if the expression is unknown by node2dottedname().
+                [astor.to_source(base_node).strip()]) 
+                
+            # Store the base as string and as ast.expr in rawbases list.
+            rawbases += [(str_base, base_node)]
+            
+            # Try to resolve the base, put None if could not resolve it,
+            # if we can't resolve it now, it most likely mean that there are
+            # import cycles (maybe in TYPE_CHECKING blocks). 
+            # None bases will be re-resolved in post-processing.
             expandbase = parent.expandName(str_base)
             baseobj = self.system.objForFullName(expandbase)
+            
             if not isinstance(baseobj, model.Class):
                 baseobj = None
+                
             initialbases.append(expandbase)
             initialbaseobjects.append(baseobj)
 
@@ -164,6 +183,9 @@ class ModuleVistor(NodeVisitor):
             epydoc2stan.extract_fields(cls)
 
         if node.decorator_list:
+            
+            cls.raw_decorators = node.decorator_list
+        
             for decnode in node.decorator_list:
                 args: Optional[Sequence[ast.expr]]
                 if isinstance(decnode, ast.Call):
@@ -179,11 +201,12 @@ class ModuleVistor(NodeVisitor):
                     cls.report("cannot make sense of class decorator")
                 else:
                     cls.decorators.append((base, args))
-        cls.raw_decorators = node.decorator_list if node.decorator_list else []
-        
+
+            
         # We're not resolving the subclasses at this point yet because all 
         # modules might not have been processed, and since subclasses are only used in the presentation,
         # it's better to resolve them in the post-processing instead.
+
 
     def depart_ClassDef(self, node: ast.ClassDef) -> None:
         self.builder.popClass()

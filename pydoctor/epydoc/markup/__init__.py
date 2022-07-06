@@ -33,7 +33,7 @@ each error.
 """
 __docformat__ = 'epytext en'
 
-from typing import Callable, List, Optional, Sequence, Iterator, TYPE_CHECKING
+from typing import Callable, ContextManager, List, Optional, Sequence, Iterator, TYPE_CHECKING
 import abc
 import sys
 import re
@@ -301,6 +301,15 @@ class DocstringLinker:
         @param identifier: The name of the Python identifier that
             should be linked to.
         @return: The URL of the target, or L{None} if not found.
+        """
+        raise NotImplementedError()
+    
+    def disable_same_page_optimazation(self) -> ContextManager[None]:
+        """
+        By default, when linkng to an object on the same page, the linker will generate 
+        an URL that links to the anchor only, this will avoid reloading the page needlessly. But sometimes 
+        we're using a linker to present the content on another page. This context manager will 
+        make the linker always generate full URLs.
         """
         raise NotImplementedError()
 

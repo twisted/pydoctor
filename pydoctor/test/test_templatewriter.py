@@ -184,7 +184,7 @@ def test_multipleInheritanceNewClass(className: str) -> None:
     getob = system.allobjects.get
 
     if className == 'Diamond':
-        assert util.inherited_members(cls) == [
+        assert util.class_members(cls) == [
             (
                 (getob('multipleinheritance.mod.Diamond'),),
                 [getob('multipleinheritance.mod.Diamond.newMethod')]
