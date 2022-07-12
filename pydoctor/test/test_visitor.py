@@ -10,7 +10,7 @@ def dump(node: nodes.Node, text:str='') -> None:
         text,
         type(node).__name__, 
         node.line,
-        node.rawsource.replace('\n', '\\n')))  
+        getattr(node, 'rawsource', node.astext()).replace('\n', '\\n')))  
 
 class DocutilsNodeVisitor(visitor.Visitor[nodes.Node]):
     def unknown_visit(self, ob: nodes.Node) -> None:

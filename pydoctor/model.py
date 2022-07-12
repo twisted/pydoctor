@@ -25,7 +25,7 @@ from typing import (
 from urllib.parse import quote
 
 from pydoctor.options import Options
-from pydoctor import factory, qnmatch, utils, linker, astutils
+from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
@@ -481,17 +481,74 @@ class Module(CanContainImportsDocumentable):
 class Package(Module):
     kind = DocumentableKind.PACKAGE
 
+def compute_mro(cls:'Class') -> List[Union['Class', str]]:
+    """
+    Compute the method resolution order for this class.
+    This function will also set the 
+    C{_finalbaseobjects} and C{_finalbases} attributes on 
+    this class and all it's superclasses.
+    """
+    def init_finalbaseobjects(o: 'Class', path:Optional[List['Class']]=None) -> None:
+        if not path:
+            path = []
+        if o in path:
+            cycle_str = " -> ".join([o.fullName() for o in path[path.index(cls):] + [cls]])
+            raise ValueError(f"Cycle found while computing inheritance hierarchy: {cycle_str}")
+        path.append(o)
+        if o._finalbaseobjects is not None:
+            return
+        if o.rawbases:
+            finalbaseobjects: List[Optional[Class]] = []
+            finalbases: List[str] = []
+            for i,((str_base, _), base) in enumerate(zip(o.rawbases, o._initialbaseobjects)):
+                if base:
+                    finalbaseobjects.append(base)
+                    finalbases.append(base.fullName())
+                else:
+                    # Only re-resolve the base object if the base was None.
+                    resolved_base = o.parent.resolveName(str_base)
+                    if isinstance(resolved_base, Class):
+                        base = resolved_base
+                        finalbaseobjects.append(base)
+                        finalbases.append(base.fullName())
+                    else:
+                        # the base object could not be resolved
+                        finalbaseobjects.append(None)
+                        finalbases.append(o._initialbases[i])
+                if base:
+                    # Recurse on super classes
+                    init_finalbaseobjects(base, path.copy())
+            o._finalbaseobjects = finalbaseobjects
+            o._finalbases = finalbases
+    
+    def localbases(o:'Class') -> Iterator[Union['Class', str]]:
+        """
+        Like L{Class.baseobjects} but fallback to the expanded name if the base is not resolved to a L{Class} object.
+        """
+        for s,b in zip(o.bases, o.baseobjects):
+            if isinstance(b, Class):
+                yield b
+            else:
+                yield s
+
+    def getbases(o:Union['Class', str]) -> List[Union['Class', str]]:
+        if isinstance(o, str):
+            return []
+        return list(localbases(o))
+
+    init_finalbaseobjects(cls)
+    return mro.mro(cls, getbases)
 
 class Class(CanContainImportsDocumentable):
     kind = DocumentableKind.CLASS
     parent: CanContainImportsDocumentable
-    bases: List[str]
-    baseobjects: List[Optional['Class']]
     decorators: Sequence[Tuple[str, Optional[Sequence[ast.expr]]]]
-    # Note: While unused in pydoctor itself, raw_decorators is still in use
-    #       by Twisted's custom System class, to find deprecations.
-    raw_decorators: Sequence[ast.expr]
-
+    
+    # set in post-processing:
+    _finalbaseobjects: Optional[List[Optional['Class']]] = None 
+    _finalbases: Optional[List[str]] = None
+    _mro: Optional[List[Union['Class', str]]] = None
+    
     auto_attribs: bool = False
     """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
     library to automatically convert annotated fields into attributes.
@@ -499,10 +556,71 @@ class Class(CanContainImportsDocumentable):
 
     def setup(self) -> None:
         super().setup()
-        self.rawbases: List[str] = []
+        self.rawbases: Sequence[Tuple[str, ast.expr]] = []
+        self.raw_decorators: Sequence[ast.expr] = []
         self.subclasses: List[Class] = []
+        self._initialbases: List[str] = []
+        self._initialbaseobjects: List[Optional['Class']] = []
+    
+    def _init_mro(self) -> None:
+        """
+        Compute the correct value of the method resolution order returned by L{mro()}.
+        """
+        try:
+            self._mro = compute_mro(self)
+        except ValueError as e:
+            self.report(str(e), 'mro')
+            self._mro = list(self.allbases(True))
 
+    @overload
+    def mro(self, include_external:'Literal[True]', include_self:bool=True) -> List[Union['Class', str]]:...
+    @overload
+    def mro(self, include_external:'Literal[False]'=False, include_self:bool=True) -> List['Class']:...
+    def mro(self, include_external:bool=False, include_self:bool=True) -> List[Union['Class', str]]: # type:ignore[misc]
+        """
+        Get the method resution order of this class. 
+
+        @note: The actual correct value is only set in post-processing, if L{mro()} is called
+            in the AST visitors, it will return the same as C{list(self.allbases(include_self))}.
+        """
+        if self._mro is None:
+            return list(self.allbases(include_self))
+        
+        _mro: List[Union[str, Class]]
+        if include_external is False:
+            _mro = [o for o in self._mro if not isinstance(o, str)]
+        else:
+            _mro = self._mro
+        if include_self is False:
+            _mro = _mro[1:]
+        return _mro
+
+    @property
+    def bases(self) -> List[str]:
+        """
+        Fully qualified names of the bases of this class.
+        """
+        return self._finalbases if \
+            self._finalbases is not None else self._initialbases
+
+    
+    @property
+    def baseobjects(self) -> List[Optional['Class']]:
+        """
+        Base objects, L{None} value is inserted when the base class could not be found in the system.
+        
+        @note: This property is currently computed two times, a first time when we're visiting the ClassDef and initially creating the object. 
+            It's computed another time in post-processing to try to resolve the names that could not be resolved the first time. This is needed when there are import cycles. 
+            
+            Meaning depending on the state of the system, this property can return either the initial objects or the final objects
+        """
+        return self._finalbaseobjects if \
+            self._finalbaseobjects is not None else self._initialbaseobjects
+    
     def allbases(self, include_self: bool = False) -> Iterator['Class']:
+        """
+        Iterate on all base objects of this class and it's super classes. Doesn't comply with MRO.
+        """
         if include_self:
             yield self
         for b in self.baseobjects:
@@ -514,7 +632,7 @@ class Class(CanContainImportsDocumentable):
 
         @return: the object with the given name, or L{None} if there isn't one
         """
-        for base in self.allbases(include_self=True):
+        for base in self.mro():
             obj: Optional[Documentable] = base.contents.get(name)
             if obj is not None:
                 return obj
@@ -554,7 +672,7 @@ class Inheritable(Documentable):
         yield self
         if not isinstance(self.parent, Class):
             return
-        for b in self.parent.allbases(include_self=False):
+        for b in self.parent.mro(include_self=False):
             if self.name in b.contents:
                 yield b.contents[self.name]
 
@@ -1006,8 +1124,6 @@ class System:
                 self.addObject(f)
             elif isinstance(v, type):
                 c = self.Class(self, k, parent)
-                c.bases = []
-                c.baseobjects = []
                 c.rawbases = []
                 c.parentMod = parentMod
                 c.docstring = v.__doc__
@@ -1162,6 +1278,15 @@ class System:
         without the risk of drawing incorrect conclusions because modules
         were not fully processed yet.
         """
+
+        # default post-processing includes processing of subclasses and MRO computing.
+        for cls in self.objectsOfType(Class):
+            cls._init_mro()
+            for b in cls.baseobjects:
+                if b is not None:
+                    b.subclasses.append(cls)
+
+
         for post_processor in self._post_processors:
             post_processor(self)
 

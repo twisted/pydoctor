@@ -2,6 +2,7 @@
 Utilities related to Stan tree building and HTML flattening.
 """
 import re
+from types import GeneratorType
 from typing import Union, List, TYPE_CHECKING
 
 from twisted.web.template import Tag, XMLString, flattenString
@@ -53,16 +54,30 @@ def flatten(stan: "Flattenable") -> str:
     else:
         return ret[0].decode()
 
-def flatten_text(stan: Union[Tag, str]) -> str:
-    """Return the text inside a stan tree.
+def flatten_text(stan: 'Flattenable') -> str:
+    """
+    Return the text inside a stan tree.
     
-    @note: Only compatible with L{Tag} objects.
+    @note: Only compatible with L{Tag}, generators, and lists.
     """
     text = ''
     if isinstance(stan, (str)):
         text += stan
+    elif isinstance(stan, (GeneratorType)):
+        text += flatten_text(list(stan))
+    elif isinstance(stan, (list)):
+        for child in stan:
+            text += flatten_text(child)
     else:
-        for child in stan.children:
-            if isinstance(child, (Tag, str)):
+        if isinstance(stan, Tag):
+            for child in stan.children:
                 text += flatten_text(child)
+        else:
+            pass
+            # flatten_text() does not support the object received.
+            # Since this function is currently only used in the tests
+            # it's ok to silently ignore the unknown flattenable, which can be
+            # a Comment for instance. 
+            # Actually, some tests fails if we try to raise
+            # an error here instead of ignoring.
     return text
