@@ -48,7 +48,7 @@ def _handleAliasing(
         ) -> bool:
     """If the given expression is a name assigned to a target that is not yet
     in use, create an alias.
-    @return: L{True} if an alias was created.
+    @return: L{True} iff an alias was created.
     """
     if target in ctx.contents:
         return False
