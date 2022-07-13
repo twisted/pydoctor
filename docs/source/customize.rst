@@ -105,6 +105,8 @@ Privacy tweak examples
 .. note:: Quotation marks should be added around each rule to avoid shell expansions.
     Unless the arguments are passed directly to pydoctor, like in Sphinx's ``conf.py``, in this case you must not quote the privacy rules.
 
+.. _use-custom-system-class:
+
 Use a custom system class
 -------------------------
 
@@ -116,7 +118,8 @@ and pass your custom class dotted name with the following argument::
 System class allows you to customize certain aspect of the system and configure the enabled extensions. 
 If what you want to achieve has something to do with the state of some objects in the Documentable tree, 
 it's very likely that you can do it without the need to override any system method, 
-by using the extension mechanism described below.
+by using the extension mechanism described below. Configuring extenions and other forms of system customizations
+does, nonetheless requires you to subclass the :py:class:`pydoctor.model.System` and override the required class variables.
 
 Brief on pydoctor extensions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -217,6 +220,65 @@ if some want to write a custom :py:class:`pydoctor.sphinx.SphinxInventory`.
 .. important:: 
     If you feel like other users of the community might benefit from your extension as well, please 
     don't hesitate to open a pull request adding your extension module to the package :py:mod:`pydoctor.extensions`.
+
+.. _tweak-ifs-branch-priority:
+
+Tweak 'ifs' branch priority
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Sometimes pydoctor default :ref:`Branch priorities <branch-priorities>` can be inconvenient. 
+Specifically, when dealing with ``TYPE_CHECKING``. 
+A common purpose of ``if TYPE_CHECKING:`` blocks is to contain imports that are only 
+necessary for the purpose of type annotations. These might be circular imports at runtime. 
+When these types are used to annotate arguments or return values, 
+they are relevant to pydoctor as well: either to extract type information 
+from annotations or to look up the fully qualified version of some ``L{name}``.
+
+In other cases, ``if TYPE_CHECKING:`` blocks are used to perform trickery 
+to make ``mypy`` accept code that is difficult to analyze. 
+In these cases, pydoctor can have better results by analysing the runtime version of the code instead. 
+For details, read `the comments in this Klein PR <https://github.com/twisted/klein/pull/315>`_.
+
+Pydoctor has the ability to evaluate some simple name based :py:class:`ast.If` 
+condition in order to visit either the statements in main ``If.body`` or the ``If.orelse`` only.
+
+You can instrut pydoctor do to such things with a custom system class, 
+by overriding the class variable :py:attr:`pydoctor.model.System.eval_if`.
+This variable should be a dict of strings to dict of strings to any value. 
+This mechanism currently supports simple name based 'Ifs' only.
+    
+Meaning like::
+
+    if TYPE_CHECKING:
+        ...
+    if typing.TYPE_CHECKING:
+        ...
+
+Does not recognize 'If' expressions like::
+
+    if TYPE_CHECKING==True:
+        ...
+    if TYPE_CHECKING is not False:
+        ...
+
+The code below demonstrate an example usage. 
+
+The assignment to :py:attr:`pydoctor.model.System.eval_if` declares two custom 'If' evaluation rules. 
+The first rule applies only to the 'Ifs' in ``my_mod`` and second one applies to all objects directly in the package ``my_mod._complex``
+Both rules makes the statements in ``if TYPE_CHECKING:`` blocks skipped to give the priority to what's defined in the ``else:`` blocks.
+
+.. code:: python
+
+    class MySystem(model.System):
+        eval_if = {
+            'my_mod':{'TYPE_CHECKING':False},
+            'my_mod._complex.*':{'TYPE_CHECKING':False},
+        }
+
+.. note:: See :py:mod:`pydoctor.qnmatch` for more informations regarding the pattern syntax. 
+
+Then use the ``--system-class`` option as described in :ref:`Use a custom system class <use-custom-system-class>` section.
+
 
 Use a custom writer class
 -------------------------

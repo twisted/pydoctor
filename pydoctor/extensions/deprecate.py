@@ -60,7 +60,8 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         except KeyError:
             # Classes inside functions are ignored.
             return
-        assert isinstance(cls, model.Class)
+        if not isinstance(cls, model.Class):
+            return
         getDeprecated(cls, node.decorator_list)
 
     def depart_FunctionDef(self, node:ast.FunctionDef) -> None:
@@ -73,7 +74,8 @@ class ModuleVisitor(extensions.ModuleVisitorExt):
         except KeyError:
             # Inner functions are ignored.
             return
-        assert isinstance(func, (model.Function, model.Attribute))
+        if not isinstance(func, (model.Function, model.Attribute)):
+            return
         getDeprecated(func, node.decorator_list)
 
 _incremental_Version_signature = inspect.signature(Version)

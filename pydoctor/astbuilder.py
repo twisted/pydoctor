@@ -1,6 +1,7 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
 import ast
+import contextlib
 import sys
 from attr import attrs, attrib
 from functools import partial
@@ -13,9 +14,9 @@ from typing import (
 )
 
 import astor
-from pydoctor import epydoc2stan, model, node2stan
+from pydoctor import epydoc2stan, model, node2stan, qnmatch
 from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
-from pydoctor.astutils import bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
+from pydoctor.astutils import evaluate_If_test, bind_args, node2dottedname, node2fullname, is__name__equals__main__, NodeVisitor
 
 def parseFile(path: Path) -> ast.Module:
     """Parse the contents of a Python source file."""
@@ -194,6 +195,29 @@ def extract_final_subscript(annotation: ast.Subscript) -> ast.expr:
         assert isinstance(ann_slice, ast.expr)
         return ann_slice
 
+def getframe(ob:'model.Documentable') -> model.CanContainImportsDocumentable:
+    """
+    Returns the first L{model.Class} or L{model.Module} starting 
+    at C{ob} and going upward in the tree.
+    """
+    if isinstance(ob, model.Inheritable):
+        return getframe(ob.parent)
+    else:
+        assert isinstance(ob, model.CanContainImportsDocumentable)
+        return ob
+
+def get_eval_if(ob: 'model.Documentable') -> Dict[str, Any]:
+    """
+    Returns the If evaluation rules applicable in the context of the received object.
+    """
+    global_eval_if = ob.system.eval_if
+    ob_eval_if: Dict[str, Any] = {}
+    for p in global_eval_if.keys():
+        if qnmatch.qnmatch(ob.fullName(), p):
+            ob_eval_if.update(global_eval_if[p])
+    return ob_eval_if
+
+
 class ModuleVistor(NodeVisitor):
 
     def __init__(self, builder: 'ASTBuilder', module: model.Module):
@@ -201,7 +225,40 @@ class ModuleVistor(NodeVisitor):
         self.builder = builder
         self.system = builder.system
         self.module = module
+        self._override_guard_state: Tuple[bool, model.Documentable, Sequence[str]] = \
+                                    (False, cast(model.Documentable, None), [])
+    
+    @contextlib.contextmanager
+    def override_guard(self) -> Iterator[None]:
+        """
+        Returns a context manager that will make the builder ignore any extraneous 
+        assigments to existing names within the same context.  Currently used to visit C{If.orelse} and C{Try.handlers}.
+        
+        @note: The list of existing names is generated at the moment of
+            calling the function, such that new names defined inside these blocks follows the usual override rules.
+        """
+        ctx = getframe(self.builder.current)
+        ignore_override_init = self._override_guard_state
+        # we list names only once to ignore new names added inside the block,
+        # they should be overriden as usual.
+        self._override_guard_state = (True, ctx, self._list_names(ctx))
+        yield
+        self._override_guard_state = ignore_override_init
+    
+    def _list_names(self, ob: model.Documentable) -> List[str]:
+        """
+        List the names currently defined in a class/module.
+        """
+        names = list(ob.contents)
+        if isinstance(ob, model.CanContainImportsDocumentable):
+            names.extend(ob._localNameToFullName_map)
+        return names
 
+    def _name_in_override_guard(self, ob: model.Documentable, name:str) -> bool:
+        """Should this name be ignored because it matches the override guard in the context of C{ob}?"""
+        return self._override_guard_state[0] is True \
+            and self._override_guard_state[1] is ob \
+                and name in self._override_guard_state[2]
 
     def visit_If(self, node: ast.If) -> None:
         if isinstance(node.test, ast.Compare):
@@ -209,7 +266,47 @@ class ModuleVistor(NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                raise self.SkipNode()
+                raise self.SkipChildren() # we use SkipChildren() here to still call depart().
+        
+        # 'ast.If' evaluation feature, do not visit one of the branches based
+        # on user customizations, else visit both branches as ususal.
+        if not self.system.eval_if:
+            return
+        current = self.builder.current
+        if_eval_in_this_context = get_eval_if(current)
+        if not if_eval_in_this_context:
+            return
+        
+        evaluated = evaluate_If_test(node, if_eval_in_this_context, current)
+        
+        if evaluated == False:
+            # this will only call depart(), and thus visit only on the else branch of the If.
+            raise self.SkipChildren()
+        if evaluated == True:
+            # this will skip the call to depart(), so the else branch will not be visited at all.
+            raise self.SkipDeparture()
+    
+    def depart_If(self, node: ast.If) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' block of the If node, with override guard
+        with self.override_guard():
+            for n in node.orelse:
+                self.walkabout(n)
+    
+    def depart_Try(self, node: ast.Try) -> None:
+        # At this point the body of the Try node has already been visited
+        # Visit the 'orelse' and 'finalbody' blocks of the Try node.
+        
+        for n in node.orelse:
+            self.walkabout(n)
+        for n in node.finalbody:
+            self.walkabout(n)
+        
+        # Visit the handlers with override guard 
+        with self.override_guard():
+            for h in node.handlers:
+                for n in h.body:
+                    self.walkabout(n)
 
     def visit_Module(self, node: ast.Module) -> None:
         assert self.module.docstring is None
@@ -226,6 +323,9 @@ class ModuleVistor(NodeVisitor):
         # Ignore classes within functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
+            raise self.SkipNode()
+        # Ignore in override guard
+        if self._name_in_override_guard(parent, node.name):
             raise self.SkipNode()
 
         rawbases = []
@@ -348,6 +448,11 @@ class ModuleVistor(NodeVisitor):
     def _importAll(self, modname: str) -> None:
         """Handle a C{from <modname> import *} statement."""
 
+        # Always ignore import * in override guard
+        if self._override_guard_state[0]:
+            self.builder.warning("ignored import *", modname)
+            return
+
         mod = self.system.getProcessedModule(modname)
         if mod is None:
             # We don't have any information about the module, so we don't know
@@ -440,7 +545,11 @@ class ModuleVistor(NodeVisitor):
             orgname, asname = al.name, al.asname
             if asname is None:
                 asname = orgname
-
+            
+            # Ignore in override guard
+            if self._name_in_override_guard(current, asname):
+                continue
+            
             if mod is not None and self._handleReExport(exports, orgname, asname, mod) is True:
                 continue
 
@@ -469,9 +578,14 @@ class ModuleVistor(NodeVisitor):
                                  str(self.builder.current))
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
+        current = self.builder.current
         for al in node.names:
             fullname, asname = al.name, al.asname
+            # Ignore in override guard
+            if self._name_in_override_guard(current, asname or fullname):
+                continue
             if asname is not None:
+                # Do not create an alias with the same name as value
                 _localNameToFullName[asname] = fullname
 
 
@@ -658,6 +772,8 @@ class ModuleVistor(NodeVisitor):
             return
         if not _maybeAttribute(cls, name):
             return
+        if self._name_in_override_guard(cls, name):
+            return
 
         # Class variables can only be Attribute, so it's OK to cast because we used _maybeAttribute() above.
         obj = cast(Optional[model.Attribute], cls.contents.get(name))
@@ -749,6 +865,8 @@ class ModuleVistor(NodeVisitor):
         if isinstance(targetNode, ast.Name):
             target = targetNode.id
             scope = self.builder.current
+            if self._name_in_override_guard(scope, target):
+                return
             if isinstance(scope, model.Module):
                 self._handleAssignmentInModule(target, annotation, expr, lineno)
             elif isinstance(scope, model.Class):
@@ -807,6 +925,9 @@ class ModuleVistor(NodeVisitor):
         # Ignore inner functions.
         parent = self.builder.current
         if isinstance(parent, model.Function):
+            raise self.SkipNode()
+        # Ignore in override guard
+        if self._name_in_override_guard(parent, node.name):
             raise self.SkipNode()
 
         lineno = node.lineno

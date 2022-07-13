@@ -759,6 +759,15 @@ class System:
     Additional list of extensions to load alongside default extensions.
     """
 
+    eval_if: Dict[str, Dict[str, Any]] = {}
+    """
+    Custom C{ast.If.test} evaluations.
+    Example:: 
+
+        class System(model.System):
+            eval_if = {"**":{"typing.TYPE_CHECKING":False}}
+    """
+
     def __init__(self, options: Optional['Options'] = None):
         self.allobjects: Dict[str, Documentable] = {}
         self.rootobjects: List[_ModuleT] = []

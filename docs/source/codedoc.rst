@@ -318,3 +318,42 @@ The content of ``my_project/__init__.py`` includes::
     from .core._impl import MyClass
 
     __all__ = ("MyClass",)
+
+.. _branch-priorities:
+
+Branch priorities
+-----------------
+
+When pydoctor deals with try/except/else or if/else block, it makes sure that the names defined in 
+the "principal" branch do not get overriden by names defined in the except hanlders or ifs' else block. 
+
+Meaning that in the context of the code below, ``ssl`` would resolve to ``twisted.internet.ssl``:
+
+.. code:: python
+
+    try:
+        from twisted.internet import ssl as _ssl
+    except ImportError:
+        ssl = None
+    else:
+        ssl = _ssl
+
+Similarly, in the context of the code below, the first ``CapSys`` class will be 
+documented and the second one will be ignored.
+
+.. code:: python
+
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from typing import Protocol
+        class CapSys(Protocol):
+            def readouterr() -> Any:
+                ...
+    else:
+        class CapSys(object): # ignored
+            ...
+
+But sometimes pydoctor can be better off analysing the ``TYPE_CHECKING`` blocks and should 
+stick to the runtime version of the code instead. 
+See the :ref:`Tweak ifs branch priorities <tweak-ifs-branch-priority>` section for more 
+informatons about how to handle this kind of corner cases.
