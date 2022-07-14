@@ -2011,6 +2011,27 @@ def test__name__equals__main__is_skipped(systemcls: Type[model.System]) -> None:
     assert tuple(mod.contents) == ('foo', 'bar')
 
 @systemcls_param
+def test__name__equals__main__is_skipped_but_orelse_processes(systemcls: Type[model.System]) -> None:
+    """
+    Code inside of C{if __name__ == '__main__'} should be skipped, but the else block should be processed.
+    """
+    mod = fromText('''
+    foo = True
+    if __name__ == '__main__':
+        var = True
+        def fun():
+            pass
+        class Class:
+            pass
+    else:
+        class Very:
+            ...
+    def bar():
+        pass
+    ''', modname='test', systemcls=systemcls)
+    assert tuple(mod.contents) == ('foo', 'Very', 'bar' )
+
+@systemcls_param
 def test_variable_named_like_current_module(systemcls: Type[model.System]) -> None:
     """
     Test for U{issue #474<https://github.com/twisted/pydoctor/issues/474>}.

@@ -254,7 +254,7 @@ class ModuleVistor(NodeVisitor):
                 # skip if __name__ == '__main__': blocks since
                 # whatever is declared in them cannot be imported
                 # and thus is not part of the API
-                raise self.SkipNode()
+                raise self.SkipChildren()
     
     def depart_If(self, node: ast.If) -> None:
         # At this point the body of the Try node has already been visited
