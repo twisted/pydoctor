@@ -111,8 +111,10 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     bound_args = astutils.bind_args(_deprecated_signature, deprecated)
     _version_call = bound_args.arguments['version']
+    
+    # Also support using incremental from twisted.python.versions: https://github.com/twisted/twisted/blob/twisted-22.4.0/src/twisted/python/versions.py
     if not isinstance(_version_call, ast.Call) or \
-       astbuilder.node2fullname(_version_call.func, ctx) != "incremental.Version":
+       astbuilder.node2fullname(_version_call.func, ctx) not in ("incremental.Version", "twisted.python.versions.Version"):
         raise ValueError("Invalid call to twisted.python.deprecate.deprecated(), first argument should be a call to incremental.Version()")
     
     version = versionToUsefulObject(_version_call)
@@ -135,8 +137,12 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     if not validate_identifier(_package):
         raise ValueError(f"Invalid package name: {_package!r}")
+    
     if replacement is not None and not validate_identifier(replacement):
-        raise ValueError(f"Invalid replacement name: {replacement!r}")
+        # The replacement is not an identifier, so don't even try to resolve it.
+        # By adding extras backtics, we make the replacement a literal text.
+        replacement = replacement.replace('\n', ' ')
+        replacement = f"`{replacement}`"
     
     if replacement is not None:
         text = _deprecation_text_with_replacement_template.format(
