@@ -548,11 +548,6 @@ class Class(CanContainImportsDocumentable):
     _finalbaseobjects: Optional[List[Optional['Class']]] = None 
     _finalbases: Optional[List[str]] = None
     _mro: Optional[List[Union['Class', str]]] = None
-    
-    auto_attribs: bool = False
-    """L{True} iff this class uses the C{auto_attribs} feature of the C{attrs}
-    library to automatically convert annotated fields into attributes.
-    """
 
     def setup(self) -> None:
         super().setup()
