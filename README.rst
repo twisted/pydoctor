@@ -73,6 +73,9 @@ You can select a different format using the ``--docformat`` option or the ``__do
 What's New?
 ~~~~~~~~~~~
 
+in development
+^^^^^^^^^^^^^^
+
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
 * Add support for generics in class hierarchies.
