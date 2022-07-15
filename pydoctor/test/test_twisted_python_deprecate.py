@@ -85,6 +85,9 @@ def test_twisted_python_deprecate(capsys: CapSys, systemcls: Type[model.System])
 
 @twisted_deprecated_systemcls_param
 def test_twisted_python_deprecate_arbitrary_text(capsys: CapSys, systemcls: Type[model.System]) -> None:
+    """
+    The deprecated object replacement can be given as a free form text as well, it does not have to be an identifier or an object.
+    """
     system = systemcls()
     system.options.verbosity = -1
     
