@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Show the value of type aliases and type variables.
 
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
