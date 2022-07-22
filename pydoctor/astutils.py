@@ -71,6 +71,14 @@ def iterassign(node:_AssingT) -> Iterator[Tuple[Optional[List[str]], _AssingT]]:
     NOT Useful for the following AST assignments:
 
     >>> x, y = [1,2]
+
+    Example:
+
+    >>> from pydoctor.astutils import iterassign
+    >>> from ast import parse
+    >>> node = parse('self.var = target = node.astext()').body[0]
+    >>> list(iterassign(node))
+    [(['self', 'var'], <_ast.Assign object at 0x10c6eb5e0>), (['target'], <_ast.Assign object at 0x10c6eb5e0>)]
     """
     for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
         dottedname = node2dottedname(target) 

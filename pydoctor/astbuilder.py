@@ -73,11 +73,43 @@ def is_constant(obj: model.Attribute) -> bool:
 
     return obj.name.isupper() or is_using_typing_final(obj.annotation, obj)
 
+def get_object(ctx:model.Documentable, name:Optional[List[str]]) -> Optional[model.Documentable]:
+    """
+    Get a documentable by name, from a specific scope context, 
+    with support for instance attributes.
+    
+    @param name: Usually a one-element list, 
+        but could hold up to two elements, 
+        with C{self} being the first one.
+        If name is C{None}, returns C{None} as well.
+    """
+    if name is None:
+        return None
+
+    _short_name = None
+    
+    if len(name)==1:
+        _short_name = name[0]
+    elif len(name)==2 and name[0]=='self' and isinstance(ctx, model.Function) and isinstance(ctx.parent, model.Class):
+        _short_name = name[1]
+        ctx = ctx.parent
+    
+    if _short_name:
+        return ctx.contents.get(_short_name)
+    else:
+        return None
+
 class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
     """
-    This visitor implements the handling of type aliases.
+    This visitor implements the handling of type aliases and type variables.
     """
-    def _handleTypeAlias(self, ob: model.Attribute) -> bool:
+    def _isTypeVariable(self, ob: model.Attribute) -> bool:
+        if ob.value is not None:
+            if isinstance(ob.value, ast.Call) and node2fullname(ob.value.func, ob) in ('typing.TypeVar', 'typing_extensions.TypeVar'):
+                return True
+        return False
+    
+    def _isTypeAlias(self, ob: model.Attribute) -> bool:
         """
         Return C{True} if the Attribute is a type alias.
         """
@@ -93,31 +125,20 @@ class TypeAliasVisitorExt(extensions.ModuleVisitorExt):
             
             if is_typing_annotation(ob.value, ob.parent):
                 return True
-            if isinstance(ob.value, ast.Call) and node2fullname(ob.value.func, ob) in ('typing.TypeVar', 'typing_extensions.TypeVar'):
-                return True
-
+        
         return False
 
     def visit_Assign(self, node: Union[ast.Assign, ast.AnnAssign]) -> None:
-        for dottedname,_ in iterassign(node): 
-            if dottedname is None:
-                continue
-            name:Optional[str] = None
-            ctx:model.Documentable = self.visitor.builder.current
-            if len(dottedname)==1:
-                name = dottedname[0]
-            elif len(dottedname)==2 and dottedname[0]=='self':
-                name = dottedname[1]
-                if isinstance(ctx, model.Function):
-                    ctx = ctx.parent
-            if name:
-                attr: Optional[model.Documentable] = ctx.contents.get(name)
-                if attr is None:
-                    return
-                if not isinstance(attr, model.Attribute):
-                    return
-                if self._handleTypeAlias(attr) is True:
-                    attr.kind = model.DocumentableKind.TYPING_VAR
+        for dottedname, _ in iterassign(node): 
+            attr = get_object(self.visitor.builder.current, dottedname)
+            if attr is None:
+                return
+            if not isinstance(attr, model.Attribute):
+                return
+            if self._isTypeAlias(attr) is True:
+                attr.kind = model.DocumentableKind.TYPE_ALIAS
+            elif self._isTypeVariable(attr) is True:
+                attr.kind = model.DocumentableKind.TYPE_VARIABLE
     
     visit_AnnAssign = visit_Assign
 

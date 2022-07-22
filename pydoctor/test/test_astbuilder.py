@@ -1997,13 +1997,13 @@ def test_type_alias(systemcls: Type[model.System]) -> None:
         
         ''', systemcls=systemcls)
 
-    assert mod.contents['T'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['alist'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['T'].kind == model.DocumentableKind.TYPE_VARIABLE
+    assert mod.contents['Parser'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['mylst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['yourlst'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['alist'].kind == model.DocumentableKind.TYPE_ALIAS
     assert mod.contents['notanalias'].kind == model.DocumentableKind.VARIABLE
-    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.TYPING_VAR
-    assert mod.contents['F'].contents['P'].kind == model.DocumentableKind.TYPING_VAR
+    assert mod.contents['F'].contents['L'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['_j'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['Q'].kind == model.DocumentableKind.TYPE_ALIAS
+    assert mod.contents['F'].contents['P'].kind == model.DocumentableKind.TYPE_ALIAS

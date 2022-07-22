@@ -100,7 +100,8 @@ class DocumentableKind(Enum):
     METHOD              = 500
     FUNCTION            = 400
     CONSTANT            = 310
-    TYPING_VAR          = 305
+    TYPE_VARIABLE       = 306
+    TYPE_ALIAS          = 305
     CLASS_VARIABLE      = 300
     SCHEMA_FIELD        = 220
     ATTRIBUTE           = 210
@@ -753,6 +754,13 @@ class System:
     custom_extensions: List[str] = []
     """
     Additional list of extensions to load alongside default extensions.
+    """
+
+    show_attr_value = (DocumentableKind.CONSTANT, 
+                       DocumentableKind.TYPE_VARIABLE, 
+                       DocumentableKind.TYPE_ALIAS)
+    """
+    What kind of attributes we should display the value for?
     """
 
     def __init__(self, options: Optional['Options'] = None):
