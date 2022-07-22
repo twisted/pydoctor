@@ -666,10 +666,8 @@ def format_summary(obj: model.Documentable) -> Tag:
     try:
         # Disallow same_page_optimization in order to make sure we're not
         # breaking links when including the summaries on other pages.
-        assert isinstance(source.docstring_linker, linker._CachedEpydocLinker)
-        source.docstring_linker.same_page_optimization = False
-        stan = parsed_doc.to_stan(source.docstring_linker)
-        source.docstring_linker.same_page_optimization = True
+        with source.docstring_linker.disable_same_page_optimazation():
+            stan = parsed_doc.to_stan(source.docstring_linker)
     
     except Exception:
         # This problem will likely be reported by the full docstring as well,

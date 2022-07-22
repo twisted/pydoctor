@@ -1,7 +1,7 @@
 """Miscellaneous utilities for the HTML writer."""
 
 import warnings
-from typing import (Any, Dict, Generic, Iterable, Iterator, Mapping, 
+from typing import (Any, Dict, Generic, Iterable, Iterator, List, Mapping, 
                     Optional, MutableMapping, Tuple, TypeVar, Union, Sequence)
 from pydoctor import epydoc2stan
 import collections.abc
@@ -65,12 +65,10 @@ def nested_bases(classobj: model.Class) -> Iterator[Tuple[model.Class, ...]]:
         - the next yielded chain contains the super class and the class itself, 
         - the the next yielded chain contains the super-super class, the super class and the class itself, etc...
     """
-    yield (classobj,)
-    for base in classobj.baseobjects:
-        if base is None:
-            continue
-        for nested_base in nested_bases(base):
-            yield (nested_base + (classobj,))
+    _mro = classobj.mro()
+    for i, _ in enumerate(_mro):
+        yield tuple(reversed(_mro[:(i+1)]))
+
 
 def unmasked_attrs(baselist: Sequence[model.Class]) -> Sequence[model.Documentable]:
     """
@@ -96,6 +94,30 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
                       key=objects_order)
     """
     return (-o.privacyClass.value, -o.kind.value if o.kind else 0, o.fullName().lower())
+
+def class_members(cls: model.Class) -> List[Tuple[Tuple[model.Class, ...], Sequence[model.Documentable]]]:
+    """
+    Returns the members as well as the inherited members of a class.
+
+    @returns: Tuples of tuple: C{inherited_via:Tuple[model.Class, ...], attributes:Sequence[model.Documentable]}.
+    """
+    baselists = []
+    for baselist in nested_bases(cls):
+        attrs = unmasked_attrs(baselist)
+        if attrs:
+            baselists.append((baselist, attrs))
+    return baselists
+
+def inherited_members(cls: model.Class) -> List[model.Documentable]:
+    """
+    Returns only the inherited members of a class, as a plain list.
+    """
+    
+    children : List[model.Documentable] = []
+    for inherited_via,attrs in class_members(cls):
+        if len(inherited_via)>1:
+            children.extend(attrs)
+    return children
 
 def templatefile(filename: str) -> None:
     """Deprecated: can be removed once Twisted stops patching this."""
