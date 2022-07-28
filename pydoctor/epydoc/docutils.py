@@ -134,22 +134,3 @@ class obj_reference(nodes.title_reference):
     """
     A reference to a documentable object.
     """
-
-def _get_docutils_version() -> Tuple[int, int,int]:
-    """
-    Returns tuple (major, minor, micro).
-    
-    Pre-release info is ignored (replaced by zero).
-    """
-    def int_or_zero(s:str) -> int:
-        try:
-            return int(s)
-        except ValueError:
-            return  0
-    
-    version = [int_or_zero(p) for p in docutils.__version__.split('.')[:3]]
-    if len(version)==2:
-        version += [0]
-    
-    assert len(version)==3, version
-    return (version[0], version[1], version[2])
