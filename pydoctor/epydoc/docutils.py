@@ -1,10 +1,9 @@
 """
 Collection of helper functions and classes related to the creation and processing of L{docutils} nodes.
 """
-from typing import Iterable, Iterator, Optional, Tuple
+from typing import Iterable, Iterator, Optional
 
 from docutils import nodes
-import docutils
 from docutils.transforms import parts
 
 __docformat__ = 'epytext en'
