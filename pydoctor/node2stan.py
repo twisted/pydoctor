@@ -79,7 +79,9 @@ class HTMLTranslator(html4css1.HTMLTranslator):
         if self.settings is None:
             if docutils_version_info >= (0,19):
                 # Direct access to OptionParser is deprecated from Docutils 0.19
-                settings = frontend.get_default_settings(html4css1.Writer())
+                # FIXME: https://github.com/twisted/pydoctor/issues/504
+                # Stubs are not up to date because we use pinned version of types-docutils
+                settings = frontend.get_default_settings(html4css1.Writer()) # type:ignore[attr-defined]
             else:
                 settings = frontend.OptionParser([html4css1.Writer()]).get_default_values()
             
