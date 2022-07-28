@@ -126,6 +126,8 @@ function toggleSearchHelpText() {
 function resetResultList(){
   resetLongSearchTimerInfo();
   results_list.innerHTML = '';
+  setWarning('');
+  setStatus('');
 }
 
 function clearSearch(){
@@ -139,8 +141,6 @@ function stopSearching(){
   // UI
   hideResultContainer();
   resetResultList();
-  setWarning('');
-  setStatus('');
 
   // NOT UI
   _stopSearchingProcess();
@@ -273,7 +273,6 @@ function launchSearch(noDelay){
     return;
   }
   
-  setWarning('');
   resetResultList();
   showResultContainer();
   setStatus("...");
@@ -367,9 +366,6 @@ function displaySearchResults(_query, documentResults, lunrResults){
   else {
     if (lunrResults.length > 500){
       setWarning("Your search yielded a lot of results! Maybe try with other terms?");
-    }
-    else{
-      setWarning('');
     }
   }
 
