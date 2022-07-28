@@ -436,19 +436,26 @@ window.addEventListener('load', (event) => {
   hideResultContainer();
 });
 
-// Hide the dropdown if the user clicks outside of it
 window.addEventListener("click", function(event) {
   if (event){
+      // Hide the dropdown if the user clicks outside of it  
       if (!event.target.closest('#search-results-container') 
           && !event.target.closest('#search-box')
           && !event.target.closest('#search-help-button')){
             hideResultContainer();
             return;
       }
+      // Show the dropdown if the user clicks inside the search box
       if (event.target.closest('#search-box')){
         if (input.value.length>0){
           showResultContainer();
+          return;
         }
+      }
+      // Hide the dropdown if the user clicks on a link in the search results.
+      // This includes links in summaries.
+      if (event.target.closest('#search-results a')){
+        hideResultContainer();
       }
   }
 });
