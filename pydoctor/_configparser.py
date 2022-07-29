@@ -1,4 +1,6 @@
 """
+Useful extension to L{configargparse} config file parsers.
+
 Provides L{configargparse.ConfigFileParser} classes to parse C{TOML} and C{INI} files with **mandatory** support for sections.
 Useful to integrate configuration into project files like C{pyproject.toml} or C{setup.cfg}.
 
@@ -382,16 +384,20 @@ class CompositeConfigParser(ConfigFileParser):
 class ValidatorParser(ConfigFileParser):
     """
     A parser that warns when unknown options are used. 
-    It must be created with a reference to the ArgumentParser object, so like::
+    It must be created with a reference to the ArgumentParser object, so like
+
+    .. code::
 
         parser = ArgumentParser(
             prog='mysoft',
-            config_file_parser_class=ConfigParser, 
-            ignore_unknown_config_file_keys=True,)
+            config_file_parser_class=ConfigParser,)
     
         # Add the validator to the config file parser, this is arguably a hack.
         parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
     
+    @note: Using this parser implies acting 
+        like L{ArgumentParser}'s option C{ignore_unknown_config_file_keys=True}.
+        So no need to explicitely mention it.
     """
 
     def __init__(self, config_parser: ConfigFileParser, argument_parser: ArgumentParser) -> None:

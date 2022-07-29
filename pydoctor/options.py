@@ -47,8 +47,7 @@ def get_parser() -> ArgumentParser:
         description="API doc generator.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
-        config_file_parser_class=PydoctorConfigParser, 
-        ignore_unknown_config_file_keys=True,)
+        config_file_parser_class=PydoctorConfigParser)
     
     # Add the validator to the config file parser, this is arguably a hack.
     parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
