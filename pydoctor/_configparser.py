@@ -28,7 +28,7 @@ import configparser
 from ast import literal_eval
 import warnings
 
-from configargparse import ConfigFileParserException, ConfigFileParser, ArgumentParser, ACTION_TYPES_THAT_DONT_NEED_A_VALUE
+from configargparse import ConfigFileParserException, ConfigFileParser, ArgumentParser
 import toml
 
 # I did not invented these regex, just put together some stuff from:
