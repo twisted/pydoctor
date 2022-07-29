@@ -11,7 +11,7 @@ import inspect
 from numbers import Number
 from typing import Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
-from pydoctor import astbuilder, model, zopeinterface, epydoc2stan, astutils
+from pydoctor import astbuilder, model, epydoc2stan, astutils, extensions
 
 from twisted.python.deprecate import deprecated
 from incremental import Version
@@ -49,34 +49,32 @@ def getDeprecated(self:model.Documentable, decorators:Sequence[ast.expr]) -> Non
                         section='deprecation text',)
                     self.extra_info.append(parsed_info)
 
-
-class ModuleVisitor(zopeinterface.ZopeInterfaceModuleVisitor):
-    def visit_ClassDef(self, node:ast.ClassDef) -> None:
+class ModuleVisitor(extensions.ModuleVisitorExt):
+    
+    def depart_ClassDef(self, node:ast.ClassDef) -> None:
         """
-        Called when a class definition is visited.
+        Called after a class definition is visited.
         """
-        super().visit_ClassDef(node)
         try:
-            cls = self.builder.current.contents[node.name]
+            cls = self.visitor.builder.current.contents[node.name]
         except KeyError:
             # Classes inside functions are ignored.
             return
         assert isinstance(cls, model.Class)
-        getDeprecated(cls, cls.raw_decorators)
+        getDeprecated(cls, node.decorator_list)
 
-    def visit_FunctionDef(self, node:ast.FunctionDef) -> None:
+    def depart_FunctionDef(self, node:ast.FunctionDef) -> None:
         """
-        Called when a function definition is visited.
+        Called after a function definition is visited.
         """
-        super().visit_FunctionDef(node)
         try:
-            func = self.builder.current.contents[node.name]
+            # Property or Function
+            func = self.visitor.builder.current.contents[node.name]
         except KeyError:
             # Inner functions are ignored.
             return
         assert isinstance(func, (model.Function, model.Attribute))
-        if func.decorators:
-            getDeprecated(func, func.decorators)
+        getDeprecated(func, node.decorator_list)
 
 _incremental_Version_signature = inspect.signature(Version)
 def versionToUsefulObject(version:ast.Call) -> 'incremental.Version':
@@ -113,8 +111,10 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     bound_args = astutils.bind_args(_deprecated_signature, deprecated)
     _version_call = bound_args.arguments['version']
+    
+    # Also support using incremental from twisted.python.versions: https://github.com/twisted/twisted/blob/twisted-22.4.0/src/twisted/python/versions.py
     if not isinstance(_version_call, ast.Call) or \
-       astbuilder.node2fullname(_version_call.func, ctx) != "incremental.Version":
+       astbuilder.node2fullname(_version_call.func, ctx) not in ("incremental.Version", "twisted.python.versions.Version"):
         raise ValueError("Invalid call to twisted.python.deprecate.deprecated(), first argument should be a call to incremental.Version()")
     
     version = versionToUsefulObject(_version_call)
@@ -137,8 +137,12 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
 
     if not validate_identifier(_package):
         raise ValueError(f"Invalid package name: {_package!r}")
+    
     if replacement is not None and not validate_identifier(replacement):
-        raise ValueError(f"Invalid replacement name: {replacement!r}")
+        # The replacement is not an identifier, so don't even try to resolve it.
+        # By adding extras backtics, we make the replacement a literal text.
+        replacement = replacement.replace('\n', ' ')
+        replacement = f"`{replacement}`"
     
     if replacement is not None:
         text = _deprecation_text_with_replacement_template.format(
@@ -155,15 +159,5 @@ def deprecatedToUsefulText(ctx:model.Documentable, name:str, deprecated:ast.Call
         )
     return _version, text
 
-
-class ASTBuilder(zopeinterface.ZopeInterfaceASTBuilder):
-    # Vistor is not a typo...
-    ModuleVistor = ModuleVisitor
-
-
-class System(zopeinterface.ZopeInterfaceSystem):
-    """
-    A system with support for {twisted.python.deprecate}.
-    """
-
-    defaultBuilder = ASTBuilder
+def setup_pydoctor_extension(r:extensions.ExtRegistrar) -> None:
+    r.register_astbuilder_visitor(ModuleVisitor)

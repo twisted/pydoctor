@@ -1,24 +1,55 @@
 
-from typing import Optional, Tuple, Type, overload, cast
+from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
 import astor
 
-from twisted.python._pydoctor import TwistedSystem
 
-from pydoctor import astbuilder, model, deprecate
+from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
-from pydoctor.zopeinterface import ZopeInterfaceSystem
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
 
+class SimpleSystem(model.System):
+    """
+    A system with no extensions.
+    """
+    extensions:List[str] = []
+
+class ZopeInterfaceSystem(model.System):
+    """
+    A system with only the zope interface extension enabled.
+    """
+    extensions = ['pydoctor.extensions.zopeinterface']
+
+class DeprecateSystem(model.System):
+    """
+    A system with only the twisted deprecated extension enabled.
+    """
+    extensions = ['pydoctor.extensions.deprecate']
+
+class PydanticSystem(model.System):
+    # Add our custom extension as extra
+    custom_extensions = ['pydoctor.test.test_pydantic_fields']
+
+class AttrsSystem(model.System):
+    """
+    A system with only the attrs extension enabled.
+    """
+    extensions = ['pydoctor.extensions.attrs']
 
 systemcls_param = pytest.mark.parametrize(
-    'systemcls', (model.System, ZopeInterfaceSystem, TwistedSystem, deprecate.System)
+    'systemcls', (model.System, # system with all extensions enalbed
+                  ZopeInterfaceSystem, # system with zopeinterface extension only
+                  DeprecateSystem, # system with deprecated extension only
+                  SimpleSystem, # system with no extensions
+                  PydanticSystem,
+                  AttrsSystem,
+                 )
     )
 
 def fromText(
@@ -1434,117 +1465,6 @@ def test_inferred_variable_types(systemcls: Type[model.System]) -> None:
     assert ann_str_and_line(mod.contents['m']) == ('bytes', 19)
 
 @systemcls_param
-def test_attrs_attrib_type(systemcls: Type[model.System]) -> None:
-    """An attr.ib's "type" or "default" argument is used as an alternative
-    type annotation.
-    """
-    mod = fromText('''
-    import attr
-    from attr import attrib
-    @attr.s
-    class C:
-        a = attr.ib(type=int)
-        b = attrib(type=int)
-        c = attr.ib(type='C')
-        d = attr.ib(default=True)
-        e = attr.ib(123)
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-
-    A = C.contents['a']
-    B = C.contents['b']
-    _C = C.contents['c']
-    D = C.contents['d']
-    E = C.contents['e']
-
-    assert isinstance(A, model.Attribute)
-    assert isinstance(B, model.Attribute)
-    assert isinstance(_C, model.Attribute)
-    assert isinstance(D, model.Attribute)
-    assert isinstance(E, model.Attribute)
-
-    assert type2str(A.annotation) == 'int'
-    assert type2str(B.annotation) == 'int'
-    assert type2str(_C.annotation) == 'C'
-    assert type2str(D.annotation) == 'bool'
-    assert type2str(E.annotation) == 'int'
-
-@systemcls_param
-def test_attrs_attrib_instance(systemcls: Type[model.System]) -> None:
-    """An attr.ib attribute is classified as an instance variable."""
-    mod = fromText('''
-    import attr
-    @attr.s
-    class C:
-        a = attr.ib(type=int)
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-
-@systemcls_param
-def test_attrs_attrib_badargs(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """."""
-    fromText('''
-    import attr
-    @attr.s
-    class C:
-        a = attr.ib(nosuchargument='bad')
-    ''', modname='test', systemcls=systemcls)
-    captured = capsys.readouterr().out
-    assert captured == (
-        'test:5: Invalid arguments for attr.ib(): got an unexpected keyword argument "nosuchargument"\n'
-        )
-
-@systemcls_param
-def test_attrs_auto_instance(systemcls: Type[model.System]) -> None:
-    """Attrs auto-attributes are classified as instance variables."""
-    mod = fromText('''
-    from typing import ClassVar
-    import attr
-    @attr.s(auto_attribs=True)
-    class C:
-        a: int
-        b: bool = False
-        c: ClassVar[str]  # explicit class variable
-        d = 123  # ignored by auto_attribs because no annotation
-    ''', modname='test', systemcls=systemcls)
-    C = mod.contents['C']
-    assert C.contents['a'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-    assert C.contents['b'].kind is model.DocumentableKind.INSTANCE_VARIABLE
-    assert C.contents['c'].kind is model.DocumentableKind.CLASS_VARIABLE
-    assert C.contents['d'].kind is model.DocumentableKind.CLASS_VARIABLE
-
-@systemcls_param
-def test_attrs_args(systemcls: Type[model.System], capsys: CapSys) -> None:
-    """Non-existing arguments and invalid values to recognized arguments are
-    rejected with a warning.
-    """
-    fromText('''
-    import attr
-
-    @attr.s()
-    class C0: ...
-
-    @attr.s(repr=False)
-    class C1: ...
-
-    @attr.s(auto_attribzzz=True)
-    class C2: ...
-
-    @attr.s(auto_attribs=not False)
-    class C3: ...
-
-    @attr.s(auto_attribs=1)
-    class C4: ...
-    ''', modname='test', systemcls=systemcls)
-    captured = capsys.readouterr().out
-    assert captured == (
-        'test:10: Invalid arguments for attr.s(): got an unexpected keyword argument "auto_attribzzz"\n'
-        'test:13: Unable to figure out value for "auto_attribs" argument to attr.s(), maybe too complex\n'
-        'test:16: Value for "auto_attribs" argument to attr.s() has type "int", expected "bool"\n'
-        )
-
-@systemcls_param
 def test_detupling_assignment(systemcls: Type[model.System]) -> None:
     mod = fromText('''
     a, b, c = range(3)
@@ -2015,3 +1935,39 @@ def test_package_name_clash(systemcls: Type[model.System]) -> None:
     builder.addModuleString('', 'sub2', parent_name='mod', is_package=True)
 
     assert isinstance(system.allobjects['mod.sub2'], model.Module)
+
+@systemcls_param
+def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
+    """
+    If a target module,
+    explicitly re-export via C{__all__} a set of names
+    that were initially imported from a sub-module via a wildcard,
+    those names are documented as part of the target module.
+    """
+    system = systemcls()
+    builder = system.systemBuilder(system)
+    builder.addModuleString('''
+    from ._impl import *
+    from _impl2 import *
+    __all__ = ['f', 'g', 'h', 'i', 'j']
+    ''', modname='top', is_package=True)
+
+    builder.addModuleString('''
+    def f(): 
+        pass
+    def g():
+        pass
+    def h():
+        pass
+    ''', modname='_impl', parent_name='top')
+    
+    builder.addModuleString('''
+    class i: pass
+    class j: pass
+    ''', modname='_impl2')
+
+    builder.buildModules()
+
+    assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
+    assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
+    assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])

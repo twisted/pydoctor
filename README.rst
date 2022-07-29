@@ -75,7 +75,15 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+
+pydoctor 22.7.0
+^^^^^^^^^^^^^^^
+* Add support for generics in class hierarchies.
+* Fix long standing bugs in ``Class`` method resolution order.
+* Improve the extensibility of pydoctor (`more infos on extensions <https://pydoctor.readthedocs.io/en/latest/customize.html#use-a-custom-system-class>`_)
+* Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
+* Add support for re-exporting names imported from a wildcard import.
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^

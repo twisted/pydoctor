@@ -1165,8 +1165,6 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     """
     When a link in an reStructedText docstring cannot be resolved, the reference
     and the line number of the link should be reported.
-    However, currently the best we can do is report the starting line of the
-    docstring instead.
     """
 
     system = model.System()
@@ -1182,11 +1180,47 @@ def test_xref_not_found_restructured(capsys: CapSys) -> None:
     epydoc2stan.format_docstring(mod)
 
     captured = capsys.readouterr().out
-    # TODO: Should actually be line 5, but I can't get docutils to fill in
-    #       the line number when it calls visit_title_reference().
-    #       https://github.com/twisted/pydoctor/issues/237
-    assert captured == 'test:3: Cannot find link target for "NoSuchName"\n'
+    assert captured == 'test:5: Cannot find link target for "NoSuchName"\n'
 
+def test_xref_not_found_restructured_in_para(capsys: CapSys) -> None:
+    """
+    When an invalid link is in the middle of a paragraph, we still report the right line number.
+    """
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    mod = fromText('''
+    """
+    A test module.
+
+    blabla bla blabla bla blabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla
+    Link to limbo: `NoSuchName`.
+    """
+    ''', modname='test', system=system)
+
+    epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == 'test:8: Cannot find link target for "NoSuchName"\n'
+
+    system = model.System()
+    system.options.docformat = 'restructuredtext'
+    mod = fromText('''
+    """
+    A test module.
+
+    blabla bla blabla bla blabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla
+    Link to limbo: `NoSuchName`.  blabla bla blabla bla blabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla blabla bla
+    blabla blablabla blablabla blablabla blablabla bla
+    """
+    ''', modname='test', system=system)
+
+    epydoc2stan.format_docstring(mod)
+    captured = capsys.readouterr().out
+    assert captured == 'test:8: Cannot find link target for "NoSuchName"\n'
 
 class RecordingAnnotationLinker(DocstringLinker):
     """A DocstringLinker implementation that cannot find any links,
