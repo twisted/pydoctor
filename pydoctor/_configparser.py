@@ -79,9 +79,7 @@ def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
     """
     Parse a TOML section name to a sequence of strings.
 
-    The following names are all valid: 
-
-    .. python::
+    The following names are all valid::
 
         "a.b.c"            # this is best practice -> returns ("a", "b", "c")
         " d.e.f "          # same as [d.e.f] -> returns ("d", "e", "f")
@@ -384,9 +382,7 @@ class CompositeConfigParser(ConfigFileParser):
 class ValidatorParser(ConfigFileParser):
     """
     A parser that warns when unknown options are used. 
-    It must be created with a reference to the ArgumentParser object, so like
-
-    .. code::
+    It must be created with a reference to the ArgumentParser object, so like::
 
         parser = ArgumentParser(
             prog='mysoft',
