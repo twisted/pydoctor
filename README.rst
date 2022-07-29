@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Better checks before removing 'self' and 'cls' from parameter tables.
 
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
