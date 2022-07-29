@@ -26,6 +26,7 @@ import csv
 import functools
 import configparser
 from ast import literal_eval
+import warnings
 
 from configargparse import ConfigFileParserException, ConfigFileParser, ArgumentParser, ACTION_TYPES_THAT_DONT_NEED_A_VALUE
 import toml
@@ -379,6 +380,19 @@ class CompositeConfigParser(ConfigFileParser):
         return msg
 
 class ValidatorParser(ConfigFileParser):
+    """
+    A parser that warns when unknown options are used. 
+    It must be created with a reference to the ArgumentParser object, so like::
+
+        parser = ArgumentParser(
+            prog='mysoft',
+            config_file_parser_class=ConfigParser, 
+            ignore_unknown_config_file_keys=True,)
+    
+        # Add the validator to the config file parser, this is arguably a hack.
+        parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
+    
+    """
 
     def __init__(self, config_parser: ConfigFileParser, argument_parser: ArgumentParser) -> None:
         super().__init__()
@@ -386,26 +400,19 @@ class ValidatorParser(ConfigFileParser):
         self.argument_parser = argument_parser
     
     def parse(self, stream:TextIO) -> Dict[str, Any]:
-        data: Dict[str, Any] = super().parse(stream)
+        data: Dict[str, Any] = self.config_parser.parse(stream)
 
-        # prepare for reading config file(s)
-        known_config_keys: Dict[str, argparse._ActionT] = {config_key: action for action in self._actions
+        # prepare for checking config file
+        known_config_keys: Dict[str, argparse._ActionT] = {config_key: action for action in self.argument_parser._actions
             for config_key in self.argument_parser.get_possible_config_keys(action)}
 
-        for key, value in data.items():
+        # Trigger warning
+        for key, _ in data.items():
             action = known_config_keys.get(key)
             if not action:
                 # Warn "no such config option"
-                continue
-            elif isinstance(action, argparse._AppendAction):
-                if not isinstance(value, list):
-                    # Warn "invalid type for config option, should be a list"
-                    continue
-            elif isinstance(action, argparse._CountAction):
-                try:
-                    int(value)
-                except ValueError:
-                    # Warn "invalid type for config option, should be a int"
-                    continue
-            elif isinstance(action, ACTION_TYPES_THAT_DONT_NEED_A_VALUE):
-                ...
+                warnings.warn(f"No such config option: {key!r}")
+                # Remove option
+                data.pop(key)
+        
+        return data

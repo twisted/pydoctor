@@ -17,7 +17,7 @@ from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
 from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
-from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser
+from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
 if TYPE_CHECKING:
     from pydoctor import model
@@ -49,6 +49,10 @@ def get_parser() -> ArgumentParser:
         default_config_files=DEFAULT_CONFIG_FILES,
         config_file_parser_class=PydoctorConfigParser, 
         ignore_unknown_config_file_keys=True,)
+    
+    # Add the validator to the config file parser, this is arguably a hack.
+    parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
+    
     parser.add_argument(
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
