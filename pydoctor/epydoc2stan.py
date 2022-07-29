@@ -567,16 +567,15 @@ def ensure_parsed_docstring(obj: model.Documentable) -> Optional[model.Documenta
     # Use cached or split version if possible.
     parsed_doc = obj.parsed_docstring
 
-    if source is None: # no docstring found
-
-        if parsed_doc is not None:
-            # A split field is documented by its parent: meaning the parsed_docstring
-            # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
-            # Get the source of the docs
-            source = obj.parent
+    if source is None and parsed_doc is not None:
+        # No docstring found
+        # A split field is documented by its parent: meaning the parsed_docstring
+        # attribute has been set directly by extract_fields() with @ivar:, @cvar:, etc
+        # Get the source of the docs
+        source = obj.parent
 
     if parsed_doc is None and doc is not None:
-        # the parsed_docstring has not been initialized yet
+        # The parsed_docstring has not been initialized yet
         assert source is not None
         parsed_doc = parse_docstring(obj, doc, source)
         obj.parsed_docstring = parsed_doc
