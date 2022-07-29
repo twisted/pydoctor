@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Trigger warnings for unknown config options
 
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
