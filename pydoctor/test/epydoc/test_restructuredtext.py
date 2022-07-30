@@ -1,6 +1,5 @@
 from typing import List
 from textwrap import dedent
-from pydoctor.epydoc.docutils import _get_docutils_version
 
 from pydoctor.epydoc.markup import DocstringLinker, ParseError, ParsedDocstring, get_parser_by_name
 from pydoctor.epydoc.markup.restructuredtext import parse_docstring
@@ -8,7 +7,7 @@ from pydoctor.test import NotFoundLinker
 from pydoctor.node2stan import node2stan
 from pydoctor.stanutils import flatten, flatten_text
 
-from docutils import nodes
+from docutils import nodes, __version_info__ as docutils_version_info
 from bs4 import BeautifulSoup
 import pytest
 
@@ -255,7 +254,7 @@ def test_summary(markup:str) -> None:
 
 
 # From docutils 0.18 the toc entries uses different ids.
-@pytest.mark.skipif(_get_docutils_version() < (0,18,0), reason="HTML ids in toc tree changed in docutils 0.18.0.")
+@pytest.mark.skipif(docutils_version_info < (0,18), reason="HTML ids in toc tree changed in docutils 0.18.0.")
 def test_get_toc() -> None:
 
     docstring = """

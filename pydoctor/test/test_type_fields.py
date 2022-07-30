@@ -1,6 +1,5 @@
 from typing import List
 from textwrap import dedent
-from pydoctor.epydoc.docutils import _get_docutils_version
 from pydoctor.epydoc.markup import ParseError, get_parser_by_name
 from pydoctor.test.epydoc.test_restructuredtext import prettify
 from pydoctor.test import NotFoundLinker, CapSys
@@ -285,9 +284,11 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('**hello**[str]')                        == "<strong>hello</strong>[<code>str]</code>"
     assert process('["hello" or str, default: 2]')          == """[<span class="literal">"hello"</span> or <code>str</code>, <em>default</em>: <span class="literal">2</span>]"""
 
-    # HTML ids for problematic elements changed in docutils 0.18.0
-    if _get_docutils_version() >= (0,18,0):
-        assert process('Union[`hello <>`_[str]]')               == """<code>Union[</code><a href="#system-message-1"><span class="rst-problematic" id="rst-problematic-1">`hello &lt;&gt;`_</span></a>[<code>str]]</code>"""
+    # HTML ids for problematic elements changed in docutils 0.18.0, and again in 0.19.0, so we're not testing for the exact content anymore.
+    
+    problematic = process('Union[`hello <>`_[str]]')
+    assert "`hello &lt;&gt;`_" in problematic
+    assert "<code>str" in problematic
  
 def test_processtypes_warning_unexpected_element(capsys: CapSys) -> None:
     
