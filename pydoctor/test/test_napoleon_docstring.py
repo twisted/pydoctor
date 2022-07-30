@@ -464,49 +464,55 @@ Single line summary
 """
     ), (
         """
-Single line summary
+If no colon is detected in the return clause,
+then the text is treated as the description.
 
 Returns:
-    Extended
+    ThisIsNotATypeEvenIfItLooksLike
 """,
 """
-Single line summary
+If no colon is detected in the return clause,
+then the text is treated as the description.
 
-:returns: Extended
+:returns: ThisIsNotATypeEvenIfItLooksLike
 """), (
         """
-Single line summary
+If a colon is detected in the return clause,
+then the text is treated as the type.
 
 Returns:
-    Extended:
+    ThisIsAType:
 """,
 """
-Single line summary
+If a colon is detected in the return clause,
+then the text is treated as the type.
 
-:returntype: `Extended`
+:returntype: `ThisIsAType`
 """), (
         """
-Single line summary
+Left part of the colon will be considered as the type
+even if it's actually free form text.
 
 Returns:
     Extended type: of something.
 """,
 """
-Single line summary
+Left part of the colon will be considered as the type
+even if it's actually free form text.
 
 :returns: of something.
 :returntype: Extended type
 """), (
         """
-Single line summary
+Idem
 
 Returns:
-    Extended description:
+    Extended type:
 """,
 """
-Single line summary
+Idem
 
-:returntype: Extended description
+:returntype: Extended type
 """),  (
         """
 Single line summary
