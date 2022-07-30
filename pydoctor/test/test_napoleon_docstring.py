@@ -467,6 +467,51 @@ Single line summary
 Single line summary
 
 Returns:
+    Extended
+""",
+"""
+Single line summary
+
+:returns: Extended
+"""), (
+        """
+Single line summary
+
+Returns:
+    Extended:
+""",
+"""
+Single line summary
+
+:returntype: `Extended`
+"""), (
+        """
+Single line summary
+
+Returns:
+    Extended type: of something.
+""",
+"""
+Single line summary
+
+:returns: of something.
+:returntype: Extended type
+"""), (
+        """
+Single line summary
+
+Returns:
+    Extended description:
+""",
+"""
+Single line summary
+
+:returntype: Extended description
+"""),  (
+        """
+Single line summary
+
+Returns:
     str:Extended
     description of return value
 """,
@@ -704,15 +749,17 @@ Single line summary
 
 Returns:
     str:
-"""
+""" 
+        # See issue https://github.com/sphinx-doc/sphinx/issues/9932
         expected="""
 Single line summary
 
-:returns: str 
+:returntype: `str` 
 """
         actual = str(GoogleDocstring(docstring))
 
         self.assertEqual(expected.strip(), actual.strip())
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
         docstring="""
 Single line summary
@@ -728,6 +775,7 @@ Single line summary
         actual = str(GoogleDocstring(docstring))
 
         self.assertEqual(expected.strip(), actual.strip())
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
     def test_sphinx_admonitions(self):
         admonition_map = {
