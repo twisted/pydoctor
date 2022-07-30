@@ -75,6 +75,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Fix minor UX issues in the search bar.
+* Fix deprecation in Docutils 0.19 frontend
 
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
