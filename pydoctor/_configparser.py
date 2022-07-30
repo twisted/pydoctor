@@ -407,7 +407,7 @@ class ValidatorParser(ConfigFileParser):
         # Prepare for checking config file.
         # This code maps all supported config keys to their 
         # argparse action counterpart, it will allow more checks to be done down the road.
-        known_config_keys: Dict[str, argparse._ActionT] = {config_key: action for action in self.argument_parser._actions
+        known_config_keys: Dict[str, argparse.Action] = {config_key: action for action in self.argument_parser._actions
             for config_key in self.argument_parser.get_possible_config_keys(action)}
 
         # Trigger warning
