@@ -75,7 +75,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-
+* Fix deprecation in Docutils 0.19 frontend
+  
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
 * Add support for generics in class hierarchies.
