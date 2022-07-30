@@ -76,6 +76,8 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Better checks before removing 'self' and 'cls' from parameter tables.
+* Fix minor UX issues in the search bar.
+* Fix deprecation in Docutils 0.19 frontend
 
 pydoctor 22.7.0
 ^^^^^^^^^^^^^^^
