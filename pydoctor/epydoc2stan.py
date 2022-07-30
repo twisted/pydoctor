@@ -57,7 +57,7 @@ def get_docstring(
     Treat empty docstring as undocumented.
 
     :returns: 
-        - C{(docstring, source)} if the object is currently documented.
+        - C{(docstring, source)} if the object is documented.
         - C{(None, None)} if the object has no docstring (even inherited).
         - C{(None, source)} if the object has an empty docstring.
     """
