@@ -329,6 +329,21 @@ data member description:
 
         self.assertEqual(expected.rstrip(), actual)
 
+    def test_attribute_colon_description(self):
+        """
+        This is the correct behaviour as per: https://github.com/sphinx-doc/sphinx/issues/9273.
+        But still, it feels a bit off.
+        """
+        docstring = """:Returns one of: ``"Yes"`` or ``No``."""
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        expected = """Returns one of: ``"Yes"`` or ``No``."""
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = """Returns one of: ``"Yes"`` or ``No``."""
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        expected = """``"Yes"`` or ``No``.\n\n:type: Returns one of"""
+        self.assertEqual(expected.rstrip(), actual)
+
     def test_class_data_member_inline(self):
         docstring = """b: data member description with :ref:`reference`"""
         actual = str(GoogleDocstring(docstring, is_attribute=True))
