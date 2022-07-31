@@ -39,9 +39,13 @@ class AttributeChild(TemplateElement):
         return self.ob.fullName()
 
     @renderer
-    def shortFunctionAnchor(self, request: object, tag: Tag) -> "Flattenable":
+    def shortFunctionAnchor(self, request: object, tag: Tag) -> str:
         return self.ob.name
-
+    
+    @renderer
+    def anchorLink(self, request: object, tag: Tag) -> str:
+        return '#' + self.shortFunctionAnchor(request, tag)
+    
     @renderer
     def decorator(self, request: object, tag: Tag) -> "Flattenable":
         return list(format_decorators(self.ob))
