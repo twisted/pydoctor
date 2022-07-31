@@ -411,12 +411,14 @@ class ValidatorParser(ConfigFileParser):
             for config_key in self.argument_parser.get_possible_config_keys(action)}
 
         # Trigger warning
-        for key, _ in data.items():
+        new_data = {}
+        for key, value in data.items():
             action = known_config_keys.get(key)
             if not action:
                 # Warn "no such config option"
                 warnings.warn(f"No such config option: {key!r}")
                 # Remove option
-                data.pop(key)
+            else:
+                new_data[key] = value
         
-        return data
+        return new_data
