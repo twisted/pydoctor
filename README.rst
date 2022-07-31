@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Add explicit support for exceptions (before, they were treated just like any other class).
 * Fix a bug in the return clause of google-style docstrings 
   where the return type would be treated as the description 
   when there is no explicit description.
