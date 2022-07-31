@@ -8,7 +8,6 @@ Forked from ``sphinx.ext.napoleon.docstring``.
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
-import ast
 import collections
 from enum import Enum, auto
 import re
