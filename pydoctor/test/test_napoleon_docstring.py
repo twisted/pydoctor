@@ -329,6 +329,21 @@ data member description:
 
         self.assertEqual(expected.rstrip(), actual)
 
+    def test_attribute_colon_description(self):
+        """
+        This is the correct behaviour as per: https://github.com/sphinx-doc/sphinx/issues/9273.
+        But still, it feels a bit off.
+        """
+        docstring = """:Returns one of: ``"Yes"`` or ``No``."""
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        expected = """Returns one of: ``"Yes"`` or ``No``."""
+        self.assertEqual(expected.rstrip(), actual)
+
+        docstring = """Returns one of: ``"Yes"`` or ``No``."""
+        actual = str(GoogleDocstring(docstring, is_attribute=True))
+        expected = """``"Yes"`` or ``No``.\n\n:type: Returns one of"""
+        self.assertEqual(expected.rstrip(), actual)
+
     def test_class_data_member_inline(self):
         docstring = """b: data member description with :ref:`reference`"""
         actual = str(GoogleDocstring(docstring, is_attribute=True))
@@ -463,6 +478,57 @@ Single line summary
 :returntype: `str`
 """
     ), (
+        """
+If no colon is detected in the return clause,
+then the text is treated as the description.
+
+Returns:
+    ThisIsNotATypeEvenIfItLooksLike
+""",
+"""
+If no colon is detected in the return clause,
+then the text is treated as the description.
+
+:returns: ThisIsNotATypeEvenIfItLooksLike
+"""), (
+        """
+If a colon is detected in the return clause,
+then the text is treated as the type.
+
+Returns:
+    ThisIsAType:
+""",
+"""
+If a colon is detected in the return clause,
+then the text is treated as the type.
+
+:returntype: `ThisIsAType`
+"""), (
+        """
+Left part of the colon will be considered as the type
+even if it's actually free form text.
+
+Returns:
+    Extended type: of something.
+""",
+"""
+Left part of the colon will be considered as the type
+even if it's actually free form text.
+
+:returns: of something.
+:returntype: Extended type
+"""), (
+        """
+Idem
+
+Returns:
+    Extended type:
+""",
+"""
+Idem
+
+:returntype: Extended type
+"""),  (
         """
 Single line summary
 
@@ -704,15 +770,17 @@ Single line summary
 
 Returns:
     str:
-"""
+""" 
+        # See issue https://github.com/sphinx-doc/sphinx/issues/9932
         expected="""
 Single line summary
 
-:returns: str 
+:returntype: `str` 
 """
         actual = str(GoogleDocstring(docstring))
 
         self.assertEqual(expected.strip(), actual.strip())
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
         docstring="""
 Single line summary
@@ -728,6 +796,7 @@ Single line summary
         actual = str(GoogleDocstring(docstring))
 
         self.assertEqual(expected.strip(), actual.strip())
+        self.assertAlmostEqualSphinxDocstring(expected, docstring, type_=SphinxGoogleDocstring)
 
     def test_sphinx_admonitions(self):
         admonition_map = {
