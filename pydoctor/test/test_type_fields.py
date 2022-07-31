@@ -376,6 +376,8 @@ def test_napoleon_types_warnings(capsys: CapSys) -> None:
     # Filter docstring linker warnings
     lines = [line for line in capsys.readouterr().out.splitlines() if 'Cannot find link target' not in line]
     
+    # Line numbers are off because they are based on the reStructuredText version of the docstring
+    # which includes much more lines because of the :type arg: fields. 
     assert '\n'.join(lines) == '''\
 warns:13: bad docstring: invalid type: 'docformatCan be one of'. Probably missing colon.
 warns:7: bad docstring: unbalanced parenthesis in type expression
