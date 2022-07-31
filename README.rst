@@ -75,6 +75,7 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
+* Trigger warnings for unknown config options
 * Fix minor UX issues in the search bar.
 * Fix deprecation in Docutils 0.19 frontend
 

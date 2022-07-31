@@ -1,4 +1,6 @@
 """
+Useful extension to L{configargparse} config file parsers.
+
 Provides L{configargparse.ConfigFileParser} classes to parse C{TOML} and C{INI} files with **mandatory** support for sections.
 Useful to integrate configuration into project files like C{pyproject.toml} or C{setup.cfg}.
 
@@ -18,6 +20,7 @@ L{CompositeConfigParser} usage:
 >>> parser = ArgumentParser(..., default_config_files=['./pyproject.toml', 'setup.cfg', 'my_super_tool.ini'], config_file_parser_class=MixedParser)
 
 """
+import argparse
 from collections import OrderedDict
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple, TextIO, Union
@@ -25,8 +28,9 @@ import csv
 import functools
 import configparser
 from ast import literal_eval
+import warnings
 
-from configargparse import ConfigFileParserException, ConfigFileParser
+from configargparse import ConfigFileParserException, ConfigFileParser, ArgumentParser
 import toml
 
 # I did not invented these regex, just put together some stuff from:
@@ -75,9 +79,7 @@ def parse_toml_section_name(section_name:str) -> Tuple[str, ...]:
     """
     Parse a TOML section name to a sequence of strings.
 
-    The following names are all valid: 
-
-    .. python::
+    The following names are all valid::
 
         "a.b.c"            # this is best practice -> returns ("a", "b", "c")
         " d.e.f "          # same as [d.e.f] -> returns ("d", "e", "f")
@@ -376,3 +378,47 @@ class CompositeConfigParser(ConfigFileParser):
         for i, parser in enumerate(self.parsers): 
             msg += f"[{i+1}] {parser.__class__.__name__}: {parser.get_syntax_description()} \n"
         return msg
+
+class ValidatorParser(ConfigFileParser):
+    """
+    A parser that warns when unknown options are used. 
+    It must be created with a reference to the ArgumentParser object, so like::
+
+        parser = ArgumentParser(
+            prog='mysoft',
+            config_file_parser_class=ConfigParser,)
+    
+        # Add the validator to the config file parser, this is arguably a hack.
+        parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
+    
+    @note: Using this parser implies acting 
+        like L{ArgumentParser}'s option C{ignore_unknown_config_file_keys=True}.
+        So no need to explicitely mention it.
+    """
+
+    def __init__(self, config_parser: ConfigFileParser, argument_parser: ArgumentParser) -> None:
+        super().__init__()
+        self.config_parser = config_parser
+        self.argument_parser = argument_parser
+    
+    def parse(self, stream:TextIO) -> Dict[str, Any]:
+        data: Dict[str, Any] = self.config_parser.parse(stream)
+
+        # Prepare for checking config file.
+        # This code maps all supported config keys to their 
+        # argparse action counterpart, it will allow more checks to be done down the road.
+        known_config_keys: Dict[str, argparse.Action] = {config_key: action for action in self.argument_parser._actions
+            for config_key in self.argument_parser.get_possible_config_keys(action)}
+
+        # Trigger warning
+        new_data = {}
+        for key, value in data.items():
+            action = known_config_keys.get(key)
+            if not action:
+                # Warn "no such config option"
+                warnings.warn(f"No such config option: {key!r}")
+                # Remove option
+            else:
+                new_data[key] = value
+        
+        return new_data
