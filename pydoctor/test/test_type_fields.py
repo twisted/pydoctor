@@ -274,7 +274,7 @@ def test_processtypes_corner_cases(capsys: CapSys) -> None:
     assert process('[,]')                                   == "[, ]"
     assert process('[[]]')                                  == "[[]]"
     assert process(', [str]')                               == ", [<code>str]</code>"
-    assert process(' of [str]')                             == "<code>of [str]</code>" # this is a bit weird
+    assert process(' of [str]')                             == "of[<code>str]</code>"
     assert process(' or [str]')                             == "or[<code>str]</code>"
     assert process(': [str]')                               == ": [<code>str]</code>"
     assert process("'hello'[str]")                          == "<span class=\"literal\">'hello'</span>[<code>str]</code>"
