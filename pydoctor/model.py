@@ -95,7 +95,7 @@ class DocumentableKind(Enum):
     MODULE              = 900
     CLASS               = 800
     INTERFACE           = 850
-    EXCEPTION           = 830
+    EXCEPTION           = 860
     CLASS_METHOD        = 700
     STATIC_METHOD       = 600
     METHOD              = 500
