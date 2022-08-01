@@ -8,7 +8,6 @@ Forked from ``sphinx.ext.napoleon.docstring``.
     :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
-import ast
 import collections
 from enum import Enum, auto
 import re
@@ -75,19 +74,16 @@ def is_obj_identifier(string: str) -> bool:
     An object identifier is a valid type string.
     But a valid type can be more complex than an object identifier.
     """
+    # support detecting "dict-like" as an object type even 
+    # if dashes are not actually allowed to keep compatibility with
+    # upstream napoleon.
+    string = string.replace('-', '_')
+    
     if string.isidentifier() or _xref_regex.match(string):
         return True
-    try:
-        # We simply try to load the string object with AST, if it's working
-        # we consider the string as a valid Python object identifier.
-        # Let's say 2048 is the maximum number of caracters
-        # that we'll try to parse here since 99% of the time it will
-        # suffice, and we don't want to add too much of expensive processing.
-        ast.parse(string[:2048])
-    except SyntaxError:
-        return False
-    else:
+    if all([p.isidentifier() or not p for p in string.split('.')]):
         return True
+    return False
 
 
 def is_type(string: str) -> bool:
