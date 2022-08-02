@@ -408,7 +408,7 @@ class ClassPage(CommonPage):
 
         # fetch MRO
         mro = self.ob.mro(True, False)
-        # Return None if the MRO is not informational
+        # Return None if the MRO is not informative
         if not mro:
             return None
         if mro[-1] == 'object':
