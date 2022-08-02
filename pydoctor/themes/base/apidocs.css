@@ -1123,3 +1123,16 @@ pre.constant-value              { padding: .5em; }
 .rst-deprecated > .rst-versionmodified{
     color:#aa6708;
 }
+
+/* CSS for MRO */
+.class-inheritance {
+    margin-top:0;
+    border:0;
+    list-style-type: none;
+}
+.class-inheritance li{
+    padding:0;
+}
+.class-inheritance-div{
+    margin-bottom:15px;
+}

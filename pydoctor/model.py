@@ -585,9 +585,11 @@ class Class(CanContainImportsDocumentable):
         if include_external is False:
             _mro = [o for o in self._mro if not isinstance(o, str)]
         else:
-            _mro = self._mro
+            _mro = self._mro[:]
         if include_self is False:
             _mro = _mro[1:]
+        
+        # It always returns a copy of the list
         return _mro
 
     @property

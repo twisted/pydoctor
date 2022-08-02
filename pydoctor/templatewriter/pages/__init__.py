@@ -382,9 +382,53 @@ class ClassPage(CommonPage):
             ):
         super().__init__(ob, template_lookup, docgetter)
         self.baselists = util.class_members(self.ob)
+    
+    def classInheritance(self) -> Optional['Flattenable']:
+        """
+        Returns something only if the class inherits 
+        more than the default object type and there 
+        are more than two bases to show.
+        """
+        def buildInheritance(ultag:Tag, bases:List['model.Class']) -> Tag:
+            """
+            Recusrsive function to create nested lists based on the MRO.
+            """
+            if not bases:
+                return ultag
+            last = bases.pop()
+            if isinstance(last, model.Documentable):
+                link = tags.code(epydoc2stan.taglink(last, self.page_url))
+            else:
+                link = tags.code(self.ob.docstring_linker.link_to(last, last))
+            ultag(tags.li(link))
+            if bases:
+                new_ul = create_ul()
+                ultag(tags.li(buildInheritance(new_ul, bases)))
+            return ultag
+
+        # fetch MRO
+        mro = self.ob.mro(True, False)
+        # Return None if the MRO is not informational
+        if not mro:
+            return None
+        if mro[-1] == 'object':
+            mro.pop(-1)
+        if len(mro) <= 1:
+            return None
+
+        # Present inheritence in the form of a nested list, just like javadoc.
+        create_ul = lambda:tags.ul(class_='class-inheritance')
+        ul = create_ul()
+        buildInheritance(ul, mro)
+        return tags.div(tags.p("Inheritance: "), ul, class_="class-inheritance-div")
 
     def extras(self) -> List[Tag]:
         r: List[Tag] = []
+        
+        # Render inheritance infos
+        _inheritance = self.classInheritance()
+        if _inheritance:
+            r.append(_inheritance)
 
         sourceHref = util.srclink(self.ob)
         source: "Flattenable"
