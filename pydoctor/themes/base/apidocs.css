@@ -1123,23 +1123,3 @@ pre.constant-value              { padding: .5em; }
 .rst-deprecated > .rst-versionmodified{
     color:#aa6708;
 }
-
-/* CSS for anchor links */
-.headerLink{
-    display:none;
-    color:black;
-    float:right;
-    margin-left:5px;
-    padding-left:5px;
-    padding-right:5px;
-}
-.headerLink:hover{
-    text-decoration:none;
-    background-color: #ccc;
-}
-#childList > div:hover .headerLink{
-    display:inline-block;
-}
-#childList a:target ~ .functionHeader .headerLink{
-    display: inline-block
-}

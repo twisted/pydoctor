@@ -75,8 +75,6 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-* Add anchors aside attributes and functions to ease 
-  the process of sharing links to these API docs.
 * Fix a bug in the return clause of google-style docstrings 
   where the return type would be treated as the description 
   when there is no explicit description.
