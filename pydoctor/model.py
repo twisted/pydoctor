@@ -29,6 +29,8 @@ from pydoctor import factory, qnmatch, utils, linker, astutils, mro
 from pydoctor.epydoc.markup import ParsedDocstring
 from pydoctor.sphinx import CacheT, SphinxInventory
 
+import attr
+
 if TYPE_CHECKING:
     from typing_extensions import Literal
     from pydoctor.astbuilder import ASTBuilder, DocumentableT
@@ -674,6 +676,11 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
+@attr.s(auto_attribs=True)
+class PropertyInfo:
+    setter: Optional['Function'] = None
+    deleter: Optional['Function'] = None
+
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
     is_async: bool
@@ -681,10 +688,100 @@ class Function(Inheritable):
     decorators: Optional[Sequence[ast.expr]]
     signature: Optional[Signature]
 
+    # Property handling is special: This attribute is used in the processing step only.
+    _property_info: Optional[PropertyInfo] = None
+    
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
+
+def init_property(getter: 'Function',
+        setter: Optional['Function'],
+        deleter: Optional['Function'],
+        ) -> None:
+    """
+    Create a L{Attribute} that replaces the property 
+    functions in the documentable tree.
+    """
+
+    # avoid cyclic import
+    from pydoctor import epydoc2stan
+
+    system = getter.system
+    
+    # Create an Attribute object for the property
+    attr = system.Attribute(name=getter.name, system=system, parent=getter.parent)
+    
+    attr.parentMod = getter.parentMod
+    attr.kind = DocumentableKind.PROPERTY
+    attr.setLineNumber(getter.linenumber)
+    attr.docstring = getter.docstring
+    attr.annotation = getter.annotations.get('return')
+    attr.decorators = getter.decorators
+    attr.extra_info = getter.extra_info
+
+    # Parse docstring now.
+    if epydoc2stan.ensure_parsed_docstring(getter):
+    
+        pdoc = getter.parsed_docstring
+        assert pdoc is not None
+
+        other_fields = []
+        # process fields such that :returns: clause docs takes the whole docs 
+        # if no global description is written.
+        for field in pdoc.fields:
+            tag = field.tag()
+            if tag == 'return':
+                if not pdoc.has_body:
+                    pdoc = field.body()
+            elif tag == 'rtype':
+                attr.parsed_type = field.body()
+            else:
+                other_fields.append(field)
+        pdoc.fields = other_fields
+        
+        # Set the new attribute parsed docstring
+        attr.parsed_docstring = pdoc
+    
+    # We recognize 3 types of properties:
+    # - read-only
+    # - read-write
+    # - read-write-delete
+    # read-delete-only is not useful to be supported
+
+    def get_property_permission_text(write:bool, delete:bool) -> str:
+        if not write:
+            return "This property is *read-only*."
+        if delete:
+            return "This property is *readable*, *writable* and *deletable*."
+        else:
+            return "This property is *readable* and *writable*."
+    
+    parsed_info = epydoc2stan.parse_docstring(
+                        obj=getter,
+                        doc=get_property_permission_text(
+                            write=setter is not None, 
+                            delete=deleter is not None), 
+                        source=getter, 
+                        markup='restructuredtext', 
+                        section='property permission text',)
+    
+    attr.extra_info.append(parsed_info)
+
+    if setter:
+        del setter.parent.contents[setter.name]
+        system._remove(setter)
+        attr.property_setter = setter
+    
+    if deleter:
+        del deleter.parent.contents[deleter.name]
+        system._remove(deleter)
+        attr.property_deleter = deleter
+
+    del getter.parent.contents[getter.name]
+    system._remove(getter)
+    system.addObject(attr)
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
@@ -694,8 +791,18 @@ class Attribute(Inheritable):
     """
     The value of the assignment expression. 
 
-    None value means the value is not initialized at the current point of the the process. 
+    None value means the value is not initialized 
+    at the current point of the the process. 
+    Or maybe it can be that the attribute is a property.
     """
+
+    property_setter: Optional[Function] = None
+    """
+    The property setter L{Function}, is any defined.
+    Only applicable if L{kind} is L{DocumentableKind.PROPERTY}
+    """
+    property_deleter: Optional[Function] = None
+    """Idem for the deleter."""
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1280,7 +1387,16 @@ class System:
             for b in cls.baseobjects:
                 if b is not None:
                     b.subclasses.append(cls)
-
+        
+        # Machup property functions into an Attribute.
+        # Use list() to avoid error "dictionary changed size during iteration"
+        # Because we are indeed transforming the tree as 
+        # well as the mapping that contains all the objects.
+        for func in list(self.objectsOfType(Function)):
+            if func._property_info is not None:
+                init_property(func, 
+                    setter=func._property_info.setter,
+                    deleter=func._property_info.deleter)
 
         for post_processor in self._post_processors:
             post_processor(self)

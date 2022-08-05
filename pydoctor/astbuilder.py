@@ -723,6 +723,8 @@ class ModuleVistor(NodeVisitor):
         is_property = False
         is_classmethod = False
         is_staticmethod = False
+        property_info: Optional[model.PropertyInfo] = None
+        
         if isinstance(parent, model.Class) and node.decorator_list:
             for d in node.decorator_list:
                 if isinstance(d, ast.Call):
@@ -738,18 +740,37 @@ class ModuleVistor(NodeVisitor):
                 elif deco_name == ['staticmethod']:
                     is_staticmethod = True
                 elif len(deco_name) >= 2 and deco_name[-1] in ('setter', 'deleter'):
-                    # Rename the setter/deleter, so it doesn't replace
-                    # the property object.
-                    func_name = '.'.join(deco_name[-2:])
+                    if len(deco_name)==2:
+                        # Setters and deleters must have the same name as the property function
+                        if deco_name[0]==func_name:
+                            property_getter = parent.contents.get(func_name)
+                            
+                            if property_getter is not None:
+                                # Rename the setter/deleter such that 
+                                # it does not replace the property getter.
 
-        if is_property:
-            # handle property and skip child nodes.
-            attr = self._handlePropertyDef(node, docstring, lineno)
-            if is_classmethod:
-                attr.report(f'{attr.fullName()} is both property and classmethod')
-            if is_staticmethod:
-                attr.report(f'{attr.fullName()} is both property and staticmethod')
-            raise self.SkipNode()
+                                func_name = '.'.join(deco_name)
+                                
+                                if not isinstance(property_getter, model.Function):
+                                    # Can't make sens of decorator ending in .setter/.deleter :/
+                                    # The property setter/deleter is not targeting a function
+                                    # We still rename it because it overrides something and it maches
+                                    # the rules to be a property. Maybe it's actually targetting a callable
+                                    # implemented as a __call__ method or a lamda function. Is it even valid python?
+                                    continue
+                                if property_getter._property_info is None:
+                                    # Probably an unsupported type of property
+                                    continue
+                                
+                                # We have an actual python property:
+                                # Store property info object
+                                property_info = property_getter._property_info
+
+                    else:
+                        # Can't make sens of decorator ending in .setter/.deleter :/
+                        # The decorator is a dotted name of three parts or more, like 'Person.name.setter'.
+                        # Don't do anything special with it, i.e do not rename it.
+                        continue
 
         func = self.builder.pushFunction(func_name, lineno)
         func.is_async = is_async
@@ -806,47 +827,31 @@ class ModuleVistor(NodeVisitor):
 
         func.signature = signature
         func.annotations = self._annotations_from_function(node)
+
+        
+        if is_property:
+            # Init PropertyInfo object when visiting the getter.
+            func._property_info = model.PropertyInfo()
+            
+            if is_classmethod:
+                func.report(f'{func.fullName()} is both property and classmethod')
+            if is_staticmethod:
+                func.report(f'{func.fullName()} is both property and staticmethod')
+
+        # Store property functions to be handled later.
+        if property_info is not None:
+            if func_name.endswith('.deleter'):
+                property_info.deleter = func
+            elif func_name.endswith('.setter'):
+                property_info.setter = func
+            else:
+                assert False
     
     def depart_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self.builder.popFunction()
 
     def depart_FunctionDef(self, node: ast.FunctionDef) -> None:
         self.builder.popFunction()
-
-    def _handlePropertyDef(self,
-            node: Union[ast.AsyncFunctionDef, ast.FunctionDef],
-            docstring: Optional[ast.Str],
-            lineno: int
-            ) -> model.Attribute:
-
-        attr = self.builder.addAttribute(name=node.name, kind=model.DocumentableKind.PROPERTY, parent=self.builder.current)
-        attr.setLineNumber(lineno)
-
-        if docstring is not None:
-            attr.setDocstring(docstring)
-            assert attr.docstring is not None
-            pdoc = epydoc2stan.parse_docstring(attr, attr.docstring, attr)
-            other_fields = []
-            for field in pdoc.fields:
-                tag = field.tag()
-                if tag == 'return':
-                    if not pdoc.has_body:
-                        pdoc = field.body()
-                        # Avoid format_summary() going back to the original
-                        # empty-body docstring.
-                        attr.docstring = ''
-                elif tag == 'rtype':
-                    attr.parsed_type = field.body()
-                else:
-                    other_fields.append(field)
-            pdoc.fields = other_fields
-            attr.parsed_docstring = pdoc
-
-        if node.returns is not None:
-            attr.annotation = self._unstring_annotation(node.returns)
-        attr.decorators = node.decorator_list
-
-        return attr
 
     def _annotations_from_function(
             self, func: Union[ast.AsyncFunctionDef, ast.FunctionDef]

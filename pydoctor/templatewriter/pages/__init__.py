@@ -256,7 +256,7 @@ class CommonPage(Page):
             if isinstance(c, model.Function):
                 r.append(FunctionChild(self.docgetter, c, self.objectExtras(c), func_loader))
             elif isinstance(c, model.Attribute):
-                r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader))
+                r.append(AttributeChild(self.docgetter, c, self.objectExtras(c), attr_loader, func_loader))
             else:
                 assert False, type(c)
         return r

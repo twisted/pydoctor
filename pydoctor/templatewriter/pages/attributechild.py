@@ -20,12 +20,14 @@ class AttributeChild(TemplateElement):
             docgetter: util.DocGetter,
             ob: Attribute,
             extras: List[Tag],
-            loader: ITemplateLoader
+            loader: ITemplateLoader,
+            funcLoader: ITemplateLoader,
             ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self._functionExtras = extras
+        self._funcLoader = funcLoader
 
     @renderer
     def class_(self, request: object, tag: Tag) -> "Flattenable":
@@ -80,3 +82,18 @@ class AttributeChild(TemplateElement):
             return tag.clear()
         # Attribute is a constant (with a value), then display it's value
         return epydoc2stan.format_constant_value(self.ob)
+
+    @renderer
+    def propertyInfo(self, request: object, tag: Tag) -> "Flattenable":
+        # Property info consist in nested function child elements that 
+        # formats the setter and deleter docs of the property.
+        r = []
+        if self.ob.kind is DocumentableKind.PROPERTY:
+            from pydoctor.templatewriter.pages.functionchild import FunctionChild
+
+            assert isinstance(self.ob, Attribute)
+            
+            for func in [f for f in (self.ob.property_setter, self.ob.property_deleter) if f]:
+                r.append(FunctionChild(self.docgetter, func, extras=[], 
+                            loader=self._funcLoader, silent_undoc=True))
+        return r

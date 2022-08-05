@@ -4,6 +4,7 @@ from twisted.web.iweb import ITemplateLoader
 from twisted.web.template import Tag, renderer, tags
 
 from pydoctor.model import Function
+from pydoctor.epydoc2stan import get_docstring
 from pydoctor.templatewriter import TemplateElement, util
 from pydoctor.templatewriter.pages import format_decorators, format_signature
 
@@ -19,12 +20,14 @@ class FunctionChild(TemplateElement):
             docgetter: util.DocGetter,
             ob: Function,
             extras: List[Tag],
-            loader: ITemplateLoader
+            loader: ITemplateLoader,
+            silent_undoc:bool=False,
             ):
         super().__init__(loader)
         self.docgetter = docgetter
         self.ob = ob
         self._functionExtras = extras
+        self._silent_undoc = silent_undoc
 
     @renderer
     def class_(self, request: object, tag: Tag) -> "Flattenable":
@@ -75,5 +78,13 @@ class FunctionChild(TemplateElement):
 
     @renderer
     def functionBody(self, request: object, tag: Tag) -> "Flattenable":
-        return self.docgetter.get(self.ob)
-
+        # Default behaviour
+        if not self._silent_undoc:
+            return self.docgetter.get(self.ob)
+        
+        # If the function is not documented, do not even show 'Undocumented'
+        doc, _ = get_docstring(self.ob)
+        if doc:
+            return self.docgetter.get(self.ob)
+        else:
+            return ()

@@ -1534,12 +1534,12 @@ def test_property_setter(systemcls: Type[model.System], capsys: CapSys) -> None:
     assert getter.kind is model.DocumentableKind.PROPERTY
     assert getter.docstring == """Getter."""
 
-    setter = C.contents['prop.setter']
+    setter = getter.property_setter
     assert isinstance(setter, model.Function)
     assert setter.kind is model.DocumentableKind.METHOD
     assert setter.docstring == """Setter."""
 
-    deleter = C.contents['prop.deleter']
+    deleter = getter.property_deleter
     assert isinstance(deleter, model.Function)
     assert deleter.kind is model.DocumentableKind.METHOD
     assert deleter.docstring == """Deleter."""
@@ -1971,3 +1971,46 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_instance_var_override(systemcls: Type[model.System]) -> None:
+    src = '''
+    class A:
+        _data=None
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+    '''
+    mod = fromText(src, modname='test', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.METHOD
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
+    src = '''
+    class A:
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+        _data=None
+    '''
+    mod = fromText(src, modname='test', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.METHOD
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
+@systemcls_param
+def test_instance_var_override_in_property(systemcls: Type[model.System]) -> None:
+    src = '''
+    class A:
+        _data=None
+        @property
+        def data(self):
+            if self._data is None:
+                self._data = Data(self)
+            return self._data
+    '''
+
+    mod = fromText(src, modname='propt', systemcls=systemcls)
+    assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.PROPERTY
+    assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
+
