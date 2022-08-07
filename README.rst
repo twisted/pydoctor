@@ -75,7 +75,8 @@ What's New?
 
 in development
 ^^^^^^^^^^^^^^
-* Better checks before removing 'self' and 'cls' from parameter tables.
+* `self` parameter is now removed only when the target is a method. In the previous version, it was always removed in any context.
+* `cls` parameter is now removed only when the target is a class method. In the previous version, it was always removed in any context.
 * Add anchors aside attributes and functions to ease 
   the process of sharing links to these API docs.
 * Fix a bug in the return clause of google-style docstrings 
