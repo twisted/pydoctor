@@ -17,7 +17,7 @@ from pydoctor.themes import get_themes
 from pydoctor.epydoc.markup import get_supported_docformats
 from pydoctor.sphinx import MAX_AGE_HELP, USER_INTERSPHINX_CACHE
 from pydoctor.utils import parse_path, findClassFromDottedName, parse_privacy_tuple, error
-from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser
+from pydoctor._configparser import CompositeConfigParser, IniConfigParser, TomlConfigParser, ValidatorParser
 
 if TYPE_CHECKING:
     from pydoctor import model
@@ -29,7 +29,7 @@ BUILDTIME_FORMAT_HELP = 'YYYY-mm-dd HH:MM:SS'
 DEFAULT_CONFIG_FILES = ['./pyproject.toml', './setup.cfg', './pydoctor.ini']
 CONFIG_SECTIONS = ['tool.pydoctor', 'tool:pydoctor', 'pydoctor']
 
-DEFAULT_SYSTEM = 'pydoctor.deprecate.System'
+DEFAULT_SYSTEM = 'pydoctor.model.System'
 
 __all__ = ("Options", )
 
@@ -47,8 +47,11 @@ def get_parser() -> ArgumentParser:
         description="API doc generator.",
         usage="pydoctor [options] SOURCEPATH...", 
         default_config_files=DEFAULT_CONFIG_FILES,
-        config_file_parser_class=PydoctorConfigParser, 
-        ignore_unknown_config_file_keys=True,)
+        config_file_parser_class=PydoctorConfigParser)
+    
+    # Add the validator to the config file parser, this is arguably a hack.
+    parser._config_file_parser = ValidatorParser(parser._config_file_parser, parser)
+    
     parser.add_argument(
         '-c', '--config', is_config_file=True,
         help=("Load config from this file (any command line"
@@ -85,12 +88,10 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         '--make-intersphinx', action='store_true', dest='makeintersphinx',
         default=False, help=("Produce (only) the objects.inv intersphinx file."))
+    # Used to pass sourcepath from config file
     parser.add_argument(
-        '--add-package', action='append', dest='packages',
-        metavar='PACKAGEDIR', default=[], help=SUPPRESS)
-    parser.add_argument(
-        '--add-module', action='append', dest='modules',
-        metavar='MODULE', default=[], help=SUPPRESS)
+        '--add-package', '--add-module', action='append', dest='packages',
+        metavar='MODPATH', default=[], help=SUPPRESS)
     parser.add_argument(
         '--prepend-package', action='store', dest='prependedpackage', 
         help=("Pretend that all packages are within this one.  "
@@ -262,14 +263,6 @@ def _warn_deprecated_options(options: Namespace) -> None:
         print("The --enable-intersphinx-cache option is deprecated; "
               "the cache is now enabled by default.",
               file=sys.stderr, flush=True)
-    if options.modules:
-        print("The --add-module option is deprecated; "
-              "pass modules as positional arguments instead.",
-              file=sys.stderr, flush=True)
-    if options.packages:
-        print("The --add-package option is deprecated; "
-              "pass packages as positional arguments instead.",
-              file=sys.stderr, flush=True)
 
 # CONVERTERS
 
@@ -409,7 +402,6 @@ class Options:
 
         # handle deprecated arguments
         argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--add-package'), argsdict.pop('packages'))))
-        argsdict['sourcepath'].extend(list(map(functools.partial(parse_path, opt='--add-module'), argsdict.pop('modules'))))
 
         # remove deprecated arguments
         argsdict.pop('enable_intersphinx_cache_deprecated')

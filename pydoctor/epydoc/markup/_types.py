@@ -31,6 +31,7 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
 
             _tokens = self._tokenize_node_type_spec(annotation)
             self._tokens = self._build_tokens(_tokens)
+            self._trigger_warnings()
         else:
             TypeDocstring.__init__(self, annotation, warns_on_unknown_tokens)
         

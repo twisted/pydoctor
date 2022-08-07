@@ -180,7 +180,13 @@ def test_lunr_index() -> None:
         test_search('+qname:pydoctor', ['pydoctor'])
         test_search('+qname:pydoctor.epydoc2stan', ['pydoctor.epydoc2stan'])
         test_search('_colorize_re_pattern', ['pydoctor.epydoc.markup._pyval_repr.PyvalColorizer._colorize_re_pattern'])
-        test_search('+name:Class', ['pydoctor.model.Class', 'pydoctor.model.DocumentableKind.CLASS'])
+        
+        test_search('+name:Class', 
+            ['pydoctor.model.Class', 
+             'pydoctor.factory.Factory.Class',
+             'pydoctor.model.DocumentableKind.CLASS',
+             'pydoctor.model.System.Class'])
+        
         to_stan_results = [
                     'pydoctor.epydoc.markup.ParsedDocstring.to_stan', 
                     'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring.to_stan',
@@ -213,7 +219,7 @@ def test_pydoctor_test_is_hidden():
     """
 
     def getText(node: ET.Element) -> str:
-        return ''.join(node.itertext()).strip().replace('\u200b', '')
+        return ''.join(node.itertext()).strip()
 
     with open(BASE_DIR / 'api' / 'all-documents.html', 'r', encoding='utf-8') as stream:
         document = ET.fromstring(stream.read())
@@ -230,3 +236,19 @@ def test_pydoctor_test_is_hidden():
                 privacy = getText(liobj.findall('./div[@class=\'privacy\']')[0])
                 # check that it's indeed private
                 assert privacy == 'HIDDEN'
+
+def test_missing_subclasses():
+    """
+    Test for missing subclasses of ParsedDocstring, issue https://github.com/twisted/pydoctor/issues/528.
+    """
+
+    infos = ('pydoctor.epydoc.markup._types.ParsedTypeDocstring', 
+        'pydoctor.epydoc.markup.epytext.ParsedEpytextDocstring', 
+        'pydoctor.epydoc.markup.plaintext.ParsedPlaintextDocstring', 
+        'pydoctor.epydoc.markup.restructuredtext.ParsedRstDocstring', 
+        'pydoctor.epydoc2stan.ParsedStanOnly')
+
+    with open(BASE_DIR / 'api' / 'pydoctor.epydoc.markup.ParsedDocstring.html', 'r', encoding='utf-8') as stream:
+        page = stream.read()
+        for i in infos:
+            assert i in page, page
