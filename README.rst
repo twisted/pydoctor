@@ -76,6 +76,12 @@ What's New?
 in development
 ^^^^^^^^^^^^^^
 * Better checks before removing 'self' and 'cls' from parameter tables.
+* Add anchors aside attributes and functions to ease 
+  the process of sharing links to these API docs.
+* Fix a bug in the return clause of google-style docstrings 
+  where the return type would be treated as the description 
+  when there is no explicit description.
+* Trigger warnings for unknown config options.
 * Fix minor UX issues in the search bar.
 * Fix deprecation in Docutils 0.19 frontend
 
@@ -86,7 +92,7 @@ pydoctor 22.7.0
 * Improve the extensibility of pydoctor (`more infos on extensions <https://pydoctor.readthedocs.io/en/latest/customize.html#use-a-custom-system-class>`_)
 * Fix line numbers in reStructuredText xref warnings.
 * Add support for `twisted.python.deprecated` (this was originally part of Twisted's customizations).
-* Add support for re-exporting names imported from a wildcard import.
+* Add support for re-exporting it names imported from a wildcard import.
 
 pydoctor 22.5.1
 ^^^^^^^^^^^^^^^
