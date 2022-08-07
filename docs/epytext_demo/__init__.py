@@ -162,15 +162,18 @@ S{rarr}, S{uarr}, and S{darr}.
 Escaping
 ========
 
-Escaping is used to write text that would otherwise be interpreted as epytext markup.
+Escaping is used to write text that would otherwise be interpreted as epytext
+markup.
 
-Escaped text has the form EE{lb}codeE{rb},
+Escaped text has the form C{EE{lb}codeE{rb}},
 where code is an escape code that specifies what character should be produced.
 
-If the escape code is a single character (other than `{` or `}`), then that character is produced.
-For example, to begin a paragraph with a dash (which would normally signal a list item), write `E{-}`.
-In addition, two special escape codes are defined: `E{lb}` produces a left curly brace (`{`); and `E{rb}`
-produces a right curly brace (`}`).
+If the escape code is a single character (other than C{E{lb}} or C{E{rb}}),
+then that character is produced. For example, to begin a paragraph with a
+dash (which would normally signal a list item), write C{E{-}}. As an
+exception, special escape codes are defined for For opening and closing curly
+braces: C{EE{lb}lbE{rb}} produces a left curly brace (C{E{lb}});
+and C{EE{lb}rbE{rb}} produces a right curly brace (C{E{rb}}).
 
 This paragraph ends with two
 colons, but does not introduce
