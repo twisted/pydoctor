@@ -676,10 +676,40 @@ class Inheritable(Documentable):
     def _localNameToFullName(self, name: str) -> str:
         return self.parent._localNameToFullName(name)
 
+class PropertyFunctionKind(Enum):
+    GETTER = 1
+    SETTER = 2
+    DELETER = 3
+
 @attr.s(auto_attribs=True)
 class PropertyInfo:
+    declaration:'Function' = NotImplemented
+    """
+    The function that initially declared this property with C{@property} decorator or by overriding
+    the a property function with C{@A.name.setter/getter/deleter} from another class.
+    """
+    getter:Optional['Function'] = None
+    """
+    The getter. Generally the same as L{declaration} if it has not been overriden.
+    """
     setter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@name.setter} decorator.
+    """
     deleter: Optional['Function'] = None
+    """
+    None if it has not been set with C{@name.deleter} decorator.
+    """
+
+    def set(self, kind:PropertyFunctionKind, func:'Function') -> None:
+        if kind is PropertyFunctionKind.GETTER:
+            self.getter = func
+        elif kind is PropertyFunctionKind.SETTER:
+            self.setter = func
+        elif kind is PropertyFunctionKind.DELETER:
+            self.deleter = func
+        else:
+            assert False
 
 class Function(Inheritable):
     kind = DocumentableKind.FUNCTION
@@ -689,37 +719,45 @@ class Function(Inheritable):
     signature: Optional[Signature]
 
     # Property handling is special: This attribute is used in the processing step only.
-    _property_info: Optional[PropertyInfo] = None
-    
+    property_decorator: Optional[ast.expr] = None
+    """
+    A property decorator like C{@property} or C{@name.setter} or C{@BaseClass.name.getter} / etc.
+
+    C{None} if this function is not decorated with any kind of property decorator.
+    """
+
     def setup(self) -> None:
         super().setup()
         if isinstance(self.parent, Class):
             self.kind = DocumentableKind.METHOD
 
-def init_property(getter: 'Function',
-        setter: Optional['Function'],
-        deleter: Optional['Function'],
-        ) -> None:
+def init_property(attr:'Attribute') -> Iterator['Function']:
     """
-    Create a L{Attribute} that replaces the property 
+    Initiates the L{Attribute} that replaces the property 
     functions in the documentable tree.
+
+    Returns the functions to remove from the tree. If the property matchup fails
     """
+    info = attr._property_info
+    assert info is not None
+
+    getter = info.getter
+    setter = info.setter
+    deleter = info.deleter
+
+    if getter is None:
+        # The getter should never be None
+        return ()
 
     # avoid cyclic import
     from pydoctor import epydoc2stan
-
-    system = getter.system
     
-    # Create an Attribute object for the property
-    attr = system.Attribute(name=getter.name, system=system, parent=getter.parent)
-    
-    attr.parentMod = getter.parentMod
-    attr.kind = DocumentableKind.PROPERTY
-    attr.setLineNumber(getter.linenumber)
+    # Setup Attribute object for the property    
     attr.docstring = getter.docstring
     attr.annotation = getter.annotations.get('return')
     attr.decorators = getter.decorators
-    attr.extra_info = getter.extra_info
+    
+    attr.extra_info.extend(getter.extra_info)
 
     # Parse docstring now.
     if epydoc2stan.ensure_parsed_docstring(getter):
@@ -739,6 +777,7 @@ def init_property(getter: 'Function',
                 attr.parsed_type = field.body()
             else:
                 other_fields.append(field)
+        
         pdoc.fields = other_fields
         
         # Set the new attribute parsed docstring
@@ -759,34 +798,29 @@ def init_property(getter: 'Function',
             return "This property is *readable* and *writable*."
     
     parsed_info = epydoc2stan.parse_docstring(
-                        obj=getter,
+                        obj=info.declaration,
                         doc=get_property_permission_text(
                             write=setter is not None, 
                             delete=deleter is not None), 
-                        source=getter, 
+                        source=info.declaration, 
                         markup='restructuredtext', 
                         section='property permission text',)
     
+    # TODO: Add inheritence info to getter/setter/deleters
     attr.extra_info.append(parsed_info)
 
+    # Yield the objects to remove from the Documentable tree
+    yield getter
     if setter:
-        del setter.parent.contents[setter.name]
-        system._remove(setter)
-        attr.property_setter = setter
-    
+        yield setter
     if deleter:
-        del deleter.parent.contents[deleter.name]
-        system._remove(deleter)
-        attr.property_deleter = deleter
+        yield deleter
 
-    del getter.parent.contents[getter.name]
-    system._remove(getter)
-    system.addObject(attr)
 
 class Attribute(Inheritable):
     kind: Optional[DocumentableKind] = DocumentableKind.ATTRIBUTE
     annotation: Optional[ast.expr]
-    decorators: Optional[Sequence[ast.expr]] = None
+    decorators: Optional[Sequence[ast.expr]] = None # decorators are used only if the attribute is a property
     value: Optional[ast.expr] = None
     """
     The value of the assignment expression. 
@@ -796,13 +830,24 @@ class Attribute(Inheritable):
     Or maybe it can be that the attribute is a property.
     """
 
-    property_setter: Optional[Function] = None
-    """
-    The property setter L{Function}, is any defined.
-    Only applicable if L{kind} is L{DocumentableKind.PROPERTY}
-    """
-    property_deleter: Optional[Function] = None
-    """Idem for the deleter."""
+    _property_info:Optional[PropertyInfo] = None
+    
+    @property
+    def property_setter(self) -> Optional[Function]:
+        """
+        The property setter L{Function}, is any defined.
+        Only applicable if L{kind} is L{DocumentableKind.PROPERTY}
+        """
+        if self._property_info:
+            return self._property_info.setter
+        return None
+
+    @property
+    def property_deleter(self) -> Optional[Function]:
+        """Idem for the deleter."""
+        if self._property_info:
+            return self._property_info.deleter
+        return None
 
 # Work around the attributes of the same name within the System class.
 _ModuleT = Module
@@ -1295,11 +1340,11 @@ class System:
                 if something:
                     def meth(self):
                         implementation 1
-                else:
+                if somethinglelse:
                     def meth(self):
                         implementation 2
 
-        The default is that the second definition "wins".
+        The default rule is that the last definition "wins".
         """
         i = 0
         fullName = obj.fullName()
@@ -1392,11 +1437,16 @@ class System:
         # Use list() to avoid error "dictionary changed size during iteration"
         # Because we are indeed transforming the tree as 
         # well as the mapping that contains all the objects.
-        for func in list(self.objectsOfType(Function)):
-            if func._property_info is not None:
-                init_property(func, 
-                    setter=func._property_info.setter,
-                    deleter=func._property_info.deleter)
+        to_delete: List[Documentable] = []
+        for attr in list(self.objectsOfType(Attribute)):
+            if attr._property_info is not None:
+                to_delete.extend(init_property(attr))
+        for obj in set(to_delete):
+            self._remove(obj)
+            assert '.' in obj.name
+            assert obj.parent is not None
+            if obj.name in obj.parent.contents:
+                del obj.parent.contents[obj.name]
 
         for post_processor in self._post_processors:
             post_processor(self)

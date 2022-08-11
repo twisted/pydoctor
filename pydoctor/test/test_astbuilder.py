@@ -5,7 +5,7 @@ import ast
 import astor
 
 
-from pydoctor import astbuilder, model
+from pydoctor import astbuilder, model, node2stan
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
@@ -2014,3 +2014,136 @@ def test_instance_var_override_in_property(systemcls: Type[model.System]) -> Non
     assert mod.contents['A'].contents['data'].kind is model.DocumentableKind.PROPERTY
     assert mod.contents['A'].contents['_data'].kind is model.DocumentableKind.INSTANCE_VARIABLE
 
+@systemcls_param
+def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> None:
+    # source from cpython test_property.py
+    src = '''
+    class BaseClass(object):
+        @property
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+    
+    class SubClass(BaseClass):
+        # inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            """SubClass.getter"""
+            pass
+    
+    class SubClass2(BaseClass):
+        # inherited property
+        @BaseClass.spam.setter
+        def spam(self):
+            """SubClass.setter"""
+            pass
+    
+    class SubClass3(BaseClass):
+        # inherited property
+        @BaseClass.spam.deleter
+        def spam(self):
+            """SubClass.deleter"""
+            pass
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+
+    spam0 = mod.contents['BaseClass'].contents['spam']
+    spam1 = mod.contents['SubClass'].contents['spam']
+    spam2 = mod.contents['SubClass2'].contents['spam']
+    spam3 = mod.contents['SubClass3'].contents['spam']
+
+    assert list(mod.contents['BaseClass'].contents) == \
+        list(mod.contents['SubClass'].contents) == \
+        list(mod.contents['SubClass2'].contents) == \
+        list(mod.contents['SubClass3'].contents) == ['spam']
+
+    assert isinstance(spam0, model.Attribute)
+    assert isinstance(spam1, model.Attribute)
+    assert isinstance(spam2, model.Attribute)
+    assert isinstance(spam3, model.Attribute)
+
+    assert spam0.kind is model.DocumentableKind.PROPERTY
+    assert spam1.kind is model.DocumentableKind.PROPERTY
+    assert spam2.kind is model.DocumentableKind.PROPERTY
+    assert spam3.kind is model.DocumentableKind.PROPERTY
+
+    assert isinstance(spam0.property_setter, model.Function)
+    assert isinstance(spam1.property_setter, model.Function)
+    assert isinstance(spam2.property_setter, model.Function)
+    assert isinstance(spam3.property_setter, model.Function)
+
+    assert isinstance(spam0.property_deleter, model.Function)
+    assert isinstance(spam1.property_deleter, model.Function)
+    assert isinstance(spam2.property_deleter, model.Function)
+    assert isinstance(spam3.property_deleter, model.Function)
+
+    assert spam0._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
+    assert spam0._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam0._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam1._property_info.getter.fullName() == 'mod.SubClass.spam.getter'
+    assert spam1._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam1._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam2._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
+    assert spam2._property_info.setter.fullName() == 'mod.SubClass2.spam.setter'
+    assert spam2._property_info.deleter.fullName() == 'mod.BaseClass.spam.deleter'
+
+    assert spam3._property_info.getter.fullName() == 'mod.BaseClass.spam.getter'
+    assert spam3._property_info.setter.fullName() == 'mod.BaseClass.spam.setter'
+    assert spam3._property_info.deleter.fullName() == 'mod.SubClass3.spam.deleter'
+
+    assert spam1._property_info.getter is not spam0._property_info.getter
+
+@systemcls_param
+def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    We don't support it for now.
+    """
+    src = '''
+    class PropertyDocBase(object):
+        _spam = 1
+        def _get_spam(self):
+            return self._spam
+        # Old school property
+        spam = property(_get_spam, doc="spam spam spam")
+    class PropertyDocSub(PropertyDocBase):
+        @PropertyDocBase.spam.getter
+        def spam(self):
+            # The docstring is ignored since the property is defined with old school manner
+            """The decorator does not use this doc string"""
+            return self._spam
+    '''
+
+@systemcls_param
+def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys) -> None:
+
+    src = '''
+    class PropertyNewGetter(object):
+        
+        @property
+        def spam(self):
+            """original docstring"""
+            return 1
+        @spam.getter
+        def spam(self):
+            # This overrides the old docstring.
+            """new docstring"""
+            return 8
+    '''
+    mod = fromText(src, modname='mod', systemcls=systemcls)
+    assert not capsys.readouterr().out
+    assert node2stan.gettext(
+        mod.contents['PropertyNewGetter'].contents['spam']\
+            .parsed_docstring.to_node()) == 'new docstring'
+
+# TODO: Add corner cases test

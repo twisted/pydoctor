@@ -4,7 +4,7 @@ Various bits of reusable code related to L{ast.AST} node processing.
 
 import sys
 from numbers import Number
-from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING
+from typing import Iterator, Optional, List, Iterable, Sequence, TYPE_CHECKING, Tuple, Union
 from inspect import BoundArguments, Signature
 import ast
 
@@ -155,3 +155,11 @@ def is_using_annotations(expr: Optional[ast.AST],
             if full_name in annotations:
                 return True
     return False
+
+def iter_decorator_list(decorator_list:Iterable[ast.expr]) -> Iterator[Tuple[Optional[List[str]], ast.expr]]:
+    for d in decorator_list:
+        if isinstance(d, ast.Call):
+            deco_name = node2dottedname(d.func)
+        else:
+            deco_name = node2dottedname(d)
+        yield deco_name,d
