@@ -2144,6 +2144,6 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
     assert not capsys.readouterr().out
     assert node2stan.gettext(
         mod.contents['PropertyNewGetter'].contents['spam']\
-            .parsed_docstring.to_node()) == 'new docstring'
+            .parsed_docstring.to_node()) == ['new docstring']
 
 # TODO: Add corner cases test
