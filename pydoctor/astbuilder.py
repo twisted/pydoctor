@@ -1,7 +1,6 @@
 """Convert ASTs into L{pydoctor.model.Documentable} instances."""
 
 import ast
-import enum
 import sys
 
 from functools import partial
@@ -840,11 +839,13 @@ class ModuleVistor(NodeVisitor):
         elif has_property_decorator:
             assert property_decorator is not None
 
+            (deco_name,_), = astutils.iter_decorator_list((property_decorator,))
             prop_func_kind = get_property_function_kind(property_decorator)
             inherited_property = get_inherited_property(property_decorator, parent)
 
-            if inherited_property:
-                if inherited_property._property_info:
+            # Looks like inherited property
+            if len(deco_name)>2:
+                if inherited_property and inherited_property._property_info:
                     prop = self.builder.addAttribute(node.name, 
                             kind=model.DocumentableKind.PROPERTY, 
                             parent=parent)
@@ -941,20 +942,19 @@ class ModuleVistor(NodeVisitor):
         func.annotations = self._annotations_from_function(node)
 
         
-        if is_property or has_property_decorator:
-            report_on = prop or func
+        if prop is not None:
             
             if is_classmethod:
-                report_on.report(f'{report_on.fullName()} is both property and classmethod')
+                prop.report(f'{prop.fullName()} is both property and classmethod')
             if is_staticmethod:
-                report_on.report(f'{report_on.fullName()} is both property and staticmethod')
+                prop.report(f'{prop.fullName()} is both property and staticmethod')
             
             assert property_decorator is not None
 
             # TODO: maybe deleter this attribute
             func.property_decorator = property_decorator
 
-            if prop is not None and prop_func_kind is not None:
+            if prop_func_kind is not None:
                 # Store the fact that this function implements one of the getter/setter/deleter
                 # of the property 'prop'.
                 assert prop._property_info is not None
