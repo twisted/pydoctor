@@ -733,8 +733,7 @@ class Function(Inheritable):
 
 def init_property(attr:'Attribute') -> Iterator['Function']:
     """
-    Initiates the L{Attribute} that replaces the property 
-    functions in the documentable tree.
+    Initiates the L{Attribute} that represent the property in the tree.
 
     Returns the functions to remove from the tree. If the property matchup fails
     """
@@ -1433,12 +1432,10 @@ class System:
                 if b is not None:
                     b.subclasses.append(cls)
         
-        # Machup property functions into an Attribute.
-        # Use list() to avoid error "dictionary changed size during iteration"
-        # Because we are indeed transforming the tree as 
-        # well as the mapping that contains all the objects.
+        # Machup property functions into an Attribute that already exist.
+        # We are transforming the tree at the end only.
         to_delete: List[Documentable] = []
-        for attr in list(self.objectsOfType(Attribute)):
+        for attr in self.objectsOfType(Attribute):
             if attr._property_info is not None:
                 to_delete.extend(init_property(attr))
         for obj in set(to_delete):
