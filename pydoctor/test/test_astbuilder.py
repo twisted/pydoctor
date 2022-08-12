@@ -2016,6 +2016,9 @@ def test_instance_var_override_in_property(systemcls: Type[model.System]) -> Non
 
 @systemcls_param
 def test_property_inherited(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Properties can be inherited.
+    """
     # source from cpython test_property.py
     src = '''
     class BaseClass(object):
@@ -2126,7 +2129,10 @@ def test_property_old_school(systemcls: Type[model.System], capsys: CapSys) -> N
 
 @systemcls_param
 def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys) -> None:
-
+    """
+    A function that explicitely overides a property getter will override the docstring as well.
+    But not the line number. 
+    """
     src = '''
     class PropertyNewGetter(object):
         
@@ -2142,8 +2148,153 @@ def test_property_getter_override(systemcls: Type[model.System], capsys: CapSys)
     '''
     mod = fromText(src, modname='mod', systemcls=systemcls)
     assert not capsys.readouterr().out
-    assert node2stan.gettext(
-        mod.contents['PropertyNewGetter'].contents['spam']\
-            .parsed_docstring.to_node()) == ['new docstring']
+    attr = mod.contents['PropertyNewGetter'].contents['spam']
+    # the parsed_docstring attribute gets initiated in post-processing
+    assert node2stan.gettext(attr.parsed_docstring.to_node()) == ['new docstring']
+    assert attr.linenumber == 4
 
 # TODO: Add corner cases test
+
+@systemcls_param
+def test_property_corner_cases(systemcls: Type[model.System], capsys: CapSys) -> None:
+    """
+    Property handling can be quite complex, there are many corner cases.
+    """
+
+    base_mod = '''
+    # two modules form a cyclic import,
+    # so this class might not be understood well by pydoctor.
+    # Since the cycles can be arbitrarly complex, we just don't
+    # go in the details of resolving them. 
+    from src import BaseClass
+    
+    class System:
+        pass
+
+    class SubClass(BaseClass):
+        # cyclic inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            pass
+    '''
+
+    src_mod = '''
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from mod import System
+    
+    class BaseClass(object):
+        system: 'System'
+
+        @property
+        def spam(self):
+            """BaseClass.getter"""
+            pass
+        @spam.setter
+        def spam(self, value):
+            """BaseClass.setter"""
+            pass
+        @spam.deleter
+        def spam(self):
+            """BaseClass.setter"""
+            pass
+    
+    class SubClass(BaseClass):
+        # inherited property
+        @BaseClass.spam.getter
+        def spam(self):
+            """SubClass.getter"""
+            pass
+    
+    # this class is valid, even if not very clear
+    class NotSubClass: 
+        # does not need to explicitely subclass SubClass2
+        @SubClass.spam.setter # Valid once!
+        def spam(self, v): 
+            pass
+        @spam.getter
+        def spam(self): # inherits docs
+            pass
+    
+    class InvalidClass: 
+        @SubClass.spam.setter # Valid once!
+        def spam(self, v): 
+            pass
+        @SubClass.spam.getter # Not valid if there is already a property defined !
+        def spam(self): 
+            pass
+    
+    class InvalidClass2: 
+        @notfound.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass3: 
+        @property
+        @notfound.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass4: 
+        @InvalidClass3.nhaaa.getter
+        def notfound(self): 
+            pass
+
+    class InvalidClass5: 
+        @InvalidClass2.notfound.getter
+        def notfound(self): 
+            pass
+    '''
+
+    system = systemcls()
+    builder = system.systemBuilder(system)
+
+    # modules are processed in the order they are discovered/added
+    # to the builder, so by adding 'src_mod' fist, we're sure
+    # the other module won't be fully processed at the time we're
+    # processing 'src_mod', because imports triggers processing of 
+    # imported modules, except in the case of cycles.
+    builder.addModuleString(src_mod, modname='src')
+    builder.addModuleString(base_mod, modname='mod')
+    builder.buildModules()
+
+    assert not capsys.readouterr().out
+
+    mod = system.allobjects['mod']
+    src = system.allobjects['src']
+
+    # Pydoctor doesn't understand this property because it's using an 
+    # import cycle. So the older behaviour applies: 
+    # only renaming the method
+    assert list(mod.contents['SubClass'].contents) == ['spam.getter']
+    assert mod.contents['SubClass'].contents['spam.getter'].kind is model.DocumentableKind.METHOD
+
+    assert list(src.contents['SubClass'].contents) == ['spam']
+    assert list(src.contents['NotSubClass'].contents) == ['spam']
+
+    spam0 = src.contents['SubClass'].contents['spam']
+    spam1 = src.contents['NotSubClass'].contents['spam']
+
+    assert list(src.contents['InvalidClass'].contents) == ['spam', 'spam.getter']
+
+    spam2 = src.contents['InvalidClass'].contents['spam']
+    spam2_bogus = src.contents['InvalidClass'].contents['spam.getter']
+
+    notfound = src.contents['InvalidClass2'].contents['notfound.getter']
+    notfound_both = src.contents['InvalidClass3'].contents['notfound.getter']
+    
+    notfound_alt = src.contents['InvalidClass4'].contents['notfound']
+    not_a_property = src.contents['InvalidClass5'].contents['notfound.getter']
+
+    assert spam0.kind is model.DocumentableKind.PROPERTY
+    assert spam1.kind is model.DocumentableKind.PROPERTY
+    assert spam2.kind is model.DocumentableKind.PROPERTY
+    assert spam2_bogus.kind is model.DocumentableKind.METHOD
+    assert notfound.kind is model.DocumentableKind.METHOD
+    assert notfound_both.kind is model.DocumentableKind.METHOD
+    assert notfound_alt.kind is model.DocumentableKind.METHOD
+    assert not_a_property.kind is model.DocumentableKind.METHOD
+
+
+
+    
