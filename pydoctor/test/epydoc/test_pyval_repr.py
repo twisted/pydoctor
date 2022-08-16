@@ -167,7 +167,7 @@ def test_strings() -> None:
 def test_non_breaking_spaces() -> None:
 
     with pytest.raises(xml.sax.SAXParseException):
-        colorhtml(ast.parse('"These are non-breaking spaces."').body[0].value) == """"""
+        colorhtml(ast.parse('"These are non-breaking spaces."').body[0].value) == """""" # type:ignore
     with pytest.raises(xml.sax.SAXParseException):
         assert colorhtml("These are non-breaking spaces.") == """"""
     
