@@ -105,6 +105,22 @@ class _PrivateClass:
         :rtype: `list`
         """
         return []
+    
+    @property
+    def isPrivate(self) -> bool:
+        """Whether this class is private"""
+        return True
+    @isPrivate.setter
+    def isPrivate(self, v) -> bool:
+        raise NotImplemented()
+    
+    @property
+    def isPublic(self) -> bool:
+        """Whether this class is public"""
+        return False
+    @isPublic.setter
+    def isPublic(self, v) -> bool:
+        raise NotImplemented()
 
 
 
@@ -182,6 +198,14 @@ class DemoClass(ABC, _PrivateClass):
     @undoc_prop.setter
     def undoc_prop(self, p) -> None: # type:ignore
         ...
+    
+    @property
+    def isPrivate(self) -> bool:
+        return False
+    
+    @_PrivateClass.isPublic.setter
+    def isPublic(self, v):
+        self._v = v
 
 class IContact(zope.interface.Interface):
     """
