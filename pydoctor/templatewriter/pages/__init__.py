@@ -68,9 +68,6 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
         epydoc2stan.reportWarnings(obj, doc.warnings)
         yield '@', stan.children, tags.br()
 
-def _format_signature_fallback(_: Any, doc:'ParsedDocstring', __:model.Documentable) -> Tag:
-    return tags.transparent("(...)")
-
 def format_signature(function: model.Function) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
