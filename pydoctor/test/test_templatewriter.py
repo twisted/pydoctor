@@ -7,7 +7,7 @@ import tempfile
 import os
 from pathlib import Path, PurePath
 
-from pydoctor import model, templatewriter, stanutils, __version__
+from pydoctor import model, templatewriter, stanutils, __version__, epydoc2stan
 from pydoctor.templatewriter import (FailedToCreateTemplate, StaticTemplate, pages, writer, util,
                                      TemplateLookup, Template, 
                                      HtmlTemplate, UnsupportedTemplateVersion, 
@@ -16,6 +16,7 @@ from pydoctor.templatewriter.pages.table import ChildTable
 from pydoctor.templatewriter.summary import isClassNodePrivate, isPrivate, moduleSummary
 from pydoctor.test.test_astbuilder import fromText
 from pydoctor.test.test_packages import processPackage, testpackages
+from pydoctor.test import CapSys
 from pydoctor.themes import get_themes
 
 if TYPE_CHECKING:
@@ -626,3 +627,67 @@ def test_objects_order_mixed_modules_and_packages() -> None:
 
     assert names == ['aaa', 'aba', 'bbb']
 
+src_crash_xml_entities = '''\
+"""
+These are non-breaking spaces.
+==============================
+
+These are non-breaking spaces.
+"""
+
+V: Literal['These are non-breaking spaces.'] = ({}, 'These are non-breaking spaces.')
+"""
+These are non-breaking spaces.
+"""
+
+@thing('These are non-breaking spaces.')
+def f(a:Literal['These are non-breaking spaces.']='These are non-breaking spaces.') -> Literal['These are non-breaking spaces.']:
+    """
+    These are non-breaking spaces.
+
+    @rtype: V of C
+    """
+    return {}
+
+class C(Literal['These are non-breaking spaces.']):
+    ...
+'''
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities(capsys:CapSys, processtypes:bool) -> None:
+    """
+    Crash test for https://github.com/twisted/pydoctor/issues/641
+    """
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    mod = fromText(src_crash_xml_entities, system=system, modname='test')
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    assert out == '''\
+test:3: bad docstring: SAXParseException: <unknown>:2:25: undefined entity
+test:14: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
+test:9: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+'''
+
+@pytest.mark.parametrize('processtypes', [True, False])
+def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
+    # test RST as well.
+    system = model.System()
+    system.options.verbosity = -1
+    system.options.processtypes=processtypes
+    system.options.docformat = 'restructuredtext'
+    mod = fromText(src_crash_xml_entities.replace('@type', ':type').replace('@rtype', ':rtype'), modname='test', system=system)
+    for o in mod.system.allobjects.values():
+        epydoc2stan.ensure_parsed_docstring(o)
+    getHTMLOf(mod)
+    getHTMLOf(mod.contents['C'])
+    out = capsys.readouterr().out
+    assert out == '''\
+test:3: bad docstring: SAXParseException: <unknown>:1:13: undefined entity
+test:14: bad rendering of decorators: SAXParseException: <unknown>:1:102: undefined entity
+test:9: bad annotation: SAXParseException: <unknown>:1:104: undefined entity
+'''

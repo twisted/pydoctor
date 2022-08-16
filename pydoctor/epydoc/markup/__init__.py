@@ -318,6 +318,10 @@ class DocstringLinker:
 ## ParseError exceptions
 ##################################################
 
+def append_warnings(warns:List[str], errs:List['ParseError'], lineno:int) -> None:
+    for warn in warns:
+        errs.append(ParseError(warn, linenum=lineno, is_fatal=False))
+
 class ParseError(Exception):
     """
     The base class for errors generated while parsing docstrings.

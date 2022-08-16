@@ -2,16 +2,25 @@ import ast
 import sys
 from textwrap import dedent
 from typing import Any, Union
+import xml.sax
+
+import pytest
 
 from pydoctor.epydoc.markup._pyval_repr import PyvalColorizer
 from pydoctor.test import NotFoundLinker
 from pydoctor.stanutils import flatten, flatten_text, html2stan
 from pydoctor.node2stan import gettext
+# from pydoctor.epydoc2stan import safe_to_stan
 
 def color(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
     colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
     parsed_doc = colorizer.colorize(v)
     return parsed_doc.to_node().pformat() #type: ignore
+
+def colorhtml(v: Any, linebreakok:bool=True, maxlines:int=5, linelen:int=40) -> str:
+    colorizer = PyvalColorizer(linelen=linelen, linebreakok=linebreakok, maxlines=maxlines)
+    parsed_doc = colorizer.colorize(v)
+    return flatten(parsed_doc.to_stan(NotFoundLinker(), compact=True))
 
 def test_simple_types() -> None:
     """
@@ -154,7 +163,13 @@ def test_strings() -> None:
     <inline classes="variable-quote">
         '''
 """
-    
+
+def test_non_breaking_spaces() -> None:
+
+    with pytest.raises(xml.sax.SAXParseException):
+        colorhtml(ast.parse('"These are non-breaking spaces."').body[0].value) == """"""
+    with pytest.raises(xml.sax.SAXParseException):
+        assert colorhtml("These are non-breaking spaces.") == """"""
     
 def test_strings_quote() -> None:
     """

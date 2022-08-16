@@ -927,7 +927,8 @@ class _ValueFormatter:
         Without the englobing <code> tags.
         """
         # Using node2stan.node2html instead of flatten(to_stan()). 
-        # This avoids calling flatten() twice.
+        # This avoids calling flatten() twice, 
+        # but potential XML parser errors caused by XMLString needs to be handled later.
         return ''.join(node2stan.node2html(self._colorized.to_node(), self._linker))
 
 class _AnnotationStringParser(ast.NodeTransformer):

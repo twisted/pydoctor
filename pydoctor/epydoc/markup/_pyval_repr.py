@@ -191,12 +191,7 @@ class ColorizedPyvalRepr(ParsedRstDocstring):
         """
     
     def to_stan(self, docstring_linker: DocstringLinker, compact:bool=False) -> Tag:
-        try:
-            return Tag('code')(super().to_stan(docstring_linker))
-        except Exception as e:
-            # Just in case...
-            self.warnings.append(f"Cannot convert repr to renderable object, error: {str(e)}. Using plaintext.")
-            return Tag('code')(gettext(self.to_node()))
+        return Tag('code')(super().to_stan(docstring_linker))
 
 def colorize_pyval(pyval: Any, linelen:Optional[int], maxlines:int, linebreakok:bool=True) -> ColorizedPyvalRepr:
     """

@@ -162,6 +162,8 @@ class ParsedTypeDocstring(TypeDocstring, ParsedDocstring):
         converters: Dict[TokenType, Callable[[Union[str, Tag]], Union[str, Tag]]] = {
             TokenType.LITERAL:      lambda _token: tags.span(_token, class_="literal"),
             TokenType.CONTROL:      lambda _token: tags.em(_token),
+            # TODO: why not use safe_to_stan(), seem to work without, 
+            # it does not crash on invalid xml entities
             TokenType.REFERENCE:    lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             TokenType.UNKNOWN:      lambda _token: get_parser_by_name('restructuredtext')(_token, warnings, False).to_stan(docstring_linker) if isinstance(_token, str) else _token, 
             TokenType.OBJ:          lambda _token: _token, # These convertions (OBJ and DELIMITER) are done in _convert_obj_tokens_to_stan().

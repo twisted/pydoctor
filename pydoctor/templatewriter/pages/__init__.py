@@ -1,7 +1,7 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
 from typing import (
-    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
+    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
 import ast
@@ -12,7 +12,7 @@ from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
 from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, model, __version__
+from pydoctor import epydoc2stan, node2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -22,6 +22,7 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 if TYPE_CHECKING:
     from typing_extensions import Final
     from twisted.web.template import Flattenable
+    from pydoctor.epydoc.markup import ParsedDocstring
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
@@ -45,6 +46,8 @@ def objects_order(o: model.Documentable) -> Tuple[int, int, str]:
 
     return (-o.privacyClass.value, -map_kind(o.kind).value if o.kind else 0, o.fullName().lower())
 
+def _format_decorators_fallback(_:Any, doc:'ParsedDocstring', __:model.Documentable) -> Tag:
+    return Tag('code')(node2stan.gettext(doc.to_node()))
 def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["Flattenable"]:
     for dec in obj.decorators or ():
         if isinstance(dec, ast.Call):
@@ -57,19 +60,29 @@ def format_decorators(obj: Union[model.Function, model.Attribute]) -> Iterator["
 
         # Colorize decorators!
         doc = colorize_inline_pyval(dec)
-        stan = doc.to_stan(obj.docstring_linker)
-        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
-        for message in doc.warnings:
-            obj.report(message)
 
+        stan = epydoc2stan.safe_to_stan(doc, obj, compact=True, 
+            fallback=_format_decorators_fallback, section='rendering of decorators')
+        
+        # Report eventual warnings. It warns when a regex failed to parse or the html2stan() function fails.
+        epydoc2stan.reportWarnings(obj, doc.warnings)
         yield '@', stan.children, tags.br()
+
+def _format_signature_fallback(_: Any, doc:'ParsedDocstring', __:model.Documentable) -> Tag:
+    return tags.transparent("(...)")
 
 def format_signature(function: model.Function) -> "Flattenable":
     """
     Return a stan representation of a nicely-formatted source-like function signature for the given L{Function}.
     Arguments default values are linked to the appropriate objects when possible.
     """
-    return html2stan(str(function.signature)) if function.signature else "(...)"
+    broken = "(...)"
+    try:
+        return html2stan(str(function.signature)) if function.signature else broken
+    except Exception as e:
+        epydoc2stan.reportErrors(function, 
+            [epydoc2stan.get_to_stan_error(e)], section='signature')
+        return broken
 
 class Nav(TemplateElement):
     """
@@ -267,7 +280,8 @@ class CommonPage(Page):
         """
         r: List[Tag] = []
         for extra in ob.extra_info:
-            r.append(extra.to_stan(ob.docstring_linker, compact=False))
+            r.append(epydoc2stan.safe_to_stan(extra, ob, compact=False, 
+                fallback = lambda _,__,___:epydoc2stan.BROKEN), section='extra')
         return r
 
 
@@ -412,7 +426,8 @@ class ClassPage(CommonPage):
         r: List["Flattenable"] = []
         # Here, we should use the parent's linker because a base name
         # can't be define in the class itself.
-        _linker = self.ob.parent.docstring_linker
+        ctx =  self.ob.parent
+        _linker = ctx.docstring_linker
         if self.ob.rawbases:
             r.append('(')
             with _linker.disable_same_page_optimazation():
@@ -423,7 +438,9 @@ class ClassPage(CommonPage):
 
                     # link to external class or internal class, using the colorizer here
                     # to link to classes with generics (subscripts and other AST expr).
-                    r.extend(colorize_inline_pyval(base_node).to_stan(_linker).children)
+                    stan = epydoc2stan.safe_to_stan(colorize_inline_pyval(base_node), ctx, compact=False, 
+                        fallback = epydoc2stan._class_signature_fallback, section='rendering of class signature')
+                    r.extend(stan.children)
                     
             r.append(')')
         return r

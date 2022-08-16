@@ -53,7 +53,7 @@ from docutils.utils import Reporter, new_document
 from docutils.parsers.rst import Directive, directives
 from docutils.transforms import Transform, frontmatter
 
-from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring
+from pydoctor.epydoc.markup import Field, ParseError, ParsedDocstring, append_warnings
 from pydoctor.epydoc.markup.plaintext import ParsedPlaintextDocstring
 from pydoctor.epydoc.markup._types import ParsedTypeDocstring
 from pydoctor.model import Documentable
@@ -79,7 +79,10 @@ CONSOLIDATED_FIELDS = {
 #: a @type field.
 CONSOLIDATED_DEFLIST_FIELDS = ['param', 'arg', 'var', 'ivar', 'cvar', 'keyword']
 
-def parse_docstring(docstring: str, errors: List[ParseError], processtypes: bool = False) -> ParsedDocstring:
+def parse_docstring(docstring: str, 
+                    errors: List[ParseError], 
+                    processtypes: bool = False,
+                    ) -> ParsedDocstring:
     """
     Parse the given docstring, which is formatted using
     ReStructuredText; and return a L{ParsedDocstring} representation
@@ -137,7 +140,9 @@ class ParsedRstDocstring(ParsedDocstring):
         """A ReStructuredText document, encoding the docstring."""
 
         document.reporter = OptimizedReporter(
-            document.reporter.source, 'SEVERE', 'SEVERE', '')
+            document.reporter.source, 
+            report_level=10000, halt_level=10000, 
+            stream='')
 
         ParsedDocstring.__init__(self, fields)
 
@@ -281,8 +286,7 @@ class _SplitFieldsTranslator(nodes.NodeVisitor):
         field_parsed_doc: ParsedDocstring
         if self._processtypes and tagname in ParsedTypeDocstring.FIELDS:
             field_parsed_doc = ParsedTypeDocstring(field_doc)
-            for warning_msg in field_parsed_doc.warnings:
-                    self._errors.append(ParseError(warning_msg, lineno, is_fatal=False))
+            append_warnings(field_parsed_doc.warnings, self._errors, lineno=lineno)
         else:
             field_parsed_doc = ParsedRstDocstring(field_doc, ())
         self.fields.append(Field(tagname, arg, field_parsed_doc, lineno - 1))
