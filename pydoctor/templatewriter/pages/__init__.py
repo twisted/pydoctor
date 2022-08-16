@@ -281,7 +281,7 @@ class CommonPage(Page):
         r: List[Tag] = []
         for extra in ob.extra_info:
             r.append(epydoc2stan.safe_to_stan(extra, ob, compact=False, 
-                fallback = lambda _,__,___:epydoc2stan.BROKEN), section='extra')
+                fallback = lambda _,__,___:epydoc2stan.BROKEN, section='extra'))
         return r
 
 
