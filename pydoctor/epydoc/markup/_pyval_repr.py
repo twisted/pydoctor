@@ -53,7 +53,6 @@ from pydoctor.epydoc.markup import DocstringLinker
 from pydoctor.epydoc.markup.restructuredtext import ParsedRstDocstring
 from pydoctor.epydoc.docutils import set_node_attributes, wbr, obj_reference
 from pydoctor.astutils import node2dottedname, bind_args
-from pydoctor.node2stan import gettext
 
 def decode_with_backslashreplace(s: bytes) -> str:
     r"""
