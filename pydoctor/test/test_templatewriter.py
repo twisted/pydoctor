@@ -707,7 +707,6 @@ test:36: bad rendering of class signature: SAXParseException: <unknown>:1:104: u
 
 @pytest.mark.parametrize('processtypes', [True, False])
 def test_crash_xmlstring_entities_rst(capsys:CapSys, processtypes:bool) -> None:
-    ```suggestion
     """Idem for RST"""
     system = model.System()
     system.options.verbosity = -1
