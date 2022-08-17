@@ -374,7 +374,7 @@ class Documentable:
 
         @param descr: The error/warning string
         @param section: What the warning is about.
-        @para lineno_offset: Offset
+        @param lineno_offset: Offset
         @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} y default.
         """
 
