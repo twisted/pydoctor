@@ -1056,8 +1056,8 @@ class ASTBuilder:
         Create and enter a new object of the given type and add it to the system.
         """
         obj = cls(self.system, name, self.current)
-        self.system.addObject(obj)
         self.push(obj, lineno)
+        self.system.addObject(obj)
         self.currentAttr = None
         return obj
 
