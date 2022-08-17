@@ -1,5 +1,3 @@
-
-import re
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
