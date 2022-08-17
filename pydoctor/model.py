@@ -1193,7 +1193,7 @@ class System:
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
-        obj.parent.report(f"duplicate {str(prev)}", thresh=1)
+        obj.report(f"duplicate {str(prev)}", thresh=1)
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
