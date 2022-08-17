@@ -1,4 +1,5 @@
 
+import re
 from typing import Optional, Tuple, Type, List, overload, cast
 import ast
 
@@ -1988,5 +1989,5 @@ def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
 def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
     systemcls = partialclass(systemcls, Options.from_args(['-q']))
     processPackage('syntax_error', systemcls)
-    assert capsys.readouterr().out.endswith('pydoctor/test/testpackages/syntax_error/__init__.py:???: invalid syntax (__init__.py, line 1)\n')
-
+    out = capsys.readouterr().out.strip('\n')
+    assert "pydoctor/test/testpackages/syntax_error/__init__.py:???: cannot parse file" in out, out

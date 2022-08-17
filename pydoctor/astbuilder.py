@@ -1157,7 +1157,7 @@ class ASTBuilder:
             try:
                 mod = parseFile(path)
             except (SyntaxError, ValueError) as e:
-                ctx.report(str(e))
+                ctx.report(f"cannot parse file, {e}")
 
             self.ast_cache[path] = mod
             return mod
