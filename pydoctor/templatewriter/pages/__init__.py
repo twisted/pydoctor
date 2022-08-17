@@ -1,7 +1,7 @@
 """The classes that turn  L{Documentable} instances into objects we can render."""
 
 from typing import (
-    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Mapping, Sequence,
+    TYPE_CHECKING, Dict, Iterator, List, Optional, Mapping, Sequence,
     Tuple, Type, Union
 )
 import ast
@@ -12,7 +12,7 @@ from twisted.web.template import Element, Tag, renderer, tags
 from pydoctor.extensions import zopeinterface
 
 from pydoctor.stanutils import html2stan
-from pydoctor import epydoc2stan, node2stan, model, __version__
+from pydoctor import epydoc2stan, model, __version__
 from pydoctor.astbuilder import node2fullname
 from pydoctor.templatewriter import util, TemplateLookup, TemplateElement
 from pydoctor.templatewriter.pages.table import ChildTable
@@ -22,7 +22,6 @@ from pydoctor.epydoc.markup._pyval_repr import colorize_inline_pyval
 if TYPE_CHECKING:
     from typing_extensions import Final
     from twisted.web.template import Flattenable
-    from pydoctor.epydoc.markup import ParsedDocstring, ParseError
     from pydoctor.templatewriter.pages.attributechild import AttributeChild
     from pydoctor.templatewriter.pages.functionchild import FunctionChild
 
