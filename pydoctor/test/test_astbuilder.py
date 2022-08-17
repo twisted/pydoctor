@@ -7,9 +7,12 @@ import astor
 
 from pydoctor import astbuilder, model
 from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
+from pydoctor.options import Options
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1971,3 +1974,19 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_syntax_error(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    fromText('''\
+    def f()
+        return True
+    ''', systemcls=systemcls)
+    assert capsys.readouterr().out == '<test>:???: cannot parse string\n'
+
+@systemcls_param
+def test_syntax_error_pack(systemcls: Type[model.System], capsys: CapSys) -> None:
+    systemcls = partialclass(systemcls, Options.from_args(['-q']))
+    processPackage('syntax_error', systemcls)
+    assert capsys.readouterr().out.endswith('pydoctor/test/testpackages/syntax_error/__init__.py:???: invalid syntax (__init__.py, line 1)\n')
+

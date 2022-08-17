@@ -368,8 +368,15 @@ class Documentable:
         assert parentMod is not None
         return parentMod
 
-    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0) -> None:
-        """Log an error or warning about this documentable object."""
+    def report(self, descr: str, section: str = 'parsing', lineno_offset: int = 0, thresh:int=-1) -> None:
+        """
+        Log an error or warning about this documentable object.
+
+        @param descr: The error/warning string
+        @param section: What the warning is about.
+        @para lineno_offset: Offset
+        @param thresh: Thresh to pass to L{System.msg}, it will use C{-1} y default.
+        """
 
         linenumber: object
         if section in ('docstring', 'resolve_identifier_xref'):
@@ -386,7 +393,7 @@ class Documentable:
         self.system.msg(
             section,
             f'{self.description}:{linenumber}: {descr}',
-            thresh=-1)
+            thresh=thresh)
 
     @property
     def docstring_linker(self) -> 'linker.DocstringLinker':
@@ -923,19 +930,6 @@ class System:
 
         return None
 
-
-    def _warning(self,
-            current: Optional[Documentable],
-            message: str,
-            detail: str
-            ) -> None:
-        if current is not None:
-            fn = current.fullName()
-        else:
-            fn = '<None>'
-        if self.options.verbosity > 0:
-            print(fn, message, detail)
-
     def objectsOfType(self, cls: Union[Type['DocumentableT'], str]) -> Iterator['DocumentableT']:
         """Iterate over all instances of C{cls} present in the system. """
         if isinstance(cls, str):
@@ -1079,7 +1073,7 @@ class System:
             - Packages wins over modules
             - Else, the last added module wins
         """
-        self._warning(dup.parent, "duplicate", str(first))
+        dup.report(f"duplicate {str(first)}", thresh=1)
 
         if first._is_c_module and not isinstance(dup, Package):
             # C-modules wins
@@ -1199,7 +1193,7 @@ class System:
         while (fullName + ' ' + str(i)) in self.allobjects:
             i += 1
         prev = self.allobjects[fullName]
-        self._warning(obj.parent, "duplicate", str(prev))
+        obj.parent.report(f"duplicate {str(prev)}", thresh=1)
         self._remove(prev)
         prev.name = obj.name + ' ' + str(i)
         def readd(o: Documentable) -> None:
@@ -1240,10 +1234,10 @@ class System:
         else:
             builder = self.defaultBuilder(self)
             if mod._py_string is not None:
-                ast = builder.parseString(mod._py_string)
+                ast = builder.parseString(mod._py_string, mod)
             else:
                 assert mod.source_path is not None
-                ast = builder.parseFile(mod.source_path)
+                ast = builder.parseFile(mod.source_path, mod)
             if ast:
                 self.processing_modules.append(mod.fullName())
                 if mod._py_string is None:

@@ -215,7 +215,7 @@ class ModuleVistor(NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         ctx = self.builder.current
         if not isinstance(ctx, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context", str(ctx))
+            # processing import statement in odd context
             return
 
         modname = node.module
@@ -256,10 +256,10 @@ class ModuleVistor(NodeVisitor):
         if mod is None:
             # We don't have any information about the module, so we don't know
             # what names to import.
-            self.builder.warning("import * from unknown", modname)
+            self.builder.current.report(f"import * from unknown {modname}", thresh=1)
             return
 
-        self.builder.warning("import *", modname)
+        self.builder.current.report("import *", thresh=1)
 
         # Get names to import: use __all__ if available, otherwise take all
         # names that are not private.
@@ -314,8 +314,8 @@ class ModuleVistor(NodeVisitor):
             # So we use content.get first to resolve non-alias names. 
             ob = origin_module.contents.get(origin_name) or origin_module.resolveName(origin_name)
             if ob is None:
-                self.builder.warning("cannot resolve re-exported name",
-                                        f'{modname}.{origin_name}')
+                current.report("cannot resolve re-exported name :"
+                                        f'{modname}.{origin_name}', thresh=1)
             else:
                 if origin_module.all is None or origin_name not in origin_module.all:
                     self.system.msg(
@@ -369,8 +369,7 @@ class ModuleVistor(NodeVisitor):
         part of the statement.
         """
         if not isinstance(self.builder.current, model.CanContainImportsDocumentable):
-            self.builder.warning("processing import statement in odd context",
-                                 str(self.builder.current))
+            # processing import statement in odd context
             return
         _localNameToFullName = self.builder.current._localNameToFullName_map
         for al in node.names:
@@ -1134,8 +1133,6 @@ class ASTBuilder:
         self.currentAttr = attr
         return attr
 
-    def warning(self, message: str, detail: str) -> None:
-        self.system._warning(self.current, message, detail)
 
     def processModuleAST(self, mod_ast: ast.Module, mod: model.Module) -> None:
 
@@ -1152,24 +1149,25 @@ class ASTBuilder:
         vis.extensions.attach_visitor(vis)
         vis.walkabout(mod_ast)
 
-    def parseFile(self, path: Path) -> Optional[ast.Module]:
+    def parseFile(self, path: Path, ctx: model.Module) -> Optional[ast.Module]:
         try:
             return self.ast_cache[path]
         except KeyError:
             mod: Optional[ast.Module] = None
             try:
                 mod = parseFile(path)
-            except (SyntaxError, ValueError):
-                self.warning("cannot parse", str(path))
+            except (SyntaxError, ValueError) as e:
+                ctx.report(str(e))
+
             self.ast_cache[path] = mod
             return mod
     
-    def parseString(self, py_string:str) -> Optional[ast.Module]:
+    def parseString(self, py_string:str, ctx: model.Module) -> Optional[ast.Module]:
         mod = None
         try:
             mod = _parse(py_string)
         except (SyntaxError, ValueError):
-            self.warning("cannot parse string: ", py_string)
+            ctx.report(f"cannot parse string")
         return mod
 
 model.System.defaultBuilder = ASTBuilder
