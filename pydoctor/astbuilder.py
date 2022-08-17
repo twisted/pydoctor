@@ -1167,7 +1167,7 @@ class ASTBuilder:
         try:
             mod = _parse(py_string)
         except (SyntaxError, ValueError):
-            ctx.report(f"cannot parse string")
+            ctx.report("cannot parse string")
         return mod
 
 model.System.defaultBuilder = ASTBuilder
