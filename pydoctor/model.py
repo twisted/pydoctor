@@ -1385,3 +1385,35 @@ class SystemBuilder(ISystemBuilder):
         self.system.process()
 
 System.systemBuilder = SystemBuilder
+
+def prepend_package(builderT:Type[ISystemBuilder], package:str) -> Type[ISystemBuilder]:
+    
+    class PrependPackageBuidler(builderT): # type:ignore
+        """
+        Support for option C{--prepend-package}.
+        """
+
+        def __init__(self, system: 'System', *, package:str) -> None:
+            super().__init__(system)
+            
+            self.package = package
+            
+            prependedpackage = None
+            for m in package.split('.'):
+                prependedpackage = system.Package(
+                    system, m, prependedpackage)
+                system.addObject(prependedpackage)
+        
+        def addModule(self, path: Path, parent_name: Optional[str] = None, ) -> None:
+            if parent_name is None:
+                parent_name = self.package
+            super().addModule(path, parent_name)
+        
+        def addModuleString(self, text: str, modname: str,
+                            parent_name: Optional[str] = None,
+                            is_package: bool = False, ) -> None:
+            if parent_name is None:
+                parent_name = self.package
+            super().addModuleString(text, modname, parent_name, is_package=is_package)
+    
+    return utils.partialclass(PrependPackageBuidler, package=package)

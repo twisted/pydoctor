@@ -10,6 +10,8 @@ from pydoctor.epydoc.markup import DocstringLinker, ParsedDocstring
 from pydoctor.stanutils import flatten, html2stan, flatten_text
 from pydoctor.epydoc.markup.epytext import Element, ParsedEpytextDocstring
 from pydoctor.epydoc2stan import format_summary, get_parsed_type
+from pydoctor.test.test_packages import processPackage
+from pydoctor.utils import partialclass
 
 from . import CapSys, NotFoundLinker, posonlyargs, typecomment
 import pytest
@@ -1971,3 +1973,32 @@ def test_reexport_wildcard(systemcls: Type[model.System]) -> None:
     assert system.allobjects['top._impl'].resolveName('f') == system.allobjects['top'].contents['f']
     assert system.allobjects['_impl2'].resolveName('i') == system.allobjects['top'].contents['i']
     assert all(n in system.allobjects['top'].contents for n in  ['f', 'g', 'h', 'i', 'j'])
+
+@systemcls_param
+def test_prepend_package(systemcls: Type[model.System]) -> None:
+    system = systemcls()
+    builder = model.prepend_package(system.systemBuilder, package='lib.pack')(system)
+
+    builder.addModuleString('"mod doc"\nclass C:\n    "C doc"', modname='core')
+    builder.buildModules()
+    assert isinstance(system.allobjects['lib'], model.Package)
+    assert isinstance(system.allobjects['lib.pack'], model.Package)
+    assert isinstance(system.allobjects['lib.pack.core.C'], model.Class)
+    assert 'core' not in system.allobjects
+
+
+@systemcls_param
+def test_prepend_package_real_path(systemcls: Type[model.System]) -> None:
+    _builderT_init = systemcls.systemBuilder
+    try:
+        systemcls.systemBuilder = model.prepend_package(systemcls.systemBuilder, package='lib.pack')
+
+        system = processPackage('basic', systemcls=systemcls)
+
+        assert isinstance(system.allobjects['lib'], model.Package)
+        assert isinstance(system.allobjects['lib.pack'], model.Package)
+        assert isinstance(system.allobjects['lib.pack.basic.mod.C'], model.Class)
+        assert 'basic' not in system.allobjects
+    
+    finally:
+        systemcls.systemBuilder = _builderT_init
